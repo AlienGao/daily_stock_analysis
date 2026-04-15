@@ -49,7 +49,7 @@ env/
 # 数据和日志
 /data/
 logs/
-reports/
+# reports/
 *.db
 *.sqlite
 *.sqlite3
