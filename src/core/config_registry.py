@@ -80,6 +80,26 @@ _FIELD_DEFINITIONS: Dict[str, Dict[str, Any]] = {
         "validation": {"min_items": 1},
         "display_order": 10,
     },
+    "STOCK_CATEGORY": {
+        "title": "Stock Category",
+        "description": "Select stock category to replace watchlist.",
+        "category": "base",
+        "data_type": "string",
+        "ui_control": "select",
+        "is_sensitive": False,
+        "is_required": False,
+        "is_editable": True,
+        "default_value": "ALL",
+        "options": [
+            {"value": "ALL", "label": "全部 (ALL)"},
+            {"value": "BUY", "label": "买入 (BUY)"},
+            {"value": "HOLD", "label": "持有 (HOLD)"},
+            {"value": "LOOK", "label": "观望 (LOOK)"},
+            {"value": "SELL", "label": "卖出 (SELL)"}
+        ],
+        "validation": {},
+        "display_order": 11,
+    },
     # ------------------------------------------------------------------
     # AI Model – LiteLLM unified config
     # ------------------------------------------------------------------
