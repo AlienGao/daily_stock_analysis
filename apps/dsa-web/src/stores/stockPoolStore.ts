@@ -314,19 +314,48 @@ export const useStockPoolStore = create<StockPoolState>((set, get) => ({
       return;
     }
 
-    if (selectionSource !== 'autocomplete' && isObviouslyInvalidStockQuery(stockCodeInput)) {
-      set({ inputError: '请输入有效的股票代码或股票名称', duplicateError: null });
-      return;
-    }
+    // 检查是否包含逗号，判断是否为批量输入
+    const isBatchInput = stockCodeInput.includes(',');
+    let normalizedStockCode: string | undefined;
+    let normalizedStockCodes: string[] | undefined;
 
-    let normalizedStockCode = stockCodeInput;
-    if (selectionSource === 'autocomplete' || looksLikeStockCode(stockCodeInput)) {
-      const { valid, message, normalized } = validateStockCode(stockCodeInput);
-      if (!valid) {
-        set({ inputError: message, duplicateError: null });
+    if (isBatchInput) {
+      // 批量输入处理
+      const stockCodeList = stockCodeInput.split(',').map(code => code.trim()).filter(code => code);
+      
+      if (stockCodeList.length === 0) {
+        set({ inputError: '请输入有效的股票代码', duplicateError: null });
         return;
       }
-      normalizedStockCode = normalized;
+
+      // 验证每个股票代码
+      const normalizedCodes: string[] = [];
+      for (const code of stockCodeList) {
+        const { valid, normalized } = validateStockCode(code);
+        if (!valid) {
+          set({ inputError: `股票代码 ${code} 格式不正确`, duplicateError: null });
+          return;
+        }
+        normalizedCodes.push(normalized);
+      }
+      normalizedStockCodes = normalizedCodes;
+    } else {
+      // 单个股票代码处理
+      if (selectionSource !== 'autocomplete' && isObviouslyInvalidStockQuery(stockCodeInput)) {
+        set({ inputError: '请输入有效的股票代码或股票名称', duplicateError: null });
+        return;
+      }
+
+      if (selectionSource === 'autocomplete' || looksLikeStockCode(stockCodeInput)) {
+        const { valid, message, normalized } = validateStockCode(stockCodeInput);
+        if (!valid) {
+          set({ inputError: message, duplicateError: null });
+          return;
+        }
+        normalizedStockCode = normalized;
+      } else {
+        normalizedStockCode = stockCodeInput;
+      }
     }
 
     set({
@@ -339,7 +368,8 @@ export const useStockPoolStore = create<StockPoolState>((set, get) => ({
     const requestId = ++analyzeRequestSeq;
     try {
       await analysisApi.analyzeAsync({
-        stockCode: normalizedStockCode,
+        stockCode: isBatchInput ? undefined : normalizedStockCode,
+        stockCodes: isBatchInput ? normalizedStockCodes : undefined,
         reportType: 'detailed',
         stockName,
         originalQuery: originalQuery || stockCodeInput,

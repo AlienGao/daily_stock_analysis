@@ -49,16 +49,34 @@ export const validateStockCode = (value: string): ValidationResult => {
 export const isObviouslyInvalidStockQuery = (value: string): boolean => {
   const normalized = value.trim().toUpperCase();
 
-  if (!normalized || looksLikeStockCode(normalized)) {
+  if (!normalized) {
     return false;
   }
 
+  // 处理批量输入（逗号分隔）
+  if (normalized.includes(',')) {
+    const stockCodes = normalized.split(',').map(code => code.trim()).filter(code => code);
+    if (stockCodes.length === 0) {
+      return true;
+    }
+    // 检查每个股票代码是否有效
+    for (const code of stockCodes) {
+      if (!looksLikeStockCode(code)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  if (looksLikeStockCode(normalized)) {
+    return false;
+  }
+
+  // 对于非股票代码的输入（如股票名称），允许字母和数字的组合
+  // 只拒绝明显无效的输入，如包含特殊字符的输入
   if (!SUPPORTED_QUERY_CHARACTERS.test(normalized)) {
     return true;
   }
 
-  const hasLetters = /[A-Z]/.test(normalized);
-  const hasDigits = /\d/.test(normalized);
-
-  return hasLetters && hasDigits;
+  return false;
 };

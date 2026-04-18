@@ -109,6 +109,18 @@ def _resolve_and_normalize_input(raw_value: str) -> str:
     if is_code_like(text):
         return canonical_stock_code(text)
 
+    # 处理批量输入（逗号分隔）
+    if ',' in text:
+        stock_codes = [code.strip() for code in text.split(',') if code.strip()]
+        if not stock_codes:
+            raise _invalid_analysis_input_error()
+        # 检查每个股票代码是否有效
+        for code in stock_codes:
+            if not is_code_like(code):
+                raise _invalid_analysis_input_error()
+        # 返回第一个股票代码（批量输入应该由上层处理）
+        return canonical_stock_code(stock_codes[0])
+
     if _is_obviously_invalid_analysis_input(text):
         raise _invalid_analysis_input_error()
 
