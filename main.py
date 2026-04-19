@@ -529,6 +529,111 @@ def run_full_analysis(
                     f"评分 {r.sentiment_score} | {r.trend_prediction}"
                 )
 
+        # === 新增：报告比较 ===
+        change_report = ""
+        try:
+            from src.services.report_comparator import ReportComparator
+            from datetime import datetime, timezone, timedelta
+            
+            comparator = ReportComparator()
+            
+            # 获取当前日期
+            tz_cn = timezone(timedelta(hours=8))
+            current_date = datetime.now(tz_cn)
+            
+            # 查找今天的报告文件
+            today_str = current_date.strftime("%Y%m%d")
+            today_report = None
+            for filename in os.listdir("reports"):
+                if f"report_{today_str}" in filename:
+                    today_report = os.path.join("reports", filename)
+                    break
+            
+            if today_report:
+                # 获取前一个交易日的报告
+                previous_report = comparator.get_previous_trading_day_report(current_date)
+                
+                if previous_report:
+                    # 比较报告
+                    changes = comparator.compare_reports(today_report, previous_report)
+                    
+                    if changes:
+                        # 生成变化报告
+                        # 解析前一个报告的日期
+                        prev_filename = os.path.basename(previous_report)
+                        prev_date_str = prev_filename.split('_')[1].split('.')[0]
+                        prev_date = datetime.strptime(prev_date_str, "%Y%m%d")
+                        
+                        change_report = comparator.generate_change_report(changes, current_date, prev_date)
+                        
+                        # 发送通知
+                        if change_report and not args.no_notify:
+                            logger.info("正在发送评级变化报告...")
+                            if pipeline.notifier.is_available():
+                                success = pipeline.notifier.send(change_report, subject="股票评级变化报告")
+                                if success:
+                                    logger.info("评级变化报告发送成功")
+                                else:
+                                    logger.warning("评级变化报告发送失败")
+                        
+                        # 打印变化摘要
+                        logger.info("\n===== 评级变化摘要 =====")
+                        logger.info(f"比较日期: {prev_date.strftime('%Y-%m-%d')} → {current_date.strftime('%Y-%m-%d')}")
+                        logger.info(f"变化股票数: {len(changes)}")
+                        for stock, (stock_name, old_rating, new_rating) in changes.items():
+                            logger.info(f"- {stock_name}({stock}): {old_rating} → {new_rating}")
+                    else:
+                        logger.info("\n===== 评级变化摘要 =====")
+                        logger.info("未检测到评级变化")
+                else:
+                    logger.info("\n===== 评级变化摘要 =====")
+                    logger.info("未找到前一个交易日的报告，无法比较")
+        except Exception as e:
+            logger.error(f"报告比较失败: {e}")
+
+        # === 新增：自动更新股票分类 ===
+        try:
+            from src.services.system_config_service import SystemConfigService
+            
+            if results:
+                # 按评级分类股票
+                category_stocks = {
+                    "BUY": [],
+                    "HOLD": [],
+                    "LOOK": [],
+                    "SELL": []
+                }
+                
+                # 映射评级到分类
+                rating_map = {
+                    "买入": "BUY",
+                    "持有": "HOLD",
+                    "观望": "LOOK",
+                    "减持": "SELL",
+                    "卖出": "SELL"
+                }
+                
+                for r in results:
+                    category = rating_map.get(r.operation_advice, "LOOK")
+                    category_stocks[category].append(r.code)
+                
+                # 生成分类字符串
+                updates = []
+                for cat, stocks in category_stocks.items():
+                    if stocks:
+                        updates.append((cat, ",".join(sorted(stocks))))
+                
+                # 更新.env
+                if updates:
+                    logger.info("\n===== 自动更新股票分类 =====")
+                    config_service = SystemConfigService()
+                    config_service.apply_simple_updates(updates)
+                    logger.info("股票分类已更新到 .env 文件")
+                    for cat, stocks in category_stocks.items():
+                        logger.info(f"{cat}: {len(stocks)} 只股票")
+        except Exception as e:
+            logger.error(f"自动更新股票分类失败: {e}")
+
         logger.info("\n任务执行完成")
 
         # === 新增：生成飞书云文档 ===
@@ -536,7 +641,7 @@ def run_full_analysis(
             from src.feishu_doc import FeishuDocManager
 
             feishu_doc = FeishuDocManager()
-            if feishu_doc.is_configured() and (results or market_report):
+            if feishu_doc.is_configured() and (results or market_report or change_report):
                 logger.info("正在创建飞书云文档...")
 
                 # 1. 准备标题 "01-01 13:01大盘复盘"
@@ -550,6 +655,10 @@ def run_full_analysis(
                 # 添加大盘复盘内容（如果有）
                 if market_report:
                     full_content += f"# 📈 大盘复盘\n\n{market_report}\n\n---\n\n"
+
+                # 添加评级变化报告（如果有）
+                if change_report:
+                    full_content += f"{change_report}\n\n---\n\n"
 
                 # 添加个股决策仪表盘（使用 NotificationService 生成，按 report_type 分支）
                 if results:
