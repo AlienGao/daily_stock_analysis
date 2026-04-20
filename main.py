@@ -566,22 +566,68 @@ def run_full_analysis(
                         
                         change_report = comparator.generate_change_report(changes, current_date, prev_date)
                         
+                        # 打印完整的比较结果
+                        logger.info("\n===== 完整评级变化报告 =====")
+                        logger.info(change_report)
+                        
                         # 发送通知
                         if change_report and not args.no_notify:
                             logger.info("正在发送评级变化报告...")
                             if pipeline.notifier.is_available():
-                                success = pipeline.notifier.send(change_report, subject="股票评级变化报告")
+                                success = pipeline.notifier.send(change_report)
                                 if success:
                                     logger.info("评级变化报告发送成功")
                                 else:
                                     logger.warning("评级变化报告发送失败")
                         
-                        # 打印变化摘要
+                        # 打印变化摘要（使用排序后的结果）
                         logger.info("\n===== 评级变化摘要 =====")
                         logger.info(f"比较日期: {prev_date.strftime('%Y-%m-%d')} → {current_date.strftime('%Y-%m-%d')}")
                         logger.info(f"变化股票数: {len(changes)}")
-                        for stock, (stock_name, old_rating, new_rating) in changes.items():
-                            logger.info(f"- {stock_name}({stock}): {old_rating} → {new_rating}")
+                        
+                        # 定义评级优先级（数值越大等级越高）
+                        rating_priority = {
+                            "买入": 5,
+                            "持有": 4,
+                            "观望": 3,
+                            "减持": 2,
+                            "卖出": 1
+                        }
+                        
+                        # 排序变化股票
+                        def sort_key(item):
+                            stock, (stock_name, old_rating, new_rating) = item
+                            old_priority = rating_priority.get(old_rating, 0)
+                            new_priority = rating_priority.get(new_rating, 0)
+                            
+                            # 变化类型：升级为1，降级为0
+                            change_type = 1 if new_priority > old_priority else 0
+                            
+                            # 新评级优先级（降序）
+                            new_pri = -new_priority
+                            
+                            # 排序键：(变化类型, 新评级优先级)
+                            return (-change_type, new_pri)
+                        
+                        sorted_changes = sorted(changes.items(), key=sort_key)
+                        
+                        # 打印排序后的摘要
+                        for stock, (stock_name, old_rating, new_rating) in sorted_changes:
+                            # 确定图标
+                            old_priority = rating_priority.get(old_rating, 0)
+                            new_priority = rating_priority.get(new_rating, 0)
+                            
+                            if new_priority > old_priority:
+                                # 升级
+                                emoji = "✅"
+                            elif new_priority < old_priority:
+                                # 降级
+                                emoji = "❌"
+                            else:
+                                # 无变化（理论上不会出现）
+                                emoji = "➡️"
+                            
+                            logger.info(f"- {emoji} {stock_name}({stock}): {old_rating} → {new_rating}")
                     else:
                         logger.info("\n===== 评级变化摘要 =====")
                         logger.info("未检测到评级变化")
@@ -631,6 +677,17 @@ def run_full_analysis(
                     logger.info("股票分类已更新到 .env 文件")
                     for cat, stocks in category_stocks.items():
                         logger.info(f"{cat}: {len(stocks)} 只股票")
+                    
+                    # 生成STOCK_LIST：BUY + HOLD
+                    buy_stocks = set(category_stocks.get("BUY", []))
+                    hold_stocks = set(category_stocks.get("HOLD", []))
+                    stock_list = buy_stocks | hold_stocks
+                    stock_list_str = ",".join(sorted(stock_list))
+                    
+                    # 更新STOCK_LIST
+                    stock_list_update = ["STOCK_LIST", stock_list_str]
+                    config_service.apply_simple_updates([stock_list_update])
+                    logger.info(f"STOCK_LIST已更新，包含 {len(stock_list)} 只股票（BUY + HOLD）")
         except Exception as e:
             logger.error(f"自动更新股票分类失败: {e}")
 

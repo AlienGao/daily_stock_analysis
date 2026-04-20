@@ -56,7 +56,7 @@ class ReportComparator:
             Dict[股票代码, (股票名称, 评级)]
         """
         stock_info = {}
-        pattern = r"(🟢|🟡|⚪|🟠|🔴)\s+\*\*(.*?)\((.*?)\)\*\*.*?([买入|持有|观望|减持|卖出])"
+        pattern = r"(🟢|🟡|⚪|🟠|🔴)\s+\*\*(.*?)\((.*?)\)\*\*.*?(买入|持有|观望|减持|卖出)"
         
         try:
             with open(report_file, 'r', encoding='utf-8') as f:
@@ -134,15 +134,77 @@ class ReportComparator:
             变化报告内容
         """
         if not changes:
-            return """# 📊 评级变化报告\n\n**未检测到评级变化**\n\n"""
+            return """# 📊 评级变化报告
+
+**未检测到评级变化**
+
+"""
         
-        content = f"""# 📊 评级变化报告\n\n**比较日期**: {previous_date.strftime('%Y-%m-%d')} → {current_date.strftime('%Y-%m-%d')}\n\n"""
+        # 定义评级优先级（数值越大等级越高）
+        rating_priority = {
+            "买入": 5,
+            "持有": 4,
+            "观望": 3,
+            "减持": 2,
+            "卖出": 1
+        }
+        
+        # 排序变化股票
+        # 1. 先按变化类型排序：升级在前，降级在后
+        # 2. 再按新评级优先级排序：高等级在前
+        def sort_key(item):
+            stock, (stock_name, old_rating, new_rating) = item
+            old_priority = rating_priority.get(old_rating, 0)
+            new_priority = rating_priority.get(new_rating, 0)
+            
+            # 变化类型：升级为1，降级为0
+            change_type = 1 if new_priority > old_priority else 0
+            
+            # 新评级优先级（降序）
+            new_pri = -new_priority
+            
+            # 排序键：(变化类型, 新评级优先级)
+            # 变化类型1在前，新评级高的在前
+            return (-change_type, new_pri)
+        
+        sorted_changes = sorted(changes.items(), key=sort_key)
+        
+        content = "# 📊 评级变化报告\n\n"
+        content += "**比较日期**: " + previous_date.strftime('%Y-%m-%d') + " → " + current_date.strftime('%Y-%m-%d') + "\n\n"
         
         content += "## 🔄 评级变化股票\n\n"
         
-        for stock, (stock_name, old_rating, new_rating) in changes.items():
-            content += f"- **{stock_name}({stock})**: {old_rating} → {new_rating}\n"
+        for stock, (stock_name, old_rating, new_rating) in sorted_changes:
+            # 确定图标
+            old_priority = rating_priority.get(old_rating, 0)
+            new_priority = rating_priority.get(new_rating, 0)
+            
+            if new_priority > old_priority:
+                # 升级
+                emoji = "✅"
+            elif new_priority < old_priority:
+                # 降级
+                emoji = "❌"
+            else:
+                # 无变化（理论上不会出现）
+                emoji = "➡️"
+            
+            # 简化评级显示
+            def simplify_rating(rating):
+                if rating == "买入":
+                    return "买入"
+                elif rating == "持有":
+                    return "持有"
+                elif rating == "观望":
+                    return "观望"
+                elif rating == "减持":
+                    return "减持"
+                elif rating == "卖出":
+                    return "卖出"
+                return rating
+            
+            content += "- " + emoji + " **" + stock_name + "(" + stock + ")**: " + simplify_rating(old_rating) + " → " + simplify_rating(new_rating) + "\n"
         
-        content += f"\n**总计**: {len(changes)} 只股票评级发生变化\n"
+        content += "\n**总计**: " + str(len(changes)) + " 只股票评级发生变化\n"
         
         return content
