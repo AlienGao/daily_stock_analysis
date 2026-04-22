@@ -329,6 +329,44 @@ def get_stock_name_multi_source(
     return f'股票{stock_code}'
 
 
+def _sanitize_matched_skills(raw: Any) -> Optional[List[Dict[str, Any]]]:
+    """规整 LLM 输出的 matched_skills 字段。
+
+    - 接受 None / 非 list → 返回 None
+    - 过滤掉缺少 id 的异常项
+    - 统一字段：id / name / confidence / reason / matched_conditions
+    - 兜底允许 str 列表（LLM 偶尔只给 id 数组）自动包装为结构体
+    """
+    if raw is None:
+        return None
+    if not isinstance(raw, list):
+        return None
+    cleaned: List[Dict[str, Any]] = []
+    for item in raw:
+        if isinstance(item, str):
+            if item.strip():
+                cleaned.append({"id": item.strip(), "name": "", "confidence": "", "reason": "", "matched_conditions": []})
+            continue
+        if not isinstance(item, dict):
+            continue
+        skill_id = item.get("id") or item.get("skill_id") or item.get("skill")
+        if not skill_id or not str(skill_id).strip():
+            continue
+        conditions = item.get("matched_conditions") or item.get("conditions") or []
+        if isinstance(conditions, str):
+            conditions = [conditions]
+        elif not isinstance(conditions, list):
+            conditions = []
+        cleaned.append({
+            "id": str(skill_id).strip(),
+            "name": str(item.get("name") or item.get("display_name") or "").strip(),
+            "confidence": str(item.get("confidence") or "").strip(),
+            "reason": str(item.get("reason") or "").strip(),
+            "matched_conditions": [str(c).strip() for c in conditions if str(c).strip()],
+        })
+    return cleaned or None
+
+
 @dataclass
 class AnalysisResult:
     """
@@ -349,6 +387,12 @@ class AnalysisResult:
 
     # ========== 决策仪表盘 (新增) ==========
     dashboard: Optional[Dict[str, Any]] = None  # 完整的决策仪表盘数据
+
+    # ========== 命中的交易技能 ==========
+    # 结构：[{"id": "bull_trend", "name": "多头趋势", "confidence": "高",
+    #         "reason": "...", "matched_conditions": [...]}, ...]
+    # 来源：LLM 从 AGENT_SKILLS 中激活的技能里挑出真正触发的几条，按置信度从高到低排序
+    matched_skills: Optional[List[Dict[str, Any]]] = None
 
     # ========== 走势分析 ==========
     trend_analysis: str = ""  # 走势形态分析（支撑位、压力位、趋势线等）
@@ -407,6 +451,7 @@ class AnalysisResult:
             'confidence_level': self.confidence_level,
             'report_language': self.report_language,
             'dashboard': self.dashboard,  # 决策仪表盘数据
+            'matched_skills': self.matched_skills,  # 本次分析命中的技能
             'trend_analysis': self.trend_analysis,
             'short_term_outlook': self.short_term_outlook,
             'medium_term_outlook': self.medium_term_outlook,
@@ -527,6 +572,16 @@ class GeminiAnalyzer:
     "operation_advice": "买入/加仓/持有/减仓/卖出/观望",
     "decision_type": "buy/hold/sell",
     "confidence_level": "高/中/低",
+
+    "matched_skills": [
+        {
+            "id": "必须与上文【激活的交易技能】小节中出现的 id 完全一致（如 bull_trend、ma_golden_cross）；若无激活技能则输出空数组 []",
+            "name": "技能中文名（例如：多头趋势、均线金叉）",
+            "confidence": "高/中/低",
+            "reason": "一句话命中依据（30字内，必须引用具体数据，例如：MA5>MA10>MA20 且乖离率 3.2% 处于安全区）",
+            "matched_conditions": ["命中的具体条件1", "命中的具体条件2"]
+        }
+    ],
 
     "dashboard": {
         "core_conclusion": {
@@ -678,6 +733,16 @@ class GeminiAnalyzer:
     "decision_type": "buy/hold/sell",
     "confidence_level": "高/中/低",
 
+    "matched_skills": [
+        {
+            "id": "必须与上文【激活的交易技能】小节中出现的 id 完全一致（如 bull_trend、ma_golden_cross）；若无激活技能则输出空数组 []",
+            "name": "技能中文名（例如：多头趋势、均线金叉）",
+            "confidence": "高/中/低",
+            "reason": "一句话命中依据（30字内，必须引用具体数据，例如：MA5>MA10>MA20 且乖离率 3.2% 处于安全区）",
+            "matched_conditions": ["命中的具体条件1", "命中的具体条件2"]
+        }
+    ],
+
     "dashboard": {
         "core_conclusion": {
             "one_sentence": "一句话核心结论（30字以内，直接告诉用户做什么）",
@@ -803,7 +868,15 @@ class GeminiAnalyzer:
 2. **分持仓建议**：空仓者和持仓者给不同建议
 3. **精确狙击点**：必须给出具体价格，不说模糊的话
 4. **检查清单可视化**：用 ✅⚠️❌ 明确显示每项检查结果
-5. **风险优先级**：舆情中的风险点要醒目标出"""
+5. **风险优先级**：舆情中的风险点要醒目标出
+
+## 关于 matched_skills 的强制规则
+
+- `matched_skills` 必须如实反映"本次分析中真正被触发的技能"，按置信度从高到低排序
+- `id` 字段**只能**使用上文【激活的交易技能】小节中实际出现的 id（形如 `bull_trend`、`ma_golden_cross`）；**禁止编造未在激活列表中的技能 id**
+- 若当前股票不满足任何激活技能的触发条件，请输出空数组 `"matched_skills": []`，不要强行凑结果
+- `reason` 必须引用具体的数值证据（MA 排列、乖离率、量比、突破位等），不要只说"符合趋势"这种空话
+- `matched_skills` 中排第一的技能应与 `buy_reason` / `dashboard.core_conclusion` 的结论一致，不得出现"命中买入技能却给出卖出建议"这类自相矛盾"""
 
     TEXT_SYSTEM_PROMPT = """你是一位专业的股票分析助手。
 
@@ -1982,6 +2055,9 @@ class GeminiAnalyzer:
                 # 提取 dashboard 数据
                 dashboard = data.get('dashboard', None)
 
+                # 提取命中的交易技能（由 LLM 从激活的 AGENT_SKILLS 中挑出）
+                matched_skills = _sanitize_matched_skills(data.get('matched_skills'))
+
                 # 优先使用 AI 返回的股票名称（如果原名称无效或包含代码）
                 ai_stock_name = data.get('stock_name')
                 if ai_stock_name and (name.startswith('股票') or name == code or 'Unknown' in name):
@@ -2009,6 +2085,7 @@ class GeminiAnalyzer:
                     report_language=report_language,
                     # 决策仪表盘
                     dashboard=dashboard,
+                    matched_skills=matched_skills,
                     # 走势分析
                     trend_analysis=data.get('trend_analysis', ''),
                     short_term_outlook=data.get('short_term_outlook', ''),

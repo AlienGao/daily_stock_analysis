@@ -426,7 +426,18 @@ class TestAnspireSearchService(unittest.TestCase):
         self.assertEqual(len(anspire_providers), 0)
     
     def test_search_service_priority(self):
-        """测试 Anspire 优先级"""
+        """Anspire 与 Bocha / Tavily 同时存在时的优先级顺序。
+
+        当前策略 (Bocha > MiniMax > Anspire > Tavily > Brave > SerpAPI > SearXNG)：
+        - Bocha 排在最前
+        - Anspire 紧随 MiniMax（本例未配置 MiniMax，因此 Anspire 排第 2）
+        - Tavily 在 Anspire 之后
+        """
+        from src.search_service import (
+            BochaSearchProvider,
+            TavilySearchProvider,
+        )
+
         service = SearchService(
             anspire_keys=["anspire_key"],
             bocha_keys=["bocha_key"],
@@ -435,8 +446,12 @@ class TestAnspireSearchService(unittest.TestCase):
             news_max_age_days=3,
             news_strategy_profile="short"
         )
-        
-        self.assertIsInstance(service._providers[0], AnspireSearchProvider)
+
+        provider_classes = [type(p) for p in service._providers]
+        self.assertEqual(
+            provider_classes,
+            [BochaSearchProvider, AnspireSearchProvider, TavilySearchProvider],
+        )
 
 
 class TestAnspireIntegration(unittest.TestCase):

@@ -122,6 +122,18 @@ class Dashboard(BaseModel):
     battle_plan: Optional[BattlePlan] = None
 
 
+class MatchedSkill(BaseModel):
+    """本次分析命中的交易技能（从 AGENT_SKILLS 激活列表中挑出）。"""
+
+    model_config = ConfigDict(extra="allow")
+
+    id: Optional[str] = None  # 技能内部 id，如 bull_trend
+    name: Optional[str] = None  # 技能中文名
+    confidence: Optional[str] = None  # 高/中/低
+    reason: Optional[str] = None  # 一句话命中依据
+    matched_conditions: Optional[List[str]] = None  # 具体命中的条件
+
+
 class AnalysisReportSchema(BaseModel):
     """
     Top-level schema for LLM report JSON.
@@ -136,6 +148,8 @@ class AnalysisReportSchema(BaseModel):
     operation_advice: Optional[str] = None
     decision_type: Optional[str] = None
     confidence_level: Optional[str] = None
+
+    matched_skills: Optional[List[MatchedSkill]] = None
 
     dashboard: Optional[Dashboard] = None
 

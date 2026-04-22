@@ -140,9 +140,27 @@ LEGACY_DEFAULT_AGENT_SYSTEM_PROMPT = """你是一位专注于趋势交易的{mar
     "company_highlights": "公司亮点/风险",
     "news_summary": "新闻摘要",
     "market_sentiment": "市场情绪",
-    "hot_topics": "相关热点"
+    "hot_topics": "相关热点",
+
+    "matched_skills": [
+        {{
+            "id": "必须与上文【激活的交易技能】小节中出现的 id 完全一致（如 bull_trend、ma_golden_cross）；若无激活技能或无任何技能被触发则输出空数组 []",
+            "name": "技能中文名（例如：多头趋势、均线金叉）",
+            "confidence": "高/中/低",
+            "reason": "一句话命中依据（30字内，必须引用具体数据，例如：MA5>MA10>MA20 且乖离率 3.2% 处于安全区）",
+            "matched_conditions": ["命中的具体条件1", "命中的具体条件2"]
+        }}
+    ]
 }}
 ```
+
+## 关于 matched_skills 的强制规则
+
+- `matched_skills` 必须如实反映"本次分析中真正被触发的技能"，按置信度从高到低排序
+- `id` 字段**只能**使用上文【激活的交易技能】小节中实际出现的 id（形如 `bull_trend`、`ma_golden_cross`）；**禁止编造未在激活列表中的技能 id**
+- 若当前股票不满足任何激活技能的触发条件，请输出空数组 `"matched_skills": []`，不要强行凑结果
+- `reason` 必须引用具体的数值证据（MA 排列、乖离率、量比、突破位等），不要只说"符合趋势"这种空话
+- `matched_skills` 中排第一的技能应与 `buy_reason` / `dashboard.core_conclusion` 的结论一致，不得出现"命中买入技能却给出卖出建议"这类自相矛盾
 
 ## 评分标准
 
@@ -271,9 +289,27 @@ AGENT_SYSTEM_PROMPT = """你是一位{market_role}投资分析 Agent，拥有数
     "company_highlights": "公司亮点/风险",
     "news_summary": "新闻摘要",
     "market_sentiment": "市场情绪",
-    "hot_topics": "相关热点"
+    "hot_topics": "相关热点",
+
+    "matched_skills": [
+        {{
+            "id": "必须与上文【激活的交易技能】小节中出现的 id 完全一致（如 bull_trend、ma_golden_cross）；若无激活技能或无任何技能被触发则输出空数组 []",
+            "name": "技能中文名（例如：多头趋势、均线金叉）",
+            "confidence": "高/中/低",
+            "reason": "一句话命中依据（30字内，必须引用具体数据，例如：MA5>MA10>MA20 且乖离率 3.2% 处于安全区）",
+            "matched_conditions": ["命中的具体条件1", "命中的具体条件2"]
+        }}
+    ]
 }}
 ```
+
+## 关于 matched_skills 的强制规则
+
+- `matched_skills` 必须如实反映"本次分析中真正被触发的技能"，按置信度从高到低排序
+- `id` 字段**只能**使用上文【激活的交易技能】小节中实际出现的 id（形如 `bull_trend`、`ma_golden_cross`）；**禁止编造未在激活列表中的技能 id**
+- 若当前股票不满足任何激活技能的触发条件，请输出空数组 `"matched_skills": []`，不要强行凑结果
+- `reason` 必须引用具体的数值证据（MA 排列、乖离率、量比、突破位等），不要只说"符合趋势"这种空话
+- `matched_skills` 中排第一的技能应与 `buy_reason` / `dashboard.core_conclusion` 的结论一致，不得出现"命中买入技能却给出卖出建议"这类自相矛盾
 
 ## 评分标准
 

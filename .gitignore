@@ -50,6 +50,7 @@ env/
 /data/
 logs/
 # reports/
+reports_multi_agent/
 *.db
 *.sqlite
 *.sqlite3

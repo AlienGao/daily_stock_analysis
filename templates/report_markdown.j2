@@ -69,6 +69,24 @@
 
 {{ market_snapshot(result) }}
 
+{% set matched_skills = result.matched_skills or [] %}
+{% if matched_skills %}
+### 🎯 {{ labels.matched_skills_heading }}
+
+| # | 技能 | {{ labels.matched_skill_confidence_label }} | {{ labels.matched_skill_reason_label }} |
+|---|------|------|------|
+{%- for sk in matched_skills %}
+| {{ loop.index }}{% if loop.index == 1 %} ⭐{% endif %} | **{{ sk.name or sk.id }}** `{{ sk.id }}` | {{ sk.confidence or '—' }} | {{ sk.reason or '—' }} |
+{%- endfor %}
+
+{% for sk in matched_skills -%}
+{%- if sk.matched_conditions %}
+- **{{ sk.name or sk.id }}** {{ labels.matched_skill_conditions_label }}: {{ sk.matched_conditions | join(' · ') }}
+{%- endif %}
+{%- endfor %}
+
+{% endif %}
+
 {% if data_persp %}
 ### 📊 {{ labels.data_perspective_heading }}
 

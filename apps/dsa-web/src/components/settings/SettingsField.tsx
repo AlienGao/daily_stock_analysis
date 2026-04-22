@@ -43,6 +43,11 @@ interface SettingsFieldProps {
   disabled?: boolean;
   onChange: (key: string, value: string) => void;
   issues?: ConfigValidationIssue[];
+  /**
+   * Optional extra element rendered to the right of the field title.
+   * Currently used to inject the "立即分析" button next to 自选股列表.
+   */
+  extraHeaderAction?: React.ReactNode;
 }
 
 function renderFieldControl(
@@ -265,6 +270,7 @@ export const SettingsField: React.FC<SettingsFieldProps> = ({
   disabled = false,
   onChange,
   issues = [],
+  extraHeaderAction,
 }) => {
   const schema = item.schema;
   const isMultiValue = isMultiValueField(item);
@@ -308,6 +314,11 @@ export const SettingsField: React.FC<SettingsFieldProps> = ({
           <Badge variant="default" size="sm">
             只读
           </Badge>
+        ) : null}
+        {extraHeaderAction ? (
+          <div className="ml-auto flex items-center gap-2">
+            {extraHeaderAction}
+          </div>
         ) : null}
       </div>
 

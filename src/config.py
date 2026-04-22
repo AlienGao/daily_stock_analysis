@@ -538,6 +538,14 @@ class Config:
     agent_event_monitor_interval_minutes: int = 5  # Polling interval for event monitor background checks
     agent_event_alert_rules_json: str = ""  # JSON array of serialized EventMonitor rules
 
+    # Top-N multi-agent recheck (after batch run, sentiment top N → multi, merge & report)
+    top_n_multi_agent_review_enabled: bool = False
+    top_n_multi_agent_review_count: int = 10
+    top_n_multi_agent_review_orchestrator_mode: str = "full"  # quick/standard/full/specialist
+    top_n_multi_agent_review_schedule: str = "close"  # close / open / both
+    top_n_multi_agent_review_concurrency: int = 3
+    top_n_multi_agent_review_output_dir: str = "reports_multi_agent"
+
     # === 通知配置（可同时配置多个，全部推送）===
     
     # 企业微信 Webhook
@@ -807,6 +815,19 @@ class Config:
                 self.agent_skill_routing, self._VALID_SKILL_ROUTING,
             )
             object.__setattr__(self, "agent_skill_routing", "auto")
+        if self.top_n_multi_agent_review_orchestrator_mode not in self._VALID_ORCHESTRATOR_MODES:
+            _log.warning(
+                "Invalid TOP_N_MULTI_AGENT_REVIEW_MODE=%r, falling back to 'full'. Valid: %s",
+                self.top_n_multi_agent_review_orchestrator_mode,
+                self._VALID_ORCHESTRATOR_MODES,
+            )
+            object.__setattr__(self, "top_n_multi_agent_review_orchestrator_mode", "full")
+        if self.top_n_multi_agent_review_schedule not in {"close", "open", "both"}:
+            _log.warning(
+                "Invalid TOP_N_MULTI_AGENT_REVIEW_SCHEDULE=%r, falling back to 'close'.",
+                self.top_n_multi_agent_review_schedule,
+            )
+            object.__setattr__(self, "top_n_multi_agent_review_schedule", "close")
 
     # 单例实例存储
     _instance: Optional['Config'] = None
@@ -1222,6 +1243,30 @@ class Config:
                 minimum=1,
             ),
             agent_event_alert_rules_json=os.getenv('AGENT_EVENT_ALERT_RULES_JSON', ''),
+            top_n_multi_agent_review_enabled=(
+                os.getenv('TOP_N_MULTI_AGENT_REVIEW_ENABLED', 'false').lower() == 'true'
+            ),
+            top_n_multi_agent_review_count=parse_env_int(
+                os.getenv('TOP_N_MULTI_AGENT_REVIEW_COUNT'),
+                10,
+                field_name='TOP_N_MULTI_AGENT_REVIEW_COUNT',
+                minimum=1,
+            ),
+            top_n_multi_agent_review_orchestrator_mode=(
+                os.getenv('TOP_N_MULTI_AGENT_REVIEW_MODE', 'full') or 'full'
+            ).lower(),
+            top_n_multi_agent_review_schedule=(
+                os.getenv('TOP_N_MULTI_AGENT_REVIEW_SCHEDULE', 'close') or 'close'
+            ).lower(),
+            top_n_multi_agent_review_concurrency=parse_env_int(
+                os.getenv('TOP_N_MULTI_AGENT_REVIEW_CONCURRENCY'),
+                3,
+                field_name='TOP_N_MULTI_AGENT_REVIEW_CONCURRENCY',
+                minimum=1,
+            ),
+            top_n_multi_agent_review_output_dir=(
+                os.getenv('TOP_N_MULTI_AGENT_REVIEW_OUTPUT_DIR', 'reports_multi_agent') or 'reports_multi_agent'
+            ),
             wechat_webhook_url=os.getenv('WECHAT_WEBHOOK_URL'),
             feishu_webhook_url=os.getenv('FEISHU_WEBHOOK_URL'),
             feishu_webhook_secret=os.getenv('FEISHU_WEBHOOK_SECRET'),

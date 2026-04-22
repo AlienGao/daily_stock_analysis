@@ -23,7 +23,7 @@ A股自选股智能分析系统 - 主调度程序
 """
 import os
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 from dotenv import dotenv_values
 from src.config import setup_env
@@ -53,6 +53,7 @@ from data_provider.base import canonical_stock_code
 from src.webui_frontend import prepare_webui_frontend_assets
 from src.config import get_config, Config
 from src.logging_config import setup_logging
+from src.utils.strategy_hits import count_matched_skills, matched_skill_ids_preview
 
 
 logger = logging.getLogger(__name__)
@@ -405,25 +406,39 @@ def _compute_trading_day_filter(
 def run_full_analysis(
     config: Config,
     args: argparse.Namespace,
-    stock_codes: Optional[List[str]] = None
-):
+    stock_codes: Optional[List[str]] = None,
+) -> Dict[str, Any]:
     """
-    执行完整的分析流程（个股 + 大盘复盘）
+    执行完整的分析流程（个股 + 大盘复盘）。
 
-    这是定时任务调用的主函数
+    这是定时任务调用的主函数。**返回值**（2026-04-22 新增，向后兼容：老调用点
+    忽略返回值不受影响）用于 UI 侧的 `/run-full/status` 接口如实展示本次成功/
+    失败数量，而不是简单粗暴地报 "已完成 N 只"。
+
+    返回字典固定字段：
+        status: "completed" | "skipped" | "failed"
+        requested: int  — 调用方原始请求的股票数（过滤前）
+        analyzed: int   — 实际进入 pipeline 的股票数（过滤后）
+        succeeded: int  — 产出 AnalysisResult 的股票数
+        failed: int     — analyzed - succeeded
+        reason: str     — 仅 status=="skipped" 时带；如 "non_trading_day"
+        error: str      — 仅 status=="failed" 时带
     """
-    # Import pipeline modules outside the broad try/except so that import-time
-    # failures propagate to the caller instead of being silently swallowed.
     from src.core.market_review import run_market_review
     from src.core.pipeline import StockAnalysisPipeline
 
+    effective_codes: List[str] = []
+    requested_total = 0
+    success_count = 0
+    fail_count = 0
+
     try:
-        # Issue #529: Hot-reload STOCK_LIST from .env on each scheduled run
         if stock_codes is None:
             config.refresh_stock_list()
 
-        # Issue #373: Trading day filter (per-stock, per-market)
-        effective_codes = stock_codes if stock_codes is not None else config.stock_list
+        effective_codes = stock_codes if stock_codes is not None else list(config.stock_list or [])
+        requested_total = len(effective_codes)
+
         filtered_codes, effective_region, should_skip = _compute_trading_day_filter(
             config, args, effective_codes
         )
@@ -431,7 +446,14 @@ def run_full_analysis(
             logger.info(
                 "今日所有相关市场均为非交易日，跳过执行。可使用 --force-run 强制执行。"
             )
-            return
+            return {
+                "status": "skipped",
+                "reason": "non_trading_day",
+                "requested": requested_total,
+                "analyzed": 0,
+                "succeeded": 0,
+                "failed": 0,
+            }
         if set(filtered_codes) != set(effective_codes):
             skipped = set(effective_codes) - set(filtered_codes)
             logger.info("今日休市股票已跳过: %s", skipped)
@@ -462,13 +484,49 @@ def run_full_analysis(
             save_context_snapshot=save_context_snapshot
         )
 
+        from src.services.top_n_reviewer import should_run_top_n_review, run_top_n_multi_review
+
+        defer_top_n = (
+            should_run_top_n_review(config, args)
+            and not args.dry_run
+            and bool(stock_codes)
+        )
+        if defer_top_n and getattr(config, "single_stock_notify", False):
+            logger.warning(
+                "Top-N multi 与 single_stock_notify 同开：单股推送仍为首次 single 结果，"
+                "汇总报告在合并后落盘。建议关其一。"
+            )
+
         # 1. 运行个股分析
         results = pipeline.run(
             stock_codes=stock_codes,
             dry_run=args.dry_run,
             send_notification=not args.no_notify,
-            merge_notification=merge_notification
+            merge_notification=merge_notification,
+            defer_aggregate_report=defer_top_n,
         )
+        if defer_top_n and results:
+            try:
+                results, top_n_stats = run_top_n_multi_review(results, config, pipeline)
+                logger.info("[Top-N multi] 完成: %s", top_n_stats)
+            except Exception as e:
+                logger.exception("[Top-N multi] 失败，使用 single 结果继续: %s", e)
+            # 合并后再写主日报与汇总类通知（与 pipeline.run 尾部逻辑一致）
+            rt = pipeline.get_config_report_type()
+            if results and not args.dry_run:
+                pipeline._save_local_report(results, rt)
+            if results and (not args.no_notify) and not args.dry_run:
+                if config.single_stock_notify:
+                    logger.info("单股推送模式：汇总仅落盘，不重复发汇总通知")
+                    pipeline._send_notifications(results, rt, skip_push=True)
+                elif merge_notification:
+                    logger.info("合并推送模式：本次汇总仅落盘，个股+大盘后统一发")
+                    pipeline._send_notifications(results, rt, skip_push=True)
+                else:
+                    pipeline._send_notifications(results, rt)
+        # 记录统计给最终返回值使用（pipeline 内部日志已单独打印过一次）
+        success_count = len(results or [])
+        fail_count = max(0, len(stock_codes) - success_count)
 
         # Issue #128: 分析间隔 - 在个股分析和大盘分析之间添加延迟
         analysis_delay = getattr(config, 'analysis_delay', 0)
@@ -527,6 +585,19 @@ def run_full_analysis(
                 logger.info(
                     f"{emoji} {r.name}({r.code}): {r.operation_advice} | "
                     f"评分 {r.sentiment_score} | {r.trend_prediction}"
+                )
+            top5_hits = sorted(
+                results,
+                key=lambda x: (count_matched_skills(x), x.sentiment_score or 0),
+                reverse=True,
+            )[:5]
+            logger.info("----- 策略命中 Top 5（按命中条数，同分按评分） -----")
+            for i, r in enumerate(top5_hits, 1):
+                n = count_matched_skills(r)
+                prev = matched_skill_ids_preview(r, 8)
+                tail = "、".join(prev) if prev else "（无）"
+                logger.info(
+                    f"{i}. {r.name}({r.code}) 命中 {n} 条 | 评分 {r.sentiment_score} | {tail}"
                 )
 
         # === 新增：报告比较 ===
@@ -649,45 +720,51 @@ def run_full_analysis(
                     "LOOK": [],
                     "SELL": []
                 }
-                
-                # 映射评级到分类
-                rating_map = {
-                    "买入": "BUY",
-                    "持有": "HOLD",
-                    "观望": "LOOK",
-                    "减持": "SELL",
-                    "卖出": "SELL"
-                }
-                
+
+                # 映射评级到分类（与 src.utils.rating_category 同步）
+                from src.utils.rating_category import RATING_MAP as rating_map
+
+                unmapped: set[str] = set()
                 for r in results:
-                    category = rating_map.get(r.operation_advice, "LOOK")
+                    advice = (r.operation_advice or "").strip()
+                    if advice in rating_map:
+                        category = rating_map[advice]
+                    else:
+                        # 未识别的评级默认保守归入 LOOK，同时收集便于日志提醒。
+                        category = "LOOK"
+                        if advice:
+                            unmapped.add(advice)
                     category_stocks[category].append(r.code)
-                
-                # 生成分类字符串
-                updates = []
+
+                # 即便某个分类今天为空，也显式覆盖为空串，避免历史残留
+                # （例如今天 SELL=0 不应让上一次的 SELL 值继续留在 .env）
+                updates = [
+                    (cat, ",".join(sorted(set(stocks))))
+                    for cat, stocks in category_stocks.items()
+                ]
+
+                logger.info("\n===== 自动更新股票分类 =====")
+                config_service = SystemConfigService()
+                config_service.apply_simple_updates(updates)
+                logger.info("股票分类已更新到 .env 文件")
                 for cat, stocks in category_stocks.items():
-                    if stocks:
-                        updates.append((cat, ",".join(sorted(stocks))))
-                
-                # 更新.env
-                if updates:
-                    logger.info("\n===== 自动更新股票分类 =====")
-                    config_service = SystemConfigService()
-                    config_service.apply_simple_updates(updates)
-                    logger.info("股票分类已更新到 .env 文件")
-                    for cat, stocks in category_stocks.items():
-                        logger.info(f"{cat}: {len(stocks)} 只股票")
-                    
-                    # 生成STOCK_LIST：BUY + HOLD
-                    buy_stocks = set(category_stocks.get("BUY", []))
-                    hold_stocks = set(category_stocks.get("HOLD", []))
-                    stock_list = buy_stocks | hold_stocks
-                    stock_list_str = ",".join(sorted(stock_list))
-                    
-                    # 更新STOCK_LIST
-                    stock_list_update = ["STOCK_LIST", stock_list_str]
-                    config_service.apply_simple_updates([stock_list_update])
-                    logger.info(f"STOCK_LIST已更新，包含 {len(stock_list)} 只股票（BUY + HOLD）")
+                    logger.info(f"{cat}: {len(stocks)} 只股票")
+                if unmapped:
+                    logger.warning(
+                        "检测到未在 rating_map 中登记的评级 → 已按 LOOK 归类: %s",
+                        ", ".join(sorted(unmapped)),
+                    )
+
+                # 生成 STOCK_LIST：BUY ∪ HOLD（去重排序，始终覆盖）
+                buy_stocks = set(category_stocks.get("BUY", []))
+                hold_stocks = set(category_stocks.get("HOLD", []))
+                stock_list = buy_stocks | hold_stocks
+                stock_list_str = ",".join(sorted(stock_list))
+
+                config_service.apply_simple_updates([("STOCK_LIST", stock_list_str)])
+                logger.info(
+                    f"STOCK_LIST已更新，包含 {len(stock_list)} 只股票（BUY + HOLD）"
+                )
         except Exception as e:
             logger.error(f"自动更新股票分类失败: {e}")
 
@@ -756,8 +833,24 @@ def run_full_analysis(
         except Exception as e:
             logger.warning(f"自动回测失败（已忽略）: {e}")
 
+        return {
+            "status": "completed",
+            "requested": requested_total,
+            "analyzed": len(stock_codes or []),
+            "succeeded": success_count,
+            "failed": fail_count,
+        }
+
     except Exception as e:
         logger.exception(f"分析流程执行失败: {e}")
+        return {
+            "status": "failed",
+            "requested": requested_total,
+            "analyzed": len(stock_codes or []) if isinstance(stock_codes, list) else 0,
+            "succeeded": success_count,
+            "failed": fail_count,
+            "error": str(e),
+        }
 
 
 def start_api_server(host: str, port: int, config: Config) -> None:

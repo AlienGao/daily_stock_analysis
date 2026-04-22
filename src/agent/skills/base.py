@@ -465,7 +465,7 @@ class SkillManager:
                 if skill.bundle_dir and skill.entrypoint.endswith("SKILL.md"):
                     support_ref = "（bundle）"
                 parts.append(
-                    f"### 技能 {idx}: {skill.display_name} {rules_ref}{support_ref}\n\n"
+                    f"### 技能 {idx}: {skill.display_name} (id: `{skill.name}`) {rules_ref}{support_ref}\n\n"
                     f"**适用场景**: {skill.description}\n\n"
                     f"{skill.instructions}\n"
                 )

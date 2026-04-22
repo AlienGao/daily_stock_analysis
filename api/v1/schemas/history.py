@@ -146,9 +146,21 @@ class ReportStrategy(BaseModel):
     take_profit: Optional[str] = Field(None, description="止盈价")
 
 
+class MatchedSkill(BaseModel):
+    """命中的交易技能（从激活的 AGENT_SKILLS 中挑出）"""
+
+    id: Optional[str] = Field(None, description="技能内部 id，例如 bull_trend")
+    name: Optional[str] = Field(None, description="技能中文名")
+    confidence: Optional[str] = Field(None, description="置信度：高/中/低")
+    reason: Optional[str] = Field(None, description="一句话命中依据（引用具体数据）")
+    matched_conditions: Optional[List[str]] = Field(
+        default_factory=list, description="具体命中的条件列表"
+    )
+
+
 class ReportDetails(BaseModel):
     """报告详情区"""
-    
+
     news_content: Optional[str] = Field(None, description="新闻摘要")
     raw_result: Optional[Any] = Field(None, description="原始分析结果（JSON）")
     context_snapshot: Optional[Any] = Field(None, description="分析时上下文快照（JSON）")
@@ -164,6 +176,9 @@ class AnalysisReport(BaseModel):
     meta: ReportMeta = Field(..., description="元信息")
     summary: ReportSummary = Field(..., description="概览区")
     strategy: Optional[ReportStrategy] = Field(None, description="策略点位区")
+    matched_skills: Optional[List[MatchedSkill]] = Field(
+        None, description="本次分析命中的交易技能（按置信度从高到低）"
+    )
     details: Optional[ReportDetails] = Field(None, description="详情区")
 
     class Config:

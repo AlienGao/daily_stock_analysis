@@ -135,7 +135,67 @@ export const analysisApi = {
     const baseUrl = apiClient.defaults.baseURL || '';
     return `${baseUrl}/api/v1/analysis/tasks/stream`;
   },
+
+  /**
+   * Manually trigger the full STOCK_LIST analysis (equivalent to the
+   * scheduled task). Returns the initial job status (HTTP 202).
+   * 409 is surfaced as FullAnalysisBusyError.
+   */
+  runFullAnalysis: async (
+    options?: RunFullAnalysisOptions,
+  ): Promise<RunFullAnalysisStatus> => {
+    const response = await apiClient.post<Record<string, unknown>>(
+      '/api/v1/analysis/run-full',
+      {
+        no_notify: options?.noNotify ?? false,
+        no_market_review: options?.noMarketReview ?? false,
+        force_run: options?.forceRun ?? false,
+      },
+      {
+        validateStatus: (status) => status === 200 || status === 202 || status === 409,
+      },
+    );
+
+    if (response.status === 409) {
+      const errorData = toCamelCase<{ error?: string; message?: string; startedAt?: string }>(
+        (response.data as { detail?: Record<string, unknown> })?.detail ?? response.data,
+      );
+      throw new FullAnalysisBusyError(errorData.message || '已有全量分析任务在运行', errorData.startedAt);
+    }
+
+    return toCamelCase<RunFullAnalysisStatus>(response.data);
+  },
+
+  /**
+   * Poll the current status of the manual full-analysis job.
+   */
+  getFullAnalysisStatus: async (): Promise<RunFullAnalysisStatus> => {
+    const response = await apiClient.get<Record<string, unknown>>(
+      '/api/v1/analysis/run-full/status',
+    );
+    return toCamelCase<RunFullAnalysisStatus>(response.data);
+  },
 };
+
+// ============ Full-analysis types ============
+
+export interface RunFullAnalysisOptions {
+  /** 不发送通知（仅生成本地报告），默认 false。 */
+  noNotify?: boolean;
+  /** 跳过大盘复盘，默认 false。 */
+  noMarketReview?: boolean;
+  /** 忽略交易日检查，默认 false。 */
+  forceRun?: boolean;
+}
+
+export interface RunFullAnalysisStatus {
+  status: 'idle' | 'running' | 'completed' | 'failed';
+  startedAt?: string | null;
+  completedAt?: string | null;
+  stockCount: number;
+  message?: string | null;
+  error?: string | null;
+}
 
 // ============ Custom Error Classes ============
 
@@ -151,5 +211,18 @@ export class DuplicateTaskError extends Error {
     this.name = 'DuplicateTaskError';
     this.stockCode = stockCode;
     this.existingTaskId = existingTaskId;
+  }
+}
+
+/**
+ * Raised when a full-analysis job is already running.
+ */
+export class FullAnalysisBusyError extends Error {
+  startedAt?: string;
+
+  constructor(message: string, startedAt?: string) {
+    super(message);
+    this.name = 'FullAnalysisBusyError';
+    this.startedAt = startedAt;
   }
 }

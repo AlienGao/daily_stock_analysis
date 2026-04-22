@@ -16,15 +16,18 @@
 - SSE 实时推送：任务状态变化实时通知前端
 """
 
+import argparse
 import asyncio
 import json
 import logging
 import re
+import threading
 from datetime import datetime
 from typing import Optional, Union, Dict, Any
 
 from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import BaseModel, Field
 
 from api.deps import get_config_dep
 from api.v1.schemas.analysis import (
@@ -46,6 +49,7 @@ from api.v1.schemas.history import (
     ReportSummary,
     ReportStrategy,
     ReportDetails,
+    MatchedSkill,
 )
 from data_provider.base import canonical_stock_code, normalize_stock_code
 from src.config import Config
@@ -735,6 +739,59 @@ def _load_sync_fundamental_sources(
         return None, None
 
 
+def _build_matched_skills(
+        primary: Any,
+        fallback_dict: Optional[Dict[str, Any]] = None,
+) -> Optional[list]:
+    """Normalize matched_skills payload into MatchedSkill objects.
+
+    Priority:
+        1. Use `primary` if it is a list (may come from top-level report.matched_skills).
+        2. Otherwise fall back to `fallback_dict.details.raw_result.matched_skills` or
+           `fallback_dict.matched_skills` when reading from a historical raw_result blob.
+    """
+    candidates: list = []
+    if isinstance(primary, list):
+        candidates = primary
+    elif isinstance(fallback_dict, dict):
+        for source in (
+            fallback_dict.get("matched_skills"),
+            (fallback_dict.get("details") or {}).get("matched_skills")
+            if isinstance(fallback_dict.get("details"), dict) else None,
+            (fallback_dict.get("raw_result") or {}).get("matched_skills")
+            if isinstance(fallback_dict.get("raw_result"), dict) else None,
+        ):
+            if isinstance(source, list):
+                candidates = source
+                break
+    if not candidates:
+        return None
+    normalized: list = []
+    for item in candidates:
+        if not isinstance(item, dict):
+            if isinstance(item, str) and item.strip():
+                normalized.append(MatchedSkill(id=item.strip()))
+            continue
+        skill_id = item.get("id") or item.get("skill_id") or item.get("skill")
+        if not skill_id or not str(skill_id).strip():
+            continue
+        conditions = item.get("matched_conditions") or item.get("conditions") or []
+        if isinstance(conditions, str):
+            conditions = [conditions]
+        elif not isinstance(conditions, list):
+            conditions = []
+        normalized.append(
+            MatchedSkill(
+                id=str(skill_id).strip(),
+                name=(str(item.get("name") or item.get("display_name") or "").strip() or None),
+                confidence=(str(item.get("confidence") or "").strip() or None),
+                reason=(str(item.get("reason") or "").strip() or None),
+                matched_conditions=[str(c).strip() for c in conditions if str(c).strip()],
+            )
+        )
+    return normalized or None
+
+
 def _build_analysis_report(
         report_data: Dict[str, Any],
         query_id: str,
@@ -801,6 +858,11 @@ def _build_analysis_report(
             take_profit=strategy_data.get("take_profit")
         )
 
+    matched_skills = _build_matched_skills(
+        report_data.get("matched_skills"),
+        fallback_dict=report_data,
+    )
+
     extracted_fundamental = extract_fundamental_detail_fields(
         context_snapshot=context_snapshot,
         fallback_fundamental_payload=fallback_fundamental_payload,
@@ -826,5 +888,278 @@ def _build_analysis_report(
         meta=meta,
         summary=summary,
         strategy=strategy,
-        details=details
+        matched_skills=matched_skills,
+        details=details,
     )
+
+
+# ============================================================
+# POST /run-full - 立即运行全量自选股分析（与定时任务等价）
+# ============================================================
+
+class RunFullAnalysisRequest(BaseModel):
+    """Request body for manually triggering the full STOCK_LIST analysis."""
+
+    no_notify: bool = Field(
+        False,
+        description="不推送通知（仅生成本地 reports/*.md 报告），默认推送。",
+    )
+    no_market_review: bool = Field(
+        False,
+        description="跳过大盘复盘（仅个股），默认按配置运行。",
+    )
+    force_run: bool = Field(
+        False,
+        description="跳过交易日检查，休市也强制执行（等价于 --force-run）。",
+    )
+
+
+class RunFullAnalysisStatus(BaseModel):
+    """Runtime status for the manual full-analysis job."""
+
+    status: str = Field(..., description="idle / running / completed / failed")
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    stock_count: int = 0
+    message: Optional[str] = None
+    error: Optional[str] = None
+
+
+_FULL_ANALYSIS_STATE: Dict[str, Any] = {
+    "status": "idle",
+    "started_at": None,
+    "completed_at": None,
+    "stock_count": 0,
+    "message": None,
+    "error": None,
+}
+_FULL_ANALYSIS_LOCK = threading.Lock()
+
+
+def _build_run_full_args(
+    *,
+    no_notify: bool,
+    no_market_review: bool,
+    force_run: bool,
+) -> argparse.Namespace:
+    """Build a minimal argparse.Namespace compatible with main.run_full_analysis.
+
+    run_full_analysis reads the following attributes (directly or via getattr):
+      dry_run, no_notify, single_notify, workers, no_context_snapshot,
+      no_market_review, force_run
+    """
+    return argparse.Namespace(
+        dry_run=False,
+        no_notify=no_notify,
+        single_notify=False,
+        workers=None,
+        no_context_snapshot=False,
+        no_market_review=no_market_review,
+        force_run=force_run,
+    )
+
+
+def _run_full_analysis_background(
+    *,
+    no_notify: bool,
+    no_market_review: bool,
+    force_run: bool,
+) -> None:
+    """Execute the full-analysis pipeline off the request thread.
+
+    Reports the real succeeded / failed / skipped counts back to the
+    polling endpoint so the UI reflects whether the run actually produced
+    a report instead of blindly saying "已完成 N 只自选股分析".
+    """
+    try:
+        from main import run_full_analysis
+        from src.config import get_config
+
+        config = get_config()
+        # Mirror scheduled-task behaviour: pick up latest STOCK_LIST from .env.
+        try:
+            config.refresh_stock_list()
+        except Exception:
+            logger.warning("refresh_stock_list failed; falling back to in-memory list", exc_info=True)
+
+        stock_count = len(getattr(config, "stock_list", []) or [])
+        with _FULL_ANALYSIS_LOCK:
+            _FULL_ANALYSIS_STATE["stock_count"] = stock_count
+            _FULL_ANALYSIS_STATE["message"] = f"正在分析 {stock_count} 只自选股…"
+
+        args = _build_run_full_args(
+            no_notify=no_notify,
+            no_market_review=no_market_review,
+            force_run=force_run,
+        )
+
+        logger.info(
+            "[run-full] Manual full analysis started: stocks=%s no_notify=%s "
+            "no_market_review=%s force_run=%s",
+            stock_count,
+            no_notify,
+            no_market_review,
+            force_run,
+        )
+        summary = run_full_analysis(config, args, stock_codes=None)
+
+        final_status, final_message, final_error = _summarize_run_full_result(
+            summary, fallback_stock_count=stock_count
+        )
+        with _FULL_ANALYSIS_LOCK:
+            _FULL_ANALYSIS_STATE["status"] = final_status
+            _FULL_ANALYSIS_STATE["completed_at"] = datetime.now().isoformat()
+            _FULL_ANALYSIS_STATE["message"] = final_message
+            _FULL_ANALYSIS_STATE["error"] = final_error
+            if isinstance(summary, dict):
+                # Keep the real analyzed count visible to the UI.
+                analyzed = summary.get("analyzed")
+                if isinstance(analyzed, int) and analyzed >= 0:
+                    _FULL_ANALYSIS_STATE["stock_count"] = analyzed
+        logger.info(
+            "[run-full] Manual full analysis finished: status=%s succeeded=%s failed=%s",
+            final_status,
+            summary.get("succeeded") if isinstance(summary, dict) else None,
+            summary.get("failed") if isinstance(summary, dict) else None,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("[run-full] Manual full analysis failed")
+        with _FULL_ANALYSIS_LOCK:
+            _FULL_ANALYSIS_STATE["status"] = "failed"
+            _FULL_ANALYSIS_STATE["completed_at"] = datetime.now().isoformat()
+            _FULL_ANALYSIS_STATE["message"] = "分析流程执行失败"
+            _FULL_ANALYSIS_STATE["error"] = str(exc)
+
+
+def _summarize_run_full_result(
+    summary: Any,
+    *,
+    fallback_stock_count: int,
+) -> tuple[str, str, Optional[str]]:
+    """Map the dict returned by main.run_full_analysis to (status, message, error).
+
+    Falls back gracefully when `run_full_analysis` is on an older version that
+    returns ``None`` or an unexpected payload.
+    """
+    if not isinstance(summary, dict):
+        # Legacy behaviour: assume success, but be honest that we can't verify.
+        return (
+            "completed",
+            f"已触发 {fallback_stock_count} 只自选股分析（无细粒度结果）。",
+            None,
+        )
+
+    status = str(summary.get("status") or "completed").lower()
+    succeeded = int(summary.get("succeeded") or 0)
+    failed = int(summary.get("failed") or 0)
+    analyzed = int(summary.get("analyzed") or 0)
+    requested = int(summary.get("requested") or fallback_stock_count)
+
+    if status == "skipped":
+        reason = summary.get("reason") or ""
+        if reason == "non_trading_day":
+            return (
+                "completed",
+                f"今日非交易日，未执行个股分析（自选股 {requested} 只已跳过）。",
+                None,
+            )
+        return (
+            "completed",
+            f"已跳过全量分析（{reason or 'unknown'}）。",
+            None,
+        )
+
+    if status == "failed":
+        err = summary.get("error") or "分析流程执行失败"
+        return ("failed", "分析流程执行失败", str(err))
+
+    # status == "completed"
+    if analyzed == 0:
+        # 极端情况：交易日过滤后没有股票可分析
+        return (
+            "completed",
+            f"未分析任何股票（请求 {requested} 只，全部被过滤）。",
+            None,
+        )
+
+    if failed == 0:
+        return (
+            "completed",
+            f"全部 {succeeded} 只自选股分析完成，本地报告已生成。",
+            None,
+        )
+    if succeeded == 0:
+        # 这种情况下通常不会产生 report，因此消息更偏向 "失败"。
+        return (
+            "failed",
+            f"{analyzed} 只股票全部分析失败（可能因超时/限流），未生成报告。",
+            f"failed={failed}",
+        )
+    return (
+        "completed",
+        f"已完成 {succeeded}/{analyzed} 只股票分析，{failed} 只失败，本地报告已生成。",
+        None,
+    )
+
+
+@router.post(
+    "/run-full",
+    response_model=RunFullAnalysisStatus,
+    responses={
+        202: {"description": "已接受，全量分析在后台执行"},
+        409: {"description": "已有全量分析任务在运行"},
+    },
+    summary="立即运行全量自选股分析（等价于定时任务）",
+    description=(
+        "手动触发与 `--schedule` 定时任务相同的全量分析流程：遍历 STOCK_LIST 逐个分析，"
+        "生成 reports/report_YYYYMMDD.md 决策仪表盘，并可选推送通知。任务在后台线程中执行，"
+        "通过 GET /run-full/status 轮询进度。"
+    ),
+)
+def trigger_full_analysis(body: RunFullAnalysisRequest = RunFullAnalysisRequest()) -> JSONResponse:
+    """Kick off run_full_analysis in a background thread."""
+    global _FULL_ANALYSIS_STATE
+    with _FULL_ANALYSIS_LOCK:
+        if _FULL_ANALYSIS_STATE.get("status") == "running":
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "error": "busy",
+                    "message": "已有全量分析任务正在运行，请稍后再试。",
+                    "started_at": _FULL_ANALYSIS_STATE.get("started_at"),
+                },
+            )
+        _FULL_ANALYSIS_STATE = {
+            "status": "running",
+            "started_at": datetime.now().isoformat(),
+            "completed_at": None,
+            "stock_count": 0,
+            "message": "正在启动全量分析…",
+            "error": None,
+        }
+        snapshot = dict(_FULL_ANALYSIS_STATE)
+
+    thread = threading.Thread(
+        target=_run_full_analysis_background,
+        kwargs={
+            "no_notify": body.no_notify,
+            "no_market_review": body.no_market_review,
+            "force_run": body.force_run,
+        },
+        daemon=True,
+        name="run-full-analysis",
+    )
+    thread.start()
+
+    return JSONResponse(status_code=202, content=RunFullAnalysisStatus(**snapshot).model_dump())
+
+
+@router.get(
+    "/run-full/status",
+    response_model=RunFullAnalysisStatus,
+    summary="查询全量分析任务状态",
+    description="轮询接口，返回最近一次通过 POST /run-full 触发的全量分析任务的运行状态。",
+)
+def get_full_analysis_status() -> RunFullAnalysisStatus:
+    with _FULL_ANALYSIS_LOCK:
+        return RunFullAnalysisStatus(**_FULL_ANALYSIS_STATE)

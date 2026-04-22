@@ -113,6 +113,7 @@ vi.mock('../../components/settings', () => ({
   ),
   SettingsField: ({ item }: { item: { key: string } }) => <div>{item.key}</div>,
   SettingsLoading: () => <div>loading</div>,
+  RunFullAnalysisButton: () => <button type="button">立即分析</button>,
   SettingsSectionCard: ({
     title,
     description,

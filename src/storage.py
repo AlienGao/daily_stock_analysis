@@ -1223,6 +1223,30 @@ class DatabaseManager:
             logger.error(f"保存分析历史失败: {e}")
             return 0
 
+    def delete_analysis_history_by_query_and_code(self, query_id: str, code: str) -> int:
+        """Remove existing row(s) so a recheck can replace without duplicate rows."""
+        if not query_id or not code:
+            return 0
+
+        def _delete(session: Session) -> int:
+            stmt = delete(AnalysisHistory).where(
+                and_(
+                    AnalysisHistory.query_id == query_id,
+                    AnalysisHistory.code == code,
+                )
+            )
+            res = session.execute(stmt)
+            return res.rowcount or 0
+
+        try:
+            return self._run_write_transaction(
+                f"delete_analysis_history[{code}]",
+                _delete,
+            )
+        except Exception as e:
+            logger.error(f"删除分析历史失败 query_id={query_id} code={code}: {e}")
+            return 0
+
     def get_analysis_history(
         self,
         code: Optional[str] = None,

@@ -27,7 +27,13 @@ from src.storage import get_db
 from data_provider import DataFetcherManager
 from data_provider.base import normalize_stock_code
 from data_provider.realtime_types import ChipDistribution
-from src.analyzer import GeminiAnalyzer, AnalysisResult, fill_chip_structure_if_needed, fill_price_position_if_needed
+from src.analyzer import (
+    GeminiAnalyzer,
+    AnalysisResult,
+    fill_chip_structure_if_needed,
+    fill_price_position_if_needed,
+    _sanitize_matched_skills,
+)
 from src.data.stock_mapping import STOCK_NAME_MAP
 from src.notification import NotificationService, NotificationChannel
 from src.report_language import (
@@ -232,7 +238,17 @@ class StockAnalysisPipeline:
             logger.error(f"{stock_name}({code}) {error_msg}")
             return False, error_msg
     
-    def analyze_stock(self, code: str, report_type: ReportType, query_id: str) -> Optional[AnalysisResult]:
+    def analyze_stock(
+        self,
+        code: str,
+        report_type: ReportType,
+        query_id: str,
+        *,
+        agent_exec_config: Optional[Config] = None,
+        force_agent: bool = False,
+        replace_history: bool = False,
+        persist_history: bool = True,
+    ) -> Optional[AnalysisResult]:
         """
         分析单只股票（增强版：含量比、换手率、筹码分析、多维度情报）
         
@@ -308,6 +324,8 @@ class StockAnalysisPipeline:
                 if configured_skills and configured_skills != ['all']:
                     use_agent = True
                     logger.info(f"{stock_name}({code}) Auto-enabled agent mode due to configured skills: {configured_skills}")
+            if force_agent or agent_exec_config is not None:
+                use_agent = True
 
             self._emit_progress(32, f"{stock_name}：正在聚合基本面与趋势数据")
 
@@ -371,6 +389,9 @@ class StockAnalysisPipeline:
                     chip_data,
                     fundamental_context,
                     trend_result,
+                    agent_exec_config=agent_exec_config,
+                    replace_history=replace_history,
+                    persist_history=persist_history,
                 )
 
             # Step 4: 多维度情报搜索（最新消息+风险排查+业绩预期）
@@ -746,6 +767,9 @@ class StockAnalysisPipeline:
         chip_data: Optional[ChipDistribution],
         fundamental_context: Optional[Dict[str, Any]] = None,
         trend_result: Optional[TrendAnalysisResult] = None,
+        agent_exec_config: Optional[Config] = None,
+        replace_history: bool = False,
+        persist_history: bool = True,
     ) -> Optional[AnalysisResult]:
         """
         使用 Agent 模式分析单只股票。
@@ -755,7 +779,8 @@ class StockAnalysisPipeline:
             report_language = normalize_report_language(getattr(self.config, "report_language", "zh"))
 
             # Build executor from shared factory (ToolRegistry and SkillManager prototype are cached)
-            executor = build_agent_executor(self.config, getattr(self.config, 'agent_skills', None) or None)
+            _cfg = agent_exec_config or self.config
+            executor = build_agent_executor(_cfg, getattr(self.config, 'agent_skills', None) or None)
 
             # Build initial context to avoid redundant tool calls
             initial_context = {
@@ -845,9 +870,13 @@ class StockAnalysisPipeline:
                     logger.warning(f"[{code}] Agent 模式保存新闻情报失败: {e}")
 
             # 保存分析历史记录
-            if result and result.success:
+            if result and result.success and persist_history:
                 try:
                     initial_context["stock_name"] = resolved_stock_name
+                    if replace_history:
+                        deleted = self.db.delete_analysis_history_by_query_and_code(query_id, code)
+                        if deleted:
+                            logger.info(f"[{code}] Top-N multi 覆盖：已删除旧分析历史 query_id={query_id}")
                     self.db.save_analysis_history(
                         result=result,
                         query_id=query_id,
@@ -921,6 +950,8 @@ class StockAnalysisPipeline:
                 report_language,
             )
             result.analysis_summary = dash.get("analysis_summary", "")
+            # Capture matched trading skills (from AGENT_SKILLS hit list).
+            result.matched_skills = _sanitize_matched_skills(dash.get("matched_skills"))
             # The AI returns a top-level dict that contains a nested 'dashboard' sub-key
             # with core_conclusion / battle_plan / intelligence.  AnalysisResult's helper
             # methods (get_sniper_points, get_core_conclusion, etc.) expect that inner
@@ -1258,10 +1289,17 @@ class StockAnalysisPipeline:
         stock_codes: Optional[List[str]] = None,
         dry_run: bool = False,
         send_notification: bool = True,
-        merge_notification: bool = False
+        merge_notification: bool = False,
+        defer_aggregate_report: bool = False,
     ) -> List[AnalysisResult]:
         """
-        运行完整的分析流程
+        运行完整的分析流程（定时任务 / 立即分析的主入口）。
+
+        Wraps the underlying implementation in ``batch_analysis_scope()`` so
+        that every LLM call spawned from this run is tagged as "batch mode".
+        ``llm_adapter.get_thinking_extra_body`` uses that tag to skip the
+        DeepSeek thinking payload by default (可通过 ``DEEPSEEK_BATCH_THINKING_ENABLED``
+        环境变量打开).  Agent 对话等非 pipeline 路径不经过这里，thinking 维持开启。
 
         流程：
         1. 获取待分析的股票列表
@@ -1274,10 +1312,44 @@ class StockAnalysisPipeline:
             dry_run: 是否仅获取数据不分析
             send_notification: 是否发送推送通知
             merge_notification: 是否合并推送（跳过本次推送，由 main 层合并个股+大盘后统一发送，Issue #190）
+            defer_aggregate_report: 为 True 时不写 ``report_*.md``、不发汇总类通知；由 main 在 Top-N multi 合并后再调用
+                ``_save_local_report`` / ``_send_notifications``。
 
         Returns:
             分析结果列表
         """
+        import os
+
+        from src.agent.llm_adapter import batch_analysis_scope
+
+        batch_thinking_env = (os.getenv("DEEPSEEK_BATCH_THINKING_ENABLED") or "").strip().lower()
+        thinking_on = batch_thinking_env in {"1", "true", "yes", "on"}
+        logger.info(
+            "[batch-mode] pipeline.run() entering batch scope → deepseek-chat "
+            "thinking=%s (DEEPSEEK_BATCH_THINKING_ENABLED=%r)",
+            "enabled" if thinking_on else "disabled",
+            batch_thinking_env or "<unset>",
+        )
+
+        with batch_analysis_scope():
+            return self._run_impl(
+                stock_codes=stock_codes,
+                dry_run=dry_run,
+                send_notification=send_notification,
+                merge_notification=merge_notification,
+                defer_aggregate_report=defer_aggregate_report,
+            )
+
+    def _run_impl(
+        self,
+        stock_codes: Optional[List[str]] = None,
+        dry_run: bool = False,
+        send_notification: bool = True,
+        merge_notification: bool = False,
+        defer_aggregate_report: bool = False,
+    ) -> List[AnalysisResult]:
+        """Actual pipeline body. Do not call directly — use ``run()`` so the
+        batch-mode thinking switch is correctly scoped."""
         start_time = time.time()
         
         # 使用配置中的股票列表
@@ -1400,23 +1472,28 @@ class StockAnalysisPipeline:
         
         logger.info("===== 分析完成 =====")
         logger.info(f"成功: {success_count}, 失败: {fail_count}, 耗时: {elapsed_time:.2f} 秒")
-        
-        # 保存报告到本地文件（无论是否推送通知都保存）
-        if results and not dry_run:
-            self._save_local_report(results, report_type)
 
-        # 发送通知（单股推送模式下跳过汇总推送，避免重复）
-        if results and send_notification and not dry_run:
-            if single_stock_notify:
-                # 单股推送模式：只保存汇总报告，不再重复推送
-                logger.info("单股推送模式：跳过汇总推送，仅保存报告到本地")
-                self._send_notifications(results, report_type, skip_push=True)
-            elif merge_notification:
-                # 合并模式（Issue #190）：仅保存，不推送，由 main 层合并个股+大盘后统一发送
-                logger.info("合并推送模式：跳过本次推送，将在个股+大盘复盘后统一发送")
-                self._send_notifications(results, report_type, skip_push=True)
-            else:
-                self._send_notifications(results, report_type)
+        if defer_aggregate_report and results and not dry_run:
+            logger.info(
+                "defer_aggregate_report=True：已跳过本批汇总日报落盘与汇总推送，等待 main 层合并后再写入。"
+            )
+        else:
+            # 保存报告到本地文件（无论是否推送通知都保存）
+            if results and not dry_run:
+                self._save_local_report(results, report_type)
+
+            # 发送通知（单股推送模式下跳过汇总推送，避免重复）
+            if results and send_notification and not dry_run:
+                if single_stock_notify:
+                    # 单股推送模式：只保存汇总报告，不再重复推送
+                    logger.info("单股推送模式：跳过汇总推送，仅保存报告到本地")
+                    self._send_notifications(results, report_type, skip_push=True)
+                elif merge_notification:
+                    # 合并模式（Issue #190）：仅保存，不推送，由 main 层合并个股+大盘后统一发送
+                    logger.info("合并推送模式：跳过本次推送，将在个股+大盘复盘后统一发送")
+                    self._send_notifications(results, report_type, skip_push=True)
+                else:
+                    self._send_notifications(results, report_type)
         
         return results
 
@@ -1457,6 +1534,15 @@ class StockAnalysisPipeline:
                     logger.warning(f"[{stock_code}] 单股推送失败")
             except Exception as e:
                 logger.error(f"[{stock_code}] 单股推送异常: {e}")
+
+    def get_config_report_type(self) -> ReportType:
+        """Map config.report_type string to :class:`ReportType` (same rules as ``_run_impl``)."""
+        report_type_str = getattr(self.config, "report_type", "simple").lower()
+        if report_type_str == "brief":
+            return ReportType.BRIEF
+        if report_type_str == "full":
+            return ReportType.FULL
+        return ReportType.SIMPLE
 
     def _save_local_report(
         self,

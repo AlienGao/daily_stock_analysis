@@ -65,6 +65,15 @@ export interface ReportStrategy {
   takeProfit?: string;
 }
 
+/** Matched trading skill (hit by current analysis) */
+export interface MatchedSkill {
+  id?: string;
+  name?: string;
+  confidence?: string;
+  reason?: string;
+  matchedConditions?: string[];
+}
+
 export interface RelatedBoard {
   name: string;
   code?: string;
@@ -97,6 +106,7 @@ export interface AnalysisReport {
   meta: ReportMeta;
   summary: ReportSummary;
   strategy?: ReportStrategy;
+  matchedSkills?: MatchedSkill[];
   details?: ReportDetails;
 }
 

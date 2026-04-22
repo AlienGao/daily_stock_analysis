@@ -293,6 +293,13 @@ def get_history_detail(
             stop_loss=result.get("stop_loss"),
             take_profit=result.get("take_profit")
         )
+
+        # 命中的交易技能（从 raw_result 的 matched_skills 字段提取）
+        from api.v1.endpoints.analysis import _build_matched_skills
+        matched_skills = _build_matched_skills(
+            raw_result.get("matched_skills") if isinstance(raw_result, dict) else None,
+            fallback_dict=raw_result if isinstance(raw_result, dict) else None,
+        )
         
         fallback_fundamental = db_manager.get_latest_fundamental_snapshot(
             query_id=result.get("query_id", ""),
@@ -321,7 +328,8 @@ def get_history_detail(
             meta=meta,
             summary=summary,
             strategy=strategy,
-            details=details
+            matched_skills=matched_skills,
+            details=details,
         )
         
     except HTTPException:

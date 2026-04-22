@@ -8,10 +8,13 @@ interface consumed by the AgentExecutor, via LiteLLM.
 
 import json
 import logging
+import os
+import threading
 import time
 import uuid
+from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterator, List, Optional
 
 import litellm
 from litellm import Router
@@ -110,6 +113,54 @@ def _get_opt_in_payload(model: str, opt_in: Dict[str, dict]) -> Optional[dict]:
     return None
 
 
+# ------------------------------------------------------------------
+# Batch-mode thinking switch (2026-04-22)
+#
+# 需求：定时任务 / 立即分析（都走 pipeline.run）默认关闭 DeepSeek thinking，
+# 以节省耗时和 token；Agent 对话（手动深度分析）保持 thinking 开启。
+#
+# 机制：pipeline 在 run() 开始处进入 `batch_analysis_scope()`，递增全局计数器；
+# 本函数在 opt-in 路径检查计数器，若命中 batch 模式则跳过 thinking 注入。
+# 用户可通过 DEEPSEEK_BATCH_THINKING_ENABLED=true 在 batch 模式下强制启用
+# thinking（还原老行为）。
+#
+# 使用"模块级计数器 + Lock"而非 contextvars，是因为 pipeline 通过
+# ThreadPoolExecutor 并发分析多只股票，而 ContextVar 默认不跨 Thread
+# 传递——worker 线程看不到主线程设置的值。模块级标记+锁可以在全局共享，
+# 配合 _FULL_ANALYSIS_LOCK 保证同时只有一个批量任务在跑。
+# ------------------------------------------------------------------
+_BATCH_MODE_DEPTH = 0
+_BATCH_MODE_LOCK = threading.Lock()
+
+
+@contextmanager
+def batch_analysis_scope() -> Iterator[None]:
+    """Mark the process as running a batch analysis for the duration of the block.
+
+    Reentrant via a depth counter so nested calls (should not happen today, but
+    cheap insurance) correctly only reset when the outermost scope exits.
+    """
+    global _BATCH_MODE_DEPTH
+    with _BATCH_MODE_LOCK:
+        _BATCH_MODE_DEPTH += 1
+    try:
+        yield
+    finally:
+        with _BATCH_MODE_LOCK:
+            _BATCH_MODE_DEPTH = max(0, _BATCH_MODE_DEPTH - 1)
+
+
+def _is_batch_mode() -> bool:
+    # Cheap read — GIL makes int access atomic; lock only needed for mutation.
+    return _BATCH_MODE_DEPTH > 0
+
+
+def _batch_thinking_env_enabled() -> bool:
+    """Allow users to re-enable thinking in batch mode via env var."""
+    raw = (os.getenv("DEEPSEEK_BATCH_THINKING_ENABLED") or "").strip().lower()
+    return raw in {"1", "true", "yes", "on"}
+
+
 def get_thinking_extra_body(model: str) -> Optional[dict]:
     """Return extra_body for thinking mode, or None.
 
@@ -118,12 +169,20 @@ def get_thinking_extra_body(model: str) -> Optional[dict]:
       extra_body would cause 400 because the API already enables thinking by default.
       Return None to avoid duplicate activation.
     - Opt-in models (_OPT_IN_THINKING_MODELS: deepseek-chat): Return the activation
-      payload to explicitly enable thinking mode.
+      payload to explicitly enable thinking mode — UNLESS we are currently inside
+      a batch analysis scope (定时任务 / 立即分析) and the user has not set
+      DEEPSEEK_BATCH_THINKING_ENABLED=true.
     - All other models: Return None (no thinking mode).
     """
     if _model_matches(model, _AUTO_THINKING_MODELS):
         return None
-    return _get_opt_in_payload(model, _OPT_IN_THINKING_MODELS)
+    payload = _get_opt_in_payload(model, _OPT_IN_THINKING_MODELS)
+    if payload is None:
+        return None
+    if _is_batch_mode() and not _batch_thinking_env_enabled():
+        # 批量分析默认关闭 deepseek-chat 的 thinking（约 3 倍提速）。
+        return None
+    return payload
 
 
 # ============================================================

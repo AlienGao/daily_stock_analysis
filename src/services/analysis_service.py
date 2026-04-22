@@ -166,6 +166,7 @@ class AnalysisService:
                 "stop_loss": sniper_points.get("stop_loss"),
                 "take_profit": sniper_points.get("take_profit"),
             },
+            "matched_skills": getattr(result, "matched_skills", None),
             "details": {
                 "news_summary": result.news_summary,
                 "technical_analysis": result.technical_analysis,

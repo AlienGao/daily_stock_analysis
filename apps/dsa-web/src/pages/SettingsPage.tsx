@@ -9,6 +9,7 @@ import {
   ChangePasswordCard,
   IntelligentImport,
   LLMChannelEditor,
+  RunFullAnalysisButton,
   SettingsCategoryNav,
   SettingsAlert,
   SettingsField,
@@ -420,16 +421,33 @@ const SettingsPage: React.FC = () => {
                 title="当前分类配置项"
                 description={getCategoryDescriptionZh(activeCategory as SystemConfigCategory, '') || '使用统一字段卡片维护当前分类的系统配置。'}
               >
-                {activeItems.map((item) => (
-                  <SettingsField
-                    key={item.key}
-                    item={item}
-                    value={item.value}
-                    disabled={isSaving}
-                    onChange={setDraftValue}
-                    issues={issueByKey[item.key] || []}
-                  />
-                ))}
+                {activeItems.map((item) => {
+                  const isStockList = item.key === 'STOCK_LIST';
+                  const stockCount = isStockList
+                    ? String(item.value ?? '')
+                        .split(',')
+                        .map((entry) => entry.trim())
+                        .filter(Boolean).length
+                    : 0;
+                  return (
+                    <SettingsField
+                      key={item.key}
+                      item={item}
+                      value={item.value}
+                      disabled={isSaving}
+                      onChange={setDraftValue}
+                      issues={issueByKey[item.key] || []}
+                      extraHeaderAction={
+                        isStockList ? (
+                          <RunFullAnalysisButton
+                            stockCount={stockCount}
+                            disabled={isSaving || isLoading}
+                          />
+                        ) : undefined
+                      }
+                    />
+                  );
+                })}
               </SettingsSectionCard>
             ) : (
               <EmptyState

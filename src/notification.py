@@ -33,6 +33,7 @@ from src.report_language import (
 )
 from bot.models import BotMessage
 from src.utils.data_processing import normalize_model_used
+from src.utils.strategy_hits import count_matched_skills, matched_skill_ids_preview
 from src.notification_sender import (
     AstrbotSender,
     CustomWebhookSender,
@@ -765,6 +766,56 @@ class NotificationService(
             result.sentiment_score,
             self._get_report_language(result),
         )
+
+    def _append_strategy_hits_top5(
+        self,
+        report_lines: List[str],
+        results: List[AnalysisResult],
+        labels: Dict[str, str],
+        report_language: str,
+        *,
+        wechat_compact: bool = False,
+    ) -> None:
+        """Append top-5 stocks by len(matched_skills), tie-break by sentiment_score."""
+        if not results:
+            return
+        top5 = sorted(
+            results,
+            key=lambda x: (count_matched_skills(x), getattr(x, "sentiment_score", 0) or 0),
+            reverse=True,
+        )[:5]
+        h_top = labels.get("strategy_hits_top5_heading", "Top 5 strategy hits")
+        h_cnt = labels.get("strategy_hits_count_label", "Hits")
+        sc_label = labels.get("score_label", "Score")
+        is_en = normalize_report_language(report_language) == "en"
+        if wechat_compact:
+            report_lines.extend(["", f"**🧩 {h_top}**", ""])
+            for rank, r in enumerate(top5, start=1):
+                n = count_matched_skills(r)
+                name = self._get_display_name(r, report_language)
+                prev = matched_skill_ids_preview(r, 4)
+                tail = ",".join(prev) if prev else ("—" if is_en else "—")
+                report_lines.append(
+                    f"{rank}.{name}({r.code}) {h_cnt}:{n} {sc_label}:{r.sentiment_score} {tail}"
+                )
+            return
+        report_lines.extend(["", f"### 🧩 {h_top}", ""])
+        for rank, r in enumerate(top5, start=1):
+            n = count_matched_skills(r)
+            display_name = self._get_display_name(r, report_language)
+            prev = matched_skill_ids_preview(r, 8)
+            if is_en:
+                tail = ", ".join(prev) if prev else "—"
+                report_lines.append(
+                    f"{rank}. **{display_name}** ({r.code}) — {h_cnt} **{n}** | "
+                    f"{sc_label} {r.sentiment_score} | {tail}"
+                )
+            else:
+                tail = "、".join(prev) if prev else "—"
+                report_lines.append(
+                    f"{rank}. **{display_name}**（{r.code}）— {h_cnt} **{n}** 条 | "
+                    f"{sc_label} {r.sentiment_score} | {tail}"
+                )
     
     def generate_dashboard_report(
         self,
@@ -841,6 +892,9 @@ class NotificationService(
                     f"{labels['score_label']} {r.sentiment_score} | "
                     f"{localize_trend_prediction(r.trend_prediction, report_language)}"
                 )
+            self._append_strategy_hits_top5(
+                report_lines, results, labels, report_language, wechat_compact=False
+            )
             report_lines.extend([
                 "",
                 "---",
@@ -921,7 +975,36 @@ class NotificationService(
                     ])
 
                 self._append_market_snapshot(report_lines, result)
-                
+
+                # ========== 命中的交易技能 ==========
+                matched_skills = getattr(result, 'matched_skills', None) or []
+                if matched_skills:
+                    report_lines.extend([
+                        f"### 🎯 {labels['matched_skills_heading']}",
+                        "",
+                        f"| # | 技能 | {labels['matched_skill_confidence_label']} | {labels['matched_skill_reason_label']} |",
+                        "|---|------|------|------|",
+                    ])
+                    for idx, sk in enumerate(matched_skills, start=1):
+                        skill_name = sk.get('name') or sk.get('id') or 'N/A'
+                        skill_id = sk.get('id') or ''
+                        confidence = sk.get('confidence') or '—'
+                        reason = sk.get('reason') or '—'
+                        star = ' ⭐' if idx == 1 else ''
+                        report_lines.append(
+                            f"| {idx}{star} | **{skill_name}** `{skill_id}` | {confidence} | {reason} |"
+                        )
+                    report_lines.append("")
+                    for sk in matched_skills:
+                        conditions = sk.get('matched_conditions') or []
+                        if conditions:
+                            skill_name = sk.get('name') or sk.get('id') or 'N/A'
+                            report_lines.append(
+                                f"- **{skill_name}** {labels['matched_skill_conditions_label']}: "
+                                + " · ".join(conditions)
+                            )
+                    report_lines.append("")
+
                 # ========== 数据透视 ==========
                 data_persp = dashboard.get('data_perspective', {}) if dashboard else {}
                 if data_persp:
@@ -1110,7 +1193,7 @@ class NotificationService(
             f"🟢{labels['buy_label']}:{buy_count} 🟡{labels['watch_label']}:{hold_count} 🔴{labels['sell_label']}:{sell_count}",
             "",
         ]
-        
+
         # Issue #262: summary_only 时仅输出摘要列表
         if self._report_summary_only:
             lines.append(f"**📊 {labels['summary_heading']}**")
@@ -1124,7 +1207,13 @@ class NotificationService(
                     f"{labels['score_label']} {r.sentiment_score} | "
                     f"{localize_trend_prediction(r.trend_prediction, report_language)}"
                 )
+            self._append_strategy_hits_top5(
+                lines, results, labels, report_language, wechat_compact=True
+            )
         else:
+            self._append_strategy_hits_top5(
+                lines, results, labels, report_language, wechat_compact=True
+            )
             for result in sorted_results:
                 signal_text, signal_emoji, _ = self._get_signal_level(result)
                 dashboard = result.dashboard if hasattr(result, 'dashboard') and result.dashboard else {}
