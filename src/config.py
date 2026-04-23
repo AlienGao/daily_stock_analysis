@@ -545,6 +545,8 @@ class Config:
     top_n_multi_agent_review_schedule: str = "close"  # close / open / both
     top_n_multi_agent_review_concurrency: int = 3
     top_n_multi_agent_review_output_dir: str = "reports_multi_agent"
+    # 首页/API 交互式单股分析落盘目录（按日分子目录、按代码覆盖同日复跑）
+    home_analysis_reports_dir: str = "reports_temp"
 
     # === 通知配置（可同时配置多个，全部推送）===
     
@@ -1266,6 +1268,9 @@ class Config:
             ),
             top_n_multi_agent_review_output_dir=(
                 os.getenv('TOP_N_MULTI_AGENT_REVIEW_OUTPUT_DIR', 'reports_multi_agent') or 'reports_multi_agent'
+            ),
+            home_analysis_reports_dir=(
+                os.getenv('HOME_ANALYSIS_REPORTS_DIR', 'reports_temp') or 'reports_temp'
             ),
             wechat_webhook_url=os.getenv('WECHAT_WEBHOOK_URL'),
             feishu_webhook_url=os.getenv('FEISHU_WEBHOOK_URL'),

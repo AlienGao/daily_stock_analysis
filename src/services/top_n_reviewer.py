@@ -115,6 +115,7 @@ def _review_one(
             news_content=None,
             context_snapshot=initial_context,
             save_snapshot=pipeline.save_context_snapshot,
+            query_source=getattr(pipeline, "query_source", None) or "system",
         )
     except Exception as exc:
         logger.warning("[%s] 写入 multi 分析历史失败: %s", code, exc)

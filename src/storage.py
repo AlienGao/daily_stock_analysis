@@ -18,7 +18,8 @@ import json
 import logging
 import re
 import time
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, time, timedelta
+from zoneinfo import ZoneInfo
 from typing import Optional, List, Dict, Any, TYPE_CHECKING, Tuple, Callable, TypeVar
 
 import pandas as pd
@@ -42,6 +43,8 @@ from sqlalchemy import (
     desc,
     event,
     func,
+    or_,
+    text,
 )
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import (
@@ -55,6 +58,21 @@ from src.config import get_config
 
 logger = logging.getLogger(__name__)
 T = TypeVar("T")
+
+# 与 StockAnalysisPipeline：首页/接口异步单股在保存 analysis_history 时使用；同日同股仅保留最新一条
+INTERACTIVE_ANALYSIS_QUERY_SOURCES = frozenset({"api", "web"})
+
+
+def shanghai_calendar_day_bounds_now() -> tuple[datetime, datetime]:
+    """
+    上海自然日的 [lo, hi) 区间，用于与 naive 的 created_at 按同一日历日比较。
+
+    假设分析进程的本地时间与业务日一致，或与 Asia/Shanghai 同日界对齐。
+    """
+    d = datetime.now(ZoneInfo("Asia/Shanghai")).date()
+    lo = datetime.combine(d, time.min)
+    hi = lo + timedelta(days=1)
+    return lo, hi
 
 # SQLAlchemy ORM 基类
 Base = declarative_base()
@@ -244,6 +262,9 @@ class AnalysisHistory(Base):
     stop_loss = Column(Float)
     take_profit = Column(Float)
 
+    # 与 StockAnalysisPipeline.query_source 一致：api/web=首页/异步接口；cli/bot/system 等
+    query_source = Column(String(32), nullable=True, index=True)
+
     created_at = Column(DateTime, default=datetime.now, index=True)
 
     __table_args__ = (
@@ -269,6 +290,7 @@ class AnalysisHistory(Base):
             'secondary_buy': self.secondary_buy,
             'stop_loss': self.stop_loss,
             'take_profit': self.take_profit,
+            'query_source': self.query_source,
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
 
@@ -691,12 +713,40 @@ class DatabaseManager:
         
         # 创建所有表
         Base.metadata.create_all(self._engine)
+        self._ensure_analysis_history_query_source_column()
 
         self._initialized = True
         logger.info(f"数据库初始化完成: {db_url}")
 
         # 注册退出钩子，确保程序退出时关闭数据库连接
         atexit.register(DatabaseManager._cleanup_engine, self._engine)
+
+    def _ensure_analysis_history_query_source_column(self) -> None:
+        """SQLite: add analysis_history.query_source if missing (no Alembic in this project)."""
+        if not self._is_sqlite_engine:
+            return
+        try:
+            with self._engine.connect() as conn:
+                rows = conn.execute(
+                    text("PRAGMA table_info(analysis_history)")
+                ).fetchall()
+            col_names = {r[1] for r in rows}
+            if "query_source" in col_names:
+                return
+        except Exception as exc:
+            logger.warning("检查 analysis_history 表结构失败: %s", exc)
+            return
+        try:
+            with self._engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "ALTER TABLE analysis_history "
+                        "ADD COLUMN query_source VARCHAR(32)"
+                    )
+                )
+            logger.info("已添加列 analysis_history.query_source")
+        except Exception as exc:
+            logger.warning("添加 analysis_history.query_source 失败: %s", exc)
     
     @classmethod
     def get_instance(cls) -> 'DatabaseManager':
@@ -1171,6 +1221,48 @@ class DatabaseManager:
 
             return list(results)
 
+    def delete_interactive_analysis_history_for_code_same_shanghai_day(
+        self,
+        code: str,
+        day_lo: Optional[datetime] = None,
+        day_hi: Optional[datetime] = None,
+    ) -> int:
+        """
+        删除「交互式单股」来源下、同一上海自然日、同一 code 的 analysis_history 行（api/web）。
+
+        不删除 query_source 为 cli/bot/system 或 NULL 的历史行，避免与批量/定时结果混淆。
+        """
+        if not code:
+            return 0
+        lo, hi = (
+            (day_lo, day_hi) if day_lo is not None and day_hi is not None
+            else shanghai_calendar_day_bounds_now()
+        )
+
+        def _delete(session: Session) -> int:
+            stmt = delete(AnalysisHistory).where(
+                and_(
+                    AnalysisHistory.code == code,
+                    AnalysisHistory.created_at >= lo,
+                    AnalysisHistory.created_at < hi,
+                    or_(
+                        AnalysisHistory.query_source == "api",
+                        AnalysisHistory.query_source == "web",
+                    ),
+                )
+            )
+            res = session.execute(stmt)
+            return res.rowcount or 0
+
+        try:
+            return self._run_write_transaction(
+                f"delete_interactive_history[{code}]",
+                _delete,
+            )
+        except Exception as e:
+            logger.error("删除交互式分析历史失败 code=%s: %s", code, e)
+            return 0
+
     def save_analysis_history(
         self,
         result: Any,
@@ -1178,7 +1270,8 @@ class DatabaseManager:
         report_type: str,
         news_content: Optional[str],
         context_snapshot: Optional[Dict[str, Any]] = None,
-        save_snapshot: bool = True
+        save_snapshot: bool = True,
+        query_source: Optional[str] = None,
     ) -> int:
         """
         保存分析结果历史记录
@@ -1212,6 +1305,7 @@ class DatabaseManager:
                         stop_loss=sniper_points.get("stop_loss"),
                         take_profit=sniper_points.get("take_profit"),
                         created_at=datetime.now(),
+                        query_source=query_source,
                     )
                 )
                 return 1

@@ -51,6 +51,7 @@ env/
 logs/
 # reports/
 reports_multi_agent/
+reports_temp/
 *.db
 *.sqlite
 *.sqlite3

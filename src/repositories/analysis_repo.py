@@ -84,7 +84,8 @@ class AnalysisRepository:
         query_id: str,
         report_type: str,
         news_content: Optional[str] = None,
-        context_snapshot: Optional[Dict[str, Any]] = None
+        context_snapshot: Optional[Dict[str, Any]] = None,
+        query_source: Optional[str] = None,
     ) -> int:
         """
         保存分析结果
@@ -95,6 +96,7 @@ class AnalysisRepository:
             report_type: 报告类型
             news_content: 新闻内容
             context_snapshot: 上下文快照
+            query_source: 请求来源，与 pipeline 一致（可选）
             
         Returns:
             保存的记录数
@@ -105,7 +107,8 @@ class AnalysisRepository:
                 query_id=query_id,
                 report_type=report_type,
                 news_content=news_content,
-                context_snapshot=context_snapshot
+                context_snapshot=context_snapshot,
+                query_source=query_source,
             )
         except Exception as e:
             logger.error(f"保存分析结果失败: {e}")

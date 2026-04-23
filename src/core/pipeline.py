@@ -23,7 +23,7 @@ from typing import List, Dict, Any, Optional, Tuple, Callable
 import pandas as pd
 
 from src.config import get_config, Config
-from src.storage import get_db
+from src.storage import get_db, INTERACTIVE_ANALYSIS_QUERY_SOURCES
 from data_provider import DataFetcherManager
 from data_provider.base import normalize_stock_code
 from data_provider.realtime_types import ChipDistribution
@@ -522,13 +522,14 @@ class StockAnalysisPipeline:
                         realtime_quote=realtime_quote,
                         chip_data=chip_data
                     )
-                    self.db.save_analysis_history(
+                    self._save_analysis_history_row(
                         result=result,
                         query_id=query_id,
-                        report_type=report_type.value,
+                        report_type=report_type,
                         news_content=news_context,
                         context_snapshot=context_snapshot,
-                        save_snapshot=self.save_context_snapshot
+                        save_snapshot=self.save_context_snapshot,
+                        replace_query_code=False,
                     )
                 except Exception as e:
                     logger.warning(f"{stock_name}({code}) 保存分析历史失败: {e}")
@@ -873,17 +874,14 @@ class StockAnalysisPipeline:
             if result and result.success and persist_history:
                 try:
                     initial_context["stock_name"] = resolved_stock_name
-                    if replace_history:
-                        deleted = self.db.delete_analysis_history_by_query_and_code(query_id, code)
-                        if deleted:
-                            logger.info(f"[{code}] Top-N multi 覆盖：已删除旧分析历史 query_id={query_id}")
-                    self.db.save_analysis_history(
+                    self._save_analysis_history_row(
                         result=result,
                         query_id=query_id,
-                        report_type=report_type.value,
+                        report_type=report_type,
                         news_content=None,
                         context_snapshot=initial_context,
-                        save_snapshot=self.save_context_snapshot
+                        save_snapshot=self.save_context_snapshot,
+                        replace_query_code=replace_history,
                     )
                 except Exception as e:
                     logger.warning(f"[{code}] 保存 Agent 分析历史失败: {e}")
@@ -1204,6 +1202,48 @@ class StockAnalysisPipeline:
             })
 
         return context
+
+    def _save_analysis_history_row(
+        self,
+        result: AnalysisResult,
+        query_id: str,
+        report_type: ReportType,
+        news_content: Optional[str],
+        context_snapshot: Optional[Dict[str, Any]],
+        *,
+        save_snapshot: bool,
+        replace_query_code: bool = False,
+    ) -> None:
+        """写入 analysis_history；交互式 api/web 先删同日旧行再插入，并可选落盘 Markdown。"""
+        if replace_query_code:
+            deleted = self.db.delete_analysis_history_by_query_and_code(query_id, result.code)
+            if deleted:
+                logger.info(
+                    "[%s] Top-N multi 覆盖：已删除旧分析历史 query_id=%s",
+                    result.code,
+                    query_id,
+                )
+        if self.query_source in INTERACTIVE_ANALYSIS_QUERY_SOURCES:
+            n = self.db.delete_interactive_analysis_history_for_code_same_shanghai_day(result.code)
+            if n:
+                logger.info(
+                    "[%s] 交互式分析：已删除同日旧记录 %s 条",
+                    result.code,
+                    n,
+                )
+        self.db.save_analysis_history(
+            result=result,
+            query_id=query_id,
+            report_type=report_type.value,
+            news_content=news_content,
+            context_snapshot=context_snapshot,
+            save_snapshot=save_snapshot,
+            query_source=self.query_source,
+        )
+        if self.query_source in INTERACTIVE_ANALYSIS_QUERY_SOURCES:
+            from src.home_report_file import write_home_interactive_analysis_markdown
+
+            write_home_interactive_analysis_markdown(result)
     
     def process_single_stock(
         self,

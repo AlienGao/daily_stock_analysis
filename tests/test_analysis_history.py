@@ -33,7 +33,12 @@ except ModuleNotFoundError:
     get_history_detail = None
 
 from src.config import Config
-from src.storage import DatabaseManager, AnalysisHistory, BacktestResult
+from src.storage import (
+    DatabaseManager,
+    AnalysisHistory,
+    BacktestResult,
+    shanghai_calendar_day_bounds_now,
+)
 from src.analyzer import AnalysisResult
 from src.services.history_service import HistoryService
 import src.auth as auth
@@ -705,6 +710,99 @@ class HistoryItemSchemaNegativeSentimentTest(unittest.TestCase):
 
         summary = self.ReportSummary(sentiment_score=None)
         self.assertIsNone(summary.sentiment_score)
+
+
+class InteractiveAnalysisHistoryDeduplicationTestCase(unittest.TestCase):
+    """交互式 api/web 同日同股去重：仅删除/替换带 query_source 的交互式行。"""
+
+    def setUp(self) -> None:
+        auth._auth_enabled = False
+        self._temp_dir = tempfile.TemporaryDirectory()
+        self._db_path = os.path.join(self._temp_dir.name, "test_interactive_history.db")
+        os.environ["DATABASE_PATH"] = self._db_path
+        Config._instance = None
+        DatabaseManager.reset_instance()
+        self.db = DatabaseManager.get_instance()
+
+    def tearDown(self) -> None:
+        DatabaseManager.reset_instance()
+        self._temp_dir.cleanup()
+
+    @staticmethod
+    def _result() -> AnalysisResult:
+        return AnalysisResult(
+            code="600519",
+            name="贵州茅台",
+            sentiment_score=78,
+            trend_prediction="看多",
+            operation_advice="持有",
+            analysis_summary="测试",
+        )
+
+    def test_delete_interactive_skips_cli_and_null(self) -> None:
+        r = self._result()
+        self.db.save_analysis_history(
+            r, "q_cli", "simple", None, context_snapshot=None, save_snapshot=False, query_source="cli"
+        )
+        self.db.save_analysis_history(
+            r, "q_null", "simple", None, context_snapshot=None, save_snapshot=False, query_source=None
+        )
+        lo, hi = shanghai_calendar_day_bounds_now()
+        n = self.db.delete_interactive_analysis_history_for_code_same_shanghai_day(
+            "600519", day_lo=lo, day_hi=hi
+        )
+        self.assertEqual(n, 0)
+        with self.db.get_session() as session:
+            c = session.query(AnalysisHistory).filter(AnalysisHistory.code == "600519").count()
+        self.assertEqual(c, 2)
+
+    def test_interactive_delete_then_insert_leaves_one_row(self) -> None:
+        r = self._result()
+        lo, hi = shanghai_calendar_day_bounds_now()
+        self.db.save_analysis_history(
+            r, "q1", "simple", None, context_snapshot=None, save_snapshot=False, query_source="api"
+        )
+        n = self.db.delete_interactive_analysis_history_for_code_same_shanghai_day(
+            "600519", day_lo=lo, day_hi=hi
+        )
+        self.assertEqual(n, 1)
+        self.db.save_analysis_history(
+            r, "q2", "simple", None, context_snapshot=None, save_snapshot=False, query_source="api"
+        )
+        with self.db.get_session() as session:
+            c = session.query(AnalysisHistory).filter(AnalysisHistory.code == "600519").count()
+        self.assertEqual(c, 1)
+        with self.db.get_session() as session:
+            row = session.query(AnalysisHistory).filter(AnalysisHistory.code == "600519").first()
+        self.assertIsNotNone(row)
+        self.assertEqual(row.query_id, "q2")
+        self.assertEqual(row.query_source, "api")
+
+    def test_cli_row_persists_when_interactive_replaced(self) -> None:
+        r = self._result()
+        lo, hi = shanghai_calendar_day_bounds_now()
+        self.db.save_analysis_history(
+            r, "batch_q", "simple", None, context_snapshot=None, save_snapshot=False, query_source="cli"
+        )
+        self.db.save_analysis_history(
+            r, "q_api1", "simple", None, context_snapshot=None, save_snapshot=False, query_source="api"
+        )
+        self.db.delete_interactive_analysis_history_for_code_same_shanghai_day(
+            "600519", day_lo=lo, day_hi=hi
+        )
+        self.db.save_analysis_history(
+            r, "q_api2", "simple", None, context_snapshot=None, save_snapshot=False, query_source="api"
+        )
+        with self.db.get_session() as session:
+            rows = (
+                session.query(AnalysisHistory)
+                .filter(AnalysisHistory.code == "600519")
+                .order_by(AnalysisHistory.id)
+                .all()
+            )
+        self.assertEqual(len(rows), 2)
+        self.assertTrue(any(x.query_source == "cli" for x in rows))
+        self.assertTrue(any(x.query_id == "q_api2" and x.query_source == "api" for x in rows))
 
 
 if __name__ == "__main__":
