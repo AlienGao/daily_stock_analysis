@@ -445,6 +445,24 @@ LITELLM_MODEL=openai/deepseek-chat
 
 > 也可以使用 `python main.py --serve` (等效命令)
 
+### Top-N 多 Agent 复核补跑
+
+批跑已落库、但未跑或需重跑 **Top-N multi 复核** 时，可在项目根目录执行 `scripts/run_top_n_replay.py`：从数据库按**自然日**、默认 `query_source=cli` 还原当日每股最新一条，再按 `.env` 中 `TOP_N_*` 执行 multi；附录仍写入 `reports_multi_agent/report_multi_YYYYMMDD.md`。
+
+```bash
+# 仅预演：看当日将参与 Top-N 的代码，不调 API
+python scripts/run_top_n_replay.py --dry-run
+python scripts/run_top_n_replay.py --dry-run --date 2026-04-23
+
+# 实际执行多 Agent 复核（会消耗 LLM）
+python scripts/run_top_n_replay.py --date 2026-04-23
+
+# 复核后同时按合并结果覆盖主日报 reports/report_YYYYMMDD.md
+python scripts/run_top_n_replay.py --date 2026-04-23 --update-report
+```
+
+其他：`--query-source all` 取消按来源过滤（一般保留默认 `cli` 即可与定时/全量分析一致）；`--list-batches` 可列出各 `query_id` 条数作调试。若确知共享 `query_id`，可 `python scripts/run_top_n_replay.py --query-id <uuid>`。详见脚本文件顶部说明。
+
 ## 🗺️ Roadmap
 
 查看已支持的功能和未来规划：[更新日志](docs/CHANGELOG.md)

@@ -542,7 +542,7 @@ class Config:
     top_n_multi_agent_review_enabled: bool = False
     top_n_multi_agent_review_count: int = 10
     top_n_multi_agent_review_orchestrator_mode: str = "full"  # quick/standard/full/specialist
-    top_n_multi_agent_review_schedule: str = "close"  # close / open / both
+    top_n_multi_agent_review_schedule: str = "after_batch"  # after_batch / both / close / open
     top_n_multi_agent_review_concurrency: int = 3
     top_n_multi_agent_review_output_dir: str = "reports_multi_agent"
     # 首页/API 交互式单股分析落盘目录（按日分子目录、按代码覆盖同日复跑）
@@ -824,12 +824,13 @@ class Config:
                 self._VALID_ORCHESTRATOR_MODES,
             )
             object.__setattr__(self, "top_n_multi_agent_review_orchestrator_mode", "full")
-        if self.top_n_multi_agent_review_schedule not in {"close", "open", "both"}:
+        _valid_top_n_sched = {"close", "open", "both", "after_batch"}
+        if self.top_n_multi_agent_review_schedule not in _valid_top_n_sched:
             _log.warning(
-                "Invalid TOP_N_MULTI_AGENT_REVIEW_SCHEDULE=%r, falling back to 'close'.",
+                "Invalid TOP_N_MULTI_AGENT_REVIEW_SCHEDULE=%r, falling back to 'after_batch'.",
                 self.top_n_multi_agent_review_schedule,
             )
-            object.__setattr__(self, "top_n_multi_agent_review_schedule", "close")
+            object.__setattr__(self, "top_n_multi_agent_review_schedule", "after_batch")
 
     # 单例实例存储
     _instance: Optional['Config'] = None
@@ -1258,7 +1259,7 @@ class Config:
                 os.getenv('TOP_N_MULTI_AGENT_REVIEW_MODE', 'full') or 'full'
             ).lower(),
             top_n_multi_agent_review_schedule=(
-                os.getenv('TOP_N_MULTI_AGENT_REVIEW_SCHEDULE', 'close') or 'close'
+                os.getenv('TOP_N_MULTI_AGENT_REVIEW_SCHEDULE', 'after_batch') or 'after_batch'
             ).lower(),
             top_n_multi_agent_review_concurrency=parse_env_int(
                 os.getenv('TOP_N_MULTI_AGENT_REVIEW_CONCURRENCY'),

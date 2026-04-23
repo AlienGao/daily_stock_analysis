@@ -45,21 +45,44 @@ def _tz_cn_now() -> datetime:
     return datetime.now(tz)
 
 
-def should_run_top_n_review(config: Config, args: Any) -> bool:
+def should_defer_aggregate_for_top_n(config: Config, args: Any) -> bool:
+    """批跑**前**调用：仅判断是否要延后主日报/汇总至 main 层（等批跑结束后再决定 multi）。"""
     if not getattr(config, "top_n_multi_agent_review_enabled", False):
         return False
-    sched = getattr(config, "top_n_multi_agent_review_schedule", "close") or "close"
+    if getattr(args, "dry_run", False):
+        return False
+    return True
+
+
+def should_run_top_n_multi_by_schedule(config: Config, args: Any) -> bool:
+    """
+    批跑**结束**后调用：用**当前**中国时间判断 close / open 等时段（不依赖定时开跑是几点钟）。
+    after_batch、both 恒为真（只要开关已开且会进入本逻辑）。
+    """
+    if not getattr(config, "top_n_multi_agent_review_enabled", False):
+        return False
+    sched = (
+        getattr(config, "top_n_multi_agent_review_schedule", "after_batch")
+        or "after_batch"
+    )
+    if sched in ("both", "after_batch"):
+        return True
     now = _tz_cn_now()
     hour = now.hour
     is_close = hour >= 14
     is_open = hour < 13
-    if sched == "both":
-        return True
     if sched == "close":
         return is_close
     if sched == "open":
         return is_open
     return is_close
+
+
+def should_run_top_n_review(config: Config, args: Any) -> bool:
+    """向后兼容：等同「会 defer 且**此刻**也满足 multi 时段」。新代码请用两个拆分函数。"""
+    return should_defer_aggregate_for_top_n(config, args) and should_run_top_n_multi_by_schedule(
+        config, args
+    )
 
 
 def _review_one(

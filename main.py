@@ -484,13 +484,14 @@ def run_full_analysis(
             save_context_snapshot=save_context_snapshot
         )
 
-        from src.services.top_n_reviewer import should_run_top_n_review, run_top_n_multi_review
-
-        defer_top_n = (
-            should_run_top_n_review(config, args)
-            and not args.dry_run
-            and bool(stock_codes)
+        from src.services.top_n_reviewer import (
+            run_top_n_multi_review,
+            should_defer_aggregate_for_top_n,
+            should_run_top_n_multi_by_schedule,
         )
+
+        # 延后主日报到批跑**之后**；时段判断在批跑**结束**时再做（见下）
+        defer_top_n = should_defer_aggregate_for_top_n(config, args) and bool(stock_codes)
         if defer_top_n and getattr(config, "single_stock_notify", False):
             logger.warning(
                 "Top-N multi 与 single_stock_notify 同开：单股推送仍为首次 single 结果，"
@@ -506,11 +507,19 @@ def run_full_analysis(
             defer_aggregate_report=defer_top_n,
         )
         if defer_top_n and results:
-            try:
-                results, top_n_stats = run_top_n_multi_review(results, config, pipeline)
-                logger.info("[Top-N multi] 完成: %s", top_n_stats)
-            except Exception as e:
-                logger.exception("[Top-N multi] 失败，使用 single 结果继续: %s", e)
+            if should_run_top_n_multi_by_schedule(config, args):
+                try:
+                    results, top_n_stats = run_top_n_multi_review(results, config, pipeline)
+                    logger.info("[Top-N multi] 完成: %s", top_n_stats)
+                except Exception as e:
+                    logger.exception("[Top-N multi] 失败，使用 single 结果继续: %s", e)
+            else:
+                sched = (getattr(config, "top_n_multi_agent_review_schedule", "after_batch") or "after_batch")
+                logger.info(
+                    "Top-N multi 已开启但当前时段不执行 multi（schedule=%s，按批跑**结束**时的中国时间）"
+                    "，将直接以 single 结果写主日报。",
+                    sched,
+                )
             # 合并后再写主日报与汇总类通知（与 pipeline.run 尾部逻辑一致）
             rt = pipeline.get_config_report_type()
             if results and not args.dry_run:
