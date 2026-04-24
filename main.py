@@ -53,6 +53,7 @@ from data_provider.base import canonical_stock_code
 from src.webui_frontend import prepare_webui_frontend_assets
 from src.config import get_config, Config
 from src.logging_config import setup_logging
+from src.utils.rating_trend import rating_change_emoji, sort_rating_changes
 from src.utils.strategy_hits import count_matched_skills, matched_skill_ids_preview
 
 
@@ -660,54 +661,17 @@ def run_full_analysis(
                                 else:
                                     logger.warning("评级变化报告发送失败")
                         
-                        # 打印变化摘要（使用排序后的结果）
+                        # 打印变化摘要（与报告正文同一排序与图标规则，见 src.utils.rating_trend）
                         logger.info("\n===== 评级变化摘要 =====")
                         logger.info(f"比较日期: {prev_date.strftime('%Y-%m-%d')} → {current_date.strftime('%Y-%m-%d')}")
                         logger.info(f"变化股票数: {len(changes)}")
-                        
-                        # 定义评级优先级（数值越大等级越高）
-                        rating_priority = {
-                            "买入": 5,
-                            "持有": 4,
-                            "观望": 3,
-                            "减持": 2,
-                            "卖出": 1
-                        }
-                        
-                        # 排序变化股票
-                        def sort_key(item):
-                            stock, (stock_name, old_rating, new_rating) = item
-                            old_priority = rating_priority.get(old_rating, 0)
-                            new_priority = rating_priority.get(new_rating, 0)
-                            
-                            # 变化类型：升级为1，降级为0
-                            change_type = 1 if new_priority > old_priority else 0
-                            
-                            # 新评级优先级（降序）
-                            new_pri = -new_priority
-                            
-                            # 排序键：(变化类型, 新评级优先级)
-                            return (-change_type, new_pri)
-                        
-                        sorted_changes = sorted(changes.items(), key=sort_key)
-                        
-                        # 打印排序后的摘要
-                        for stock, (stock_name, old_rating, new_rating) in sorted_changes:
-                            # 确定图标
-                            old_priority = rating_priority.get(old_rating, 0)
-                            new_priority = rating_priority.get(new_rating, 0)
-                            
-                            if new_priority > old_priority:
-                                # 升级
-                                emoji = "✅"
-                            elif new_priority < old_priority:
-                                # 降级
-                                emoji = "❌"
-                            else:
-                                # 无变化（理论上不会出现）
-                                emoji = "➡️"
-                            
-                            logger.info(f"- {emoji} {stock_name}({stock}): {old_rating} → {new_rating}")
+                        for stock, (stock_name, old_rating, new_rating) in sort_rating_changes(
+                            list(changes.items())
+                        ):
+                            logger.info(
+                                f"- {rating_change_emoji(old_rating, new_rating)} "
+                                f"{stock_name}({stock}): {old_rating} → {new_rating}"
+                            )
                     else:
                         logger.info("\n===== 评级变化摘要 =====")
                         logger.info("未检测到评级变化")
