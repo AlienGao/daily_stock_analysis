@@ -346,6 +346,11 @@ Dockerfile 使用多阶段构建，前端会在构建镜像时自动打包并内
 如需覆盖静态资源，可挂载本地 `static/` 到容器内 `/app/static`。
 运行中的 `server` 容器默认直接复用 `/app/static` 里的预构建产物，不要求容器内保留 `apps/dsa-web` 源码目录或运行时安装 `npm`；若 WebUI 无法打开，请优先确认 `/app/static/index.html` 是否存在。
 
+当前官方镜像发布地址：
+
+- GHCR：`ghcr.io/zhulinsen/daily_stock_analysis:<tag>`
+- Docker Hub：`<DOCKERHUB_USERNAME>/daily_stock_analysis:<tag>`（由发布者的 `DOCKERHUB_USERNAME` secret 决定，官方发布为 `zhulinsen/daily_stock_analysis`）
+
 ### 快速启动
 
 ```bash
@@ -368,6 +373,37 @@ docker-compose -f ./docker/docker-compose.yml up -d            # 同时启动两
 # 5. 查看日志
 docker-compose -f ./docker/docker-compose.yml logs -f server
 ```
+
+### 直接拉官方镜像运行
+
+如果你不打算在目标机器上保留源码，可以直接拉取官方镜像：
+
+```bash
+# Web/API 模式
+docker pull zhulinsen/daily_stock_analysis:latest
+docker run -d \
+  --name dsa-server \
+  --env-file .env \
+  -p 8000:8000 \
+  -v "$(pwd)/data:/app/data" \
+  -v "$(pwd)/logs:/app/logs" \
+  -v "$(pwd)/reports:/app/reports" \
+  -v "$(pwd)/.env:/app/.env" \
+  zhulinsen/daily_stock_analysis:latest \
+  python main.py --serve-only --host 0.0.0.0 --port 8000
+
+# 定时任务模式
+docker run -d \
+  --name dsa-analyzer \
+  --env-file .env \
+  -v "$(pwd)/data:/app/data" \
+  -v "$(pwd)/logs:/app/logs" \
+  -v "$(pwd)/reports:/app/reports" \
+  -v "$(pwd)/.env:/app/.env" \
+  zhulinsen/daily_stock_analysis:latest
+```
+
+如需固定版本或便于回滚，请将 `latest` 替换为具体版本 tag，例如 `v3.13.0`。
 
 ### 运行模式说明
 
@@ -414,6 +450,26 @@ services:
       - "8000:8000"
 ```
 
+### `.env` 与数据目录映射说明
+
+无论你使用 `docker run` 还是 Compose，建议同时保留下面两种映射：
+
+- 环境变量注入：`--env-file .env` 或 Compose 的 `env_file`
+  作用：把 `.env` 中的键值作为容器启动时的环境变量传入 Python 进程。
+- 文件映射：`-v "$(pwd)/.env:/app/.env"` 或 Compose 的 `../.env:/app/.env`
+  作用：让容器内的 Web 设置页和后端读写同一份 `.env` 文件，修改后可持久化到宿主机。
+
+推荐同时映射这几个目录：
+
+- `./data:/app/data`：数据库、缓存和运行时数据
+- `./logs:/app/logs`：日志输出
+- `./reports:/app/reports`：生成的分析报告
+- `./strategies:/app/strategies:ro`：自定义策略 YAML（只读挂载）
+
+如果你需要覆盖内置静态资源，还可以额外挂载：
+
+- `./static:/app/static:ro`
+
 ### 常用命令
 
 ```bash
@@ -435,7 +491,16 @@ docker-compose -f ./docker/docker-compose.yml up -d server
 
 ```bash
 docker build -f docker/Dockerfile -t stock-analysis .
-docker run -d --env-file .env -p 8000:8000 -v ./data:/app/data stock-analysis python main.py --serve-only --host 0.0.0.0 --port 8000
+docker run -d \
+  --name dsa-server-local \
+  --env-file .env \
+  -p 8000:8000 \
+  -v "$(pwd)/data:/app/data" \
+  -v "$(pwd)/logs:/app/logs" \
+  -v "$(pwd)/reports:/app/reports" \
+  -v "$(pwd)/.env:/app/.env" \
+  stock-analysis \
+  python main.py --serve-only --host 0.0.0.0 --port 8000
 ```
 
 ---
@@ -1126,6 +1191,14 @@ A: 检查是否启用了 Actions，以及 cron 表达式是否正确（注意是
 - FX refresh first tries online source (YFinance).
 - On online failure, fallback to latest cached rate and mark `is_stale=true`.
 - Main snapshot/risk pipeline stays available even when online FX fetch is unavailable.
+
+## Agent 工具数据缓存与持久化
+
+- `get_daily_history` 会先尝试复用本地 `stock_daily` 日线缓存；缓存新鲜且至少覆盖首页默认的 30 条记录时，不再重复请求外部数据源。
+- 当 Agent 请求的天数多于本地缓存记录数时，工具会返回实际可用记录，并通过 `partial_cache=true`、`requested_days`、`actual_records` 标明这是部分缓存命中。
+- 缓存缺失或过期时，工具仍会按原逻辑从数据源获取日线数据；获取成功后会 best-effort 写回 `stock_daily`，保存失败不会阻断 Agent 回复。
+- `search_stock_news` 与 `search_comprehensive_intel` 成功返回后会 best-effort 写入 `news_intel`，复用现有 URL / fallback key 去重逻辑。
+- `get_realtime_quote` 不复用 `stock_daily` 作为实时行情缓存，也不会把盘中实时行情写入日线表；如需实时行情缓存，应单独设计实时行情存储。
 
 ## Portfolio P0 PR3 (Web + Agent Consumption)
 
