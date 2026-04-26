@@ -15,6 +15,7 @@ import time
 from typing import Dict, Optional, Set, Tuple
 
 from src.data.stock_mapping import STOCK_NAME_MAP
+from src.data.stock_index_loader import get_stock_name_index_map
 from src.services.stock_code_utils import is_code_like, normalize_code
 
 logger = logging.getLogger(__name__)
@@ -86,6 +87,38 @@ def _build_local_name_indexes(code_to_name: Dict[str, str]) -> Tuple[Dict[str, s
 
 
 _LOCAL_REVERSE_MAP, _LOCAL_AMBIGUOUS_NAMES = _build_local_name_indexes(STOCK_NAME_MAP)
+
+
+def _build_name_index_reverse_map() -> Tuple[Dict[str, str], Set[str]]:
+    """
+    Build name -> code indexes from frontend stocks.index.json derived map.
+
+    Note:
+    ``get_stock_name_index_map()`` returns a *code alias* -> name mapping.
+    The same instrument can appear under multiple aliases (e.g. ``688270`` and
+    ``688270.SH``).  We normalize aliases via ``normalize_code`` so they
+    collapse into one logical code before ambiguity checks.
+    """
+    code_to_name = get_stock_name_index_map()
+    name_to_codes: Dict[str, Set[str]] = {}
+    for raw_code, raw_name in (code_to_name or {}).items():
+        code = normalize_code(str(raw_code or "").strip())
+        name = str(raw_name or "").strip()
+        if not code or not name:
+            continue
+        name_to_codes.setdefault(name, set()).add(code)
+
+    unique = {
+        name: next(iter(codes))
+        for name, codes in name_to_codes.items()
+        if len(codes) == 1
+    }
+    ambiguous = {
+        name
+        for name, codes in name_to_codes.items()
+        if len(codes) > 1
+    }
+    return unique, ambiguous
 
 
 def _get_akshare_name_to_code() -> Optional[Dict[str, str]]:
@@ -171,7 +204,19 @@ def resolve_name_to_code(name: str) -> Optional[str]:
         logger.debug(f"[NameResolver] 命中本地歧义名称，快速返回 None: {s}")
         return None
 
-    # 3. Pinyin match (exact)
+    # 3. Frontend stock-index reverse map (broader than static STOCK_NAME_MAP)
+    #    This path is local-file based and should be fast/cheap.
+    try:
+        index_reverse, index_ambiguous = _build_name_index_reverse_map()
+        if s in index_reverse:
+            return index_reverse[s]
+        if s in index_ambiguous:
+            logger.debug(f"[NameResolver] 命中索引歧义名称，快速返回 None: {s}")
+            return None
+    except Exception as e:
+        logger.debug(f"[NameResolver] stock-index reverse map failed: {e}")
+
+    # 4. Pinyin match (exact)
     try:
         from pypinyin import lazy_pinyin
 
@@ -191,14 +236,19 @@ def resolve_name_to_code(name: str) -> Optional[str]:
         logger.debug(f"[NameResolver] Skip CJK-only fallbacks for non-CJK input: {s}")
         return None
 
-    # 4. AkShare fallback
+    # 5. AkShare fallback
     akshare_map = _get_akshare_name_to_code()
     if akshare_map and s in akshare_map:
         logger.debug(f"[NameResolver] 命中 AkShare 映射: {s} -> {akshare_map[s]}")
         return akshare_map[s]
 
-    # 5. Fuzzy match (local + akshare, local takes precedence)
+    # 6. Fuzzy match (local + index + akshare, local takes precedence)
     all_name_to_code = dict(local_reverse)
+    try:
+        index_reverse, _ = _build_name_index_reverse_map()
+        all_name_to_code.update(index_reverse)
+    except Exception:
+        pass
     if akshare_map:
         all_name_to_code.update(akshare_map)
     # Skip fuzzy matching for very short inputs (<=2 chars) to avoid false positives,

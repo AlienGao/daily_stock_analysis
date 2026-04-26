@@ -51,6 +51,36 @@ _THINKING_TOOL_LABELS: Dict[str, str] = {
 }
 
 
+def _looks_like_stock_query(messages: List[Dict[str, Any]]) -> bool:
+    """Best-effort detect stock-analysis intent from recent user turns."""
+    user_texts: List[str] = []
+    for msg in messages:
+        if not isinstance(msg, dict) or msg.get("role") != "user":
+            continue
+        content = msg.get("content")
+        if isinstance(content, str) and content.strip():
+            user_texts.append(content)
+    if not user_texts:
+        return False
+    text = "\n".join(user_texts[-3:])
+    return bool(
+        re.search(r"\b\d{5,6}\b", text)
+        or re.search(r"\b[A-Z]{2,5}\b", text)
+        or re.search(r"[\u4e00-\u9fff]{2,8}", text)
+    )
+
+
+def _has_core_stock_tools(tool_decls: List[Dict[str, Any]]) -> bool:
+    """Return True when core stock data tools are available in this run."""
+    tool_names = {
+        ((tool or {}).get("function") or {}).get("name")
+        for tool in (tool_decls or [])
+        if isinstance(tool, dict)
+    }
+    required_any = {"get_daily_history", "get_realtime_quote", "analyze_trend"}
+    return any(name in tool_names for name in required_any)
+
+
 # ============================================================
 # RunLoopResult — the output of one run_agent_loop invocation
 # ============================================================
@@ -392,6 +422,11 @@ def run_agent_loop(
     """
     labels = thinking_labels or _THINKING_TOOL_LABELS
     tool_decls = tool_registry.to_openai_tools()
+    enforce_first_tool_call = (
+        _has_core_stock_tools(tool_decls)
+        and _looks_like_stock_query(messages)
+    )
+    first_tool_retry_used = False
 
     start_time = time.time()
     tool_calls_log: List[Dict[str, Any]] = []
@@ -562,6 +597,58 @@ def run_agent_loop(
 
         else:
             # ---- final answer branch ----
+            if (
+                enforce_first_tool_call
+                and not first_tool_retry_used
+                and not tool_calls_log
+                and step == 0
+            ):
+                first_tool_retry_used = True
+                logger.warning(
+                    "Agent produced no tool calls on first stock-analysis step; injecting tool-call retry nudge"
+                )
+                messages.append(
+                    {
+                        "role": "assistant",
+                        "content": response.content or "",
+                    }
+                )
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            "你上一轮没有调用任何工具。"
+                            "请先调用可用工具（至少行情/历史K线）获取真实数据，"
+                            "再给结论。禁止凭记忆或假设生成日期、价格、停牌、公告。"
+                        ),
+                    }
+                )
+                continue
+
+            if (
+                enforce_first_tool_call
+                and first_tool_retry_used
+                and not tool_calls_log
+                and step >= 1
+            ):
+                logger.error(
+                    "Agent still produced no tool calls after retry nudge; failing closed to block hallucinated stock analysis"
+                )
+                return RunLoopResult(
+                    success=False,
+                    content="",
+                    tool_calls_log=tool_calls_log,
+                    total_steps=step + 1,
+                    total_tokens=total_tokens,
+                    provider=provider_used,
+                    models_used=models_used,
+                    error=(
+                        "未检测到任何工具调用，已阻止生成可能不可靠的股票分析。"
+                        "请重试，或改为更明确的提问（股票名/代码 + 日期）。"
+                    ),
+                    messages=messages,
+                )
+
             logger.info(
                 "Agent completed in %d steps (%.1fs, %d tokens)",
                 step + 1,

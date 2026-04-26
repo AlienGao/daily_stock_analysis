@@ -6,6 +6,7 @@ Agent API endpoints.
 import asyncio
 import json
 import logging
+import re
 import uuid
 from typing import Any, Dict, List, Optional
 
@@ -39,6 +40,12 @@ TOOL_DISPLAY_NAMES: Dict[str, str] = {
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+_CHAT_STOCK_NAME_STOPWORDS = {
+    "股票", "股价", "走势", "情况", "分析", "问股",
+    "今天", "昨日", "昨天", "明天",
+    "买入", "卖出", "加仓", "减仓", "跌停", "涨停",
+}
 
 class ChatRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
@@ -164,7 +171,7 @@ async def agent_chat(request: ChatRequest):
         # Pass explicit skills into context for the orchestrator.
         # Direct assignment so caller-provided skills always take precedence
         # over any stale value carried in the context dict.
-        ctx = dict(request.context or {})
+        ctx = _enrich_chat_context(request.message, request.context)
         if skills is not None:
             ctx["skills"] = skills
 
@@ -274,6 +281,65 @@ def _build_executor(config, skills: Optional[List[str]] = None):
     """Build and return a configured AgentExecutor (sync helper)."""
     from src.agent.factory import build_agent_executor
     return build_agent_executor(config, skills=skills)
+
+
+def _try_resolve_stock_code_from_message(message: str) -> Optional[str]:
+    """Best-effort extract stock code from free-form chat message."""
+    from src.services.name_to_code_resolver import resolve_name_to_code
+
+    text = (message or "").strip()
+    if not text:
+        return None
+
+    # 1) Whole-message direct resolve (only for concise inputs) to avoid
+    # expensive fuzzy/online fallback on long natural-language questions.
+    if len(text) <= 12 and not re.search(r"[\s,，;；:：|/()（）\[\]【】]", text):
+        direct = resolve_name_to_code(text)
+        if direct:
+            return direct
+
+    # 2) Chinese name chunks, e.g. "臻镭科技".
+    for chunk in re.findall(r"[\u4e00-\u9fff]{2,8}", text):
+        candidate = chunk.strip()
+        if not candidate or candidate in _CHAT_STOCK_NAME_STOPWORDS:
+            continue
+        resolved = resolve_name_to_code(candidate)
+        if resolved:
+            return resolved
+
+    # 3) Token-level fallback for code-like fragments.
+    for token in re.split(r"[\s,，;；:：|/()（）\[\]【】]+", text):
+        token = token.strip()
+        if not token:
+            continue
+        resolved = resolve_name_to_code(token)
+        if resolved:
+            return resolved
+    return None
+
+
+def _enrich_chat_context(message: str, context: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Attach resolved stock_code/stock_name to chat context when missing."""
+    from data_provider.base import canonical_stock_code
+    from data_provider import DataFetcherManager
+
+    ctx = dict(context or {})
+    if ctx.get("stock_code"):
+        return ctx
+
+    resolved = _try_resolve_stock_code_from_message(message)
+    if not resolved:
+        return ctx
+
+    stock_code = canonical_stock_code(resolved)
+    ctx["stock_code"] = stock_code
+    try:
+        stock_name = DataFetcherManager().get_stock_name(stock_code)
+        if stock_name:
+            ctx["stock_name"] = stock_name
+    except Exception:
+        pass
+    return ctx
 
 
 async def _run_research_in_background(
@@ -393,7 +459,7 @@ async def agent_chat_stream(request: ChatRequest):
     # Pass explicit skills into context for the orchestrator.
     # Direct assignment so caller-provided skills always take precedence.
     skills = request.effective_skills
-    stream_ctx = dict(request.context or {})
+    stream_ctx = _enrich_chat_context(request.message, request.context)
     if skills is not None:
         stream_ctx["skills"] = skills
 

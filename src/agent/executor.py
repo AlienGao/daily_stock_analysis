@@ -16,6 +16,7 @@ same implementation.
 
 import json
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
@@ -26,6 +27,9 @@ from src.report_language import normalize_report_language
 from src.market_context import get_market_role, get_market_guidelines
 
 logger = logging.getLogger(__name__)
+
+_MAX_CHAT_HISTORY_MESSAGES = 12
+_MAX_HISTORY_MESSAGE_CHARS = 2000
 
 
 # ============================================================
@@ -576,7 +580,7 @@ class AgentExecutor:
 
         # Get conversation history
         session = conversation_manager.get_or_create(session_id)
-        history = session.get_history()
+        history = self._prepare_chat_history(session.get_history())
 
         # Initialize conversation
         messages: List[Dict[str, Any]] = [
@@ -615,6 +619,45 @@ class AgentExecutor:
 
         result = self._run_loop(messages, tool_decls, parse_dashboard=False, progress_callback=progress_callback)
 
+        # Guardrail: for stock-focused questions, reject "no-tool" free-form
+        # continuations once and force a retry with an explicit tool-calling nudge.
+        if self._should_force_tool_retry(message, context, result):
+            logger.warning(
+                "[AgentExecutor] chat produced 0 tool calls for stock query; forcing one retry with tool-call reminder"
+            )
+            retry_messages = list(messages)
+            retry_messages.append({
+                "role": "user",
+                "content": (
+                    "你上一轮没有调用任何工具。"
+                    "请先调用工具获取真实行情/历史K线/必要情报，再基于工具结果回答。"
+                    "禁止凭记忆或假设生成价格、日期、停牌、公告等信息。"
+                ),
+            })
+            retry_result = self._run_loop(
+                retry_messages,
+                tool_decls,
+                parse_dashboard=False,
+                progress_callback=progress_callback,
+            )
+            if retry_result.success and retry_result.tool_calls_log:
+                result = retry_result
+            else:
+                result = AgentResult(
+                    success=False,
+                    content="",
+                    dashboard=None,
+                    tool_calls_log=retry_result.tool_calls_log,
+                    total_steps=retry_result.total_steps,
+                    total_tokens=retry_result.total_tokens,
+                    provider=retry_result.provider,
+                    model=retry_result.model,
+                    error=(
+                        "未检测到有效工具调用，已阻止返回不可靠分析。"
+                        "请重试并提供更明确的股票名/代码与日期。"
+                    ),
+                )
+
         # Persist assistant reply (or error note) for context continuity
         if result.success:
             conversation_manager.add_message(session_id, "assistant", result.content)
@@ -623,6 +666,53 @@ class AgentExecutor:
             conversation_manager.add_message(session_id, "assistant", error_note)
 
         return result
+
+    @staticmethod
+    def _prepare_chat_history(history: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Keep recent, compact history to reduce context pollution."""
+        if not isinstance(history, list) or not history:
+            return []
+
+        trimmed = history[-_MAX_CHAT_HISTORY_MESSAGES:]
+        compact: List[Dict[str, Any]] = []
+        for msg in trimmed:
+            if not isinstance(msg, dict):
+                continue
+            role = msg.get("role")
+            content = msg.get("content")
+            if role not in {"user", "assistant", "system"} or not isinstance(content, str):
+                continue
+            text = content.strip()
+            if not text:
+                continue
+            if len(text) > _MAX_HISTORY_MESSAGE_CHARS:
+                text = text[:_MAX_HISTORY_MESSAGE_CHARS] + "\n...(history truncated)..."
+            compact.append({"role": role, "content": text})
+        return compact
+
+    @staticmethod
+    def _looks_like_stock_question(message: str, context: Optional[Dict[str, Any]]) -> bool:
+        stock_code = str((context or {}).get("stock_code", "")).strip()
+        if stock_code:
+            return True
+        text = (message or "").strip()
+        if not text:
+            return False
+        return bool(
+            re.search(r"\b\d{5,6}\b", text)
+            or re.search(r"\b[A-Z]{2,5}\b", text)
+            or re.search(r"[\u4e00-\u9fff]{2,8}", text)
+        )
+
+    def _should_force_tool_retry(self, message: str, context: Optional[Dict[str, Any]], result: AgentResult) -> bool:
+        """Return True when chat answer likely hallucinated due missing tool calls."""
+        if not result.success:
+            return False
+        if result.tool_calls_log:
+            return False
+        if not self._looks_like_stock_question(message, context):
+            return False
+        return True
 
     def _run_loop(self, messages: List[Dict[str, Any]], tool_decls: List[Dict[str, Any]], parse_dashboard: bool, progress_callback: Optional[Callable] = None) -> AgentResult:
         """Delegate to the shared runner and adapt the result.
