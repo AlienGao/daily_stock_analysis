@@ -260,7 +260,9 @@ const ChatPage: React.FC = () => {
 
       const payload = {
         message: msgText,
-        session_id: sessionId,
+        // Avoid stale closure after immediate "new chat" -> send actions.
+        // Always read the latest session id from store at send time.
+        session_id: useAgentChatStore.getState().sessionId,
         skills: usedSkill ? [usedSkill] : undefined,
         context: followUpContextRef.current ?? undefined,
       };

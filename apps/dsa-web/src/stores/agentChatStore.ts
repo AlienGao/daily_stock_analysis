@@ -40,10 +40,14 @@ interface AgentChatState {
   messages: Message[];
   loading: boolean;
   progressSteps: ProgressStep[];
+  loadingBySession: Record<string, boolean>;
+  progressStepsBySession: Record<string, ProgressStep[]>;
+  abortControllersBySession: Record<string, AbortController>;
   sessionId: string;
   sessions: ChatSessionItem[];
   sessionsLoading: boolean;
   chatError: ParsedApiError | null;
+  chatErrorBySession: Record<string, ParsedApiError | null>;
   currentRoute: string;
   completionBadge: boolean;
   hasInitialLoad: boolean;
@@ -69,10 +73,14 @@ export const useAgentChatStore = create<AgentChatState & AgentChatActions>((set,
   messages: [],
   loading: false,
   progressSteps: [],
+  loadingBySession: {},
+  progressStepsBySession: {},
+  abortControllersBySession: {},
   sessionId: getInitialSessionId(),
   sessions: [],
   sessionsLoading: false,
   chatError: null,
+  chatErrorBySession: {},
   currentRoute: '',
   completionBadge: false,
   hasInitialLoad: false,
@@ -133,11 +141,18 @@ export const useAgentChatStore = create<AgentChatState & AgentChatActions>((set,
   },
 
   switchSession: async (targetSessionId) => {
-    const { sessionId, messages, abortController } = get();
+    const {
+      sessionId,
+      messages,
+      loadingBySession,
+      progressStepsBySession,
+    } = get();
     if (targetSessionId === sessionId && messages.length > 0) return;
-
-    abortController?.abort();
-    set({ abortController: null });
+    set({
+      loading: !!loadingBySession[targetSessionId],
+      progressSteps: progressStepsBySession[targetSessionId] || [],
+      chatError: get().chatErrorBySession[targetSessionId] || null,
+    });
 
     set({ messages: [], sessionId: targetSessionId });
     localStorage.setItem(STORAGE_KEY_SESSION, targetSessionId);
@@ -166,20 +181,35 @@ export const useAgentChatStore = create<AgentChatState & AgentChatActions>((set,
       loading: false,
       progressSteps: [],
       chatError: null,
+      chatErrorBySession: {
+        ...get().chatErrorBySession,
+        [newId]: null,
+      },
       abortController: null,
     });
     localStorage.setItem(STORAGE_KEY_SESSION, newId);
   },
 
   startStream: async (payload, meta) => {
-    if (get().loading) return;
-    const { abortController: prevAc, sessionId: storeSessionId } = get();
-    prevAc?.abort();
+    const {
+      sessionId: storeSessionId,
+      abortControllersBySession,
+      loadingBySession,
+    } = get();
 
     const ac = new AbortController();
-    set({ abortController: ac });
-
     const streamSessionId = payload.session_id || storeSessionId;
+    if (loadingBySession[streamSessionId]) return;
+    abortControllersBySession[streamSessionId]?.abort();
+
+    set((s) => ({
+      abortController: s.sessionId === streamSessionId ? ac : s.abortController,
+      abortControllersBySession: {
+        ...s.abortControllersBySession,
+        [streamSessionId]: ac,
+      },
+    }));
+
     const skillName = meta?.skillName ?? '通用';
 
     const userMessage: Message = {
@@ -192,9 +222,21 @@ export const useAgentChatStore = create<AgentChatState & AgentChatActions>((set,
 
     set((s) => ({
       messages: [...s.messages, userMessage],
-      loading: true,
-      progressSteps: [],
-      chatError: null,
+      loading: s.sessionId === streamSessionId ? true : s.loading,
+      progressSteps: s.sessionId === streamSessionId ? [] : s.progressSteps,
+      chatError: s.sessionId === streamSessionId ? null : s.chatError,
+      loadingBySession: {
+        ...s.loadingBySession,
+        [streamSessionId]: true,
+      },
+      chatErrorBySession: {
+        ...s.chatErrorBySession,
+        [streamSessionId]: null,
+      },
+      progressStepsBySession: {
+        ...s.progressStepsBySession,
+        [streamSessionId]: [],
+      },
       sessions: s.sessions.some((x) => x.session_id === streamSessionId)
         ? s.sessions
         : [
@@ -250,7 +292,21 @@ export const useAgentChatStore = create<AgentChatState & AgentChatActions>((set,
         }
 
         currentProgressSteps.push(event);
-        set((s) => ({ progressSteps: [...s.progressSteps, event] }));
+        set((s) => {
+          const nextSessionSteps = [
+            ...(s.progressStepsBySession[streamSessionId] || []),
+            event,
+          ];
+          const isCurrentSession =
+            s.sessionId === streamSessionId && !ac.signal.aborted;
+          return {
+            progressStepsBySession: {
+              ...s.progressStepsBySession,
+              [streamSessionId]: nextSessionSteps,
+            },
+            progressSteps: isCurrentSession ? nextSessionSteps : s.progressSteps,
+          };
+        });
       };
 
       while (true) {
@@ -308,21 +364,42 @@ export const useAgentChatStore = create<AgentChatState & AgentChatActions>((set,
       if (error instanceof Error && error.name === 'AbortError') {
         // User-initiated abort: silent, no badge
       } else {
-        set({ chatError: getParsedApiError(error) });
+        const parsedError = getParsedApiError(error);
+        set((s) => ({
+          chatErrorBySession: {
+            ...s.chatErrorBySession,
+            [streamSessionId]: parsedError,
+          },
+          chatError: s.sessionId === streamSessionId ? parsedError : s.chatError,
+        }));
         const { currentRoute } = get();
         if (currentRoute !== '/chat') {
           set({ completionBadge: true });
         }
       }
     } finally {
-      const { abortController: currentAc } = get();
-      if (currentAc === ac) {
-        set({
-          loading: false,
-          progressSteps: [],
-          abortController: null,
-        });
-      }
+      set((s) => {
+        const isCurrentSession = s.sessionId === streamSessionId;
+        const nextAbortControllers = { ...s.abortControllersBySession };
+        if (nextAbortControllers[streamSessionId] === ac) {
+          delete nextAbortControllers[streamSessionId];
+        }
+        return {
+          loadingBySession: {
+            ...s.loadingBySession,
+            [streamSessionId]: false,
+          },
+          progressStepsBySession: {
+            ...s.progressStepsBySession,
+            [streamSessionId]: [],
+          },
+          loading: isCurrentSession ? false : s.loading,
+          progressSteps: isCurrentSession ? [] : s.progressSteps,
+          abortController:
+            isCurrentSession && s.abortController === ac ? null : s.abortController,
+          abortControllersBySession: nextAbortControllers,
+        };
+      });
       await get().loadSessions();
     }
   },
