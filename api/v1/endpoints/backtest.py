@@ -62,8 +62,17 @@ def run_backtest(
             eval_window_days=request.eval_window_days,
             min_age_days=request.min_age_days,
             limit=request.limit,
+            allowed_categories=request.allowed_categories,
+            sentiment_score_min=request.sentiment_score_min,
+            sentiment_score_max=request.sentiment_score_max,
+            trigger_source="manual",
         )
         return BacktestRunResponse(**stats)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={"error": "invalid_params", "message": str(exc)},
+        )
     except Exception as exc:
         logger.error(f"回测执行失败: {exc}", exc_info=True)
         raise HTTPException(
@@ -84,6 +93,7 @@ def run_backtest(
 )
 def get_backtest_results(
     code: Optional[str] = Query(None, description="股票代码筛选"),
+    trigger_source: Optional[str] = Query(None, description="触发来源筛选（auto/manual）"),
     eval_window_days: Optional[int] = Query(None, ge=1, le=120, description="评估窗口过滤"),
     analysis_date_from: Optional[date] = Query(None, description="分析日期起始（含）"),
     analysis_date_to: Optional[date] = Query(None, description="分析日期结束（含）"),
@@ -96,6 +106,7 @@ def get_backtest_results(
         service = BacktestService(db_manager)
         data = service.get_recent_evaluations(
             code=code,
+            trigger_source=trigger_source,
             eval_window_days=eval_window_days,
             limit=limit,
             page=page,
@@ -130,6 +141,7 @@ def get_backtest_results(
     summary="获取整体回测表现",
 )
 def get_overall_performance(
+    trigger_source: Optional[str] = Query(None, description="触发来源筛选（auto/manual）"),
     eval_window_days: Optional[int] = Query(None, ge=1, le=120, description="评估窗口过滤"),
     analysis_date_from: Optional[date] = Query(None, description="分析日期起始（含）"),
     analysis_date_to: Optional[date] = Query(None, description="分析日期结束（含）"),
@@ -141,6 +153,7 @@ def get_overall_performance(
         summary = service.get_summary(
             scope="overall",
             code=None,
+            trigger_source=trigger_source,
             eval_window_days=eval_window_days,
             analysis_date_from=analysis_date_from,
             analysis_date_to=analysis_date_to,
@@ -178,6 +191,7 @@ def get_overall_performance(
 )
 def get_stock_performance(
     code: str,
+    trigger_source: Optional[str] = Query(None, description="触发来源筛选（auto/manual）"),
     eval_window_days: Optional[int] = Query(None, ge=1, le=120, description="评估窗口过滤"),
     analysis_date_from: Optional[date] = Query(None, description="分析日期起始（含）"),
     analysis_date_to: Optional[date] = Query(None, description="分析日期结束（含）"),
@@ -189,6 +203,7 @@ def get_stock_performance(
         summary = service.get_summary(
             scope="stock",
             code=code,
+            trigger_source=trigger_source,
             eval_window_days=eval_window_days,
             analysis_date_from=analysis_date_from,
             analysis_date_to=analysis_date_to,

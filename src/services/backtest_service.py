@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 import logging
 from datetime import date, datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from sqlalchemy import and_, select
 
@@ -15,6 +15,7 @@ from src.core.backtest_engine import OVERALL_SENTINEL_CODE, BacktestEngine, Eval
 from src.repositories.backtest_repo import BacktestRepository
 from src.repositories.stock_repo import StockRepository
 from src.storage import BacktestResult, BacktestSummary, DatabaseManager
+from src.utils.rating_category import RATING_MAP
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,12 @@ class BacktestService:
         eval_window_days: Optional[int] = None,
         min_age_days: Optional[int] = None,
         limit: int = 200,
+        analysis_date_from: Optional[date] = None,
+        analysis_date_to: Optional[date] = None,
+        allowed_categories: Optional[List[str]] = None,
+        sentiment_score_min: Optional[int] = None,
+        sentiment_score_max: Optional[int] = None,
+        trigger_source: str = "manual",
     ) -> Dict[str, Any]:
         config = get_config()
 
@@ -44,6 +51,9 @@ class BacktestService:
             eval_window_days = getattr(config, "backtest_eval_window_days", 10)
         if min_age_days is None:
             min_age_days = getattr(config, "backtest_min_age_days", 14)
+        if sentiment_score_min is not None and sentiment_score_max is not None:
+            if int(sentiment_score_min) > int(sentiment_score_max):
+                raise ValueError("sentiment_score_min cannot be greater than sentiment_score_max")
 
         engine_version = getattr(config, "backtest_engine_version", "v1")
         neutral_band_pct = float(getattr(config, "backtest_neutral_band_pct", 2.0))
@@ -54,6 +64,7 @@ class BacktestService:
             engine_version=str(engine_version),
         )
 
+        allowed_operation_advices = self._resolve_allowed_operation_advices(allowed_categories)
         candidates = self.repo.get_candidates(
             code=code,
             min_age_days=int(min_age_days),
@@ -61,6 +72,11 @@ class BacktestService:
             eval_window_days=int(eval_window_days),
             engine_version=str(engine_version),
             force=force,
+            analysis_date_from=analysis_date_from,
+            analysis_date_to=analysis_date_to,
+            allowed_operation_advices=allowed_operation_advices,
+            sentiment_score_min=sentiment_score_min,
+            sentiment_score_max=sentiment_score_max,
         )
 
         processed = 0
@@ -88,6 +104,7 @@ class BacktestService:
                             eval_status="error",
                             evaluated_at=datetime.now(),
                             operation_advice=analysis.operation_advice,
+                            trigger_source=trigger_source,
                         )
                     )
                     continue
@@ -109,6 +126,7 @@ class BacktestService:
                             eval_status="insufficient_data",
                             evaluated_at=datetime.now(),
                             operation_advice=analysis.operation_advice,
+                            trigger_source=trigger_source,
                         )
                     )
                     continue
@@ -126,6 +144,27 @@ class BacktestService:
                         analysis_date=start_daily.date,
                         eval_window_days=int(eval_window_days),
                     )
+                if not self._is_forward_window_settled(
+                    code=analysis.code,
+                    analysis_date=start_daily.date,
+                    eval_window_days=int(eval_window_days),
+                    forward_bars=forward_bars,
+                ):
+                    insufficient += 1
+                    results_to_save.append(
+                        BacktestResult(
+                            analysis_history_id=analysis.id,
+                            code=analysis.code,
+                            analysis_date=start_daily.date,
+                            eval_window_days=int(eval_window_days),
+                            engine_version=str(engine_version),
+                            eval_status="insufficient_data",
+                            evaluated_at=datetime.now(),
+                            operation_advice=analysis.operation_advice,
+                            trigger_source=trigger_source,
+                        )
+                    )
+                    continue
 
                 evaluation = BacktestEngine.evaluate_single(
                     operation_advice=analysis.operation_advice,
@@ -155,6 +194,7 @@ class BacktestService:
                         eval_status=str(evaluation.get("eval_status") or "error"),
                         evaluated_at=datetime.now(),
                         operation_advice=evaluation.get("operation_advice"),
+                        trigger_source=trigger_source,
                         position_recommendation=evaluation.get("position_recommendation"),
                         start_price=evaluation.get("start_price"),
                         end_close=evaluation.get("end_close"),
@@ -191,6 +231,7 @@ class BacktestService:
                         eval_status="error",
                         evaluated_at=datetime.now(),
                         operation_advice=analysis.operation_advice,
+                            trigger_source=trigger_source,
                     )
                 )
 
@@ -213,10 +254,24 @@ class BacktestService:
             "errors": errors,
         }
 
+    @staticmethod
+    def _resolve_allowed_operation_advices(allowed_categories: Optional[List[str]]) -> Optional[List[str]]:
+        if not allowed_categories:
+            return None
+        normalized_categories: Set[str] = {
+            str(category or "").strip().upper() for category in allowed_categories if str(category or "").strip()
+        }
+        if not normalized_categories:
+            return None
+        allowed = [advice for advice, category in RATING_MAP.items() if category in normalized_categories]
+        # Keep stable ordering for deterministic tests/logging.
+        return sorted(set(allowed))
+
     def get_recent_evaluations(
         self,
         *,
         code: Optional[str],
+        trigger_source: Optional[str] = None,
         eval_window_days: Optional[int] = None,
         limit: int = 50,
         page: int = 1,
@@ -241,6 +296,7 @@ class BacktestService:
         offset = max(page - 1, 0) * limit
         rows, total = self.repo.get_results_paginated(
             code=code,
+            trigger_source=trigger_source,
             eval_window_days=eval_window_days,
             engine_version=engine_version,
             analysis_date_from=analysis_date_from,
@@ -257,6 +313,7 @@ class BacktestService:
         *,
         scope: str,
         code: Optional[str],
+        trigger_source: Optional[str] = None,
         eval_window_days: Optional[int] = None,
         analysis_date_from: Optional[date] = None,
         analysis_date_to: Optional[date] = None,
@@ -265,10 +322,16 @@ class BacktestService:
         engine_version = str(getattr(config, "backtest_engine_version", "v1"))
         lookup_code = OVERALL_SENTINEL_CODE if scope == "overall" else code
 
-        if analysis_date_from is not None or analysis_date_to is not None:
+        use_dynamic_summary = (
+            trigger_source is not None
+            or analysis_date_from is not None
+            or analysis_date_to is not None
+        )
+        if use_dynamic_summary:
             ew = int(eval_window_days) if eval_window_days is not None else None
             count = self.repo.count_results(
                 code=code,
+                trigger_source=trigger_source,
                 eval_window_days=ew,
                 engine_version=engine_version,
                 analysis_date_from=analysis_date_from,
@@ -280,6 +343,7 @@ class BacktestService:
                 )
             rows = self.repo.list_results(
                 code=code,
+                trigger_source=trigger_source,
                 eval_window_days=ew,
                 engine_version=engine_version,
                 analysis_date_from=analysis_date_from,
@@ -343,6 +407,46 @@ class BacktestService:
             return analysis.created_at.date()
         logger.warning(f"无法确定分析日期，跳过记录: {analysis.code}#{getattr(analysis, 'id', '?')}")
         return None
+
+    @staticmethod
+    def _is_forward_window_settled(
+        *,
+        code: str,
+        analysis_date: date,
+        eval_window_days: int,
+        forward_bars: List[Any],
+    ) -> bool:
+        """Ensure forward bars are fully settled before evaluation.
+
+        For next-day validation (`eval_window_days=1`), the first forward bar must
+        be no later than the latest completed trading session of the stock's market.
+        This prevents intraday/partial bars from being treated as final outcomes.
+        """
+        if int(eval_window_days) != 1:
+            return True
+        if not forward_bars:
+            return False
+        first_bar = forward_bars[0]
+        first_bar_date = getattr(first_bar, "date", None)
+        if not isinstance(first_bar_date, date):
+            return False
+        try:
+            from src.core.trading_calendar import get_effective_trading_date, get_market_for_stock
+
+            market = get_market_for_stock(code)
+            settled_date = get_effective_trading_date(market)
+            if first_bar_date > settled_date:
+                logger.info(
+                    "回测前向窗口未收盘，暂记数据不足: code=%s analysis_date=%s first_forward_date=%s settled_date=%s",
+                    code,
+                    analysis_date,
+                    first_bar_date,
+                    settled_date,
+                )
+                return False
+        except Exception as exc:
+            logger.warning("校验回测窗口收盘状态失败（按可用数据继续）: %s", exc)
+        return True
 
     def _try_fill_daily_data(self, *, code: str, analysis_date: date, eval_window_days: int) -> None:
         try:
@@ -449,6 +553,7 @@ class BacktestService:
             "eval_status": row.eval_status,
             "evaluated_at": row.evaluated_at.isoformat() if row.evaluated_at else None,
             "operation_advice": row.operation_advice,
+            "trigger_source": row.trigger_source,
             "trend_prediction": trend_prediction,
             "position_recommendation": row.position_recommendation,
             "start_price": row.start_price,

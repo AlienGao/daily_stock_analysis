@@ -323,6 +323,7 @@ class BacktestResult(Base):
 
     # 建议快照（避免未来分析字段变化导致回测不可解释）
     operation_advice = Column(String(20))
+    trigger_source = Column(String(16), index=True)  # auto/manual
     position_recommendation = Column(String(8))  # long/cash
 
     # 价格与收益
@@ -714,6 +715,7 @@ class DatabaseManager:
         # 创建所有表
         Base.metadata.create_all(self._engine)
         self._ensure_analysis_history_query_source_column()
+        self._ensure_backtest_results_trigger_source_column()
 
         self._initialized = True
         logger.info(f"数据库初始化完成: {db_url}")
@@ -747,6 +749,33 @@ class DatabaseManager:
             logger.info("已添加列 analysis_history.query_source")
         except Exception as exc:
             logger.warning("添加 analysis_history.query_source 失败: %s", exc)
+
+    def _ensure_backtest_results_trigger_source_column(self) -> None:
+        """SQLite: add backtest_results.trigger_source if missing."""
+        if not self._is_sqlite_engine:
+            return
+        try:
+            with self._engine.connect() as conn:
+                rows = conn.execute(
+                    text("PRAGMA table_info(backtest_results)")
+                ).fetchall()
+            col_names = {r[1] for r in rows}
+            if "trigger_source" in col_names:
+                return
+        except Exception as exc:
+            logger.warning("检查 backtest_results 表结构失败: %s", exc)
+            return
+        try:
+            with self._engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "ALTER TABLE backtest_results "
+                        "ADD COLUMN trigger_source VARCHAR(16)"
+                    )
+                )
+            logger.info("已添加列 backtest_results.trigger_source")
+        except Exception as exc:
+            logger.warning("添加 backtest_results.trigger_source 失败: %s", exc)
     
     @classmethod
     def get_instance(cls) -> 'DatabaseManager':

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import List, Optional, Tuple
 
 from sqlalchemy import and_, delete, desc, func, select
@@ -33,6 +33,11 @@ class BacktestRepository:
         eval_window_days: int,
         engine_version: str,
         force: bool,
+        analysis_date_from: Optional[date] = None,
+        analysis_date_to: Optional[date] = None,
+        allowed_operation_advices: Optional[List[str]] = None,
+        sentiment_score_min: Optional[int] = None,
+        sentiment_score_max: Optional[int] = None,
     ) -> List[AnalysisHistory]:
         """Return AnalysisHistory rows eligible for backtest."""
         cutoff_dt = datetime.now() - timedelta(days=min_age_days)
@@ -41,6 +46,18 @@ class BacktestRepository:
             conditions = [AnalysisHistory.created_at <= cutoff_dt]
             if code:
                 conditions.append(AnalysisHistory.code == code)
+            if analysis_date_from is not None:
+                start_dt = datetime.combine(analysis_date_from, time.min)
+                conditions.append(AnalysisHistory.created_at >= start_dt)
+            if analysis_date_to is not None:
+                end_dt = datetime.combine(analysis_date_to + timedelta(days=1), time.min)
+                conditions.append(AnalysisHistory.created_at < end_dt)
+            if allowed_operation_advices:
+                conditions.append(AnalysisHistory.operation_advice.in_(allowed_operation_advices))
+            if sentiment_score_min is not None:
+                conditions.append(AnalysisHistory.sentiment_score >= int(sentiment_score_min))
+            if sentiment_score_max is not None:
+                conditions.append(AnalysisHistory.sentiment_score <= int(sentiment_score_max))
 
             query = select(AnalysisHistory).where(and_(*conditions))
 
@@ -98,6 +115,7 @@ class BacktestRepository:
         code: Optional[str],
         eval_window_days: Optional[int] = None,
         engine_version: Optional[str] = None,
+        trigger_source: Optional[str] = None,
         analysis_date_from: Optional[date] = None,
         analysis_date_to: Optional[date] = None,
         days: Optional[int],
@@ -109,6 +127,7 @@ class BacktestRepository:
                 code=code,
                 eval_window_days=eval_window_days,
                 engine_version=engine_version,
+                trigger_source=trigger_source,
                 analysis_date_from=analysis_date_from,
                 analysis_date_to=analysis_date_to,
                 days=days,
@@ -143,6 +162,7 @@ class BacktestRepository:
         code: Optional[str],
         eval_window_days: Optional[int] = None,
         engine_version: Optional[str] = None,
+        trigger_source: Optional[str] = None,
         analysis_date_from: Optional[date] = None,
         analysis_date_to: Optional[date] = None,
         days: Optional[int] = None,
@@ -153,6 +173,7 @@ class BacktestRepository:
                 code=code,
                 eval_window_days=eval_window_days,
                 engine_version=engine_version,
+                trigger_source=trigger_source,
                 analysis_date_from=analysis_date_from,
                 analysis_date_to=analysis_date_to,
                 days=days,
@@ -171,6 +192,7 @@ class BacktestRepository:
         code: Optional[str],
         eval_window_days: Optional[int] = None,
         engine_version: Optional[str] = None,
+        trigger_source: Optional[str] = None,
         analysis_date_from: Optional[date] = None,
         analysis_date_to: Optional[date] = None,
         days: Optional[int] = None,
@@ -181,6 +203,7 @@ class BacktestRepository:
                 code=code,
                 eval_window_days=eval_window_days,
                 engine_version=engine_version,
+                trigger_source=trigger_source,
                 analysis_date_from=analysis_date_from,
                 analysis_date_to=analysis_date_to,
                 days=days,
@@ -298,6 +321,7 @@ class BacktestRepository:
         *,
         code: Optional[str],
         engine_version: Optional[str] = None,
+        trigger_source: Optional[str] = None,
         analysis_date_from: Optional[date] = None,
         analysis_date_to: Optional[date] = None,
     ) -> List[int]:
@@ -307,6 +331,7 @@ class BacktestRepository:
                 code=code,
                 eval_window_days=None,
                 engine_version=engine_version,
+                trigger_source=trigger_source,
                 analysis_date_from=analysis_date_from,
                 analysis_date_to=analysis_date_to,
                 days=None,
@@ -326,6 +351,7 @@ class BacktestRepository:
         code: Optional[str],
         eval_window_days: Optional[int],
         engine_version: Optional[str],
+        trigger_source: Optional[str],
         analysis_date_from: Optional[date],
         analysis_date_to: Optional[date],
         days: Optional[int],
@@ -337,6 +363,8 @@ class BacktestRepository:
             conditions.append(BacktestResult.eval_window_days == eval_window_days)
         if engine_version:
             conditions.append(BacktestResult.engine_version == engine_version)
+        if trigger_source:
+            conditions.append(BacktestResult.trigger_source == trigger_source)
         if analysis_date_from is not None:
             conditions.append(BacktestResult.analysis_date >= analysis_date_from)
         if analysis_date_to is not None:

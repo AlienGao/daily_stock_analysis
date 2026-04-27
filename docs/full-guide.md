@@ -999,10 +999,31 @@ python main.py --debug
 | `BACKTEST_MIN_AGE_DAYS` | `14` | 仅回测 N 天前的记录，避免数据不完整 |
 | `BACKTEST_ENGINE_VERSION` | `v1` | 引擎版本号，升级逻辑时用于区分结果 |
 | `BACKTEST_NEUTRAL_BAND_PCT` | `2.0` | 中性区间阈值（%），±2% 内视为震荡 |
+| `BACKTEST_AUTO_MODE` | `legacy` | 自动回测模式：`legacy`（全库增量）或 `previous_trading_day_buy_hold`（仅上一交易日 BUY/HOLD） |
+| `BACKTEST_AUTO_FILTER_MODE` | `signal` | 自动回测筛选模式：`all`/`signal`/`score`/`signal_and_score` |
+| `BACKTEST_AUTO_ALLOWED_CATEGORIES` | `BUY,HOLD` | 自动回测模式下允许评估的建议分类（逗号分隔） |
+| `BACKTEST_AUTO_SENTIMENT_SCORE_MIN` | *(空)* | 自动回测评分下限（0-100，可选） |
+| `BACKTEST_AUTO_SENTIMENT_SCORE_MAX` | *(空)* | 自动回测评分上限（0-100，可选） |
+
+手动触发（Web/API）支持额外筛选参数，可用于“信号回测 / 评分回测 / 叠加回测”：
+
+- `allowed_categories`：建议分类过滤（如 `["BUY","HOLD"]`）
+- `sentiment_score_min` / `sentiment_score_max`：评分区间过滤（0-100）
+- 叠加规则：同时传入时按**交集**筛选候选分析记录
 
 ### 自动运行
 
 回测在每日分析流程完成后自动触发（非阻塞，失败不影响通知推送）。也可通过 API 手动触发。
+
+- `legacy`：沿用历史行为，按 `BACKTEST_MIN_AGE_DAYS` + 增量候选评估。
+- `previous_trading_day_buy_hold`：按交易日历精确定位“上一交易日”，仅回测该交易日内建议分类属于 `BACKTEST_AUTO_ALLOWED_CATEGORIES`（默认 `BUY,HOLD`）的记录。
+- `BACKTEST_AUTO_FILTER_MODE` 可叠加筛选：
+  - `all`：不过滤
+  - `signal`：仅按 `BACKTEST_AUTO_ALLOWED_CATEGORIES`
+  - `score`：仅按 `BACKTEST_AUTO_SENTIMENT_SCORE_MIN/MAX`
+  - `signal_and_score`：分类 + 评分区间同时生效（交集）
+
+> 说明：该模式仅影响“每日自动回测”。Web/API 手动回测（`/api/v1/backtest/run`）仍按请求参数执行，不受此开关影响。
 
 ### 评估指标
 
@@ -1031,6 +1052,10 @@ FastAPI 提供 RESTful API 服务，支持配置管理和触发分析。
 |------|------|
 | `python main.py --serve` | 启动 API 服务 + 执行一次完整分析 |
 | `python main.py --serve-only` | 仅启动 API 服务，手动触发分析 |
+| `python main.py --serve-only --webui-dev` | 启动 API + Vite 开发服务器（前端热更新，访问 `http://127.0.0.1:5173`） |
+
+> `--webui-dev` 也支持单端口访问：继续打开 `http://127.0.0.1:8000`，后端会将前端页面请求代理到 Vite 开发服务器，API 路径仍由 FastAPI 本地处理。
+> 本地默认可通过 `WEBUI_DEV_DEFAULT=true` 自动启用开发者模式（沿用原有启动指令）；如需临时关闭可加 `--no-webui-dev`。
 
 ### 功能特性
 
@@ -1051,7 +1076,7 @@ FastAPI 提供 RESTful API 服务，支持配置管理和触发分析。
 | `/api/v1/history` | GET | 查询分析历史 |
 | `/api/v1/usage/summary?period=today|month|all` | GET | 按调用类型与模型维度汇总 LLM 调用次数和 Token 用量 |
 | `/api/v1/backtest/run` | POST | 触发回测 |
-| `/api/v1/backtest/results` | GET | 查询回测结果（分页） |
+| `/api/v1/backtest/results` | GET | 查询回测结果（分页，支持 `trigger_source=auto|manual`） |
 | `/api/v1/backtest/performance` | GET | 获取整体回测表现 |
 | `/api/v1/backtest/performance/{code}` | GET | 获取单股回测表现 |
 | `/api/v1/stocks/extract-from-image` | POST | 从图片提取股票代码（multipart，超时 60s） |
@@ -1091,6 +1116,11 @@ curl -X POST http://127.0.0.1:8000/api/v1/backtest/run \
 curl -X POST http://127.0.0.1:8000/api/v1/backtest/run \
   -H 'Content-Type: application/json' \
   -d '{"code": "600519", "force": false}'
+
+# 触发回测（信号 + 评分叠加）
+curl -X POST http://127.0.0.1:8000/api/v1/backtest/run \
+  -H 'Content-Type: application/json' \
+  -d '{"force": true, "allowed_categories": ["BUY","HOLD"], "sentiment_score_min": 70, "sentiment_score_max": 100}'
 
 # 查询整体回测表现
 curl http://127.0.0.1:8000/api/v1/backtest/performance

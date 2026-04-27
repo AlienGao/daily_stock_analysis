@@ -22,6 +22,8 @@ A股自选股智能分析系统 - 主调度程序
 - 买点偏好：缩量回踩 MA5/MA10 支撑
 """
 import os
+import atexit
+import subprocess
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -59,6 +61,7 @@ from src.utils.strategy_hits import count_matched_skills, matched_skill_ids_prev
 
 logger = logging.getLogger(__name__)
 _RUNTIME_ENV_FILE_KEYS = set()
+_WEBUI_DEV_PROCESS: Optional[subprocess.Popen] = None
 
 
 def _get_active_env_path() -> Path:
@@ -310,6 +313,16 @@ def parse_arguments() -> argparse.Namespace:
         '--serve-only',
         action='store_true',
         help='仅启动 FastAPI 后端服务，不自动执行分析'
+    )
+    parser.add_argument(
+        '--webui-dev',
+        action='store_true',
+        help='启动前端开发服务器（Vite HMR），访问 http://127.0.0.1:5173'
+    )
+    parser.add_argument(
+        '--no-webui-dev',
+        action='store_true',
+        help='禁用前端开发服务器与开发代理（覆盖本地默认开发者模式）'
     )
 
     parser.add_argument(
@@ -791,14 +804,84 @@ def run_full_analysis(
             if getattr(config, 'backtest_enabled', False):
                 from src.services.backtest_service import BacktestService
 
-                logger.info("开始自动回测...")
                 service = BacktestService()
-                stats = service.run_backtest(
-                    force=False,
-                    eval_window_days=getattr(config, 'backtest_eval_window_days', 10),
-                    min_age_days=getattr(config, 'backtest_min_age_days', 14),
-                    limit=200,
+                auto_mode = (getattr(config, "backtest_auto_mode", "legacy") or "legacy").strip().lower()
+                eval_window_days = int(getattr(config, "backtest_eval_window_days", 10))
+                filter_mode = (getattr(config, "backtest_auto_filter_mode", "signal") or "signal").strip().lower()
+                categories_raw = str(getattr(config, "backtest_auto_allowed_categories", "BUY,HOLD") or "")
+                allowed_categories_cfg = [part.strip().upper() for part in categories_raw.split(",") if part.strip()]
+                if not allowed_categories_cfg:
+                    allowed_categories_cfg = ["BUY", "HOLD"]
+                score_min_cfg = getattr(config, "backtest_auto_sentiment_score_min", None)
+                score_max_cfg = getattr(config, "backtest_auto_sentiment_score_max", None)
+
+                if filter_mode not in {"all", "signal", "score", "signal_and_score"}:
+                    logger.warning("未知 BACKTEST_AUTO_FILTER_MODE=%s，已回退为 signal", filter_mode)
+                    filter_mode = "signal"
+
+                allowed_categories = (
+                    allowed_categories_cfg
+                    if filter_mode in {"signal", "signal_and_score"}
+                    else None
                 )
+                score_min = score_min_cfg if filter_mode in {"score", "signal_and_score"} else None
+                score_max = score_max_cfg if filter_mode in {"score", "signal_and_score"} else None
+                if score_min is not None and score_max is not None and int(score_min) > int(score_max):
+                    logger.warning(
+                        "自动回测评分区间无效（min=%s > max=%s），已忽略评分过滤",
+                        score_min,
+                        score_max,
+                    )
+                    score_min = None
+                    score_max = None
+
+                if auto_mode == "previous_trading_day_buy_hold":
+                    from src.core.trading_calendar import get_effective_trading_date, get_market_now
+
+                    # "上一交易日" 以市场本地时间回推一天后再解算有效交易日，避免周末/节假日误判。
+                    market_now = get_market_now("cn")
+                    previous_trading_day = get_effective_trading_date(
+                        "cn",
+                        current_time=market_now - timedelta(days=1),
+                    )
+                    logger.info(
+                        "开始自动回测（mode=%s, target_analysis_date=%s, categories=%s, eval_window_days=%s）",
+                        auto_mode,
+                        previous_trading_day.isoformat(),
+                        ",".join(allowed_categories or ["ALL"]),
+                        eval_window_days,
+                    )
+                    stats = service.run_backtest(
+                        force=False,
+                        eval_window_days=eval_window_days,
+                        min_age_days=0,
+                        limit=200,
+                        analysis_date_from=previous_trading_day,
+                        analysis_date_to=previous_trading_day,
+                        allowed_categories=allowed_categories,
+                        sentiment_score_min=score_min,
+                        sentiment_score_max=score_max,
+                        trigger_source="auto",
+                    )
+                else:
+                    logger.info(
+                        "开始自动回测（mode=%s, filter_mode=%s, categories=%s, score=[%s,%s]）...",
+                        auto_mode,
+                        filter_mode,
+                        ",".join(allowed_categories or ["ALL"]),
+                        score_min if score_min is not None else "",
+                        score_max if score_max is not None else "",
+                    )
+                    stats = service.run_backtest(
+                        force=False,
+                        eval_window_days=eval_window_days,
+                        min_age_days=getattr(config, 'backtest_min_age_days', 14),
+                        limit=200,
+                        allowed_categories=allowed_categories,
+                        sentiment_score_min=score_min,
+                        sentiment_score_max=score_max,
+                        trigger_source="auto",
+                    )
                 logger.info(
                     f"自动回测完成: processed={stats.get('processed')} saved={stats.get('saved')} "
                     f"completed={stats.get('completed')} insufficient={stats.get('insufficient')} errors={stats.get('errors')}"
@@ -851,6 +934,50 @@ def start_api_server(host: str, port: int, config: Config) -> None:
     thread = threading.Thread(target=run_server, daemon=True)
     thread.start()
     logger.info(f"FastAPI 服务已启动: http://{host}:{port}")
+
+
+def start_webui_dev_server() -> None:
+    """Start Vite dev server for frontend HMR local development."""
+    global _WEBUI_DEV_PROCESS
+    if _WEBUI_DEV_PROCESS is not None and _WEBUI_DEV_PROCESS.poll() is None:
+        logger.info("WebUI 开发服务器已在运行，跳过重复启动。")
+        return
+
+    frontend_dir = Path(__file__).resolve().parent / "apps" / "dsa-web"
+    npm_executable = "npm.cmd" if os.name == "nt" else "npm"
+    command = [npm_executable, "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
+
+    try:
+        _WEBUI_DEV_PROCESS = subprocess.Popen(
+            command,
+            cwd=frontend_dir,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        logger.info("已启动 WebUI 开发服务器（HMR）: http://127.0.0.1:5173")
+        logger.info("前端改动将自动热更新（无需重启 Python 服务）。")
+    except FileNotFoundError:
+        logger.warning("未找到 npm，无法启动 WebUI 开发服务器。")
+    except Exception as exc:
+        logger.warning("启动 WebUI 开发服务器失败: %s", exc)
+
+
+def stop_webui_dev_server() -> None:
+    """Stop background Vite dev server on process exit."""
+    global _WEBUI_DEV_PROCESS
+    proc = _WEBUI_DEV_PROCESS
+    if proc is None:
+        return
+    if proc.poll() is None:
+        try:
+            proc.terminate()
+            proc.wait(timeout=5)
+        except Exception:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+    _WEBUI_DEV_PROCESS = None
 
 
 def _is_truthy_env(var_name: str, default: str = "true") -> bool:
@@ -1008,7 +1135,21 @@ def main() -> int:
 
     bot_clients_started = False
     if start_serve:
-        if not prepare_webui_frontend_assets():
+        local_default_webui_dev = (
+            not getattr(args, "no_webui_dev", False)
+            and not getattr(args, "webui_dev", False)
+            and _is_truthy_env("WEBUI_DEV_DEFAULT", "true")
+        )
+        if local_default_webui_dev:
+            args.webui_dev = True
+            logger.info("本地默认开发者模式已启用（WEBUI_DEV_DEFAULT=true）。")
+
+        if getattr(args, "webui_dev", False) and not getattr(args, "no_webui_dev", False):
+            logger.info("检测到 --webui-dev：跳过静态构建检查，启用 Vite 热更新开发模式。")
+            os.environ["WEBUI_DEV_PROXY_URL"] = "http://127.0.0.1:5173"
+            start_webui_dev_server()
+            atexit.register(stop_webui_dev_server)
+        elif not prepare_webui_frontend_assets():
             logger.warning("前端静态资源未就绪，继续启动 FastAPI 服务（Web 页面可能不可用）")
         try:
             start_api_server(host=args.host, port=args.port, config=config)
@@ -1023,6 +1164,8 @@ def main() -> int:
     if args.serve_only:
         logger.info("模式: 仅 Web 服务")
         logger.info(f"Web 服务运行中: http://{args.host}:{args.port}")
+        if getattr(args, "webui_dev", False):
+            logger.info("前端开发模式地址: http://127.0.0.1:5173 （支持热更新）")
         logger.info("通过 /api/v1/analysis/analyze 接口触发分析")
         logger.info(f"API 文档: http://{args.host}:{args.port}/docs")
         logger.info("按 Ctrl+C 退出...")

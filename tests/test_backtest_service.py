@@ -500,6 +500,248 @@ class BacktestServiceTestCase(unittest.TestCase):
             self.assertEqual(overall.completed_count, 2)
             self.assertEqual(overall.win_count, 2)
 
+    def test_run_backtest_supports_date_and_category_filters(self) -> None:
+        self._seed_analysis(
+            query_id="q2",
+            analysis_date=date(2024, 1, 10),
+            created_at=datetime(2024, 1, 10, 0, 0, 0),
+            operation_advice="买入",
+            trend_prediction="看多",
+            start_close=100.0,
+            forward_bars=[
+                StockDaily(code="600519", date=date(2024, 1, 11), high=102.0, low=99.0, close=101.0),
+            ],
+        )
+        with self.db.get_session() as session:
+            session.add(
+                AnalysisHistory(
+                    query_id="q3",
+                    code="600519",
+                    name="贵州茅台",
+                    report_type="simple",
+                    sentiment_score=40,
+                    operation_advice="卖出",
+                    trend_prediction="看空",
+                    analysis_summary="sell-test",
+                    stop_loss=None,
+                    take_profit=None,
+                    created_at=datetime(2024, 1, 10, 0, 5, 0),
+                    context_snapshot='{"enhanced_context": {"date": "2024-01-10"}}',
+                )
+            )
+            session.commit()
+        self._seed_analysis(
+            query_id="q4",
+            analysis_date=date(2024, 1, 12),
+            created_at=datetime(2024, 1, 12, 0, 0, 0),
+            operation_advice="持有",
+            trend_prediction="震荡",
+            start_close=100.0,
+            forward_bars=[
+                StockDaily(code="600519", date=date(2024, 1, 13), high=101.0, low=99.0, close=100.0),
+            ],
+        )
+
+        service = BacktestService(self.db)
+        stats = service.run_backtest(
+            code="600519",
+            force=False,
+            eval_window_days=1,
+            min_age_days=0,
+            limit=20,
+            analysis_date_from=date(2024, 1, 10),
+            analysis_date_to=date(2024, 1, 10),
+            allowed_categories=["BUY", "HOLD"],
+        )
+        self.assertEqual(stats["saved"], 1)
+        self.assertEqual(stats["completed"], 1)
+
+        rows = service.repo.list_results(
+            code="600519",
+            eval_window_days=1,
+            engine_version="v1",
+            analysis_date_from=date(2024, 1, 10),
+            analysis_date_to=date(2024, 1, 10),
+        )
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0].operation_advice, "买入")
+
+    def test_run_backtest_supports_sentiment_score_filters(self) -> None:
+        self._seed_analysis(
+            query_id="q2",
+            analysis_date=date(2024, 1, 10),
+            created_at=datetime(2024, 1, 10, 0, 0, 0),
+            operation_advice="买入",
+            trend_prediction="看多",
+            start_close=100.0,
+            forward_bars=[
+                StockDaily(code="600519", date=date(2024, 1, 11), high=102.0, low=99.0, close=101.0),
+            ],
+        )
+        with self.db.get_session() as session:
+            row = session.query(AnalysisHistory).filter(AnalysisHistory.query_id == "q2").one()
+            row.sentiment_score = 92
+            session.commit()
+
+        service = BacktestService(self.db)
+        stats = service.run_backtest(
+            code="600519",
+            force=False,
+            eval_window_days=1,
+            min_age_days=0,
+            limit=20,
+            analysis_date_from=date(2024, 1, 10),
+            analysis_date_to=date(2024, 1, 10),
+            sentiment_score_min=90,
+            sentiment_score_max=100,
+        )
+        self.assertEqual(stats["saved"], 1)
+        rows = service.repo.list_results(
+            code="600519",
+            eval_window_days=1,
+            engine_version="v1",
+            analysis_date_from=date(2024, 1, 10),
+            analysis_date_to=date(2024, 1, 10),
+        )
+        self.assertEqual(len(rows), 1)
+
+        stats_filtered_out = service.run_backtest(
+            code="600519",
+            force=True,
+            eval_window_days=1,
+            min_age_days=0,
+            limit=20,
+            analysis_date_from=date(2024, 1, 10),
+            analysis_date_to=date(2024, 1, 10),
+            sentiment_score_min=0,
+            sentiment_score_max=80,
+        )
+        self.assertEqual(stats_filtered_out["saved"], 0)
+
+    def test_run_backtest_rejects_invalid_sentiment_score_range(self) -> None:
+        service = BacktestService(self.db)
+        with self.assertRaisesRegex(ValueError, "sentiment_score_min cannot be greater than sentiment_score_max"):
+            service.run_backtest(
+                code="600519",
+                force=False,
+                eval_window_days=1,
+                min_age_days=0,
+                limit=10,
+                sentiment_score_min=80,
+                sentiment_score_max=60,
+            )
+
+    @patch("src.core.trading_calendar.get_effective_trading_date", return_value=date(2024, 1, 1))
+    def test_next_day_validation_waits_for_settled_session(self, _mock_settled_date) -> None:
+        service = BacktestService(self.db)
+        stats = service.run_backtest(
+            code="600519",
+            force=True,
+            eval_window_days=1,
+            min_age_days=0,
+            limit=10,
+        )
+        self.assertEqual(stats["saved"], 1)
+        self.assertEqual(stats["completed"], 0)
+        self.assertEqual(stats["insufficient"], 1)
+
+        with self.db.get_session() as session:
+            row = session.query(BacktestResult).filter(
+                BacktestResult.code == "600519",
+                BacktestResult.eval_window_days == 1,
+            ).one()
+            self.assertEqual(row.eval_status, "insufficient_data")
+
+    def test_get_recent_evaluations_supports_trigger_source_filter(self) -> None:
+        service = BacktestService(self.db)
+        service.run_backtest(
+            code="600519",
+            force=False,
+            eval_window_days=3,
+            min_age_days=0,
+            limit=10,
+            trigger_source="auto",
+        )
+
+        auto_data = service.get_recent_evaluations(
+            code="600519",
+            trigger_source="auto",
+            eval_window_days=3,
+            limit=10,
+            page=1,
+        )
+        manual_data = service.get_recent_evaluations(
+            code="600519",
+            trigger_source="manual",
+            eval_window_days=3,
+            limit=10,
+            page=1,
+        )
+        self.assertEqual(auto_data["total"], 1)
+        self.assertEqual(auto_data["items"][0]["trigger_source"], "auto")
+        self.assertEqual(manual_data["total"], 0)
+
+    def test_get_summary_supports_trigger_source_filter(self) -> None:
+        self._seed_analysis(
+            query_id="q2",
+            analysis_date=date(2024, 1, 10),
+            created_at=datetime(2024, 1, 10, 0, 0, 0),
+            operation_advice="买入",
+            trend_prediction="看多",
+            start_close=100.0,
+            forward_bars=[
+                StockDaily(code="600519", date=date(2024, 1, 11), high=102.0, low=99.0, close=101.0),
+            ],
+        )
+
+        service = BacktestService(self.db)
+        service.run_backtest(
+            code="600519",
+            force=False,
+            eval_window_days=1,
+            min_age_days=0,
+            limit=20,
+            analysis_date_from=date(2024, 1, 1),
+            analysis_date_to=date(2024, 1, 1),
+            trigger_source="auto",
+        )
+        service.run_backtest(
+            code="600519",
+            force=False,
+            eval_window_days=1,
+            min_age_days=0,
+            limit=20,
+            analysis_date_from=date(2024, 1, 10),
+            analysis_date_to=date(2024, 1, 10),
+            trigger_source="manual",
+        )
+
+        auto_summary = service.get_summary(
+            scope="stock",
+            code="600519",
+            trigger_source="auto",
+            eval_window_days=1,
+        )
+        manual_summary = service.get_summary(
+            scope="stock",
+            code="600519",
+            trigger_source="manual",
+            eval_window_days=1,
+        )
+        all_summary = service.get_summary(
+            scope="stock",
+            code="600519",
+            eval_window_days=1,
+        )
+
+        self.assertIsNotNone(auto_summary)
+        self.assertIsNotNone(manual_summary)
+        self.assertIsNotNone(all_summary)
+        assert auto_summary is not None and manual_summary is not None and all_summary is not None
+        self.assertEqual(auto_summary["total_evaluations"], 1)
+        self.assertEqual(manual_summary["total_evaluations"], 1)
+        self.assertEqual(all_summary["total_evaluations"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()

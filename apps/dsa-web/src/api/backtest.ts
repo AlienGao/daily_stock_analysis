@@ -21,10 +21,16 @@ export const backtestApi = {
     if (params.evalWindowDays) requestData.eval_window_days = params.evalWindowDays;
     if (params.minAgeDays != null) requestData.min_age_days = params.minAgeDays;
     if (params.limit) requestData.limit = params.limit;
+    if (params.allowedCategories && params.allowedCategories.length > 0) {
+      requestData.allowed_categories = params.allowedCategories;
+    }
+    if (params.sentimentScoreMin != null) requestData.sentiment_score_min = params.sentimentScoreMin;
+    if (params.sentimentScoreMax != null) requestData.sentiment_score_max = params.sentimentScoreMax;
 
     const response = await apiClient.post<Record<string, unknown>>(
       '/api/v1/backtest/run',
       requestData,
+      { timeout: 180000 },
     );
     return toCamelCase<BacktestRunResponse>(response.data);
   },
@@ -34,16 +40,18 @@ export const backtestApi = {
    */
   getResults: async (params: {
     code?: string;
+    triggerSource?: 'auto' | 'manual';
     evalWindowDays?: number;
     analysisDateFrom?: string;
     analysisDateTo?: string;
     page?: number;
     limit?: number;
   } = {}): Promise<BacktestResultsResponse> => {
-    const { code, evalWindowDays, analysisDateFrom, analysisDateTo, page = 1, limit = 20 } = params;
+    const { code, triggerSource, evalWindowDays, analysisDateFrom, analysisDateTo, page = 1, limit = 20 } = params;
 
     const queryParams: Record<string, string | number> = { page, limit };
     if (code) queryParams.code = code;
+    if (triggerSource) queryParams.trigger_source = triggerSource;
     if (evalWindowDays) queryParams.eval_window_days = evalWindowDays;
     if (analysisDateFrom) queryParams.analysis_date_from = analysisDateFrom;
     if (analysisDateTo) queryParams.analysis_date_to = analysisDateTo;
@@ -66,12 +74,14 @@ export const backtestApi = {
    * Get overall performance metrics
    */
   getOverallPerformance: async (params: {
+    triggerSource?: 'auto' | 'manual';
     evalWindowDays?: number;
     analysisDateFrom?: string;
     analysisDateTo?: string;
   } = {}): Promise<PerformanceMetrics | null> => {
     try {
       const queryParams: Record<string, string | number> = {};
+      if (params.triggerSource) queryParams.trigger_source = params.triggerSource;
       if (params.evalWindowDays) queryParams.eval_window_days = params.evalWindowDays;
       if (params.analysisDateFrom) queryParams.analysis_date_from = params.analysisDateFrom;
       if (params.analysisDateTo) queryParams.analysis_date_to = params.analysisDateTo;
@@ -93,12 +103,14 @@ export const backtestApi = {
    * Get per-stock performance metrics
    */
   getStockPerformance: async (code: string, params: {
+    triggerSource?: 'auto' | 'manual';
     evalWindowDays?: number;
     analysisDateFrom?: string;
     analysisDateTo?: string;
   } = {}): Promise<PerformanceMetrics | null> => {
     try {
       const queryParams: Record<string, string | number> = {};
+      if (params.triggerSource) queryParams.trigger_source = params.triggerSource;
       if (params.evalWindowDays) queryParams.eval_window_days = params.evalWindowDays;
       if (params.analysisDateFrom) queryParams.analysis_date_from = params.analysisDateFrom;
       if (params.analysisDateTo) queryParams.analysis_date_to = params.analysisDateTo;

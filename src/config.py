@@ -128,6 +128,25 @@ def parse_env_int(
     return parsed
 
 
+def parse_env_optional_int(
+    value: Optional[str],
+    *,
+    field_name: str,
+    minimum: Optional[int] = None,
+    maximum: Optional[int] = None,
+) -> Optional[int]:
+    """Parse an optional integer env value; empty/None returns None."""
+    if value is None or not str(value).strip():
+        return None
+    return parse_env_int(
+        value,
+        0,
+        field_name=field_name,
+        minimum=minimum,
+        maximum=maximum,
+    )
+
+
 def parse_env_float(
     value: Optional[str],
     default: float,
@@ -812,6 +831,11 @@ class Config:
     backtest_min_age_days: int = 14
     backtest_engine_version: str = "v1"
     backtest_neutral_band_pct: float = 2.0
+    backtest_auto_mode: str = "legacy"  # legacy | previous_trading_day_buy_hold
+    backtest_auto_filter_mode: str = "signal"  # all | signal | score | signal_and_score
+    backtest_auto_allowed_categories: str = "BUY,HOLD"
+    backtest_auto_sentiment_score_min: Optional[int] = None
+    backtest_auto_sentiment_score_max: Optional[int] = None
     
     # === 日志配置 ===
     log_dir: str = "./logs"  # 日志文件目录
@@ -1530,6 +1554,21 @@ class Config:
                 2.0,
                 field_name='BACKTEST_NEUTRAL_BAND_PCT',
                 minimum=0.0,
+            ),
+            backtest_auto_mode=(os.getenv('BACKTEST_AUTO_MODE', 'legacy') or 'legacy').strip().lower(),
+            backtest_auto_filter_mode=(os.getenv('BACKTEST_AUTO_FILTER_MODE', 'signal') or 'signal').strip().lower(),
+            backtest_auto_allowed_categories=os.getenv('BACKTEST_AUTO_ALLOWED_CATEGORIES', 'BUY,HOLD'),
+            backtest_auto_sentiment_score_min=parse_env_optional_int(
+                os.getenv('BACKTEST_AUTO_SENTIMENT_SCORE_MIN'),
+                field_name='BACKTEST_AUTO_SENTIMENT_SCORE_MIN',
+                minimum=0,
+                maximum=100,
+            ),
+            backtest_auto_sentiment_score_max=parse_env_optional_int(
+                os.getenv('BACKTEST_AUTO_SENTIMENT_SCORE_MAX'),
+                field_name='BACKTEST_AUTO_SENTIMENT_SCORE_MAX',
+                minimum=0,
+                maximum=100,
             ),
             log_dir=os.getenv('LOG_DIR', './logs'),
             log_level=os.getenv('LOG_LEVEL', 'INFO'),

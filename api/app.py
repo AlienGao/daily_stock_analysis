@@ -23,6 +23,9 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import unquote
+from urllib.parse import urljoin
+from urllib.request import Request as UrlRequest, urlopen
+from urllib.error import URLError, HTTPError
 from typing import List, Optional
 
 from fastapi import FastAPI, Request
@@ -200,8 +203,11 @@ def create_app(static_dir: Optional[Path] = None) -> FastAPI:
     # ============================================================
     
     has_frontend = static_dir.exists() and (static_dir / "index.html").exists()
+    webui_dev_proxy_url = (os.getenv("WEBUI_DEV_PROXY_URL", "") or "").strip().rstrip("/")
     
-    if has_frontend:
+    if webui_dev_proxy_url:
+        logger.info("WebUI 开发代理模式已启用：%s", webui_dev_proxy_url)
+    elif has_frontend:
         # Surface bundle inconsistencies as soon as the app starts so that
         # blank-page reports (#1064 / #1065 / #1050) can be diagnosed from
         # logs/desktop.log instead of via browser devtools.
@@ -262,7 +268,59 @@ def create_app(static_dir: Optional[Path] = None) -> FastAPI:
     # 静态文件托管（前端 SPA）
     # ============================================================
     
-    if has_frontend:
+    if webui_dev_proxy_url:
+        def _proxy_to_webui_dev(request: Request, full_path: str = "") -> Response:
+            target_path = full_path or ""
+            if request.url.query:
+                target_path = f"{target_path}?{request.url.query}"
+            target_url = urljoin(f"{webui_dev_proxy_url}/", target_path)
+            upstream = UrlRequest(
+                url=target_url,
+                method=request.method,
+                headers={
+                    "Accept": request.headers.get("accept", "*/*"),
+                    "User-Agent": request.headers.get("user-agent", "DSA-Dev-Proxy"),
+                },
+            )
+            try:
+                with urlopen(upstream, timeout=10) as resp:
+                    status = getattr(resp, "status", 200)
+                    body = b"" if request.method == "HEAD" else resp.read()
+                    content_type = resp.headers.get("Content-Type", "text/plain; charset=utf-8")
+                    cache_control = resp.headers.get("Cache-Control")
+                    proxy_response = Response(content=body, status_code=status, media_type=content_type.split(";")[0])
+                    proxy_response.headers["Content-Type"] = content_type
+                    if cache_control:
+                        proxy_response.headers["Cache-Control"] = cache_control
+                    return proxy_response
+            except HTTPError as exc:
+                return Response(
+                    content=exc.read() if request.method != "HEAD" else b"",
+                    status_code=exc.code,
+                    media_type=exc.headers.get("Content-Type", "text/plain"),
+                )
+            except URLError as exc:
+                logger.warning("WebUI 开发代理请求失败: %s", exc)
+                return Response(
+                    content="WebUI dev server unavailable. Please run with --webui-dev or start Vite manually.",
+                    status_code=502,
+                    media_type="text/plain",
+                )
+
+        @app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
+        async def dev_root(request: Request):
+            return _proxy_to_webui_dev(request, "")
+
+        @app.api_route("/{full_path:path}", methods=["GET", "HEAD"], include_in_schema=False)
+        async def dev_spa_proxy(request: Request, full_path: str):
+            if full_path == "api" or full_path.startswith("api/"):
+                return JSONResponse(
+                    status_code=404,
+                    content={"error": "not_found", "message": f"API endpoint /{full_path} not found"}
+                )
+            return _proxy_to_webui_dev(request, full_path)
+
+    elif has_frontend and not webui_dev_proxy_url:
         # Serve `/assets/*` explicitly so that misses return a plain-text
         # 404 with the correct Content-Type instead of the default JSON
         # error response. JSON for a JS/CSS request is what masked the

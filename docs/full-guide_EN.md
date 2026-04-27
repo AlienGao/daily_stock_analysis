@@ -835,10 +835,31 @@ Set the following variables in `.env` (all optional, have defaults):
 | `BACKTEST_MIN_AGE_DAYS` | `14` | Only backtest records older than N days to avoid incomplete data |
 | `BACKTEST_ENGINE_VERSION` | `v1` | Engine version, used to distinguish results when logic is updated |
 | `BACKTEST_NEUTRAL_BAND_PCT` | `2.0` | Neutral band threshold (%), ±2% treated as range-bound |
+| `BACKTEST_AUTO_MODE` | `legacy` | Auto-backtest mode: `legacy` (incremental historical candidates) or `previous_trading_day_buy_hold` (only previous-trading-day BUY/HOLD signals) |
+| `BACKTEST_AUTO_FILTER_MODE` | `signal` | Auto-backtest filter mode: `all` / `signal` / `score` / `signal_and_score` |
+| `BACKTEST_AUTO_ALLOWED_CATEGORIES` | `BUY,HOLD` | Comma-separated advice categories allowed in auto mode |
+| `BACKTEST_AUTO_SENTIMENT_SCORE_MIN` | *(empty)* | Auto-backtest sentiment score lower bound (0-100, optional) |
+| `BACKTEST_AUTO_SENTIMENT_SCORE_MAX` | *(empty)* | Auto-backtest sentiment score upper bound (0-100, optional) |
+
+Manual Web/API runs support extra filters for "signal backtest / score backtest / combined backtest":
+
+- `allowed_categories`: advice-category filter (e.g. `["BUY","HOLD"]`)
+- `sentiment_score_min` / `sentiment_score_max`: score range filter (0-100)
+- Combination rule: when both are provided, candidates are filtered by the **intersection**
 
 ### Auto-run
 
 Backtesting triggers automatically after the daily analysis flow completes (non-blocking; failures do not affect notifications). It can also be triggered manually via API.
+
+- `legacy`: preserves the previous behavior (`BACKTEST_MIN_AGE_DAYS` + incremental candidates).
+- `previous_trading_day_buy_hold`: resolves the **previous trading day** via the trading calendar and only evaluates records whose advice category is in `BACKTEST_AUTO_ALLOWED_CATEGORIES` (default `BUY,HOLD`).
+- `BACKTEST_AUTO_FILTER_MODE` supports combined filters:
+  - `all`: no filter
+  - `signal`: use `BACKTEST_AUTO_ALLOWED_CATEGORIES` only
+  - `score`: use `BACKTEST_AUTO_SENTIMENT_SCORE_MIN/MAX` only
+  - `signal_and_score`: apply both category + score range (intersection)
+
+> Note: this mode switch only affects **daily auto backtesting**. Manual Web/API runs (`/api/v1/backtest/run`) keep their original request-driven behavior.
 
 ### Evaluation Metrics
 
@@ -867,6 +888,10 @@ FastAPI provides RESTful API service for configuration management and triggering
 |------|------|
 | `python main.py --serve` | Start API service + run full analysis once |
 | `python main.py --serve-only` | Start API service only, manually trigger analysis |
+| `python main.py --serve-only --webui-dev` | Start API + Vite dev server (frontend HMR at `http://127.0.0.1:5173`) |
+
+> In `--webui-dev` mode you can still keep a single entry URL (`http://127.0.0.1:8000`): backend routes page requests to the Vite dev server, while `/api/*` continues to be served by FastAPI.
+> Local default can be enabled via `WEBUI_DEV_DEFAULT=true` so existing startup commands automatically run in dev mode; use `--no-webui-dev` to disable it for one run.
 
 ### Features
 
@@ -887,7 +912,7 @@ FastAPI provides RESTful API service for configuration management and triggering
 | `/api/v1/history` | GET | Query analysis history |
 | `/api/v1/usage/summary?period=today|month|all` | GET | Query LLM call counts and token usage grouped by call type and model |
 | `/api/v1/backtest/run` | POST | Trigger backtest |
-| `/api/v1/backtest/results` | GET | Query backtest results (paginated) |
+| `/api/v1/backtest/results` | GET | Query backtest results (paginated, supports `trigger_source=auto|manual`) |
 | `/api/v1/backtest/performance` | GET | Get overall backtest performance |
 | `/api/v1/backtest/performance/{code}` | GET | Get per-stock backtest performance |
 | `/api/health` | GET | Health check |
@@ -925,6 +950,11 @@ curl -X POST http://127.0.0.1:8000/api/v1/backtest/run \
 curl -X POST http://127.0.0.1:8000/api/v1/backtest/run \
   -H 'Content-Type: application/json' \
   -d '{"code": "600519", "force": false}'
+
+# Trigger backtest (signal + score combined)
+curl -X POST http://127.0.0.1:8000/api/v1/backtest/run \
+  -H 'Content-Type: application/json' \
+  -d '{"force": true, "allowed_categories": ["BUY","HOLD"], "sentiment_score_min": 70, "sentiment_score_max": 100}'
 
 # Query overall backtest performance
 curl http://127.0.0.1:8000/api/v1/backtest/performance

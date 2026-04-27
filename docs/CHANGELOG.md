@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- 新条目格式：- [类型] 描述（类型取值：新功能/改进/修复/文档/测试/chore）-->
 <!-- 每条独立一行追加到本段末尾，无需分类标题，合并时冲突最小 -->
+- [改进] 新增 `BACKTEST_AUTO_MODE` 与 `BACKTEST_AUTO_ALLOWED_CATEGORIES`，支持定时任务结束后按“上一交易日 + BUY/HOLD”精确自动回测，同时保持手动 Web/API 回测行为不变。
+- [改进] 回测结果页与 `/api/v1/backtest/results` 新增 `trigger_source`（auto/manual）筛选，支持快速区分自动回测与手动回测记录。
+- [改进] `/api/v1/backtest/run` 与回测页新增“信号/评分/信号+评分”筛选模式，支持通过 `allowed_categories` 与 `sentiment_score_min/max` 叠加过滤候选分析记录。
+- [改进] 自动回测新增 `BACKTEST_AUTO_FILTER_MODE` 与评分区间配置，支持按“信号/评分/信号+评分”叠加筛选候选记录，并与 `BACKTEST_AUTO_MODE` 联动生效。
+- [改进] 新增 `python main.py --serve-only --webui-dev` 开发模式：自动启动 Vite 前端开发服务器并启用热更新，前端改动无需重启后端服务。
+- [改进] `--webui-dev` 新增单端口开发代理：保持访问 `http://127.0.0.1:8000` 时自动代理到 Vite 开发服务器，前端热更新与后端 API 可同端口调试。
+- [改进] 新增 `WEBUI_DEV_DEFAULT` 与 `--no-webui-dev`：本地沿用原启动指令可默认进入前端开发者模式（热更新），并支持按次关闭。
 
 ## [3.14.1] - 2026-04-26
 

@@ -14,6 +14,12 @@ class BacktestRunRequest(BaseModel):
     eval_window_days: Optional[int] = Field(None, ge=1, le=120, description="评估窗口（交易日数）")
     min_age_days: Optional[int] = Field(None, ge=0, le=365, description="分析记录最小天龄（0=不限）")
     limit: int = Field(200, ge=1, le=2000, description="最多处理的分析记录数")
+    allowed_categories: Optional[List[str]] = Field(
+        None,
+        description="建议分类过滤（BUY/HOLD/LOOK/SELL，可多选）",
+    )
+    sentiment_score_min: Optional[int] = Field(None, ge=0, le=100, description="评分下限（含）")
+    sentiment_score_max: Optional[int] = Field(None, ge=0, le=100, description="评分上限（含）")
 
 
 class BacktestRunResponse(BaseModel):
@@ -34,6 +40,7 @@ class BacktestResultItem(BaseModel):
     eval_status: str
     evaluated_at: Optional[str] = None
     operation_advice: Optional[str] = None
+    trigger_source: Optional[str] = None
     trend_prediction: Optional[str] = None
     position_recommendation: Optional[str] = None
     start_price: Optional[float] = None

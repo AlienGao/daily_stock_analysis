@@ -11,6 +11,9 @@ export interface BacktestRunRequest {
   evalWindowDays?: number;
   minAgeDays?: number;
   limit?: number;
+  allowedCategories?: Array<'BUY' | 'HOLD' | 'LOOK' | 'SELL'>;
+  sentimentScoreMin?: number;
+  sentimentScoreMax?: number;
 }
 
 export interface BacktestRunResponse {
@@ -33,6 +36,7 @@ export interface BacktestResultItem {
   evalStatus: string;
   evaluatedAt?: string;
   operationAdvice?: string;
+  triggerSource?: string;
   trendPrediction?: string;
   positionRecommendation?: string;
   startPrice?: number;
