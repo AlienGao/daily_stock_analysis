@@ -876,7 +876,9 @@ Backtesting triggers automatically after the daily analysis flow completes (non-
 
 ## Local WebUI Management Interface
 
-The WebUI and FastAPI API share the same service process. After startup, use the browser workspace for configuration management, manual analysis, task progress, historical reports, backtesting, portfolio management, and smart import. Authentication, cloud-server access, and API usage details are covered below.
+The WebUI and FastAPI API share the same service process. After startup, use the browser workspace for configuration management, manual analysis, task progress, historical reports, backtesting, and smart import. Authentication, cloud-server access, and API usage details are covered below.
+
+> Note: The portfolio module is now controlled by env flags. The default is `PORTFOLIO_MODULE_ENABLED=false` (and `VITE_PORTFOLIO_MODULE_ENABLED=false`), which hides the Web portfolio entry and disables `/api/v1/portfolio/*` routes. Set both to `true` to re-enable it.
 
 ### FastAPI API Service
 

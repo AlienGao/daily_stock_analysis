@@ -23,7 +23,16 @@ deterministic_checks() {
 
 offline_test_suite() {
   echo "==> backend-gate: offline test suite"
-  python -m pytest -m "not network"
+  local portfolio_enabled
+  portfolio_enabled="$(echo "${PORTFOLIO_MODULE_ENABLED:-false}" | tr '[:upper:]' '[:lower:]')"
+  if [[ "$portfolio_enabled" == "true" ]]; then
+    python -m pytest -m "not network"
+  else
+    python -m pytest -m "not network" \
+      --ignore=tests/test_portfolio_api.py \
+      --ignore=tests/test_portfolio_service.py \
+      --ignore=tests/test_portfolio_pr2.py
+  fi
 }
 
 run_all() {

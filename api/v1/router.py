@@ -10,6 +10,7 @@ API v1 路由聚合
 """
 
 from fastapi import APIRouter
+import os
 
 from api.v1.endpoints import analysis, auth, history, stocks, backtest, system_config, agent, usage, portfolio
 
@@ -64,8 +65,10 @@ router.include_router(
     tags=["Usage"]
 )
 
-router.include_router(
-    portfolio.router,
-    prefix="/portfolio",
-    tags=["Portfolio"]
-)
+if os.getenv("PORTFOLIO_MODULE_ENABLED", "false").strip().lower() == "true":
+    router.include_router(
+        portfolio.router,
+        prefix="/portfolio",
+        tags=["Portfolio"]
+    )
+

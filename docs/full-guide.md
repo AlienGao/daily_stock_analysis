@@ -1040,7 +1040,9 @@ python main.py --debug
 
 ## 本地 WebUI 管理界面
 
-WebUI 与 FastAPI API 服务共用同一服务进程，启动后可在浏览器中完成配置管理、手动分析、任务进度查看、历史报告、回测、持仓管理和智能导入等操作。认证、云服务器访问和 API 调用细节见下方说明。
+WebUI 与 FastAPI API 服务共用同一服务进程，启动后可在浏览器中完成配置管理、手动分析、任务进度查看、历史报告、回测和智能导入等操作。认证、云服务器访问和 API 调用细节见下方说明。
+
+> 注：持仓模块已改为环境变量开关控制。默认 `PORTFOLIO_MODULE_ENABLED=false`（同时建议 `VITE_PORTFOLIO_MODULE_ENABLED=false`），此时会隐藏 Web 持仓入口并关闭 `/api/v1/portfolio/*` 路由；改为 `true` 后可恢复。
 
 ### FastAPI API 服务
 

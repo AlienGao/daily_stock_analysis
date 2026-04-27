@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - [改进] 新增 `python main.py --serve-only --webui-dev` 开发模式：自动启动 Vite 前端开发服务器并启用热更新，前端改动无需重启后端服务。
 - [改进] `--webui-dev` 新增单端口开发代理：保持访问 `http://127.0.0.1:8000` 时自动代理到 Vite 开发服务器，前端热更新与后端 API 可同端口调试。
 - [改进] 新增 `WEBUI_DEV_DEFAULT` 与 `--no-webui-dev`：本地沿用原启动指令可默认进入前端开发者模式（热更新），并支持按次关闭。
+- [改进] 新增持仓模块环境变量开关：`PORTFOLIO_MODULE_ENABLED` 与 `VITE_PORTFOLIO_MODULE_ENABLED`（默认 `false`），用于统一控制 Web 持仓入口与 `/api/v1/portfolio/*` 路由启停。
+- [测试] `backend-gate` 离线测试按 `PORTFOLIO_MODULE_ENABLED` 动态决定是否排除持仓模块用例（`test_portfolio_api/service/pr2`）。
 
 ## [3.14.1] - 2026-04-26
 
