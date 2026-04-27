@@ -12,6 +12,7 @@ import type {
 } from '../types/backtest';
 
 type BacktestFilterMode = 'all' | 'signal' | 'score' | 'signal_and_score';
+type BacktestSortBy = 'analysis_date' | 'actual_return_pct' | 'sentiment_score';
 
 const BACKTEST_INPUT_CLASS =
   'input-surface input-focus-glow h-11 w-full rounded-xl border bg-transparent px-4 text-sm transition-all focus:outline-none disabled:cursor-not-allowed disabled:opacity-60';
@@ -122,6 +123,16 @@ function directionExpectedLabel(value?: string | null): string {
   }
 }
 
+function scoreBadge(value?: number | null) {
+  if (value == null || Number.isNaN(Number(value))) {
+    return <Badge variant="default">--</Badge>;
+  }
+  const score = Number(value);
+  if (score >= 70) return <Badge variant="success">{score}</Badge>;
+  if (score >= 50) return <Badge variant="warning">{score}</Badge>;
+  return <Badge variant="danger">{score}</Badge>;
+}
+
 // ============ Metric Row ============
 
 const MetricRow: React.FC<{ label: string; value: string; accent?: boolean }> = ({ label, value, accent }) => (
@@ -196,6 +207,8 @@ const BacktestPage: React.FC = () => {
   const [triggerSourceFilter, setTriggerSourceFilter] = useState<'auto' | 'manual' | ''>('');
   const [analysisDateFrom, setAnalysisDateFrom] = useState('');
   const [analysisDateTo, setAnalysisDateTo] = useState('');
+  const [sortBy, setSortBy] = useState<BacktestSortBy>('analysis_date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [evalDays, setEvalDays] = useState('');
   const [forceRerun, setForceRerun] = useState(false);
   const [runFilterMode, setRunFilterMode] = useState<BacktestFilterMode>('signal');
@@ -229,6 +242,8 @@ const BacktestPage: React.FC = () => {
     windowDays?: number,
     startDate?: string,
     endDate?: string,
+    currentSortBy: BacktestSortBy = 'analysis_date',
+    currentSortOrder: 'asc' | 'desc' = 'desc',
   ) => {
     setIsLoadingResults(true);
     try {
@@ -238,6 +253,8 @@ const BacktestPage: React.FC = () => {
         evalWindowDays: windowDays,
         analysisDateFrom: startDate || undefined,
         analysisDateTo: endDate || undefined,
+        sortBy: currentSortBy,
+        sortOrder: currentSortOrder,
         page,
         limit: pageSize,
       });
@@ -302,7 +319,7 @@ const BacktestPage: React.FC = () => {
       if (windowDays && !evalDays) {
         setEvalDays(String(windowDays));
       }
-      fetchResults(1, undefined, '', windowDays, undefined, undefined);
+      fetchResults(1, undefined, '', windowDays, undefined, undefined, sortBy, sortOrder);
     };
     init();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -335,6 +352,8 @@ const BacktestPage: React.FC = () => {
         evalWindowDays,
         analysisDateFrom,
         analysisDateTo,
+        sortBy,
+        sortOrder,
       );
       fetchPerformance(
         codeFilter.trim() || undefined,
@@ -355,7 +374,7 @@ const BacktestPage: React.FC = () => {
     const code = codeFilter.trim() || undefined;
     const windowDays = evalDays ? parseInt(evalDays, 10) : undefined;
     setCurrentPage(1);
-    fetchResults(1, code, triggerSourceFilter, windowDays, analysisDateFrom, analysisDateTo);
+    fetchResults(1, code, triggerSourceFilter, windowDays, analysisDateFrom, analysisDateTo, sortBy, sortOrder);
     fetchPerformance(code, triggerSourceFilter, windowDays, analysisDateFrom, analysisDateTo);
   };
 
@@ -369,15 +388,64 @@ const BacktestPage: React.FC = () => {
     const code = codeFilter.trim() || undefined;
     setEvalDays('1');
     setCurrentPage(1);
-    fetchResults(1, code, triggerSourceFilter, 1, analysisDateFrom, analysisDateTo);
+    fetchResults(1, code, triggerSourceFilter, 1, analysisDateFrom, analysisDateTo, sortBy, sortOrder);
     fetchPerformance(code, triggerSourceFilter, 1, analysisDateFrom, analysisDateTo);
+  };
+
+  const applySort = (nextSortBy: BacktestSortBy, nextSortOrder: 'asc' | 'desc') => {
+    setSortBy(nextSortBy);
+    setSortOrder(nextSortOrder);
+    const code = codeFilter.trim() || undefined;
+    const windowDays = evalDays ? parseInt(evalDays, 10) : undefined;
+    setCurrentPage(1);
+    fetchResults(1, code, triggerSourceFilter, windowDays, analysisDateFrom, analysisDateTo, nextSortBy, nextSortOrder);
+  };
+
+  const handleSortModeChange = (value: string) => {
+    const [nextSortByRaw, nextSortOrderRaw] = value.split(':');
+    const nextSortBy = (nextSortByRaw as BacktestSortBy) || 'analysis_date';
+    const nextSortOrder = nextSortOrderRaw === 'asc' ? 'asc' : 'desc';
+    applySort(nextSortBy, nextSortOrder);
+  };
+
+  const toggleAnalysisDateSort = () => {
+    if (sortBy === 'analysis_date') {
+      applySort('analysis_date', sortOrder === 'desc' ? 'asc' : 'desc');
+      return;
+    }
+    applySort('analysis_date', 'desc');
+  };
+
+  const toggleActualSort = () => {
+    if (sortBy === 'actual_return_pct') {
+      applySort('actual_return_pct', sortOrder === 'desc' ? 'asc' : 'desc');
+      return;
+    }
+    applySort('actual_return_pct', 'desc');
+  };
+
+  const toggleScoreSort = () => {
+    if (sortBy === 'sentiment_score') {
+      applySort('sentiment_score', sortOrder === 'desc' ? 'asc' : 'desc');
+      return;
+    }
+    applySort('sentiment_score', 'desc');
   };
 
   // Pagination
   const totalPages = Math.ceil(totalResults / pageSize);
   const handlePageChange = (page: number) => {
     const windowDays = evalDays ? parseInt(evalDays, 10) : undefined;
-    fetchResults(page, codeFilter.trim() || undefined, triggerSourceFilter, windowDays, analysisDateFrom, analysisDateTo);
+    fetchResults(
+      page,
+      codeFilter.trim() || undefined,
+      triggerSourceFilter,
+      windowDays,
+      analysisDateFrom,
+      analysisDateTo,
+      sortBy,
+      sortOrder,
+    );
   };
 
   return (
@@ -450,6 +518,22 @@ const BacktestPage: React.FC = () => {
                 disabled={isRunning}
                 className={`${BACKTEST_COMPACT_INPUT_CLASS} w-40 text-center tabular-nums`}
               />
+            </div>
+            <div className="flex items-center gap-2 whitespace-nowrap">
+              <span className="text-xs text-muted-text">排序</span>
+              <select
+                value={`${sortBy}:${sortOrder}`}
+                onChange={(e) => handleSortModeChange(e.target.value)}
+                disabled={isRunning || isLoadingResults}
+                className={`${BACKTEST_COMPACT_INPUT_CLASS} w-48 text-center tabular-nums`}
+              >
+                <option value="analysis_date:desc">分析日期（新到旧）</option>
+                <option value="analysis_date:asc">分析日期（旧到新）</option>
+                <option value="actual_return_pct:desc">实际表现（高到低）</option>
+                <option value="actual_return_pct:asc">实际表现（低到高）</option>
+                <option value="sentiment_score:desc">分数（高到低）</option>
+                <option value="sentiment_score:asc">分数（低到高）</option>
+              </select>
             </div>
             <button
               type="button"
@@ -624,10 +708,45 @@ const BacktestPage: React.FC = () => {
                   <thead className="backtest-table-head">
                     <tr className="text-left">
                       <th className="backtest-table-head-cell">股票</th>
-                      <th className="backtest-table-head-cell">分析日期</th>
-                      <th className="backtest-table-head-cell">AI 预测</th>
                       <th className="backtest-table-head-cell">
-                        {showNextDayActualColumns ? '实际表现' : '窗口收益'}
+                        <button
+                          type="button"
+                          onClick={toggleAnalysisDateSort}
+                          className="inline-flex items-center gap-1 text-left"
+                          aria-label="按分析日期排序"
+                        >
+                          <span>分析日期</span>
+                          <span className="text-xs text-muted-text">
+                            {sortBy === 'analysis_date' ? (sortOrder === 'desc' ? '↓' : '↑') : '↕'}
+                          </span>
+                        </button>
+                      </th>
+                      <th className="backtest-table-head-cell w-[260px] min-w-[260px] max-w-[260px]">AI 预测</th>
+                      <th className="backtest-table-head-cell">
+                        <button
+                          type="button"
+                          onClick={toggleScoreSort}
+                          className="inline-flex items-center gap-1 text-left"
+                          aria-label="按分数排序"
+                        >
+                          <span>分数</span>
+                          <span className="text-xs text-muted-text">
+                            {sortBy === 'sentiment_score' ? (sortOrder === 'desc' ? '↓' : '↑') : '↕'}
+                          </span>
+                        </button>
+                      </th>
+                      <th className="backtest-table-head-cell">
+                        <button
+                          type="button"
+                          onClick={toggleActualSort}
+                          className="inline-flex items-center gap-1 text-left"
+                          aria-label="按实际表现排序"
+                        >
+                          <span>{showNextDayActualColumns ? '实际表现' : '窗口收益'}</span>
+                          <span className="text-xs text-muted-text">
+                            {sortBy === 'actual_return_pct' ? (sortOrder === 'desc' ? '↓' : '↑') : '↕'}
+                          </span>
+                        </button>
                       </th>
                       <th className="backtest-table-head-cell">
                         {showNextDayActualColumns ? '准确度' : '方向匹配'}
@@ -649,21 +768,27 @@ const BacktestPage: React.FC = () => {
                           </div>
                         </td>
                         <td className="backtest-table-cell text-secondary-text">{row.analysisDate || '--'}</td>
-                        <td className="backtest-table-cell max-w-[220px] text-foreground">
+                        <td className="backtest-table-cell w-[260px] min-w-[260px] max-w-[260px] overflow-hidden text-foreground">
                           {(row.trendPrediction || row.operationAdvice) ? (
                             <Tooltip
-                              content={[row.trendPrediction, row.operationAdvice].filter(Boolean).join(' / ')}
+                              content={(
+                                <div className="max-w-[28rem] whitespace-normal break-words">
+                                  {[row.trendPrediction, row.operationAdvice].filter(Boolean).join(' / ')}
+                                </div>
+                              )}
                               focusable
+                              className="w-full min-w-0"
                             >
-                              <div className="flex flex-col gap-1">
-                                <span className="block truncate">{row.trendPrediction || '--'}</span>
-                                <span className="block truncate text-xs text-secondary-text">{row.operationAdvice || '--'}</span>
+                              <div className="flex min-w-0 w-full flex-col gap-1 overflow-hidden">
+                                <span className="block w-full truncate">{row.trendPrediction || '--'}</span>
+                                <span className="block w-full truncate text-xs text-secondary-text">{row.operationAdvice || '--'}</span>
                               </div>
                             </Tooltip>
                           ) : (
                             '--'
                           )}
                         </td>
+                        <td className="backtest-table-cell">{scoreBadge(row.sentimentScore)}</td>
                         <td className="backtest-table-cell">
                           <div className="flex items-center gap-2">
                             {actualMovementBadge(row.actualMovement)}

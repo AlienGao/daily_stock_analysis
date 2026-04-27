@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import logging
 from datetime import date
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -97,6 +97,8 @@ def get_backtest_results(
     eval_window_days: Optional[int] = Query(None, ge=1, le=120, description="评估窗口过滤"),
     analysis_date_from: Optional[date] = Query(None, description="分析日期起始（含）"),
     analysis_date_to: Optional[date] = Query(None, description="分析日期结束（含）"),
+    sort_by: Literal["analysis_date", "actual_return_pct", "sentiment_score"] = Query("analysis_date", description="排序字段"),
+    sort_order: Literal["asc", "desc"] = Query("desc", description="排序方向"),
     page: int = Query(1, ge=1, description="页码"),
     limit: int = Query(20, ge=1, le=200, description="每页数量"),
     db_manager: DatabaseManager = Depends(get_database_manager),
@@ -108,6 +110,8 @@ def get_backtest_results(
             code=code,
             trigger_source=trigger_source,
             eval_window_days=eval_window_days,
+            sort_by=sort_by,
+            sort_order=sort_order,
             limit=limit,
             page=page,
             analysis_date_from=analysis_date_from,

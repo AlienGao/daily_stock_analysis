@@ -38,6 +38,7 @@ export interface BacktestResultItem {
   operationAdvice?: string;
   triggerSource?: string;
   trendPrediction?: string;
+  sentimentScore?: number;
   positionRecommendation?: string;
   startPrice?: number;
   endClose?: number;

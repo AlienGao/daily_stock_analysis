@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 <!-- 每条独立一行追加到本段末尾，无需分类标题，合并时冲突最小 -->
 - [改进] 新增 `BACKTEST_AUTO_MODE` 与 `BACKTEST_AUTO_ALLOWED_CATEGORIES`，支持定时任务结束后按“上一交易日 + BUY/HOLD”精确自动回测，同时保持手动 Web/API 回测行为不变。
 - [改进] 回测结果页与 `/api/v1/backtest/results` 新增 `trigger_source`（auto/manual）筛选，支持快速区分自动回测与手动回测记录。
+- [改进] 回测结果页新增“实际表现”全量排序，并在 `/api/v1/backtest/results` 支持 `sort_by=actual_return_pct` 与 `sort_order=asc|desc`，分页场景下按全量数据排序后再切页。
+- [改进] 回测结果页“分数”“分析日期”列改为后端全量排序，`/api/v1/backtest/results` 新增 `sort_by=sentiment_score` 并统一支持按列头切换升降序。
+- [修复] 自动回测新增“前置数据检查”：执行前自动扫描候选标的代码别名冲突（如 `000294`/`000294.SZ`）、优先补齐落后日线并规范写入代码格式，降低次日验证误报“数据不足”的概率。
 - [改进] `/api/v1/backtest/run` 与回测页新增“信号/评分/信号+评分”筛选模式，支持通过 `allowed_categories` 与 `sentiment_score_min/max` 叠加过滤候选分析记录。
 - [改进] 自动回测新增 `BACKTEST_AUTO_FILTER_MODE` 与评分区间配置，支持按“信号/评分/信号+评分”叠加筛选候选记录，并与 `BACKTEST_AUTO_MODE` 联动生效。
 - [改进] 新增 `python main.py --serve-only --webui-dev` 开发模式：自动启动 Vite 前端开发服务器并启用热更新，前端改动无需重启后端服务。

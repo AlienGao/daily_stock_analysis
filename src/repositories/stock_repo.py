@@ -140,10 +140,11 @@ class StockRepository:
 
     def get_start_daily(self, *, code: str, analysis_date: date) -> Optional[StockDaily]:
         """Return StockDaily for analysis_date (preferred) or nearest previous date."""
+        candidate_codes = self._candidate_codes(code)
         with self.db.get_session() as session:
             row = session.execute(
                 select(StockDaily)
-                .where(and_(StockDaily.code == code, StockDaily.date <= analysis_date))
+                .where(and_(StockDaily.code.in_(candidate_codes), StockDaily.date <= analysis_date))
                 .order_by(desc(StockDaily.date))
                 .limit(1)
             ).scalar_one_or_none()
@@ -151,11 +152,65 @@ class StockRepository:
 
     def get_forward_bars(self, *, code: str, analysis_date: date, eval_window_days: int) -> List[StockDaily]:
         """Return forward daily bars after analysis_date, up to eval_window_days."""
+        candidate_codes = self._candidate_codes(code)
         with self.db.get_session() as session:
             rows = session.execute(
                 select(StockDaily)
-                .where(and_(StockDaily.code == code, StockDaily.date > analysis_date))
+                .where(and_(StockDaily.code.in_(candidate_codes), StockDaily.date > analysis_date))
                 .order_by(StockDaily.date)
                 .limit(eval_window_days)
             ).scalars().all()
             return list(rows)
+
+    @staticmethod
+    def _candidate_codes(code: str) -> List[str]:
+        """Return alias candidates to tolerate mixed code formats in stock_daily.
+
+        Examples:
+        - 000614 -> [000614, 000614.SZ, 000614.SH]
+        - 000614.SZ -> [000614.SZ, 000614, 000614.SH]
+        - HK00700 -> [HK00700, 00700.HK, 00700]
+        """
+        raw = str(code or "").strip().upper()
+        if not raw:
+            return []
+
+        candidates: List[str] = [raw]
+
+        def _add(value: str) -> None:
+            normalized = str(value or "").strip().upper()
+            if normalized and normalized not in candidates:
+                candidates.append(normalized)
+
+        if raw.endswith((".SZ", ".SH", ".SS", ".BJ")):
+            base = raw.rsplit(".", 1)[0]
+            _add(base)
+            if base.isdigit() and len(base) == 6:
+                _add(f"{base}.SZ")
+                _add(f"{base}.SH")
+            return candidates
+
+        if raw.endswith(".HK"):
+            base = raw.rsplit(".", 1)[0]
+            _add(base)
+            if base.isdigit():
+                _add(f"HK{base.zfill(5)}")
+            return candidates
+
+        if raw.startswith("HK") and raw[2:].isdigit():
+            digits = raw[2:].zfill(5)
+            _add(digits)
+            _add(f"{digits}.HK")
+            return candidates
+
+        if raw.isdigit() and len(raw) == 6:
+            _add(f"{raw}.SZ")
+            _add(f"{raw}.SH")
+            return candidates
+
+        if raw.isdigit() and len(raw) == 5:
+            _add(f"HK{raw}")
+            _add(f"{raw}.HK")
+            return candidates
+
+        return candidates

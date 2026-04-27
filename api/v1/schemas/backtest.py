@@ -42,6 +42,7 @@ class BacktestResultItem(BaseModel):
     operation_advice: Optional[str] = None
     trigger_source: Optional[str] = None
     trend_prediction: Optional[str] = None
+    sentiment_score: Optional[int] = None
     position_recommendation: Optional[str] = None
     start_price: Optional[float] = None
     end_close: Optional[float] = None

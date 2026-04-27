@@ -288,6 +288,63 @@ class BacktestServiceTestCase(unittest.TestCase):
         self.assertAlmostEqual(item["actual_return_pct"], -4.0)
         self.assertFalse(item["direction_correct"])
 
+    def test_get_recent_evaluations_supports_global_sort_by_actual_return(self) -> None:
+        self._seed_analysis(
+            query_id="q2",
+            analysis_date=date(2024, 1, 10),
+            created_at=datetime(2024, 1, 10, 0, 0, 0),
+            operation_advice="买入",
+            trend_prediction="看多",
+            start_close=100.0,
+            forward_bars=[
+                StockDaily(code="600519", date=date(2024, 1, 11), high=111.0, low=99.0, close=110.0),
+                StockDaily(code="600519", date=date(2024, 1, 12), high=112.0, low=100.0, close=111.0),
+                StockDaily(code="600519", date=date(2024, 1, 13), high=113.0, low=101.0, close=112.0),
+            ],
+        )
+        self._seed_analysis(
+            query_id="q3",
+            analysis_date=date(2024, 1, 20),
+            created_at=datetime(2024, 1, 20, 0, 0, 0),
+            operation_advice="买入",
+            trend_prediction="看多",
+            start_close=100.0,
+            forward_bars=[
+                StockDaily(code="600519", date=date(2024, 1, 21), high=101.0, low=89.0, close=90.0),
+                StockDaily(code="600519", date=date(2024, 1, 22), high=100.0, low=88.0, close=89.0),
+                StockDaily(code="600519", date=date(2024, 1, 23), high=99.0, low=87.0, close=88.0),
+            ],
+        )
+
+        service = BacktestService(self.db)
+        service.run_backtest(code="600519", force=False, eval_window_days=3, min_age_days=0, limit=20)
+
+        first_page = service.get_recent_evaluations(
+            code="600519",
+            eval_window_days=3,
+            sort_by="actual_return_pct",
+            sort_order="desc",
+            analysis_date_from=date(2024, 1, 10),
+            analysis_date_to=date(2024, 1, 20),
+            limit=1,
+            page=1,
+        )
+        second_page = service.get_recent_evaluations(
+            code="600519",
+            eval_window_days=3,
+            sort_by="actual_return_pct",
+            sort_order="desc",
+            analysis_date_from=date(2024, 1, 10),
+            analysis_date_to=date(2024, 1, 20),
+            limit=1,
+            page=2,
+        )
+
+        self.assertEqual(first_page["total"], 2)
+        self.assertEqual(second_page["total"], 2)
+        self.assertAlmostEqual(first_page["items"][0]["actual_return_pct"], 12.0)
+        self.assertAlmostEqual(second_page["items"][0]["actual_return_pct"], -12.0)
+
     def test_get_summary_supports_analysis_date_range(self) -> None:
         self._seed_analysis(
             query_id="q2",

@@ -44,10 +44,22 @@ export const backtestApi = {
     evalWindowDays?: number;
     analysisDateFrom?: string;
     analysisDateTo?: string;
+    sortBy?: 'analysis_date' | 'actual_return_pct' | 'sentiment_score';
+    sortOrder?: 'asc' | 'desc';
     page?: number;
     limit?: number;
   } = {}): Promise<BacktestResultsResponse> => {
-    const { code, triggerSource, evalWindowDays, analysisDateFrom, analysisDateTo, page = 1, limit = 20 } = params;
+    const {
+      code,
+      triggerSource,
+      evalWindowDays,
+      analysisDateFrom,
+      analysisDateTo,
+      sortBy,
+      sortOrder,
+      page = 1,
+      limit = 20,
+    } = params;
 
     const queryParams: Record<string, string | number> = { page, limit };
     if (code) queryParams.code = code;
@@ -55,6 +67,8 @@ export const backtestApi = {
     if (evalWindowDays) queryParams.eval_window_days = evalWindowDays;
     if (analysisDateFrom) queryParams.analysis_date_from = analysisDateFrom;
     if (analysisDateTo) queryParams.analysis_date_to = analysisDateTo;
+    if (sortBy) queryParams.sort_by = sortBy;
+    if (sortOrder) queryParams.sort_order = sortOrder;
 
     const response = await apiClient.get<Record<string, unknown>>(
       '/api/v1/backtest/results',

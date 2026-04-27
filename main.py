@@ -851,6 +851,12 @@ def run_full_analysis(
                         ",".join(allowed_categories or ["ALL"]),
                         eval_window_days,
                     )
+                    precheck_stats = service.precheck_auto_backtest_data(
+                        analysis_date_from=previous_trading_day,
+                        analysis_date_to=previous_trading_day,
+                        end_date=get_effective_trading_date("cn"),
+                    )
+                    logger.info("自动回测前置检查: %s", precheck_stats)
                     stats = service.run_backtest(
                         force=False,
                         eval_window_days=eval_window_days,
@@ -872,6 +878,11 @@ def run_full_analysis(
                         score_min if score_min is not None else "",
                         score_max if score_max is not None else "",
                     )
+                    precheck_stats = service.precheck_auto_backtest_data(
+                        analysis_date_from=None,
+                        analysis_date_to=None,
+                    )
+                    logger.info("自动回测前置检查: %s", precheck_stats)
                     stats = service.run_backtest(
                         force=False,
                         eval_window_days=eval_window_days,

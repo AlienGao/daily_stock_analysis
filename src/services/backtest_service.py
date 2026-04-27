@@ -5,16 +5,16 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import Any, Dict, List, Optional, Set
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 
 from src.config import get_config
 from src.core.backtest_engine import OVERALL_SENTINEL_CODE, BacktestEngine, EvaluationConfig
 from src.repositories.backtest_repo import BacktestRepository
 from src.repositories.stock_repo import StockRepository
-from src.storage import BacktestResult, BacktestSummary, DatabaseManager
+from src.storage import AnalysisHistory, BacktestResult, BacktestSummary, DatabaseManager, StockDaily
 from src.utils.rating_category import RATING_MAP
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,10 @@ logger = logging.getLogger(__name__)
 class BacktestService:
     """Service layer to run and query backtests."""
 
-    MAX_DYNAMIC_SUMMARY_ROWS = 2000
+    # Dynamic summaries are used for filtered views (trigger_source/date/code),
+    # and real-world datasets can easily exceed 2k rows (e.g. full manual reruns).
+    # Keep a safety cap, but high enough for normal UI usage.
+    MAX_DYNAMIC_SUMMARY_ROWS = 50000
 
     def __init__(self, db_manager: Optional[DatabaseManager] = None):
         self.db = db_manager or DatabaseManager.get_instance()
@@ -136,6 +139,24 @@ class BacktestService:
                     analysis_date=start_daily.date,
                     eval_window_days=int(eval_window_days),
                 )
+
+                # For next-day validation, refresh once when the first forward bar
+                # is already on/behind the latest settled trading date. This avoids
+                # using stale intraday snapshots as a "final" close.
+                if int(eval_window_days) == 1 and self._should_refresh_next_day_bar(
+                    code=analysis.code,
+                    forward_bars=forward_bars,
+                ):
+                    self._try_fill_daily_data(
+                        code=analysis.code,
+                        analysis_date=start_daily.date,
+                        eval_window_days=eval_window_days,
+                    )
+                    forward_bars = self.stock_repo.get_forward_bars(
+                        code=analysis.code,
+                        analysis_date=start_daily.date,
+                        eval_window_days=int(eval_window_days),
+                    )
 
                 if len(forward_bars) < int(eval_window_days):
                     self._try_fill_daily_data(code=analysis.code, analysis_date=start_daily.date, eval_window_days=eval_window_days)
@@ -254,6 +275,88 @@ class BacktestService:
             "errors": errors,
         }
 
+    def precheck_auto_backtest_data(
+        self,
+        *,
+        analysis_date_from: Optional[date] = None,
+        analysis_date_to: Optional[date] = None,
+        max_symbols: int = 800,
+        end_date: Optional[date] = None,
+    ) -> Dict[str, Any]:
+        """Best-effort precheck before auto backtest.
+
+        Goals:
+        1) Detect code-format alias collisions (e.g. 000294 vs 000294.SZ)
+        2) Backfill stale daily bars for candidate analysis symbols
+        """
+        target_end_date = end_date or date.today()
+        codes = self._collect_analysis_codes(
+            analysis_date_from=analysis_date_from,
+            analysis_date_to=analysis_date_to,
+            limit=max_symbols,
+        )
+        if not codes:
+            return {
+                "candidate_codes": 0,
+                "alias_conflicts": 0,
+                "refreshed_codes": 0,
+                "failed_codes": 0,
+            }
+
+        global_latest = self._get_global_latest_daily_date()
+        if global_latest is None:
+            return {
+                "candidate_codes": len(codes),
+                "alias_conflicts": 0,
+                "refreshed_codes": 0,
+                "failed_codes": 0,
+                "warning": "stock_daily is empty",
+            }
+
+        alias_conflicts = 0
+        refreshed_codes = 0
+        failed_codes = 0
+        touched = 0
+
+        for code in codes:
+            variants = self.stock_repo._candidate_codes(code)  # noqa: SLF001
+            latest = self._get_latest_daily_date_for_codes(variants)
+            if len(variants) >= 2:
+                existing_variants = self._count_existing_variants(variants)
+                if existing_variants >= 2:
+                    alias_conflicts += 1
+
+            if latest is not None and latest >= global_latest:
+                continue
+
+            try:
+                backfill_start = latest or (analysis_date_from or (target_end_date - timedelta(days=45)))
+                self._try_fill_daily_data(code=code, analysis_date=backfill_start, eval_window_days=1)
+                normalized_code = self._canonical_code_for_storage(code)
+                self._normalize_stock_daily_code_aliases(normalized_code)
+                refreshed_codes += 1
+                touched += 1
+            except Exception as exc:  # pragma: no cover - defensive branch
+                logger.warning("自动回测前置补数失败(%s): %s", code, exc)
+                failed_codes += 1
+
+        logger.info(
+            "自动回测前置检查完成: candidate=%s conflicts=%s refreshed=%s failed=%s global_latest=%s touched=%s",
+            len(codes),
+            alias_conflicts,
+            refreshed_codes,
+            failed_codes,
+            global_latest,
+            touched,
+        )
+        return {
+            "candidate_codes": len(codes),
+            "alias_conflicts": alias_conflicts,
+            "refreshed_codes": refreshed_codes,
+            "failed_codes": failed_codes,
+            "global_latest": global_latest.isoformat(),
+        }
+
     @staticmethod
     def _resolve_allowed_operation_advices(allowed_categories: Optional[List[str]]) -> Optional[List[str]]:
         if not allowed_categories:
@@ -273,6 +376,8 @@ class BacktestService:
         code: Optional[str],
         trigger_source: Optional[str] = None,
         eval_window_days: Optional[int] = None,
+        sort_by: str = "analysis_date",
+        sort_order: str = "desc",
         limit: int = 50,
         page: int = 1,
         analysis_date_from: Optional[date] = None,
@@ -299,13 +404,18 @@ class BacktestService:
             trigger_source=trigger_source,
             eval_window_days=eval_window_days,
             engine_version=engine_version,
+            sort_by=sort_by,
+            sort_order=sort_order,
             analysis_date_from=analysis_date_from,
             analysis_date_to=analysis_date_to,
             days=None,
             offset=offset,
             limit=limit,
         )
-        items = [self._result_to_dict(result, stock_name, trend_prediction) for result, stock_name, trend_prediction, _ in rows]
+        items = [
+            self._result_to_dict(result, stock_name, trend_prediction, sentiment_score)
+            for result, stock_name, trend_prediction, sentiment_score, _ in rows
+        ]
         return {"total": total, "page": page, "limit": limit, "items": items}
 
     def get_summary(
@@ -339,7 +449,7 @@ class BacktestService:
             )
             if count > self.MAX_DYNAMIC_SUMMARY_ROWS:
                 raise ValueError(
-                    "Date-filtered summary matches too many rows; narrow the analysis date range or stock code."
+                    "Filtered summary matches too many rows; narrow filters (date/code/source) to continue."
                 )
             rows = self.repo.list_results(
                 code=code,
@@ -448,6 +558,25 @@ class BacktestService:
             logger.warning("校验回测窗口收盘状态失败（按可用数据继续）: %s", exc)
         return True
 
+    @staticmethod
+    def _should_refresh_next_day_bar(*, code: str, forward_bars: List[Any]) -> bool:
+        """Whether next-day validation should refresh latest daily bars once."""
+        if not forward_bars:
+            return False
+        first_bar = forward_bars[0]
+        first_bar_date = getattr(first_bar, "date", None)
+        if not isinstance(first_bar_date, date):
+            return False
+        try:
+            from src.core.trading_calendar import get_effective_trading_date, get_market_for_stock
+
+            market = get_market_for_stock(code)
+            settled_date = get_effective_trading_date(market)
+            return first_bar_date <= settled_date
+        except Exception as exc:
+            logger.warning("判定是否刷新次日验证日线失败（跳过刷新）: %s", exc)
+            return False
+
     def _try_fill_daily_data(self, *, code: str, analysis_date: date, eval_window_days: int) -> None:
         try:
             from data_provider.base import DataFetcherManager
@@ -463,9 +592,100 @@ class BacktestService:
             )
             if df is None or df.empty:
                 return
-            self.db.save_daily_data(df, code=code, data_source=source)
+            normalized_code = self._canonical_code_for_storage(code)
+            self.db.save_daily_data(df, code=normalized_code, data_source=source)
         except Exception as exc:
             logger.warning(f"补全日线数据失败({code}): {exc}")
+
+    def _collect_analysis_codes(
+        self,
+        *,
+        analysis_date_from: Optional[date],
+        analysis_date_to: Optional[date],
+        limit: int,
+    ) -> List[str]:
+        with self.db.get_session() as session:
+            stmt = select(AnalysisHistory.code).distinct()
+            if analysis_date_from is not None:
+                stmt = stmt.where(AnalysisHistory.created_at >= datetime.combine(analysis_date_from, time.min))
+            if analysis_date_to is not None:
+                stmt = stmt.where(AnalysisHistory.created_at < datetime.combine(analysis_date_to + timedelta(days=1), time.min))
+            stmt = stmt.order_by(AnalysisHistory.code).limit(max(int(limit), 1))
+            return [str(v) for v in session.execute(stmt).scalars().all() if v]
+
+    def _get_global_latest_daily_date(self) -> Optional[date]:
+        with self.db.get_session() as session:
+            return session.execute(select(func.max(StockDaily.date))).scalar_one_or_none()
+
+    def _get_latest_daily_date_for_codes(self, codes: List[str]) -> Optional[date]:
+        if not codes:
+            return None
+        with self.db.get_session() as session:
+            return session.execute(
+                select(func.max(StockDaily.date)).where(StockDaily.code.in_(codes))
+            ).scalar_one_or_none()
+
+    def _count_existing_variants(self, codes: List[str]) -> int:
+        if not codes:
+            return 0
+        with self.db.get_session() as session:
+            rows = session.execute(
+                select(StockDaily.code).where(StockDaily.code.in_(codes)).distinct()
+            ).scalars().all()
+            return len(rows)
+
+    @staticmethod
+    def _canonical_code_for_storage(code: str) -> str:
+        raw = str(code or "").strip().upper()
+        if raw.endswith(".HK"):
+            base = raw[:-3]
+            if base.isdigit():
+                return f"HK{base.zfill(5)}"
+        if raw.startswith("HK") and raw[2:].isdigit():
+            return f"HK{raw[2:].zfill(5)}"
+        if raw.endswith((".SZ", ".SH", ".SS", ".BJ")):
+            base = raw.rsplit(".", 1)[0]
+            if base.isdigit():
+                return base
+        if raw.startswith(("SZ", "SH", "BJ")) and raw[2:].isdigit():
+            return raw[2:]
+        return raw
+
+    def _normalize_stock_daily_code_aliases(self, canonical_code: str) -> None:
+        candidates = self.stock_repo._candidate_codes(canonical_code)  # noqa: SLF001
+        alias_codes = [code for code in candidates if code != canonical_code]
+        if not alias_codes:
+            return
+        with self.db.get_session() as session:
+            rows = session.execute(
+                select(StockDaily.id, StockDaily.date)
+                .where(StockDaily.code.in_(alias_codes))
+            ).all()
+            if not rows:
+                return
+            # Skip rows that would violate uix_code_date after canonical rewrite.
+            dates = [r[1] for r in rows if r[1] is not None]
+            existing_dates = set()
+            if dates:
+                existing_dates = set(
+                    session.execute(
+                        select(StockDaily.date).where(
+                            and_(
+                                StockDaily.code == canonical_code,
+                                StockDaily.date.in_(dates),
+                            )
+                        )
+                    ).scalars().all()
+                )
+            update_ids = [r[0] for r in rows if r[1] not in existing_dates]
+            if not update_ids:
+                return
+            session.execute(
+                StockDaily.__table__.update()
+                .where(StockDaily.id.in_(update_ids))
+                .values(code=canonical_code)
+            )
+            session.commit()
 
     def _recompute_summaries(self, *, touched_codes: List[str], eval_window_days: int, engine_version: str) -> None:
         with self.db.get_session() as session:
@@ -542,6 +762,7 @@ class BacktestService:
         row: BacktestResult,
         stock_name: Optional[str] = None,
         trend_prediction: Optional[str] = None,
+        sentiment_score: Optional[int] = None,
     ) -> Dict[str, Any]:
         return {
             "analysis_history_id": row.analysis_history_id,
@@ -555,6 +776,7 @@ class BacktestService:
             "operation_advice": row.operation_advice,
             "trigger_source": row.trigger_source,
             "trend_prediction": trend_prediction,
+            "sentiment_score": sentiment_score,
             "position_recommendation": row.position_recommendation,
             "start_price": row.start_price,
             "end_close": row.end_close,

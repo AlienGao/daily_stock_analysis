@@ -11,7 +11,7 @@ import logging
 from datetime import date, datetime, time, timedelta
 from typing import List, Optional, Tuple
 
-from sqlalchemy import and_, delete, desc, func, select
+from sqlalchemy import and_, asc, delete, desc, func, select
 
 from src.storage import BacktestResult, BacktestSummary, DatabaseManager, AnalysisHistory
 
@@ -118,10 +118,12 @@ class BacktestRepository:
         trigger_source: Optional[str] = None,
         analysis_date_from: Optional[date] = None,
         analysis_date_to: Optional[date] = None,
+        sort_by: str = "analysis_date",
+        sort_order: str = "desc",
         days: Optional[int],
         offset: int,
         limit: int,
-    ) -> Tuple[List[Tuple[BacktestResult, Optional[str], Optional[str], Optional[datetime]]], int]:
+    ) -> Tuple[List[Tuple[BacktestResult, Optional[str], Optional[str], Optional[int], Optional[datetime]]], int]:
         with self.db.get_session() as session:
             conditions = self._build_result_conditions(
                 code=code,
@@ -146,11 +148,12 @@ class BacktestRepository:
                     BacktestResult,
                     AnalysisHistory.name,
                     AnalysisHistory.trend_prediction,
+                    AnalysisHistory.sentiment_score,
                     AnalysisHistory.created_at,
                 )
                 .join(AnalysisHistory, AnalysisHistory.id == BacktestResult.analysis_history_id)
                 .where(where_clause)
-                .order_by(desc(BacktestResult.analysis_date), desc(BacktestResult.evaluated_at))
+                .order_by(*self._build_result_order_clause(sort_by=sort_by, sort_order=sort_order))
                 .offset(offset)
                 .limit(limit)
             ).all()
@@ -373,3 +376,30 @@ class BacktestRepository:
             cutoff = datetime.now() - timedelta(days=int(days))
             conditions.append(BacktestResult.evaluated_at >= cutoff)
         return conditions
+
+    @staticmethod
+    def _build_result_order_clause(*, sort_by: str, sort_order: str) -> List[object]:
+        normalized_sort_by = str(sort_by or "").strip().lower()
+        descending = str(sort_order or "desc").strip().lower() != "asc"
+
+        def ordered(column):
+            return (desc(column) if descending else asc(column)).nullslast()
+
+        # Keep deterministic ordering when primary field has ties.
+        if normalized_sort_by == "actual_return_pct":
+            return [
+                ordered(BacktestResult.stock_return_pct),
+                desc(BacktestResult.analysis_date).nullslast(),
+                desc(BacktestResult.evaluated_at).nullslast(),
+            ]
+        if normalized_sort_by == "sentiment_score":
+            return [
+                ordered(AnalysisHistory.sentiment_score),
+                desc(BacktestResult.analysis_date).nullslast(),
+                desc(BacktestResult.evaluated_at).nullslast(),
+            ]
+
+        return [
+            ordered(BacktestResult.analysis_date),
+            desc(BacktestResult.evaluated_at).nullslast(),
+        ]

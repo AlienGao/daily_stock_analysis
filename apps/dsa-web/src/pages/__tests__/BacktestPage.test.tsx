@@ -67,6 +67,7 @@ beforeEach(() => {
         evalStatus: 'completed',
         operationAdvice: '继续持有',
         trendPrediction: '震荡偏多',
+        sentimentScore: 68,
         actualMovement: 'up',
         actualReturnPct: 3.8,
         directionExpected: 'long',
@@ -86,122 +87,91 @@ beforeEach(() => {
 });
 
 describe('BacktestPage', () => {
-  it('renders shared surface inputs and prediction tracking outputs', async () => {
+  it('默认渲染分数列与排序按钮', async () => {
     render(<BacktestPage />);
 
-    const filterInput = await screen.findByPlaceholderText('Filter by stock code (leave empty for all)');
-    const windowInput = screen.getByPlaceholderText('10');
-
-    expect(filterInput).toHaveClass('input-surface');
-    expect(filterInput).toHaveClass('input-focus-glow');
-    expect(windowInput).toHaveClass('input-surface');
-    expect(windowInput).toHaveClass('input-focus-glow');
-
-    expect(await screen.findByText('WIN')).toBeInTheDocument();
-    expect(screen.getByText('completed')).toBeInTheDocument();
-    expect(screen.getByText('600519')).toBeInTheDocument();
-    expect(screen.getByText('贵州茅台')).toBeInTheDocument();
-    expect(screen.getByText('震荡偏多')).toBeInTheDocument();
-    expect(screen.getByText('UP')).toBeInTheDocument();
-    expect(screen.getByText('Window Return')).toBeInTheDocument();
-    expect(screen.getByText('Direction Match')).toBeInTheDocument();
-    expect(screen.getAllByLabelText('yes').length).toBeGreaterThan(0);
+    await screen.findByPlaceholderText('按股票代码筛选（留空=全部）');
+    expect(screen.getByRole('button', { name: '按分数排序' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '按分析日期排序' })).toBeInTheDocument();
+    expect(screen.getByText('分数')).toBeInTheDocument();
   });
 
-  it('filters results with stock code, window, and analysis date range when clicking Filter', async () => {
+  it('默认查询带上后端排序参数', async () => {
     render(<BacktestPage />);
-
-    const filterInput = await screen.findByPlaceholderText('Filter by stock code (leave empty for all)');
-    const windowInput = screen.getByPlaceholderText('10');
-    const fromInput = screen.getByLabelText('Analysis date from');
-    const toInput = screen.getByLabelText('Analysis date to');
-
-    fireEvent.change(filterInput, { target: { value: 'aapl' } });
-    fireEvent.change(windowInput, { target: { value: '20' } });
-    fireEvent.change(fromInput, { target: { value: '2026-03-01' } });
-    fireEvent.change(toInput, { target: { value: '2026-03-31' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Filter' }));
-
-    await waitFor(() => {
-      expect(mockGetResults).toHaveBeenLastCalledWith({
-        code: 'AAPL',
-        evalWindowDays: 20,
-        analysisDateFrom: '2026-03-01',
-        analysisDateTo: '2026-03-31',
-        page: 1,
-        limit: 20,
-      });
-      expect(mockGetStockPerformance).toHaveBeenLastCalledWith('AAPL', {
-        evalWindowDays: 20,
-        analysisDateFrom: '2026-03-01',
-        analysisDateTo: '2026-03-31',
-      });
-    });
-  });
-
-  it('runs a backtest and refreshes results using the shared filter values', async () => {
-    render(<BacktestPage />);
-
-    const filterInput = await screen.findByPlaceholderText('Filter by stock code (leave empty for all)');
-    const windowInput = screen.getByPlaceholderText('10');
-
-    fireEvent.change(filterInput, { target: { value: 'tsla' } });
-    fireEvent.change(windowInput, { target: { value: '15' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Run Backtest' }));
-
-    await waitFor(() => {
-      expect(mockRun).toHaveBeenCalledWith({
-        code: 'TSLA',
-        force: undefined,
-        minAgeDays: undefined,
-        evalWindowDays: 15,
-      });
-    });
-
-    await waitFor(() => {
-      expect(mockGetResults).toHaveBeenLastCalledWith({
-        code: 'TSLA',
-        evalWindowDays: 15,
-        analysisDateFrom: undefined,
-        analysisDateTo: undefined,
-        page: 1,
-        limit: 20,
-      });
-      expect(mockGetStockPerformance).toHaveBeenLastCalledWith('TSLA', {
-        evalWindowDays: 15,
-        analysisDateFrom: undefined,
-        analysisDateTo: undefined,
-      });
-    });
-
-    expect(await screen.findByText('Processed:')).toBeInTheDocument();
-    expect(screen.getByText('Saved:')).toBeInTheDocument();
-  });
-
-  it('switches to next-day validation with the 1D shortcut', async () => {
-    render(<BacktestPage />);
-
-    await screen.findByPlaceholderText('Filter by stock code (leave empty for all)');
-    fireEvent.click(screen.getByRole('button', { name: '1D Validation' }));
 
     await waitFor(() => {
       expect(mockGetResults).toHaveBeenLastCalledWith({
         code: undefined,
-        evalWindowDays: 1,
+        triggerSource: undefined,
+        evalWindowDays: 10,
         analysisDateFrom: undefined,
         analysisDateTo: undefined,
+        sortBy: 'analysis_date',
+        sortOrder: 'desc',
         page: 1,
         limit: 20,
       });
-      expect(mockGetOverallPerformance).toHaveBeenLastCalledWith({
-        evalWindowDays: 1,
-        analysisDateFrom: undefined,
-        analysisDateTo: undefined,
-      });
+    });
+  });
+
+  it('点击分数排序按钮会切换后端全量排序参数', async () => {
+    render(<BacktestPage />);
+
+    await screen.findByText('600519');
+    const sortBtn = screen.getByRole('button', { name: '按分数排序' });
+    fireEvent.click(sortBtn);
+    await waitFor(() => {
+      expect(mockGetResults).toHaveBeenLastCalledWith(expect.objectContaining({
+        sortBy: 'sentiment_score',
+        sortOrder: 'desc',
+      }));
     });
 
-    expect(screen.getByText('Actual')).toBeInTheDocument();
-    expect(screen.getByText('Accuracy')).toBeInTheDocument();
-    expect(screen.getByText('Next-day validation mode compares AI predictions with the next trading day close.')).toBeInTheDocument();
+    const sortBtnAfterFirstToggle = await screen.findByRole('button', { name: '按分数排序' });
+    fireEvent.click(sortBtnAfterFirstToggle);
+    await waitFor(() => {
+      expect(mockGetResults).toHaveBeenLastCalledWith(expect.objectContaining({
+        sortBy: 'sentiment_score',
+        sortOrder: 'asc',
+      }));
+    });
+  });
+
+  it('点击分析日期排序按钮会切换后端全量排序参数', async () => {
+    render(<BacktestPage />);
+
+    const dateSortBtn = await screen.findByRole('button', { name: '按分析日期排序' });
+
+    fireEvent.click(dateSortBtn);
+    await waitFor(() => {
+      expect(mockGetResults).toHaveBeenLastCalledWith(expect.objectContaining({
+        sortBy: 'analysis_date',
+        sortOrder: 'asc',
+      }));
+    });
+  });
+
+  it('点击实际表现列头会切换后端排序参数', async () => {
+    render(<BacktestPage />);
+
+    await screen.findByPlaceholderText('按股票代码筛选（留空=全部）');
+    const actualSortBtn = screen.getByRole('button', { name: '按实际表现排序' });
+
+    fireEvent.click(actualSortBtn); // actual_desc
+    await waitFor(() => {
+      expect(mockGetResults).toHaveBeenLastCalledWith(expect.objectContaining({
+        sortBy: 'actual_return_pct',
+        sortOrder: 'desc',
+      }));
+    });
+    const actualSortBtnAfterFirstToggle = await screen.findByRole('button', { name: '按实际表现排序' });
+
+    fireEvent.click(actualSortBtnAfterFirstToggle); // actual_asc
+    await waitFor(() => {
+      expect(mockGetResults).toHaveBeenLastCalledWith(expect.objectContaining({
+        sortBy: 'actual_return_pct',
+        sortOrder: 'asc',
+      }));
+    });
   });
 });

@@ -914,7 +914,7 @@ FastAPI provides RESTful API service for configuration management and triggering
 | `/api/v1/history` | GET | Query analysis history |
 | `/api/v1/usage/summary?period=today|month|all` | GET | Query LLM call counts and token usage grouped by call type and model |
 | `/api/v1/backtest/run` | POST | Trigger backtest |
-| `/api/v1/backtest/results` | GET | Query backtest results (paginated, supports `trigger_source=auto|manual`) |
+| `/api/v1/backtest/results` | GET | Query backtest results (paginated, supports `trigger_source=auto|manual`, `sort_by=analysis_date|actual_return_pct|sentiment_score`, and `sort_order=asc|desc`) |
 | `/api/v1/backtest/performance` | GET | Get overall backtest performance |
 | `/api/v1/backtest/performance/{code}` | GET | Get per-stock backtest performance |
 | `/api/health` | GET | Health check |
@@ -964,8 +964,14 @@ curl http://127.0.0.1:8000/api/v1/backtest/performance
 # Query per-stock backtest performance
 curl http://127.0.0.1:8000/api/v1/backtest/performance/600519
 
-# Paginated backtest results
+# Paginated backtest results (default: latest analysis first)
 curl "http://127.0.0.1:8000/api/v1/backtest/results?page=1&limit=20"
+
+# Paginate after global sorting by actual performance (high to low)
+curl "http://127.0.0.1:8000/api/v1/backtest/results?page=1&limit=20&sort_by=actual_return_pct&sort_order=desc"
+
+# Paginate after global sorting by score (high to low)
+curl "http://127.0.0.1:8000/api/v1/backtest/results?page=1&limit=20&sort_by=sentiment_score&sort_order=desc"
 ```
 
 ### Custom Configuration

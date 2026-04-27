@@ -1078,7 +1078,7 @@ FastAPI 提供 RESTful API 服务，支持配置管理和触发分析。
 | `/api/v1/history` | GET | 查询分析历史 |
 | `/api/v1/usage/summary?period=today|month|all` | GET | 按调用类型与模型维度汇总 LLM 调用次数和 Token 用量 |
 | `/api/v1/backtest/run` | POST | 触发回测 |
-| `/api/v1/backtest/results` | GET | 查询回测结果（分页，支持 `trigger_source=auto|manual`） |
+| `/api/v1/backtest/results` | GET | 查询回测结果（分页，支持 `trigger_source=auto|manual`，支持 `sort_by=analysis_date|actual_return_pct|sentiment_score` 与 `sort_order=asc|desc`） |
 | `/api/v1/backtest/performance` | GET | 获取整体回测表现 |
 | `/api/v1/backtest/performance/{code}` | GET | 获取单股回测表现 |
 | `/api/v1/stocks/extract-from-image` | POST | 从图片提取股票代码（multipart，超时 60s） |
@@ -1130,8 +1130,14 @@ curl http://127.0.0.1:8000/api/v1/backtest/performance
 # 查询单股回测表现
 curl http://127.0.0.1:8000/api/v1/backtest/performance/600519
 
-# 分页查询回测结果
+# 分页查询回测结果（默认按分析日期倒序）
 curl "http://127.0.0.1:8000/api/v1/backtest/results?page=1&limit=20"
+
+# 按实际表现全量排序后分页（高到低）
+curl "http://127.0.0.1:8000/api/v1/backtest/results?page=1&limit=20&sort_by=actual_return_pct&sort_order=desc"
+
+# 按分数全量排序后分页（高到低）
+curl "http://127.0.0.1:8000/api/v1/backtest/results?page=1&limit=20&sort_by=sentiment_score&sort_order=desc"
 ```
 
 ### 自定义配置

@@ -22,6 +22,7 @@ class DailyBarLike(Protocol):
     high: Optional[float]
     low: Optional[float]
     close: Optional[float]
+    pct_chg: Optional[float]
 
 
 class BacktestResultLike(Protocol):
@@ -166,7 +167,18 @@ class BacktestEngine:
         min_low = min(lows) if lows else None
 
         stock_return_pct: Optional[float]
-        if end_close is None:
+        # For next-day validation, prefer pct_chg when available to avoid
+        # ex-right/ex-dividend price-level jumps distorting close-to-close returns.
+        if eval_days == 1:
+            first_bar = window_bars[0]
+            day_pct_chg = getattr(first_bar, "pct_chg", None)
+            if day_pct_chg is not None:
+                stock_return_pct = float(day_pct_chg)
+            elif end_close is None:
+                stock_return_pct = None
+            else:
+                stock_return_pct = (end_close - start_price) / start_price * 100
+        elif end_close is None:
             stock_return_pct = None
         else:
             stock_return_pct = (end_close - start_price) / start_price * 100
