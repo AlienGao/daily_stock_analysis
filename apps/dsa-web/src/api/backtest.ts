@@ -3,6 +3,8 @@ import { toCamelCase } from './utils';
 import type {
   BacktestRunRequest,
   BacktestRunResponse,
+  BacktestTaskAcceptedResponse,
+  BacktestTaskStatusResponse,
   BacktestResultsResponse,
   BacktestResultItem,
   PerformanceMetrics,
@@ -14,7 +16,7 @@ export const backtestApi = {
   /**
    * Trigger backtest evaluation
    */
-  run: async (params: BacktestRunRequest = {}): Promise<BacktestRunResponse> => {
+  run: async (params: BacktestRunRequest = {}): Promise<BacktestTaskAcceptedResponse> => {
     const requestData: Record<string, unknown> = {};
     if (params.code) requestData.code = params.code;
     if (params.force) requestData.force = params.force;
@@ -26,13 +28,21 @@ export const backtestApi = {
     }
     if (params.sentimentScoreMin != null) requestData.sentiment_score_min = params.sentimentScoreMin;
     if (params.sentimentScoreMax != null) requestData.sentiment_score_max = params.sentimentScoreMax;
+    requestData.async_mode = params.asyncMode ?? true;
 
     const response = await apiClient.post<Record<string, unknown>>(
       '/api/v1/backtest/run',
       requestData,
-      { timeout: 180000 },
+      // Backtest may need to backfill historical bars from upstream sources,
+      // and can exceed the default 3-minute browser wait window.
+      { timeout: 600000 },
     );
-    return toCamelCase<BacktestRunResponse>(response.data);
+    return toCamelCase<BacktestTaskAcceptedResponse>(response.data);
+  },
+
+  getTaskStatus: async (taskId: string): Promise<BacktestTaskStatusResponse> => {
+    const response = await apiClient.get<Record<string, unknown>>(`/api/v1/backtest/tasks/${encodeURIComponent(taskId)}`);
+    return toCamelCase<BacktestTaskStatusResponse>(response.data);
   },
 
   /**

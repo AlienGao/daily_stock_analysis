@@ -8,6 +8,7 @@ import { ApiErrorAlert, Card, Badge, EmptyState, Pagination, StatusDot, Tooltip 
 import type {
   BacktestResultItem,
   BacktestRunResponse,
+  BacktestTaskStatusResponse,
   PerformanceMetrics,
 } from '../types/backtest';
 
@@ -189,6 +190,17 @@ const RunSummary: React.FC<{ data: BacktestRunResponse }> = ({ data }) => (
   </div>
 );
 
+async function waitForBacktestTask(taskId: string, maxAttempts = 300): Promise<BacktestTaskStatusResponse> {
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const snapshot = await backtestApi.getTaskStatus(taskId);
+    if (snapshot.status === 'completed' || snapshot.status === 'failed') {
+      return snapshot;
+    }
+    await new Promise((resolve) => { setTimeout(resolve, 2000); });
+  }
+  throw new Error('回测任务等待超时，请稍后手动刷新结果。');
+}
+
 // ============ Main Page ============
 
 const BacktestPage: React.FC = () => {
@@ -217,6 +229,7 @@ const BacktestPage: React.FC = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [runResult, setRunResult] = useState<BacktestRunResponse | null>(null);
   const [runError, setRunError] = useState<ParsedApiError | null>(null);
+  const [runHint, setRunHint] = useState<string>('');
   const [pageError, setPageError] = useState<ParsedApiError | null>(null);
 
   // Results state
@@ -329,12 +342,13 @@ const BacktestPage: React.FC = () => {
     setIsRunning(true);
     setRunResult(null);
     setRunError(null);
+    setRunHint('');
     try {
       const code = codeFilter.trim() || undefined;
       const evalWindowDays = evalDays ? parseInt(evalDays, 10) : undefined;
       const useSignalFilter = runFilterMode === 'signal' || runFilterMode === 'signal_and_score';
       const useScoreFilter = runFilterMode === 'score' || runFilterMode === 'signal_and_score';
-      const response = await backtestApi.run({
+      const accepted = await backtestApi.run({
         code,
         force: forceRerun || undefined,
         minAgeDays: forceRerun ? 0 : undefined,
@@ -342,8 +356,15 @@ const BacktestPage: React.FC = () => {
         allowedCategories: useSignalFilter ? ['BUY', 'HOLD'] : undefined,
         sentimentScoreMin: useScoreFilter && scoreMin !== '' ? parseInt(scoreMin, 10) : undefined,
         sentimentScoreMax: useScoreFilter && scoreMax !== '' ? parseInt(scoreMax, 10) : undefined,
+        asyncMode: true,
       });
-      setRunResult(response);
+      setRunHint('回测任务已提交，正在后台执行...');
+      const taskSnapshot = await waitForBacktestTask(accepted.taskId);
+      if (taskSnapshot.status !== 'completed' || !taskSnapshot.result) {
+        throw new Error(taskSnapshot.error || taskSnapshot.message || '回测任务执行失败');
+      }
+      setRunHint('回测任务已完成，结果已刷新。');
+      setRunResult(taskSnapshot.result);
       // Refresh data with same eval_window_days
       fetchResults(
         1,
@@ -364,6 +385,7 @@ const BacktestPage: React.FC = () => {
       );
     } catch (err) {
       setRunError(getParsedApiError(err));
+      setRunHint('');
     } finally {
       setIsRunning(false);
     }
@@ -636,6 +658,9 @@ const BacktestPage: React.FC = () => {
         )}
         {runError && (
           <ApiErrorAlert error={runError} className="mt-2 max-w-4xl" />
+        )}
+        {!runError && runHint && (
+          <p className="mt-2 text-xs text-secondary-text">{runHint}</p>
         )}
         <p className="mt-2 text-xs text-muted-text">
           {isNextDayValidation

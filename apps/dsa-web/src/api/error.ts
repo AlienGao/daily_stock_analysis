@@ -9,6 +9,7 @@ export type ApiErrorCategory =
   | 'portfolio_oversell'
   | 'portfolio_busy'
   | 'upstream_llm_400'
+  | 'request_timeout'
   | 'upstream_timeout'
   | 'upstream_network'
   | 'local_connection_failed'
@@ -389,6 +390,18 @@ export function parseApiError(error: unknown): ParsedApiError {
       rawMessage,
       status,
       category: 'invalid_tool_call',
+    });
+  }
+
+  const clientRequestTimeout = code === 'ECONNABORTED'
+    && includesAny(matchText, ['timeout of', 'exceeded']);
+  if (clientRequestTimeout) {
+    return createParsedApiError({
+      title: '本地请求等待超时',
+      message: '请求等待时间已超过前端阈值，任务可能仍在服务端继续执行。请稍后刷新结果列表确认是否已完成。',
+      rawMessage,
+      status,
+      category: 'request_timeout',
     });
   }
 

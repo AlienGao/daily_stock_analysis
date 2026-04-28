@@ -20,6 +20,7 @@ class BacktestRunRequest(BaseModel):
     )
     sentiment_score_min: Optional[int] = Field(None, ge=0, le=100, description="评分下限（含）")
     sentiment_score_max: Optional[int] = Field(None, ge=0, le=100, description="评分上限（含）")
+    async_mode: bool = Field(False, description="是否异步执行回测任务")
 
 
 class BacktestRunResponse(BaseModel):
@@ -28,6 +29,24 @@ class BacktestRunResponse(BaseModel):
     completed: int = Field(..., description="完成回测数")
     insufficient: int = Field(..., description="数据不足数")
     errors: int = Field(..., description="错误数")
+
+
+class BacktestTaskAcceptedResponse(BaseModel):
+    task_id: str = Field(..., description="回测任务 ID")
+    status: str = Field(..., description="任务状态", pattern="^(pending|processing)$")
+    message: str = Field(..., description="任务状态说明")
+
+
+class BacktestTaskStatusResponse(BaseModel):
+    task_id: str = Field(..., description="回测任务 ID")
+    status: str = Field(..., description="任务状态", pattern="^(pending|processing|completed|failed)$")
+    progress: int = Field(..., ge=0, le=100, description="任务进度（0-100）")
+    message: Optional[str] = Field(None, description="任务状态说明")
+    result: Optional[BacktestRunResponse] = Field(None, description="任务执行结果（仅 completed 时有值）")
+    error: Optional[str] = Field(None, description="失败原因（仅 failed 时有值）")
+    created_at: str = Field(..., description="任务创建时间")
+    started_at: Optional[str] = Field(None, description="任务开始时间")
+    completed_at: Optional[str] = Field(None, description="任务完成时间")
 
 
 class BacktestResultItem(BaseModel):

@@ -4,15 +4,21 @@
 from __future__ import annotations
 
 import logging
-from datetime import date
-from typing import Literal, Optional
+import threading
+import uuid
+from concurrent.futures import ThreadPoolExecutor
+from datetime import date, datetime
+from typing import Any, Dict, Literal, Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import JSONResponse
 
 from api.deps import get_database_manager
 from api.v1.schemas.backtest import (
     BacktestRunRequest,
     BacktestRunResponse,
+    BacktestTaskAcceptedResponse,
+    BacktestTaskStatusResponse,
     BacktestResultItem,
     BacktestResultsResponse,
     PerformanceMetrics,
@@ -24,6 +30,87 @@ from src.storage import DatabaseManager
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+_TASK_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="backtest_task_")
+_TASK_LOCK = threading.RLock()
+_TASKS: Dict[str, Dict[str, Any]] = {}
+_MAX_TASK_HISTORY = 100
+
+
+def _task_status_payload(task: Dict[str, Any]) -> BacktestTaskStatusResponse:
+    return BacktestTaskStatusResponse(
+        task_id=task["task_id"],
+        status=task["status"],
+        progress=task["progress"],
+        message=task.get("message"),
+        result=BacktestRunResponse(**task["result"]) if task.get("result") else None,
+        error=task.get("error"),
+        created_at=task["created_at"],
+        started_at=task.get("started_at"),
+        completed_at=task.get("completed_at"),
+    )
+
+
+def _trim_task_history_locked() -> None:
+    if len(_TASKS) <= _MAX_TASK_HISTORY:
+        return
+    removable = sorted(
+        (
+            task
+            for task in _TASKS.values()
+            if task.get("status") in {"completed", "failed"}
+        ),
+        key=lambda x: x.get("completed_at") or x.get("created_at") or "",
+    )
+    for task in removable[: max(0, len(_TASKS) - _MAX_TASK_HISTORY)]:
+        _TASKS.pop(task["task_id"], None)
+
+
+def _run_backtest_task(task_id: str, request_data: Dict[str, Any], db_manager: DatabaseManager) -> None:
+    with _TASK_LOCK:
+        task = _TASKS.get(task_id)
+        if task is None:
+            return
+        task["status"] = "processing"
+        task["progress"] = 15
+        task["started_at"] = datetime.now().isoformat()
+        task["message"] = "回测任务执行中..."
+
+    try:
+        service = BacktestService(db_manager)
+        stats = service.run_backtest(
+            code=request_data.get("code"),
+            force=bool(request_data.get("force", False)),
+            eval_window_days=request_data.get("eval_window_days"),
+            min_age_days=request_data.get("min_age_days"),
+            limit=int(request_data.get("limit") or 200),
+            allowed_categories=request_data.get("allowed_categories"),
+            sentiment_score_min=request_data.get("sentiment_score_min"),
+            sentiment_score_max=request_data.get("sentiment_score_max"),
+            trigger_source="manual",
+        )
+        with _TASK_LOCK:
+            task = _TASKS.get(task_id)
+            if task is None:
+                return
+            task["status"] = "completed"
+            task["progress"] = 100
+            task["completed_at"] = datetime.now().isoformat()
+            task["message"] = "回测任务完成"
+            task["result"] = stats
+            task["error"] = None
+            _trim_task_history_locked()
+    except Exception as exc:  # pragma: no cover - defensive branch
+        logger.error("异步回测任务失败(%s): %s", task_id, exc, exc_info=True)
+        with _TASK_LOCK:
+            task = _TASKS.get(task_id)
+            if task is None:
+                return
+            task["status"] = "failed"
+            task["progress"] = 100
+            task["completed_at"] = datetime.now().isoformat()
+            task["message"] = "回测任务失败"
+            task["error"] = str(exc)
+            _trim_task_history_locked()
 
 
 def _validate_analysis_date_range(
@@ -42,9 +129,10 @@ def _validate_analysis_date_range(
 
 @router.post(
     "/run",
-    response_model=BacktestRunResponse,
+    response_model=Union[BacktestRunResponse, BacktestTaskAcceptedResponse],
     responses={
         200: {"description": "回测执行完成"},
+        202: {"description": "回测任务已接受", "model": BacktestTaskAcceptedResponse},
         500: {"description": "服务器错误", "model": ErrorResponse},
     },
     summary="触发回测",
@@ -53,7 +141,34 @@ def _validate_analysis_date_range(
 def run_backtest(
     request: BacktestRunRequest,
     db_manager: DatabaseManager = Depends(get_database_manager),
-) -> BacktestRunResponse:
+) -> Union[BacktestRunResponse, JSONResponse]:
+    if request.async_mode:
+        task_id = uuid.uuid4().hex
+        with _TASK_LOCK:
+            _TASKS[task_id] = {
+                "task_id": task_id,
+                "status": "pending",
+                "progress": 0,
+                "message": "回测任务已加入队列",
+                "created_at": datetime.now().isoformat(),
+                "started_at": None,
+                "completed_at": None,
+                "result": None,
+                "error": None,
+            }
+        _TASK_EXECUTOR.submit(
+            _run_backtest_task,
+            task_id,
+            request.model_dump(),
+            db_manager,
+        )
+        accepted = BacktestTaskAcceptedResponse(
+            task_id=task_id,
+            status="pending",
+            message="回测任务已提交，正在后台执行",
+        )
+        return JSONResponse(status_code=202, content=accepted.model_dump())
+
     try:
         service = BacktestService(db_manager)
         stats = service.run_backtest(
@@ -79,6 +194,26 @@ def run_backtest(
             status_code=500,
             detail={"error": "internal_error", "message": f"回测执行失败: {str(exc)}"},
         )
+
+
+@router.get(
+    "/tasks/{task_id}",
+    response_model=BacktestTaskStatusResponse,
+    responses={
+        200: {"description": "回测任务状态"},
+        404: {"description": "任务不存在", "model": ErrorResponse},
+    },
+    summary="查询回测任务状态",
+)
+def get_backtest_task_status(task_id: str) -> BacktestTaskStatusResponse:
+    with _TASK_LOCK:
+        task = _TASKS.get(task_id)
+        if task is None:
+            raise HTTPException(
+                status_code=404,
+                detail={"error": "not_found", "message": "回测任务不存在或已过期"},
+            )
+        return _task_status_payload(task)
 
 
 @router.get(

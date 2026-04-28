@@ -14,6 +14,7 @@ export interface BacktestRunRequest {
   allowedCategories?: Array<'BUY' | 'HOLD' | 'LOOK' | 'SELL'>;
   sentimentScoreMin?: number;
   sentimentScoreMax?: number;
+  asyncMode?: boolean;
 }
 
 export interface BacktestRunResponse {
@@ -22,6 +23,24 @@ export interface BacktestRunResponse {
   completed: number;
   insufficient: number;
   errors: number;
+}
+
+export interface BacktestTaskAcceptedResponse {
+  taskId: string;
+  status: 'pending' | 'processing';
+  message: string;
+}
+
+export interface BacktestTaskStatusResponse {
+  taskId: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  progress: number;
+  message?: string;
+  result?: BacktestRunResponse | null;
+  error?: string | null;
+  createdAt: string;
+  startedAt?: string | null;
+  completedAt?: string | null;
 }
 
 // ============ Result Item ============
