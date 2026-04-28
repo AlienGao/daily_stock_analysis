@@ -116,13 +116,11 @@ class TestResolveNameToCode:
 
     @patch("src.services.name_to_code_resolver._get_akshare_name_to_code")
     def test_akshare_fallback_when_not_in_local(self, mock_akshare):
-        mock_akshare.return_value = {"平安银行": "000001"}
-        # 000001 is in local map as 平安银行, so we use a name that's only in akshare
-        # Actually local has 000001 -> 平安银行. So "平安银行" would hit local first.
-        # Use a name not in STOCK_NAME_MAP - e.g. some A-share only in AkShare
-        mock_akshare.return_value = {"浦发银行": "600000"}
-        result = resolve_name_to_code("浦发银行")
-        assert result == "600000"
+        mock_akshare.return_value = {"测试股票XYZ999": "600999"}
+        # Use a name that's not in local STOCK_NAME_MAP and not in the index reverse map,
+        # so it falls through to AkShare as intended by this test.
+        result = resolve_name_to_code("测试股票XYZ999")
+        assert result == "600999"
         mock_akshare.assert_called()
 
     @patch("src.services.name_to_code_resolver._get_akshare_name_to_code")

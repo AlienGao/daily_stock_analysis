@@ -270,7 +270,9 @@ class BacktestServiceTestCase(unittest.TestCase):
         )
 
         service = BacktestService(self.db)
-        service.run_backtest(code="600519", force=False, eval_window_days=1, min_age_days=0, limit=20)
+        # _try_fill_daily_data would overwrite seeded data with real fetched prices
+        with patch.object(service, "_try_fill_daily_data"):
+            service.run_backtest(code="600519", force=False, eval_window_days=1, min_age_days=0, limit=20)
 
         data = service.get_recent_evaluations(
             code="600519",
@@ -359,7 +361,8 @@ class BacktestServiceTestCase(unittest.TestCase):
         )
 
         service = BacktestService(self.db)
-        service.run_backtest(code="600519", force=False, eval_window_days=1, min_age_days=0, limit=20)
+        with patch.object(service, "_try_fill_daily_data"):
+            service.run_backtest(code="600519", force=False, eval_window_days=1, min_age_days=0, limit=20)
 
         summary = service.get_summary(
             scope="stock",
@@ -489,7 +492,7 @@ class BacktestServiceTestCase(unittest.TestCase):
         service.run_backtest(code="600519", force=False, eval_window_days=3, min_age_days=0, limit=10)
 
         with patch.object(BacktestService, "MAX_DYNAMIC_SUMMARY_ROWS", 0):
-            with self.assertRaisesRegex(ValueError, "Date-filtered summary matches too many rows"):
+            with self.assertRaisesRegex(ValueError, "Filtered summary matches too many rows"):
                 service.get_summary(
                     scope="stock",
                     code="600519",

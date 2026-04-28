@@ -18,7 +18,7 @@ import json
 import logging
 import re
 import time
-from datetime import datetime, date, time, timedelta
+from datetime import datetime, date, time as dt_time, timedelta
 from zoneinfo import ZoneInfo
 from typing import Optional, List, Dict, Any, TYPE_CHECKING, Tuple, Callable, TypeVar
 
@@ -70,7 +70,7 @@ def shanghai_calendar_day_bounds_now() -> tuple[datetime, datetime]:
     假设分析进程的本地时间与业务日一致，或与 Asia/Shanghai 同日界对齐。
     """
     d = datetime.now(ZoneInfo("Asia/Shanghai")).date()
-    lo = datetime.combine(d, time.min)
+    lo = datetime.combine(d, dt_time.min)
     hi = lo + timedelta(days=1)
     return lo, hi
 

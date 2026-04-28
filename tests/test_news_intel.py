@@ -182,7 +182,7 @@ class NewsIntelStorageTestCase(unittest.TestCase):
 
         with patch.object(self.db, "get_session", side_effect=[first_session, second_session]):
             with patch.object(first_session, "execute", side_effect=stmt_exc):
-                with patch("src.storage.time.sleep") as mock_sleep:
+                with patch("time.sleep") as mock_sleep:
                     saved = self.db.save_news_intel(
                         code="600519",
                         name="贵州茅台",
