@@ -694,66 +694,6 @@ def run_full_analysis(
         except Exception as e:
             logger.error(f"报告比较失败: {e}")
 
-        # === 新增：自动更新股票分类 ===
-        try:
-            from src.services.system_config_service import SystemConfigService
-            
-            if results:
-                # 按评级分类股票
-                category_stocks = {
-                    "BUY": [],
-                    "HOLD": [],
-                    "LOOK": [],
-                    "SELL": []
-                }
-
-                # 映射评级到分类（与 src.utils.rating_category 同步）
-                from src.utils.rating_category import RATING_MAP as rating_map
-
-                unmapped: set[str] = set()
-                for r in results:
-                    advice = (r.operation_advice or "").strip()
-                    if advice in rating_map:
-                        category = rating_map[advice]
-                    else:
-                        # 未识别的评级默认保守归入 LOOK，同时收集便于日志提醒。
-                        category = "LOOK"
-                        if advice:
-                            unmapped.add(advice)
-                    category_stocks[category].append(r.code)
-
-                # 即便某个分类今天为空，也显式覆盖为空串，避免历史残留
-                # （例如今天 SELL=0 不应让上一次的 SELL 值继续留在 .env）
-                updates = [
-                    (cat, ",".join(sorted(set(stocks))))
-                    for cat, stocks in category_stocks.items()
-                ]
-
-                logger.info("\n===== 自动更新股票分类 =====")
-                config_service = SystemConfigService()
-                config_service.apply_simple_updates(updates)
-                logger.info("股票分类已更新到 .env 文件")
-                for cat, stocks in category_stocks.items():
-                    logger.info(f"{cat}: {len(stocks)} 只股票")
-                if unmapped:
-                    logger.warning(
-                        "检测到未在 rating_map 中登记的评级 → 已按 LOOK 归类: %s",
-                        ", ".join(sorted(unmapped)),
-                    )
-
-                # 生成 STOCK_LIST：BUY ∪ HOLD（去重排序，始终覆盖）
-                buy_stocks = set(category_stocks.get("BUY", []))
-                hold_stocks = set(category_stocks.get("HOLD", []))
-                stock_list = buy_stocks | hold_stocks
-                stock_list_str = ",".join(sorted(stock_list))
-
-                config_service.apply_simple_updates([("STOCK_LIST", stock_list_str)])
-                logger.info(
-                    f"STOCK_LIST已更新，包含 {len(stock_list)} 只股票（BUY + HOLD）"
-                )
-        except Exception as e:
-            logger.error(f"自动更新股票分类失败: {e}")
-
         logger.info("\n任务执行完成")
 
         # === 新增：生成飞书云文档 ===

@@ -1624,8 +1624,58 @@ class StockAnalysisPipeline:
             report = self._generate_aggregate_report(results, report_type)
             filepath = self.notifier.save_report_to_file(report)
             logger.info(f"决策仪表盘日报已保存: {filepath}")
+            self._sync_env_categories_from_results(results)
         except Exception as e:
             logger.error(f"保存本地报告失败: {e}")
+
+    def _sync_env_categories_from_results(self, results: List[AnalysisResult]) -> None:
+        """根据当次报告结果同步 .env 的 BUY/HOLD/LOOK/SELL 与 STOCK_LIST。"""
+        if not results:
+            return
+        try:
+            from src.services.system_config_service import SystemConfigService
+            from src.utils.rating_category import operation_advice_to_category
+
+            category_stocks: Dict[str, List[str]] = {
+                "BUY": [],
+                "HOLD": [],
+                "LOOK": [],
+                "SELL": [],
+            }
+            unmapped: set[str] = set()
+
+            for result in results:
+                advice = (getattr(result, "operation_advice", "") or "").strip()
+                category = operation_advice_to_category(advice, unmapped=unmapped)
+                category_stocks[category].append(getattr(result, "code", ""))
+
+            updates = []
+            for category in ("BUY", "HOLD", "LOOK", "SELL"):
+                stocks = sorted({code for code in category_stocks[category] if code})
+                updates.append((category, ",".join(stocks)))
+
+            config_service = SystemConfigService()
+            config_service.apply_simple_updates(updates)
+
+            buy_stocks = set(code for code in category_stocks["BUY"] if code)
+            hold_stocks = set(code for code in category_stocks["HOLD"] if code)
+            stock_list = ",".join(sorted(buy_stocks | hold_stocks))
+            config_service.apply_simple_updates([("STOCK_LIST", stock_list)])
+
+            logger.info(
+                "日报生成后已自动同步 .env 分类: BUY=%s HOLD=%s LOOK=%s SELL=%s",
+                len(buy_stocks),
+                len(hold_stocks),
+                len([c for c in category_stocks["LOOK"] if c]),
+                len([c for c in category_stocks["SELL"] if c]),
+            )
+            if unmapped:
+                logger.warning(
+                    "检测到未登记评级，已按 LOOK 归类: %s",
+                    ", ".join(sorted(unmapped)),
+                )
+        except Exception as exc:
+            logger.error("日报生成后自动同步 .env 分类失败: %s", exc)
 
     def _send_notifications(
         self,

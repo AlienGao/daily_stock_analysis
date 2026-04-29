@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Map LLM operation_advice text to BUY/HOLD/LOOK/SELL (must stay in sync with main.py)."""
+"""Map operation_advice text (emoji only) to BUY/HOLD/LOOK/SELL."""
 
 from typing import Dict, Optional, Set
 
@@ -23,12 +23,27 @@ RATING_MAP: Dict[str, str] = {
     "强烈卖出": "SELL",
 }
 
+# 优先按 emoji 分类（适配报告摘要和富文本建议）
+EMOJI_CATEGORY_MAP: Dict[str, str] = {
+    "🟢": "BUY",
+    "🟡": "HOLD",
+    "⚪": "LOOK",
+    "🟠": "SELL",
+    "🔴": "SELL",
+}
+
 
 def operation_advice_to_category(operation_advice: str, unmapped: Optional[Set[str]] = None) -> str:
-    """Return one of BUY/HOLD/LOOK/SELL. Unknown non-empty advice → LOOK + optional unmapped collect."""
+    """Return one of BUY/HOLD/LOOK/SELL.
+
+    Matching priority:
+    1) Emoji marker: 🟢/🟡/⚪/🟠/🔴
+    2) Fallback to LOOK (optionally collecting unmapped raw text)
+    """
     advice = (operation_advice or "").strip()
-    if advice in RATING_MAP:
-        return RATING_MAP[advice]
+    for emoji, category in EMOJI_CATEGORY_MAP.items():
+        if emoji in advice:
+            return category
     if advice and unmapped is not None:
         unmapped.add(advice)
     return "LOOK"
