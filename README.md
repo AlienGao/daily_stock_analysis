@@ -39,7 +39,7 @@
 | 分析 | 多维度分析 | 技术面、实时行情、筹码分布、新闻舆情、公告、资金流与基本面聚合 |
 | 市场 | 全球市场 | 支持 A股、港股、美股、美股指数及常见 ETF |
 | 策略 | 市场策略系统 | 内置 A股复盘、美股 Regime、均线、缠论、波浪、情绪周期等策略能力 |
-| 复盘 | 大盘复盘 | 每日市场概览、指数表现、涨跌统计与板块强弱 |
+| 复盘 | 大盘复盘 | 每日市场概览、指数表现、涨跌统计与板块强弱（支持 cn / hk / us / both） |
 | Web | 双主题工作台 | 支持手动分析、配置管理、任务进度、历史报告、回测、持仓管理 |
 | 导入 | 智能导入与补全 | 支持图片、CSV/Excel、剪贴板导入，自选股输入支持代码/名称/拼音/别名补全 |
 | 历史 | 报告管理 | 支持历史报告查看、完整 Markdown 报告、重新分析与批量管理 |
@@ -262,6 +262,12 @@ python scripts/run_top_n_replay.py --date 2026-04-23 --update-report
 ```
 
 其他：`--query-source all` 取消按来源过滤（一般保留默认 `cli` 即可与定时/全量分析一致）；`--list-batches` 可列出各 `query_id` 条数作调试。若确知共享 `query_id`，可 `python scripts/run_top_n_replay.py --query-id <uuid>`。详见脚本文件顶部说明。
+## 相关项目 (Related Projects)
+
+DSA 聚焦日常分析报告；下面两个同系列项目分别覆盖选股、策略验证与策略进化，适合按需延伸使用。它们当前独立维护，后续会优先探索与 DSA 的候选股导入、回测验证和报告联动。
+
+- [AlphaSift](https://github.com/ZhuLinsen/alphasift)：多因子选股与全市场扫描，用于从股票池中提取候选标的。
+- [AlphaEvo](https://github.com/ZhuLinsen/alphaevo)：策略回测与自我进化，用于验证策略规则，并通过迭代探索策略参数与组合。
 
 ## 🗺️ Roadmap
 
