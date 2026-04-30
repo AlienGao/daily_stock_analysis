@@ -266,10 +266,12 @@ class MainScheduleModeTestCase(unittest.TestCase):
         self.assertEqual(call_order, ["reload_env", "reset_instance", "get_config"])
 
     def test_schedule_time_provider_propagates_config_read_failures(self) -> None:
+        # 确保 _INITIAL_PROCESS_ENV 中无 SCHEDULE_TIME，避免短路跳过 read_config_map
+        clean_init_env = {k: v for k, v in main._INITIAL_PROCESS_ENV.items() if k != "SCHEDULE_TIME"}
         with patch(
             "src.core.config_manager.ConfigManager.read_config_map",
             side_effect=RuntimeError("boom"),
-        ):
+        ), patch.object(main, "_INITIAL_PROCESS_ENV", clean_init_env):
             provider = main._build_schedule_time_provider("18:00")
 
             with self.assertRaisesRegex(RuntimeError, "boom"):

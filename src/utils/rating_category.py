@@ -38,11 +38,15 @@ def operation_advice_to_category(operation_advice: str, unmapped: Optional[Set[s
 
     Matching priority:
     1) Emoji marker: 🟢/🟡/⚪/🟠/🔴
-    2) Fallback to LOOK (optionally collecting unmapped raw text)
+    2) Text match: RATING_MAP key in advice text
+    3) Fallback to LOOK (optionally collecting unmapped raw text)
     """
     advice = (operation_advice or "").strip()
     for emoji, category in EMOJI_CATEGORY_MAP.items():
         if emoji in advice:
+            return category
+    for text, category in RATING_MAP.items():
+        if text in advice:
             return category
     if advice and unmapped is not None:
         unmapped.add(advice)

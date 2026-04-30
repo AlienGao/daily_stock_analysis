@@ -690,6 +690,28 @@ class Config:
     news_strategy_profile: str = "short"  # 新闻窗口策略档位：ultra_short/short/medium/long
     bias_threshold: float = 5.0  # 乖离率阈值（%），超过此值提示不追高
 
+    # === 股票自动发现配置 (Stock Discovery Engine) ===
+    auto_discover: bool = False              # AUTO_DISCOVER — 开启自动发现（true 时忽略 STOCK_LIST）
+    auto_discover_count: int = 10            # AUTO_DISCOVER_COUNT — 每日推荐数量
+
+    # 盘中扫描权重 (4因子，相加=100)
+    discover_weight_sector: float = 25.0     # DISCOVER_WEIGHT_SECTOR — 板块热度
+    discover_weight_ma_entry: float = 35.0   # DISCOVER_WEIGHT_MA_ENTRY — 均线买点（核心）
+    discover_weight_momentum: float = 25.0   # DISCOVER_WEIGHT_MOMENTUM — 强势启动
+    discover_weight_rebound: float = 15.0    # DISCOVER_WEIGHT_REBOUND — 炸板回封
+
+    # 盘后深度权重 (5因子，相加=100)
+    discover_weight_moneyflow: float = 25.0  # DISCOVER_WEIGHT_MONEYFLOW — 资金流向
+    discover_weight_margin: float = 20.0     # DISCOVER_WEIGHT_MARGIN — 融资融券（T+1）
+    discover_weight_chip: float = 15.0       # DISCOVER_WEIGHT_CHIP — 筹码结构
+    discover_weight_technical: float = 25.0  # DISCOVER_WEIGHT_TECHNICAL — 技术面
+    discover_weight_limit_post: float = 15.0 # DISCOVER_WEIGHT_LIMIT_POST — 涨跌停
+
+    # 扫描器设置
+    discover_scan_interval: int = 300        # DISCOVER_SCAN_INTERVAL — 盘中轮询间隔（秒）
+    discover_scan_max_runtime: int = 240     # DISCOVER_SCAN_MAX_RUNTIME — 最大运行时间（分钟）
+    discover_scan_top_n: int = 10            # DISCOVER_SCAN_TOP_N — 盘中保持 Top N
+
     # === Agent 模式配置 ===
     agent_litellm_model: str = ""  # Optional Agent-only primary model; empty inherits LITELLM_MODEL
     agent_mode: bool = False
@@ -1387,6 +1409,47 @@ class Config:
                 os.getenv('NEWS_STRATEGY_PROFILE', 'short')
             ),
             bias_threshold=parse_env_float(os.getenv('BIAS_THRESHOLD'), 5.0, field_name='BIAS_THRESHOLD', minimum=1.0),
+            # --- 股票自动发现 ---
+            auto_discover=os.getenv('AUTO_DISCOVER', 'false').lower() == 'true',
+            auto_discover_count=parse_env_int(
+                os.getenv('AUTO_DISCOVER_COUNT'), 10, field_name='AUTO_DISCOVER_COUNT', minimum=1, maximum=50
+            ),
+            discover_weight_sector=parse_env_float(
+                os.getenv('DISCOVER_WEIGHT_SECTOR'), 25.0, field_name='DISCOVER_WEIGHT_SECTOR', minimum=0.0, maximum=100.0
+            ),
+            discover_weight_ma_entry=parse_env_float(
+                os.getenv('DISCOVER_WEIGHT_MA_ENTRY'), 35.0, field_name='DISCOVER_WEIGHT_MA_ENTRY', minimum=0.0, maximum=100.0
+            ),
+            discover_weight_momentum=parse_env_float(
+                os.getenv('DISCOVER_WEIGHT_MOMENTUM'), 25.0, field_name='DISCOVER_WEIGHT_MOMENTUM', minimum=0.0, maximum=100.0
+            ),
+            discover_weight_rebound=parse_env_float(
+                os.getenv('DISCOVER_WEIGHT_REBOUND'), 15.0, field_name='DISCOVER_WEIGHT_REBOUND', minimum=0.0, maximum=100.0
+            ),
+            discover_weight_moneyflow=parse_env_float(
+                os.getenv('DISCOVER_WEIGHT_MONEYFLOW'), 25.0, field_name='DISCOVER_WEIGHT_MONEYFLOW', minimum=0.0, maximum=100.0
+            ),
+            discover_weight_margin=parse_env_float(
+                os.getenv('DISCOVER_WEIGHT_MARGIN'), 20.0, field_name='DISCOVER_WEIGHT_MARGIN', minimum=0.0, maximum=100.0
+            ),
+            discover_weight_chip=parse_env_float(
+                os.getenv('DISCOVER_WEIGHT_CHIP'), 15.0, field_name='DISCOVER_WEIGHT_CHIP', minimum=0.0, maximum=100.0
+            ),
+            discover_weight_technical=parse_env_float(
+                os.getenv('DISCOVER_WEIGHT_TECHNICAL'), 25.0, field_name='DISCOVER_WEIGHT_TECHNICAL', minimum=0.0, maximum=100.0
+            ),
+            discover_weight_limit_post=parse_env_float(
+                os.getenv('DISCOVER_WEIGHT_LIMIT_POST'), 15.0, field_name='DISCOVER_WEIGHT_LIMIT_POST', minimum=0.0, maximum=100.0
+            ),
+            discover_scan_interval=parse_env_int(
+                os.getenv('DISCOVER_SCAN_INTERVAL'), 300, field_name='DISCOVER_SCAN_INTERVAL', minimum=30, maximum=3600
+            ),
+            discover_scan_max_runtime=parse_env_int(
+                os.getenv('DISCOVER_SCAN_MAX_RUNTIME'), 240, field_name='DISCOVER_SCAN_MAX_RUNTIME', minimum=30, maximum=480
+            ),
+            discover_scan_top_n=parse_env_int(
+                os.getenv('DISCOVER_SCAN_TOP_N'), 10, field_name='DISCOVER_SCAN_TOP_N', minimum=1, maximum=30
+            ),
             agent_litellm_model=agent_litellm_model,
             agent_mode=os.getenv('AGENT_MODE', 'false').lower() == 'true',
             _agent_mode_explicit=os.getenv('AGENT_MODE') is not None,

@@ -1605,11 +1605,79 @@ class StockAnalysisPipeline:
         if stock_codes is None:
             self.config.refresh_stock_list()
             stock_codes = self.config.stock_list
-        
+
+        # Auto-discovery: 盘后深度扫描，自动发现高潜力股票并入分析列表
+        if getattr(self.config, 'auto_discover', False) and not dry_run:
+            tushare_fetcher = self.fetcher_manager._get_tushare_fetcher()
+            if tushare_fetcher and tushare_fetcher.is_available():
+                try:
+                    from src.discovery.config import get_discovery_config
+                    from src.discovery.engine import StockDiscoveryEngine
+                    from src.discovery.factors import (
+                        MoneyFlowFactor, MarginFactor, ChipFactor,
+                        TechnicalFactor, LimitFactor,
+                    )
+
+                    discovery_config = get_discovery_config()
+                    engine = StockDiscoveryEngine(discovery_config, tushare_fetcher)
+                    engine.register_factors([
+                        MoneyFlowFactor(),
+                        MarginFactor(),
+                        ChipFactor(),
+                        TechnicalFactor(),
+                        LimitFactor(),
+                    ])
+
+                    discovered = engine.discover(mode="postmarket")
+                    if discovered:
+                        discovered_codes = [
+                            r.stock_code for r in discovered[:discovery_config.auto_discover_count]
+                        ]
+                        logger.info(
+                            "[Discovery] 盘后发现 %d 只候选股: %s",
+                            len(discovered_codes),
+                            ", ".join(discovered_codes),
+                        )
+                        # 落盘发现报告到 reports/discovery_YYYYMMDD.md
+                        try:
+                            from datetime import date
+                            from pathlib import Path
+                            report = engine.format_report(discovered, mode="postmarket")
+                            reports_dir = Path(__file__).resolve().parent.parent.parent / "reports"
+                            reports_dir.mkdir(parents=True, exist_ok=True)
+                            filepath = reports_dir / f"discovery_{date.today().strftime('%Y%m%d')}.md"
+                            filepath.write_text(report, encoding="utf-8")
+                            logger.info("[Discovery] 发现报告已保存: %s", filepath)
+                        except Exception as e:
+                            logger.debug("[Discovery] 保存报告失败: %s", e)
+                        existing = set(stock_codes or [])
+                        new_codes = [c for c in discovered_codes if c not in existing]
+                        if new_codes:
+                            stock_codes = (list(stock_codes or []) if stock_codes else []) + new_codes
+                            logger.info(
+                                "[Discovery] 新增 %d 只到分析列表, 合并后共 %d 只",
+                                len(new_codes),
+                                len(stock_codes),
+                            )
+                        else:
+                            logger.info("[Discovery] 发现的股票均已在自选列表中")
+                        # 将发现结果回写到 .env STOCK_LIST，确保持久化（即使后续分析失败也有兜底）
+                        try:
+                            from src.services.system_config_service import SystemConfigService
+                            merged_stock_list = ",".join(stock_codes if stock_codes else [])
+                            SystemConfigService().apply_simple_updates([("STOCK_LIST", merged_stock_list)])
+                            logger.info("[Discovery] STOCK_LIST 已同步到 .env: %d 只", len(stock_codes if stock_codes else []))
+                        except Exception as e:
+                            logger.debug("[Discovery] 同步 STOCK_LIST 失败: %s", e)
+                    else:
+                        logger.info("[Discovery] 未发现符合条件的股票，继续分析现有自选股")
+                except Exception as e:
+                    logger.warning("[Discovery] 自动发现失败（不阻断主流程）: %s", e)
+
         if not stock_codes:
-            logger.error("未配置自选股列表，请在 .env 文件中设置 STOCK_LIST")
+            logger.error("未配置自选股列表，请在 .env 文件中设置 STOCK_LIST 或开启 AUTO_DISCOVER")
             return []
-        
+
         logger.info(f"===== 开始分析 {len(stock_codes)} 只股票 =====")
         logger.info(f"股票列表: {', '.join(stock_codes)}")
         logger.info(f"并发数: {self.max_workers}, 模式: {'仅获取数据' if dry_run else '完整分析'}")

@@ -345,6 +345,23 @@ def parse_arguments() -> argparse.Namespace:
         help='不保存分析上下文快照'
     )
 
+    # === Stock Discovery ===
+    parser.add_argument(
+        '--auto-discover',
+        action='store_true',
+        help='启用自动股票发现，盘后深度扫描 + 合并结果到 STOCK_LIST 后全量分析'
+    )
+    parser.add_argument(
+        '--discover-only',
+        action='store_true',
+        help='仅运行盘后股票发现，打印结果不执行 LLM 分析'
+    )
+    parser.add_argument(
+        '--scan',
+        action='store_true',
+        help='启动盘中实时扫描器（轮询模式，9:30-13:30）'
+    )
+
     # === Backtest ===
     parser.add_argument(
         '--backtest',
@@ -452,6 +469,11 @@ def run_full_analysis(
 
         effective_codes = stock_codes if stock_codes is not None else list(config.stock_list or [])
         requested_total = len(effective_codes)
+
+        # --auto-discover: 运行时覆盖配置，启用自动股票发现
+        if getattr(args, 'auto_discover', False):
+            config.auto_discover = True
+            logger.info("已通过 --auto-discover 启用自动股票发现")
 
         filtered_codes, effective_region, should_skip = _compute_trading_day_filter(
             config, args, effective_codes
@@ -970,6 +992,34 @@ def start_bot_stream_clients(config: Config) -> None:
             logger.error(f"[Main] Failed to start Feishu Stream client: {exc}")
 
 
+def _save_discovery_report(report: str) -> Optional[Path]:
+    """Save discovery report to reports/discovery_YYYYMMDD.md."""
+    try:
+        from datetime import date
+        reports_dir = Path(__file__).resolve().parent / "reports"
+        reports_dir.mkdir(parents=True, exist_ok=True)
+        filename = f"discovery_{date.today().strftime('%Y%m%d')}.md"
+        filepath = reports_dir / filename
+        filepath.write_text(report, encoding="utf-8")
+        logger.info("发现报告已保存: %s", filepath)
+        return filepath
+    except Exception as e:
+        logger.warning("保存发现报告失败: %s", e)
+        return None
+
+
+def _sync_discovery_to_stock_list(results) -> None:
+    """将发现结果的 stock_code 写回 .env 的 STOCK_LIST。"""
+    try:
+        from src.services.system_config_service import SystemConfigService
+        codes = [r.stock_code for r in results]
+        merged = ",".join(codes)
+        SystemConfigService().apply_simple_updates([("STOCK_LIST", merged)])
+        logger.info("STOCK_LIST 已同步 %d 只发现候选到 .env", len(codes))
+    except Exception as e:
+        logger.warning("同步 STOCK_LIST 失败: %s", e)
+
+
 def _resolve_scheduled_stock_codes(stock_codes: Optional[List[str]]) -> Optional[List[str]]:
     """Scheduled runs should always read the latest persisted watchlist."""
     if stock_codes is not None:
@@ -1203,6 +1253,59 @@ def main() -> int:
                 send_notification=not args.no_notify,
                 override_region=effective_region,
             )
+            return 0
+
+        # 模式: 盘中实时扫描
+        if getattr(args, 'scan', False):
+            logger.info("模式: 盘中实时扫描")
+            from src.discovery.config import get_discovery_config
+            from src.discovery.scanner import run_intraday_scan
+
+            discovery_config = get_discovery_config()
+            from data_provider.tushare_fetcher import TushareFetcher
+            tushare_fetcher = TushareFetcher()
+            if not tushare_fetcher.is_available():
+                logger.warning("Tushare 不可用，盘中扫描可能无法获取数据")
+            run_intraday_scan(discovery_config, tushare_fetcher)
+            return 0
+
+        # 模式: 仅股票发现
+        if getattr(args, 'discover_only', False):
+            logger.info("模式: 仅股票发现（盘后）")
+            from src.discovery.config import get_discovery_config
+            from src.discovery.engine import StockDiscoveryEngine
+            from src.discovery.factors import (
+                MoneyFlowFactor, MarginFactor, ChipFactor,
+                TechnicalFactor, LimitFactor,
+            )
+            from data_provider.tushare_fetcher import TushareFetcher
+
+            discovery_config = get_discovery_config()
+            tushare_fetcher = TushareFetcher()
+            if not tushare_fetcher.is_available():
+                logger.error("Tushare 不可用，无法运行股票发现")
+                return 1
+
+            engine = StockDiscoveryEngine(discovery_config, tushare_fetcher)
+            engine.register_factors([
+                MoneyFlowFactor(),
+                MarginFactor(),
+                ChipFactor(),
+                TechnicalFactor(),
+                LimitFactor(),
+            ])
+
+            results = engine.discover(mode="postmarket")
+            if results:
+                report = engine.format_report(results, mode="postmarket")
+                logger.info("\n%s", report)
+                print(report)
+                # 落盘到 reports/
+                _save_discovery_report(report)
+                # 同步发现结果到 .env STOCK_LIST
+                _sync_discovery_to_stock_list(results)
+            else:
+                logger.info("未发现符合条件的股票")
             return 0
 
         # 模式2: 定时任务模式

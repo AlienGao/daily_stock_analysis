@@ -1450,6 +1450,286 @@ class TushareFetcher(BaseFetcher):
             logger.warning(f"[Tushare] 获取技术面因子失败 {stock_code}: {e}")
             return None
 
+    # ------------------------------------------------------------------
+    # Bulk (all-market) methods — for Stock Discovery Engine
+    # ------------------------------------------------------------------
+
+    def get_limit_list(
+        self, trade_date: Optional[str] = None, limit_type: Optional[str] = None
+    ) -> Optional[pd.DataFrame]:
+        """获取全市场涨跌停列表 (Tushare limit_list_d, doc_id=298)。
+
+        Args:
+            trade_date: 交易日期 (YYYYMMDD)，None=自动解析
+            limit_type: 涨跌停类型过滤，U=涨停 D=跌停 Z=炸板，None=全部
+
+        Returns:
+            DataFrame indexed by ts_code，包含 limit_times/open_times/pct_chg 等
+        """
+        if self._api is None:
+            return None
+
+        try:
+            if trade_date is None:
+                trade_date = self.get_trade_time(early_time="00:00", late_time="15:30")
+            if not trade_date:
+                return None
+
+            params: dict = {"trade_date": trade_date}
+            if limit_type:
+                params["limit_type"] = limit_type
+
+            fields = (
+                "ts_code,trade_date,limit_type,limit_times,pct_chg,"
+                "open_times,up_stat,limit"
+            )
+            df = self._call_api_with_rate_limit(
+                "limit_list_d", fields=fields, **params,
+            )
+            if df is not None and not df.empty:
+                df = df.set_index("ts_code")
+                for col in ["limit_times", "open_times"]:
+                    if col in df.columns:
+                        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0).astype(int)
+                for col in ["pct_chg"]:
+                    if col in df.columns:
+                        df[col] = pd.to_numeric(df[col], errors="coerce")
+                logger.info(
+                    f"[涨跌停列表] trade_date={trade_date}, {len(df)} 条"
+                )
+                return df
+            return None
+
+        except Exception as e:
+            logger.warning(f"[Tushare] 获取涨跌停列表失败: {e}")
+            return None
+
+    def get_daily_basic_all(self, trade_date: Optional[str] = None) -> Optional[pd.DataFrame]:
+        """获取全市场每日指标 (Tushare daily_basic)。
+
+        提供换手率、量比、PE、PB、总市值等日频指标，用于动量因子。
+
+        Returns:
+            DataFrame indexed by ts_code
+        """
+        if self._api is None:
+            return None
+
+        try:
+            if trade_date is None:
+                trade_date = self.get_trade_time(early_time="00:00", late_time="18:00")
+            if not trade_date:
+                return None
+
+            fields = (
+                "ts_code,trade_date,turnover_rate,volume_ratio,pe,pb,total_mv"
+            )
+            df = self._call_api_with_rate_limit(
+                "daily_basic", trade_date=trade_date, fields=fields,
+            )
+            if df is not None and not df.empty:
+                df = df.set_index("ts_code")
+                for col in ["turnover_rate", "volume_ratio", "pe", "pb", "total_mv"]:
+                    if col in df.columns:
+                        df[col] = pd.to_numeric(df[col], errors="coerce")
+                logger.info(f"[每日指标] trade_date={trade_date}, {len(df)} 条")
+                return df
+            return None
+
+        except Exception as e:
+            logger.warning(f"[Tushare] 获取每日指标失败: {e}")
+            return None
+
+    def get_bulk_money_flow(self, trade_date: Optional[str] = None) -> Optional[pd.DataFrame]:
+        """获取全市场资金流向 (Tushare moneyflow, doc_id=170)。
+
+        无 ts_code 过滤，返回当日全市场资金流向数据。
+
+        Returns:
+            DataFrame indexed by ts_code，含特大单/大单/中单/小单买卖金额
+        """
+        if self._api is None:
+            return None
+
+        try:
+            if trade_date is None:
+                trade_date = self.get_trade_time(early_time="00:00", late_time="18:00")
+            if not trade_date:
+                return None
+
+            fields = (
+                "ts_code,trade_date,buy_elg_amount,sell_elg_amount,"
+                "buy_lg_amount,sell_lg_amount,buy_md_amount,sell_md_amount,"
+                "buy_sm_amount,sell_sm_amount,net_mf_amount"
+            )
+            df = self._call_api_with_rate_limit(
+                "moneyflow", trade_date=trade_date, fields=fields,
+            )
+            if df is not None and not df.empty:
+                df = df.set_index("ts_code")
+                numeric_cols = [
+                    "buy_elg_amount", "sell_elg_amount",
+                    "buy_lg_amount", "sell_lg_amount",
+                    "buy_md_amount", "sell_md_amount",
+                    "buy_sm_amount", "sell_sm_amount",
+                    "net_mf_amount",
+                ]
+                for col in numeric_cols:
+                    if col in df.columns:
+                        df[col] = pd.to_numeric(df[col], errors="coerce")
+                logger.info(f"[全量资金流向] trade_date={trade_date}, {len(df)} 条")
+                return df
+            return None
+
+        except Exception as e:
+            logger.warning(f"[Tushare] 获取全量资金流向失败: {e}")
+            return None
+
+    def get_bulk_margin_detail(self, trade_date: Optional[str] = None) -> Optional[pd.DataFrame]:
+        """获取全市场融资融券明细 (Tushare margin_detail, doc_id=59)。
+
+        T+1 数据，默认取前一交易日。
+
+        Returns:
+            DataFrame indexed by ts_code
+        """
+        if self._api is None:
+            return None
+
+        try:
+            if trade_date is None:
+                trade_dates = self._get_trade_dates()
+                trade_date = (
+                    self._pick_trade_date(trade_dates, use_today=False)
+                    if trade_dates else None
+                )
+            if not trade_date:
+                return None
+
+            fields = "ts_code,trade_date,rzye,rzmre,rzche,rqye,rqmre,rqyl"
+            df = self._call_api_with_rate_limit(
+                "margin_detail", trade_date=trade_date, fields=fields,
+            )
+            if df is not None and not df.empty:
+                df = df.set_index("ts_code")
+                for col in ["rzye", "rzmre", "rzche", "rqye", "rqmre", "rqyl"]:
+                    if col in df.columns:
+                        df[col] = pd.to_numeric(df[col], errors="coerce")
+                logger.info(f"[全量融资融券] trade_date={trade_date}, {len(df)} 条")
+                return df
+            return None
+
+        except Exception as e:
+            logger.warning(f"[Tushare] 获取全量融资融券失败: {e}")
+            return None
+
+    def get_bulk_cyq_perf(self, trade_date: Optional[str] = None) -> Optional[pd.DataFrame]:
+        """获取全市场筹码胜率数据 (Tushare cyq_perf, doc_id=293)。
+
+        Returns:
+            DataFrame indexed by ts_code，含 winner_rate/cost_*pct/weight_avg
+        """
+        if self._api is None:
+            return None
+
+        try:
+            if trade_date is None:
+                trade_date = self.get_trade_time(early_time="00:00", late_time="19:00")
+            if not trade_date:
+                return None
+
+            df = self._call_api_with_rate_limit(
+                "cyq_perf", trade_date=trade_date,
+            )
+            if df is not None and not df.empty:
+                df = df.set_index("ts_code")
+                numeric_cols = [
+                    "winner_rate", "cost_5pct", "cost_15pct", "cost_50pct",
+                    "cost_85pct", "cost_95pct", "weight_avg", "his_low", "his_high",
+                ]
+                for col in numeric_cols:
+                    if col in df.columns:
+                        df[col] = pd.to_numeric(df[col], errors="coerce")
+                logger.info(f"[全量筹码胜率] trade_date={trade_date}, {len(df)} 条")
+                return df
+            return None
+
+        except Exception as e:
+            logger.warning(f"[Tushare] 获取全量筹码胜率失败: {e}")
+            return None
+
+    def get_bulk_stk_factor(self, trade_date: Optional[str] = None) -> Optional[pd.DataFrame]:
+        """获取全市场技术面因子 (Tushare stk_factor, doc_id=328)。
+
+        返回 MACD/RSI/KDJ/BOLL/CCI 全套预计算指标（前复权口径）。
+        注意：stk_factor 不含 MA 均线，MA 由本地 StockTrendAnalyzer 计算。
+
+        Returns:
+            DataFrame indexed by ts_code
+        """
+        if self._api is None:
+            return None
+
+        try:
+            if trade_date is None:
+                trade_date = self.get_trade_time(early_time="00:00", late_time="18:00")
+            if not trade_date:
+                return None
+
+            fields = (
+                "ts_code,trade_date,close,macd_dif,macd_dea,macd,"
+                "rsi_6,rsi_12,rsi_24,kdj_k,kdj_d,kdj_j,"
+                "boll_upper,boll_mid,boll_lower,cci,vol"
+            )
+            df = self._call_api_with_rate_limit(
+                "stk_factor", trade_date=trade_date, fields=fields,
+            )
+            if df is not None and not df.empty:
+                df = df.set_index("ts_code")
+                numeric_cols = [
+                    "close", "macd_dif", "macd_dea", "macd",
+                    "rsi_6", "rsi_12", "rsi_24",
+                    "kdj_k", "kdj_d", "kdj_j",
+                    "boll_upper", "boll_mid", "boll_lower", "cci", "vol",
+                ]
+                for col in numeric_cols:
+                    if col in df.columns:
+                        df[col] = pd.to_numeric(df[col], errors="coerce")
+                logger.info(f"[全量技术面] trade_date={trade_date}, {len(df)} 条")
+                return df
+            return None
+
+        except Exception as e:
+            logger.warning(f"[Tushare] 获取全量技术面失败: {e}")
+            return None
+
+    def get_sector_constituents(self, index_code: str) -> Optional[pd.DataFrame]:
+        """获取板块/行业成分股 (Tushare index_member)。
+
+        Args:
+            index_code: 指数代码，如 "399967.SZ"(中证军工)
+
+        Returns:
+            DataFrame indexed by con_code (成分股 ts_code)
+        """
+        if self._api is None:
+            return None
+
+        try:
+            df = self._call_api_with_rate_limit(
+                "index_member", index_code=index_code,
+                fields="index_code,con_code",
+            )
+            if df is not None and not df.empty:
+                df = df.set_index("con_code")
+                logger.info(f"[板块成分] {index_code}: {len(df)} 只")
+                return df
+            return None
+
+        except Exception as e:
+            logger.warning(f"[Tushare] 获取板块成分失败 {index_code}: {e}")
+            return None
+
 
 if __name__ == "__main__":
     # 测试代码

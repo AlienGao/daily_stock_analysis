@@ -3,9 +3,11 @@
 # ===================================
 # 
 # 使用方式:
-#   定时模式: docker-compose -f ./docker/docker-compose.yml up -d
+#   全部启动: docker-compose -f ./docker/docker-compose.yml up -d
+#   定时模式: docker-compose -f ./docker/docker-compose.yml up -d analyzer
 #   FastAPI模式: docker-compose -f ./docker/docker-compose.yml up -d server
-#   同时启动: docker-compose -f ./docker/docker-compose.yml up -d analyzer server
+#   盘中扫描: docker-compose -f ./docker/docker-compose.yml up -d scanner
+#   分析+Web: docker-compose -f ./docker/docker-compose.yml up -d analyzer server
 
 name: daily-stock-analysis
 version: '3.8'
@@ -66,3 +68,9 @@ services:
     # 若使用 network_mode: host，则以下 ports 映射无效，端口由 command 中的 --port 指定
     ports:
       - "${API_PORT:-8000}:${API_PORT:-8000}"
+
+  # 盘中实时扫描器（9:30-13:30 轮询）
+  scanner:
+    <<: *common
+    container_name: stock-scanner
+    command: ["python", "main.py", "--scan"]

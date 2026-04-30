@@ -12,7 +12,7 @@ API v1 路由聚合
 from fastapi import APIRouter
 import os
 
-from api.v1.endpoints import analysis, auth, history, stocks, backtest, system_config, agent, usage, portfolio
+from api.v1.endpoints import analysis, auth, discovery, history, stocks, backtest, system_config, agent, usage, portfolio
 
 # 创建 v1 版本主路由
 router = APIRouter(prefix="/api/v1")
@@ -63,6 +63,12 @@ router.include_router(
     usage.router,
     prefix="/usage",
     tags=["Usage"]
+)
+
+router.include_router(
+    discovery.router,
+    prefix="/discovery",
+    tags=["Discovery"]
 )
 
 if os.getenv("PORTFOLIO_MODULE_ENABLED", "false").strip().lower() == "true":
