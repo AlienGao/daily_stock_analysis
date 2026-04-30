@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Compass, RefreshCw, TrendingUp, TrendingDown,
   Loader2, ArrowUp, ArrowDown, Minus, Sparkles,
@@ -11,6 +11,34 @@ import { discoveryApi, type DiscoveryItem } from '../api/discovery';
 
 type TabKey = 'intraday' | 'postmarket';
 const AUTO_REFRESH_MS = 60_000;
+const MIN_INTRADAY_FETCH_GAP_MS = 60_000;
+
+const getDefaultTabByCnMarketTime = (): TabKey => {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    hour12: false,
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).formatToParts(now);
+
+  const partMap: Record<string, string> = {};
+  parts.forEach((p) => {
+    if (p.type !== 'literal') partMap[p.type] = p.value;
+  });
+
+  const weekday = partMap.weekday;
+  const hour = Number(partMap.hour ?? '0');
+  const minute = Number(partMap.minute ?? '0');
+  const minuteOfDay = hour * 60 + minute;
+
+  // A-share regular session (CN): Mon-Fri, 09:30-15:00.
+  const isWeekday = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].includes(weekday);
+  const isIntraday = minuteOfDay >= (9 * 60 + 30) && minuteOfDay < (15 * 60);
+
+  return isWeekday && isIntraday ? 'intraday' : 'postmarket';
+};
 
 /* ──────────────────────────────────────────────
    1. Score Ring — the 120% detail
@@ -130,8 +158,8 @@ const parsePriceRange = (value: string): { low: number | null; high: number | nu
     return { low: n, high: n };
   }
   return {
-    low: parseNumber(nums[0]),
-    high: parseNumber(nums[1]),
+    low: parseNumber(nums[0]!),
+    high: parseNumber(nums[1]!),
   };
 };
 
@@ -400,7 +428,7 @@ const StockCard: React.FC<{
    ────────────────────────────────────────────── */
 
 const DiscoveryPage: React.FC = () => {
-  const [tab, setTab] = useState<TabKey>('intraday');
+  const [tab, setTab] = useState<TabKey>(() => getDefaultTabByCnMarketTime());
   const [intraday, setIntraday] = useState<{
     updated?: string; round: number; top_n: DiscoveryItem[]; dropped: DiscoveryItem[];
   } | null>(null);
@@ -411,15 +439,26 @@ const DiscoveryPage: React.FC = () => {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const intradayFetchInFlightRef = useRef(false);
+  const intradayLastFetchAtRef = useRef(0);
 
-  const fetchIntraday = useCallback(async () => {
+  const fetchIntraday = useCallback(async (force = false) => {
+    const now = Date.now();
+    if (intradayFetchInFlightRef.current) return;
+    if (!force && now - intradayLastFetchAtRef.current < MIN_INTRADAY_FETCH_GAP_MS) return;
+
+    intradayFetchInFlightRef.current = true;
+    intradayLastFetchAtRef.current = now;
     try {
-      const data = await discoveryApi.getIntradayTop10();
-      setIntraday(data); setError(null);
+      const data = await discoveryApi.getIntradayTop10({ force });
+      setIntraday(data);
+      setError(null);
     } catch (e: unknown) {
-      if (intraday === null) setError(e instanceof Error ? e.message : 'err');
+      setError(e instanceof Error ? e.message : 'err');
+    } finally {
+      intradayFetchInFlightRef.current = false;
     }
-  }, [intraday]);
+  }, []);
 
   const fetchReport = useCallback(async () => {
     try {
@@ -545,7 +584,7 @@ const DiscoveryPage: React.FC = () => {
               </span>
             )}
             {intraday?.round ? <span>· 第 {intraday.round} 轮</span> : null}
-            <button onClick={fetchIntraday} className="inline-flex items-center gap-1 text-cyan hover:underline transition-colors">
+            <button onClick={() => void fetchIntraday(true)} className="inline-flex items-center gap-1 text-cyan hover:underline transition-colors">
               <RefreshCw className="h-3 w-3" /> 刷新
             </button>
             <span className="text-tertiary-text/40">· 60s 自动</span>

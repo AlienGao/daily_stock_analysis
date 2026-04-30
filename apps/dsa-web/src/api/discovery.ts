@@ -39,10 +39,36 @@ export type PostmarketRunResponse = {
   message?: string;
 };
 
+const INTRADAY_MIN_REQUEST_GAP_MS = 60_000;
+let intradayInFlight: Promise<IntradayTopResponse> | null = null;
+let intradayLastFetchedAt = 0;
+let intradayLastData: IntradayTopResponse | null = null;
+
 export const discoveryApi = {
-  async getIntradayTop10(): Promise<IntradayTopResponse> {
-    const resp = await apiClient.get('/api/v1/discovery/intraday/top10');
-    return resp.data as IntradayTopResponse;
+  async getIntradayTop10(options?: { force?: boolean }): Promise<IntradayTopResponse> {
+    const force = options?.force === true;
+    const now = Date.now();
+
+    if (!force) {
+      if (intradayInFlight) return intradayInFlight;
+      if (intradayLastData && now - intradayLastFetchedAt < INTRADAY_MIN_REQUEST_GAP_MS) {
+        return intradayLastData;
+      }
+    }
+
+    intradayInFlight = (async () => {
+      const resp = await apiClient.get('/api/v1/discovery/intraday/top10');
+      const data = resp.data as IntradayTopResponse;
+      intradayLastData = data;
+      intradayLastFetchedAt = Date.now();
+      return data;
+    })();
+
+    try {
+      return await intradayInFlight;
+    } finally {
+      intradayInFlight = null;
+    }
   },
 
   async getPostmarketReport(date?: string): Promise<PostmarketReportResponse> {

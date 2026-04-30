@@ -902,6 +902,7 @@ def start_api_server(host: str, port: int, config: Config) -> None:
             port=port,
             log_level=level_name,
             log_config=None,
+            access_log=False,
         )
 
     thread = threading.Thread(target=run_server, daemon=True)
