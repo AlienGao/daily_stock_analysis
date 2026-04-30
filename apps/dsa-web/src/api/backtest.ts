@@ -2,7 +2,6 @@ import apiClient from './index';
 import { toCamelCase } from './utils';
 import type {
   BacktestRunRequest,
-  BacktestRunResponse,
   BacktestTaskAcceptedResponse,
   BacktestTaskStatusResponse,
   BacktestResultsResponse,
