@@ -32,7 +32,7 @@ from tenacity import (
 )
 
 from .base import BaseFetcher, DataFetchError, RateLimitError, STANDARD_COLUMNS,is_bse_code, is_st_stock, is_kc_cy_stock, normalize_stock_code, _is_hk_market
-from .realtime_types import UnifiedRealtimeQuote, ChipDistribution
+from .realtime_types import UnifiedRealtimeQuote, ChipDistribution, safe_float
 from src.config import get_config
 import os
 from zoneinfo import ZoneInfo
@@ -1252,6 +1252,203 @@ class TushareFetcher(BaseFetcher):
             "70集中度": round(concentration_70/100, 4)
         }
 
+    # ============================================================
+    # Tushare 数据增强：资金流向 / 融资融券 / 筹码胜率 / 技术面因子
+    # ============================================================
+
+    def get_money_flow(self, stock_code: str, trade_date: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """
+        获取个股资金流向数据 (Tushare moneyflow, doc_id=170)
+        """
+        if self._api is None:
+            return None
+        if _is_us_code(stock_code) or _is_hk_market(stock_code):
+            return None
+
+        try:
+            if trade_date is None:
+                trade_date = self.get_trade_time(early_time='00:00', late_time='18:00')
+            if not trade_date:
+                return None
+
+            ts_code = self._convert_stock_code(stock_code)
+            fields = ("ts_code,trade_date,buy_elg_amount,sell_elg_amount,"
+                      "buy_lg_amount,sell_lg_amount,buy_md_amount,sell_md_amount,"
+                      "buy_sm_amount,sell_sm_amount,net_mf_amount")
+            df = self._call_api_with_rate_limit(
+                "moneyflow", ts_code=ts_code, trade_date=trade_date, fields=fields,
+            )
+            if df is not None and not df.empty:
+                row = df.iloc[0].to_dict()
+                net_mf = safe_float(row.get('net_mf_amount', 0), 0)
+                buy_elg = safe_float(row.get('buy_elg_amount', 0), 0)
+                sell_elg = safe_float(row.get('sell_elg_amount', 0), 0)
+                buy_lg = safe_float(row.get('buy_lg_amount', 0), 0)
+                sell_lg = safe_float(row.get('sell_lg_amount', 0), 0)
+
+                major_net = (buy_elg - sell_elg) + (buy_lg - sell_lg)
+                retail_net = safe_float(row.get('buy_sm_amount', 0), 0) - safe_float(row.get('sell_sm_amount', 0), 0)
+
+                result = {
+                    'ts_code': ts_code,
+                    'trade_date': row.get('trade_date', trade_date),
+                    'net_mf_amount': net_mf,
+                    'major_net_amount': major_net,
+                    'retail_net_amount': retail_net,
+                    'buy_elg_amount': buy_elg,
+                    'sell_elg_amount': sell_elg,
+                    'buy_lg_amount': buy_lg,
+                    'sell_lg_amount': sell_lg,
+                }
+                logger.info(f"[资金流向] {stock_code} 主力净流入={major_net/1e4:.0f}万, "
+                           f"散户净流入={retail_net/1e4:.0f}万")
+                return result
+
+        except Exception as e:
+            logger.warning(f"[Tushare] 获取资金流向失败 {stock_code}: {e}")
+            return None
+
+    def get_margin_detail(self, stock_code: str, trade_date: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """
+        获取融资融券明细数据 (Tushare margin_detail, doc_id=59)
+
+        注意：该接口为 T+1 数据，交易所次日 ~9:00 发布。
+        """
+        if self._api is None:
+            return None
+        if _is_us_code(stock_code) or _is_hk_market(stock_code):
+            return None
+
+        try:
+            if trade_date is None:
+                # T+1 数据，始终取前一交易日
+                trade_dates = self._get_trade_dates()
+                trade_date = self._pick_trade_date(trade_dates, use_today=False) if trade_dates else None
+            if not trade_date:
+                return None
+
+            ts_code = self._convert_stock_code(stock_code)
+            fields = "ts_code,trade_date,rzye,rzmre,rzyeb,rqye,rqmre,rqyl"
+            df = self._call_api_with_rate_limit(
+                "margin_detail", ts_code=ts_code, trade_date=trade_date, fields=fields,
+            )
+            if df is not None and not df.empty:
+                row = df.iloc[0].to_dict()
+                result = {
+                    'ts_code': ts_code,
+                    'trade_date': row.get('trade_date', trade_date),
+                    'rzye': safe_float(row.get('rzye'), 0),
+                    'rzmre': safe_float(row.get('rzmre'), 0),
+                    'rzyeb': safe_float(row.get('rzyeb'), 0),
+                    'rqye': safe_float(row.get('rqye'), 0),
+                    'rqmre': safe_float(row.get('rqmre'), 0),
+                    'rqyl': safe_float(row.get('rqyl'), 0),
+                }
+                logger.info(f"[融资融券] {stock_code} 融资余额={result['rzye']/1e8:.2f}亿")
+                return result
+
+        except Exception as e:
+            logger.warning(f"[Tushare] 获取融资融券失败 {stock_code}: {e}")
+            return None
+
+    def get_cyq_winner(self, stock_code: str, trade_date: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """
+        获取每日筹码及胜率数据 (Tushare cyq_perf, doc_id=293)
+
+        注意：Tushare 实际接口名为 cyq_perf，非 cyq_winner。
+        需要 10000 积分。
+        """
+        if self._api is None:
+            return None
+        if _is_us_code(stock_code) or _is_hk_market(stock_code):
+            return None
+
+        try:
+            if trade_date is None:
+                trade_date = self.get_trade_time(early_time='00:00', late_time='19:00')
+            if not trade_date:
+                return None
+
+            ts_code = self._convert_stock_code(stock_code)
+            df = self._call_api_with_rate_limit(
+                "cyq_perf", ts_code=ts_code, trade_date=trade_date,
+            )
+            if df is not None and not df.empty:
+                row = df.iloc[0].to_dict()
+                cost_5 = safe_float(row.get('cost_5pct'), 0)
+                cost_95 = safe_float(row.get('cost_95pct'), 0)
+                weight_avg = safe_float(row.get('weight_avg'), 0)
+                result = {
+                    'ts_code': ts_code,
+                    'trade_date': row.get('trade_date', trade_date),
+                    'winner_rate': safe_float(row.get('winner_rate'), 0),
+                    'cost_avg': weight_avg,  # cyq_perf 用 weight_avg 而非 cost_avg
+                    'cost_5pct': cost_5,
+                    'cost_95pct': cost_95,
+                    'cost_15pct': safe_float(row.get('cost_15pct'), 0),
+                    'cost_85pct': safe_float(row.get('cost_85pct'), 0),
+                    'cost_50pct': safe_float(row.get('cost_50pct'), 0),
+                    'his_low': safe_float(row.get('his_low'), 0),
+                    'his_high': safe_float(row.get('his_high'), 0),
+                    'concentration': round((cost_95 - cost_5) / weight_avg, 4) if weight_avg > 0 else 0,
+                }
+                logger.info(f"[筹码胜率] {stock_code} 胜率={result['winner_rate']:.1f}%, "
+                           f"加权均价={weight_avg:.2f}")
+                return result
+
+        except Exception as e:
+            logger.warning(f"[Tushare] 获取筹码胜率失败 {stock_code}: {e}")
+            return None
+
+    def get_technical_factors(self, stock_code: str, trade_date: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """
+        获取技术面因子数据 (Tushare stk_factor, doc_id=328)
+
+        返回 MACD/RSI/KDJ/BOLL/CCI 全套预计算指标（前复权口径）。
+        注意：stk_factor 不提供 MA 均线值和 BIAS 乖离率，这些继续由本地 StockTrendAnalyzer 计算。
+        """
+        if self._api is None:
+            return None
+        if _is_us_code(stock_code) or _is_hk_market(stock_code):
+            return None
+
+        try:
+            if trade_date is None:
+                trade_date = self.get_trade_time(early_time='00:00', late_time='18:00')
+            if not trade_date:
+                return None
+
+            ts_code = self._convert_stock_code(stock_code)
+            df = self._call_api_with_rate_limit(
+                "stk_factor", ts_code=ts_code, trade_date=trade_date,
+            )
+            if df is not None and not df.empty:
+                row = df.iloc[0].to_dict()
+                result = {
+                    'ts_code': ts_code,
+                    'trade_date': row.get('trade_date', trade_date),
+                    'close_qfq': safe_float(row.get('close_qfq')),
+                    'macd_dif': safe_float(row.get('macd_dif')),
+                    'macd_dea': safe_float(row.get('macd_dea')),
+                    'macd': safe_float(row.get('macd')),
+                    'rsi_6': safe_float(row.get('rsi_6')),
+                    'rsi_12': safe_float(row.get('rsi_12')),
+                    'rsi_24': safe_float(row.get('rsi_24')),
+                    'kdj_k': safe_float(row.get('kdj_k')),
+                    'kdj_d': safe_float(row.get('kdj_d')),
+                    'kdj_j': safe_float(row.get('kdj_j')),
+                    'boll_upper': safe_float(row.get('boll_upper')),
+                    'boll_mid': safe_float(row.get('boll_mid')),
+                    'boll_lower': safe_float(row.get('boll_lower')),
+                    'cci': safe_float(row.get('cci')),
+                }
+                logger.info(f"[技术面因子] {stock_code} RSI12={result['rsi_12']}, "
+                           f"KDJ_K={result['kdj_k']}, BOLL_MID={result['boll_mid']}")
+                return result
+
+        except Exception as e:
+            logger.warning(f"[Tushare] 获取技术面因子失败 {stock_code}: {e}")
+            return None
 
 
 if __name__ == "__main__":

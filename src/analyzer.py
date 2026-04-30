@@ -1096,6 +1096,32 @@ class GeminiAnalyzer:
 4. **检查清单可视化**：用 ✅⚠️❌ 明确显示每项检查结果
 5. **风险优先级**：舆情中的风险点要醒目标出
 
+## 关于增强数据块的使用指南
+
+当上下文中出现以下 Tushare 增强数据块时，必须将其融入分析判断：
+
+### 主力资金流向（money_flow）
+- 主力净流入（特大单+大单）> 0 → 积极信号，尤其当散户反向时说明筹码从散户向主力集中
+- 主力净流出 → 风险信号，即使技术面好看也需警惕主力出货
+- 特大单买卖对比：买>卖为强，卖>买为弱
+
+### 融资融券（margin_status，T+1数据）
+- 融资余额持续上升 + 融资买入额放大 → 杠杆资金看多
+- 融券余额大幅增加 → 空头力量增强，需关注
+- 注意：数据为T+1，反映的是前一交易日的杠杆情绪
+
+### 筹码胜率（winner_profile）
+- 胜率 < 15%：深度套牢，反弹潜力大但需等待催化
+- 胜率 30%-70%：筹码分布健康，获利盘与套牢盘均衡
+- 胜率 > 85%：获利盘巨大，抛压风险高
+- 筹码集中度越低说明筹码越集中，主力控盘度越高
+
+### 技术面因子（stk_factor）
+- KDJ < 30：超卖区域，反弹动能积累
+- KDJ > 80：超买区域，短期回调风险
+- BOLL 中轨：价格在中轨上方为强势，下方为弱势
+- RSI 40-70 为健康区间
+
 ## 关于 matched_skills 的强制规则
 
 - `matched_skills` 必须如实反映"本次分析中真正被触发的技能"，按置信度从高到低排序
@@ -1896,7 +1922,57 @@ class GeminiAnalyzer:
 | 70%筹码集中度 | {chip.get('concentration_70', 0):.2%} | |
 | 筹码状态 | {chip.get('chip_status', unknown_text)} | |
 """
-        
+
+        # 添加资金流向数据（Tushare 增强）
+        if 'money_flow' in context:
+            mf = context['money_flow']
+            major_net = mf.get('major_net_amount')
+            net_mf = mf.get('net_mf_amount')
+            major_str = f"{major_net/1e4:.0f}万" if major_net is not None else 'N/A'
+            net_str = f"{net_mf/1e4:.0f}万" if net_mf is not None else 'N/A'
+            prompt += f"""
+### 主力资金流向（Tushare）
+| 指标 | 数值 | 解读 |
+|------|------|------|
+| **主力净流入** | **{major_str}** | 特大单+大单，>0为流入 |
+| 散户净流入 | {f"{mf.get('retail_net_amount', 0)/1e4:.0f}万" if mf.get('retail_net_amount') is not None else 'N/A'} | 与主力反向需警惕 |
+| 总净流入 | {net_str} | 当日资金净额 |
+"""
+
+        # 添加融资融券数据（Tushare 增强，T+1）
+        if 'margin_status' in context:
+            mg = context['margin_status']
+            rzye = mg.get('rzye')
+            rzmre = mg.get('rzmre')
+            rqye = mg.get('rqye')
+            rzye_str = f"{rzye/1e8:.2f}亿" if rzye is not None else 'N/A'
+            rzmre_str = f"{rzmre/1e8:.2f}亿" if rzmre is not None else 'N/A'
+            rqye_str = f"{rqye/1e8:.2f}亿" if rqye is not None else 'N/A'
+            prompt += f"""
+### 融资融券（Tushare，T+1数据）
+| 指标 | 数值 | 解读 |
+|------|------|------|
+| **融资余额** | **{rzye_str}** | 杠杆做多资金规模 |
+| **融资买入额** | **{rzmre_str}** | 当日融资买入金额 |
+| 融券余额 | {rqye_str} | 做空/对冲规模 |
+"""
+
+        # 添加筹码胜率数据（Tushare 增强）
+        if 'winner_profile' in context:
+            wp = context['winner_profile']
+            winner_rate = wp.get('winner_rate')
+            wr_str = f"{winner_rate:.1f}%" if winner_rate is not None else 'N/A'
+            prompt += f"""
+### 筹码胜率（Tushare cyq_winner）
+| 指标 | 数值 | 解读 |
+|------|------|------|
+| **胜率** | **{wr_str}** | <15%反弹潜力大，>85%抛压风险 |
+| 平均成本 | {wp.get('cost_avg', 'N/A')} 元 | 筹码加权均价 |
+| 5%成本线 | {wp.get('cost_5pct', 'N/A')} 元 | 最底部5%成本 |
+| 95%成本线 | {wp.get('cost_95pct', 'N/A')} 元 | 最顶部5%成本 |
+| 筹码集中度 | {wp.get('concentration', 'N/A')} | (95%-5%)/均价 |
+"""
+
         # 添加趋势分析结果（仅隐式内建 bull_trend 默认回退保留旧口径）
         if 'trend_analysis' in context:
             trend = _sanitize_trend_analysis_for_prompt(
@@ -1964,7 +2040,32 @@ class GeminiAnalyzer:
 **一致性约束**：
 {chr(10).join('- ' + note for note in consistency_notes)}
 """
-        
+
+        # Tushare KDJ / BOLL 增强指标（仅当可用时展示）
+        if 'trend_analysis' in context:
+            trend = context['trend_analysis']
+            has_kdj = trend.get('kdj_k') is not None
+            has_boll = trend.get('boll_upper') is not None
+            has_rsi24 = trend.get('rsi_24') is not None
+
+            if has_kdj or has_boll or has_rsi24:
+                prompt += """
+### Tushare 增强技术指标
+| 指标 | 数值 | 参考区间 |
+|------|------|----------|
+"""
+                if has_kdj:
+                    prompt += f"| **KDJ-K** | **{trend.get('kdj_k', 'N/A')}** | >80超买 / <20超卖 |\n"
+                    prompt += f"| KDJ-D | {trend.get('kdj_d', 'N/A')} | >80超买 / <20超卖 |\n"
+                    prompt += f"| KDJ-J | {trend.get('kdj_j', 'N/A')} | >100极度超买 / <0极度超卖 |\n"
+                if has_boll:
+                    prompt += f"| **BOLL上轨** | **{trend.get('boll_upper', 'N/A')}** | 压力位 |\n"
+                    prompt += f"| BOLL中轨 | {trend.get('boll_mid', 'N/A')} | 多空分界线 |\n"
+                    prompt += f"| BOLL下轨 | {trend.get('boll_lower', 'N/A')} | 支撑位 |\n"
+                if has_rsi24:
+                    prompt += f"| RSI(24) | {trend.get('rsi_24', 'N/A')} | 中期强弱，>70超买/<30超卖 |\n"
+                prompt += """
+"""
         # 添加昨日对比数据
         if 'yesterday' in context:
             volume_change = context.get('volume_change_ratio', 'N/A')

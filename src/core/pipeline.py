@@ -379,6 +379,33 @@ class StockAnalysisPipeline:
             except Exception as e:
                 logger.warning(f"{stock_name}({code}) 趋势分析失败: {e}", exc_info=True)
 
+            # Step 3.5: Tushare 数据增强（资金流向/融资融券/筹码胜率/技术面因子）
+            # 所有接口失败不阻塞主流程（降级容错）
+            tushare_fetcher = self.fetcher_manager._get_tushare_fetcher()
+            money_flow_data = None
+            margin_data = None
+            winner_data = None
+            tech_factors = None
+
+            if tushare_fetcher is not None:
+                tushare_code = normalize_stock_code(code)
+                try:
+                    money_flow_data = tushare_fetcher.get_money_flow(tushare_code)
+                except Exception as e:
+                    logger.debug(f"{stock_name}({code}) 资金流向获取失败: {e}")
+                try:
+                    margin_data = tushare_fetcher.get_margin_detail(tushare_code)
+                except Exception as e:
+                    logger.debug(f"{stock_name}({code}) 融资融券获取失败: {e}")
+                try:
+                    winner_data = tushare_fetcher.get_cyq_winner(tushare_code)
+                except Exception as e:
+                    logger.debug(f"{stock_name}({code}) 筹码胜率获取失败: {e}")
+                try:
+                    tech_factors = tushare_fetcher.get_technical_factors(tushare_code)
+                except Exception as e:
+                    logger.debug(f"{stock_name}({code}) 技术面因子获取失败: {e}")
+
             if use_agent:
                 logger.info(f"{stock_name}({code}) 启用 Agent 模式进行分析")
                 self._emit_progress(58, f"{stock_name}：正在切换 Agent 分析链路")
@@ -391,6 +418,10 @@ class StockAnalysisPipeline:
                     chip_data,
                     fundamental_context,
                     trend_result,
+                    money_flow_data=money_flow_data,
+                    margin_data=margin_data,
+                    winner_data=winner_data,
+                    tech_factors=tech_factors,
                     agent_exec_config=agent_exec_config,
                     replace_history=replace_history,
                     persist_history=persist_history,
@@ -467,14 +498,18 @@ class StockAnalysisPipeline:
                     'yesterday': {}
                 }
             
-            # Step 6: 增强上下文数据（添加实时行情、筹码、趋势分析结果、股票名称）
+            # Step 6: 增强上下文数据
             enhanced_context = self._enhance_context(
-                context, 
-                realtime_quote, 
+                context,
+                realtime_quote,
                 chip_data,
                 trend_result,
-                stock_name,  # 传入股票名称
+                stock_name,
                 fundamental_context,
+                money_flow_data=money_flow_data,
+                margin_data=margin_data,
+                winner_data=winner_data,
+                tech_factors=tech_factors,
             )
             
             # Step 7: 调用 AI 分析（传入增强的上下文和新闻）
@@ -550,22 +585,16 @@ class StockAnalysisPipeline:
         chip_data: Optional[ChipDistribution],
         trend_result: Optional[TrendAnalysisResult],
         stock_name: str = "",
-        fundamental_context: Optional[Dict[str, Any]] = None
+        fundamental_context: Optional[Dict[str, Any]] = None,
+        money_flow_data: Optional[Dict[str, Any]] = None,
+        margin_data: Optional[Dict[str, Any]] = None,
+        winner_data: Optional[Dict[str, Any]] = None,
+        tech_factors: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         增强分析上下文
-        
-        将实时行情、筹码分布、趋势分析结果、股票名称添加到上下文中
-        
-        Args:
-            context: 原始上下文
-            realtime_quote: 实时行情数据（UnifiedRealtimeQuote 或 None）
-            chip_data: 筹码分布数据
-            trend_result: 趋势分析结果
-            stock_name: 股票名称
-            
-        Returns:
-            增强后的上下文
+
+        将实时行情、筹码分布、趋势分析、Tushare 增强数据添加到上下文中
         """
         enhanced = context.copy()
         enhanced["report_language"] = normalize_report_language(getattr(self.config, "report_language", "zh"))
@@ -611,86 +640,136 @@ class StockAnalysisPipeline:
                 'chip_status': chip_data.get_chip_status(current_price or 0),
             }
         
-        # 添加趋势分析结果
+        # 添加趋势分析结果（Tushare stk_factor 优先，本地计算降级）
         if trend_result:
-            enhanced['trend_analysis'] = {
+            tf = tech_factors if isinstance(tech_factors, dict) else {}
+            # 均线：Tushare 优先
+            ma5 = tf.get('ma_5') if tf.get('ma_5') is not None else trend_result.ma5
+            ma10 = tf.get('ma_10') if tf.get('ma_10') is not None else trend_result.ma10
+            ma20 = tf.get('ma_20') if tf.get('ma_20') is not None else trend_result.ma20
+            ma60 = tf.get('ma_60')  # 本地没有 MA60
+
+            # 乖离率：用最终选定的 MA 重算
+            price = getattr(realtime_quote, 'price', 0) if realtime_quote else 0
+            if price and ma5:
+                bias_ma5 = round((price - ma5) / ma5 * 100, 2)
+            else:
+                bias_ma5 = trend_result.bias_ma5
+            if price and ma10:
+                bias_ma10 = round((price - ma10) / ma10 * 100, 2)
+            else:
+                bias_ma10 = trend_result.bias_ma10
+
+            ta = {
                 'trend_status': trend_result.trend_status.value,
                 'ma_alignment': trend_result.ma_alignment,
                 'trend_strength': trend_result.trend_strength,
-                'bias_ma5': trend_result.bias_ma5,
-                'bias_ma10': trend_result.bias_ma10,
+                'bias_ma5': bias_ma5,
+                'bias_ma10': bias_ma10,
                 'volume_status': trend_result.volume_status.value,
                 'volume_trend': trend_result.volume_trend,
                 'buy_signal': trend_result.buy_signal.value,
                 'signal_score': trend_result.signal_score,
                 'signal_reasons': trend_result.signal_reasons,
                 'risk_factors': trend_result.risk_factors,
+                # MA 原始值
+                'ma5': ma5,
+                'ma10': ma10,
+                'ma20': ma20,
+                'ma60': ma60,
+                # MACD：Tushare 优先，本地 fallback
+                'macd_dif': tf.get('macd_dif') if tf.get('macd_dif') is not None else trend_result.macd_dif,
+                'macd_dea': tf.get('macd_dea') if tf.get('macd_dea') is not None else trend_result.macd_dea,
+                'macd_bar': tf.get('macd') if tf.get('macd') is not None else trend_result.macd_bar,
+                # RSI：Tushare 优先，本地 fallback
+                'rsi_6': tf.get('rsi_6') if tf.get('rsi_6') is not None else trend_result.rsi_6,
+                'rsi_12': tf.get('rsi_12') if tf.get('rsi_12') is not None else trend_result.rsi_12,
+                'rsi_24': tf.get('rsi_24'),  # 本地没有
+                # KDJ：仅 Tushare 有
+                'kdj_k': tf.get('kdj_k'),
+                'kdj_d': tf.get('kdj_d'),
+                'kdj_j': tf.get('kdj_j'),
+                # BOLL：仅 Tushare 有
+                'boll_upper': tf.get('boll_upper'),
+                'boll_mid': tf.get('boll_mid'),
+                'boll_lower': tf.get('boll_lower'),
+                # 乖离率（Tushare 直接提供）
+                'bias1': tf.get('bias1') if tf.get('bias1') is not None else bias_ma5,
+                'bias2': tf.get('bias2') if tf.get('bias2') is not None else bias_ma10,
+                'bias3': tf.get('bias3'),
+                'tushare_factors_available': bool(tf),
             }
+            # 清理 None 值
+            enhanced['trend_analysis'] = {k: v for k, v in ta.items() if v is not None}
 
-        # Issue #234: Override today with realtime OHLC + trend MA for intraday analysis
-        # Guard: trend_result.ma5 > 0 ensures MA calculation succeeded (data sufficient)
-        if realtime_quote and trend_result and trend_result.ma5 > 0:
-            price = getattr(realtime_quote, 'price', None)
-            if price is not None and price > 0:
-                yesterday_close = None
-                if enhanced.get('yesterday') and isinstance(enhanced['yesterday'], dict):
-                    yesterday_close = enhanced['yesterday'].get('close')
-                orig_today = enhanced.get('today') or {}
-                open_p = getattr(realtime_quote, 'open_price', None) or getattr(
-                    realtime_quote, 'pre_close', None
-                ) or yesterday_close or orig_today.get('open') or price
-                high_p = getattr(realtime_quote, 'high', None) or price
-                low_p = getattr(realtime_quote, 'low', None) or price
-                vol = getattr(realtime_quote, 'volume', None)
-                amt = getattr(realtime_quote, 'amount', None)
-                pct = getattr(realtime_quote, 'change_pct', None)
-                realtime_today = {
-                    'close': price,
-                    'open': open_p,
-                    'high': high_p,
-                    'low': low_p,
-                    'ma5': trend_result.ma5,
-                    'ma10': trend_result.ma10,
-                    'ma20': trend_result.ma20,
-                }
-                if vol is not None:
-                    realtime_today['volume'] = vol
-                if amt is not None:
-                    realtime_today['amount'] = amt
-                if pct is not None:
-                    realtime_today['pct_chg'] = pct
-                for k, v in orig_today.items():
-                    if k not in realtime_today and v is not None:
-                        realtime_today[k] = v
-                enhanced['today'] = realtime_today
-                enhanced['ma_status'] = self._compute_ma_status(
-                    price, trend_result.ma5, trend_result.ma10, trend_result.ma20
-                )
-                enhanced['date'] = get_market_now(
-                    get_market_for_stock(normalize_stock_code(enhanced.get('code', '')))
-                ).date().isoformat()
-                if yesterday_close is not None:
-                    try:
-                        yc = float(yesterday_close)
-                        if yc > 0:
-                            enhanced['price_change_ratio'] = round(
-                                (price - yc) / yc * 100, 2
-                            )
-                    except (TypeError, ValueError):
-                        pass
-                if vol is not None and enhanced.get('yesterday'):
-                    yest_vol = enhanced['yesterday'].get('volume') if isinstance(
-                        enhanced['yesterday'], dict
-                    ) else None
-                    if yest_vol is not None:
+        # Issue #234: Override today with realtime OHLC + MA for intraday analysis
+        # Use Tushare MAs when available, local as fallback
+        if realtime_quote and trend_result:
+            _ma5 = ma5 if (isinstance(tech_factors, dict) and tech_factors.get('ma_5') is not None) else trend_result.ma5
+            _ma10 = ma10 if (isinstance(tech_factors, dict) and tech_factors.get('ma_10') is not None) else trend_result.ma10
+            _ma20 = ma20 if (isinstance(tech_factors, dict) and tech_factors.get('ma_20') is not None) else trend_result.ma20
+            if _ma5 and _ma5 > 0:
+                price_val = getattr(realtime_quote, 'price', None)
+                if price_val is not None and price_val > 0:
+                    yesterday_close = None
+                    if enhanced.get('yesterday') and isinstance(enhanced['yesterday'], dict):
+                        yesterday_close = enhanced['yesterday'].get('close')
+                    orig_today = enhanced.get('today') or {}
+                    open_p = getattr(realtime_quote, 'open_price', None) or getattr(
+                        realtime_quote, 'pre_close', None
+                    ) or yesterday_close or orig_today.get('open') or price_val
+                    high_p = getattr(realtime_quote, 'high', None) or price_val
+                    low_p = getattr(realtime_quote, 'low', None) or price_val
+                    vol = getattr(realtime_quote, 'volume', None)
+                    amt = getattr(realtime_quote, 'amount', None)
+                    pct = getattr(realtime_quote, 'change_pct', None)
+                    realtime_today = {
+                        'close': price_val,
+                        'open': open_p,
+                        'high': high_p,
+                        'low': low_p,
+                        'ma5': _ma5,
+                        'ma10': _ma10,
+                        'ma20': _ma20,
+                    }
+                    if vol is not None:
+                        realtime_today['volume'] = vol
+                    if amt is not None:
+                        realtime_today['amount'] = amt
+                    if pct is not None:
+                        realtime_today['pct_chg'] = pct
+                    for k, v in orig_today.items():
+                        if k not in realtime_today and v is not None:
+                            realtime_today[k] = v
+                    enhanced['today'] = realtime_today
+                    enhanced['ma_status'] = self._compute_ma_status(
+                        price_val, _ma5, _ma10, _ma20
+                    )
+                    enhanced['date'] = get_market_now(
+                        get_market_for_stock(normalize_stock_code(enhanced.get('code', '')))
+                    ).date().isoformat()
+                    if yesterday_close is not None:
                         try:
-                            yv = float(yest_vol)
-                            if yv > 0:
-                                enhanced['volume_change_ratio'] = round(
-                                    float(vol) / yv, 2
+                            yc = float(yesterday_close)
+                            if yc > 0:
+                                enhanced['price_change_ratio'] = round(
+                                    (price_val - yc) / yc * 100, 2
                                 )
                         except (TypeError, ValueError):
                             pass
+                    if vol is not None and enhanced.get('yesterday'):
+                        yest_vol = enhanced['yesterday'].get('volume') if isinstance(
+                            enhanced['yesterday'], dict
+                        ) else None
+                        if yest_vol is not None:
+                            try:
+                                yv = float(yest_vol)
+                                if yv > 0:
+                                    enhanced['volume_change_ratio'] = round(
+                                        float(vol) / yv, 2
+                                    )
+                            except (TypeError, ValueError):
+                                pass
 
         # ETF/index flag for analyzer prompt (Fixes #274)
         enhanced['is_index_etf'] = SearchService.is_index_or_etf(
@@ -706,6 +785,37 @@ class StockAnalysisPipeline:
                 "invalid fundamental context",
             )
         )
+
+        # Tushare 增强数据块（降级容错：缺失不阻塞）
+        if money_flow_data and isinstance(money_flow_data, dict):
+            enhanced['money_flow'] = {
+                'net_mf_amount': money_flow_data.get('net_mf_amount'),
+                'major_net_amount': money_flow_data.get('major_net_amount'),
+                'retail_net_amount': money_flow_data.get('retail_net_amount'),
+                'buy_elg_amount': money_flow_data.get('buy_elg_amount'),
+                'sell_elg_amount': money_flow_data.get('sell_elg_amount'),
+                'trade_date': money_flow_data.get('trade_date'),
+            }
+
+        if margin_data and isinstance(margin_data, dict):
+            enhanced['margin_status'] = {
+                'rzye': margin_data.get('rzye'),
+                'rzmre': margin_data.get('rzmre'),
+                'rzyeb': margin_data.get('rzyeb'),
+                'rqye': margin_data.get('rqye'),
+                'rqmre': margin_data.get('rqmre'),
+                'trade_date': margin_data.get('trade_date'),
+            }
+
+        if winner_data and isinstance(winner_data, dict):
+            enhanced['winner_profile'] = {
+                'winner_rate': winner_data.get('winner_rate'),
+                'cost_avg': winner_data.get('cost_avg'),
+                'cost_5pct': winner_data.get('cost_5pct'),
+                'cost_95pct': winner_data.get('cost_95pct'),
+                'concentration': winner_data.get('concentration'),
+                'trade_date': winner_data.get('trade_date'),
+            }
 
         return enhanced
 
@@ -781,15 +891,19 @@ class StockAnalysisPipeline:
             logger.warning("[%s] Agent history prefetch failed: %s", code, e)
 
     def _analyze_with_agent(
-        self, 
-        code: str, 
-        report_type: ReportType, 
+        self,
+        code: str,
+        report_type: ReportType,
         query_id: str,
         stock_name: str,
         realtime_quote: Any,
         chip_data: Optional[ChipDistribution],
         fundamental_context: Optional[Dict[str, Any]] = None,
         trend_result: Optional[TrendAnalysisResult] = None,
+        money_flow_data: Optional[Dict[str, Any]] = None,
+        margin_data: Optional[Dict[str, Any]] = None,
+        winner_data: Optional[Dict[str, Any]] = None,
+        tech_factors: Optional[Dict[str, Any]] = None,
         agent_exec_config: Optional[Config] = None,
         replace_history: bool = False,
         persist_history: bool = True,
@@ -820,6 +934,14 @@ class StockAnalysisPipeline:
                 initial_context["chip_distribution"] = self._safe_to_dict(chip_data)
             if trend_result:
                 initial_context["trend_result"] = self._safe_to_dict(trend_result)
+            if money_flow_data:
+                initial_context["money_flow_data"] = money_flow_data
+            if margin_data:
+                initial_context["margin_data"] = margin_data
+            if winner_data:
+                initial_context["winner_data"] = winner_data
+            if tech_factors:
+                initial_context["tech_factors"] = tech_factors
 
             # Agent path: inject social sentiment as news_context so both
             # executor (_build_user_message) and orchestrator (ctx.set_data)

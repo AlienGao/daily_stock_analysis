@@ -777,6 +777,16 @@ class AgentExecutor:
                 parts.append(f"\n[系统已获取的实时行情]\n{json.dumps(context['realtime_quote'], ensure_ascii=False)}")
             if context.get("chip_distribution"):
                 parts.append(f"\n[系统已获取的筹码分布]\n{json.dumps(context['chip_distribution'], ensure_ascii=False)}")
+            if context.get("trend_result"):
+                parts.append(f"\n[系统已获取的技术趋势]\n{json.dumps(context['trend_result'], ensure_ascii=False)}")
+            if context.get("money_flow_data"):
+                parts.append(f"\n[系统已获取的主力资金流向]\n{json.dumps(context['money_flow_data'], ensure_ascii=False)}")
+            if context.get("margin_data"):
+                parts.append(f"\n[系统已获取的融资融券]\n{json.dumps(context['margin_data'], ensure_ascii=False)}")
+            if context.get("winner_data"):
+                parts.append(f"\n[系统已获取的筹码胜率]\n{json.dumps(context['winner_data'], ensure_ascii=False)}")
+            if context.get("tech_factors"):
+                parts.append(f"\n[系统已获取的Tushare技术面因子]\n{json.dumps(context['tech_factors'], ensure_ascii=False)}")
             if context.get("news_context"):
                 parts.append(f"\n[系统已获取的新闻与舆情情报]\n{context['news_context']}")
 

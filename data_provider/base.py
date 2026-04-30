@@ -546,6 +546,14 @@ class DataFetcherManager:
         with self._get_fetcher_call_lock(fetcher):
             return method(*args, **kwargs)
 
+    def _get_tushare_fetcher(self):
+        """获取 TushareFetcher 实例（用于 Tushare 专有数据接口）。"""
+        from .tushare_fetcher import TushareFetcher
+        for fetcher in self._get_fetchers_snapshot():
+            if isinstance(fetcher, TushareFetcher):
+                return fetcher
+        return None
+
     def _get_cached_stock_name(self, stock_code: str) -> Optional[str]:
         self._ensure_concurrency_guards()
         with self._stock_name_cache_lock:
