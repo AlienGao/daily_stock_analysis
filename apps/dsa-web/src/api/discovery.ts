@@ -39,6 +39,46 @@ export type PostmarketRunResponse = {
   message?: string;
 };
 
+export type TradeRecordItem = {
+  stock_code: string;
+  stock_name: string;
+  buy_date: string;
+  buy_price: number;
+  sell_date: string;
+  sell_price: number;
+  return_pct: number;
+  pnl: number;
+  allocated_capital: number;
+};
+
+export type BacktestDailyItem = {
+  trade_date: string;
+  avg_return: number;
+  cumulative_return: number;
+  capital: number;
+  win_count: number;
+  total_count: number;
+};
+
+export type CapitalCurvePoint = {
+  date: string;
+  capital: number;
+};
+
+export type BacktestResponse = {
+  mode: string;
+  initial_capital: number;
+  final_capital: number;
+  cumulative_return: number;
+  total_pnl: number;
+  win_rate: number;
+  total_days: number;
+  total_trades: number;
+  daily_results: BacktestDailyItem[];
+  trade_records: TradeRecordItem[];
+  capital_curve: CapitalCurvePoint[];
+};
+
 const INTRADAY_MIN_REQUEST_GAP_MS = 60_000;
 let intradayInFlight: Promise<IntradayTopResponse> | null = null;
 let intradayLastFetchedAt = 0;
@@ -80,5 +120,15 @@ export const discoveryApi = {
   async runPostmarketDiscovery(): Promise<PostmarketRunResponse> {
     const resp = await apiClient.post('/api/v1/discovery/postmarket/run');
     return resp.data as PostmarketRunResponse;
+  },
+
+  async getBacktest(
+    mode: 'intraday' | 'postmarket',
+    options?: { days?: number; start_date?: string; end_date?: string },
+  ): Promise<BacktestResponse> {
+    const resp = await apiClient.get('/api/v1/discovery/backtest', {
+      params: { mode, days: options?.days ?? 60, ...options },
+    });
+    return resp.data as BacktestResponse;
   },
 };

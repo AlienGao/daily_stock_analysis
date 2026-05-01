@@ -1638,16 +1638,38 @@ class StockAnalysisPipeline:
                             len(discovered_codes),
                             ", ".join(discovered_codes),
                         )
-                        # 落盘发现报告到 reports/discovery_YYYYMMDD.md
+                        # 落盘发现报告到 discovery_reports/
                         try:
+                            import json
                             from datetime import date
                             from pathlib import Path
                             report = engine.format_report(discovered, mode="postmarket")
-                            reports_dir = Path(__file__).resolve().parent.parent.parent / "reports"
+                            reports_dir = Path(__file__).resolve().parent.parent.parent / "discovery_reports"
                             reports_dir.mkdir(parents=True, exist_ok=True)
-                            filepath = reports_dir / f"discovery_{date.today().strftime('%Y%m%d')}.md"
+                            date_str = date.today().strftime('%Y%m%d')
+                            filepath = reports_dir / f"postmarket_{date_str}.md"
                             filepath.write_text(report, encoding="utf-8")
                             logger.info("[Discovery] 发现报告已保存: %s", filepath)
+                            # 同时保存结构化 JSON
+                            topn = []
+                            for i, r in enumerate(discovered, 1):
+                                topn.append({
+                                    "rank": i,
+                                    "stock_code": r.stock_code,
+                                    "stock_name": r.stock_name,
+                                    "score": r.score,
+                                    "sector": getattr(r, "sector", ""),
+                                    "factor_scores": getattr(r, "factor_scores", {}),
+                                    "reasons": getattr(r, "reasons", []),
+                                    "buy_price_low": getattr(r, "buy_price_low", None),
+                                    "buy_price_high": getattr(r, "buy_price_high", None),
+                                    "stop_loss": getattr(r, "stop_loss", None),
+                                    "take_profit_1": getattr(r, "take_profit_1", None),
+                                    "take_profit_2": getattr(r, "take_profit_2", None),
+                                })
+                            json_file = reports_dir / f"postmarket_{date_str}_topn.json"
+                            json_file.write_text(json.dumps(topn, ensure_ascii=False, indent=2), encoding="utf-8")
+                            logger.info("[Discovery] TopN JSON 已保存: %s", json_file)
                         except Exception as e:
                             logger.debug("[Discovery] 保存报告失败: %s", e)
                         existing = set(stock_codes or [])

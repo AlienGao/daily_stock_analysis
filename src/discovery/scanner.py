@@ -13,7 +13,8 @@ import json
 import logging
 import os
 import time
-from datetime import datetime, timezone, timedelta
+from datetime import date, datetime, timezone, timedelta
+from pathlib import Path
 from typing import Dict, List, Optional
 
 from src.discovery.config import DiscoveryConfig
@@ -23,6 +24,7 @@ from src.discovery.factors.base import DiscoveryResult
 logger = logging.getLogger(__name__)
 
 _OUTPUT_PATH = "/tmp/discovery_top10.json"
+_REPORTS_DIR = Path(__file__).resolve().parent.parent.parent / "discovery_reports"
 
 _TZ_CN = timezone(timedelta(hours=8))
 _MARKET_OPEN = (9, 30)   # 盘中扫描开始
@@ -137,7 +139,7 @@ class IntradayScanner:
                 results = self.engine.discover(mode="intraday")
                 if results:
                     annotated = self._annotate_changes(results)
-                    self._write_output(annotated)
+                    self._write_output(annotated, results)
                     self._print_round(annotated)
                     self._previous = {
                         r.ts_code: i for i, r in enumerate(results)
@@ -243,8 +245,8 @@ class IntradayScanner:
                 lines.append(f"  {self._change_marker('out')} {entry['stock_code']} 退出榜单")
         logger.info("\n".join(lines))
 
-    def _write_output(self, annotated: List[dict]) -> None:
-        """将 Top N 写入 JSON 文件供 WebUI 消费。"""
+    def _write_output(self, annotated: List[dict], results: List[DiscoveryResult]) -> None:
+        """将 Top N 写入 JSON 文件供 WebUI 消费，同时落盘 Markdown 报告。"""
         try:
             os.makedirs(os.path.dirname(_OUTPUT_PATH), exist_ok=True)
             active = [e for e in annotated if e["rank"] > 0]
@@ -258,6 +260,38 @@ class IntradayScanner:
                 json.dump(payload, f, ensure_ascii=False, indent=2)
         except Exception as e:
             logger.warning("[Scanner] 写入 %s 失败: %s", _OUTPUT_PATH, e)
+
+        # 落盘 Markdown 报告到 discovery_reports/intraday_YYYYMMDD.md
+        try:
+            _REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+            date_str = date.today().strftime('%Y%m%d')
+            report = self.engine.format_report(results, mode="intraday")
+            filepath = _REPORTS_DIR / f"intraday_{date_str}.md"
+            filepath.write_text(report, encoding="utf-8")
+            logger.debug("[Scanner] 盘中报告已保存: %s", filepath)
+
+            # 同时落盘结构化 Top N JSON 供回测使用
+            topn = []
+            for i, r in enumerate(results, 1):
+                topn.append({
+                    "rank": i,
+                    "stock_code": r.stock_code,
+                    "stock_name": r.stock_name,
+                    "score": r.score,
+                    "sector": getattr(r, "sector", ""),
+                    "factor_scores": getattr(r, "factor_scores", {}),
+                    "reasons": getattr(r, "reasons", []),
+                    "buy_price_low": getattr(r, "buy_price_low", None),
+                    "buy_price_high": getattr(r, "buy_price_high", None),
+                    "stop_loss": getattr(r, "stop_loss", None),
+                    "take_profit_1": getattr(r, "take_profit_1", None),
+                    "take_profit_2": getattr(r, "take_profit_2", None),
+                })
+            json_file = _REPORTS_DIR / f"intraday_{date_str}_topn.json"
+            json_file.write_text(json.dumps(topn, ensure_ascii=False, indent=2), encoding="utf-8")
+            logger.debug("[Scanner] 盘中 TopN JSON 已保存: %s", json_file)
+        except Exception as e:
+            logger.warning("[Scanner] 保存盘中报告失败: %s", e)
 
 
 def run_intraday_scan(config: DiscoveryConfig, tushare_fetcher=None) -> None:

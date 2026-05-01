@@ -993,20 +993,48 @@ def start_bot_stream_clients(config: Config) -> None:
             logger.error(f"[Main] Failed to start Feishu Stream client: {exc}")
 
 
-def _save_discovery_report(report: str) -> Optional[Path]:
-    """Save discovery report to reports/discovery_YYYYMMDD.md."""
+def _save_discovery_report(report: str, results=None) -> Optional[Path]:
+    """Save discovery report to discovery_reports/postmarket_YYYYMMDD.md + _topn.json."""
     try:
         from datetime import date
-        reports_dir = Path(__file__).resolve().parent / "reports"
+        reports_dir = Path(__file__).resolve().parent / "discovery_reports"
         reports_dir.mkdir(parents=True, exist_ok=True)
-        filename = f"discovery_{date.today().strftime('%Y%m%d')}.md"
-        filepath = reports_dir / filename
+        date_str = date.today().strftime('%Y%m%d')
+        filepath = reports_dir / f"postmarket_{date_str}.md"
         filepath.write_text(report, encoding="utf-8")
         logger.info("发现报告已保存: %s", filepath)
+
+        # 同时保存结构化 JSON 供前端
+        if results:
+            _save_topn_json(reports_dir, date_str, results)
         return filepath
     except Exception as e:
         logger.warning("保存发现报告失败: %s", e)
         return None
+
+
+def _save_topn_json(reports_dir: Path, date_str: str, results) -> None:
+    """保存 Top N 结构化 JSON 到 discovery_reports/postmarket_YYYYMMDD_topn.json。"""
+    import json
+    topn = []
+    for i, r in enumerate(results, 1):
+        topn.append({
+            "rank": i,
+            "stock_code": r.stock_code,
+            "stock_name": r.stock_name,
+            "score": r.score,
+            "sector": getattr(r, "sector", ""),
+            "factor_scores": getattr(r, "factor_scores", {}),
+            "reasons": getattr(r, "reasons", []),
+            "buy_price_low": getattr(r, "buy_price_low", None),
+            "buy_price_high": getattr(r, "buy_price_high", None),
+            "stop_loss": getattr(r, "stop_loss", None),
+            "take_profit_1": getattr(r, "take_profit_1", None),
+            "take_profit_2": getattr(r, "take_profit_2", None),
+        })
+    json_file = reports_dir / f"postmarket_{date_str}_topn.json"
+    json_file.write_text(json.dumps(topn, ensure_ascii=False, indent=2), encoding="utf-8")
+    logger.info("发现 TopN JSON 已保存: %s", json_file)
 
 
 def _sync_discovery_to_stock_list(results) -> None:
@@ -1301,8 +1329,8 @@ def main() -> int:
                 report = engine.format_report(results, mode="postmarket")
                 logger.info("\n%s", report)
                 print(report)
-                # 落盘到 reports/
-                _save_discovery_report(report)
+                # 落盘到 discovery_reports/
+                _save_discovery_report(report, results)
                 # 同步发现结果到 .env STOCK_LIST
                 _sync_discovery_to_stock_list(results)
             else:

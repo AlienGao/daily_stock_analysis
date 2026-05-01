@@ -1,0 +1,279 @@
+[
+  {
+    "rank": 1,
+    "stock_code": "000965",
+    "stock_name": "天保基建",
+    "score": 33.0,
+    "reasons": [
+      "特大单净流入",
+      "主力净流入率>10%",
+      "大单净流入",
+      "获利适中(58%)，抛压不大",
+      "筹码高度集中",
+      "MACD金叉",
+      "MACD红柱",
+      "RSI健康(55)",
+      "BOLL收窄"
+    ],
+    "buy_price_low": 3.5,
+    "buy_price_high": 3.6,
+    "take_profit_1": 3.9,
+    "take_profit_2": 4.1,
+    "stop_loss": 3.4,
+    "factor_scores": {
+      "money_flow": 75.0,
+      "chip": 20.0,
+      "technical": 45.0,
+      "limit": 0.0
+    }
+  },
+  {
+    "rank": 2,
+    "stock_code": "301379",
+    "stock_name": "天山电子",
+    "score": 33.0,
+    "reasons": [
+      "特大单净流入",
+      "主力净流入率>10%",
+      "大单净流入",
+      "获利适中(64%)，抛压不大",
+      "筹码高度集中",
+      "MACD金叉",
+      "MACD红柱",
+      "RSI健康(53)",
+      "BOLL收窄"
+    ],
+    "buy_price_low": 23.0,
+    "buy_price_high": 25.5,
+    "take_profit_1": 27.8,
+    "take_profit_2": 29.2,
+    "stop_loss": 22.3,
+    "factor_scores": {
+      "money_flow": 75.0,
+      "chip": 20.0,
+      "technical": 45.0,
+      "limit": 0.0
+    }
+  },
+  {
+    "rank": 3,
+    "stock_code": "002224",
+    "stock_name": "三力士",
+    "score": 33.0,
+    "reasons": [
+      "特大单净流入",
+      "主力净流入率>10%",
+      "大单净流入",
+      "获利适中(31%)，抛压不大",
+      "筹码高度集中",
+      "MACD金叉",
+      "MACD红柱",
+      "RSI健康(44)",
+      "BOLL收窄"
+    ],
+    "buy_price_low": 4.3,
+    "buy_price_high": 4.4,
+    "take_profit_1": 4.6,
+    "take_profit_2": 4.8,
+    "stop_loss": 4.1,
+    "factor_scores": {
+      "money_flow": 75.0,
+      "chip": 20.0,
+      "technical": 45.0,
+      "limit": 0.0
+    }
+  },
+  {
+    "rank": 4,
+    "stock_code": "001316",
+    "stock_name": "润贝航科",
+    "score": 32.0,
+    "reasons": [
+      "特大单净流入",
+      "主力净流入率>10%",
+      "大单净流入",
+      "获利盘过大(91%)，注意抛压",
+      "筹码高度集中",
+      "MACD金叉",
+      "MACD红柱",
+      "RSI健康(60)",
+      "BOLL收窄",
+      "涨停"
+    ],
+    "buy_price_low": 46.0,
+    "buy_price_high": 49.1,
+    "take_profit_1": 54.5,
+    "take_profit_2": 57.1,
+    "stop_loss": 44.7,
+    "factor_scores": {
+      "money_flow": 65.0,
+      "chip": 10.0,
+      "technical": 45.0,
+      "limit": 20.0
+    }
+  },
+  {
+    "rank": 5,
+    "stock_code": "002235",
+    "stock_name": "安妮股份",
+    "score": 32.0,
+    "reasons": [
+      "特大单净流入",
+      "主力净流入率>10%",
+      "大单净流入",
+      "获利盘过大(97%)，注意抛压",
+      "筹码高度集中",
+      "MACD金叉",
+      "MACD红柱",
+      "RSI健康(68)",
+      "BOLL收窄",
+      "涨停"
+    ],
+    "buy_price_low": 8.9,
+    "buy_price_high": 9.8,
+    "take_profit_1": 11.8,
+    "take_profit_2": 12.3,
+    "stop_loss": 8.7,
+    "factor_scores": {
+      "money_flow": 65.0,
+      "chip": 10.0,
+      "technical": 45.0,
+      "limit": 20.0
+    }
+  },
+  {
+    "rank": 6,
+    "stock_code": "300087",
+    "stock_name": "荃银高科",
+    "score": 31.5,
+    "reasons": [
+      "特大单净流入",
+      "主力净流入率>10%",
+      "大单净流入",
+      "获利适中(59%)，抛压不大",
+      "MACD金叉",
+      "MACD红柱",
+      "RSI健康(60)",
+      "BOLL收窄"
+    ],
+    "buy_price_low": 7.8,
+    "buy_price_high": 8.1,
+    "take_profit_1": 8.9,
+    "take_profit_2": 9.3,
+    "stop_loss": 7.6,
+    "factor_scores": {
+      "money_flow": 75.0,
+      "chip": 10.0,
+      "technical": 45.0,
+      "limit": 0.0
+    }
+  },
+  {
+    "rank": 7,
+    "stock_code": "000402",
+    "stock_name": "金融街",
+    "score": 31.5,
+    "reasons": [
+      "特大单净流入",
+      "主力净流入率>10%",
+      "大单净流入",
+      "MACD金叉",
+      "MACD红柱",
+      "连板(2连板)"
+    ],
+    "buy_price_low": 2.4,
+    "buy_price_high": 2.7,
+    "take_profit_1": 3.3,
+    "take_profit_2": 3.5,
+    "stop_loss": 2.3,
+    "factor_scores": {
+      "money_flow": 75.0,
+      "chip": 0.0,
+      "technical": 30.0,
+      "limit": 35.0
+    }
+  },
+  {
+    "rank": 8,
+    "stock_code": "002400",
+    "stock_name": "省广集团",
+    "score": 31.5,
+    "reasons": [
+      "特大单净流入",
+      "主力净流入率>10%",
+      "大单净流入",
+      "获利盘过大(85%)，注意抛压",
+      "筹码高度集中",
+      "MACD金叉",
+      "MACD红柱",
+      "RSI健康(54)",
+      "BOLL收窄"
+    ],
+    "buy_price_low": 8.0,
+    "buy_price_high": 8.6,
+    "take_profit_1": 9.4,
+    "take_profit_2": 9.9,
+    "stop_loss": 7.8,
+    "factor_scores": {
+      "money_flow": 75.0,
+      "chip": 10.0,
+      "technical": 45.0,
+      "limit": 0.0
+    }
+  },
+  {
+    "rank": 9,
+    "stock_code": "300732",
+    "stock_name": "设研院",
+    "score": 31.5,
+    "reasons": [
+      "特大单净流入",
+      "主力净流入率>10%",
+      "大单净流入",
+      "获利盘过大(86%)，注意抛压",
+      "筹码高度集中",
+      "MACD金叉",
+      "MACD红柱",
+      "RSI健康(67)",
+      "BOLL收窄"
+    ],
+    "buy_price_low": 6.5,
+    "buy_price_high": 7.0,
+    "take_profit_1": 7.9,
+    "take_profit_2": 8.2,
+    "stop_loss": 6.3,
+    "factor_scores": {
+      "money_flow": 75.0,
+      "chip": 10.0,
+      "technical": 45.0,
+      "limit": 0.0
+    }
+  },
+  {
+    "rank": 10,
+    "stock_code": "002548",
+    "stock_name": "金新农",
+    "score": 31.5,
+    "reasons": [
+      "特大单净流入",
+      "主力净流入率>10%",
+      "大单净流入",
+      "获利适中(68%)，抛压不大",
+      "MACD金叉",
+      "MACD红柱",
+      "RSI健康(56)",
+      "BOLL收窄"
+    ],
+    "buy_price_low": 4.7,
+    "buy_price_high": 5.1,
+    "take_profit_1": 5.7,
+    "take_profit_2": 5.9,
+    "stop_loss": 4.5,
+    "factor_scores": {
+      "money_flow": 75.0,
+      "chip": 10.0,
+      "technical": 45.0,
+      "limit": 0.0
+    }
+  }
+]

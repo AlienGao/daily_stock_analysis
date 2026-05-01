@@ -6,8 +6,9 @@ import {
   ChevronDown, Target, Shield, Zap, Gauge,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { AppPage, Button, EmptyState } from '../components/common';
-import { discoveryApi, type DiscoveryItem } from '../api/discovery';
+import { discoveryApi, type DiscoveryItem, type BacktestResponse } from '../api/discovery';
 
 type TabKey = 'intraday' | 'postmarket';
 const AUTO_REFRESH_MS = 60_000;
@@ -93,13 +94,30 @@ const ScoreRing: React.FC<{ score: number }> = ({ score }) => {
    2. Factor Bar
    ────────────────────────────────────────────── */
 
+const FACTOR_LABELS: Record<string, string> = {
+  money_flow: '资金流向',
+  margin: '融资融券',
+  chip: '筹码分布',
+  technical: '技术形态',
+  limit: '涨跌停',
+  momentum: '动量',
+  rebound: '反弹',
+  sector: '板块',
+  ma_entry: '均线',
+};
+
+const factorLabel = (key: string) => {
+  const zh = FACTOR_LABELS[key];
+  return zh ? `${key}（${zh}）` : key;
+};
+
 const FactorBar: React.FC<{ label: string; value: number }> = ({ label, value }) => {
   const pct = Math.min(100, Math.max(0, value));
   const hue = pct >= 70 ? '193 100% 43%' : pct >= 40 ? '37 92% 50%' : '224 12% 42%';
 
   return (
     <div className="flex items-center gap-2.5 text-[11px]">
-      <span className="w-14 shrink-0 text-tertiary-text text-right">{label}</span>
+      <span className="w-28 shrink-0 text-tertiary-text text-right truncate" title={label}>{label}</span>
       <div className="flex-1 h-1 rounded-full bg-border/30 overflow-hidden">
         <motion.div
           className="h-full rounded-full"
@@ -143,95 +161,6 @@ const calcItemPnLRatio = (item: DiscoveryItem): number | null => {
   const lossPctRaw = calcPctFromBase(buyRef, item.stop_loss);
   const lossPct = lossPctRaw != null ? Math.abs(lossPctRaw) : null;
   return calcPnLRatio(profitPct, lossPct);
-};
-
-const parseNumber = (v: string): number | null => {
-  const n = Number(v.trim());
-  return Number.isFinite(n) ? n : null;
-};
-
-const parsePriceRange = (value: string): { low: number | null; high: number | null } => {
-  const nums = value.match(/\d+(?:\.\d+)?/g) ?? [];
-  if (nums.length === 0) return { low: null, high: null };
-  if (nums.length === 1) {
-    const n = parseNumber(nums[0]);
-    return { low: n, high: n };
-  }
-  return {
-    low: parseNumber(nums[0]!),
-    high: parseNumber(nums[1]!),
-  };
-};
-
-const parseReportTopN = (md: string): DiscoveryItem[] => {
-  const items: DiscoveryItem[] = [];
-  const titleRegex = /^###\s+#(\d+)\s+([0-9A-Za-z.]+)\s+(.+?)\s+—\s+综合评分\s+([0-9.]+)\s*$/gm;
-  const matches = Array.from(md.matchAll(titleRegex));
-
-  for (let i = 0; i < matches.length; i++) {
-    const match = matches[i];
-    const start = match.index ?? 0;
-    const end = i + 1 < matches.length ? (matches[i + 1].index ?? md.length) : md.length;
-    const block = md.slice(start, end);
-
-    const rank = Number(match[1]);
-    const stock_code = match[2];
-    const stock_name = match[3].trim();
-    const score = Number(match[4]);
-    if (!Number.isFinite(rank) || !Number.isFinite(score)) continue;
-
-    const reasons = Array.from(block.matchAll(/^- (.+)$/gm)).map((m) => m[1].trim());
-    const tableRow = block.match(/^\|\s*([^|\n]+)\s*\|\s*([^|\n]+)\s*\|\s*([^|\n]+)\s*\|\s*([^|\n]+)\s*\|$/gm);
-    const dataRow = tableRow && tableRow.length > 0 ? tableRow[tableRow.length - 1] : null;
-
-    let buy_price_low: number | null = null;
-    let buy_price_high: number | null = null;
-    let take_profit_1: number | null = null;
-    let take_profit_2: number | null = null;
-    let stop_loss: number | null = null;
-
-    if (dataRow) {
-      const cells = dataRow.split('|').map((c) => c.trim()).filter(Boolean);
-      if (cells.length >= 4) {
-        const range = parsePriceRange(cells[0]);
-        buy_price_low = range.low;
-        buy_price_high = range.high;
-        take_profit_1 = parseNumber(cells[1]);
-        take_profit_2 = parseNumber(cells[2]);
-        stop_loss = parseNumber(cells[3]);
-      }
-    }
-
-    const factor_scores: Record<string, number> = {};
-    const factorMatch = block.match(/\*因子得分：([^\n*]+)\*/);
-    if (factorMatch) {
-      factorMatch[1]
-        .split('|')
-        .map((part) => part.trim())
-        .forEach((pair) => {
-          const [rawKey, rawValue] = pair.split(':').map((v) => v.trim());
-          if (!rawKey || !rawValue) return;
-          const value = Number(rawValue);
-          if (Number.isFinite(value)) factor_scores[rawKey] = value;
-        });
-    }
-
-    items.push({
-      rank,
-      stock_code,
-      stock_name,
-      score,
-      reasons,
-      buy_price_low,
-      buy_price_high,
-      take_profit_1,
-      take_profit_2,
-      stop_loss,
-      factor_scores,
-    });
-  }
-
-  return items;
 };
 
 const chCfg = (c?: string) => {
@@ -410,7 +339,7 @@ const StockCard: React.FC<{
                   <div className="space-y-2.5">
                     <div className="text-[11px] font-medium text-tertiary-text tracking-wide">因子得分</div>
                     {Object.entries(item.factor_scores).map(([k, v]) => (
-                      <FactorBar key={k} label={k} value={v} />
+                      <FactorBar key={k} label={factorLabel(k)} value={v} />
                     ))}
                   </div>
                 )}
@@ -424,7 +353,204 @@ const StockCard: React.FC<{
 };
 
 /* ──────────────────────────────────────────────
-   7. Page
+   7. Backtest Card
+   ────────────────────────────────────────────── */
+
+const fmtWan = (v: number) => `${(v / 10000).toFixed(1)}万`;
+const fmtDate = (s: string) => `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
+
+const BacktestCard: React.FC<{
+  data: BacktestResponse;
+  loading: boolean;
+  startDate: string;
+  endDate: string;
+  onStartDate: (v: string) => void;
+  onEndDate: (v: string) => void;
+  onRefresh: () => void;
+}> = ({ data, loading, startDate, endDate, onStartDate, onEndDate, onRefresh }) => {
+  const [section, setSection] = useState<'chart' | 'trades'>('chart');
+
+  if (loading) {
+    return (
+      <div className="rounded-xl border border-border/20 bg-card/40 px-4 py-3 text-[12px] text-tertiary-text">
+        <Loader2 className="inline h-3 w-3 animate-spin mr-1.5" />加载回测数据...
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border/20 bg-card/40 px-4 py-3 text-[12px] text-tertiary-text">
+        <Loader2 className="inline h-3 w-3 animate-spin mr-1.5" />加载回测数据...
+      </div>
+    );
+  }
+
+  const isPositive = data.cumulative_return >= 0;
+  const pct = data.total_days > 0 ? (data.cumulative_return * 100).toFixed(2) : '--';
+  const wrPct = data.total_days > 0 ? (data.win_rate * 100).toFixed(0) : '--';
+  const pnlSign = data.total_pnl >= 0 ? '+' : '';
+  const initCapital = data.initial_capital || 5_000_000;
+  const initialLine = initCapital;
+  const chartData = data.capital_curve.length > 0
+    ? data.capital_curve.map(p => ({ date: fmtDate(p.date), capital: p.capital }))
+    : [{ date: fmtDate(new Date().toISOString().slice(0, 10).replace(/-/g, '')), capital: initCapital }];
+
+  return (
+    <div className="rounded-xl border border-border/20 bg-card/40 overflow-hidden">
+      {/* ── Summary bar ── */}
+      <div className="px-4 py-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[12px] border-b border-border/15">
+        <span className="text-tertiary-text text-[11px] font-medium tracking-wide">回测</span>
+
+        <div className="flex items-center gap-3">
+          <span className={`font-bold text-sm tabular-nums ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+            {isPositive ? '+' : ''}{pct}%
+          </span>
+          <span className="text-tertiary-text">
+            胜率 <span className="text-foreground font-medium">{wrPct}%</span>
+          </span>
+          <span className="text-tertiary-text">
+            {data.total_days}天 · {data.total_trades}笔
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 text-[11px] text-tertiary-text">
+          <span>初始 {fmtWan(initCapital)}</span>
+          <span className="text-foreground/60">→</span>
+          <span className={`font-medium tabular-nums ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+            最终 {fmtWan(data.final_capital)}
+          </span>
+          {data.total_pnl !== 0 && (
+            <span className={`tabular-nums ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+              ({pnlSign}{fmtWan(data.total_pnl)})
+            </span>
+          )}
+        </div>
+
+        {/* Date filter */}
+        <div className="ml-auto flex items-center gap-1.5">
+          <input
+            type="date"
+            value={startDate ? fmtDate(startDate) : ''}
+            onChange={e => onStartDate(e.target.value.replace(/-/g, ''))}
+            onClick={e => e.stopPropagation()}
+            className="h-7 w-28 rounded-lg border border-border/30 bg-muted/30 px-2 text-[11px] text-foreground"
+          />
+          <span className="text-tertiary-text text-[11px]">-</span>
+          <input
+            type="date"
+            value={endDate ? fmtDate(endDate) : ''}
+            onChange={e => onEndDate(e.target.value.replace(/-/g, ''))}
+            onClick={e => e.stopPropagation()}
+            className="h-7 w-28 rounded-lg border border-border/30 bg-muted/30 px-2 text-[11px] text-foreground"
+          />
+          <button
+            onClick={e => { e.stopPropagation(); onRefresh(); }}
+            className="h-7 px-2 rounded-lg border border-border/30 bg-muted/30 text-[11px] text-cyan hover:bg-cyan/10 transition-colors"
+          >
+            查询
+          </button>
+        </div>
+      </div>
+
+      {/* ── Tab switcher ── */}
+      <div className="flex border-b border-border/10">
+        <button
+          onClick={() => setSection('chart')}
+          className={`px-4 py-1.5 text-[11px] font-medium transition-colors ${section === 'chart' ? 'text-cyan border-b border-cyan' : 'text-tertiary-text hover:text-secondary-text'}`}
+        >
+          收益曲线
+        </button>
+        <button
+          onClick={() => setSection('trades')}
+          className={`px-4 py-1.5 text-[11px] font-medium transition-colors ${section === 'trades' ? 'text-cyan border-b border-cyan' : 'text-tertiary-text hover:text-secondary-text'}`}
+        >
+          交易记录
+        </button>
+      </div>
+
+      {/* ── Chart ── */}
+      {section === 'chart' && (
+        <div className="px-2 py-3">
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={chartData}>
+              <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--border))" />
+              <YAxis
+                tick={{ fontSize: 10 }}
+                stroke="hsl(var(--border))"
+                tickFormatter={v => `${(v / 10000).toFixed(0)}w`}
+                domain={['auto', 'auto']}
+              />
+              <Tooltip
+                contentStyle={{
+                  background: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                }}
+                formatter={(val: unknown) => {
+                  const n = Number(val);
+                  return isNaN(n) ? ['-', '资金'] : [`¥${n.toLocaleString()}`, '资金'];
+                }}
+              />
+              <ReferenceLine y={initialLine} stroke="hsl(var(--border))" strokeDasharray="4 4" />
+              <Line
+                type="monotone"
+                dataKey="capital"
+                stroke={isPositive ? '#34d399' : '#f87171'}
+                strokeWidth={2}
+                dot={false}
+                activeDot={{ r: 4 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* ── Trade records ── */}
+      {section === 'trades' && (
+        <div className="max-h-64 overflow-y-auto">
+          <table className="w-full text-[11px]">
+            <thead className="sticky top-0 bg-card/90 text-tertiary-text">
+              <tr>
+                <th className="px-3 py-2 text-left font-medium">股票</th>
+                <th className="px-2 py-2 text-right font-medium">买入日</th>
+                <th className="px-2 py-2 text-right font-medium">买入价</th>
+                <th className="px-2 py-2 text-right font-medium">卖出日</th>
+                <th className="px-2 py-2 text-right font-medium">卖出价</th>
+                <th className="px-2 py-2 text-right font-medium">收益%</th>
+                <th className="px-2 py-2 text-right font-medium">盈亏</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...data.trade_records].reverse().map((t, i) => (
+                <tr key={`${t.stock_code}-${t.buy_date}-${i}`} className="border-t border-border/10 hover:bg-foreground/[0.02]">
+                  <td className="px-3 py-1.5">
+                    <span className="font-medium text-foreground">{t.stock_code}</span>
+                    <span className="text-tertiary-text ml-1">{t.stock_name}</span>
+                  </td>
+                  <td className="px-2 py-1.5 text-right text-tertiary-text">{fmtDate(t.buy_date)}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{t.buy_price.toFixed(2)}</td>
+                  <td className="px-2 py-1.5 text-right text-tertiary-text">{fmtDate(t.sell_date)}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{t.sell_price.toFixed(2)}</td>
+                  <td className={`px-2 py-1.5 text-right font-medium tabular-nums ${t.return_pct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {t.return_pct >= 0 ? '+' : ''}{(t.return_pct * 100).toFixed(2)}%
+                  </td>
+                  <td className={`px-2 py-1.5 text-right font-medium tabular-nums ${t.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {t.pnl >= 0 ? '+' : ''}{t.pnl.toFixed(0)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ──────────────────────────────────────────────
+   8. Page
    ────────────────────────────────────────────── */
 
 const DiscoveryPage: React.FC = () => {
@@ -439,6 +565,10 @@ const DiscoveryPage: React.FC = () => {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [backtest, setBacktest] = useState<BacktestResponse | null>(null);
+  const [backtestLoading, setBacktestLoading] = useState(false);
+  const [btStartDate, setBtStartDate] = useState<string>('');
+  const [btEndDate, setBtEndDate] = useState<string>('');
   const intradayFetchInFlightRef = useRef(false);
   const intradayLastFetchAtRef = useRef(0);
 
@@ -478,7 +608,23 @@ const DiscoveryPage: React.FC = () => {
     finally { setRunning(false); }
   }, [fetchReport]);
 
-  useEffect(() => { if (tab === 'intraday') fetchIntraday(); else fetchReport(); }, [tab, fetchIntraday, fetchReport]);
+  const fetchBacktest = useCallback(async (mode: 'intraday' | 'postmarket') => {
+    setBacktestLoading(true);
+    try {
+      const opts: { days?: number; start_date?: string; end_date?: string } = {};
+      if (btStartDate) opts.start_date = btStartDate;
+      if (btEndDate) opts.end_date = btEndDate;
+      if (!btStartDate && !btEndDate) opts.days = 60;
+      const d = await discoveryApi.getBacktest(mode, opts);
+      setBacktest(d);
+    } catch { /* silent */ }
+    finally { setBacktestLoading(false); }
+  }, [btStartDate, btEndDate]);
+
+  useEffect(() => {
+    if (tab === 'intraday') { fetchIntraday(); fetchBacktest('intraday'); }
+    else { fetchReport(); fetchBacktest('postmarket'); }
+  }, [tab, fetchIntraday, fetchReport, fetchBacktest]);
   useEffect(() => {
     if (tab !== 'intraday') return;
     const id = setInterval(fetchIntraday, AUTO_REFRESH_MS);
@@ -492,14 +638,9 @@ const DiscoveryPage: React.FC = () => {
     return n;
   });
 
-  const parsedReportTopN = useMemo(() => {
-    if (tab !== 'postmarket' || !report) return [];
-    return parseReportTopN(report);
-  }, [tab, report]);
-  const postmarketCards = postTopN.length > 0 ? postTopN : parsedReportTopN;
   const cardList = useMemo(
-    () => (tab === 'intraday' ? intraday?.top_n ?? [] : postmarketCards),
-    [tab, intraday?.top_n, postmarketCards]
+    () => (tab === 'intraday' ? intraday?.top_n ?? [] : postTopN),
+    [tab, intraday?.top_n, postTopN]
   );
   const sortedCardList = useMemo(() => {
     return [...cardList].sort((a, b) => {
@@ -590,6 +731,16 @@ const DiscoveryPage: React.FC = () => {
             <span className="text-tertiary-text/40">· 60s 自动</span>
           </div>
 
+          <BacktestCard
+            data={backtest!}
+            loading={backtestLoading}
+            startDate={btStartDate}
+            endDate={btEndDate}
+            onStartDate={setBtStartDate}
+            onEndDate={setBtEndDate}
+            onRefresh={() => fetchBacktest('intraday')}
+          />
+
           {!hasCards ? (
             <EmptyState
               title="暂无盘中扫描结果"
@@ -635,6 +786,16 @@ const DiscoveryPage: React.FC = () => {
               </span>
             )}
           </div>
+
+          <BacktestCard
+            data={backtest!}
+            loading={backtestLoading}
+            startDate={btStartDate}
+            endDate={btEndDate}
+            onStartDate={setBtStartDate}
+            onEndDate={setBtEndDate}
+            onRefresh={() => fetchBacktest('postmarket')}
+          />
 
           {loading ? (
             <div className="flex items-center gap-2 py-16 text-secondary-text justify-center">

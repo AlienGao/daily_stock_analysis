@@ -18,6 +18,18 @@ logger = logging.getLogger(__name__)
 
 ModeStr = Literal["intraday", "postmarket"]
 
+_FACTOR_DISPLAY: Dict[str, str] = {
+    "money_flow": "资金流向",
+    "margin": "融资融券",
+    "chip": "筹码分布",
+    "technical": "技术形态",
+    "limit": "涨跌停",
+    "momentum": "动量",
+    "rebound": "反弹",
+    "sector": "板块",
+    "ma_entry": "均线",
+}
+
 
 def _calc_price_levels(prices: Dict[str, float]) -> tuple:
     """根据技术面价格数据计算买卖点位。
@@ -357,7 +369,9 @@ class StockDiscoveryEngine:
             if r.factor_scores:
                 factor_parts = []
                 for name, score in r.factor_scores.items():
-                    factor_parts.append(f"{name}:{score:.0f}")
+                    zh = _FACTOR_DISPLAY.get(name, "")
+                    label = f"{name}（{zh}）" if zh else name
+                    factor_parts.append(f"{label}:{score:.0f}")
                 lines.append(f"*因子得分：{' | '.join(factor_parts)}*")
                 lines.append("")
 

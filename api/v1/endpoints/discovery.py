@@ -22,6 +22,97 @@ _SCAN_OUTPUT = "/tmp/discovery_top10.json"
 
 
 # ---------------------------------------------------------------------------
+# Markdown fallback parser（当 _topn.json 不存在时，直接从 md 解析）
+# ---------------------------------------------------------------------------
+
+def _parse_markdown_top_n(md: str) -> list[dict]:
+    """从 engine.format_report 输出的 Markdown 中解析 Top N 结构化数据。"""
+    import re
+
+    items: list[dict] = []
+    # 匹配 "### #排名 代码 名称 — 综合评分 分数"
+    title_re = re.compile(
+        r'^###\s+#(\d+)\s+([0-9A-Za-z.]+)\s+(.+?)\s+—\s+综合评分\s+([0-9.]+)\s*$',
+        re.MULTILINE,
+    )
+    matches = list(title_re.finditer(md))
+
+    for i, m in enumerate(matches):
+        start = m.start()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(md)
+        block = md[start:end]
+
+        rank = int(m.group(1))
+        stock_code = m.group(2)
+        stock_name = m.group(3).strip()
+        score = float(m.group(4))
+
+        # 推荐理由
+        reasons = re.findall(r'^- (.+)$', block, re.MULTILINE)
+
+        # 买卖点位表格
+        buy_low = buy_high = tp1 = tp2 = sl = None
+        tbl_row = re.findall(
+            r'^\|\s*([^|\n]+?)\s*\|\s*([^|\n]+?)\s*\|\s*([^|\n]+?)\s*\|\s*([^|\n]+?)\s*\|$',
+            block, re.MULTILINE,
+        )
+        # 取最后一个数据行（跳过表头）
+        if len(tbl_row) >= 2:
+            cells = [c.strip() for c in tbl_row[-1]]
+            if len(cells) >= 4:
+                buy_low, buy_high = _parse_price_range(cells[0])
+                tp1 = _parse_float(cells[1])
+                tp2 = _parse_float(cells[2])
+                sl = _parse_float(cells[3])
+
+        # 因子得分
+        factor_scores: dict[str, float] = {}
+        fm = re.search(r'\*因子得分：([^\n*]+)\*', block)
+        if fm:
+            for pair in fm.group(1).split('|'):
+                parts = [p.strip() for p in pair.split(':')]
+                if len(parts) == 2:
+                    try:
+                        factor_scores[parts[0]] = float(parts[1])
+                    except ValueError:
+                        pass
+
+        items.append({
+            "rank": rank,
+            "stock_code": stock_code,
+            "stock_name": stock_name,
+            "score": score,
+            "reasons": reasons,
+            "buy_price_low": buy_low,
+            "buy_price_high": buy_high,
+            "take_profit_1": tp1,
+            "take_profit_2": tp2,
+            "stop_loss": sl,
+            "factor_scores": factor_scores,
+        })
+
+    return items
+
+
+def _parse_price_range(value: str):
+    """解析"10.50-12.30"或"10.50"格式的买入区间。"""
+    nums = __import__('re').findall(r'\d+(?:\.\d+)?', value)
+    if not nums:
+        return None, None
+    if len(nums) == 1:
+        n = _parse_float(nums[0])
+        return n, n
+    return _parse_float(nums[0]), _parse_float(nums[1])
+
+
+def _parse_float(v: str):
+    try:
+        return float(v.strip())
+    except (ValueError, AttributeError):
+        return None
+
+
+# ---------------------------------------------------------------------------
 # Schemas
 # ---------------------------------------------------------------------------
 
@@ -140,15 +231,15 @@ def get_postmarket_report(
     if report_date is None:
         report_date = date.today().strftime("%Y%m%d")
 
-    reports_dir = Path(__file__).resolve().parent.parent.parent.parent / "reports"
-    filepath = reports_dir / f"discovery_{report_date}.md"
+    reports_dir = Path(__file__).resolve().parent.parent.parent.parent / "discovery_reports"
+    filepath = reports_dir / f"postmarket_{report_date}.md"
     effective_date = report_date
 
     if not filepath.exists():
         # 尝试前一天
         from datetime import timedelta
         yesterday = (date.today() - timedelta(days=1)).strftime("%Y%m%d")
-        filepath = reports_dir / f"discovery_{yesterday}.md"
+        filepath = reports_dir / f"postmarket_{yesterday}.md"
         effective_date = yesterday
         if not filepath.exists():
             return PostmarketReportResponse(date=report_date, report="", exists=False)
@@ -156,30 +247,34 @@ def get_postmarket_report(
     try:
         report = filepath.read_text(encoding="utf-8")
 
-        # 尝试加载结构化 Top N
+        # 优先加载结构化 Top N JSON，不存在则从 markdown 解析
         top_n: List[DiscoveryItem] = []
-        topn_file = reports_dir / f"discovery_{effective_date}_topn.json"
+        topn_file = reports_dir / f"postmarket_{effective_date}_topn.json"
+        raw_items: list[dict] = []
         if topn_file.exists():
             try:
-                topn_data = json.loads(topn_file.read_text(encoding="utf-8"))
-                for entry in topn_data:
-                    top_n.append(DiscoveryItem(
-                        rank=entry.get("rank", 0),
-                        ts_code=entry.get("ts_code", ""),
-                        stock_code=entry.get("stock_code", ""),
-                        stock_name=entry.get("stock_name", ""),
-                        score=entry.get("score", 0),
-                        sector=entry.get("sector", ""),
-                        factor_scores=entry.get("factor_scores", {}),
-                        reasons=entry.get("reasons", []),
-                        buy_price_low=entry.get("buy_price_low"),
-                        buy_price_high=entry.get("buy_price_high"),
-                        stop_loss=entry.get("stop_loss"),
-                        take_profit_1=entry.get("take_profit_1"),
-                        take_profit_2=entry.get("take_profit_2"),
-                    ))
+                raw_items = json.loads(topn_file.read_text(encoding="utf-8"))
             except (json.JSONDecodeError, KeyError, TypeError) as e:
                 logger.debug("解析盘后 Top N JSON 失败: %s", e)
+        if not raw_items:
+            raw_items = _parse_markdown_top_n(report)
+
+        for entry in raw_items:
+            top_n.append(DiscoveryItem(
+                rank=entry.get("rank", 0),
+                ts_code=entry.get("ts_code", ""),
+                stock_code=entry.get("stock_code", ""),
+                stock_name=entry.get("stock_name", ""),
+                score=entry.get("score", 0),
+                sector=entry.get("sector", ""),
+                factor_scores=entry.get("factor_scores", {}),
+                reasons=entry.get("reasons", []),
+                buy_price_low=entry.get("buy_price_low"),
+                buy_price_high=entry.get("buy_price_high"),
+                stop_loss=entry.get("stop_loss"),
+                take_profit_1=entry.get("take_profit_1"),
+                take_profit_2=entry.get("take_profit_2"),
+            ))
 
         return PostmarketReportResponse(
             date=effective_date, report=report, exists=True, top_n=top_n,
@@ -229,10 +324,10 @@ def run_postmarket_discovery():
         report = engine.format_report(results, mode="postmarket")
 
         # 保存报告 + 结构化数据
-        reports_dir = Path(__file__).resolve().parent.parent.parent.parent / "reports"
+        reports_dir = Path(__file__).resolve().parent.parent.parent.parent / "discovery_reports"
         reports_dir.mkdir(parents=True, exist_ok=True)
         date_str = date.today().strftime('%Y%m%d')
-        filename = f"discovery_{date_str}.md"
+        filename = f"postmarket_{date_str}.md"
         (reports_dir / filename).write_text(report, encoding="utf-8")
 
         # 保存结构化 Top N 供前端卡片渲染
@@ -253,7 +348,7 @@ def run_postmarket_discovery():
                 "take_profit_1": r.take_profit_1,
                 "take_profit_2": r.take_profit_2,
             })
-        json_file = reports_dir / f"discovery_{date_str}_topn.json"
+        json_file = reports_dir / f"postmarket_{date_str}_topn.json"
         json_file.write_text(json.dumps(top_n_data, ensure_ascii=False, indent=2), encoding="utf-8")
 
         # 同步到 .env STOCK_LIST
@@ -288,3 +383,132 @@ def run_postmarket_discovery():
     except Exception as e:
         logger.error("手动盘后发现失败: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"盘后发现失败: {str(e)}")
+
+
+# ---------------------------------------------------------------------------
+# Backtest
+# ---------------------------------------------------------------------------
+
+class TradeRecordItem(BaseModel):
+    stock_code: str
+    stock_name: str
+    buy_date: str
+    buy_price: float
+    sell_date: str
+    sell_price: float
+    return_pct: float
+    pnl: float
+    allocated_capital: float
+
+
+class BacktestDailyItem(BaseModel):
+    trade_date: str
+    avg_return: float
+    cumulative_return: float
+    capital: float
+    win_count: int
+    total_count: int
+
+
+class CapitalCurvePoint(BaseModel):
+    date: str
+    capital: float
+
+
+class BacktestResponse(BaseModel):
+    mode: str
+    initial_capital: float
+    final_capital: float
+    cumulative_return: float
+    total_pnl: float
+    win_rate: float
+    total_days: int
+    total_trades: int
+    daily_results: List[BacktestDailyItem] = []
+    trade_records: List[TradeRecordItem] = []
+    capital_curve: List[CapitalCurvePoint] = []
+
+
+@router.get(
+    "/backtest",
+    response_model=BacktestResponse,
+    summary="获取发现引擎回测结果",
+)
+def get_backtest(
+    mode: str = Query("intraday", description="回测模式: intraday | postmarket"),
+    days: int = Query(60, description="回看天数（自然日），start_date 未指定时使用"),
+    start_date: Optional[str] = Query(None, description="开始日期 YYYYMMDD"),
+    end_date: Optional[str] = Query(None, description="结束日期 YYYYMMDD"),
+):
+    """返回盘中或盘后发现策略的回测累计收益、资金曲线、交易记录。"""
+    from src.discovery.backtest import DiscoveryBacktest
+    from data_provider.tushare_fetcher import TushareFetcher
+
+    if mode not in ("intraday", "postmarket"):
+        raise HTTPException(status_code=400, detail="mode 仅支持 intraday 或 postmarket")
+
+    try:
+        fetcher = TushareFetcher()
+    except Exception:
+        fetcher = None
+
+    try:
+        bt = DiscoveryBacktest(tushare_fetcher=fetcher)
+        summary = bt.compute(
+            mode=mode,
+            lookback_days=days,
+            start_date=start_date,
+            end_date=end_date,
+        )
+    except Exception as e:
+        logger.error("回测计算失败: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"回测计算失败: {str(e)}")
+
+    if summary is None:
+        return BacktestResponse(mode=mode)
+
+    daily = [
+        BacktestDailyItem(
+            trade_date=dr.trade_date,
+            avg_return=round(dr.avg_return, 6),
+            cumulative_return=round(dr.cumulative_return, 6),
+            capital=dr.capital,
+            win_count=dr.win_count,
+            total_count=dr.total_count,
+        )
+        for dr in summary.daily_results
+    ]
+
+    trades = [
+        TradeRecordItem(
+            stock_code=t.stock_code,
+            stock_name=t.stock_name,
+            buy_date=t.buy_date,
+            buy_price=t.buy_price,
+            sell_date=t.sell_date,
+            sell_price=t.sell_price,
+            return_pct=t.return_pct,
+            pnl=t.pnl,
+            allocated_capital=t.allocated_capital,
+        )
+        for t in summary.trade_records
+    ]
+
+    curve = [
+        CapitalCurvePoint(date=p["date"], capital=p["capital"])
+        for p in summary.capital_curve
+    ]
+
+    return BacktestResponse(
+        mode=summary.mode,
+        initial_capital=summary.initial_capital,
+        final_capital=summary.final_capital,
+        cumulative_return=round(summary.cumulative_return, 6),
+        total_pnl=summary.total_pnl,
+        win_rate=round(summary.win_rate, 4),
+        total_days=summary.total_days,
+        total_trades=summary.total_trades,
+        daily_results=daily,
+        trade_records=trades,
+        capital_curve=curve,
+    )
