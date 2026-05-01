@@ -1696,12 +1696,84 @@ class TushareFetcher(BaseFetcher):
                     if col in df.columns:
                         df[col] = pd.to_numeric(df[col], errors="coerce")
                 logger.info(f"[全量技术面] trade_date={trade_date}, {len(df)} 条")
+
+                # 写入 DB 缓存以积累历史技术指标（fail-open：写入失败不影响主流程）
+                try:
+                    self._cache_bulk_stk_factor(df, trade_date)
+                except Exception:
+                    pass
+
                 return df
             return None
 
         except Exception as e:
             logger.warning(f"[Tushare] 获取全量技术面失败: {e}")
             return None
+
+    def _cache_bulk_stk_factor(self, df: pd.DataFrame, trade_date: str) -> None:
+        """将全量 stk_factor 写入 DB 缓存。"""
+        try:
+            from datetime import datetime as _dt
+            from src.storage import DatabaseManager, StockTechIndicator
+            db = DatabaseManager.get_instance()
+            trade_dt = _dt.strptime(trade_date, '%Y%m%d').date()
+            now = _dt.now()
+
+            records = []
+            for ts_code, row in df.iterrows():
+                records.append({
+                    'code': ts_code,
+                    'date': trade_dt,
+                    'close_qfq': safe_float(row.get('close')),
+                    'macd_dif': safe_float(row.get('macd_dif')),
+                    'macd_dea': safe_float(row.get('macd_dea')),
+                    'macd': safe_float(row.get('macd')),
+                    'rsi_6': safe_float(row.get('rsi_6')),
+                    'rsi_12': safe_float(row.get('rsi_12')),
+                    'rsi_24': safe_float(row.get('rsi_24')),
+                    'kdj_k': safe_float(row.get('kdj_k')),
+                    'kdj_d': safe_float(row.get('kdj_d')),
+                    'kdj_j': safe_float(row.get('kdj_j')),
+                    'boll_upper': safe_float(row.get('boll_upper')),
+                    'boll_mid': safe_float(row.get('boll_mid')),
+                    'boll_lower': safe_float(row.get('boll_lower')),
+                    'cci': safe_float(row.get('cci')),
+                    'created_at': now,
+                    'updated_at': now,
+                })
+
+            with db.session_scope() as session:
+                from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+                _CHUNK = 50
+                for i in range(0, len(records), _CHUNK):
+                    chunk = records[i : i + _CHUNK]
+                    stmt = sqlite_insert(StockTechIndicator).values(chunk)
+                    excluded = stmt.excluded
+                    session.execute(
+                        stmt.on_conflict_do_update(
+                            index_elements=['code', 'date'],
+                            set_={
+                                'close_qfq': excluded.close_qfq,
+                                'macd_dif': excluded.macd_dif,
+                                'macd_dea': excluded.macd_dea,
+                                'macd': excluded.macd,
+                                'rsi_6': excluded.rsi_6,
+                                'rsi_12': excluded.rsi_12,
+                                'rsi_24': excluded.rsi_24,
+                                'kdj_k': excluded.kdj_k,
+                                'kdj_d': excluded.kdj_d,
+                                'kdj_j': excluded.kdj_j,
+                                'boll_upper': excluded.boll_upper,
+                                'boll_mid': excluded.boll_mid,
+                                'boll_lower': excluded.boll_lower,
+                                'cci': excluded.cci,
+                                'updated_at': excluded.updated_at,
+                            },
+                        )
+                    )
+            logger.info(f"[全量技术面缓存] 已写入 {len(records)} 条到 stock_tech_indicator")
+        except Exception as e:
+            logger.debug(f"[全量技术面缓存] 写入失败（fail-open）: {e}")
 
     def get_sector_constituents(self, index_code: str) -> Optional[pd.DataFrame]:
         """获取板块/行业成分股 (Tushare index_member)。

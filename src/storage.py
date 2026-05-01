@@ -647,6 +647,65 @@ class LLMUsage(Base):
     called_at = Column(DateTime, default=datetime.now, index=True)
 
 
+class StockTechIndicator(Base):
+    """Tushare stk_factor 技术指标缓存。
+
+    缓存 Tushare 预计算的前复权技术指标（MACD/RSI/KDJ/BOLL/CCI），
+    避免重复调用 Tushare API，节省积分和请求配额。
+    注意：stk_factor 不提供 MA 均线值，MA 继续由本地 StockTrendAnalyzer 计算。
+    """
+
+    __tablename__ = 'stock_tech_indicator'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(10), nullable=False, index=True)
+    date = Column(Date, nullable=False, index=True)
+
+    # Tushare stk_factor 字段（前复权口径）
+    close_qfq = Column(Float)
+    macd_dif = Column(Float)
+    macd_dea = Column(Float)
+    macd = Column(Float)
+    rsi_6 = Column(Float)
+    rsi_12 = Column(Float)
+    rsi_24 = Column(Float)
+    kdj_k = Column(Float)
+    kdj_d = Column(Float)
+    kdj_j = Column(Float)
+    boll_upper = Column(Float)
+    boll_mid = Column(Float)
+    boll_lower = Column(Float)
+    cci = Column(Float)
+
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('code', 'date', name='uix_tech_indicator_code_date'),
+        Index('ix_tech_indicator_code_date', 'code', 'date'),
+    )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'code': self.code,
+            'date': self.date.isoformat() if self.date else None,
+            'close_qfq': self.close_qfq,
+            'macd_dif': self.macd_dif,
+            'macd_dea': self.macd_dea,
+            'macd': self.macd,
+            'rsi_6': self.rsi_6,
+            'rsi_12': self.rsi_12,
+            'rsi_24': self.rsi_24,
+            'kdj_k': self.kdj_k,
+            'kdj_d': self.kdj_d,
+            'kdj_j': self.kdj_j,
+            'boll_upper': self.boll_upper,
+            'boll_mid': self.boll_mid,
+            'boll_lower': self.boll_lower,
+            'cci': self.cci,
+        }
+
+
 class DatabaseManager:
     """
     数据库管理器 - 单例模式
@@ -716,6 +775,7 @@ class DatabaseManager:
         Base.metadata.create_all(self._engine)
         self._ensure_analysis_history_query_source_column()
         self._ensure_backtest_results_trigger_source_column()
+        self._ensure_stock_tech_indicator_table()
 
         self._initialized = True
         logger.info(f"数据库初始化完成: {db_url}")
@@ -776,6 +836,175 @@ class DatabaseManager:
             logger.info("已添加列 backtest_results.trigger_source")
         except Exception as exc:
             logger.warning("添加 backtest_results.trigger_source 失败: %s", exc)
+
+    def _ensure_stock_tech_indicator_table(self) -> None:
+        """SQLite: create stock_tech_indicator if missing (pre-create_all catch-up)."""
+        if not self._is_sqlite_engine:
+            return
+        try:
+            with self._engine.connect() as conn:
+                rows = conn.execute(
+                    text("SELECT name FROM sqlite_master WHERE type='table' AND name='stock_tech_indicator'")
+                ).fetchall()
+            if rows:
+                return
+        except Exception as exc:
+            logger.warning("检查 stock_tech_indicator 表存在性失败: %s", exc)
+            return
+        try:
+            StockTechIndicator.__table__.create(self._engine)
+            logger.info("已创建表 stock_tech_indicator")
+        except Exception as exc:
+            logger.warning("创建 stock_tech_indicator 失败: %s", exc)
+
+    # ------------------------------------------------------------------
+    # StockTechIndicator CRUD
+    # ------------------------------------------------------------------
+
+    def upsert_tech_indicators(
+        self,
+        df: pd.DataFrame,
+        code: str,
+    ) -> int:
+        """批量 upsert Tushare 技术指标缓存。
+
+        按 (code, date) 做 UPSERT，已存在记录覆盖更新。
+        """
+        if df is None or df.empty:
+            return 0
+
+        now = datetime.now()
+        records: List[Dict[str, Any]] = []
+        for row in df.to_dict(orient='records'):
+            row_date = self._normalize_daily_date(row.get('date') or row.get('trade_date'))
+            if row_date is None:
+                continue
+            records.append({
+                'code': code,
+                'date': row_date,
+                'close_qfq': self._normalize_sql_value(row.get('close_qfq')),
+                'macd_dif': self._normalize_sql_value(row.get('macd_dif')),
+                'macd_dea': self._normalize_sql_value(row.get('macd_dea')),
+                'macd': self._normalize_sql_value(row.get('macd')),
+                'rsi_6': self._normalize_sql_value(row.get('rsi_6')),
+                'rsi_12': self._normalize_sql_value(row.get('rsi_12')),
+                'rsi_24': self._normalize_sql_value(row.get('rsi_24')),
+                'kdj_k': self._normalize_sql_value(row.get('kdj_k')),
+                'kdj_d': self._normalize_sql_value(row.get('kdj_d')),
+                'kdj_j': self._normalize_sql_value(row.get('kdj_j')),
+                'boll_upper': self._normalize_sql_value(row.get('boll_upper')),
+                'boll_mid': self._normalize_sql_value(row.get('boll_mid')),
+                'boll_lower': self._normalize_sql_value(row.get('boll_lower')),
+                'cci': self._normalize_sql_value(row.get('cci')),
+                'created_at': now,
+                'updated_at': now,
+            })
+
+        if not records:
+            return 0
+
+        def _write(session: Session) -> int:
+            if self._is_sqlite_engine:
+                _SQLITE_CHUNK = 50
+                for i in range(0, len(records), _SQLITE_CHUNK):
+                    chunk = records[i : i + _SQLITE_CHUNK]
+                    stmt = sqlite_insert(StockTechIndicator).values(chunk)
+                    excluded = stmt.excluded
+                    session.execute(
+                        stmt.on_conflict_do_update(
+                            index_elements=['code', 'date'],
+                            set_={
+                                'close_qfq': excluded.close_qfq,
+                                'macd_dif': excluded.macd_dif,
+                                'macd_dea': excluded.macd_dea,
+                                'macd': excluded.macd,
+                                'rsi_6': excluded.rsi_6,
+                                'rsi_12': excluded.rsi_12,
+                                'rsi_24': excluded.rsi_24,
+                                'kdj_k': excluded.kdj_k,
+                                'kdj_d': excluded.kdj_d,
+                                'kdj_j': excluded.kdj_j,
+                                'boll_upper': excluded.boll_upper,
+                                'boll_mid': excluded.boll_mid,
+                                'boll_lower': excluded.boll_lower,
+                                'cci': excluded.cci,
+                                'updated_at': excluded.updated_at,
+                            },
+                        )
+                    )
+                return len(records)
+            else:
+                new_count = 0
+                for record in records:
+                    existing = session.execute(
+                        select(StockTechIndicator).where(
+                            and_(
+                                StockTechIndicator.code == record['code'],
+                                StockTechIndicator.date == record['date'],
+                            )
+                        )
+                    ).scalar_one_or_none()
+                    if existing is None:
+                        session.add(StockTechIndicator(**record))
+                        new_count += 1
+                    else:
+                        for key, val in record.items():
+                            if key not in ('code', 'date', 'created_at'):
+                                setattr(existing, key, val)
+                return new_count
+
+        try:
+            return self._run_write_transaction(
+                f"upsert_tech_indicators[{code}]",
+                _write,
+            )
+        except Exception as e:
+            logger.warning(f"保存技术指标缓存失败 {code}: {e}")
+            return 0
+
+    def get_tech_indicator(
+        self, code: str, target_date: Optional[date] = None
+    ) -> Optional[Dict[str, Any]]:
+        """获取单只股票指定日期的缓存技术指标。"""
+        if target_date is None:
+            target_date = date.today()
+
+        with self.get_session() as session:
+            row = session.execute(
+                select(StockTechIndicator).where(
+                    and_(
+                        StockTechIndicator.code == code,
+                        StockTechIndicator.date == target_date,
+                    )
+                )
+            ).scalar_one_or_none()
+            if row is None:
+                return None
+            return row.to_dict()
+
+    def get_tech_indicators_batch(
+        self, codes: List[str], target_date: Optional[date] = None
+    ) -> Dict[str, Dict[str, Any]]:
+        """批量获取多只股票指定日期的缓存技术指标。
+
+        Returns:
+            {code: indicator_dict} 字典，未缓存的 code 不出现在结果中
+        """
+        if not codes:
+            return {}
+        if target_date is None:
+            target_date = date.today()
+
+        with self.get_session() as session:
+            rows = session.execute(
+                select(StockTechIndicator).where(
+                    and_(
+                        StockTechIndicator.code.in_(codes),
+                        StockTechIndicator.date == target_date,
+                    )
+                )
+            ).scalars().all()
+            return {r.code: r.to_dict() for r in rows}
     
     @classmethod
     def get_instance(cls) -> 'DatabaseManager':

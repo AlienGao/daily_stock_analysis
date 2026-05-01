@@ -16,7 +16,7 @@ from typing import Optional, List, Dict, Any
 import pandas as pd
 from sqlalchemy import and_, desc, select
 
-from src.storage import DatabaseManager, StockDaily
+from src.storage import DatabaseManager, StockDaily, StockTechIndicator
 
 logger = logging.getLogger(__name__)
 
@@ -161,6 +161,46 @@ class StockRepository:
                 .limit(eval_window_days)
             ).scalars().all()
             return list(rows)
+
+    # ------------------------------------------------------------------
+    # Tushare 技术指标缓存
+    # ------------------------------------------------------------------
+
+    def upsert_tech_indicators(self, df: pd.DataFrame, code: str) -> int:
+        """批量 upsert Tushare 技术指标缓存。
+
+        Args:
+            df: 包含 stk_factor 字段的 DataFrame
+            code: 股票代码
+
+        Returns:
+            写入的记录数
+        """
+        try:
+            return self.db.upsert_tech_indicators(df, code)
+        except Exception as e:
+            logger.error(f"保存技术指标缓存失败 {code}: {e}")
+            return 0
+
+    def get_tech_indicator(
+        self, code: str, target_date: Optional[date] = None
+    ) -> Optional[Dict[str, Any]]:
+        """获取单只股票指定日期的缓存技术指标。"""
+        try:
+            return self.db.get_tech_indicator(code, target_date)
+        except Exception as e:
+            logger.error(f"获取技术指标缓存失败 {code}: {e}")
+            return None
+
+    def get_tech_indicators_batch(
+        self, codes: List[str], target_date: Optional[date] = None
+    ) -> Dict[str, Dict[str, Any]]:
+        """批量获取多只股票指定日期的缓存技术指标。"""
+        try:
+            return self.db.get_tech_indicators_batch(codes, target_date)
+        except Exception as e:
+            logger.error(f"批量获取技术指标缓存失败: {e}")
+            return {}
 
     @staticmethod
     def _candidate_codes(code: str) -> List[str]:

@@ -187,9 +187,16 @@ class StockDiscoveryEngine:
             logger.warning("[Discovery] 无候选股票")
             return []
 
-        # Phase 3: 逐因子打分 → 加权求和 + 收集原始评分用于 describe
+        # Phase 3: 逐因子打分 → 加权求和（动态归一化权重，适应新增因子）
         score_columns: Dict[str, pd.Series] = {}
         raw_scores: Dict[str, pd.Series] = {}  # 保留原始评分供 describe() 使用
+
+        # 动态归一化：可用因子权重之和归一化到 100%
+        total_weight = sum(f.weight for f in available)
+        if total_weight <= 0:
+            total_weight = 1.0
+        weight_scale = 100.0 / total_weight
+
         for factor in available:
             if factor.name not in factor_data:
                 continue
@@ -197,10 +204,12 @@ class StockDiscoveryEngine:
                 raw = factor.score(factor_data[factor.name], tushare_fetcher=self.tushare_fetcher)
                 if raw is not None and not raw.empty:
                     raw_scores[factor.name] = raw
-                    weighted = raw * factor.weight / 100.0
+                    effective_weight = factor.weight * weight_scale / 100.0
+                    weighted = raw * effective_weight
                     score_columns[factor.name] = weighted
                     logger.debug(
                         f"[Discovery] {factor.name}: scored {len(raw)} stocks, "
+                        f"weight={factor.weight}->eff={effective_weight*100:.1f}%, "
                         f"max={raw.max():.1f}"
                     )
             except Exception as e:
@@ -272,12 +281,13 @@ class StockDiscoveryEngine:
                 st_skipped += 1
                 continue
 
-            factor_breakdown = {
-                name: row.get(name, 0.0) * 100.0 / f.weight
-                if f.weight > 0 else 0.0
-                for name, f in self._factors.items()
-                if name in row.index
-            }
+            # 还原原始 0-100 评分（行值是 raw * effective_weight）
+            factor_breakdown = {}
+            for name, f in self._factors.items():
+                if name not in row.index:
+                    continue
+                eff_w = f.weight * weight_scale / 100.0  # effective weight used in scoring
+                factor_breakdown[name] = row[name] / eff_w if eff_w > 0 else 0.0
 
             # 计算买卖点位
             prices = price_map.get(ts_code, {})

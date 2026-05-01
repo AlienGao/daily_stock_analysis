@@ -160,6 +160,9 @@ class StockAnalysisPipeline:
             )
             self.social_sentiment_service = None
 
+        # R&D factor signals cache: batch-level, one discovery run shared across all stocks
+        self._factor_signals_cache: Dict[str, Dict[str, Any]] = {}
+
     def _emit_progress(self, progress: int, message: str) -> None:
         """Best-effort bridge from pipeline stages to task SSE progress."""
         callback = getattr(self, "progress_callback", None)
@@ -359,6 +362,43 @@ class StockAnalysisPipeline:
             except Exception as e:
                 logger.debug(f"{stock_name}({code}) 基本面快照写入失败: {e}")
 
+            # Step 2.7: Tushare 技术指标优先获取（缓存优先，API 降级）
+            # 在趋势分析之前获取，使 StockTrendAnalyzer 能使用前复权(qfq)数据
+            tushare_fetcher = self.fetcher_manager._get_tushare_fetcher()
+            tech_factors = None
+
+            if tushare_fetcher is not None:
+                tushare_code = normalize_stock_code(code)
+                try:
+                    trade_date_str = tushare_fetcher.get_trade_time(
+                        early_time='00:00', late_time='18:00'
+                    )
+                    if trade_date_str:
+                        from datetime import datetime as _dt
+                        trade_date_obj = _dt.strptime(trade_date_str, '%Y%m%d').date()
+                        # 优先从 DB 缓存读取
+                        cached = self.db.get_tech_indicator(tushare_code, trade_date_obj)
+                        if cached:
+                            tech_factors = cached
+                            logger.debug(
+                                f"{stock_name}({code}) 技术指标命中 DB 缓存 "
+                                f"(date={trade_date_obj})"
+                            )
+                        else:
+                            # 缓存未命中，从 Tushare API 获取
+                            tech_factors = tushare_fetcher.get_technical_factors(
+                                tushare_code, trade_date_str
+                            )
+                            if tech_factors:
+                                # 写入 DB 缓存
+                                cache_df = pd.DataFrame([tech_factors])
+                                self.db.upsert_tech_indicators(cache_df, tushare_code)
+                                logger.debug(
+                                    f"{stock_name}({code}) 技术指标已写入 DB 缓存"
+                                )
+                except Exception as e:
+                    logger.debug(f"{stock_name}({code}) 技术指标缓存/获取失败: {e}")
+
             # Step 3: 趋势分析（基于交易理念）— 在 Agent 分支之前执行，供两条路径共用
             trend_result: Optional[TrendAnalysisResult] = None
             try:
@@ -373,22 +413,23 @@ class StockAnalysisPipeline:
                     # Issue #234: Augment with realtime for intraday MA calculation
                     if self.config.enable_realtime_quote and realtime_quote:
                         df = self._augment_historical_with_realtime(df, realtime_quote, code)
-                    trend_result = self.trend_analyzer.analyze(df, code)
+                    trend_result = self.trend_analyzer.analyze(
+                        df, code, tech_indicators=tech_factors,
+                    )
                     logger.info(f"{stock_name}({code}) 趋势分析: {trend_result.trend_status.value}, "
-                              f"买入信号={trend_result.buy_signal.value}, 评分={trend_result.signal_score}")
+                              f"买入信号={trend_result.buy_signal.value}, 评分={trend_result.signal_score}"
+                              f"{' (Tushare)' if tech_factors else ' (本地)'}")
             except Exception as e:
                 logger.warning(f"{stock_name}({code}) 趋势分析失败: {e}", exc_info=True)
 
-            # Step 3.5: Tushare 数据增强（资金流向/融资融券/筹码胜率/技术面因子）
+            # Step 3.5: Tushare 数据增强（资金流向/融资融券/筹码胜率）
+            # 技术面因子已在 Step 2.7 获取，此处仅获取其他 Tushare 数据
             # 所有接口失败不阻塞主流程（降级容错）
-            tushare_fetcher = self.fetcher_manager._get_tushare_fetcher()
             money_flow_data = None
             margin_data = None
             winner_data = None
-            tech_factors = None
 
             if tushare_fetcher is not None:
-                tushare_code = normalize_stock_code(code)
                 try:
                     money_flow_data = tushare_fetcher.get_money_flow(tushare_code)
                 except Exception as e:
@@ -401,10 +442,9 @@ class StockAnalysisPipeline:
                     winner_data = tushare_fetcher.get_cyq_winner(tushare_code)
                 except Exception as e:
                     logger.debug(f"{stock_name}({code}) 筹码胜率获取失败: {e}")
-                try:
-                    tech_factors = tushare_fetcher.get_technical_factors(tushare_code)
-                except Exception as e:
-                    logger.debug(f"{stock_name}({code}) 技术面因子获取失败: {e}")
+
+            # Look up pre-computed discovery factor signals for this stock
+            factor_signals = self._factor_signals_cache.get(code)
 
             if use_agent:
                 logger.info(f"{stock_name}({code}) 启用 Agent 模式进行分析")
@@ -422,6 +462,7 @@ class StockAnalysisPipeline:
                     margin_data=margin_data,
                     winner_data=winner_data,
                     tech_factors=tech_factors,
+                    factor_signals=factor_signals,
                     agent_exec_config=agent_exec_config,
                     replace_history=replace_history,
                     persist_history=persist_history,
@@ -510,6 +551,7 @@ class StockAnalysisPipeline:
                 margin_data=margin_data,
                 winner_data=winner_data,
                 tech_factors=tech_factors,
+                factor_signals=factor_signals,
             )
             
             # Step 7: 调用 AI 分析（传入增强的上下文和新闻）
@@ -590,6 +632,7 @@ class StockAnalysisPipeline:
         margin_data: Optional[Dict[str, Any]] = None,
         winner_data: Optional[Dict[str, Any]] = None,
         tech_factors: Optional[Dict[str, Any]] = None,
+        factor_signals: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         增强分析上下文
@@ -817,6 +860,10 @@ class StockAnalysisPipeline:
                 'trade_date': winner_data.get('trade_date'),
             }
 
+        # Discovery engine factor signals (R&D loop generated factors included)
+        if factor_signals:
+            enhanced['discovery_signals'] = factor_signals
+
         return enhanced
 
     def _attach_belong_boards_to_fundamental_context(
@@ -904,6 +951,7 @@ class StockAnalysisPipeline:
         margin_data: Optional[Dict[str, Any]] = None,
         winner_data: Optional[Dict[str, Any]] = None,
         tech_factors: Optional[Dict[str, Any]] = None,
+        factor_signals: Optional[Dict[str, Any]] = None,
         agent_exec_config: Optional[Config] = None,
         replace_history: bool = False,
         persist_history: bool = True,
@@ -942,6 +990,8 @@ class StockAnalysisPipeline:
                 initial_context["winner_data"] = winner_data
             if tech_factors:
                 initial_context["tech_factors"] = tech_factors
+            if factor_signals:
+                initial_context["discovery_signals"] = factor_signals
 
             # Agent path: inject social sentiment as news_context so both
             # executor (_build_user_message) and orchestrator (ctx.set_data)
@@ -1589,6 +1639,51 @@ class StockAnalysisPipeline:
                 defer_aggregate_report=defer_aggregate_report,
             )
 
+    def _prepare_factor_signals_cache(
+        self, stock_codes: List[str], tushare_fetcher
+    ) -> None:
+        """Run discovery engine once at batch level, cache per-stock factor scores.
+
+        This avoids repeated full-market API calls per stock during concurrent analysis.
+        All registered factors (including rd_gen_* from R&D loop) participate.
+        """
+        from src.discovery.config import get_discovery_config
+        from src.discovery.engine import StockDiscoveryEngine
+        from src.discovery.factors import (
+            MoneyFlowFactor, MarginFactor, ChipFactor,
+            TechnicalFactor, LimitFactor,
+        )
+
+        discovery_config = get_discovery_config()
+        engine = StockDiscoveryEngine(discovery_config, tushare_fetcher)
+        # Register all postmarket factors (same as auto-discovery)
+        engine.register_factors([
+            MoneyFlowFactor(),
+            MarginFactor(),
+            ChipFactor(),
+            TechnicalFactor(),
+            LimitFactor(),
+        ])
+
+        results = engine.discover(mode="postmarket")
+        if not results:
+            logger.info("[FactorSignals] 未发现候选股，因子信号缓存为空")
+            return
+
+        # Build per-stock cache from discovery results
+        for r in results:
+            signals = {
+                "score": r.score,
+                "factor_scores": dict(r.factor_scores),
+                "reasons": list(r.reasons),
+            }
+            self._factor_signals_cache[r.stock_code] = signals
+
+        logger.info(
+            "[FactorSignals] 因子信号缓存已构建: %d 只股票",
+            len(self._factor_signals_cache),
+        )
+
     def _run_impl(
         self,
         stock_codes: Optional[List[str]] = None,
@@ -1599,12 +1694,27 @@ class StockAnalysisPipeline:
     ) -> List[AnalysisResult]:
         """Actual pipeline body. Do not call directly — use ``run()`` so the
         batch-mode thinking switch is correctly scoped."""
+        import os
+
         start_time = time.time()
-        
+
         # 使用配置中的股票列表
         if stock_codes is None:
             self.config.refresh_stock_list()
             stock_codes = self.config.stock_list
+
+        # Factor signals: batch-level discovery run to inject per-stock factor scores into analysis
+        self._factor_signals_cache = {}
+        if (
+            not dry_run
+            and os.getenv("DISCOVERY_FACTOR_SIGNALS_ENABLED", "true").strip().lower() in ("true", "1", "yes", "on")
+        ):
+            tushare_fetcher = self.fetcher_manager._get_tushare_fetcher()
+            if tushare_fetcher and tushare_fetcher.is_available():
+                try:
+                    self._prepare_factor_signals_cache(stock_codes, tushare_fetcher)
+                except Exception as e:
+                    logger.warning("[FactorSignals] 因子信号缓存构建失败（不阻断主流程）: %s", e)
 
         # Auto-discovery: 盘后深度扫描，自动发现高潜力股票并入分析列表
         if getattr(self.config, 'auto_discover', False) and not dry_run:

@@ -2066,6 +2066,41 @@ class GeminiAnalyzer:
                     prompt += f"| RSI(24) | {trend.get('rsi_24', 'N/A')} | 中期强弱，>70超买/<30超卖 |\n"
                 prompt += """
 """
+        # Discovery engine factor signals (including R&D loop generated factors)
+        discovery_signals = context.get('discovery_signals')
+        if discovery_signals:
+            score = discovery_signals.get('score', 0)
+            factor_scores = discovery_signals.get('factor_scores', {})
+            reasons = discovery_signals.get('reasons', [])
+            prompt += f"""
+### Discovery Engine 因子信号
+- **综合评分**: {score:.1f}/100
+"""
+            if reasons:
+                prompt += "- **推荐理由**: " + "；".join(reasons) + "\n"
+            if factor_scores:
+                prompt += """
+| 因子 | 原始分 | 信号解读 |
+|------|--------|----------|
+"""
+                _DISPLAY_MAP = {
+                    "money_flow": "资金流向", "margin": "融资融券", "chip": "筹码分布",
+                    "technical": "技术形态", "limit": "涨跌停",
+                }
+                for fname, fscore in factor_scores.items():
+                    zh = _DISPLAY_MAP.get(fname, fname)
+                    if fscore >= 80:
+                        interp = "极强"
+                    elif fscore >= 60:
+                        interp = "强"
+                    elif fscore >= 40:
+                        interp = "中性"
+                    else:
+                        interp = "弱"
+                    prompt += f"| {fname}（{zh}） | {fscore:.0f} | {interp} |\n"
+                prompt += """
+> 以上因子信号由 Discovery Engine 多因子模型生成（含 R&D 闭环挖掘的新因子），供 LLM 分析时参考，不构成决策指令。
+"""
         # 添加昨日对比数据
         if 'yesterday' in context:
             volume_change = context.get('volume_change_ratio', 'N/A')

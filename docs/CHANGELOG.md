@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- 新条目格式：- [类型] 描述（类型取值：新功能/改进/修复/文档/测试/chore）-->
 <!-- 每条独立一行追加到本段末尾，无需分类标题，合并时冲突最小 -->
+- [新功能] 新增 R&D 因子发现闭环（`--rd-loop`），借鉴 RD-Agent 的 Hypothesis → Implement → Test → Iterate 模式，LLM 自动生成因子代码 → 历史回测评估 → SOTA 跟踪 → 反馈迭代，输出排行榜报告到 `rd_loop_reports/rd_loop_*.md`。
+- [新功能] R&D 闭环生成的 SOTA 因子自动持久化到 `src/discovery/factors/rd_gen_*.py`，`__init__.py` 自动发现并注册，下次 auto-discovery 无需手动配置即可使用新因子。
+- [新功能] Discovery Engine 因子信号注入单股分析：定时任务批次启动前运行一次 discovery engine（含 R&D 新因子），单股分析时将因子评分注入 LLM prompt（非 Agent 路径渲染为 Markdown 表格，Agent 路径注入 JSON 块）。通过 `DISCOVERY_FACTOR_SIGNALS_ENABLED` 控制。
+- [新功能] 定时任务前置 R&D 闭环（`RD_LOOP_AUTO_ENABLED=true`），每日分析前自动运行轻量级因子发现（2 轮 x 2 假设），新因子自动参与当天的选股和分析。
+- [新功能] 技术指标优先使用 Tushare 前复权数据：单股分析流程重构为先获取 Tushare stk_factor（MACD/RSI/KDJ/BOLL/CCI）再执行 StockTrendAnalyzer，Tushare 可用时自动覆盖本地计算结果（含 KDJ/BOLL 首次纳入趋势评分），MA 继续由本地计算（Tushare 不提供）。
+- [新功能] 新增 `stock_tech_indicator` 数据库缓存表，按 (code, date) 缓存 Tushare stk_factor 全量指标；单股分析缓存优先命中后跳过 Tushare API 调用，全量批量获取（discovery engine）自动写入缓存积累历史数据。
 - [改进] 新增 `BACKTEST_AUTO_MODE` 与 `BACKTEST_AUTO_ALLOWED_CATEGORIES`，支持定时任务结束后按“上一交易日 + BUY/HOLD”精确自动回测，同时保持手动 Web/API 回测行为不变。
 - [改进] 回测结果页与 `/api/v1/backtest/results` 新增 `trigger_source`（auto/manual）筛选，支持快速区分自动回测与手动回测记录。
 - [改进] 回测结果页新增“实际表现”全量排序，并在 `/api/v1/backtest/results` 支持 `sort_by=actual_return_pct` 与 `sort_order=asc|desc`，分页场景下按全量数据排序后再切页。

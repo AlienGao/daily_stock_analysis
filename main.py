@@ -389,6 +389,25 @@ def parse_arguments() -> argparse.Namespace:
         help='强制回测（即使已有回测结果也重新计算）'
     )
 
+    # === R&D Loop ===
+    parser.add_argument(
+        '--rd-loop',
+        action='store_true',
+        help='启动 R&D 因子发现闭环（自动化假设→实现→评估→迭代）'
+    )
+    parser.add_argument(
+        '--rd-loop-iterations',
+        type=int,
+        default=5,
+        help='R&D 闭环迭代轮数（默认 5）'
+    )
+    parser.add_argument(
+        '--rd-loop-hypotheses',
+        type=int,
+        default=3,
+        help='R&D 闭环每轮生成的假设数（默认 3）'
+    )
+
     return parser.parse_args()
 
 
@@ -1065,6 +1084,46 @@ def _reload_runtime_config() -> Config:
     return get_config()
 
 
+def _run_auto_rd_loop() -> None:
+    """Run a lightweight R&D loop before scheduled analysis (opt-in via RD_LOOP_AUTO_ENABLED).
+
+    Uses minimal iterations to keep cost/time low. Failure does not block the main analysis.
+    """
+    logger.info("[AutoRDLoop] 定时任务前置 R&D 闭环启动")
+
+    try:
+        from src.agent.llm_adapter import LLMToolAdapter
+        from src.discovery.rd_loop import RDLoop
+        from data_provider.tushare_fetcher import TushareFetcher
+    except Exception as e:
+        logger.warning("[AutoRDLoop] 导入失败，跳过: %s", e)
+        return
+
+    tushare_fetcher = TushareFetcher()
+    if not tushare_fetcher.is_available():
+        logger.warning("[AutoRDLoop] Tushare 不可用，跳过")
+        return
+
+    llm_adapter = LLMToolAdapter()
+    if not llm_adapter.is_available:
+        logger.warning("[AutoRDLoop] LLM 不可用，跳过")
+        return
+
+    try:
+        loop = RDLoop(tushare_fetcher=tushare_fetcher, llm_adapter=llm_adapter)
+        result = loop.run(
+            iterations=2,
+            hypotheses_per_round=2,
+            sota_threshold=30.0,
+        )
+        logger.info(
+            "[AutoRDLoop] 完成: %d 轮, %d 个 SOTA 因子",
+            result.iterations, len(result.sota_factors),
+        )
+    except Exception as e:
+        logger.warning("[AutoRDLoop] 运行失败（不阻断定时任务）: %s", e)
+
+
 def _build_schedule_time_provider(default_schedule_time: str):
     """Read the latest schedule time directly from the active config file.
 
@@ -1287,6 +1346,9 @@ def main() -> int:
         # 模式: 盘中实时扫描
         if getattr(args, 'scan', False):
             logger.info("模式: 盘中实时扫描")
+            # 前置 R&D 因子发现（与定时任务一致，由 RD_LOOP_AUTO_ENABLED 控制）
+            if os.getenv("RD_LOOP_AUTO_ENABLED", "").strip().lower() in ("true", "1", "yes", "on"):
+                _run_auto_rd_loop()
             from src.discovery.config import get_discovery_config
             from src.discovery.scanner import run_intraday_scan
 
@@ -1337,6 +1399,43 @@ def main() -> int:
                 logger.info("未发现符合条件的股票")
             return 0
 
+        # 模式: R&D 因子发现闭环
+        if getattr(args, 'rd_loop', False):
+            logger.info("模式: R&D 因子发现闭环")
+            from src.discovery.rd_loop import RDLoop
+            from src.agent.llm_adapter import LLMToolAdapter
+            from data_provider.tushare_fetcher import TushareFetcher
+
+            tushare_fetcher = TushareFetcher()
+            if not tushare_fetcher.is_available():
+                logger.warning("Tushare 不可用，R&D 闭环评估可能受限")
+
+            llm_adapter = LLMToolAdapter()
+            if not llm_adapter.is_available:
+                logger.error("LLM 不可用，无法运行 R&D 闭环。请检查 API key 配置。")
+                return 1
+
+            iterations = getattr(args, 'rd_loop_iterations', 5)
+            hypotheses_per_round = getattr(args, 'rd_loop_hypotheses', 3)
+
+            logger.info(
+                "R&D 闭环参数: iterations=%d, hypotheses_per_round=%d",
+                iterations, hypotheses_per_round,
+            )
+
+            loop = RDLoop(
+                tushare_fetcher=tushare_fetcher,
+                llm_adapter=llm_adapter,
+            )
+            result = loop.run(
+                iterations=iterations,
+                hypotheses_per_round=hypotheses_per_round,
+            )
+
+            logger.info("\n%s", result.leaderboard_markdown())
+            print(result.leaderboard_markdown())
+            return 0
+
         # 模式2: 定时任务模式
         if args.schedule or config.schedule_enabled:
             logger.info("模式: 定时任务")
@@ -1357,6 +1456,11 @@ def main() -> int:
 
             def scheduled_task():
                 runtime_config = _reload_runtime_config()
+
+                # Pre-step: run lightweight R&D loop to discover new factors (opt-in)
+                if os.getenv("RD_LOOP_AUTO_ENABLED", "").strip().lower() in ("true", "1", "yes", "on"):
+                    _run_auto_rd_loop()
+
                 run_full_analysis(runtime_config, args, scheduled_stock_codes)
 
             background_tasks = []

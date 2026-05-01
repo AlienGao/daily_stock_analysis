@@ -18,7 +18,7 @@
 
 import logging
 from dataclasses import dataclass, field
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from enum import Enum
 
 import pandas as pd
@@ -126,6 +126,19 @@ class TrendAnalysisResult:
     rsi_status: RSIStatus = RSIStatus.NEUTRAL
     rsi_signal: str = ""              # RSI 信号描述
 
+    # KDJ 指标（仅 Tushare 提供，本地不计算）
+    kdj_k: float = 0.0
+    kdj_d: float = 0.0
+    kdj_j: float = 0.0
+
+    # BOLL 指标（仅 Tushare 提供，本地不计算）
+    boll_upper: float = 0.0
+    boll_mid: float = 0.0
+    boll_lower: float = 0.0
+
+    # 技术指标来源标记
+    indicators_source: str = "local"  # "local" 或 "tushare"
+
     # 买入信号
     buy_signal: BuySignal = BuySignal.WAIT
     signal_score: int = 0            # 综合评分 0-100
@@ -165,6 +178,13 @@ class TrendAnalysisResult:
             'rsi_24': self.rsi_24,
             'rsi_status': self.rsi_status.value,
             'rsi_signal': self.rsi_signal,
+            'kdj_k': self.kdj_k,
+            'kdj_d': self.kdj_d,
+            'kdj_j': self.kdj_j,
+            'boll_upper': self.boll_upper,
+            'boll_mid': self.boll_mid,
+            'boll_lower': self.boll_lower,
+            'indicators_source': self.indicators_source,
         }
 
 
@@ -202,31 +222,35 @@ class StockTrendAnalyzer:
         """初始化分析器"""
         pass
     
-    def analyze(self, df: pd.DataFrame, code: str) -> TrendAnalysisResult:
+    def analyze(
+        self, df: pd.DataFrame, code: str,
+        tech_indicators: Optional[Dict[str, Any]] = None,
+    ) -> TrendAnalysisResult:
         """
         分析股票趋势
-        
+
         Args:
             df: 包含 OHLCV 数据的 DataFrame
             code: 股票代码
-            
+            tech_indicators: Tushare stk_factor 预计算指标（优先于本地计算）
+
         Returns:
             TrendAnalysisResult 分析结果
         """
         result = TrendAnalysisResult(code=code)
-        
+
         if df is None or df.empty or len(df) < 20:
             logger.warning(f"{code} 数据不足，无法进行趋势分析")
             result.risk_factors.append("数据不足，无法完成分析")
             return result
-        
+
         # 确保数据按日期排序
         df = df.sort_values('date').reset_index(drop=True)
-        
-        # 计算均线
+
+        # 计算均线（MA 始终本地计算，Tushare stk_factor 不提供）
         df = self._calculate_mas(df)
 
-        # 计算 MACD 和 RSI
+        # 计算 MACD 和 RSI（若提供 Tushare 数据则跳过本地计算以节省时间，但仍计算用于 fallback）
         df = self._calculate_macd(df)
         df = self._calculate_rsi(df)
 
@@ -255,6 +279,10 @@ class StockTrendAnalyzer:
 
         # 6. RSI 分析
         self._analyze_rsi(df, result)
+
+        # 6.5. 应用 Tushare 技术指标覆盖（优先于本地计算）
+        if tech_indicators:
+            self._apply_tech_indicators(result, tech_indicators)
 
         # 7. 生成买入信号
         self._generate_signal(result)
@@ -580,6 +608,97 @@ class StockTrendAnalyzer:
             result.rsi_status = RSIStatus.OVERSOLD
             result.rsi_signal = f"⭐ RSI超卖({rsi_mid:.1f}<30)，反弹机会大"
 
+    def _apply_tech_indicators(
+        self, result: TrendAnalysisResult, ti: Dict[str, Any]
+    ) -> None:
+        """用 Tushare stk_factor 预计算指标覆盖本地计算结果。
+
+        Tushare 使用前复权(qfq)价格计算，通常比本地原始收盘价计算更准确。
+        MA 不在此覆盖（Tushare stk_factor 不提供 MA 值）。
+        """
+        applied = False
+
+        # MACD：优先使用 Tushare 前复权计算值
+        if ti.get('macd_dif') is not None:
+            result.macd_dif = float(ti['macd_dif'])
+            applied = True
+        if ti.get('macd_dea') is not None:
+            result.macd_dea = float(ti['macd_dea'])
+        if ti.get('macd') is not None:
+            result.macd_bar = float(ti['macd'])
+
+        # RSI：优先使用 Tushare 值
+        if ti.get('rsi_6') is not None:
+            result.rsi_6 = float(ti['rsi_6'])
+            applied = True
+        if ti.get('rsi_12') is not None:
+            result.rsi_12 = float(ti['rsi_12'])
+        if ti.get('rsi_24') is not None:
+            result.rsi_24 = float(ti['rsi_24'])
+
+        # KDJ：仅 Tushare 提供
+        if ti.get('kdj_k') is not None:
+            result.kdj_k = float(ti['kdj_k'])
+            applied = True
+        if ti.get('kdj_d') is not None:
+            result.kdj_d = float(ti['kdj_d'])
+        if ti.get('kdj_j') is not None:
+            result.kdj_j = float(ti['kdj_j'])
+
+        # BOLL：仅 Tushare 提供
+        if ti.get('boll_upper') is not None:
+            result.boll_upper = float(ti['boll_upper'])
+            applied = True
+        if ti.get('boll_mid') is not None:
+            result.boll_mid = float(ti['boll_mid'])
+        if ti.get('boll_lower') is not None:
+            result.boll_lower = float(ti['boll_lower'])
+
+        if applied:
+            result.indicators_source = "tushare"
+            self._reevaluate_macd_status(result)
+            self._reevaluate_rsi_status(result)
+
+    def _reevaluate_macd_status(self, result: TrendAnalysisResult) -> None:
+        """基于已覆盖的 MACD 值重新判断状态（不含金叉死叉，无历史上下文）。"""
+        dif, dea = result.macd_dif, result.macd_dea
+
+        if dif > 0 and dea > 0:
+            result.macd_status = MACDStatus.BULLISH
+            result.macd_signal = "✓ 多头排列(Tushare)，持续上涨"
+        elif dif < 0 and dea < 0:
+            result.macd_status = MACDStatus.BEARISH
+            result.macd_signal = "⚠ 空头排列(Tushare)，持续下跌"
+        elif dif > 0 >= dea:
+            result.macd_status = MACDStatus.GOLDEN_CROSS
+            result.macd_signal = "✅ 金叉形态(Tushare)，趋势向上"
+        elif dif < 0 <= dea:
+            result.macd_status = MACDStatus.DEATH_CROSS
+            result.macd_signal = "❌ 死叉形态(Tushare)，趋势向下"
+        else:
+            result.macd_status = MACDStatus.BULLISH
+            result.macd_signal = " MACD 中性(Tushare)"
+
+    def _reevaluate_rsi_status(self, result: TrendAnalysisResult) -> None:
+        """基于已覆盖的 RSI 值重新判断状态。"""
+        rsi_mid = result.rsi_12
+
+        if rsi_mid > self.RSI_OVERBOUGHT:
+            result.rsi_status = RSIStatus.OVERBOUGHT
+            result.rsi_signal = f"⚠️ RSI超买(Tushare,{rsi_mid:.1f}>70)，短期回调风险高"
+        elif rsi_mid > 60:
+            result.rsi_status = RSIStatus.STRONG_BUY
+            result.rsi_signal = f"✅ RSI强势(Tushare,{rsi_mid:.1f})，多头力量充足"
+        elif rsi_mid >= 40:
+            result.rsi_status = RSIStatus.NEUTRAL
+            result.rsi_signal = f" RSI中性(Tushare,{rsi_mid:.1f})，震荡整理中"
+        elif rsi_mid >= self.RSI_OVERSOLD:
+            result.rsi_status = RSIStatus.WEAK
+            result.rsi_signal = f"⚡ RSI弱势(Tushare,{rsi_mid:.1f})，关注反弹"
+        else:
+            result.rsi_status = RSIStatus.OVERSOLD
+            result.rsi_signal = f"⭐ RSI超卖(Tushare,{rsi_mid:.1f}<30)，反弹机会大"
+
     def _generate_signal(self, result: TrendAnalysisResult) -> None:
         """
         生成买入信号
@@ -801,19 +920,23 @@ class StockTrendAnalyzer:
         return "\n".join(lines)
 
 
-def analyze_stock(df: pd.DataFrame, code: str) -> TrendAnalysisResult:
+def analyze_stock(
+    df: pd.DataFrame, code: str,
+    tech_indicators: Optional[Dict[str, Any]] = None,
+) -> TrendAnalysisResult:
     """
     便捷函数：分析单只股票
-    
+
     Args:
         df: 包含 OHLCV 数据的 DataFrame
         code: 股票代码
-        
+        tech_indicators: Tushare stk_factor 预计算指标（优先于本地计算）
+
     Returns:
         TrendAnalysisResult 分析结果
     """
     analyzer = StockTrendAnalyzer()
-    return analyzer.analyze(df, code)
+    return analyzer.analyze(df, code, tech_indicators=tech_indicators)
 
 
 if __name__ == "__main__":

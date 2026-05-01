@@ -787,6 +787,8 @@ class AgentExecutor:
                 parts.append(f"\n[系统已获取的筹码胜率]\n{json.dumps(context['winner_data'], ensure_ascii=False)}")
             if context.get("tech_factors"):
                 parts.append(f"\n[系统已获取的Tushare技术面因子]\n{json.dumps(context['tech_factors'], ensure_ascii=False)}")
+            if context.get("discovery_signals"):
+                parts.append(f"\n[系统已获取的Discovery Engine因子信号]\n{json.dumps(context['discovery_signals'], ensure_ascii=False)}")
             if context.get("news_context"):
                 parts.append(f"\n[系统已获取的新闻与舆情情报]\n{context['news_context']}")
 
