@@ -434,6 +434,9 @@ def fill_chip_structure_if_needed(result: "AnalysisResult", chip_data: Any) -> N
         for k in _CHIP_KEYS:
             if _is_value_placeholder(merged.get(k)):
                 merged[k] = filled[k]
+        # 标记分钟筹码来源，供前端区分展示
+        if hasattr(chip_data, 'source') and chip_data.source == 'tushare_minute':
+            merged['chip_source'] = 'minute'
         if merged != cs:
             dp["chip_structure"] = merged
             logger.info("[chip_structure] Filled placeholder chip fields from data source (Issue #589)")

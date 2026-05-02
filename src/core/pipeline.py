@@ -315,6 +315,21 @@ class StockAnalysisPipeline:
             except Exception as e:
                 logger.warning(f"{stock_name}({code}) 获取筹码分布失败: {e}")
 
+            # Step 2b: 尝试分钟级筹码分布（需 Tushare stk_mins 单独开通权限，默认禁用水水水）
+            # minute_chip_data = None
+            # if getattr(self.config, 'enable_minute_chip_distribution', False):
+            #     try:
+            #         minute_chip_data = self.fetcher_manager.get_minute_chip_distribution(
+            #             code,
+            #             freq=getattr(self.config, 'tushare_minute_chip_freq', '5min'),
+            #             days=getattr(self.config, 'tushare_minute_chip_days', 1),
+            #         )
+            #         if minute_chip_data:
+            #             logger.info(f"{stock_name}({code}) 分钟筹码: 获利比例={minute_chip_data.profit_ratio:.1%}, "
+            #                       f"90%集中度={minute_chip_data.concentration_90:.2%}")
+            #     except Exception as e:
+            #         logger.warning(f"{stock_name}({code}) 获取分钟筹码失败: {e}")
+
             # If agent mode is explicitly enabled, or specific agent skills are configured, use the Agent analysis pipeline.
             # NOTE: use config.agent_mode (explicit opt-in) instead of
             # config.is_agent_available() so that users who only configured an
@@ -675,13 +690,16 @@ class StockAnalysisPipeline:
         # 添加筹码分布
         if chip_data:
             current_price = getattr(realtime_quote, 'price', 0) if realtime_quote else 0
-            enhanced['chip'] = {
+            chip_dict = {
                 'profit_ratio': chip_data.profit_ratio,
                 'avg_cost': chip_data.avg_cost,
                 'concentration_90': chip_data.concentration_90,
                 'concentration_70': chip_data.concentration_70,
                 'chip_status': chip_data.get_chip_status(current_price or 0),
             }
+            if getattr(chip_data, 'source', '') == 'tushare_minute':
+                chip_dict['chip_source'] = 'minute'
+            enhanced['chip'] = chip_dict
         
         # 添加趋势分析结果（Tushare stk_factor 优先，本地计算降级）
         if trend_result:

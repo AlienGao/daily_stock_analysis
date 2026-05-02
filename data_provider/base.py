@@ -1448,6 +1448,45 @@ class DataFetcherManager:
         logger.warning(f"[筹码分布] {stock_code} 所有数据源均失败")
         return None
 
+    def get_minute_chip_distribution(self, stock_code: str, freq: str = "5min", days: int = 1):
+        """
+        基于分钟K线聚合估算筹码分布（需要 Tushare stk_mins 权限）
+
+        策略：
+        1. 检查 enable_minute_chip_distribution 配置开关
+        2. 遍历实现了 get_chip_from_minutes 的数据源
+        3. 降级返回 None（分钟筹码估算失败不影响主流程）
+
+        Args:
+            stock_code: 股票代码
+            freq: 分钟频率，默认 5min
+            days: 取最近几个交易日，默认 1
+
+        Returns:
+            ChipDistribution(source="tushare_minute")，失败返回 None
+        """
+        from src.config import get_config
+
+        config = get_config()
+        if not getattr(config, 'enable_minute_chip_distribution', False):
+            return None
+
+        stock_code_norm = normalize_stock_code(stock_code)
+
+        for fetcher in self._get_fetchers_snapshot():
+            if not hasattr(fetcher, 'get_chip_from_minutes'):
+                continue
+            try:
+                chip = fetcher.get_chip_from_minutes(stock_code_norm, freq=freq, days=days)
+                if chip is not None:
+                    logger.info(f"[分钟筹码] {stock_code} 成功获取 (来源: {fetcher.name})")
+                    return chip
+            except Exception as e:
+                logger.warning(f"[分钟筹码] {fetcher.name} 获取 {stock_code} 失败: {e}")
+                continue
+
+        return None
+
     def get_stock_name(self, stock_code: str, allow_realtime: bool = True) -> Optional[str]:
         """
         获取股票中文名称（自动切换数据源）

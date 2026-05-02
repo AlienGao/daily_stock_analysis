@@ -1252,6 +1252,216 @@ class TushareFetcher(BaseFetcher):
             "70集中度": round(concentration_70/100, 4)
         }
 
+    def get_minute_bars(
+        self,
+        stock_code: str,
+        freq: str = "5min",
+        days: int = 1,
+    ) -> Optional[pd.DataFrame]:
+        """
+        获取个股分钟K线数据 (stk_mins, doc_id=370)
+
+        Args:
+            stock_code: 股票代码，如 "600519.SH"
+            freq: 分钟频率，支持 1min/5min/15min/30min/60min
+            days: 取最近几个交易日的数据，默认 1
+
+        Returns:
+            包含 ts_code/datetime/open/high/low/close/volume 的 DataFrame，失败返回 None
+        """
+        if self._api is None:
+            return None
+        if _is_us_code(stock_code) or _is_hk_market(stock_code):
+            return None
+        if _is_etf_code(stock_code):
+            return None
+
+        try:
+            ts_code = self._convert_stock_code(stock_code)
+            trade_dates = self._get_trade_dates()
+            if not trade_dates:
+                return None
+
+            target_dates = trade_dates[:min(days, len(trade_dates))]
+            start_date = target_dates[-1]
+            end_date = target_dates[0]
+
+            df = self._call_api_with_rate_limit(
+                "stk_mins",
+                ts_code=ts_code,
+                freq=freq,
+                start_date=start_date,
+                end_date=end_date,
+            )
+
+            if df is None or df.empty:
+                return None
+
+            required_cols = ["datetime", "open", "high", "low", "close", "volume"]
+            for col in required_cols:
+                if col not in df.columns:
+                    logger.warning(f"[Tushare] stk_mins 缺少必要列 {col}")
+                    return None
+
+            return df[required_cols].copy()
+
+        except Exception as e:
+            logger.warning(f"[Tushare] 获取分钟K线失败 {stock_code}: {e}")
+            return None
+
+    def compute_chip_from_minutes(
+        self, bars: pd.DataFrame, current_price: float
+    ) -> Optional[dict]:
+        """
+        基于分钟K线聚合数据估算筹码分布指标
+
+        算法：按价格分仓，每根 bar 的 volume 按 [low, high] 区间占比加权分配到各价格 bin，
+        再复用 compute_cyq_metrics 的 percentile 查找逻辑输出指标。
+
+        Args:
+            bars: get_minute_bars() 返回的 DataFrame，需含 low/high/close/volume 列
+            current_price: 当前/收盘价（用于计算获利比例）
+
+        Returns:
+            同 compute_cyq_metrics 返回的指标字典，失败返回 None
+        """
+        import numpy as np
+
+        if bars is None or bars.empty:
+            return None
+
+        try:
+            bars = bars.copy()
+            bars["range"] = bars["high"] - bars["low"]
+            # 过滤无效 bar（range==0 会导致除零）
+            bars = bars[bars["range"] > 0].reset_index(drop=True)
+            if bars.empty:
+                return None
+
+            price_min = bars["low"].min()
+            price_max = bars["high"].max()
+            num_bins = 200
+
+            bin_edges = np.linspace(price_min, price_max, num_bins + 1)
+            bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+            chip_weights = np.zeros(num_bins)
+
+            for _, row in bars.iterrows():
+                low, high, vol = row["low"], row["high"], row["volume"]
+                bar_range = high - low
+                # volume 按价格区间比例分配到各 bin
+                for i in range(num_bins):
+                    bin_low = bin_edges[i]
+                    bin_high = bin_edges[i + 1]
+                    # 该 bin 在 [low, high] 范围内的长度
+                    overlap = max(0.0, min(high, bin_high) - max(low, bin_low))
+                    weight = vol * (overlap / bar_range)
+                    chip_weights[i] += weight
+
+            total = chip_weights.sum()
+            if total <= 0:
+                return None
+
+            norm_weights = chip_weights / total * 100
+            cumsum = np.cumsum(norm_weights)
+
+            # 复用 compute_cyq_metrics percentile 查找逻辑
+            def get_percentile_price(target_pct):
+                idx = np.searchsorted(cumsum, target_pct)
+                idx = min(idx, num_bins - 1)
+                return bin_centers[idx]
+
+            winner_rate = np.sum(norm_weights[bin_centers <= current_price])
+
+            avg_cost = np.average(bin_centers, weights=norm_weights)
+
+            cost_90_low = get_percentile_price(5)
+            cost_90_high = get_percentile_price(95)
+            concentration_90 = (
+                (cost_90_high - cost_90_low) / (cost_90_high + cost_90_low) * 100
+                if (cost_90_high + cost_90_low) != 0
+                else 0.0
+            )
+
+            cost_70_low = get_percentile_price(15)
+            cost_70_high = get_percentile_price(85)
+            concentration_70 = (
+                (cost_70_high - cost_70_low) / (cost_70_high + cost_70_low) * 100
+                if (cost_70_high + cost_70_low) != 0
+                else 0.0
+            )
+
+            return {
+                "获利比例": round(winner_rate / 100, 4),
+                "平均成本": round(avg_cost, 4),
+                "90成本-低": round(cost_90_low, 4),
+                "90成本-高": round(cost_90_high, 4),
+                "90集中度": round(concentration_90 / 100, 4),
+                "70成本-低": round(cost_70_low, 4),
+                "70成本-高": round(cost_70_high, 4),
+                "70集中度": round(concentration_70 / 100, 4),
+            }
+
+        except Exception as e:
+            logger.warning(f"[Tushare] compute_chip_from_minutes 计算失败: {e}")
+            return None
+
+    def get_chip_from_minutes(
+        self, stock_code: str, freq: str = "5min", days: int = 1
+    ) -> Optional[ChipDistribution]:
+        """
+        基于分钟K线聚合估算筹码分布（高频近似版本）
+
+        当 Tushare stk_mins 权限未开通时返回 None。
+        估算结果不等同于真实持仓成本，仅作为盘口活跃度的参考。
+
+        Args:
+            stock_code: 股票代码
+            freq: 分钟频率，默认 5min
+            days: 取最近几个交易日，默认 1
+
+        Returns:
+            ChipDistribution(source="tushare_minute")，失败返回 None
+        """
+        bars = self.get_minute_bars(stock_code, freq=freq, days=days)
+        if bars is None or bars.empty:
+            return None
+
+        # 当前价取最后一根 bar 的 close
+        current_price = float(bars.iloc[-1]["close"])
+
+        metrics = self.compute_chip_from_minutes(bars, current_price)
+        if metrics is None:
+            return None
+
+        trade_dates = self._get_trade_dates()
+        date_str = trade_dates[0] if trade_dates else ""
+        formatted_date = (
+            datetime.strptime(date_str, "%Y%m%d").strftime("%Y-%m-%d")
+            if date_str
+            else ""
+        )
+
+        chip = ChipDistribution(
+            code=stock_code,
+            date=formatted_date,
+            source="tushare_minute",
+            profit_ratio=metrics["获利比例"],
+            avg_cost=metrics["平均成本"],
+            cost_90_low=metrics["90成本-低"],
+            cost_90_high=metrics["90成本-高"],
+            concentration_90=metrics["90集中度"],
+            cost_70_low=metrics["70成本-低"],
+            cost_70_high=metrics["70成本-高"],
+            concentration_70=metrics["70集中度"],
+        )
+
+        logger.info(
+            f"[分钟筹码] {stock_code} freq={freq}: 获利比例={chip.profit_ratio:.1%}, "
+            f"平均成本={chip.avg_cost}, 90%集中度={chip.concentration_90:.2%}"
+        )
+        return chip
+
     # ============================================================
     # Tushare 数据增强：资金流向 / 融资融券 / 筹码胜率 / 技术面因子
     # ============================================================
