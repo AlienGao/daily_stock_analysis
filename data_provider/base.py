@@ -1589,6 +1589,105 @@ class DataFetcherManager:
             logger.warning(f"[Tushare 公告] 获取失败 {stock_code}: {e}")
             return None
 
+    def get_tushare_research_report(self, stock_code: str, days: int = 30) -> Optional[str]:
+        """
+        获取 Tushare 券商研报 (doc_id 415)，返回格式化文本供 analyzer 使用
+
+        Args:
+            stock_code: 股票代码
+            days: 最近几天，默认 30
+
+        Returns:
+            格式化字符串，失败返回 None
+        """
+        from src.config import get_config
+
+        config = get_config()
+        if not getattr(config, 'enable_tushare_news', False):
+            return None
+
+        stock_code_norm = normalize_stock_code(stock_code)
+        from data_provider.tushare_fetcher import TushareFetcher
+
+        fetcher = self._get_tushare_fetcher()
+        if fetcher is None:
+            return None
+
+        try:
+            trade_dates = fetcher._get_trade_dates()
+            if not trade_dates:
+                return None
+
+            end_date = trade_dates[0]
+            start_date_idx = min(days, len(trade_dates) - 1)
+            start_date = trade_dates[start_date_idx]
+
+            ts_code = fetcher._convert_stock_code(stock_code_norm)
+            df = fetcher.get_research_report(ts_code, start_date, end_date, limit=10)
+            if df is None or df.empty:
+                return None
+
+            lines = []
+            for _, row in df.iterrows():
+                pub_date = row.get("pub_date", "")
+                title = row.get("title", "")
+                inst = row.get("inst_name", row.get("org_name", ""))
+                lines.append(f"[{pub_date}] {'[' + inst + '] ' if inst else ''}{title}")
+            result = "【Tushare 券商研报】\n" + "\n".join(lines[:10])
+            logger.info(f"[Tushare 研报] {stock_code} 获取到 {len(lines)} 条")
+            return result
+        except Exception as e:
+            logger.warning(f"[Tushare 研报] 获取失败 {stock_code}: {e}")
+            return None
+
+    def get_tushare_policy_news(self, days: int = 7) -> Optional[str]:
+        """
+        获取 Tushare 国家政策库 (doc_id 406)，返回格式化文本供 analyzer 使用
+
+        Args:
+            days: 最近几天，默认 7
+
+        Returns:
+            格式化字符串，失败返回 None
+        """
+        from src.config import get_config
+
+        config = get_config()
+        if not getattr(config, 'enable_tushare_news', False):
+            return None
+
+        from data_provider.tushare_fetcher import TushareFetcher
+
+        fetcher = self._get_tushare_fetcher()
+        if fetcher is None:
+            return None
+
+        try:
+            trade_dates = fetcher._get_trade_dates()
+            if not trade_dates:
+                return None
+
+            end_date = trade_dates[0]
+            start_date_idx = min(days, len(trade_dates) - 1)
+            start_date = trade_dates[start_date_idx]
+
+            df = fetcher.get_policy_news(start_date, end_date, limit=30)
+            if df is None or df.empty:
+                return None
+
+            lines = []
+            for _, row in df.iterrows():
+                pub_time = row.get("pubtime", row.get("pub_time", ""))
+                title = row.get("title", "")
+                ptype = row.get("ptype", "")
+                lines.append(f"[{pub_time}] {'[' + ptype + '] ' if ptype else ''}{title}")
+            result = "【Tushare 国家政策库】\n" + "\n".join(lines[:20])
+            logger.info(f"[Tushare 政策库] 获取到 {len(lines)} 条")
+            return result
+        except Exception as e:
+            logger.warning(f"[Tushare 政策库] 获取失败: {e}")
+            return None
+
     def get_stock_name(self, stock_code: str, allow_realtime: bool = True) -> Optional[str]:
         """
         获取股票中文名称（自动切换数据源）

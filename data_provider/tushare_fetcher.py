@@ -2151,6 +2151,53 @@ if __name__ == "__main__":
             logger.warning(f"[Tushare] 获取深证易互动失败: {e}")
             return None
 
+    def get_research_report(self, ts_code: str, start_date: str, end_date: str, limit: int = 20) -> Optional[pd.DataFrame]:
+        """
+        券商研报 (doc_id 415)
+        """
+        if self._api is None:
+            return None
+
+        try:
+            df = self._call_api_with_rate_limit(
+                "research_report",
+                ts_code=ts_code,
+                start_date=start_date,
+                end_date=end_date,
+                limit=limit,
+            )
+            if df is None or df.empty:
+                return None
+            for col in ["pub_date", "title"]:
+                if col not in df.columns:
+                    logger.warning(f"[Tushare] research_report 缺少列 {col}")
+                    return None
+            return df
+        except Exception as e:
+            logger.warning(f"[Tushare] 获取研报失败: {e}")
+            return None
+
+    def get_policy_news(self, start_date: str, end_date: str, limit: int = 50) -> Optional[pd.DataFrame]:
+        """
+        国家政策库 (doc_id 406)
+        """
+        if self._api is None:
+            return None
+
+        try:
+            df = self._call_api_with_rate_limit(
+                "policy_news",
+                start_date=start_date,
+                end_date=end_date,
+                limit=limit,
+            )
+            if df is None or df.empty:
+                return None
+            return df
+        except Exception as e:
+            logger.warning(f"[Tushare] 获取政策库失败: {e}")
+            return None
+
     # ============================================================
     # 测试筹码分布数据
     # ============================================================

@@ -523,14 +523,18 @@ class StockAnalysisPipeline:
             else:
                 logger.info(f"{stock_name}({code}) 搜索服务不可用，跳过情报搜索")
 
-            # Step 4b: 补充 Tushare 结构化新闻（公告/快讯），需语料权限
+            # Step 4b: 补充 Tushare 结构化新闻（公告/快讯/研报/政策），需语料权限
             if getattr(self.config, 'enable_tushare_news', False):
                 try:
                     tushare_news = self.fetcher_manager.get_tushare_news(
                         code, days=getattr(self.config, 'news_max_age_days', 7)
                     )
                     tushare_ann = self.fetcher_manager.get_tushare_announcements(code, days=30)
-                    extras = [x for x in [tushare_news, tushare_ann] if x]
+                    tushare_report = self.fetcher_manager.get_tushare_research_report(code, days=30)
+                    tushare_policy = self.fetcher_manager.get_tushare_policy_news(
+                        days=getattr(self.config, 'news_max_age_days', 7)
+                    )
+                    extras = [x for x in [tushare_news, tushare_ann, tushare_report, tushare_policy] if x]
                     if extras:
                         news_context = (news_context or "") + "\n\n" + "\n\n".join(extras)
                         logger.info(f"{stock_name}({code}) Tushare 语料已追加到新闻上下文")
