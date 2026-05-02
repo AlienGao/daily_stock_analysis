@@ -891,6 +891,8 @@ class Config:
     # enable_minute_chip_distribution: bool = False
     # tushare_minute_chip_freq: str = "5min"
     # tushare_minute_chip_days: int = 1
+    # Tushare 大模型语料新闻（需 doc_id 143/176 等语料权限，默认禁用水水水）
+    enable_tushare_news: bool = False
     # 东财接口补丁开关
     enable_eastmoney_patch: bool = False
     # 实时行情数据源优先级（逗号分隔）
@@ -1694,6 +1696,7 @@ class Config:
             # tushare_minute_chip_days=int(os.getenv('TUSHARE_MINUTE_CHIP_DAYS', '1')),
             # 东财接口补丁开关
             enable_eastmoney_patch=os.getenv('ENABLE_EASTMONEY_PATCH', 'false').lower() == 'true',
+            enable_tushare_news=os.getenv('ENABLE_TUSHARE_NEWS', 'false').lower() == 'true',
             # 实时行情数据源优先级：
             # - tencent: 腾讯财经，有量比/换手率/PE/PB等，单股查询稳定（推荐）
             # - akshare_sina: 新浪财经，基本行情稳定，但无量比

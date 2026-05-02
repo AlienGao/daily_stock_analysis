@@ -2050,9 +2050,110 @@ if __name__ == "__main__":
         print(f"Failed to compute market stats: {e}")
 
 
+    # ============================================================
+    # Tushare 大模型语料专题数据（doc_id 142 系列）
+    # 新闻/公告/互动问答，需单独开通权限
+    # ============================================================
+
+    def get_news_flash(
+        self, ts_code: str, start_date: str, end_date: str, limit: int = 50
+    ) -> Optional[pd.DataFrame]:
+        """
+        新闻快讯 (doc_id 143)
+        """
+        if self._api is None:
+            return None
+
+        try:
+            df = self._call_api_with_rate_limit(
+                "news_flash",
+                ts_code=ts_code,
+                start_date=start_date,
+                end_date=end_date,
+                limit=limit,
+            )
+            if df is None or df.empty:
+                return None
+            for col in ["datetime", "title"]:
+                if col not in df.columns:
+                    logger.warning(f"[Tushare] news_flash 缺少列 {col}")
+                    return None
+            return df
+        except Exception as e:
+            logger.warning(f"[Tushare] 获取新闻快讯失败: {e}")
+            return None
+
+    def get_announcements(
+        self, ts_code: str, start_date: str, end_date: str, limit: int = 30
+    ) -> Optional[pd.DataFrame]:
+        """
+        上市公司公告 (doc_id 176)
+        """
+        if self._api is None:
+            return None
+
+        try:
+            df = self._call_api_with_rate_limit(
+                "disclosure",
+                ts_code=ts_code,
+                start_date=start_date,
+                end_date=end_date,
+                limit=limit,
+            )
+            if df is None or df.empty:
+                return None
+            for col in ["ann_date", "title"]:
+                if col not in df.columns:
+                    logger.warning(f"[Tushare] disclosure 缺少列 {col}")
+                    return None
+            return df
+        except Exception as e:
+            logger.warning(f"[Tushare] 获取公告失败: {e}")
+            return None
+
+    def get_sqe_info(self, ts_code: str, start_date: str, end_date: str, limit: int = 20) -> Optional[pd.DataFrame]:
+        """
+        上证e互动问答 (doc_id 366)
+        """
+        if self._api is None:
+            return None
+
+        try:
+            df = self._call_api_with_rate_limit(
+                "sqe_info",
+                ts_code=ts_code,
+                start_date=start_date,
+                end_date=end_date,
+                limit=limit,
+            )
+            return df if df is not None and not df.empty else None
+        except Exception as e:
+            logger.warning(f"[Tushare] 获取上证e互动失败: {e}")
+            return None
+
+    def get_sze_info(self, ts_code: str, start_date: str, end_date: str, limit: int = 20) -> Optional[pd.DataFrame]:
+        """
+        深证易互动问答 (doc_id 367)
+        """
+        if self._api is None:
+            return None
+
+        try:
+            df = self._call_api_with_rate_limit(
+                "sze_info",
+                ts_code=ts_code,
+                start_date=start_date,
+                end_date=end_date,
+                limit=limit,
+            )
+            return df if df is not None and not df.empty else None
+        except Exception as e:
+            logger.warning(f"[Tushare] 获取深证易互动失败: {e}")
+            return None
+
+    # ============================================================
     # 测试筹码分布数据
-    print("\n" + "=" * 50)
-    print("测试筹码分布数据获取")
+    # ============================================================
     print("=" * 50)
     try:
         chip = fetcher.get_chip_distribution('600519')  # 茅台

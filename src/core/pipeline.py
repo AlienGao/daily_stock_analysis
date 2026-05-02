@@ -523,6 +523,20 @@ class StockAnalysisPipeline:
             else:
                 logger.info(f"{stock_name}({code}) 搜索服务不可用，跳过情报搜索")
 
+            # Step 4b: 补充 Tushare 结构化新闻（公告/快讯），需语料权限
+            if getattr(self.config, 'enable_tushare_news', False):
+                try:
+                    tushare_news = self.fetcher_manager.get_tushare_news(
+                        code, days=getattr(self.config, 'news_max_age_days', 7)
+                    )
+                    tushare_ann = self.fetcher_manager.get_tushare_announcements(code, days=30)
+                    extras = [x for x in [tushare_news, tushare_ann] if x]
+                    if extras:
+                        news_context = (news_context or "") + "\n\n" + "\n\n".join(extras)
+                        logger.info(f"{stock_name}({code}) Tushare 语料已追加到新闻上下文")
+                except Exception as e:
+                    logger.warning(f"{stock_name}({code}) 获取 Tushare 语料失败: {e}")
+
             # Step 4.5: Social sentiment intelligence (US stocks only)
             if self.social_sentiment_service is not None and self.social_sentiment_service.is_available and is_us_stock_code(code):
                 try:

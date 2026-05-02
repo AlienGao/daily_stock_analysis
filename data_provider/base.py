@@ -1487,6 +1487,108 @@ class DataFetcherManager:
 
         return None
 
+    def get_tushare_news(self, stock_code: str, days: int = 7) -> Optional[str]:
+        """
+        获取 Tushare 新闻快讯（doc_id 143），返回格式化文本供 analyzer 使用
+
+        Args:
+            stock_code: 股票代码
+            days: 最近几天，默认 7
+
+        Returns:
+            格式化字符串，失败返回 None
+        """
+        from src.config import get_config
+
+        config = get_config()
+        if not getattr(config, 'enable_tushare_news', False):
+            return None
+
+        stock_code_norm = normalize_stock_code(stock_code)
+        from data_provider.tushare_fetcher import TushareFetcher
+
+        fetcher = self._get_tushare_fetcher()
+        if fetcher is None:
+            return None
+
+        try:
+            trade_dates = fetcher._get_trade_dates()
+            if not trade_dates:
+                return None
+
+            end_date = trade_dates[0]
+            start_date_idx = min(days, len(trade_dates) - 1)
+            start_date = trade_dates[start_date_idx]
+
+            ts_code = fetcher._convert_stock_code(stock_code_norm)
+            df = fetcher.get_news_flash(ts_code, start_date, end_date, limit=30)
+            if df is None or df.empty:
+                return None
+
+            lines = []
+            for _, row in df.iterrows():
+                dt = row.get("datetime", "")
+                title = row.get("title", "")
+                content = str(row.get("content", ""))[:200]
+                lines.append(f"[{dt}] {title}" + (f" — {content}" if content else ""))
+            result = "【Tushare 新闻快讯】\n" + "\n".join(lines[:15])
+            logger.info(f"[Tushare 新闻] {stock_code} 获取到 {len(lines)} 条")
+            return result
+        except Exception as e:
+            logger.warning(f"[Tushare 新闻] 获取失败 {stock_code}: {e}")
+            return None
+
+    def get_tushare_announcements(self, stock_code: str, days: int = 30) -> Optional[str]:
+        """
+        获取 Tushare 上市公司公告（doc_id 176），返回格式化文本供 analyzer 使用
+
+        Args:
+            stock_code: 股票代码
+            days: 最近几天，默认 30
+
+        Returns:
+            格式化字符串，失败返回 None
+        """
+        from src.config import get_config
+
+        config = get_config()
+        if not getattr(config, 'enable_tushare_news', False):
+            return None
+
+        stock_code_norm = normalize_stock_code(stock_code)
+        from data_provider.tushare_fetcher import TushareFetcher
+
+        fetcher = self._get_tushare_fetcher()
+        if fetcher is None:
+            return None
+
+        try:
+            trade_dates = fetcher._get_trade_dates()
+            if not trade_dates:
+                return None
+
+            end_date = trade_dates[0]
+            start_date_idx = min(days, len(trade_dates) - 1)
+            start_date = trade_dates[start_date_idx]
+
+            ts_code = fetcher._convert_stock_code(stock_code_norm)
+            df = fetcher.get_announcements(ts_code, start_date, end_date, limit=20)
+            if df is None or df.empty:
+                return None
+
+            lines = []
+            for _, row in df.iterrows():
+                ann_date = row.get("ann_date", "")
+                title = row.get("title", "")
+                cat = row.get("category", "")
+                lines.append(f"[{ann_date}] {'[{cat}] ' if cat else ''}{title}")
+            result = "【Tushare 上市公司公告】\n" + "\n".join(lines[:10])
+            logger.info(f"[Tushare 公告] {stock_code} 获取到 {len(lines)} 条")
+            return result
+        except Exception as e:
+            logger.warning(f"[Tushare 公告] 获取失败 {stock_code}: {e}")
+            return None
+
     def get_stock_name(self, stock_code: str, allow_realtime: bool = True) -> Optional[str]:
         """
         获取股票中文名称（自动切换数据源）
