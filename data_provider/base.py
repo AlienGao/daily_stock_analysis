@@ -1487,6 +1487,98 @@ class DataFetcherManager:
 
         return None
 
+    def _get_akshare_announcements(self, stock_code: str, start_date: str, end_date: str) -> Optional[str]:
+        """akshare 公告 fallback（东方财富），作为 Tushare disclosure 的降级方案"""
+        from data_provider.akshare_fetcher import AkshareFetcher
+
+        try:
+            fetcher = AkshareFetcher()
+            df = fetcher.get_announcements_ak(stock_code, start_date, end_date, limit=10)
+            if df is None or df.empty:
+                return None
+            lines = []
+            for _, row in df.iterrows():
+                ann_date = row.get("公告日期", row.get("公告时间", ""))
+                title = row.get("公告标题", "")
+                cat = row.get("公告类型", "")
+                lines.append(f"[{ann_date}] {'[' + cat + '] ' if cat else ''}{title}")
+            result = "【AkShare 公告(fallback)】\n" + "\n".join(lines)
+            logger.info(f"[AkShare 公告] {stock_code} 获取到 {len(lines)} 条 (Tushare 降级)")
+            return result
+        except Exception as e:
+            logger.warning(f"[AkShare 公告] fallback 失败 {stock_code}: {e}")
+            return None
+
+    def _get_akshare_research_report(self, stock_code: str) -> Optional[str]:
+        """akshare 研报 fallback（东方财富），作为 Tushare research_report 的降级方案"""
+        from data_provider.akshare_fetcher import AkshareFetcher
+
+        try:
+            fetcher = AkshareFetcher()
+            df = fetcher.get_research_report_ak(stock_code, limit=10)
+            if df is None or df.empty:
+                return None
+            lines = []
+            for _, row in df.iterrows():
+                pub_date = row.get("日期", "")
+                title = row.get("报告名称", "")
+                inst = row.get("机构", "")
+                rating = row.get("东财评级", "")
+                lines.append(f"[{pub_date}] {'[' + inst + '] ' if inst else ''}{rating}{' ' if rating and inst else ''}{title}")
+            result = "【AkShare 研报(fallback)】\n" + "\n".join(lines)
+            logger.info(f"[AkShare 研报] {stock_code} 获取到 {len(lines)} 条 (Tushare 降级)")
+            return result
+        except Exception as e:
+            logger.warning(f"[AkShare 研报] fallback 失败 {stock_code}: {e}")
+            return None
+
+    def _get_akshare_news_flash(self) -> Optional[str]:
+        """akshare 财联社快讯，作为 Tushare news_flash 的降级方案"""
+        from data_provider.akshare_fetcher import AkshareFetcher
+
+        try:
+            fetcher = AkshareFetcher()
+            df = fetcher.get_news_flash_ak(limit=20)
+            if df is None or df.empty:
+                return None
+            lines = []
+            for _, row in df.iterrows():
+                dt = row.get("date", "")
+                title = row.get("title", "")
+                content = str(row.get("content", ""))[:100]
+                lines.append(f"[{dt}] {title}" + (f" — {content}" if content else ""))
+            result = "【AkShare 财联社快讯(fallback)】\n" + "\n".join(lines)
+            logger.info(f"[AkShare 快讯] 获取到 {len(lines)} 条 (Tushare 降级)")
+            return result
+        except Exception as e:
+            logger.warning(f"[AkShare 快讯] fallback 失败: {e}")
+            return None
+
+    def _get_akshare_szse_interaction(self, stock_code: str) -> Optional[str]:
+        """akshare 深证易互动，作为 Tushare sze_info 的降级方案"""
+        from data_provider.akshare_fetcher import AkshareFetcher
+
+        try:
+            fetcher = AkshareFetcher()
+            df = fetcher.get_szse_interaction_ak(stock_code, limit=10)
+            if df is None or df.empty:
+                return None
+            lines = []
+            for _, row in df.iterrows():
+                q_time = row.get("提问时间", "")
+                question = row.get("问题", "")
+                answer = str(row.get("回答内容", ""))[:100]
+                if answer and answer != "nan":
+                    lines.append(f"[{q_time}] Q: {question[:60]} | A: {answer}")
+                else:
+                    lines.append(f"[{q_time}] Q: {question[:80]}")
+            result = "【AkShare 深证易互动(fallback)】\n" + "\n".join(lines[:10])
+            logger.info(f"[AkShare 深证易互动] {stock_code} 获取到 {len(lines)} 条 (Tushare 降级)")
+            return result
+        except Exception as e:
+            logger.warning(f"[AkShare 深证易互动] fallback 失败 {stock_code}: {e}")
+            return None
+
     def get_tushare_news(self, stock_code: str, days: int = 7) -> Optional[str]:
         """
         获取 Tushare 新闻快讯（doc_id 143），返回格式化文本供 analyzer 使用
@@ -1523,7 +1615,8 @@ class DataFetcherManager:
             ts_code = fetcher._convert_stock_code(stock_code_norm)
             df = fetcher.get_news_flash(ts_code, start_date, end_date, limit=30)
             if df is None or df.empty:
-                return None
+                # Tushare 新闻快讯为空，尝试 akshare fallback
+                return self._get_akshare_news_flash()
 
             lines = []
             for _, row in df.iterrows():
@@ -1536,7 +1629,7 @@ class DataFetcherManager:
             return result
         except Exception as e:
             logger.warning(f"[Tushare 新闻] 获取失败 {stock_code}: {e}")
-            return None
+            return self._get_akshare_news_flash()
 
     def get_tushare_announcements(self, stock_code: str, days: int = 30) -> Optional[str]:
         """
@@ -1574,7 +1667,8 @@ class DataFetcherManager:
             ts_code = fetcher._convert_stock_code(stock_code_norm)
             df = fetcher.get_announcements(ts_code, start_date, end_date, limit=20)
             if df is None or df.empty:
-                return None
+                # Tushare 公告为空，尝试 akshare fallback
+                return self._get_akshare_announcements(stock_code_norm, start_date, end_date)
 
             lines = []
             for _, row in df.iterrows():
@@ -1587,7 +1681,7 @@ class DataFetcherManager:
             return result
         except Exception as e:
             logger.warning(f"[Tushare 公告] 获取失败 {stock_code}: {e}")
-            return None
+            return self._get_akshare_announcements(stock_code_norm, start_date, end_date)
 
     def get_tushare_research_report(self, stock_code: str, days: int = 30) -> Optional[str]:
         """
@@ -1625,7 +1719,8 @@ class DataFetcherManager:
             ts_code = fetcher._convert_stock_code(stock_code_norm)
             df = fetcher.get_research_report(ts_code, start_date, end_date, limit=10)
             if df is None or df.empty:
-                return None
+                # Tushare 研报为空，尝试 akshare fallback
+                return self._get_akshare_research_report(stock_code_norm)
 
             lines = []
             for _, row in df.iterrows():
@@ -1638,7 +1733,7 @@ class DataFetcherManager:
             return result
         except Exception as e:
             logger.warning(f"[Tushare 研报] 获取失败 {stock_code}: {e}")
-            return None
+            return self._get_akshare_research_report(stock_code_norm)
 
     def get_tushare_policy_news(self, days: int = 7) -> Optional[str]:
         """

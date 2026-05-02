@@ -1888,10 +1888,98 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Failed to compute market stats: {e}")
 
+    # ============================================================
+    # 新闻/公告/研报（akshare 作为 Tushare 语料的 fallback）
+    # ============================================================
+
+    def get_announcements_ak(self, stock_code: str, start_date: str, end_date: str, limit: int = 20) -> Optional[pd.DataFrame]:
+        """
+        akshare 公告（东方财富），作为 Tushare disclosure 的 fallback
+        """
+        import akshare as ak
+
+        try:
+            code = normalize_stock_code(stock_code)
+            df = ak.stock_individual_notice_report(
+                security=code,
+                begin_date=start_date.replace("-", ""),
+                end_date=end_date.replace("-", ""),
+            )
+            if df is None or df.empty:
+                return None
+            if "公告标题" not in df.columns:
+                return None
+            return df.head(limit)
+        except Exception as e:
+            logger.warning(f"[Akshare] 获取公告失败 {stock_code}: {e}")
+            return None
+
+    def get_research_report_ak(self, stock_code: str, limit: int = 10) -> Optional[pd.DataFrame]:
+        """
+        akshare 研报（东方财富），作为 Tushare research_report 的 fallback
+        """
+        import akshare as ak
+
+        try:
+            code = normalize_stock_code(stock_code)
+            df = ak.stock_research_report_em(symbol=code)
+            if df is None or df.empty:
+                return None
+            return df.head(limit)
+        except Exception as e:
+            logger.warning(f"[Akshare] 获取研报失败 {stock_code}: {e}")
+            return None
+
+    def get_news_flash_ak(self, limit: int = 30) -> Optional[pd.DataFrame]:
+        """
+        akshare 财联社快讯，作为 Tushare news_flash 的 fallback
+        """
+        import akshare as ak
+
+        try:
+            df = ak.news_cctv()
+            if df is None or df.empty:
+                return None
+            return df.head(limit)
+        except Exception as e:
+            logger.warning(f"[Akshare] 获取快讯失败: {e}")
+            return None
+
+    def get_szse_interaction_ak(self, stock_code: str, limit: int = 10) -> Optional[pd.DataFrame]:
+        """
+        akshare 深证易互动（stock_irm_cninfo），作为 Tushare sze_info 的 fallback
+        """
+        import akshare as ak
+
+        try:
+            code = normalize_stock_code(stock_code)
+            df = ak.stock_irm_cninfo(symbol=code)
+            if df is None or df.empty:
+                return None
+            return df.head(limit)
+        except Exception as e:
+            logger.warning(f"[Akshare] 获取深证易互动失败 {stock_code}: {e}")
+            return None
+
+    def get_sse_interaction_ak(self, stock_code: str, limit: int = 10) -> Optional[pd.DataFrame]:
+        """
+        akshare 上证e互动（stock_sns_sseinfo），作为 Tushare sqe_info 的 fallback
+        """
+        import akshare as ak
+
+        try:
+            code = normalize_stock_code(stock_code)
+            df = ak.stock_sns_sseinfo(symbol=code)
+            if df is None or df.empty:
+                return None
+            return df.head(limit)
+        except Exception as e:
+            logger.warning(f"[Akshare] 获取上证e互动失败 {stock_code}: {e}")
+            return None
+
+    # ============================================================
     # 测试筹码分布数据
-    print("\n" + "=" * 50)
-    print("测试筹码分布数据获取")
-    print("=" * 50)
+    # ============================================================
     try:
         chip = fetcher.get_chip_distribution('600519')  # 茅台
     except Exception as e:
