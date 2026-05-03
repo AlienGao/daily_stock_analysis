@@ -407,6 +407,24 @@ def parse_arguments() -> argparse.Namespace:
         default=3,
         help='R&D 闭环每轮生成的假设数（默认 3）'
     )
+    parser.add_argument(
+        '--rd-loop-days',
+        type=int,
+        default=120,
+        help='R&D 闭环回测窗口交易日数（默认 120）'
+    )
+    parser.add_argument(
+        '--rd-loop-list',
+        action='store_true',
+        help='列出 R&D 闭环待审核的因子'
+    )
+    parser.add_argument(
+        '--rd-loop-approve',
+        type=str,
+        default=None,
+        metavar='FACTOR_NAME',
+        help='批准指定的待审核因子（因子名或文件名）'
+    )
 
     return parser.parse_args()
 
@@ -1417,6 +1435,47 @@ def main() -> int:
                 logger.info("未发现符合条件的股票")
             return 0
 
+        # 模式: R&D 待审核因子列表
+        if getattr(args, 'rd_loop_list', False):
+            logger.info("模式: R&D 待审核因子列表")
+            from src.discovery.rd_loop import RDLoop
+
+            pending = RDLoop.list_pending_factors()
+            if not pending:
+                logger.info("暂无待审核因子。")
+                print("暂无待审核因子。")
+            else:
+                print(f"\n{'='*80}")
+                print(f"待审核因子: {len(pending)} 个")
+                print(f"{'='*80}")
+                for i, f in enumerate(pending, 1):
+                    print(f"\n  #{i} {f['name']}")
+                    print(f"     假设: {f.get('hypothesis', '?')}")
+                    print(f"     综合评分: {f.get('score', 0):.0f}  "
+                          f"累计收益: {f.get('cum_return', 0):.1f}%  "
+                          f"夏普: {f.get('sharpe', 0):.2f}  "
+                          f"胜率: {f.get('win_rate', 0):.0f}%")
+                print(f"\n使用 --rd-loop-approve <name> 批准因子")
+                print(f"{'='*80}\n")
+                logger.info("待审核因子: %d 个", len(pending))
+            return 0
+
+        # 模式: R&D 批准因子
+        if getattr(args, 'rd_loop_approve', None):
+            factor_name = args.rd_loop_approve
+            logger.info("模式: R&D 批准因子 — %s", factor_name)
+            from src.discovery.rd_loop import RDLoop
+
+            ok = RDLoop.approve_factor(factor_name)
+            if ok:
+                logger.info("因子已批准并移动到 src/discovery/factors/: %s", factor_name)
+                print(f"因子已批准: {factor_name}")
+            else:
+                logger.warning("批准失败，因子不存在: %s", factor_name)
+                print(f"批准失败，因子不存在: {factor_name}")
+                return 1
+            return 0
+
         # 模式: R&D 因子发现闭环
         if getattr(args, 'rd_loop', False):
             logger.info("模式: R&D 因子发现闭环")
@@ -1435,15 +1494,17 @@ def main() -> int:
 
             iterations = getattr(args, 'rd_loop_iterations', 5)
             hypotheses_per_round = getattr(args, 'rd_loop_hypotheses', 3)
+            backtest_days = getattr(args, 'rd_loop_days', 120)
 
             logger.info(
-                "R&D 闭环参数: iterations=%d, hypotheses_per_round=%d",
-                iterations, hypotheses_per_round,
+                "R&D 闭环参数: iterations=%d, hypotheses_per_round=%d, backtest_days=%d",
+                iterations, hypotheses_per_round, backtest_days,
             )
 
             loop = RDLoop(
                 tushare_fetcher=tushare_fetcher,
                 llm_adapter=llm_adapter,
+                backtest_days=backtest_days,
             )
             result = loop.run(
                 iterations=iterations,

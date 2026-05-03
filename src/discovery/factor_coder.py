@@ -78,19 +78,20 @@ _AVAILABLE_DATA_SOURCES = """
 ### 全市场批量数据（返回 index=ts_code 的 DataFrame）：
 - `tushare_fetcher.get_bulk_money_flow(trade_date)` → 资金流向
   列: buy_elg_amount, sell_elg_amount, buy_lg_amount, sell_lg_amount,
-       buy_md_amount, sell_md_amount, net_mf_amount
+       buy_md_amount, sell_md_amount, buy_sm_amount, sell_sm_amount, net_mf_amount
 - `tushare_fetcher.get_daily_basic_all(trade_date)` → 每日指标
-  列: turnover_rate(换手率), volume_ratio(量比), pe, pe_ttm, pb, total_mv, circ_mv
-- `tushare_fetcher.get_margin_detail_all(trade_date)` → 融资融券
-  列: rzye(融资余额), rqye(融券余额), rzche(融资买入额), rzrqjyzl(融资融券余额)
-- `tushare_fetcher.get_technical_factors_all(trade_date)` → 技术指标
-  列: macd_dif, macd_dea, macd, kdj_k, kdj_d, kdj_j,
-       rsi_6, rsi_12, rsi_24, boll_up, boll_mid, boll_lower
+  列: turnover_rate(换手率), volume_ratio(量比), pe, pb, total_mv
+- `tushare_fetcher.get_bulk_margin_detail(trade_date)` → 融资融券明细
+  列: rzye(融资余额), rzmre(融资买入额), rzche(融资偿还额),
+       rqye(融券余额), rqmre(融券卖出量), rqyl(融券余量)
+- `tushare_fetcher.get_bulk_stk_factor(trade_date)` → 技术指标(预计算)
+  列: close, macd_dif, macd_dea, macd, kdj_k, kdj_d, kdj_j,
+       rsi_6, rsi_12, rsi_24, boll_upper, boll_mid, boll_lower, cci, vol
 - `tushare_fetcher.get_limit_list(trade_date)` → 涨跌停记录
-  列: pct_chg(涨跌幅), limit_times(连板数), up_stat(涨停统计)
-- `tushare_fetcher.get_cyq_winner_all(trade_date)` → CYQ 筹码
-  列: winner_ratio(获利比例), avg_cost(平均成本),
-       concentration_90, concentration_70
+  列: pct_chg(涨跌幅), limit_times(连板数), open_times(炸板次数)
+- `tushare_fetcher.get_bulk_cyq_perf(trade_date)` → 筹码分布
+  列: winner_rate(获利比例), cost_5pct, cost_15pct, cost_50pct,
+       cost_85pct, cost_95pct, weight_avg(加权平均成本), his_low, his_high
 
 ### 单股票查询：
 - `tushare_fetcher.get_money_flow(ts_code, trade_date)` → 单股资金流向
@@ -126,6 +127,25 @@ _SYSTEM_PROMPT = """你是一个量化因子工程师。你的任务是生成中
 
 ## 参考示例（MomentumFactor）
 只参考结构，逻辑需要根据你的假设重新设计。""".strip()
+
+
+_REFINE_SYSTEM = """你是一个量化因子工程师。你需要改进一个已有的 A 股选股因子代码。
+
+## 规则
+1. 只输出改进后的完整 Python 代码，不要有任何解释或 markdown 标记
+2. 保留原有的 factor name 和类名（class name），只修改逻辑
+3. 基于评估反馈改进：调整阈值参数、引入额外数据源、优化打分公式
+4. 必须实现 fetch_data(trade_date, **kwargs)、score(df, **context) 两个方法
+5. 从 tushare_fetcher 获取数据，从 kwargs/context 中取出 tushare_fetcher
+6. score() 返回 pd.Series(index=ts_code, values=0-100)，通过累加打分模式
+7. 正确的导入: import pandas as pd; from src.discovery.factors.base import BaseFactor
+8. 使用 df.get() 安全取值，避免 KeyError
+9. scores.clip(0, 100) 确保分数在合理范围
+10. 重点关注反馈中提到的薄弱项（低胜率→加过滤条件，低夏普→去噪，低 IC→增强信号区分度）
+
+## 可用数据源（详见上文）
+
+## 参考：仅改进现有代码，不要创建完全不同的因子""".strip()
 
 
 class FactorCoder:
@@ -203,6 +223,47 @@ class FactorCoder:
             results[h] = code
         return results
 
+    def refine(self, hypothesis: str, old_code: str, eval_feedback: str) -> str:
+        """基于评估反馈改进已有因子代码。
+
+        Args:
+            hypothesis: 原始假设
+            old_code: 当前因子代码
+            eval_feedback: 评估反馈文本（来自 FactorEvaluator.format_feedback）
+
+        Returns:
+            改进后的完整 Python 代码字符串；失败返回空字符串
+        """
+        messages = [
+            {"role": "system", "content": self._build_refine_system_prompt()},
+            {"role": "user", "content": self._build_refine_user_prompt(
+                hypothesis, old_code, eval_feedback
+            )},
+        ]
+
+        try:
+            response = self._adapter.call_text(messages, temperature=0.3)
+        except Exception as e:
+            logger.warning("[FactorCoder] refine LLM 调用失败: %s", e)
+            return ""
+
+        if not response.content:
+            return ""
+
+        code = self._extract_code(response.content)
+
+        ok, err = _validate_code_safety(code)
+        if not ok:
+            logger.warning("[FactorCoder] refine 安全检查未通过: %s", err)
+            return ""
+
+        if "class " not in code or "BaseFactor" not in code:
+            logger.warning("[FactorCoder] refine 未检测到 BaseFactor 子类")
+            return ""
+
+        logger.info("[FactorCoder] refine 成功 (%d 字符)", len(code))
+        return code
+
     # ------------------------------------------------------------------
     # Internal
     # ------------------------------------------------------------------
@@ -243,6 +304,30 @@ class FactorCoder:
         请直接输出完整的 Python 代码，包含 import 和类定义。
         不要有任何 markdown 标记、解释或注释说明。
         类名请使用有意义的 PascalCase 名称。
+        """).strip()
+
+    def _build_refine_system_prompt(self) -> str:
+        return _REFINE_SYSTEM + "\n\n" + _AVAILABLE_DATA_SOURCES
+
+    def _build_refine_user_prompt(
+        self, hypothesis: str, old_code: str, eval_feedback: str
+    ) -> str:
+        return textwrap.dedent(f"""
+        请改进以下因子代码:
+
+        ## 原始假设
+        {hypothesis}
+
+        ## 评估反馈
+        {eval_feedback}
+
+        ## 当前代码
+        ```python
+        {old_code}
+        ```
+
+        请输出改进后的完整 Python 代码。保留相同的类名和 factor name。
+        不要有任何 markdown 标记、解释或注释说明。
         """).strip()
 
     @staticmethod

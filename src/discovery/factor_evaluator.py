@@ -53,6 +53,9 @@ class FactorEvalResult:
     daily_returns: List[float] = field(default_factory=list)
     daily_dates: List[str] = field(default_factory=list)
 
+    # 逐日选股明细（用于持仓重叠去重）
+    top_picks_by_date: Dict[str, List[str]] = field(default_factory=dict)
+
     # 排名
     rank_score: float = 0.0  # 综合排名分（越高越好）
 
@@ -109,9 +112,10 @@ class FactorEvaluator:
     动态加载生成的因子代码，在历史数据上模拟选股并计算前向收益指标。
     """
 
-    def __init__(self, tushare_fetcher=None):
+    def __init__(self, tushare_fetcher=None, default_backtest_days: int = 120):
         self._fetcher = tushare_fetcher
         self._price_cache: Dict[str, Dict[str, Dict[str, float]]] = {}
+        self.default_backtest_days = default_backtest_days
 
     # ------------------------------------------------------------------
     # Public API
@@ -167,7 +171,7 @@ class FactorEvaluator:
 
         # 3. 解析交易日
         if trade_dates is None:
-            trade_dates = self._get_recent_trading_days(20)
+            trade_dates = self._get_recent_trading_days(self.default_backtest_days)
         if len(trade_dates) < 3:
             result.error = f"交易日不足 ({len(trade_dates)}), 需要 >= 3"
             result.success = False
@@ -176,12 +180,15 @@ class FactorEvaluator:
         # 4. 逐日模拟选股
         picks_by_date: Dict[str, List[str]] = {}
         all_codes: set = set()
+        data_days = 0
+        total_days = len(trade_dates[:-max(forward_days)])
 
         for td in trade_dates[:-max(forward_days)]:
             try:
                 df = factor.fetch_data(td, tushare_fetcher=self._fetcher)
                 if df is None or df.empty:
                     continue
+                data_days += 1
                 scores = factor.score(df, tushare_fetcher=self._fetcher)
                 if scores is None or scores.empty:
                     continue
@@ -195,10 +202,20 @@ class FactorEvaluator:
                 logger.debug("[FactorEval] %s on %s: %s", factor.name, td, e)
                 continue
 
+        if total_days > 0 and data_days / total_days < 0.20:
+            result.error = (
+                f"数据覆盖不足: {data_days}/{total_days} 天有数据 "
+                f"({data_days / total_days:.0%})，因子 fetch_data 对大多数交易日返回空"
+            )
+            result.success = False
+            return result
+
         if not picks_by_date:
             result.error = "所有交易日均无选股结果"
             result.success = False
             return result
+
+        result.top_picks_by_date = picks_by_date
 
         # 5. 获取价格数据
         self._fetch_prices(list(all_codes), trade_dates)
@@ -292,12 +309,17 @@ class FactorEvaluator:
         # IC 均值
         result.ic_mean = sum(ic_values) / len(ic_values) if ic_values else 0.0
 
-        # 综合排名分: 50% 夏普 + 20% 累计收益 + 20% 胜率 + 10% IC
+        # 综合排名分: 各指标归一化至 0-100 后加权
+        # sharpe 封顶 3.0, cum_return 封顶 100%, IC 封顶 0.15
+        sharpe_score = min(max(0, result.sharpe_ratio), 3.0) / 3.0 * 100
+        return_score = min(max(0, result.cumulative_return), 100.0) / 100.0 * 100
+        ic_score = min(abs(result.ic_mean), 0.15) / 0.15 * 100
+
         result.rank_score = round(
-            0.50 * max(0, result.sharpe_ratio) * 100
-            + 0.20 * result.cumulative_return
-            + 0.20 * result.win_rate_1d
-            + 0.10 * abs(result.ic_mean) * 100,
+            0.30 * sharpe_score
+            + 0.20 * return_score
+            + 0.25 * result.win_rate_1d
+            + 0.25 * ic_score,
             1,
         )
 

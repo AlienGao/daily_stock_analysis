@@ -9,6 +9,7 @@ import NotFoundPage from './pages/NotFoundPage';
 import ChatPage from './pages/ChatPage';
 import DiscoveryPage from './pages/DiscoveryPage';
 import BrokerRecommendPage from './pages/BrokerRecommendPage';
+import RdLoopReviewPage from './pages/RdLoopReviewPage';
 import { ApiErrorAlert, Shell } from './components/common';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useAgentChatStore } from './stores/agentChatStore';
@@ -67,6 +68,7 @@ const AppContent: React.FC = () => {
         <Route path="/discovery" element={<DiscoveryPage />} />
         <Route path="/backtest" element={<BacktestPage />} />
         <Route path="/broker-recommend" element={<BrokerRecommendPage />} />
+        <Route path="/rd-loop-review" element={<RdLoopReviewPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>

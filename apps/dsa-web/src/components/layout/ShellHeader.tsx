@@ -13,6 +13,7 @@ const TITLES: Record<string, { title: string; description: string }> = {
   '/': { title: '首页', description: '股票分析与历史报告工作台' },
   '/chat': { title: '问股', description: '多轮策略问答与历史会话管理' },
   '/backtest': { title: '回测', description: '回测任务与结果浏览' },
+  '/rd-loop-review': { title: '因子审核', description: 'R&D 闭环自动发现因子的审核与管理' },
   '/settings': { title: '设置', description: '系统配置、模型与认证管理' },
 };
 

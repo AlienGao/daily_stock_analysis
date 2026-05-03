@@ -25,6 +25,7 @@ from src.discovery.factor_evaluator import FactorEvaluator, FactorEvalResult
 logger = logging.getLogger(__name__)
 
 _STATE_DIR = Path(__file__).resolve().parent.parent.parent / ".claude" / "rd_loop"
+_PENDING_DIR = _STATE_DIR / "pending_factors"
 _RD_REPORTS_DIR = Path(__file__).resolve().parent.parent.parent / "rd_loop_reports"
 _FACTORS_DIR = Path(__file__).resolve().parent / "factors"
 
@@ -121,10 +122,10 @@ class RDLoop:
         print(result.leaderboard_markdown())
     """
 
-    def __init__(self, tushare_fetcher=None, llm_adapter=None, evaluator=None, coder=None):
+    def __init__(self, tushare_fetcher=None, llm_adapter=None, evaluator=None, coder=None, backtest_days: int = 120):
         self._fetcher = tushare_fetcher
         self._adapter = llm_adapter
-        self._evaluator = evaluator or FactorEvaluator(tushare_fetcher=tushare_fetcher)
+        self._evaluator = evaluator or FactorEvaluator(tushare_fetcher=tushare_fetcher, default_backtest_days=backtest_days)
         self._coder = coder or FactorCoder(llm_adapter=llm_adapter)
         self._sota: List[HypothesisResult] = []
         self._all_results: List[HypothesisResult] = []
@@ -197,6 +198,9 @@ class RDLoop:
             )
             self._all_results.extend(round_results)
 
+            # 对 promising 因子（接近 SOTA 但未通过）做 refinement
+            self._refine_round(round_results, iteration, top_n_picks, sota_threshold)
+
             # 更新 SOTA
             for hr in round_results:
                 if hr.eval_result and hr.eval_result.success:
@@ -220,6 +224,12 @@ class RDLoop:
                 key=lambda x: x.eval_result.rank_score if x.eval_result else 0,
                 reverse=True,
             )
+
+            # 裁剪 SOTA，防止无限膨胀
+            if len(self._sota) > 20:
+                trimmed = self._sota[20:]
+                self._sota = self._sota[:20]
+                logger.info("[RDLoop] SOTA 裁剪: 移除 %d 个低分因子", len(trimmed))
 
             # 保存状态
             self._save_state()
@@ -267,8 +277,9 @@ class RDLoop:
     # ------------------------------------------------------------------
 
     def _generate_hypotheses(self, n: int, feedback: str) -> List[str]:
-        """使用 LLM 生成新一轮假设。"""
+        """使用 LLM 生成新一轮假设。动态引导探索未覆盖的因子类别。"""
         existing = "（暂无）"
+        covered = set()
         if self._sota:
             items = []
             for h in self._sota[:5]:
@@ -276,7 +287,10 @@ class RDLoop:
                 name = e.factor_name if e else "?"
                 score = e.rank_score if e else 0
                 items.append(f"- {name} (综合分 {score:.0f}): {h.hypothesis[:60]}")
+                covered.update(self._detect_categories(h.hypothesis))
             existing = "\n".join(items)
+
+        guidance = self._build_category_guidance(covered)
 
         system = _HYPOTHESIS_GEN_SYSTEM.format(
             existing_factors=existing,
@@ -285,8 +299,7 @@ class RDLoop:
 
         user = (
             f"请提出 {n} 个新的 A 股选股因子假设。每个假设 1-3 句话，用 '- ' 开头。"
-            f"优先考虑: 结合多个数据源的复合因子、利用技术指标背离的因子、"
-            f"或基于资金流向 + 筹码分布的组合信号。"
+            f"{guidance}"
         )
 
         messages = [
@@ -323,6 +336,46 @@ class RDLoop:
         return hypotheses[:max_n]
 
     # ------------------------------------------------------------------
+    # Category guidance
+    # ------------------------------------------------------------------
+
+    _CATEGORY_KEYWORDS: dict = {
+        "动量": ["动量", "趋势", "突破", "强度", "涨幅", "MACD", "金叉", "均线"],
+        "反转": ["反转", "超跌", "超卖", "回踩", "背离", "RSI", "KDJ", "反弹"],
+        "资金流": ["资金流", "净流入", "主力", "大单", "特大单", "北向"],
+        "筹码": ["筹码", "成本", "获利", "CYQ", "集中度", "持仓"],
+        "量价": ["放量", "换手", "缩量", "量比", "成交量", "地量"],
+        "波动率": ["波动", "布林", "ATR", "振幅", "boll"],
+        "融资融券": ["融资", "融券", "杠杆", "保证金"],
+        "基本面": ["PE", "PB", "市值", "ROE", "基本面"],
+    }
+
+    @classmethod
+    def _detect_categories(cls, text: str) -> List[str]:
+        """从假设文本中检测因子类别。"""
+        found = []
+        for cat, keywords in cls._CATEGORY_KEYWORDS.items():
+            if any(kw in text for kw in keywords):
+                found.append(cat)
+        return found or ["其他"]
+
+    @classmethod
+    def _build_category_guidance(cls, covered: set) -> str:
+        """根据已覆盖类别，生成探索引导文本。"""
+        all_cats = set(cls._CATEGORY_KEYWORDS.keys())
+        uncovered = all_cats - covered
+        if not uncovered:
+            return (
+                "已覆盖各类别，请尝试创新因子。"
+                "优先考虑: 跨类别复合因子或全新的信号构造方式。"
+            )
+        cats_str = "、".join(sorted(uncovered)[:4])
+        return (
+            f"优先探索未覆盖的类别: {cats_str}。"
+            f"避免重复已覆盖的: {'、'.join(sorted(covered)) if covered else '无'}。"
+        )
+
+    # ------------------------------------------------------------------
     # Evaluation round
     # ------------------------------------------------------------------
 
@@ -354,6 +407,53 @@ class RDLoop:
 
         return results
 
+    def _refine_round(
+        self, round_results: List[HypothesisResult], iteration: int,
+        top_n: int, sota_threshold: float,
+    ) -> None:
+        """对 promising 但未达 SOTA 的因子做 refinement，给第二次机会。"""
+        for hr in round_results:
+            if not (hr.eval_result and hr.eval_result.success and hr.code):
+                continue
+            score = hr.eval_result.rank_score
+            # 分数在 sota_threshold 的 55%-99% 之间的才 refine（太低不值得）
+            if score < sota_threshold * 0.55 or score >= sota_threshold:
+                continue
+
+            logger.info(
+                "[RDLoop] refine: %s (score=%.1f < threshold=%.1f)",
+                hr.eval_result.factor_name, score, sota_threshold,
+            )
+
+            feedback = self._evaluator.format_feedback(hr.eval_result)
+            refined_code = self._coder.refine(
+                hypothesis=hr.hypothesis,
+                old_code=hr.code,
+                eval_feedback=feedback,
+            )
+            if not refined_code or refined_code == hr.code:
+                continue
+
+            refined_eval = self._evaluator.evaluate(
+                refined_code,
+                hypothesis=hr.hypothesis,
+                trade_dates=self._trade_dates,
+                top_n=top_n,
+            )
+            if refined_eval.success and refined_eval.rank_score > score:
+                logger.info(
+                    "[RDLoop] refine 提升: %s %.1f → %.1f",
+                    refined_eval.factor_name, score, refined_eval.rank_score,
+                )
+                hr.code = refined_code
+                hr.eval_result = refined_eval
+            else:
+                logger.info(
+                    "[RDLoop] refine 未提升: %s %.1f → %.1f",
+                    hr.eval_result.factor_name, score,
+                    refined_eval.rank_score if refined_eval else 0,
+                )
+
     # ------------------------------------------------------------------
     # SOTA management
     # ------------------------------------------------------------------
@@ -361,24 +461,72 @@ class RDLoop:
     def _is_novel(self, hr: HypothesisResult) -> bool:
         """检查因子是否与已有 SOTA 足够不同。
 
-        简单策略：rank_score 差距 > 阈值则认为不同。
-        更复杂的去重（基于持仓相关性）可在后续迭代中加入。
+        双重检查：1) 持仓 Jaccard 重叠  2) 日收益序列相关性。
+        任一维度高度重合则判定为冗余。
         """
         if not hr.eval_result or not self._sota:
             return True
 
-        new_score = hr.eval_result.rank_score
+        new_picks = hr.eval_result.top_picks_by_date
+        new_rets = hr.eval_result.daily_returns
         for existing in self._sota:
-            if existing.eval_result:
-                old_score = existing.eval_result.rank_score
-                # 如果综合分极其接近（差 < 1），认为是重复
-                if abs(new_score - old_score) < 1.0:
+            if not existing.eval_result:
+                continue
+            old_picks = existing.eval_result.top_picks_by_date
+
+            # 优先使用 Jaccard 持仓重叠检查
+            if new_picks and old_picks:
+                overlap = self._jaccard_overlap(new_picks, old_picks)
+                if overlap > 0.60:
+                    logger.info(
+                        "[RDLoop] 持仓重叠 %.0f%% > 60%%，判定重复: %s vs %s",
+                        overlap * 100, hr.eval_result.factor_name,
+                        existing.eval_result.factor_name,
+                    )
                     return False
+
+            # 日收益相关性检查（Pearson）
+            old_rets = existing.eval_result.daily_returns
+            if len(new_rets) >= 10 and len(old_rets) >= 10:
+                import numpy as np
+                min_len = min(len(new_rets), len(old_rets))
+                corr = np.corrcoef(new_rets[-min_len:], old_rets[-min_len:])[0, 1]
+                if not np.isnan(corr) and abs(corr) > 0.70:
+                    logger.info(
+                        "[RDLoop] 收益相关性 %.2f > 0.70，判定重复: %s vs %s",
+                        corr, hr.eval_result.factor_name,
+                        existing.eval_result.factor_name,
+                    )
+                    return False
+
+            # 回退：rank_score 差距检查
+            new_score = hr.eval_result.rank_score
+            old_score = existing.eval_result.rank_score
+            if abs(new_score - old_score) < 1.0:
+                return False
 
         return True
 
+    @staticmethod
+    def _jaccard_overlap(picks_a: Dict[str, List[str]], picks_b: Dict[str, List[str]]) -> float:
+        """计算两个因子的持仓 Jaccard 相似度（按共有交易日平均）。"""
+        common_dates = set(picks_a.keys()) & set(picks_b.keys())
+        if not common_dates:
+            return 0.60  # 无共有交易日时偏保守，由 rank_score 回退判断
+
+        jaccards = []
+        for td in common_dates:
+            set_a = set(picks_a[td])
+            set_b = set(picks_b[td])
+            union = set_a | set_b
+            if not union:
+                continue
+            jaccards.append(len(set_a & set_b) / len(union))
+
+        return sum(jaccards) / len(jaccards) if jaccards else 0.60
+
     def _build_feedback(self) -> str:
-        """基于当前 SOTA 构建反馈文本。"""
+        """基于当前 SOTA 和失败经验构建反馈文本。"""
         if not self._sota:
             return "尚无有效 SOTA 因子。请提出基于资金流向、技术指标或筹码分布的基础因子。"
 
@@ -393,17 +541,24 @@ class RDLoop:
                 f"IC {e.ic_mean:.3f}, 综合分 {e.rank_score:.0f}"
             )
 
-        recent = self._all_results[-5:] if self._all_results else []
-        failures = [
-            f"- {h.hypothesis[:50]}: {h.eval_result.error}"
-            for h in recent
-            if h.eval_result and not h.eval_result.success and h.eval_result.error
+        # 收集所有失败的尝试（不仅是最近 5 个）
+        all_failures = [
+            h for h in self._all_results
+            if h.eval_result and not h.eval_result.success
         ]
+        recent_fails = all_failures[-5:]
 
         parts = ["当前最佳因子:", "\n".join(lines)]
-        if failures:
-            parts.append("\n最近失败的因子:\n" + "\n".join(failures))
-        parts.append("\n请在此基础上提出改进的或全新的因子假设。")
+        if recent_fails:
+            fail_lines = []
+            for h in recent_fails:
+                err = h.eval_result.error or "未知错误"
+                code_preview = (h.code[:120] + "...") if len(h.code) > 120 else h.code
+                fail_lines.append(
+                    f"- {h.hypothesis[:50]}\n  错误: {err}\n  代码片段: {code_preview}"
+                )
+            parts.append("\n最近失败的因子（务必避免同类错误）:\n" + "\n".join(fail_lines))
+        parts.append("\n请基于反馈改进或提出全新的因子假设。")
 
         return "\n".join(parts)
 
@@ -456,6 +611,8 @@ class RDLoop:
                         win_rate_1d=s["eval"].get("win_rate_1d", 0),
                         ic_mean=s["eval"].get("ic_mean", 0),
                         rank_score=s["eval"].get("rank_score", 0),
+                        top_picks_by_date=s["eval"].get("top_picks_by_date", {}),
+                        daily_returns=s["eval"].get("daily_returns", []),
                     )
                     hr.is_sota = True
                 self._sota.append(hr)
@@ -472,8 +629,10 @@ class RDLoop:
             "win_rate_1d": e.win_rate_1d,
             "ic_mean": e.ic_mean,
             "rank_score": e.rank_score,
+            "daily_returns": e.daily_returns,
             "total_days": e.total_days,
             "total_picks": e.total_picks,
+            "top_picks_by_date": e.top_picks_by_date,
         }
 
     def _save_report(self, result: RDLoopResult) -> None:
@@ -508,20 +667,143 @@ class RDLoop:
             logger.warning("[RDLoop] 保存报告失败: %s", e)
 
     # ------------------------------------------------------------------
+    # Pending factor review (human-in-the-loop)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def list_pending_factors() -> List[dict]:
+        """列出所有待审核的因子文件。
+
+        Returns:
+            [{name, path, score, cum_return, sharpe, win_rate, hypothesis}, ...]
+        """
+        if not _PENDING_DIR.exists():
+            return []
+
+        items = []
+        for f in sorted(_PENDING_DIR.glob("rd_gen_*.py")):
+            info = RDLoop._parse_pending_header(f)
+            if info:
+                items.append(info)
+        return items
+
+    @staticmethod
+    def approve_factor(factor_name: str) -> bool:
+        """批准一个待审核因子，将其从 pending/ 移动到 factors/。
+
+        Args:
+            factor_name: 文件名（含或不含 rd_gen_ 前缀和 .py 后缀）
+
+        Returns:
+            True 若成功移动
+        """
+        safe_name = factor_name
+        if safe_name.endswith(".py"):
+            safe_name = safe_name[:-3]
+        if not safe_name.startswith("rd_gen_"):
+            safe_name = f"rd_gen_{safe_name}"
+
+        src = _PENDING_DIR / f"{safe_name}.py"
+        if not src.exists():
+            logger.warning("[RDLoop] 待审核因子不存在: %s", src)
+            return False
+
+        _FACTORS_DIR.mkdir(parents=True, exist_ok=True)
+        dst = _FACTORS_DIR / f"{safe_name}.py"
+
+        try:
+            dst.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+            src.unlink()
+            logger.info("[RDLoop] 因子已批准: %s → %s", src.name, dst)
+            return True
+        except Exception as e:
+            logger.warning("[RDLoop] 批准因子失败 %s: %s", safe_name, e)
+            return False
+
+    @staticmethod
+    def _parse_pending_header(file_path: Path) -> Optional[dict]:
+        """从 pending factor 文件的头部注释中提取元信息。"""
+        try:
+            text = file_path.read_text(encoding="utf-8")
+        except Exception:
+            return None
+
+        info = {"name": file_path.stem, "path": str(file_path), "code": text}
+        for line in text.split("\n"):
+            if not line.startswith("# "):
+                break
+            if "假设:" in line:
+                info["hypothesis"] = line.split("假设:", 1)[1].strip()
+            elif "综合评分:" in line:
+                try:
+                    info["score"] = float(line.split("综合评分:", 1)[1].strip())
+                except ValueError:
+                    info["score"] = 0.0
+            elif "累计收益:" in line:
+                parts = line.split("累计收益:", 1)[1].strip()
+                try:
+                    info["cum_return"] = float(parts.split("%")[0].strip())
+                except (ValueError, IndexError):
+                    info["cum_return"] = 0.0
+            elif "夏普:" in line:
+                try:
+                    val = line.split("夏普:", 1)[1].strip().split()[0]
+                    info["sharpe"] = float(val)
+                except (ValueError, IndexError):
+                    info["sharpe"] = 0.0
+            elif "胜率:" in line:
+                try:
+                    val = line.split("胜率:", 1)[1].strip().split("%")[0]
+                    info["win_rate"] = float(val)
+                except (ValueError, IndexError):
+                    info["win_rate"] = 0.0
+
+        return info if "hypothesis" in info else None
+
+    @staticmethod
+    def reject_factor(factor_name: str) -> bool:
+        """拒绝一个待审核因子，删除 pending 文件。
+
+        Args:
+            factor_name: 文件名（含或不含 rd_gen_ 前缀和 .py 后缀）
+
+        Returns:
+            True 若成功删除
+        """
+        safe_name = factor_name
+        if safe_name.endswith(".py"):
+            safe_name = safe_name[:-3]
+        if not safe_name.startswith("rd_gen_"):
+            safe_name = f"rd_gen_{safe_name}"
+
+        src = _PENDING_DIR / f"{safe_name}.py"
+        if not src.exists():
+            logger.warning("[RDLoop] 待审核因子不存在: %s", src)
+            return False
+
+        try:
+            src.unlink()
+            logger.info("[RDLoop] 因子已拒绝并删除: %s", src.name)
+            return True
+        except Exception as e:
+            logger.warning("[RDLoop] 拒绝因子失败 %s: %s", safe_name, e)
+            return False
+
+    # ------------------------------------------------------------------
     # Factor persistence
     # ------------------------------------------------------------------
 
     def _persist_sota_factors(self) -> None:
-        """将 SOTA 因子代码写入 src/discovery/factors/ 目录。
+        """将 SOTA 因子代码写入 .claude/rd_loop/pending_factors/ 等待人工审核。
 
         文件命名为 rd_gen_{factor_name}.py。
-        下次 auto-discovery 运行时，__init__.py 的自动发现机制会加载这些因子。
+        使用 --rd-loop-list 查看待审核因子，--rd-loop-approve 批准并移动到 factors/。
         已存在的同名文件会被跳过（不覆盖手动修改的版本）。
         """
         if not self._sota:
             return
 
-        _FACTORS_DIR.mkdir(parents=True, exist_ok=True)
+        _PENDING_DIR.mkdir(parents=True, exist_ok=True)
         written = 0
 
         for hr in self._sota:
@@ -532,15 +814,13 @@ class RDLoop:
             if not name:
                 continue
 
-            # 文件名：rd_gen_{factor_name}.py
             safe_name = "".join(c if c.isalnum() or c == "_" else "_" for c in name)
-            file_path = _FACTORS_DIR / f"rd_gen_{safe_name}.py"
+            file_path = _PENDING_DIR / f"rd_gen_{safe_name}.py"
 
             if file_path.exists():
-                logger.info("[RDLoop] 因子文件已存在，跳过: %s", file_path.name)
+                logger.info("[RDLoop] 因子文件已在待审核列表中，跳过: %s", file_path.name)
                 continue
 
-            # 在代码顶部加生成元信息注释
             header = (
                 f"# -*- coding: utf-8 -*-\n"
                 f"# R&D 闭环自动生成 — {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
@@ -555,7 +835,7 @@ class RDLoop:
             try:
                 file_path.write_text(header + hr.code, encoding="utf-8")
                 logger.info(
-                    "[RDLoop] SOTA 因子已持久化: %s (score=%.0f)",
+                    "[RDLoop] SOTA 因子已写入待审核: %s (score=%.0f)",
                     file_path.name, hr.eval_result.rank_score,
                 )
                 written += 1
@@ -564,7 +844,7 @@ class RDLoop:
 
         if written > 0:
             logger.info(
-                "[RDLoop] 已持久化 %d 个 SOTA 因子到 %s，"
-                "下次 auto-discovery 将自动注册",
-                written, _FACTORS_DIR,
+                "[RDLoop] 已写入 %d 个 SOTA 因子到 %s，"
+                "使用 --rd-loop-list 查看，--rd-loop-approve 批准",
+                written, _PENDING_DIR,
             )
