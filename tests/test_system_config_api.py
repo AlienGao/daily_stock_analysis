@@ -294,6 +294,10 @@ class SystemConfigApiTestCase(unittest.TestCase):
                 "success": True,
                 "message": "LLM channel test succeeded",
                 "error": None,
+                "error_code": None,
+                "stage": "chat_completion",
+                "retryable": False,
+                "details": {},
                 "resolved_protocol": "openai",
                 "resolved_model": "openai/gpt-4o-mini",
                 "latency_ms": 123,
@@ -312,6 +316,7 @@ class SystemConfigApiTestCase(unittest.TestCase):
 
         self.assertTrue(payload["success"])
         self.assertEqual(payload["resolved_model"], "openai/gpt-4o-mini")
+        self.assertEqual(payload["stage"], "chat_completion")
         mock_test.assert_called_once()
 
     def test_validate_returns_user_facing_model_message_without_internal_env_key_name(self) -> None:
@@ -339,6 +344,10 @@ class SystemConfigApiTestCase(unittest.TestCase):
                 "success": True,
                 "message": "LLM channel model discovery succeeded",
                 "error": None,
+                "error_code": None,
+                "stage": "model_discovery",
+                "retryable": False,
+                "details": {"model_count": 2},
                 "resolved_protocol": "openai",
                 "models": ["qwen-plus", "qwen-turbo"],
                 "latency_ms": 88,
@@ -356,6 +365,7 @@ class SystemConfigApiTestCase(unittest.TestCase):
 
         self.assertTrue(payload["success"])
         self.assertEqual(payload["models"], ["qwen-plus", "qwen-turbo"])
+        self.assertEqual(payload["stage"], "model_discovery")
         mock_discover.assert_called_once()
 
 

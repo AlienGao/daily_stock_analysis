@@ -60,7 +60,7 @@ daily_stock_analysis/
 | `GEMINI_API_KEY` | [Google AI Studio](https://aistudio.google.com/) 获取免费 Key | ✅* |
 | `OPENAI_API_KEY` | OpenAI 兼容 API Key（支持 DeepSeek、通义千问等） | 可选 |
 | `OPENAI_BASE_URL` | OpenAI 兼容 API 地址（如 `https://api.deepseek.com`） | 可选 |
-| `OPENAI_MODEL` | 模型名称（如 `gemini-3.1-pro-preview`、`deepseek-v4-flash`、`gpt-5.2`） | 可选 |
+| `OPENAI_MODEL` | 模型名称（如 `gemini-3.1-pro-preview`、`deepseek-v4-flash`、`gpt-5.5`） | 可选 |
 
 > *注：`GEMINI_API_KEY` 和 `OPENAI_API_KEY` 至少配置一个
 
@@ -90,6 +90,7 @@ daily_stock_analysis/
 | `SERVERCHAN3_SENDKEY` | Server酱³ Sendkey（[获取地址](https://sc3.ft07.com/)，手机APP推送服务） | 可选 |
 | `CUSTOM_WEBHOOK_URLS` | 自定义 Webhook（支持钉钉等，多个用逗号分隔） | 可选 |
 | `CUSTOM_WEBHOOK_BEARER_TOKEN` | 自定义 Webhook 的 Bearer Token（用于需要认证的 Webhook） | 可选 |
+| `CUSTOM_WEBHOOK_BODY_TEMPLATE` | 自定义 Webhook JSON body 模板，适配 AstrBot、NapCat、自建服务等特殊 payload | 可选 |
 | `WEBHOOK_VERIFY_SSL` | Webhook HTTPS 证书校验（默认 true）。设为 false 可支持自签名证书。警告：关闭有严重安全风险（MITM），仅限可信内网 | 可选 |
 
 > *注：至少配置一个渠道，配置多个则同时推送
@@ -123,7 +124,7 @@ daily_stock_analysis/
 | `STOCK_LIST` | 自选股代码，如 `600519,300750,002594` | ✅ |
 | `TAVILY_API_KEYS` | [Tavily](https://tavily.com/) 搜索 API（新闻搜索） | 推荐 |
 | `ANSPIRE_API_KEYS` | [Anspire AI Search](https://aisearch.anspire.cn/) 针对中文内容特别优化 (可有效增强A股分析效果) | 可选 |
-| `MINIMAX_API_KEYS` | [MiniMax](https://platform.minimaxi.com/) Coding Plan Web Search（结构化搜索结果） | 可选 |
+| `MINIMAX_API_KEYS` | [MiniMax](https://platform.minimax.io/) Coding Plan Web Search（结构化搜索结果） | 可选 |
 | `BOCHA_API_KEYS` | [博查搜索](https://open.bocha.cn/) Web Search API（中文搜索优化，支持AI摘要，多个key用逗号分隔） | 可选 |
 | `BRAVE_API_KEYS` | [Brave Search](https://brave.com/search/api/) API（隐私优先，美股优化，多个key用逗号分隔） | 可选 |
 | `SERPAPI_API_KEYS` | [SerpAPI](https://serpapi.com/baidu-search-api?utm_source=github_daily_stock_analysis) 备用搜索 | 可选 |
@@ -183,25 +184,25 @@ daily_stock_analysis/
 
 ### AI 模型配置
 
-> 完整说明见 [LLM 配置指南](LLM_CONFIG_GUIDE.md)（三层配置、渠道模式、Vision、Agent、排错）。
+> 完整说明见 [LLM 配置指南](LLM_CONFIG_GUIDE.md)（三层配置、渠道模式、Vision、Agent、排错）；常用服务商预设与 `.env` 模板见 [LLM 服务商配置速查](llm-providers.md)。
 
 | 变量名 | 说明 | 默认值 | 必填 |
 |--------|------|--------|:----:|
-| `LITELLM_MODEL` | 主模型，格式 `provider/model`（如 `gemini/gemini-2.5-flash`），推荐优先使用 | - | 否 |
+| `LITELLM_MODEL` | 主模型，格式 `provider/model`（如 `gemini/gemini-3.1-pro-preview`），推荐优先使用 | - | 否 |
 | `AGENT_LITELLM_MODEL` | Agent 主模型（可选）；留空继承主模型，无 provider 前缀按 `openai/<model>` 解析 | - | 否 |
 | `LITELLM_FALLBACK_MODELS` | 备选模型，逗号分隔 | - | 否 |
 | `LLM_CHANNELS` | 渠道名称列表（逗号分隔），配合 `LLM_{NAME}_*` 使用，详见 [LLM 配置指南](LLM_CONFIG_GUIDE.md) | - | 否 |
 | `LITELLM_CONFIG` | 高级模型路由 YAML 配置文件路径（高级） | - | 否 |
 | `AIHUBMIX_KEY` | [AIHubmix](https://aihubmix.com/?aff=CfMq) API Key，一 Key 切换使用全系模型，无需额外配置 Base URL | - | 可选 |
 | `GEMINI_API_KEY` | Google Gemini API Key | - | 可选 |
-| `GEMINI_MODEL` | 主模型名称（legacy，`LITELLM_MODEL` 优先） | `gemini-3-flash-preview` | 否 |
-| `GEMINI_MODEL_FALLBACK` | 备选模型（legacy） | `gemini-2.5-flash` | 否 |
+| `GEMINI_MODEL` | 主模型名称（legacy，`LITELLM_MODEL` 优先） | `gemini-3.1-pro-preview` | 否 |
+| `GEMINI_MODEL_FALLBACK` | 备选模型（legacy） | `gemini-3-flash-preview` | 否 |
 | `OPENAI_API_KEY` | OpenAI 兼容 API Key | - | 可选 |
 | `OPENAI_BASE_URL` | OpenAI 兼容 API 地址 | - | 可选 |
 | `OLLAMA_API_BASE` | Ollama 本地服务地址（如 `http://localhost:11434`），详见 [LLM 配置指南](LLM_CONFIG_GUIDE.md) | - | 可选 |
-| `OPENAI_MODEL` | OpenAI 模型名称（legacy，AIHubmix 用户可填如 `gemini-3.1-pro-preview`、`gpt-5.2`） | `gpt-5.2` | 可选 |
+| `OPENAI_MODEL` | OpenAI 模型名称（legacy，AIHubmix 用户可填如 `gemini-3.1-pro-preview`、`gpt-5.5`） | `gpt-5.5` | 可选 |
 | `ANTHROPIC_API_KEY` | Anthropic Claude API Key | - | 可选 |
-| `ANTHROPIC_MODEL` | Claude 模型名称 | `claude-3-5-sonnet-20241022` | 可选 |
+| `ANTHROPIC_MODEL` | Claude 模型名称 | `claude-sonnet-4-6` | 可选 |
 | `ANTHROPIC_TEMPERATURE` | Claude 温度参数（0.0-1.0） | `0.7` | 可选 |
 | `ANTHROPIC_MAX_TOKENS` | Claude 响应最大 token 数 | `8192` | 可选 |
 
@@ -308,7 +309,7 @@ daily_stock_analysis/
 > - TickFlow 能力按套餐权限分层：有限权限套餐仍可使用主指数查询；支持 `CN_Equity_A` 标的池查询的套餐才会启用 TickFlow 市场统计。
 > - 官方 quickstart 已文档化 `quotes.get(universes=["CN_Equity_A"])`，但线上 smoke test 进一步确认：`TICKFLOW_API_KEY` 不等于一定具备该权限，且 `quotes.get(symbols=[...])` 单次存在标的数量限制。
 > - TickFlow 实际返回的 `change_pct` / `amplitude` 为比例值；系统已在接入层统一转换为百分比值，确保与现有数据源字段语义一致。
-> - A 股大盘复盘报告采用盘后工作台式结构：固定包含盘面温度、指数明细、板块 Top 表、新闻催化、明日交易计划和风险提示；若部分数据源缺失，则保留可用区块并在对应位置降级展示。
+> - A 股大盘复盘报告采用盘后工作台式结构：固定包含大盘红绿灯、盘面温度、指数明细、板块 Top 表、新闻催化、明日交易计划和风险提示；若部分数据源缺失，则保留可用区块并在对应位置降级展示。
 > - 字段契约：
 >   - `fundamental_context.belong_boards` = 个股关联板块列表（当前仅 A 股写入；无数据时为 `[]`）；
 >   - `fundamental_context.boards.data` = `sector_rankings`（板块涨跌榜，结构 `{top, bottom}`）；
@@ -726,6 +727,14 @@ EMAIL_GROUP_2=user2@example.com
 
 设置 `CUSTOM_WEBHOOK_URLS`，多个用逗号分隔。
 
+如需适配 AstrBot、NapCat 或自建服务的特殊 body，可设置 `CUSTOM_WEBHOOK_BODY_TEMPLATE`。该值必须渲染为 JSON object，推荐使用 `$content_json` 避免换行和引号破坏 JSON：
+
+```env
+CUSTOM_WEBHOOK_BODY_TEMPLATE={"msg_type":"text","content":$content_json}
+```
+
+可用占位符：`$content_json`、`$content`、`$title_json`、`$title`。
+
 ### Discord
 
 Discord 支持两种方式推送：
@@ -891,7 +900,7 @@ STOCK_LIST=600519,hk00700,hk01810
 ```bash
 # Gemini（主力）
 GEMINI_API_KEY=xxx
-GEMINI_MODEL=gemini-3-flash-preview
+GEMINI_MODEL=gemini-3.1-pro-preview
 
 # OpenAI 兼容（备选）
 OPENAI_API_KEY=xxx
@@ -911,11 +920,11 @@ OPENAI_MODEL=deepseek-v4-flash
 ```env
 # 主模型：3 个 Gemini Key 轮换，任一 429 时 Router 自动切换下一个 Key
 GEMINI_API_KEYS=key1,key2,key3
-LITELLM_MODEL=gemini/gemini-3-flash-preview
+LITELLM_MODEL=gemini/gemini-3.1-pro-preview
 
 # 跨模型降级：主模型全部 Key 均失败时，按序尝试 Claude → GPT
 # 需配置对应 API Key：ANTHROPIC_API_KEY、OPENAI_API_KEY
-LITELLM_FALLBACK_MODELS=anthropic/claude-3-5-sonnet-20241022,openai/gpt-4o-mini
+LITELLM_FALLBACK_MODELS=anthropic/claude-sonnet-4-6,openai/gpt-5.4-mini
 ```
 
 **预期行为**：首次请求用 `key1`；若 429，Router 下次用 `key2`；若 3 个 Key 均不可用，则切换到 Claude，再失败则切换到 GPT。
@@ -939,7 +948,7 @@ LITELLM_FALLBACK_MODELS=anthropic/claude-3-5-sonnet-20241022,openai/gpt-4o-mini
 
 - **模型优先级**：`VISION_MODEL` > `LITELLM_MODEL` > 根据已有 API Key 推断（`OPENAI_VISION_MODEL` 已废弃，请改用 `VISION_MODEL`）
 - **Provider 回退**：主模型失败时，按 `VISION_PROVIDER_PRIORITY`（默认 `gemini,anthropic,openai`）自动切换到下一个可用 provider
-- **主模型不支持 Vision 时**：若主模型为 DeepSeek 等非 Vision 模型，可显式配置 `VISION_MODEL=openai/gpt-4o` 或 `gemini/gemini-2.0-flash` 供图片提取使用
+- **主模型不支持 Vision 时**：若主模型为 DeepSeek 等非 Vision 模型，可显式配置 `VISION_MODEL=openai/gpt-5.5` 或 `gemini/gemini-3.1-pro-preview` 供图片提取使用
 - **配置校验**：若配置了 `VISION_MODEL` 但未配置对应 provider 的 API Key，启动时会输出 warning，图片提取功能将不可用
 
 ### 调试模式
@@ -1157,6 +1166,27 @@ A: 检查是否启用了 Actions，以及 cron 表达式是否正确（注意是
 - 缓存缺失或过期时，工具仍会按原逻辑从数据源获取日线数据；获取成功后会 best-effort 写回 `stock_daily`，保存失败不会阻断 Agent 回复。
 - `search_stock_news` 与 `search_comprehensive_intel` 成功返回后会 best-effort 写入 `news_intel`，复用现有 URL / fallback key 去重逻辑。
 - `get_realtime_quote` 不复用 `stock_daily` 作为实时行情缓存，也不会把盘中实时行情写入日线表；如需实时行情缓存，应单独设计实时行情存储。
+
+## Agent 事件告警监控
+
+`AGENT_EVENT_MONITOR_ENABLED=true` 后，schedule 模式会按 `AGENT_EVENT_MONITOR_INTERVAL_MINUTES` 轮询 `AGENT_EVENT_ALERT_RULES_JSON` 中的规则，并把触发结果发送到现有通知渠道。当前运行时支持三类规则：
+
+> 兼容与迁移说明：本次仅新增/验证事件告警规则字段（含 `price_change_percent`），不会修改模型名、provider、Base URL、LiteLLM、`OPENAI_*`、`DEEPSEEK_*`、`GEMINI_*` 等外部模型/API 配置语义。若需回退，删除或关闭 `AGENT_EVENT_MONITOR_ENABLED` 即恢复到旧行为。
+> 验证证据在仓库内可直接追踪：`src/agent/events.py`（运行时解析/校验）、`src/services/system_config_service.py`（配置保存与校验）、`src/core/config_registry.py`（配置元数据），以及 `tests/test_multi_agent.py`、`tests/test_system_config_service.py` 的回归断言。
+
+| `alert_type` | 方向字段 | 阈值字段 | 说明 |
+| --- | --- | --- | --- |
+| `price_cross` | `above` / `below` | `price` | 当前价上破或下破指定价格 |
+| `price_change_percent` | `up` / `down` | `change_pct` | 涨跌幅达到指定百分比 |
+| `volume_spike` | - | `multiplier` | 最新成交量超过近 20 日均量的指定倍数 |
+
+示例：
+
+```env
+AGENT_EVENT_MONITOR_ENABLED=true
+AGENT_EVENT_MONITOR_INTERVAL_MINUTES=5
+AGENT_EVENT_ALERT_RULES_JSON=[{"stock_code":"600519","alert_type":"price_cross","direction":"above","price":1800},{"stock_code":"300750","alert_type":"price_change_percent","direction":"down","change_pct":3.0},{"stock_code":"000858","alert_type":"volume_spike","multiplier":2.5}]
+```
 
 ## 持仓管理说明
 

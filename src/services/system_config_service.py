@@ -298,27 +298,35 @@ class SystemConfigService:
             )
         errors = [issue for issue in validation_issues if issue["severity"] == "error"]
         if errors:
-            return {
-                "success": False,
-                "message": "LLM channel configuration is invalid",
-                "error": errors[0]["message"],
-                "resolved_protocol": resolved_protocol or None,
-                "models": [],
-                "latency_ms": None,
-            }
+            return self._build_llm_channel_result(
+                success=False,
+                message="LLM channel configuration is invalid",
+                error=errors[0]["message"],
+                stage="model_discovery",
+                error_code="invalid_config",
+                retryable=False,
+                details={"issue_key": errors[0]["key"], "issue_code": errors[0]["code"]},
+                resolved_protocol=resolved_protocol or None,
+                models=[],
+                latency_ms=None,
+            )
 
         if resolved_protocol not in {"openai", "deepseek"}:
-            return {
-                "success": False,
-                "message": "Model discovery is not supported for this protocol",
-                "error": (
+            return self._build_llm_channel_result(
+                success=False,
+                message="Model discovery is not supported for this protocol",
+                error=(
                     f"LLM channel '{channel_name}' protocol '{resolved_protocol}' "
                     "does not support /models discovery yet"
                 ),
-                "resolved_protocol": resolved_protocol or None,
-                "models": [],
-                "latency_ms": None,
-            }
+                stage="model_discovery",
+                error_code="unsupported_protocol",
+                retryable=False,
+                details={"protocol": resolved_protocol or None},
+                resolved_protocol=resolved_protocol or None,
+                models=[],
+                latency_ms=None,
+            )
 
         api_keys = [segment.strip() for segment in api_key.split(",") if segment.strip()]
         selected_api_key = api_keys[0] if api_keys else ""
@@ -339,66 +347,96 @@ class SystemConfigService:
             latency_ms = int((time.perf_counter() - started_at) * 1000)
         except requests.RequestException as exc:
             logger.warning("LLM channel model discovery failed for %s: %s", channel_name, exc)
-            return {
-                "success": False,
-                "message": "Failed to discover models",
-                "error": str(exc),
-                "resolved_protocol": resolved_protocol or None,
-                "models": [],
-                "latency_ms": None,
-            }
+            error_code, retryable, message = self._classify_llm_exception(exc)
+            return self._build_llm_channel_result(
+                success=False,
+                message=message,
+                error=str(exc),
+                stage="model_discovery",
+                error_code=error_code,
+                retryable=retryable,
+                details={"endpoint": models_url},
+                resolved_protocol=resolved_protocol or None,
+                models=[],
+                latency_ms=None,
+            )
 
         if 300 <= response.status_code < 400:
-            return {
-                "success": False,
-                "message": "Model discovery request was redirected",
-                "error": "Redirect responses are not allowed for model discovery",
-                "resolved_protocol": resolved_protocol or None,
-                "models": [],
-                "latency_ms": latency_ms,
-            }
+            return self._build_llm_channel_result(
+                success=False,
+                message="Model discovery request was redirected",
+                error="Redirect responses are not allowed for model discovery",
+                stage="model_discovery",
+                error_code="network_error",
+                retryable=False,
+                details={"endpoint": models_url, "http_status": response.status_code},
+                resolved_protocol=resolved_protocol or None,
+                models=[],
+                latency_ms=latency_ms,
+            )
 
         if not response.ok:
-            return {
-                "success": False,
-                "message": "Model discovery request failed",
-                "error": self._extract_llm_discovery_error(response),
-                "resolved_protocol": resolved_protocol or None,
-                "models": [],
-                "latency_ms": latency_ms,
-            }
+            error_text = self._extract_llm_discovery_error(response)
+            error_code, retryable, message = self._classify_llm_http_error(
+                status_code=response.status_code,
+                error_text=error_text,
+            )
+            return self._build_llm_channel_result(
+                success=False,
+                message=message,
+                error=error_text,
+                stage="model_discovery",
+                error_code=error_code,
+                retryable=retryable,
+                details={"endpoint": models_url, "http_status": response.status_code},
+                resolved_protocol=resolved_protocol or None,
+                models=[],
+                latency_ms=latency_ms,
+            )
 
         try:
             payload = response.json()
         except ValueError:
-            return {
-                "success": False,
-                "message": "Model discovery returned invalid JSON",
-                "error": "The /models endpoint did not return valid JSON",
-                "resolved_protocol": resolved_protocol or None,
-                "models": [],
-                "latency_ms": latency_ms,
-            }
+            return self._build_llm_channel_result(
+                success=False,
+                message="Model discovery returned invalid JSON",
+                error="The /models endpoint did not return valid JSON",
+                stage="response_parse",
+                error_code="format_error",
+                retryable=False,
+                details={"endpoint": models_url, "http_status": response.status_code},
+                resolved_protocol=resolved_protocol or None,
+                models=[],
+                latency_ms=latency_ms,
+            )
 
         models = self._extract_discovered_llm_models(payload)
         if not models:
-            return {
-                "success": False,
-                "message": "Model discovery returned no models",
-                "error": "The /models endpoint did not return any model IDs",
-                "resolved_protocol": resolved_protocol or None,
-                "models": [],
-                "latency_ms": latency_ms,
-            }
+            return self._build_llm_channel_result(
+                success=False,
+                message="Model discovery returned no models",
+                error="The /models endpoint did not return any model IDs",
+                stage="response_parse",
+                error_code="empty_response",
+                retryable=False,
+                details={"endpoint": models_url, "http_status": response.status_code},
+                resolved_protocol=resolved_protocol or None,
+                models=[],
+                latency_ms=latency_ms,
+            )
 
-        return {
-            "success": True,
-            "message": "LLM channel model discovery succeeded",
-            "error": None,
-            "resolved_protocol": resolved_protocol or None,
-            "models": models,
-            "latency_ms": latency_ms,
-        }
+        return self._build_llm_channel_result(
+            success=True,
+            message="LLM channel model discovery succeeded",
+            error=None,
+            stage="model_discovery",
+            error_code=None,
+            retryable=False,
+            details={"endpoint": models_url, "model_count": len(models)},
+            resolved_protocol=resolved_protocol or None,
+            models=models,
+            latency_ms=latency_ms,
+        )
 
     def test_llm_channel(
         self,
@@ -426,14 +464,18 @@ class SystemConfigService:
         )
         errors = [issue for issue in validation_issues if issue["severity"] == "error"]
         if errors:
-            return {
-                "success": False,
-                "message": "LLM channel configuration is invalid",
-                "error": errors[0]["message"],
-                "resolved_protocol": None,
-                "resolved_model": None,
-                "latency_ms": None,
-            }
+            return self._build_llm_channel_result(
+                success=False,
+                message="LLM channel configuration is invalid",
+                error=errors[0]["message"],
+                stage="chat_completion",
+                error_code="invalid_config",
+                retryable=False,
+                details={"issue_key": errors[0]["key"], "issue_code": errors[0]["code"]},
+                resolved_protocol=None,
+                resolved_model=None,
+                latency_ms=None,
+            )
 
         resolved_protocol = resolve_llm_channel_protocol(protocol, base_url=base_url, models=raw_models, channel_name=name)
         resolved_models = [normalize_llm_channel_model(model, resolved_protocol, base_url) for model in raw_models]
@@ -468,63 +510,53 @@ class SystemConfigService:
             started_at = time.perf_counter()
             response = litellm.completion(**call_kwargs)
             latency_ms = int((time.perf_counter() - started_at) * 1000)
-            content = ""
-            if response and getattr(response, "choices", None):
-                choice = response.choices[0]
-                # MiniMax-M2.7 uses content_blocks format directly on choice (not inside message)
-                # Check both possible locations for content_blocks
-                content_blocks = None
-                if hasattr(choice, "content_blocks"):
-                    content_blocks = choice.content_blocks
-                elif hasattr(choice.message, "content_blocks"):
-                    content_blocks = choice.message.content_blocks
+            content, parse_error_code, parse_error = self._extract_llm_completion_content(response)
+            if parse_error_code:
+                message = (
+                    "LLM channel returned an empty response"
+                    if parse_error_code == "empty_response"
+                    else "LLM channel returned an unexpected response format"
+                )
+                return self._build_llm_channel_result(
+                    success=False,
+                    message=message,
+                    error=parse_error,
+                    stage="response_parse",
+                    error_code=parse_error_code,
+                    retryable=False,
+                    details={"response_error": parse_error},
+                    resolved_protocol=resolved_protocol or None,
+                    resolved_model=resolved_model,
+                    latency_ms=latency_ms,
+                )
 
-                if content_blocks:
-                    # MiniMax response format: concatenate ALL text blocks
-                    # Handle both type=="text" with .text and .content fields
-                    text_parts = []
-                    for block in content_blocks:
-                        if getattr(block, "type", None) == "text":
-                            text = getattr(block, "text", "") or ""
-                            if text:
-                                text_parts.append(text)
-                        elif hasattr(block, "content") and block.content:
-                            text_parts.append(block.content)
-                    content = "".join(text_parts).strip()
-                else:
-                    # Standard OpenAI format
-                    message = getattr(choice, "message", None)
-                    if message:
-                        content = str(message.content or "").strip()
-
-            if not content:
-                return {
-                    "success": False,
-                    "message": "LLM channel returned an empty response",
-                    "error": "Empty response",
-                    "resolved_protocol": resolved_protocol or None,
-                    "resolved_model": resolved_model,
-                    "latency_ms": latency_ms,
-                }
-
-            return {
-                "success": True,
-                "message": "LLM channel test succeeded",
-                "error": None,
-                "resolved_protocol": resolved_protocol or None,
-                "resolved_model": resolved_model,
-                "latency_ms": latency_ms,
-            }
+            return self._build_llm_channel_result(
+                success=True,
+                message="LLM channel test succeeded",
+                error=None,
+                stage="chat_completion",
+                error_code=None,
+                retryable=False,
+                details={"response_preview": content[:80]},
+                resolved_protocol=resolved_protocol or None,
+                resolved_model=resolved_model,
+                latency_ms=latency_ms,
+            )
         except Exception as exc:
             logger.warning("LLM channel test failed for %s: %s", channel_name, exc)
-            return {
-                "success": False,
-                "message": "LLM channel test failed",
-                "error": str(exc),
-                "resolved_protocol": resolved_protocol or None,
-                "resolved_model": resolved_model,
-                "latency_ms": None,
-            }
+            error_code, retryable, message = self._classify_llm_exception(exc)
+            return self._build_llm_channel_result(
+                success=False,
+                message=message,
+                error=str(exc),
+                stage="chat_completion",
+                error_code=error_code,
+                retryable=retryable,
+                details={"model": resolved_model},
+                resolved_protocol=resolved_protocol or None,
+                resolved_model=resolved_model,
+                latency_ms=None,
+            )
 
     def _get_stocks_by_categories(self, categories: List[str]) -> str:
         """Get merged stock list from multiple categories, removing duplicates."""
@@ -561,6 +593,7 @@ class SystemConfigService:
         if errors:
             raise ConfigValidationError(issues=errors)
 
+        previous_map = self._manager.read_config_map()
         submitted_keys: Set[str] = set()
         updates: List[Tuple[str, str]] = []
         sensitive_keys: Set[str] = set()
@@ -608,6 +641,12 @@ class SystemConfigService:
             self._build_explainability_warnings(
                 submitted_keys=submitted_keys,
                 reload_now=reload_now,
+            )
+        )
+        warnings.extend(
+            self._build_runtime_model_cleanup_warnings(
+                previous_map=previous_map,
+                updates=dict(updates),
             )
         )
 
@@ -702,6 +741,53 @@ class SystemConfigService:
             )
 
         return warnings
+
+    @staticmethod
+    def _build_runtime_model_cleanup_warnings(
+        *,
+        previous_map: Dict[str, str],
+        updates: Dict[str, str],
+    ) -> List[str]:
+        """Explain when save payload clears stale runtime model references."""
+        runtime_labels = {
+            "LITELLM_MODEL": "主模型",
+            "AGENT_LITELLM_MODEL": "Agent 主模型",
+            "VISION_MODEL": "Vision 模型",
+        }
+        cleared_labels: List[str] = []
+        for key, label in runtime_labels.items():
+            if previous_map.get(key, "").strip() and key in updates and not updates[key].strip():
+                cleared_labels.append(label)
+
+        removed_fallbacks: List[str] = []
+        if "LITELLM_FALLBACK_MODELS" in updates:
+            previous_fallbacks = [
+                item.strip()
+                for item in previous_map.get("LITELLM_FALLBACK_MODELS", "").split(",")
+                if item.strip()
+            ]
+            next_fallbacks = {
+                item.strip()
+                for item in updates["LITELLM_FALLBACK_MODELS"].split(",")
+                if item.strip()
+            }
+            removed_fallbacks = [item for item in previous_fallbacks if item not in next_fallbacks]
+
+        if not cleared_labels and not removed_fallbacks:
+            return []
+
+        cleaned_targets = list(cleared_labels)
+        if removed_fallbacks:
+            cleaned_targets.append("备选模型中的失效项")
+
+        cleaned_text = " / ".join(cleaned_targets)
+        warning = (
+            f"检测到已同步清理失效的运行时模型引用：{cleaned_text}。"
+            "如需恢复，请先补回对应渠道模型列表后重新选择；"
+            "也可用桌面端导出备份或手动 .env 还原之前的 LLM_* / "
+            "LITELLM_MODEL / AGENT_LITELLM_MODEL / VISION_MODEL / LLM_TEMPERATURE。"
+        )
+        return [warning]
 
     def apply_simple_updates(
         self,
@@ -1120,15 +1206,15 @@ class SystemConfigService:
     @classmethod
     def _infer_setup_legacy_primary_model(cls, effective_map: Dict[str, str]) -> str:
         if cls._has_any_config_value(effective_map, ("GEMINI_API_KEYS", "GEMINI_API_KEY")):
-            model = (effective_map.get("GEMINI_MODEL") or "gemini-3-flash-preview").strip()
+            model = (effective_map.get("GEMINI_MODEL") or "gemini-3.1-pro-preview").strip()
             return model if "/" in model else f"gemini/{model}"
         if cls._has_any_config_value(effective_map, ("ANTHROPIC_API_KEYS", "ANTHROPIC_API_KEY")):
-            model = (effective_map.get("ANTHROPIC_MODEL") or "claude-3-5-sonnet-20241022").strip()
+            model = (effective_map.get("ANTHROPIC_MODEL") or "claude-sonnet-4-6").strip()
             return model if "/" in model else f"anthropic/{model}"
         if cls._has_any_config_value(effective_map, ("DEEPSEEK_API_KEYS", "DEEPSEEK_API_KEY")):
             return "deepseek/deepseek-chat"
         if cls._has_any_config_value(effective_map, ("OPENAI_API_KEYS", "OPENAI_API_KEY", "AIHUBMIX_KEY")):
-            model = (effective_map.get("OPENAI_MODEL") or "gpt-4o-mini").strip()
+            model = (effective_map.get("OPENAI_MODEL") or "gpt-5.5").strip()
             return model if "/" in model else f"openai/{model}"
         if (effective_map.get("OLLAMA_API_BASE") or "").strip():
             model = (effective_map.get("OLLAMA_MODEL") or "").strip()
@@ -1432,6 +1518,170 @@ class SystemConfigService:
             return float(getattr(config, "llm_temperature", 0.7))
         except (TypeError, ValueError):
             return 0.7
+
+    @classmethod
+    def _build_llm_channel_result(
+        cls,
+        *,
+        success: bool,
+        message: str,
+        error: Optional[str],
+        stage: Optional[str],
+        error_code: Optional[str],
+        retryable: Optional[bool],
+        details: Optional[Dict[str, Any]] = None,
+        resolved_protocol: Optional[str] = None,
+        resolved_model: Optional[str] = None,
+        models: Optional[List[str]] = None,
+        latency_ms: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        payload: Dict[str, Any] = {
+            "success": success,
+            "message": cls._sanitize_llm_error_text(message),
+            "error": cls._sanitize_llm_error_text(error) if error else None,
+            "stage": stage,
+            "error_code": error_code,
+            "retryable": retryable,
+            "details": cls._sanitize_llm_details(details),
+            "resolved_protocol": resolved_protocol,
+            "latency_ms": latency_ms,
+        }
+        if resolved_model is not None or models is None:
+            payload["resolved_model"] = resolved_model
+        if models is not None:
+            payload["models"] = models
+        return payload
+
+    @staticmethod
+    def _sanitize_llm_error_text(text: Any) -> str:
+        if text is None:
+            return ""
+        sanitized = str(text).strip()
+        if not sanitized:
+            return ""
+
+        patterns = [
+            (r"(?i)(authorization\s*[:=]\s*)(bearer\s+)?([^\s,;]+)", r"\1[REDACTED]"),
+            (r"(?i)(api[_-]?key\s*[:=]\s*)([^\s,;]+)", r"\1[REDACTED]"),
+            (r"(?i)(cookie\s*[:=]\s*)([^\s,;]+)", r"\1[REDACTED]"),
+            (r"(?i)bearer\s+[a-z0-9._\-]+", "Bearer [REDACTED]"),
+            (r"(?i)sk-[a-z0-9_\-]+", "[REDACTED]"),
+        ]
+        for pattern, replacement in patterns:
+            sanitized = re.sub(pattern, replacement, sanitized)
+        sanitized = " ".join(sanitized.split())
+        return sanitized[:300]
+
+    @classmethod
+    def _sanitize_llm_details(cls, details: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+        if not details:
+            return {}
+        sanitized: Dict[str, Any] = {}
+        for key, value in details.items():
+            if isinstance(value, str):
+                sanitized[key] = cls._sanitize_llm_error_text(value)
+            elif isinstance(value, dict):
+                sanitized[key] = cls._sanitize_llm_details(value)
+            elif isinstance(value, list):
+                sanitized[key] = [
+                    cls._sanitize_llm_error_text(item) if isinstance(item, str) else item
+                    for item in value
+                ]
+            else:
+                sanitized[key] = value
+        return sanitized
+
+    @staticmethod
+    def _classify_llm_http_error(status_code: int, error_text: str) -> Tuple[str, bool, str]:
+        lowered = (error_text or "").lower()
+        if status_code in {401, 403} or any(token in lowered for token in ("unauthorized", "forbidden", "invalid api key", "authentication")):
+            return "auth", False, "LLM authentication failed"
+        if status_code in {402, 429} or any(token in lowered for token in ("quota", "rate limit", "too many requests", "insufficient_quota")):
+            return "quota", True, "LLM request was rejected by quota or rate limiting"
+        if status_code == 404:
+            return "network_error", False, "LLM model discovery endpoint could not be found"
+        if "model" in lowered and any(token in lowered for token in ("not found", "does not exist", "unknown")):
+            return "model_not_found", False, "Configured model could not be found on this channel"
+        if any(token in lowered for token in ("timeout", "timed out")):
+            return "timeout", True, "LLM request timed out"
+        return "network_error", status_code >= 500, "LLM request failed before a valid response was returned"
+
+    @staticmethod
+    def _has_model_not_found_signal(text: str) -> bool:
+        lowered = text.lower()
+
+        model_candidates = [
+            re.search(r"model\s+not\s+found\s*[:：]?\s*[`\"']?\s*([a-z0-9._/-]{2,})", lowered),
+            re.search(r"model\s*[`\"']?\s*([a-z0-9._/-]{2,})\s*[`\"']?\s+does\s+not\s+exist", lowered),
+            re.search(r"model\s+does\s+not\s+exist\s*[:：]?\s*[`\"']?\s*([a-z0-9._/-]{2,})", lowered),
+            re.search(r"unknown\s+model\s*[:：]?\s*[`\"']?\s*([a-z0-9._/-]{2,})", lowered),
+            re.search(r"no\s+such\s+model\s*[:：]?\s*[`\"']?\s*([a-z0-9._/-]{2,})", lowered),
+        ]
+
+        for match in model_candidates:
+            if not match:
+                continue
+            model_id = match.group(1).strip()
+            if model_id and not model_id.startswith("/") and "http" not in model_id:
+                return True
+
+        return False
+
+    @staticmethod
+    def _classify_llm_exception(exc: Exception) -> Tuple[str, bool, str]:
+        exc_name = type(exc).__name__.lower()
+        text = str(exc).lower()
+        if isinstance(exc, TimeoutError) or "timeout" in exc_name or "timed out" in text:
+            return "timeout", True, "LLM request timed out"
+        if "ratelimit" in exc_name or any(token in text for token in ("quota", "rate limit", "too many requests", "insufficient_quota")):
+            return "quota", True, "LLM request was rejected by quota or rate limiting"
+        if any(token in exc_name for token in ("auth", "permission")) or any(token in text for token in ("unauthorized", "forbidden", "invalid api key", "authentication")):
+            return "auth", False, "LLM authentication failed"
+        if ("notfound" in exc_name or "model" in text) and (
+            "not found" in text or "does not exist" in text or "unknown model" in text
+        ) and SystemConfigService._has_model_not_found_signal(text):
+            return "model_not_found", False, "Configured model could not be found on this channel"
+        if any(token in exc_name for token in ("connection", "network")) or any(token in text for token in ("connection", "network", "dns", "refused", "ssl")):
+            return "network_error", True, "LLM request failed before a valid response was returned"
+        return "network_error", False, "LLM channel test failed"
+
+    @staticmethod
+    def _extract_llm_completion_content(response: Any) -> Tuple[str, Optional[str], Optional[str]]:
+        if response is None:
+            return "", "empty_response", "Completion returned no response object"
+
+        choices = getattr(response, "choices", None)
+        if not choices:
+            return "", "format_error", "Completion response did not include choices"
+
+        choice = choices[0]
+        content_blocks = getattr(choice, "content_blocks", None)
+        if content_blocks is None:
+            message = getattr(choice, "message", None)
+            if message is not None:
+                content_blocks = getattr(message, "content_blocks", None)
+        message = getattr(choice, "message", None)
+        if content_blocks is not None:
+            text_parts: List[str] = []
+            for block in content_blocks:
+                if getattr(block, "type", None) == "text":
+                    text = getattr(block, "text", "") or ""
+                    if text:
+                        text_parts.append(str(text))
+                elif hasattr(block, "content") and block.content:
+                    text_parts.append(str(block.content))
+            content = "".join(text_parts).strip()
+            if content:
+                return content, None, None
+
+        if message is None:
+            return "", "format_error", "Completion response did not include a message object"
+        if not hasattr(message, "content"):
+            return "", "format_error", "Completion message did not include a content field"
+        content = str(message.content or "").strip()
+        if not content:
+            return "", "empty_response", "Completion returned an empty message content"
+        return content, None, None
 
     @staticmethod
     def _extract_llm_discovery_error(response: requests.Response) -> str:

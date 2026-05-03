@@ -827,6 +827,10 @@ Sector text.
 
         result = ma._inject_data_into_review(review, overview, news)
 
+        assert "大盘红绿灯" in result
+        assert "green（可进攻）" in result
+        assert "核心原因" in result
+        assert "操作建议" in result
         assert "盘面温度" in result
         assert "| 上涨/下跌/平盘 | 3200 / 1800 / 100 |" in result
         assert "| 指数 | 最新 | 涨跌幅 | 开盘 | 最高 | 最低 | 振幅 | 成交额(亿) |" in result
@@ -835,6 +839,61 @@ Sector text.
         assert "| 1 | AI算力 | +3.25% |" in result
         assert "#### 近三日催化线索" in result
         assert "AI算力板块走强" in result
+
+    def test_market_light_snapshot_marks_defensive_market_red(self):
+        from src.market_analyzer import MarketIndex, MarketOverview
+
+        ma = self._make_market_analyzer_with_mock_generate_text(return_value="review")
+        overview = MarketOverview(
+            date="2026-03-06",
+            indices=[
+                MarketIndex(code="000001", name="上证指数", current=3200, change_pct=-1.8),
+                MarketIndex(code="399001", name="深证成指", current=9800, change_pct=-2.4),
+            ],
+            up_count=900,
+            down_count=4100,
+            limit_up_count=10,
+            limit_down_count=80,
+            total_amount=9800.0,
+        )
+
+        snapshot = ma.build_market_light_snapshot(overview)
+
+        assert snapshot["status"] == "red"
+        assert snapshot["label"] == "偏防守"
+        assert snapshot["score"] < 40
+        assert any("亏钱效应" in reason for reason in snapshot["reasons"])
+
+    def test_market_light_snapshot_uses_english_labels_and_reasons(self):
+        from src.market_analyzer import MarketIndex, MarketOverview
+
+        ma = self._make_market_analyzer_with_mock_generate_text(return_value="review")
+        ma.config.report_language = "en"
+        overview = MarketOverview(
+            date="2026-03-06",
+            indices=[
+                MarketIndex(code="000001", name="SSE Composite", current=3200, change_pct=-1.8),
+                MarketIndex(code="399001", name="SZSE Component", current=9800, change_pct=-2.4),
+            ],
+            up_count=900,
+            down_count=4100,
+            limit_up_count=10,
+            limit_down_count=80,
+            total_amount=9800.0,
+        )
+
+        snapshot = ma.build_market_light_snapshot(overview)
+
+        assert snapshot["status"] == "red"
+        assert snapshot["label"] == "defensive"
+        assert snapshot["guidance"] == (
+            "Risk is elevated; prioritize drawdown control and avoid chasing weak rebounds."
+        )
+        assert snapshot["reasons"][0].startswith("market temperature ")
+        assert any(
+            reason.startswith("advancers ratio ") and "downside pressure dominates" in reason
+            for reason in snapshot["reasons"]
+        )
 
     def test_us_english_indices_do_not_label_turnover_as_cny(self):
         from src.core.market_profile import US_PROFILE
