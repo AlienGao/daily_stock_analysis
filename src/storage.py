@@ -706,6 +706,37 @@ class StockTechIndicator(Base):
         }
 
 
+class BrokerRecommendMonthly(Base):
+    """券商月度金股推荐快照。
+
+    存储每月各券商金股推荐数据，用于历史回测和分析。
+    """
+
+    __tablename__ = 'broker_recommend_monthly'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    month = Column(String(6), nullable=False, index=True)
+    broker = Column(String(100), nullable=False)
+    ts_code = Column(String(12), nullable=False, index=True)
+    name = Column(String(50))
+    broker_count = Column(Integer, default=1)
+    created_at = Column(DateTime, default=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('month', 'broker', 'ts_code', name='uix_br_month_broker_ts'),
+        Index('ix_br_month_ts', 'month', 'ts_code'),
+    )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'month': self.month,
+            'broker': self.broker,
+            'ts_code': self.ts_code,
+            'name': self.name,
+            'broker_count': self.broker_count,
+        }
+
+
 class DatabaseManager:
     """
     数据库管理器 - 单例模式
@@ -1943,7 +1974,69 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"保存 {code} 数据失败: {e}")
             raise
-    
+
+    def save_broker_recommend_monthly(self, month: str, df: pd.DataFrame) -> int:
+        """批量保存券商月度金股推荐数据。
+
+        Args:
+            month: YYYYMM 格式月份
+            df: 包含 broker, ts_code, name 列的 DataFrame
+
+        Returns:
+            保存的记录数
+        """
+        if df is None or df.empty:
+            return 0
+
+        with self.get_session() as session:
+            try:
+                # 计算每只股票被多少家券商推荐
+                if 'broker_count' not in df.columns:
+                    broker_count_df = df.groupby('ts_code')['broker'].nunique().reset_index()
+                    broker_count_df.columns = ['ts_code', 'broker_count']
+                    df = df.merge(broker_count_df, on='ts_code', how='left')
+                    df['broker_count'] = df['broker_count'].fillna(1).astype(int)
+
+                records = []
+                for _, row in df.iterrows():
+                    records.append(BrokerRecommendMonthly(
+                        month=str(month),
+                        broker=str(row.get('broker', '')),
+                        ts_code=str(row.get('ts_code', '')),
+                        name=str(row.get('name', '')) if pd.notna(row.get('name')) else '',
+                        broker_count=int(row.get('broker_count', 1)),
+                    ))
+
+                session.query(BrokerRecommendMonthly).filter(
+                    BrokerRecommendMonthly.month == str(month)
+                ).delete()
+
+                session.add_all(records)
+                session.commit()
+                logger.info(f"[BrokerRecommend] 保存 {month} 月数据 {len(records)} 条")
+                return len(records)
+            except Exception as e:
+                session.rollback()
+                logger.error(f"[BrokerRecommend] 保存失败: {e}")
+                raise
+
+    def get_broker_recommend_monthly(self, month: str) -> List[BrokerRecommendMonthly]:
+        """获取指定月份的券商金股推荐数据。"""
+        with self.get_session() as session:
+            return list(session.execute(
+                select(BrokerRecommendMonthly).where(
+                    BrokerRecommendMonthly.month == str(month)
+                )
+            ).scalars().all())
+
+    def get_broker_recommend_months(self) -> List[str]:
+        """获取有数据的月份列表。"""
+        with self.get_session() as session:
+            months = session.execute(
+                select(BrokerRecommendMonthly.month).distinct().order_by(desc(BrokerRecommendMonthly.month))
+            ).scalars().all()
+            return list(months)
+
     def get_analysis_context(
         self, 
         code: str,

@@ -1691,6 +1691,7 @@ class StockAnalysisPipeline:
             FundamentalFactor, PopularityFactor, HotMoneyFactor,
             NorthboundFactor, InstitutionHoldFactor, ProfitForecastFactor,
             PerformanceFactor, BuybackFactor, InsiderBuyFactor,
+            BrokerRecommendFactor,
         )
 
         discovery_config = get_discovery_config()
@@ -1711,6 +1712,7 @@ class StockAnalysisPipeline:
             PerformanceFactor(),
             BuybackFactor(),
             InsiderBuyFactor(),
+            BrokerRecommendFactor(),
         ])
 
         results = engine.discover(mode="postmarket")
@@ -1784,6 +1786,7 @@ class StockAnalysisPipeline:
                         FundamentalFactor, PopularityFactor, HotMoneyFactor,
                         NorthboundFactor, InstitutionHoldFactor, ProfitForecastFactor,
                         PerformanceFactor, BuybackFactor, InsiderBuyFactor,
+                        BrokerRecommendFactor,
                     )
 
                     discovery_config = get_discovery_config()
@@ -1807,6 +1810,7 @@ class StockAnalysisPipeline:
                         PerformanceFactor(),
                         BuybackFactor(),
                         InsiderBuyFactor(),
+                        BrokerRecommendFactor(),
                     ])
 
                     discovered = engine.discover(mode="postmarket")

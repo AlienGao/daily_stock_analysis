@@ -1373,6 +1373,7 @@ def main() -> int:
                 FundamentalFactor, PopularityFactor, HotMoneyFactor,
                 NorthboundFactor, InstitutionHoldFactor, ProfitForecastFactor,
                 PerformanceFactor, BuybackFactor, InsiderBuyFactor,
+                BrokerRecommendFactor,
             )
             from data_provider.tushare_fetcher import TushareFetcher
             from data_provider.akshare_fetcher import AkshareFetcher
@@ -1400,6 +1401,7 @@ def main() -> int:
                 PerformanceFactor(),
                 BuybackFactor(),
                 InsiderBuyFactor(),
+                BrokerRecommendFactor(),
             ])
 
             results = engine.discover(mode="postmarket")

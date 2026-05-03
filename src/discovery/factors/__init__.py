@@ -3,10 +3,10 @@
 
 每个因子对应一个独立文件，继承 BaseFactor 抽象基类。
 盘中因子 (5个): SectorFactor, MaEntryFactor, MomentumFactor, ReboundFactor, PopularityFactor
-盘后因子 (14个): MoneyFlowFactor, MarginFactor, ChipFactor, TechnicalFactor, LimitFactor,
+盘后因子 (15个): MoneyFlowFactor, MarginFactor, ChipFactor, TechnicalFactor, LimitFactor,
                  FundamentalFactor, HotMoneyFactor, NorthboundFactor, InstitutionHoldFactor,
                  ProfitForecastFactor, PerformanceFactor, BuybackFactor, InsiderBuyFactor,
-                 PopularityFactor
+                 PopularityFactor, BrokerRecommendFactor
 R&D 闭环生成因子: rd_gen_*.py（自动发现并注册）
 """
 
@@ -38,6 +38,7 @@ from src.discovery.factors.profit_forecast_factor import ProfitForecastFactor
 from src.discovery.factors.performance_factor import PerformanceFactor
 from src.discovery.factors.buyback_factor import BuybackFactor
 from src.discovery.factors.insider_buy_factor import InsiderBuyFactor
+from src.discovery.factors.broker_recommend_factor import BrokerRecommendFactor
 
 __all__ = [
     "BaseFactor",
@@ -60,6 +61,7 @@ __all__ = [
     "PerformanceFactor",
     "BuybackFactor",
     "InsiderBuyFactor",
+    "BrokerRecommendFactor",
 ]
 
 # ---------------------------------------------------------------------------
@@ -72,7 +74,7 @@ _KNOWN_MODULES = {
     "technical_factor", "limit_factor", "fundamental_factor", "popularity_factor",
     "hot_money_factor", "northbound_factor", "institution_hold_factor",
     "profit_forecast_factor", "performance_factor", "buyback_factor",
-    "insider_buy_factor",
+    "insider_buy_factor", "broker_recommend_factor",
 }
 
 _factors_dir = Path(__file__).resolve().parent

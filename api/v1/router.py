@@ -12,7 +12,7 @@ API v1 路由聚合
 from fastapi import APIRouter
 import os
 
-from api.v1.endpoints import analysis, auth, discovery, history, stocks, backtest, system_config, agent, usage, portfolio
+from api.v1.endpoints import analysis, auth, discovery, history, stocks, backtest, system_config, agent, usage, portfolio, broker_recommend
 
 # 创建 v1 版本主路由
 router = APIRouter(prefix="/api/v1")
@@ -77,4 +77,10 @@ if os.getenv("PORTFOLIO_MODULE_ENABLED", "false").strip().lower() == "true":
         prefix="/portfolio",
         tags=["Portfolio"]
     )
+
+router.include_router(
+    broker_recommend.router,
+    prefix="/broker-recommend",
+    tags=["BrokerRecommend"]
+)
 
