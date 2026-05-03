@@ -1884,7 +1884,7 @@ class StockAnalysisPipeline:
                                 bt = DiscoveryBacktest(tushare_fetcher)
                                 summary = bt.compute(mode="postmarket")
                                 if summary and summary.trade_records:
-                                    bt_md = _format_backtest_summary_md(summary, date_str)
+                                    bt_md = self._format_backtest_summary_md(summary, date_str)
                                     bt_file = reports_dir / f"postmarket_{date_str}_backtest.md"
                                     bt_file.write_text(bt_md, encoding="utf-8")
                                     logger.info("[Discovery] 回测报告已保存: %s", bt_file)
