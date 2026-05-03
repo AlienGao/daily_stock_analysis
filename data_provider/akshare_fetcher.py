@@ -1805,6 +1805,185 @@ class AkshareFetcher(BaseFetcher):
             logger.error(f"[Akshare] 新浪接口获取板块排行也失败: {e}")
             return None
 
+    # ============================================================
+    # 全市场批量因子数据接口（供 discovery 使用）
+    # ============================================================
+
+    def get_northbound_holds(self, indicator: str = "今日排行") -> Optional[pd.DataFrame]:
+        """沪深港通持股全市场排行（北向资金）"""
+        import akshare as ak
+
+        try:
+            self._set_random_user_agent()
+            self._enforce_rate_limit()
+
+            df = ak.stock_hsgt_hold_stock_em(market="北向", indicator=indicator)
+            if df is None or df.empty:
+                return None
+
+            if "代码" in df.columns:
+                df = df.rename(columns={"代码": "ts_code"})
+            elif "股票代码" in df.columns:
+                df = df.rename(columns={"股票代码": "ts_code"})
+
+            if "ts_code" in df.columns:
+                df = df.set_index("ts_code")
+            elif df.index.name is None:
+                first_col = df.columns[0]
+                df = df.set_index(first_col)
+                df.index.name = "ts_code"
+
+            return df
+        except Exception as e:
+            logger.warning(f"[Akshare] 获取北向持股失败: {e}")
+            return None
+
+    def get_institution_holds(self) -> Optional[pd.DataFrame]:
+        """机构持仓数据（季度更新）"""
+        import akshare as ak
+
+        try:
+            self._set_random_user_agent()
+            self._enforce_rate_limit()
+
+            df = ak.stock_institute_hold()
+            if df is None or df.empty:
+                return None
+
+            if "证券代码" in df.columns:
+                df = df.rename(columns={"证券代码": "ts_code"})
+            elif "代码" in df.columns:
+                df = df.rename(columns={"代码": "ts_code"})
+
+            if "ts_code" in df.columns:
+                df = df.set_index("ts_code")
+            elif df.index.name is None:
+                first_col = df.columns[0]
+                df = df.set_index(first_col)
+                df.index.name = "ts_code"
+
+            return df
+        except Exception as e:
+            logger.warning(f"[Akshare] 获取机构持仓失败: {e}")
+            return None
+
+    def get_profit_forecast(self) -> Optional[pd.DataFrame]:
+        """盈利预测与机构评级（全市场）"""
+        import akshare as ak
+
+        try:
+            self._set_random_user_agent()
+            self._enforce_rate_limit()
+
+            df = ak.stock_profit_forecast_em(symbol="")
+            if df is None or df.empty:
+                return None
+
+            if "代码" in df.columns:
+                df = df.rename(columns={"代码": "ts_code"})
+            elif "股票代码" in df.columns:
+                df = df.rename(columns={"股票代码": "ts_code"})
+
+            if "ts_code" in df.columns:
+                df = df.set_index("ts_code")
+            elif df.index.name is None:
+                first_col = df.columns[0]
+                df = df.set_index(first_col)
+                df.index.name = "ts_code"
+
+            return df
+        except Exception as e:
+            logger.warning(f"[Akshare] 获取盈利预测失败: {e}")
+            return None
+
+    def get_performance_report(self) -> Optional[pd.DataFrame]:
+        """业绩报表数据（季报/年报）"""
+        import akshare as ak
+
+        try:
+            self._set_random_user_agent()
+            self._enforce_rate_limit()
+
+            # 默认获取最近一期财报
+            df = ak.stock_yjbb_em(symbol="")
+            if df is None or df.empty:
+                return None
+
+            if "股票代码" in df.columns:
+                df = df.rename(columns={"股票代码": "ts_code"})
+            elif "代码" in df.columns:
+                df = df.rename(columns={"代码": "ts_code"})
+
+            if "ts_code" in df.columns:
+                df = df.set_index("ts_code")
+            elif df.index.name is None:
+                first_col = df.columns[0]
+                df = df.set_index(first_col)
+                df.index.name = "ts_code"
+
+            return df
+        except Exception as e:
+            logger.warning(f"[Akshare] 获取业绩报表失败: {e}")
+            return None
+
+    def get_buyback_data(self) -> Optional[pd.DataFrame]:
+        """股票回购数据"""
+        import akshare as ak
+
+        try:
+            self._set_random_user_agent()
+            self._enforce_rate_limit()
+
+            df = ak.stock_repurchase_em()
+            if df is None or df.empty:
+                return None
+
+            if "股票代码" in df.columns:
+                df = df.rename(columns={"股票代码": "ts_code"})
+            elif "代码" in df.columns:
+                df = df.rename(columns={"代码": "ts_code"})
+
+            if "ts_code" in df.columns:
+                df = df.set_index("ts_code")
+            elif df.index.name is None:
+                first_col = df.columns[0]
+                df = df.set_index(first_col)
+                df.index.name = "ts_code"
+
+            return df
+        except Exception as e:
+            logger.warning(f"[Akshare] 获取股票回购失败: {e}")
+            return None
+
+    def get_insider_buy(self) -> Optional[pd.DataFrame]:
+        """险资举牌数据"""
+        import akshare as ak
+
+        try:
+            self._set_random_user_agent()
+            self._enforce_rate_limit()
+
+            df = ak.stock_rank_xzjp_ths()
+            if df is None or df.empty:
+                return None
+
+            if "股票代码" in df.columns:
+                df = df.rename(columns={"股票代码": "ts_code"})
+            elif "代码" in df.columns:
+                df = df.rename(columns={"代码": "ts_code"})
+
+            if "ts_code" in df.columns:
+                df = df.set_index("ts_code")
+            elif df.index.name is None:
+                first_col = df.columns[0]
+                df = df.set_index(first_col)
+                df.index.name = "ts_code"
+
+            return df
+        except Exception as e:
+            logger.warning(f"[Akshare] 获取险资举牌失败: {e}")
+            return None
+
 
 if __name__ == "__main__":
     # 测试代码

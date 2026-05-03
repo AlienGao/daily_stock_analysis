@@ -1691,7 +1691,7 @@ class Config:
                 'ENABLE_REALTIME_TECHNICAL_INDICATORS', 'true'
             ).lower() == 'true',
             enable_chip_distribution=os.getenv('ENABLE_CHIP_DISTRIBUTION', 'true').lower() == 'true',
-            enable_minute_chip_distribution=False,
+            # enable_minute_chip_distribution=False,  # 需要单独权限，默认关闭
             # tushare_minute_chip_freq=os.getenv('TUSHARE_MINUTE_CHIP_FREQ', '5min'),
             # tushare_minute_chip_days=int(os.getenv('TUSHARE_MINUTE_CHIP_DAYS', '1')),
             # 东财接口补丁开关

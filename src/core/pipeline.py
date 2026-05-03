@@ -1689,6 +1689,8 @@ class StockAnalysisPipeline:
             MoneyFlowFactor, MarginFactor, ChipFactor,
             TechnicalFactor, LimitFactor,
             FundamentalFactor, PopularityFactor, HotMoneyFactor,
+            NorthboundFactor, InstitutionHoldFactor, ProfitForecastFactor,
+            PerformanceFactor, BuybackFactor, InsiderBuyFactor,
         )
 
         discovery_config = get_discovery_config()
@@ -1703,6 +1705,12 @@ class StockAnalysisPipeline:
             FundamentalFactor(),
             PopularityFactor(),
             HotMoneyFactor(),
+            NorthboundFactor(),
+            InstitutionHoldFactor(),
+            ProfitForecastFactor(),
+            PerformanceFactor(),
+            BuybackFactor(),
+            InsiderBuyFactor(),
         ])
 
         results = engine.discover(mode="postmarket")
@@ -1716,6 +1724,11 @@ class StockAnalysisPipeline:
                 "score": r.score,
                 "factor_scores": dict(r.factor_scores),
                 "reasons": list(r.reasons),
+                "buy_price_low": getattr(r, "buy_price_low", None),
+                "buy_price_high": getattr(r, "buy_price_high", None),
+                "stop_loss": getattr(r, "stop_loss", None),
+                "take_profit_1": getattr(r, "take_profit_1", None),
+                "take_profit_2": getattr(r, "take_profit_2", None),
             }
             self._factor_signals_cache[r.stock_code] = signals
 
@@ -1769,6 +1782,8 @@ class StockAnalysisPipeline:
                         MoneyFlowFactor, MarginFactor, ChipFactor,
                         TechnicalFactor, LimitFactor,
                         FundamentalFactor, PopularityFactor, HotMoneyFactor,
+                        NorthboundFactor, InstitutionHoldFactor, ProfitForecastFactor,
+                        PerformanceFactor, BuybackFactor, InsiderBuyFactor,
                     )
 
                     discovery_config = get_discovery_config()
@@ -1786,6 +1801,12 @@ class StockAnalysisPipeline:
                         FundamentalFactor(),
                         PopularityFactor(),
                         HotMoneyFactor(),
+                        NorthboundFactor(),
+                        InstitutionHoldFactor(),
+                        ProfitForecastFactor(),
+                        PerformanceFactor(),
+                        BuybackFactor(),
+                        InsiderBuyFactor(),
                     ])
 
                     discovered = engine.discover(mode="postmarket")
@@ -1798,6 +1819,8 @@ class StockAnalysisPipeline:
                             len(discovered_codes),
                             ", ".join(discovered_codes),
                         )
+                        # 生成唯一发现轮次 ID（关联 Pipeline 分析与回测结果）
+                        discovery_run_id = str(uuid.uuid4())[:8]
                         # 落盘发现报告到 discovery_reports/
                         try:
                             import json
@@ -1807,14 +1830,34 @@ class StockAnalysisPipeline:
                             reports_dir = Path(__file__).resolve().parent.parent.parent / "discovery_reports"
                             reports_dir.mkdir(parents=True, exist_ok=True)
                             date_str = date.today().strftime('%Y%m%d')
+
+                            # 数据指纹：若与已有文件相同则跳过报告写入（数据未变，不覆盖更好的新发现）
+                            json_file = reports_dir / f"postmarket_{date_str}_topn.json"
+                            new_hash = engine._calc_factor_data_hash(
+                                getattr(engine, '_factor_data_cache', {})
+                            ) if hasattr(engine, '_calc_factor_data_hash') else ""
+                            existing_hash = ""
+                            if json_file.exists():
+                                try:
+                                    existing = json.loads(json_file.read_text(encoding="utf-8"))
+                                    existing_hash = existing[0].get("data_hash", "") if existing else ""
+                                except Exception:
+                                    pass
+
                             filepath = reports_dir / f"postmarket_{date_str}.md"
-                            filepath.write_text(report, encoding="utf-8")
-                            logger.info("[Discovery] 发现报告已保存: %s", filepath)
-                            # 同时保存结构化 JSON
+                            if existing_hash != new_hash:
+                                filepath.write_text(report, encoding="utf-8")
+                                logger.info("[Discovery] 发现报告已保存: %s", filepath)
+                            else:
+                                logger.info("[Discovery] 数据未变化，跳过报告写入（hash=%s）", new_hash)
+
+                            # 同时保存完整结构化 JSON（包含 discovery_run_id，保留所有候选股用于回测复盘）
                             topn = []
                             for i, r in enumerate(discovered, 1):
                                 topn.append({
                                     "rank": i,
+                                    "discovery_run_id": discovery_run_id,
+                                    "data_hash": new_hash,
                                     "stock_code": r.stock_code,
                                     "stock_name": r.stock_name,
                                     "score": r.score,
@@ -1827,9 +1870,22 @@ class StockAnalysisPipeline:
                                     "take_profit_1": getattr(r, "take_profit_1", None),
                                     "take_profit_2": getattr(r, "take_profit_2", None),
                                 })
-                            json_file = reports_dir / f"postmarket_{date_str}_topn.json"
                             json_file.write_text(json.dumps(topn, ensure_ascii=False, indent=2), encoding="utf-8")
                             logger.info("[Discovery] TopN JSON 已保存: %s", json_file)
+
+                            # 回测闭环：发现完成后自动触发回测，追加结果到报告
+                            # 不传 start_date/end_date，让 backtest 用默认 lookback_days=30 找有历史数据的日期
+                            try:
+                                from src.discovery.backtest import DiscoveryBacktest
+                                bt = DiscoveryBacktest(tushare_fetcher)
+                                summary = bt.compute(mode="postmarket")
+                                if summary and summary.trade_records:
+                                    bt_md = _format_backtest_summary_md(summary, date_str)
+                                    bt_file = reports_dir / f"postmarket_{date_str}_backtest.md"
+                                    bt_file.write_text(bt_md, encoding="utf-8")
+                                    logger.info("[Discovery] 回测报告已保存: %s", bt_file)
+                            except Exception as e:
+                                logger.debug("[Discovery] 回测执行失败: %s", e)
                         except Exception as e:
                             logger.debug("[Discovery] 保存报告失败: %s", e)
                         existing = set(stock_codes or [])
@@ -2321,3 +2377,45 @@ class StockAnalysisPipeline:
         if report_type == ReportType.BRIEF and hasattr(self.notifier, "generate_brief_report"):
             return self.notifier.generate_brief_report(results)
         return self.notifier.generate_dashboard_report(results)
+
+    @staticmethod
+    def _format_backtest_summary_md(summary, trade_date: str) -> str:
+        """格式化回测结果为 Markdown，用于追加到发现报告。"""
+        from src.discovery.backtest import BacktestSummary
+
+        lines = [
+            f"## 回测表现（{trade_date}）",
+            "",
+            "| 指标 | 值 |",
+            "|------|-----|",
+            f"| 初始资金 | {summary.initial_capital:,.0f} 元 |",
+            f"| 最终资金 | {summary.final_capital:,.0f} 元 |",
+            f"| 累计收益率 | {summary.cumulative_return*100:.2f}% |",
+            f"| 总盈利 | {summary.total_pnl:,.0f} 元 |",
+            f"| 胜率 | {summary.win_rate*100:.1f}% |",
+            f"| 交易次数 | {summary.total_trades} |",
+            f"| 交易天数 | {summary.total_days} |",
+            "",
+        ]
+
+        if summary.trade_records:
+            lines.append("### Top 收益个股")
+            lines.append("")
+            lines.append("| 股票 | 买入日期 | 买入价 | 卖出日期 | 卖出价 | 收益率 |")
+            lines.append("|------|----------|--------|----------|--------|--------|")
+
+            # 按收益率排序，取前5
+            sorted_trades = sorted(
+                summary.trade_records,
+                key=lambda t: t.return_pct,
+                reverse=True,
+            )
+            for t in sorted_trades[:5]:
+                lines.append(
+                    f"| {t.stock_name}({t.stock_code}) | {t.buy_date} | "
+                    f"{t.buy_price:.2f} | {t.sell_date} | {t.sell_price:.2f} | "
+                    f"{t.return_pct*100:.2f}% |"
+                )
+            lines.append("")
+
+        return "\n".join(lines)

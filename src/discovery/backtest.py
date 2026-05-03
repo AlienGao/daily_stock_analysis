@@ -85,7 +85,7 @@ class DiscoveryBacktest:
     def compute(
         self,
         mode: str = "intraday",
-        lookback_days: int = 60,
+        lookback_days: int = 30,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         initial_capital: float = _DEFAULT_INITIAL_CAPITAL,
@@ -94,7 +94,8 @@ class DiscoveryBacktest:
 
         Args:
             mode: "intraday" 或 "postmarket"
-            lookback_days: 默认回看天数（自然日），start_date 未指定时使用
+            lookback_days: 默认回看天数（自然日），start_date 未指定时使用。
+                最小需要 2 天（盘中）或 3 天（盘后）才能完成一次完整交易。
             start_date: 开始日期 YYYYMMDD（可选，优先于 lookback_days）
             end_date: 结束日期 YYYYMMDD（可选，默认今天）
             initial_capital: 初始资金
@@ -160,10 +161,16 @@ class DiscoveryBacktest:
                     all_codes.add(code)
         self._prefetch_prices(list(all_codes), trading_days)
 
+        summary: Optional[BacktestSummary]
         if mode == "intraday":
-            return self._compute_intraday(picks_by_date, trading_days, initial_capital)
+            summary = self._compute_intraday(picks_by_date, trading_days, initial_capital)
         else:
-            return self._compute_postmarket(picks_by_date, trading_days, initial_capital)
+            summary = self._compute_postmarket(picks_by_date, trading_days, initial_capital)
+
+        if summary:
+            self._save_backtest_summary(summary)
+
+        return summary
 
     # ------------------------------------------------------------------
     # Intraday: 当日 close 买入 → 次日 close 卖出
@@ -468,4 +475,95 @@ class DiscoveryBacktest:
         day_cache = self._price_cache.get(date_str, {})
         stock_cache = day_cache.get(code, {})
         val = stock_cache.get(field)
-        return float(val) if val is not None else None
+        if val is not None:
+            return float(val)
+
+        # Fallback: 如果当天缺 open/close，尝试前一天 close
+        if field in ("open", "close") and self._fetcher is not None:
+            try:
+                from datetime import timedelta as _td
+                prev_str = (date(int(date_str[:4]), int(date_str[4:6]), int(date_str[6:8])) - _td(days=1)).strftime("%Y%m%d")
+                prev_cache = self._price_cache.get(prev_str, {}).get(code, {})
+                prev_val = prev_cache.get("close")
+                if prev_val is not None:
+                    return float(prev_val)
+            except Exception:
+                pass
+
+        return None
+
+    # ------------------------------------------------------------------
+    # Backtest summary persistence
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _get_summary_file(mode: str) -> Path:
+        return _REPORTS_DIR / f"{mode}_backtest_summary.json"
+
+    def _save_backtest_summary(self, summary: BacktestSummary) -> None:
+        """追加回测结果到汇总文件。"""
+        _REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+        summary_file = self._get_summary_file(summary.mode)
+
+        history = []
+        if summary_file.exists():
+            try:
+                history = json.loads(summary_file.read_text(encoding="utf-8"))
+                if not isinstance(history, list):
+                    history = []
+            except Exception:
+                history = []
+
+        entry = {
+            "date": date.today().strftime("%Y%m%d"),
+            "mode": summary.mode,
+            "cumulative_return": summary.cumulative_return,
+            "win_rate": summary.win_rate,
+            "total_trades": summary.total_trades,
+            "total_days": summary.total_days,
+            "final_capital": summary.final_capital,
+            "initial_capital": summary.initial_capital,
+        }
+
+        updated = False
+        for i, e in enumerate(history):
+            if e.get("date") == entry["date"] and e.get("mode") == entry["mode"]:
+                history[i] = entry
+                updated = True
+                break
+        if not updated:
+            history.append(entry)
+
+        summary_file.write_text(
+            json.dumps(history, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+        self._check_alerts(history[-5:])
+
+    def _check_alerts(self, recent_entries: List[Dict]) -> None:
+        """连续 3 天胜率 < 50% 或最大回撤 > 10% 时告警。"""
+        if len(recent_entries) < 3:
+            return
+
+        win_rates = [e.get("win_rate", 0) for e in recent_entries]
+        returns = [e.get("cumulative_return", 0) for e in recent_entries]
+
+        if all(w < 0.5 for w in win_rates):
+            logger.warning(
+                "[Backtest] ⚠️ 告警：近 %d 天胜率持续低于 50%%: %s",
+                len(win_rates),
+                [f"{w*100:.0f}%" for w in win_rates],
+            )
+
+        peak = 0.0
+        for r in returns:
+            if r > peak:
+                peak = r
+            drawdown = peak - r if peak > 0 else 0
+            if drawdown > 0.10:
+                logger.warning(
+                    "[Backtest] ⚠️ 告警：检测到超过 10%% 回撤 (当前 %.2f%%)",
+                    drawdown * 100,
+                )
+                return
