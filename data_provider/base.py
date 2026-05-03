@@ -554,6 +554,14 @@ class DataFetcherManager:
                 return fetcher
         return None
 
+    def _get_akshare_fetcher(self):
+        """获取 AkshareFetcher 实例（用于 Akshare 专有数据接口）。"""
+        from .akshare_fetcher import AkshareFetcher
+        for fetcher in self._get_fetchers_snapshot():
+            if isinstance(fetcher, AkshareFetcher):
+                return fetcher
+        return None
+
     def _get_cached_stock_name(self, stock_code: str) -> Optional[str]:
         self._ensure_concurrency_guards()
         with self._stock_name_cache_lock:

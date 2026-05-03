@@ -73,9 +73,10 @@ class StockDiscoveryEngine:
             print(f"{r.stock_code} {r.stock_name}: {r.score:.1f}")
     """
 
-    def __init__(self, config: DiscoveryConfig, tushare_fetcher=None):
+    def __init__(self, config: DiscoveryConfig, tushare_fetcher=None, akshare_fetcher=None):
         self.config = config
         self.tushare_fetcher = tushare_fetcher
+        self.akshare_fetcher = akshare_fetcher
         self._factors: Dict[str, BaseFactor] = {}
         self._stock_names: Dict[str, str] = {}
 
@@ -162,7 +163,11 @@ class StockDiscoveryEngine:
         for factor in available:
             try:
                 logger.debug(f"[Discovery] 拉取因子数据: {factor.name}")
-                df = factor.fetch_data(trade_date, tushare_fetcher=self.tushare_fetcher)
+                df = factor.fetch_data(
+                    trade_date,
+                    tushare_fetcher=self.tushare_fetcher,
+                    akshare_fetcher=self.akshare_fetcher,
+                )
                 if df is not None and not df.empty:
                     factor_data[factor.name] = df
                     logger.info(

@@ -1676,7 +1676,7 @@ class StockAnalysisPipeline:
             )
 
     def _prepare_factor_signals_cache(
-        self, stock_codes: List[str], tushare_fetcher
+        self, stock_codes: List[str], tushare_fetcher, akshare_fetcher=None
     ) -> None:
         """Run discovery engine once at batch level, cache per-stock factor scores.
 
@@ -1688,10 +1688,11 @@ class StockAnalysisPipeline:
         from src.discovery.factors import (
             MoneyFlowFactor, MarginFactor, ChipFactor,
             TechnicalFactor, LimitFactor,
+            FundamentalFactor, PopularityFactor, HotMoneyFactor,
         )
 
         discovery_config = get_discovery_config()
-        engine = StockDiscoveryEngine(discovery_config, tushare_fetcher)
+        engine = StockDiscoveryEngine(discovery_config, tushare_fetcher, akshare_fetcher)
         # Register all postmarket factors (same as auto-discovery)
         engine.register_factors([
             MoneyFlowFactor(),
@@ -1699,6 +1700,9 @@ class StockAnalysisPipeline:
             ChipFactor(),
             TechnicalFactor(),
             LimitFactor(),
+            FundamentalFactor(),
+            PopularityFactor(),
+            HotMoneyFactor(),
         ])
 
         results = engine.discover(mode="postmarket")
@@ -1746,15 +1750,17 @@ class StockAnalysisPipeline:
             and os.getenv("DISCOVERY_FACTOR_SIGNALS_ENABLED", "true").strip().lower() in ("true", "1", "yes", "on")
         ):
             tushare_fetcher = self.fetcher_manager._get_tushare_fetcher()
+            akshare_fetcher = self.fetcher_manager._get_akshare_fetcher()
             if tushare_fetcher and tushare_fetcher.is_available():
                 try:
-                    self._prepare_factor_signals_cache(stock_codes, tushare_fetcher)
+                    self._prepare_factor_signals_cache(stock_codes, tushare_fetcher, akshare_fetcher)
                 except Exception as e:
                     logger.warning("[FactorSignals] 因子信号缓存构建失败（不阻断主流程）: %s", e)
 
         # Auto-discovery: 盘后深度扫描，自动发现高潜力股票并入分析列表
         if getattr(self.config, 'auto_discover', False) and not dry_run:
             tushare_fetcher = self.fetcher_manager._get_tushare_fetcher()
+            akshare_fetcher = self.fetcher_manager._get_akshare_fetcher()
             if tushare_fetcher and tushare_fetcher.is_available():
                 try:
                     from src.discovery.config import get_discovery_config
@@ -1762,16 +1768,24 @@ class StockAnalysisPipeline:
                     from src.discovery.factors import (
                         MoneyFlowFactor, MarginFactor, ChipFactor,
                         TechnicalFactor, LimitFactor,
+                        FundamentalFactor, PopularityFactor, HotMoneyFactor,
                     )
 
                     discovery_config = get_discovery_config()
-                    engine = StockDiscoveryEngine(discovery_config, tushare_fetcher)
+                    engine = StockDiscoveryEngine(
+                        discovery_config,
+                        tushare_fetcher,
+                        akshare_fetcher,
+                    )
                     engine.register_factors([
                         MoneyFlowFactor(),
                         MarginFactor(),
                         ChipFactor(),
                         TechnicalFactor(),
                         LimitFactor(),
+                        FundamentalFactor(),
+                        PopularityFactor(),
+                        HotMoneyFactor(),
                     ])
 
                     discovered = engine.discover(mode="postmarket")

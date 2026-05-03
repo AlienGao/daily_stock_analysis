@@ -26,6 +26,9 @@ from src.discovery.factors.margin_factor import MarginFactor
 from src.discovery.factors.chip_factor import ChipFactor
 from src.discovery.factors.technical_factor import TechnicalFactor
 from src.discovery.factors.limit_factor import LimitFactor
+from src.discovery.factors.fundamental_factor import FundamentalFactor
+from src.discovery.factors.popularity_factor import PopularityFactor
+from src.discovery.factors.hot_money_factor import HotMoneyFactor
 
 __all__ = [
     "BaseFactor",
@@ -39,6 +42,9 @@ __all__ = [
     "ChipFactor",
     "TechnicalFactor",
     "LimitFactor",
+    "FundamentalFactor",
+    "PopularityFactor",
+    "HotMoneyFactor",
 ]
 
 # ---------------------------------------------------------------------------
@@ -48,7 +54,8 @@ __all__ = [
 _KNOWN_MODULES = {
     "base", "sector_factor", "ma_entry_factor", "momentum_factor",
     "rebound_factor", "money_flow_factor", "margin_factor", "chip_factor",
-    "technical_factor", "limit_factor",
+    "technical_factor", "limit_factor", "fundamental_factor", "popularity_factor",
+    "hot_money_factor",
 }
 
 _factors_dir = Path(__file__).resolve().parent

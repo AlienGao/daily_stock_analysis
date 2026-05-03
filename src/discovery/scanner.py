@@ -294,18 +294,20 @@ class IntradayScanner:
             logger.warning("[Scanner] 保存盘中报告失败: %s", e)
 
 
-def run_intraday_scan(config: DiscoveryConfig, tushare_fetcher=None) -> None:
+def run_intraday_scan(config: DiscoveryConfig, tushare_fetcher=None, akshare_fetcher=None) -> None:
     """一键启动盘中扫描（注册全部盘中因子）。"""
     from src.discovery.factors import (
         SectorFactor, MaEntryFactor, MomentumFactor, ReboundFactor,
+        PopularityFactor,
     )
 
-    engine = StockDiscoveryEngine(config, tushare_fetcher)
+    engine = StockDiscoveryEngine(config, tushare_fetcher, akshare_fetcher)
     engine.register_factors([
         SectorFactor(),
         MaEntryFactor(),
         MomentumFactor(),
         ReboundFactor(),
+        PopularityFactor(),
     ])
 
     scanner = IntradayScanner(config, engine)

@@ -1354,10 +1354,12 @@ def main() -> int:
 
             discovery_config = get_discovery_config()
             from data_provider.tushare_fetcher import TushareFetcher
+            from data_provider.akshare_fetcher import AkshareFetcher
             tushare_fetcher = TushareFetcher()
+            akshare_fetcher = AkshareFetcher()
             if not tushare_fetcher.is_available():
                 logger.warning("Tushare 不可用，盘中扫描可能无法获取数据")
-            run_intraday_scan(discovery_config, tushare_fetcher)
+            run_intraday_scan(discovery_config, tushare_fetcher, akshare_fetcher)
             return 0
 
         # 模式: 仅股票发现
@@ -1368,22 +1370,28 @@ def main() -> int:
             from src.discovery.factors import (
                 MoneyFlowFactor, MarginFactor, ChipFactor,
                 TechnicalFactor, LimitFactor,
+                FundamentalFactor, PopularityFactor, HotMoneyFactor,
             )
             from data_provider.tushare_fetcher import TushareFetcher
+            from data_provider.akshare_fetcher import AkshareFetcher
 
             discovery_config = get_discovery_config()
             tushare_fetcher = TushareFetcher()
+            akshare_fetcher = AkshareFetcher()
             if not tushare_fetcher.is_available():
                 logger.error("Tushare 不可用，无法运行股票发现")
                 return 1
 
-            engine = StockDiscoveryEngine(discovery_config, tushare_fetcher)
+            engine = StockDiscoveryEngine(discovery_config, tushare_fetcher, akshare_fetcher)
             engine.register_factors([
                 MoneyFlowFactor(),
                 MarginFactor(),
                 ChipFactor(),
                 TechnicalFactor(),
                 LimitFactor(),
+                FundamentalFactor(),
+                PopularityFactor(),
+                HotMoneyFactor(),
             ])
 
             results = engine.discover(mode="postmarket")
