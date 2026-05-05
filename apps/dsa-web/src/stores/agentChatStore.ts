@@ -26,12 +26,15 @@ export interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  skills?: string[];
   skill?: string;
+  skillNames?: string[];
   skillName?: string;
   thinkingSteps?: ProgressStep[];
 }
 
 export interface StreamMeta {
+  skillNames?: string[];
   skillName?: string;
 }
 
@@ -229,32 +232,26 @@ export const useAgentChatStore = create<AgentChatState & AgentChatActions>((set,
   },
 
   startStream: async (payload, meta) => {
-    const {
-      sessionId: storeSessionId,
-      abortControllersBySession,
-      loadingBySession,
-    } = get();
+    if (get().loading) return;
+    const { abortController: prevAc, sessionId: storeSessionId } = get();
+    prevAc?.abort();
 
     const ac = new AbortController();
+    set({ abortController: ac });
+
     const streamSessionId = payload.session_id || storeSessionId;
-    if (loadingBySession[streamSessionId]) return;
-    abortControllersBySession[streamSessionId]?.abort();
-
-    set((s) => ({
-      abortController: s.sessionId === streamSessionId ? ac : s.abortController,
-      abortControllersBySession: {
-        ...s.abortControllersBySession,
-        [streamSessionId]: ac,
-      },
-    }));
-
-    const skillName = meta?.skillName ?? '通用';
+    const skillNames = meta?.skillNames?.length
+      ? meta.skillNames
+      : [meta?.skillName ?? '通用'];
+    const skillName = skillNames.join('、');
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
       content: payload.message,
+      skills: payload.skills,
       skill: payload.skills?.[0],
+      skillNames,
       skillName,
     };
 
@@ -371,7 +368,9 @@ export const useAgentChatStore = create<AgentChatState & AgentChatActions>((set,
               id: (Date.now() + 1).toString(),
               role: 'assistant',
               content: finalContent || '（无内容）',
+              skills: payload.skills,
               skill: payload.skills?.[0],
+              skillNames,
               skillName,
               thinkingSteps: [...currentProgressSteps],
             },
