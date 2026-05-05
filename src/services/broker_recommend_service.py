@@ -671,6 +671,101 @@ class BrokerRecommendService:
             "stock_returns": stock_returns_list,
         }
 
+    def compute_ytd_backtest(self, year: str, top_n: int = 5) -> Dict[str, Any]:
+        """年初至今累计回测：跨月复合月度回测结果。
+
+        遍历年内所有月份，将每个月的券商组合累计收益跨月乘法复合，
+        daily_returns 拼接为连续曲线。月度数据命中 SQLite 缓存，无额外 Tushare 调用。
+        """
+        available_months = self.get_available_months()
+        year_months = sorted([m for m in available_months if str(m).startswith(str(year))])
+
+        if not year_months:
+            return {"error": f"Year {year} has no data"}
+
+        from datetime import datetime
+        today = datetime.now().strftime("%Y%m%d")
+        broker_ytd: Dict[str, Dict[str, Any]] = {}
+
+        for month in year_months:
+            # 优先从存储读取，若 sell_date 在未来则跳过（当月未结束、无完整交易数据）
+            stored = self.db.get_broker_backtest(month)
+            if stored and stored.get("brokers") and stored.get("sell_date", "99991231") <= today:
+                bt = stored
+            elif stored and stored.get("sell_date", "99991231") > today:
+                logger.info(f"[BrokerRecommend] YTD 跳过未完成月份 {month}")
+                continue
+            else:
+                bt = self.compute_backtest(month, top_n_per_broker=10)
+
+            if "error" in bt:
+                continue
+
+            for b in bt.get("brokers", []):
+                broker_name = b["broker"]
+                if broker_name not in broker_ytd:
+                    broker_ytd[broker_name] = {
+                        "broker": broker_name,
+                        "active_months": 0,
+                        "cumulative_return": 0.0,
+                        "_prev_cum": 0.0,
+                        "daily_returns": [],
+                        "monthly_returns": [],
+                    }
+
+                entry = broker_ytd[broker_name]
+                entry["active_months"] += 1
+
+                prev_factor = 1.0 + entry["_prev_cum"]
+                for dr in b.get("daily_returns", []):
+                    month_day_cum = dr.get("cumulative", 0.0) or 0.0
+                    ytd_cum = prev_factor * (1.0 + month_day_cum) - 1.0
+                    entry["daily_returns"].append({
+                        "date": dr["date"],
+                        "cumulative": round(ytd_cum, 4),
+                    })
+
+                month_broker_ret = b.get("cumulative_return", 0.0) or 0.0
+                entry["_prev_cum"] = (
+                    (1.0 + entry["_prev_cum"]) * (1.0 + month_broker_ret) - 1.0
+                )
+                entry["cumulative_return"] = round(entry["_prev_cum"], 4)
+
+                entry["monthly_returns"].append({
+                    "month": month,
+                    "cumulative_return": round(month_broker_ret, 4),
+                    "stock_count": b.get("stock_count", 0),
+                    "win_rate": round(b.get("win_rate", 0.0), 4),
+                })
+
+        sorted_brokers = sorted(
+            broker_ytd.values(), key=lambda x: x["cumulative_return"], reverse=True,
+        )[:top_n]
+
+        all_dates: set = set()
+        for b in sorted_brokers:
+            del b["_prev_cum"]
+            prev_cum = 0.0
+            for dr in b["daily_returns"]:
+                cum = dr["cumulative"]
+                dr["return"] = round(cum - prev_cum, 4)
+                prev_cum = cum
+                all_dates.add(dr["date"])
+
+        start_date = min(all_dates) if all_dates else f"{year}0101"
+        end_date = max(all_dates) if all_dates else f"{year}1231"
+
+        logger.info(f"[BrokerRecommend] YTD {year}: {len(broker_ytd)} brokers, "
+                    f"top {len(sorted_brokers)}, {len(year_months)} months")
+
+        return {
+            "year": str(year),
+            "start_date": start_date,
+            "end_date": end_date,
+            "total_brokers": len(broker_ytd),
+            "brokers": sorted_brokers,
+        }
+
     def _merge_broker_daily_returns(
         self, stock_returns: Dict[str, List[Dict[str, Any]]], trading_days: List[str]
     ) -> List[Dict[str, Any]]:

@@ -2,7 +2,7 @@ import type React from 'react';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import dayjs, { type Dayjs } from 'dayjs';
-import { DatePicker, Table } from 'antd';
+import { DatePicker, Table, Tabs } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import type { ColumnsType } from 'antd/es/table';
 import { TrendingUp, RefreshCw, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
@@ -13,10 +13,12 @@ import {
   fetchMonth,
   getBacktest,
   getMonthlyEnrichment,
+  getYtdBacktest,
   type BrokerRecommendResponse,
   type BrokerRecommendItem,
   type BrokerBacktestResponse,
   type EnrichmentResponse,
+  type YtdBacktestResponse,
 } from '../api/brokerRecommend';
 
 const BROKER_COLORS = [
@@ -123,6 +125,9 @@ const BrokerRecommendPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'broker' | 'stock'>('broker');
   const [visibleChartBrokers, setVisibleChartBrokers] = useState<Set<string>>(new Set());
   const [expandedStock, setExpandedStock] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>('monthly');
+  const [ytdData, setYtdData] = useState<YtdBacktestResponse | null>(null);
+  const [ytdLoading, setYtdLoading] = useState(false);
 
   const monthStr = selectedMonth.format('YYYYMM');
 
@@ -178,6 +183,17 @@ const BrokerRecommendPage: React.FC = () => {
     }
   }, [backtestData]);
 
+  // Load YTD data when switching to YTD tab
+  useEffect(() => {
+    if (activeTab !== 'ytd' || ytdData) return;
+    const currentYear = String(dayjs().year());
+    setYtdLoading(true);
+    getYtdBacktest(currentYear, 5)
+      .then(setYtdData)
+      .catch((e) => console.error('Failed to load YTD:', e))
+      .finally(() => setYtdLoading(false));
+  }, [activeTab, ytdData]);
+
   const toggleBroker = (broker: string) => {
     setExpandedBrokers(prev => {
       const next = new Set(prev);
@@ -213,6 +229,24 @@ const BrokerRecommendPage: React.FC = () => {
       return entry;
     });
   })();
+
+  // YTD chart data
+  const ytdChartData = useMemo(() => {
+    if (!ytdData) return [];
+    const dateSet = new Set<string>();
+    ytdData.brokers.forEach(b => {
+      b.daily_returns.forEach(d => dateSet.add(d.date));
+    });
+    const dates = Array.from(dateSet).sort();
+    return dates.map(date => {
+      const entry: Record<string, string | number | undefined> = { date: fmtDate(date) };
+      ytdData.brokers.forEach(b => {
+        const dr = b.daily_returns.find(d => d.date === date);
+        entry[b.broker] = dr?.cumulative;
+      });
+      return entry;
+    });
+  }, [ytdData]);
 
   // Build deduped stock rows with enrichment
   const stockRows = useMemo((): StockRow[] => {
@@ -350,7 +384,15 @@ const BrokerRecommendPage: React.FC = () => {
 
   return (
     <AppPage>
-      <div className="space-y-4">
+      <Tabs
+        activeKey={activeTab}
+        onChange={(key) => setActiveTab(key)}
+        items={[
+          {
+            key: 'monthly',
+            label: '月度金股',
+            children: (
+              <div className="space-y-4 pt-2">
         {/* Controls */}
         <Card className="p-4">
           <div className="flex flex-wrap items-center gap-3">
@@ -691,7 +733,168 @@ const BrokerRecommendPage: React.FC = () => {
             description="点击「获取当月数据」从 Tushare 抓取券商金股推荐"
           />
         )}
-      </div>
+              </div>
+            ),
+          },
+          {
+            key: 'ytd',
+            label: '年初至今',
+            children: (
+              <div className="space-y-4 pt-2">
+        {/* YTD Loading */}
+        {ytdLoading && (
+          <Card className="p-4 text-center text-sm text-tertiary-text">
+            <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
+            加载中...
+          </Card>
+        )}
+
+        {/* YTD Overview */}
+        {ytdData && !ytdLoading && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Card className="p-3 text-center">
+              <div className="text-lg font-bold">{ytdData.total_brokers}</div>
+              <div className="text-xs text-secondary-text">券商总数</div>
+            </Card>
+            <Card className="p-3 text-center">
+              <div className="text-lg font-bold">{ytdData.brokers.length}</div>
+              <div className="text-xs text-secondary-text">Top 券商</div>
+            </Card>
+            <Card className="p-3 text-center">
+              <div className={`text-lg font-bold ${(ytdData.brokers[0]?.cumulative_return ?? 0) >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                {fmtPct(ytdData.brokers[0]?.cumulative_return)}
+              </div>
+              <div className="text-xs text-secondary-text">最优 YTD 收益</div>
+            </Card>
+            <Card className="p-3 text-center">
+              <div className="text-lg font-bold text-sm">
+                {fmtDate(ytdData.start_date).slice(0, 7)} ~ {fmtDate(ytdData.end_date).slice(5)}
+              </div>
+              <div className="text-xs text-secondary-text">回测区间</div>
+            </Card>
+          </div>
+        )}
+
+        {/* YTD Chart */}
+        {ytdData && ytdChartData.length > 0 && !ytdLoading && (
+          <Card className="p-4">
+            <div className="text-sm font-medium mb-2">年初至今 Top 5 券商累计收益</div>
+            <div className="flex flex-wrap gap-x-3 gap-y-1 mb-1">
+              {ytdData.brokers.map((b, i) => (
+                <div key={b.broker} className="inline-flex items-center gap-1 text-xs">
+                  <span
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ backgroundColor: BROKER_COLORS[i % BROKER_COLORS.length] }}
+                  />
+                  <span className="text-secondary-text">{b.broker}</span>
+                  <span className={`font-medium ${b.cumulative_return >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                    {fmtPct(b.cumulative_return)}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <ResponsiveContainer width="100%" height={280}>
+              <LineChart data={ytdChartData} margin={{ top: 4, right: 0, bottom: 6, left: -20 }}>
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9ca3af' }} stroke="#6b7280" />
+                <YAxis
+                  tick={{ fontSize: 10, fill: '#9ca3af' }}
+                  stroke="#6b7280"
+                  tickFormatter={v => `${(v * 100).toFixed(0)}%`}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <ReferenceLine y={0} stroke="#4b5563" strokeWidth={1} strokeDasharray="4 4" />
+                {ytdData.brokers.map((b, i) => (
+                  <Line
+                    key={b.broker}
+                    type="monotone"
+                    dataKey={String(b.broker)}
+                    stroke={BROKER_COLORS[i % BROKER_COLORS.length]}
+                    strokeWidth={1.5}
+                    dot={false}
+                    connectNulls
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </Card>
+        )}
+
+        {/* YTD Broker Table */}
+        {ytdData && !ytdLoading && (
+          <Card className="p-4">
+            <div className="text-sm font-medium mb-3">券商 YTD 表现</div>
+            <Table
+              dataSource={ytdData.brokers.map((b, i) => ({
+                key: b.broker,
+                rank: i + 1,
+                broker: b.broker,
+                cumulative_return: b.cumulative_return,
+                active_months: b.active_months,
+                monthly_returns: b.monthly_returns,
+                colorIdx: i,
+              }))}
+              columns={[
+                { title: '#', dataIndex: 'rank', key: 'rank', width: 40, render: (v: number) => <span className="text-xs text-tertiary-text">{v}</span> },
+                { title: '券商', dataIndex: 'broker', key: 'broker', render: (v: string, _: any, i: number) => (
+                  <span className="inline-flex items-center gap-2 text-xs">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: BROKER_COLORS[i % BROKER_COLORS.length] }} />
+                    {v}
+                  </span>
+                )},
+                { title: 'YTD 累计收益', dataIndex: 'cumulative_return', key: 'cumulative_return', render: (v: number) => (
+                  <span className={`text-xs font-medium ${v >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>{fmtPct(v)}</span>
+                )},
+                { title: '活跃月份', dataIndex: 'active_months', key: 'active_months', render: (v: number) => <span className="text-xs text-tertiary-text">{v}</span> },
+              ]}
+              size="small"
+              pagination={false}
+              expandable={{
+                expandedRowRender: (record: any) => {
+                  const monthly = record.monthly_returns || [];
+                  if (!monthly.length) return <span className="text-xs text-tertiary-text">暂无月度明细</span>;
+                  return (
+                    <Table
+                      dataSource={monthly.map((mr: any) => ({
+                        key: mr.month,
+                        month: mr.month,
+                        cumulative_return: mr.cumulative_return,
+                        stock_count: mr.stock_count,
+                        win_rate: mr.win_rate,
+                      }))}
+                      columns={[
+                        { title: '月份', dataIndex: 'month', key: 'month', width: 100, render: (v: string) => <span className="text-xs">{fmtDate(v).slice(0, 7)}</span> },
+                        { title: '月收益', dataIndex: 'cumulative_return', key: 'cumulative_return', render: (v: number) => (
+                          <span className={`text-xs font-medium ${v >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>{fmtPct(v)}</span>
+                        )},
+                        { title: '推荐股数', dataIndex: 'stock_count', key: 'stock_count', render: (v: number) => <span className="text-xs text-tertiary-text">{v}</span> },
+                        { title: '胜率', dataIndex: 'win_rate', key: 'win_rate', render: (v: number) => (
+                          <span className={`text-xs font-medium ${v >= 0.5 ? 'text-red-400' : 'text-emerald-400'}`}>{fmtPct(v)}</span>
+                        )},
+                      ]}
+                      size="small"
+                      pagination={false}
+                      showHeader={false}
+                    />
+                  );
+                },
+              }}
+            />
+          </Card>
+        )}
+
+        {/* YTD Empty */}
+        {!ytdData && !ytdLoading && (
+          <EmptyState
+            icon={<TrendingUp className="h-8 w-8" />}
+            title="暂无年初至今数据"
+            description="请先确保当前年份有月度金股数据"
+          />
+        )}
+              </div>
+            ),
+          },
+        ]}
+      />
     </AppPage>
   );
 };

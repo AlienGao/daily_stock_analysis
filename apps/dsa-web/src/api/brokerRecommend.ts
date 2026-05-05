@@ -110,6 +110,29 @@ export type BrokerBacktestResponse = {
   stock_returns: StockReturnItem[];
 };
 
+export type YtdMonthlyReturn = {
+  month: string;
+  cumulative_return: number;
+  stock_count: number;
+  win_rate: number;
+};
+
+export type YtdBrokerItem = {
+  broker: string;
+  cumulative_return: number;
+  active_months: number;
+  daily_returns: BrokerDailyReturn[];
+  monthly_returns: YtdMonthlyReturn[];
+};
+
+export type YtdBacktestResponse = {
+  year: string;
+  start_date: string;
+  end_date: string;
+  total_brokers: number;
+  brokers: YtdBrokerItem[];
+};
+
 export async function getAvailableMonths(): Promise<string[]> {
   const resp = await apiClient.get<string[]>('/api/v1/broker-recommend/months');
   return resp.data;
@@ -149,6 +172,17 @@ export async function getMonthlyEnrichment(
 ): Promise<EnrichmentResponse> {
   const resp = await apiClient.get<EnrichmentResponse>(
     `/api/v1/broker-recommend/${month}/enrichment`
+  );
+  return resp.data;
+}
+
+export async function getYtdBacktest(
+  year?: string,
+  topN: number = 5
+): Promise<YtdBacktestResponse> {
+  const resp = await apiClient.get<YtdBacktestResponse>(
+    '/api/v1/broker-recommend/ytd',
+    { params: { year, top_n: topN } }
   );
   return resp.data;
 }

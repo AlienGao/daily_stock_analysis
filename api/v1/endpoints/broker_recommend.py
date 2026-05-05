@@ -116,11 +116,89 @@ class BrokerBacktestResponse(BaseModel):
     stock_returns: List[StockReturnItem]
 
 
+class YtdMonthlyReturn(BaseModel):
+    """券商在单个月份的回测表现。"""
+    month: str
+    cumulative_return: float
+    stock_count: int
+    win_rate: float
+
+
+class YtdBrokerItem(BaseModel):
+    """YTD 单家券商的跨月复合表现。"""
+    broker: str
+    cumulative_return: float
+    active_months: int
+    daily_returns: List[BrokerDailyReturn]
+    monthly_returns: List[YtdMonthlyReturn]
+
+
+class YtdBacktestResponse(BaseModel):
+    """年初至今回测响应：Top-N 券商跨月复合累计收益曲线。"""
+    year: str
+    start_date: str
+    end_date: str
+    total_brokers: int
+    brokers: List[YtdBrokerItem]
+
+
 @router.get("/months", response_model=List[str])
 def get_available_months() -> List[str]:
     """获取有券商金股数据的月份列表。"""
     service = BrokerRecommendService()
     return service.get_available_months()
+
+
+@router.get("/ytd", response_model=YtdBacktestResponse)
+def get_ytd_backtest(
+    year: Optional[str] = Query(default=None, description="4-digit year, defaults to current year"),
+    top_n: int = Query(default=5, ge=1, le=50, description="Number of top brokers"),
+) -> YtdBacktestResponse:
+    """年初至今累计回测：跨月复合 Top-N 券商组合收益。"""
+    from datetime import datetime
+
+    if year is None:
+        year = str(datetime.now().year)
+
+    service = BrokerRecommendService()
+    result = service.compute_ytd_backtest(year, top_n=top_n)
+
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+
+    brokers = [
+        YtdBrokerItem(
+            broker=b["broker"],
+            cumulative_return=b["cumulative_return"],
+            active_months=b["active_months"],
+            daily_returns=[
+                BrokerDailyReturn(
+                    date=dr["date"],
+                    daily_return=dr.get("return"),
+                    cumulative=dr.get("cumulative"),
+                )
+                for dr in b.get("daily_returns", [])
+            ],
+            monthly_returns=[
+                YtdMonthlyReturn(
+                    month=mr["month"],
+                    cumulative_return=mr["cumulative_return"],
+                    stock_count=mr["stock_count"],
+                    win_rate=mr["win_rate"],
+                )
+                for mr in b.get("monthly_returns", [])
+            ],
+        )
+        for b in result.get("brokers", [])
+    ]
+
+    return YtdBacktestResponse(
+        year=result["year"],
+        start_date=result["start_date"],
+        end_date=result["end_date"],
+        total_brokers=result["total_brokers"],
+        brokers=brokers,
+    )
 
 
 @router.get("/{month}", response_model=BrokerRecommendResponse)
