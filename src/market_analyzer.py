@@ -545,26 +545,119 @@ Focus on index trend, liquidity, and sector rotation to shape the next-session t
         if not has_stats:
             return ""
         if self._get_review_language() == "en":
-            return (
-                f"> 📈 Advancers **{overview.up_count}** / Decliners **{overview.down_count}** / "
-                f"Flat **{overview.flat_count}** | "
-                f"Limit-up **{overview.limit_up_count}** / Limit-down **{overview.limit_down_count}** | "
-                f"Turnover **{overview.total_amount:.0f}** ({self._get_turnover_unit_label()})"
+            light = self.build_market_light_snapshot(overview)
+            return "\n".join(
+                [
+                    f"> **Market Light**: {light['status']} ({light['label']}) | "
+                    f"**{light['score']}/100** {self._build_temperature_bar(light['score'])}",
+                    f"> **Reasons**: {'; '.join(light['reasons'])}",
+                    f"> **Guidance**: {light['guidance']}",
+                    "",
+                    f"> 📈 Advancers **{overview.up_count}** / Decliners **{overview.down_count}** / "
+                    f"Flat **{overview.flat_count}** | "
+                    f"Limit-up **{overview.limit_up_count}** / Limit-down **{overview.limit_down_count}** | "
+                    f"Turnover **{overview.total_amount:.0f}** ({self._get_turnover_unit_label()})",
+                ]
             )
-        score, label = self._build_market_temperature(overview)
-        participation = overview.up_count + overview.down_count + overview.flat_count
+        light = self.build_market_light_snapshot(overview)
+        score, label = light["score"], light["temperature_label"]
+        participation = overview.up_count + overview.down_count
         up_ratio = overview.up_count / participation if participation else 0.0
         limit_spread = overview.limit_up_count - overview.limit_down_count
         lines = [
+            f"> **大盘红绿灯**：{light['status']}（{light['label']}） | **{score}/100** {self._build_temperature_bar(score)}",
+            f"> **核心原因**：{'；'.join(light['reasons'])}",
+            f"> **操作建议**：{light['guidance']}",
+            "",
             f"> **盘面温度**：{label} **{score}/100** {self._build_temperature_bar(score)}",
             "",
             "| 指标 | 数值 | 观察 |",
             "|------|------|------|",
-            f"| 上涨/下跌/平盘 | {overview.up_count} / {overview.down_count} / {overview.flat_count} | 上涨占比 {up_ratio:.1%} |",
+            f"| 上涨/下跌/平盘 | {overview.up_count} / {overview.down_count} / {overview.flat_count} | 上涨占比(不含平盘) {up_ratio:.1%} |",
             f"| 涨停/跌停 | {overview.limit_up_count} / {overview.limit_down_count} | 涨跌停差 {limit_spread:+d} |",
             f"| 两市成交额 | {overview.total_amount:.0f} 亿 | {self._describe_turnover(overview.total_amount)} |",
         ]
         return "\n".join(lines)
+
+    def build_market_light_snapshot(self, overview: MarketOverview) -> Dict[str, Any]:
+        """Build a deterministic market-light snapshot from structured breadth data."""
+        score, temperature_label = self._build_market_temperature(overview)
+        if score >= 60:
+            status = "green"
+        elif score >= 40:
+            status = "yellow"
+        else:
+            status = "red"
+
+        if self._get_review_language() == "en":
+            label_map = {
+                "green": "constructive",
+                "yellow": "watch",
+                "red": "defensive",
+            }
+            guidance_map = {
+                "green": "Risk appetite is acceptable; focus on leading themes and position discipline.",
+                "yellow": "Signals are mixed; keep position sizing moderate and wait for confirmation.",
+                "red": "Risk is elevated; prioritize drawdown control and avoid chasing weak rebounds.",
+            }
+            reasons = self._build_market_light_reasons_en(overview, score)
+        else:
+            label_map = {
+                "green": "可进攻",
+                "yellow": "需观察",
+                "red": "偏防守",
+            }
+            guidance_map = {
+                "green": "风险偏好尚可，关注主线延续与仓位纪律。",
+                "yellow": "信号分化，控制仓位并等待量价确认。",
+                "red": "风险偏高，优先控制回撤，避免追高弱反弹。",
+            }
+            reasons = self._build_market_light_reasons_zh(overview, score)
+
+        return {
+            "status": status,
+            "label": label_map[status],
+            "score": score,
+            "temperature_label": temperature_label,
+            "reasons": reasons,
+            "guidance": guidance_map[status],
+        }
+
+    def _build_market_light_reasons_zh(self, overview: MarketOverview, score: int) -> List[str]:
+        participation = overview.up_count + overview.down_count
+        up_ratio = overview.up_count / participation if participation else None
+        reasons: List[str] = [f"盘面温度 {score}/100"]
+        if up_ratio is not None:
+            if up_ratio >= 0.6:
+                reasons.append(f"上涨家数占比 {up_ratio:.0%}，赚钱效应扩散")
+            elif up_ratio <= 0.4:
+                reasons.append(f"上涨家数占比 {up_ratio:.0%}，亏钱效应较强")
+            else:
+                reasons.append(f"上涨家数占比 {up_ratio:.0%}，市场分化")
+        if overview.indices:
+            avg_change = sum(idx.change_pct for idx in overview.indices) / len(overview.indices)
+            reasons.append(f"主要指数平均涨跌幅 {avg_change:+.2f}%")
+        if overview.limit_up_count or overview.limit_down_count:
+            reasons.append(f"涨跌停差 {overview.limit_up_count - overview.limit_down_count:+d}")
+        return reasons[:4]
+
+    def _build_market_light_reasons_en(self, overview: MarketOverview, score: int) -> List[str]:
+        participation = overview.up_count + overview.down_count
+        up_ratio = overview.up_count / participation if participation else None
+        reasons: List[str] = [f"market temperature {score}/100"]
+        if up_ratio is not None:
+            if up_ratio >= 0.6:
+                reasons.append(f"advancers ratio {up_ratio:.0%}, breadth is expanding")
+            elif up_ratio <= 0.4:
+                reasons.append(f"advancers ratio {up_ratio:.0%}, downside pressure dominates")
+            else:
+                reasons.append(f"advancers ratio {up_ratio:.0%}, breadth is mixed")
+        if overview.indices:
+            avg_change = sum(idx.change_pct for idx in overview.indices) / len(overview.indices)
+            reasons.append(f"average major-index change {avg_change:+.2f}%")
+        if overview.limit_up_count or overview.limit_down_count:
+            reasons.append(f"limit-up/down spread {overview.limit_up_count - overview.limit_down_count:+d}")
+        return reasons[:4]
 
     def _build_indices_block(self, overview: MarketOverview) -> str:
         """构建指数行情表格"""

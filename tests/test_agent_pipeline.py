@@ -110,7 +110,7 @@ class TestAgentConfig(unittest.TestCase):
                     "GEMINI_MODEL": "gemini-2.5-flash",
                     "AGENT_LITELLM_MODEL": "",
                 },
-                "gemini/gemini-2.5-flash",
+                ["gemini/gemini-2.5-flash", "gemini/gemini-3-flash-preview"],
             ),
             (
                 {
@@ -118,7 +118,7 @@ class TestAgentConfig(unittest.TestCase):
                     "OPENAI_MODEL": "gpt-4o-mini",
                     "AGENT_LITELLM_MODEL": "",
                 },
-                "openai/gpt-4o-mini",
+                ["openai/gpt-4o-mini"],
             ),
             (
                 {
@@ -126,16 +126,16 @@ class TestAgentConfig(unittest.TestCase):
                     "ANTHROPIC_MODEL": "claude-3-5-sonnet-20241022",
                     "AGENT_LITELLM_MODEL": "",
                 },
-                "anthropic/claude-3-5-sonnet-20241022",
+                ["anthropic/claude-3-5-sonnet-20241022"],
             ),
         ]
 
         with patch("src.config.setup_env"), patch.object(Config, "_parse_litellm_yaml", return_value=[]):
-            for env, expected_model in test_cases:
-                with self.subTest(expected_model=expected_model), patch.dict(os.environ, env, clear=True):
+            for env, expected_models in test_cases:
+                with self.subTest(expected_models=expected_models), patch.dict(os.environ, env, clear=True):
                     Config._instance = None
                     config = Config._load_from_env()
-                    self.assertEqual(get_effective_agent_models_to_try(config), [expected_model])
+                    self.assertEqual(get_effective_agent_models_to_try(config), expected_models)
 
         Config._instance = None
 
