@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import BacktestPage from './pages/BacktestPage';
@@ -8,12 +8,14 @@ import LoginPage from './pages/LoginPage';
 import NotFoundPage from './pages/NotFoundPage';
 import ChatPage from './pages/ChatPage';
 import DiscoveryPage from './pages/DiscoveryPage';
-import BrokerRecommendPage from './pages/BrokerRecommendPage';
-import RdLoopReviewPage from './pages/RdLoopReviewPage';
+// RD loop 禁用中
+// import RdLoopReviewPage from './pages/RdLoopReviewPage';
 import { ApiErrorAlert, Shell } from './components/common';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useAgentChatStore } from './stores/agentChatStore';
 import './App.css';
+
+const BrokerRecommendPage = lazy(() => import('./pages/BrokerRecommendPage'));
 
 const AppContent: React.FC = () => {
   const location = useLocation();
@@ -67,8 +69,9 @@ const AppContent: React.FC = () => {
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/discovery" element={<DiscoveryPage />} />
         <Route path="/backtest" element={<BacktestPage />} />
-        <Route path="/broker-recommend" element={<BrokerRecommendPage />} />
-        <Route path="/rd-loop-review" element={<RdLoopReviewPage />} />
+        <Route path="/broker-recommend" element={<Suspense fallback={<div className="flex justify-center py-12"><div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan/20 border-t-cyan" /></div>}><BrokerRecommendPage /></Suspense>} />
+        {/* RD loop 禁用中 */}
+        {/* <Route path="/rd-loop-review" element={<RdLoopReviewPage />} /> */}
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>

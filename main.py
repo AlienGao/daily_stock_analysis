@@ -1117,7 +1117,7 @@ def _run_auto_rd_loop() -> None:
         logger.warning("[AutoRDLoop] 导入失败，跳过: %s", e)
         return
 
-    tushare_fetcher = TushareFetcher()
+    tushare_fetcher = TushareFetcher.get_instance()
     if not tushare_fetcher.is_available():
         logger.warning("[AutoRDLoop] Tushare 不可用，跳过")
         return
@@ -1373,7 +1373,7 @@ def main() -> int:
             discovery_config = get_discovery_config()
             from data_provider.tushare_fetcher import TushareFetcher
             from data_provider.akshare_fetcher import AkshareFetcher
-            tushare_fetcher = TushareFetcher()
+            tushare_fetcher = TushareFetcher.get_instance()
             akshare_fetcher = AkshareFetcher()
             if not tushare_fetcher.is_available():
                 logger.warning("Tushare 不可用，盘中扫描可能无法获取数据")
@@ -1397,7 +1397,7 @@ def main() -> int:
             from data_provider.akshare_fetcher import AkshareFetcher
 
             discovery_config = get_discovery_config()
-            tushare_fetcher = TushareFetcher()
+            tushare_fetcher = TushareFetcher.get_instance()
             akshare_fetcher = AkshareFetcher()
             if not tushare_fetcher.is_available():
                 logger.error("Tushare 不可用，无法运行股票发现")
@@ -1478,12 +1478,15 @@ def main() -> int:
 
         # 模式: R&D 因子发现闭环
         if getattr(args, 'rd_loop', False):
+            if os.getenv("RD_LOOP_AUTO_ENABLED", "").strip().lower() not in ("true", "1", "yes", "on"):
+                logger.warning("R&D 因子发现闭环已禁用（RD_LOOP_AUTO_ENABLED=false），跳过执行。")
+                return 0
             logger.info("模式: R&D 因子发现闭环")
             from src.discovery.rd_loop import RDLoop
             from src.agent.llm_adapter import LLMToolAdapter
             from data_provider.tushare_fetcher import TushareFetcher
 
-            tushare_fetcher = TushareFetcher()
+            tushare_fetcher = TushareFetcher.get_instance()
             if not tushare_fetcher.is_available():
                 logger.warning("Tushare 不可用，R&D 闭环评估可能受限")
 

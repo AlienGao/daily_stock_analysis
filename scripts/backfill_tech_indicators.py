@@ -94,7 +94,7 @@ def main():
         return 0
 
     from data_provider.tushare_fetcher import TushareFetcher
-    tf = TushareFetcher()
+    tf = TushareFetcher.get_instance()
     if not tf.is_available():
         logger.error("Tushare 不可用，请检查 TUSHARE_TOKEN 配置")
         return 1

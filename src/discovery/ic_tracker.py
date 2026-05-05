@@ -82,7 +82,7 @@ class ICTracker:
         try:
             from data_provider.tushare_fetcher import TushareFetcher
 
-            tf = TushareFetcher()
+            tf = TushareFetcher.get_instance()
             if not tf.is_available():
                 return None
 

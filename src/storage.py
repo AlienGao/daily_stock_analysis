@@ -737,6 +737,27 @@ class BrokerRecommendMonthly(Base):
         }
 
 
+class BrokerBacktestResult(Base):
+    """券商金股月度回测结果快照。
+
+    存储每月的回测收益数据（不含增强数据如九转/盈利预测/筹码），
+    增强数据通过独立的 enrichment 缓存机制管理。
+    """
+
+    __tablename__ = 'broker_backtest_result'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    month = Column(String(6), nullable=False, unique=True, index=True)
+    buy_date = Column(String(8), nullable=False)
+    sell_date = Column(String(8), nullable=False)
+    total_recommendations = Column(Integer, default=0)
+    unique_stocks = Column(Integer, default=0)
+    unique_brokers = Column(Integer, default=0)
+    stock_returns_json = Column(Text)
+    broker_returns_json = Column(Text)
+    computed_at = Column(DateTime, default=datetime.now)
+
+
 class DatabaseManager:
     """
     数据库管理器 - 单例模式
@@ -2036,6 +2057,70 @@ class DatabaseManager:
                 select(BrokerRecommendMonthly.month).distinct().order_by(desc(BrokerRecommendMonthly.month))
             ).scalars().all()
             return list(months)
+
+    def save_broker_backtest(self, month: str, buy_date: str, sell_date: str,
+                             total_recommendations: int, unique_stocks: int, unique_brokers: int,
+                             stock_returns: List[Dict[str, Any]],
+                             broker_returns: List[Dict[str, Any]]) -> None:
+        """保存月度回测结果（价格收益部分，不含增强数据）。"""
+        import json
+        with self.get_session() as session:
+            try:
+                existing = session.execute(
+                    select(BrokerBacktestResult).where(
+                        BrokerBacktestResult.month == str(month)
+                    )
+                ).scalars().first()
+
+                if existing:
+                    existing.buy_date = buy_date
+                    existing.sell_date = sell_date
+                    existing.total_recommendations = total_recommendations
+                    existing.unique_stocks = unique_stocks
+                    existing.unique_brokers = unique_brokers
+                    existing.stock_returns_json = json.dumps(stock_returns, ensure_ascii=False)
+                    existing.broker_returns_json = json.dumps(broker_returns, ensure_ascii=False)
+                    existing.computed_at = datetime.now()
+                else:
+                    session.add(BrokerBacktestResult(
+                        month=str(month),
+                        buy_date=buy_date,
+                        sell_date=sell_date,
+                        total_recommendations=total_recommendations,
+                        unique_stocks=unique_stocks,
+                        unique_brokers=unique_brokers,
+                        stock_returns_json=json.dumps(stock_returns, ensure_ascii=False),
+                        broker_returns_json=json.dumps(broker_returns, ensure_ascii=False),
+                    ))
+                session.commit()
+                logger.info(f"[BrokerBacktest] 保存 {month} 回测结果")
+            except Exception as e:
+                session.rollback()
+                logger.error(f"[BrokerBacktest] 保存失败: {e}")
+
+    def get_broker_backtest(self, month: str) -> Optional[Dict[str, Any]]:
+        """获取已存储的月度回测结果（不含增强数据）。"""
+        import json
+        with self.get_session() as session:
+            row = session.execute(
+                select(BrokerBacktestResult).where(
+                    BrokerBacktestResult.month == str(month)
+                )
+            ).scalars().first()
+
+            if not row:
+                return None
+
+            return {
+                "month": row.month,
+                "buy_date": row.buy_date,
+                "sell_date": row.sell_date,
+                "total_recommendations": row.total_recommendations,
+                "unique_stocks": row.unique_stocks,
+                "unique_brokers": row.unique_brokers,
+                "brokers": json.loads(row.broker_returns_json or "[]"),
+                "stock_returns": json.loads(row.stock_returns_json or "[]"),
+            }
 
     def get_analysis_context(
         self, 

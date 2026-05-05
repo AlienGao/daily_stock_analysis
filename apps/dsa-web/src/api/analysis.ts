@@ -195,6 +195,8 @@ export interface RunFullAnalysisStatus {
   stockCount: number;
   message?: string | null;
   error?: string | null;
+  /** 实际分析参考日期（非交易日自动回退到最近交易日） */
+  refDate?: string | null;
 }
 
 // ============ Custom Error Classes ============

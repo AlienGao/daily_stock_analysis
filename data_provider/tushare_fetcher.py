@@ -32,7 +32,37 @@ from tenacity import (
 )
 
 from .base import BaseFetcher, DataFetchError, RateLimitError, STANDARD_COLUMNS,is_bse_code, is_st_stock, is_kc_cy_stock, normalize_stock_code, _is_hk_market
-from .realtime_types import UnifiedRealtimeQuote, ChipDistribution, safe_float
+from .realtime_types import UnifiedRealtimeQuote, ChipDistribution, safe_float, safe_int
+
+# Tushare report_rc 评级英文→中文映射
+_RATING_CN_MAP: Dict[str, str] = {
+    "buy": "买入",
+    "overweight": "增持",
+    "neutral": "中性",
+    "underweight": "减持",
+    "sell": "卖出",
+    "outperform": "跑赢大市",
+    "underperform": "跑输大市",
+    "hold": "持有",
+    "accumulate": "收集",
+    "reduce": "降低",
+    "strong buy": "强烈买入",
+    "strong sell": "强烈卖出",
+    "market perform": "市场同步",
+    "market outperform": "跑赢市场",
+    "market underperform": "跑输市场",
+    "equalweight": "标配",
+    "over weight": "超配",
+    "under weight": "低配",
+}
+
+
+def _translate_rating(rating: str) -> str:
+    """将 Tushare 英文评级转为中文，无法识别时原样返回。"""
+    if not rating:
+        return ""
+    key = rating.strip().lower()
+    return _RATING_CN_MAP.get(key, rating)
 from src.config import get_config
 import os
 from zoneinfo import ZoneInfo
@@ -130,13 +160,25 @@ class TushareFetcher(BaseFetcher):
     name = "TushareFetcher"
     priority = int(os.getenv("TUSHARE_PRIORITY", "2"))  # 默认优先级，会在 __init__ 中根据配置动态调整
 
-    def __init__(self, rate_limit_per_minute: int = 80):
+    _instance: Optional["TushareFetcher"] = None
+
+    @classmethod
+    def get_instance(cls) -> "TushareFetcher":
+        """获取全局单例，首次调用时初始化并验证 Token。"""
+        if cls._instance is None:
+            cls._instance = cls()
+            logger.info("TushareFetcher 单例已创建")
+        return cls._instance
+
+    def __init__(self, rate_limit_per_minute: int = None):
         """
         初始化 TushareFetcher
 
         Args:
-            rate_limit_per_minute: 每分钟最大请求数（默认80，Tushare免费配额）
+            rate_limit_per_minute: 每分钟最大请求数，默认从 TUSHARE_RATE_LIMIT 环境变量读取（未设置时 500）
         """
+        if rate_limit_per_minute is None:
+            rate_limit_per_minute = int(os.getenv("TUSHARE_RATE_LIMIT", "500"))
         self.rate_limit_per_minute = rate_limit_per_minute
         self._call_count = 0  # 当前分钟内的调用次数
         self._minute_start: Optional[float] = None  # 当前计数周期开始时间
@@ -392,11 +434,11 @@ class TushareFetcher(BaseFetcher):
             return f"{code}.BJ"
         
         # Regular stocks
-        # Shanghai: 600xxx, 601xxx, 603xxx, 688xxx (STAR Market)
-        # Shenzhen: 000xxx, 002xxx, 300xxx (ChiNext)
-        if code.startswith(('600', '601', '603', '688')):
+        # Shanghai: 600-609xxx (main board), 688xxx (STAR Market)
+        # Shenzhen: 000-004xxx (main board), 300xxx (ChiNext)
+        if code.startswith(('600', '601', '602', '603', '604', '605', '606', '607', '608', '609', '688', '689')):
             return f"{code}.SH"
-        elif code.startswith(('000', '002', '300')):
+        elif code.startswith(('000', '001', '002', '003', '300', '301')):
             return f"{code}.SZ"
         else:
             logger.warning(f"无法确定股票 {code} 的市场，默认使用深市")
@@ -1660,6 +1702,185 @@ class TushareFetcher(BaseFetcher):
             logger.warning(f"[Tushare] 获取技术面因子失败 {stock_code}: {e}")
             return None
 
+    def get_nineturn(self, stock_code: str, trade_date: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """获取神奇九转数据 (Tushare stk_nineturn, doc_id=364)。
+
+        返回 TD Sequential 9 指标的上/下结构计数与9转信号。
+        """
+        if self._api is None:
+            return None
+        if _is_us_code(stock_code) or _is_hk_market(stock_code):
+            return None
+
+        try:
+            if trade_date is None:
+                trade_date = self.get_trade_time(early_time='00:00', late_time='18:00')
+            if not trade_date:
+                return None
+
+            ts_code = self._convert_stock_code(stock_code)
+            df = self._call_api_with_rate_limit(
+                "stk_nineturn", ts_code=ts_code, trade_date=trade_date,
+            )
+            if df is not None and not df.empty:
+                row = df.iloc[0].to_dict()
+                up_count = safe_int(row.get('up_count'), 0)
+                down_count = safe_int(row.get('down_count'), 0)
+                nine_up = safe_int(row.get('nine_up_turn'), 0)
+                nine_down = safe_int(row.get('nine_down_turn'), 0)
+                result = {
+                    'ts_code': ts_code,
+                    'trade_date': row.get('trade_date', trade_date),
+                    'up_count': up_count,
+                    'down_count': down_count,
+                    'nine_up_turn': nine_up,
+                    'nine_down_turn': nine_down,
+                }
+                logger.info(f"[神奇九转] {stock_code} up={up_count} down={down_count} "
+                           f"nine_up={nine_up} nine_down={nine_down}")
+                return result
+
+        except Exception as e:
+            logger.warning(f"[Tushare] 获取神奇九转失败 {stock_code}: {e}")
+            return None
+
+    def get_bulk_nineturn(self, ts_codes: List[str], trade_date: str) -> Dict[str, Dict[str, Any]]:
+        """批量获取多只股票的神奇九转数据。
+
+        优先尝试单次全量查询（不传 ts_code），失败时回退逐条查询。
+        """
+        result: Dict[str, Dict[str, Any]] = {}
+        if not self._api:
+            return result
+
+        ts_code_set = set(ts_codes)
+
+        # 尝试单次全量查询，按 trade_date 拉取后本地过滤
+        try:
+            df = self._call_api_with_rate_limit(
+                "stk_nineturn", trade_date=trade_date,
+            )
+            if df is not None and not df.empty:
+                for _, row in df.iterrows():
+                    r = row.to_dict()
+                    tc = r.get("ts_code", "")
+                    if tc not in ts_code_set:
+                        continue
+                    up_count = safe_int(r.get("up_count"), 0)
+                    down_count = safe_int(r.get("down_count"), 0)
+                    nine_up = safe_int(r.get("nine_up_turn"), 0)
+                    nine_down = safe_int(r.get("nine_down_turn"), 0)
+                    result[tc] = {
+                        "ts_code": tc,
+                        "trade_date": r.get("trade_date", trade_date),
+                        "up_count": up_count,
+                        "down_count": down_count,
+                        "nine_up_turn": nine_up,
+                        "nine_down_turn": nine_down,
+                    }
+                logger.info(f"[批量神奇九转] 全量查询 {len(df)} 条，匹配 {len(result)}/{len(ts_codes)} 只")
+                return result
+        except Exception as e:
+            logger.debug(f"[批量神奇九转] 全量查询失败，回退逐条: {e}")
+
+        # 回退逐条查询
+        for ts_code in ts_codes:
+            stock_code = ts_code.split(".")[0] if "." in ts_code else ts_code
+            data = self.get_nineturn(stock_code, trade_date)
+            if data:
+                result[ts_code] = data
+        return result
+
+    def get_forecast(self, stock_code: str, end_date: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """获取券商盈利预测数据 (Tushare report_rc, doc_id=292)。
+
+        返回最新一期卖方研报的盈利预测与目标价。
+        """
+        if self._api is None:
+            return None
+        if _is_us_code(stock_code) or _is_hk_market(stock_code):
+            return None
+
+        try:
+            if end_date is None:
+                end_date = self.get_trade_time(early_time='00:00', late_time='19:00')
+            if not end_date:
+                return None
+
+            ts_code = self._convert_stock_code(stock_code)
+            df = self._call_api_with_rate_limit(
+                "report_rc", ts_code=ts_code, end_date=end_date,
+            )
+            if df is not None and not df.empty:
+                row = df.iloc[0].to_dict()
+                result = {
+                    'ts_code': ts_code,
+                    'report_date': row.get('report_date', ''),
+                    'eps': safe_float(row.get('eps')),
+                    'pe': safe_float(row.get('pe')),
+                    'roe': safe_float(row.get('roe')),
+                    'np': safe_float(row.get('np')),
+                    'rating': _translate_rating(row.get('rating', '')),
+                    'min_price': safe_float(row.get('min_price')),
+                    'max_price': safe_float(row.get('max_price')),
+                    'imp_dg': row.get('imp_dg', ''),
+                }
+                logger.info(f"[盈利预测] {stock_code} rating={result['rating']}, "
+                           f"目标价={result['min_price']}~{result['max_price']}")
+                return result
+
+        except Exception as e:
+            logger.warning(f"[Tushare] 获取盈利预测失败 {stock_code}: {e}")
+            return None
+
+    def get_bulk_forecast(self, ts_codes: List[str], end_date: str) -> Dict[str, Dict[str, Any]]:
+        """批量获取盈利预测（优先全量查询，失败回退逐条）。
+
+        尝试单次查询 report_rc 不传 ts_code，按 end_date 过滤后本地匹配。
+        """
+        result: Dict[str, Dict[str, Any]] = {}
+        if not self._api:
+            return result
+
+        ts_code_set = set(ts_codes)
+
+        try:
+            df = self._call_api_with_rate_limit(
+                "report_rc", end_date=end_date,
+            )
+            if df is not None and not df.empty:
+                for _, row in df.iterrows():
+                    r = row.to_dict()
+                    tc = r.get("ts_code", "")
+                    if tc not in ts_code_set:
+                        continue
+                    if tc in result:
+                        continue  # 同一只股票多条研报时取第一条
+                    result[tc] = {
+                        "ts_code": tc,
+                        "report_date": r.get("report_date", ""),
+                        "eps": safe_float(r.get("eps")),
+                        "pe": safe_float(r.get("pe")),
+                        "roe": safe_float(r.get("roe")),
+                        "np": safe_float(r.get("np")),
+                        "rating": _translate_rating(r.get("rating", "")),
+                        "min_price": safe_float(r.get("min_price")),
+                        "max_price": safe_float(r.get("max_price")),
+                        "imp_dg": r.get("imp_dg", ""),
+                    }
+                logger.info(f"[批量盈利预测] 全量查询 {len(df)} 条，匹配 {len(result)}/{len(ts_codes)} 只")
+                return result
+        except Exception as e:
+            logger.debug(f"[批量盈利预测] 全量查询失败，回退逐条: {e}")
+
+        # 回退逐条查询
+        for ts_code in ts_codes:
+            stock_code = ts_code.split(".")[0] if "." in ts_code else ts_code
+            fc = self.get_forecast(stock_code, end_date=end_date)
+            if fc:
+                result[ts_code] = fc
+        return result
+
     # ------------------------------------------------------------------
     # Bulk (all-market) methods — for Stock Discovery Engine
     # ------------------------------------------------------------------
@@ -2017,7 +2238,7 @@ if __name__ == "__main__":
     # 测试代码
     logging.basicConfig(level=logging.DEBUG)
     
-    fetcher = TushareFetcher()
+    fetcher = TushareFetcher.get_instance()
     
     try:
         # 测试历史数据

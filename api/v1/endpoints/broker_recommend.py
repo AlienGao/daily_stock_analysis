@@ -23,6 +23,20 @@ class BrokerRecommendItem(BaseModel):
     broker_count: int
 
 
+class StockEnrichment(BaseModel):
+    """单只股票的增强数据。"""
+    nineturn: Optional[NineTurnSignal] = None
+    forecast: Optional[ForecastSummary] = None
+    cyq_perf: Optional[CyqPerfSummary] = None
+
+
+class EnrichmentResponse(BaseModel):
+    """增强数据响应：{ts_code -> StockEnrichment} 字典。"""
+    month: str
+    query_date: str
+    data: Dict[str, StockEnrichment]
+
+
 class BrokerRecommendResponse(BaseModel):
     month: str
     total_recommendations: int
@@ -38,8 +52,33 @@ class BrokerFetchResponse(BaseModel):
 
 class BrokerDailyReturn(BaseModel):
     date: str
+    price: Optional[float] = None
     daily_return: Optional[float] = None
     cumulative: Optional[float] = None
+
+
+class NineTurnSignal(BaseModel):
+    up_count: Optional[int] = None
+    down_count: Optional[int] = None
+    nine_up_turn: Optional[int] = None
+    nine_down_turn: Optional[int] = None
+
+
+class ForecastSummary(BaseModel):
+    eps: Optional[float] = None
+    pe: Optional[float] = None
+    roe: Optional[float] = None
+    np: Optional[float] = None
+    rating: Optional[str] = None
+    min_price: Optional[float] = None
+    max_price: Optional[float] = None
+    imp_dg: Optional[str] = None
+
+
+class CyqPerfSummary(BaseModel):
+    cost_avg: Optional[float] = None
+    winner_rate: Optional[float] = None
+    concentration: Optional[float] = None
 
 
 class BrokerBacktestItem(BaseModel):
@@ -57,7 +96,12 @@ class StockReturnItem(BaseModel):
     name: str
     broker_count: int
     broker: str
+    end_price: Optional[float] = None
+    end_date: Optional[str] = None
     daily_returns: List[BrokerDailyReturn]
+    nineturn: Optional[NineTurnSignal] = None
+    forecast: Optional[ForecastSummary] = None
+    cyq_perf: Optional[CyqPerfSummary] = None
 
 
 class BrokerBacktestResponse(BaseModel):
@@ -81,7 +125,7 @@ def get_available_months() -> List[str]:
 
 @router.get("/{month}", response_model=BrokerRecommendResponse)
 def get_monthly_recommendations(month: str) -> BrokerRecommendResponse:
-    """获取指定月份的券商金股推荐列表。"""
+    """获取指定月份的券商金股推荐列表（不含增强数据，增强数据请用 /{month}/enrichment）。"""
     service = BrokerRecommendService()
     df = service.get_monthly_recommendations(month)
 
@@ -116,6 +160,28 @@ def get_monthly_recommendations(month: str) -> BrokerRecommendResponse:
     )
 
 
+@router.get("/{month}/enrichment", response_model=EnrichmentResponse)
+def get_monthly_enrichment(month: str) -> EnrichmentResponse:
+    """获取指定月份推荐股票的增强数据（九转、盈利预测、筹码胜率）。
+
+    独立端点，带缓存和并行化，与 /{month} 分开以避免超时。
+    返回 {ts_code: {nineturn, forecast, cyq_perf}} 字典。
+    """
+    service = BrokerRecommendService()
+    enrichment = service.get_monthly_enrichment(month)
+    query_date = service._resolve_enrichment_date(month)
+
+    data: Dict[str, StockEnrichment] = {}
+    for ts_code, enrich in enrichment.items():
+        data[ts_code] = StockEnrichment(
+            nineturn=NineTurnSignal(**enrich["nineturn"]) if enrich.get("nineturn") else None,
+            forecast=ForecastSummary(**enrich["forecast"]) if enrich.get("forecast") else None,
+            cyq_perf=CyqPerfSummary(**enrich["cyq_perf"]) if enrich.get("cyq_perf") else None,
+        )
+
+    return EnrichmentResponse(month=month, query_date=query_date, data=data)
+
+
 @router.post("/{month}/fetch", response_model=BrokerFetchResponse)
 def fetch_month(month: str) -> BrokerFetchResponse:
     """抓取并存储指定月份的券商金股数据。"""
@@ -148,6 +214,7 @@ def get_backtest(
             daily_returns=[
                 BrokerDailyReturn(
                     date=dr["date"],
+                    price=dr.get("price"),
                     daily_return=dr.get("return"),
                     cumulative=dr.get("cumulative"),
                 )
@@ -162,14 +229,20 @@ def get_backtest(
             name=sr["name"],
             broker_count=sr["broker_count"],
             broker=sr["broker"],
+            end_price=sr.get("end_price"),
+            end_date=sr.get("end_date"),
             daily_returns=[
                 BrokerDailyReturn(
                     date=dr["date"],
+                    price=dr.get("price"),
                     daily_return=dr.get("return"),
                     cumulative=dr.get("cumulative"),
                 )
                 for dr in sr.get("daily_returns", [])
             ],
+            nineturn=NineTurnSignal(**sr["nineturn"]) if sr.get("nineturn") else None,
+            forecast=ForecastSummary(**sr["forecast"]) if sr.get("forecast") else None,
+            cyq_perf=CyqPerfSummary(**sr["cyq_perf"]) if sr.get("cyq_perf") else None,
         )
         for sr in result.get("stock_returns", [])
     ]

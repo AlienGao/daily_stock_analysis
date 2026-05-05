@@ -923,6 +923,7 @@ class RunFullAnalysisStatus(BaseModel):
     stock_count: int = 0
     message: Optional[str] = None
     error: Optional[str] = None
+    ref_date: Optional[str] = Field(None, description="实际使用的分析参考日期（非交易日自动回退到最近交易日）")
 
 
 _FULL_ANALYSIS_STATE: Dict[str, Any] = {
@@ -959,6 +960,70 @@ def _build_run_full_args(
     )
 
 
+def _resolve_effective_ref_date(
+    force_run: bool, stock_codes: list
+) -> tuple:
+    """根据用户自选股所在市场，对休市市场回退到最近交易日。
+
+    Returns:
+        (effective_force_run, per_market_ref_dates)
+        per_market_ref_dates: {market: date_str} 仅包含今日休市的市场
+    """
+    if force_run:
+        return True, {}
+
+    from src.core.trading_calendar import (
+        get_market_for_stock,
+        get_open_markets_today,
+        get_effective_trading_date,
+    )
+
+    try:
+        open_markets = get_open_markets_today()
+    except Exception:
+        logger.warning("[run-full] 交易日历查询失败，按交易日处理", exc_info=True)
+        return False, {}
+
+    # 收集自选股涉及的市场
+    relevant_markets: set = set()
+    for code in stock_codes:
+        mkt = get_market_for_stock(code)
+        if mkt:
+            relevant_markets.add(mkt)
+
+    # 只关注用户实际持有的、但今日休市的市场
+    closed_markets = relevant_markets - open_markets
+    if not closed_markets:
+        return False, {}
+
+    # 为每个休市市场计算最近交易日
+    per_market: dict = {}
+    for mkt in closed_markets:
+        try:
+            dt = get_effective_trading_date(mkt)
+            if dt:
+                per_market[mkt] = dt.isoformat()
+        except Exception:
+            logger.warning("[run-full] 获取 %s 市场最近交易日失败", mkt, exc_info=True)
+
+    closed_label = ",".join(sorted(closed_markets))
+    ref_info = ", ".join(f"{m}={d}" for m, d in sorted(per_market.items()))
+    logger.info(
+        "[run-full] 今日 %s 休市，各市场参考日期: %s",
+        closed_label, ref_info or "N/A",
+    )
+
+    with _FULL_ANALYSIS_LOCK:
+        _FULL_ANALYSIS_STATE["ref_date"] = ref_info or None
+        _FULL_ANALYSIS_STATE["message"] = (
+            f"今日 {closed_label} 休市，回退到最近交易日 ({ref_info}) 分析…"
+            if ref_info
+            else f"今日 {closed_label} 休市，强制分析…"
+        )
+
+    return True, per_market
+
+
 def _run_full_analysis_background(
     *,
     no_notify: bool,
@@ -982,15 +1047,21 @@ def _run_full_analysis_background(
         except Exception:
             logger.warning("refresh_stock_list failed; falling back to in-memory list", exc_info=True)
 
-        stock_count = len(getattr(config, "stock_list", []) or [])
+        stock_codes = list(getattr(config, "stock_list", []) or [])
+        stock_count = len(stock_codes)
+
+        # 非交易日自动回退：根据用户自选股的实际市场判断
+        effective_force_run, _ref_dates = _resolve_effective_ref_date(force_run, stock_codes)
+
         with _FULL_ANALYSIS_LOCK:
             _FULL_ANALYSIS_STATE["stock_count"] = stock_count
-            _FULL_ANALYSIS_STATE["message"] = f"正在分析 {stock_count} 只自选股…"
+            if not _FULL_ANALYSIS_STATE.get("ref_date"):
+                _FULL_ANALYSIS_STATE["message"] = f"正在分析 {stock_count} 只自选股…"
 
         args = _build_run_full_args(
             no_notify=no_notify,
             no_market_review=no_market_review,
-            force_run=force_run,
+            force_run=effective_force_run,
         )
 
         logger.info(
@@ -1136,6 +1207,7 @@ def trigger_full_analysis(body: RunFullAnalysisRequest = RunFullAnalysisRequest(
             "stock_count": 0,
             "message": "正在启动全量分析…",
             "error": None,
+            "ref_date": None,
         }
         snapshot = dict(_FULL_ANALYSIS_STATE)
 

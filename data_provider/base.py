@@ -182,7 +182,7 @@ def is_bse_code(code: str) -> bool:
     if c.startswith("900"):
         return False
 
-    return c.startswith(("92", "43", "81", "82", "83", "87", "88"))
+    return c.startswith(("92", "43", "81", "82", "83", "87", "88", "889"))
 
 def is_st_stock(name: str) -> bool:
     """
@@ -202,7 +202,7 @@ def is_kc_cy_stock(code: str) -> bool:
     Both have a ±20% limit.
     """
     c = (code or "").strip().split(".")[0]
-    return c.startswith("688") or c.startswith("30")
+    return c.startswith(("688", "689")) or c.startswith(("300", "301"))
 
 
 def canonical_stock_code(code: str) -> str:
@@ -882,7 +882,7 @@ class DataFetcherManager:
         # 创建所有数据源实例（优先级在各 Fetcher 的 __init__ 中确定）
         efinance = EfinanceFetcher()
         akshare = AkshareFetcher()
-        tushare = TushareFetcher()  # 会根据 Token 配置自动调整优先级
+        tushare = TushareFetcher.get_instance()  # 会根据 Token 配置自动调整优先级
         pytdx = PytdxFetcher()      # 通达信数据源（可配 PYTDX_HOST/PYTDX_PORT）
         baostock = BaostockFetcher()
         yfinance = YfinanceFetcher()

@@ -1,16 +1,22 @@
 import type React from 'react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import dayjs, { type Dayjs } from 'dayjs';
+import { DatePicker, Table } from 'antd';
+import zhCN from 'antd/locale/zh_CN';
+import type { ColumnsType } from 'antd/es/table';
 import { TrendingUp, RefreshCw, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { AppPage, Button, Card, EmptyState } from '../components/common';
 import {
-  getAvailableMonths,
   getMonthlyRecommendations,
   fetchMonth,
   getBacktest,
+  getMonthlyEnrichment,
   type BrokerRecommendResponse,
   type BrokerRecommendItem,
   type BrokerBacktestResponse,
+  type EnrichmentResponse,
 } from '../api/brokerRecommend';
 
 const BROKER_COLORS = [
@@ -28,109 +34,149 @@ function fmtPct(v?: number | null): string {
   return `${v >= 0 ? '+' : ''}${(v * 100).toFixed(2)}%`;
 }
 
-// Group recommendations by broker
-function groupByBroker(items: BrokerRecommendItem[]): Map<string, BrokerRecommendItem[]> {
-  if (!items || items.length === 0) return new Map();
-  const map = new Map<string, BrokerRecommendItem[]>();
-  for (const item of items) {
-    const existing = map.get(item.broker) || [];
-    existing.push(item);
-    map.set(item.broker, existing);
-  }
-  return map;
+function CustomTooltip({ active, payload, label }: any) {
+  if (!active || !payload) return null;
+  return (
+    <div
+      style={{
+        background: 'hsl(var(--card))',
+        border: '1px solid hsl(var(--border))',
+        borderRadius: '8px',
+        fontSize: '12px',
+        padding: '8px 12px',
+        minWidth: '170px',
+      }}
+    >
+      <div className="text-xs font-medium mb-1 text-secondary-text">{label}</div>
+      <div style={{ maxHeight: '120px', overflowY: 'auto' }}>
+        {payload
+          .filter((p: any) => p.value != null)
+          .map((p: any) => (
+            <div key={p.name} className="flex items-center gap-2 text-xs py-0.5">
+              <span
+                className="w-2 h-2 rounded-full shrink-0"
+                style={{ backgroundColor: p.color }}
+              />
+              <span className="text-secondary-text">{p.name}</span>
+              <span className="font-medium ml-auto tabular-nums">
+                {`${(p.value * 100).toFixed(2)}%`}
+              </span>
+            </div>
+          ))}
+      </div>
+    </div>
+  );
 }
 
+/** Deduplicate by ts_code, keep max broker_count */
+function dedupStocks(items: BrokerRecommendItem[]): BrokerRecommendItem[] {
+  const map = new Map<string, BrokerRecommendItem>();
+  for (const item of items) {
+    const existing = map.get(item.ts_code);
+    if (!existing || item.broker_count > existing.broker_count) {
+      map.set(item.ts_code, item);
+    }
+  }
+  return Array.from(map.values());
+}
+
+type StockRow = {
+  ts_code: string;
+  name: string;
+  broker_count: number;
+  endPrice?: number;
+  endDate?: string;
+  cumRet?: number;
+  nineturn?: {
+    up_count?: number | null;
+    down_count?: number | null;
+    nine_up_turn?: number | null;
+    nine_down_turn?: number | null;
+  } | null;
+  forecast?: {
+    eps?: number | null;
+    pe?: number | null;
+    roe?: number | null;
+    np?: number | null;
+    rating?: string | null;
+    min_price?: number | null;
+    max_price?: number | null;
+    imp_dg?: string | null;
+  } | null;
+  cyq_perf?: {
+    cost_avg?: number | null;
+    winner_rate?: number | null;
+    concentration?: number | null;
+  } | null;
+};
+
 const BrokerRecommendPage: React.FC = () => {
-  const [months, setMonths] = useState<string[]>([]);
-  const [selectedMonth, setSelectedMonth] = useState<string>('');
-  const [loadingMonths, setLoadingMonths] = useState(true);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const monthParam = searchParams.get('month');
+  const selectedMonth: Dayjs = monthParam ? dayjs(monthParam, 'YYYYMM') : dayjs();
   const [loadingData, setLoadingData] = useState(false);
   const [recommendData, setRecommendData] = useState<BrokerRecommendResponse | null>(null);
   const [backtestData, setBacktestData] = useState<BrokerBacktestResponse | null>(null);
+  const [enrichmentData, setEnrichmentData] = useState<EnrichmentResponse | null>(null);
+  const [loadingEnrichment, setLoadingEnrichment] = useState(false);
   const [expandedBrokers, setExpandedBrokers] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<'broker' | 'stock'>('broker');
-  const [sortKey, setSortKey] = useState<'cumRet' | 'brokerCount' | null>(null);
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [visibleChartBrokers, setVisibleChartBrokers] = useState<Set<string>>(new Set());
+  const [expandedStock, setExpandedStock] = useState<string | null>(null);
 
-  const handleSort = (key: 'cumRet' | 'brokerCount') => {
-    if (sortKey !== key) {
-      setSortKey(key);
-      setSortDir('desc');
-    } else if (sortDir === 'desc') {
-      setSortDir('asc');
-    } else {
-      setSortKey(null);
-    }
-  };
-
-  const sortIndicator = (key: 'cumRet' | 'brokerCount'): string => {
-    if (sortKey !== key) return '';
-    return sortDir === 'desc' ? ' ↓' : ' ↑';
-  };
-
-  // Load available months on mount
-  useEffect(() => {
-    async function load() {
-      try {
-        const m = await getAvailableMonths();
-        setMonths(m);
-        if (m.length > 0) {
-          setSelectedMonth(m[0]);
-        } else {
-          // No months in DB yet - set current month as default
-          const now = new Date();
-          const yyyyMM = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
-          setSelectedMonth(yyyyMM);
-        }
-      } catch (e) {
-        console.error('Failed to load months:', e);
-        // Still set current month on error
-        const now = new Date();
-        const yyyyMM = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
-        setSelectedMonth(yyyyMM);
-      } finally {
-        setLoadingMonths(false);
-      }
-    }
-    load();
-  }, []);
+  const monthStr = selectedMonth.format('YYYYMM');
 
   // Auto-load recommendations when selectedMonth changes
   useEffect(() => {
-    if (!selectedMonth) return;
+    if (!monthStr) return;
     async function load() {
       setLoadingData(true);
+      setLoadingEnrichment(true);
+      setRecommendData(null);
+      setBacktestData(null);
+      setEnrichmentData(null);
+      setExpandedStock(null);
       try {
-        const data = await getMonthlyRecommendations(selectedMonth);
+        const data = await getMonthlyRecommendations(monthStr);
         setRecommendData(data);
-        // Auto-trigger backtest
-        const bt = await getBacktest(selectedMonth);
+        const [bt, enrich] = await Promise.all([
+          getBacktest(monthStr),
+          getMonthlyEnrichment(monthStr),
+        ]);
         setBacktestData(bt);
+        setEnrichmentData(enrich);
       } catch (e) {
         console.error('Failed to load:', e);
       } finally {
         setLoadingData(false);
+        setLoadingEnrichment(false);
       }
     }
     load();
-  }, [selectedMonth]);
+  }, [monthStr]);
 
   const handleFetch = useCallback(async () => {
-    if (!selectedMonth) return;
+    if (!monthStr) return;
     setLoadingData(true);
     try {
-      await fetchMonth(selectedMonth);
-      const m = await getAvailableMonths();
-      setMonths(m);
-      if (!m.includes(selectedMonth)) {
-        setSelectedMonth(m[0] || '');
-      }
+      await fetchMonth(monthStr);
     } catch (e) {
       console.error('Failed to fetch:', e);
     } finally {
       setLoadingData(false);
     }
-  }, [selectedMonth]);
+  }, [monthStr]);
+
+  // Init chart to top 5 brokers by cumulative return
+  useEffect(() => {
+    if (backtestData?.brokers?.length) {
+      const top5 = [...backtestData.brokers]
+        .sort((a, b) => b.cumulative_return - a.cumulative_return)
+        .slice(0, 5)
+        .map(b => b.broker);
+      setVisibleChartBrokers(new Set(top5));
+    }
+  }, [backtestData]);
 
   const toggleBroker = (broker: string) => {
     setExpandedBrokers(prev => {
@@ -141,7 +187,16 @@ const BrokerRecommendPage: React.FC = () => {
     });
   };
 
-  // Prepare chart data: one line per broker
+  const toggleChartBroker = (broker: string) => {
+    setVisibleChartBrokers(prev => {
+      const next = new Set(prev);
+      if (next.has(broker)) next.delete(broker);
+      else next.add(broker);
+      return next;
+    });
+  };
+
+  // Chart data
   const chartData = (() => {
     if (!backtestData) return [];
     const dateSet = new Set<string>();
@@ -149,7 +204,6 @@ const BrokerRecommendPage: React.FC = () => {
       b.daily_returns.forEach(d => dateSet.add(d.date));
     });
     const dates = Array.from(dateSet).sort();
-
     return dates.map(date => {
       const entry: Record<string, string | number | undefined> = { date: fmtDate(date) };
       backtestData.brokers.forEach((b) => {
@@ -160,9 +214,139 @@ const BrokerRecommendPage: React.FC = () => {
     });
   })();
 
-  const brokerGroups = (recommendData?.items?.length ?? 0) > 0 && recommendData?.items
-    ? groupByBroker(recommendData.items)
-    : new Map<string, BrokerRecommendItem[]>();
+  // Build deduped stock rows with enrichment
+  const stockRows = useMemo((): StockRow[] => {
+    if (!recommendData?.items) return [];
+    return dedupStocks(recommendData.items).map(item => {
+      const stockRet = backtestData?.stock_returns?.find(
+        s => s.ts_code === item.ts_code
+      );
+      const cumRet = stockRet?.daily_returns?.length
+        ? stockRet.daily_returns[stockRet.daily_returns.length - 1].cumulative
+        : undefined;
+      return {
+        ts_code: item.ts_code,
+        name: item.name,
+        broker_count: item.broker_count,
+        endPrice: stockRet?.end_price,
+        endDate: stockRet?.end_date,
+        cumRet,
+        nineturn: enrichmentData?.data[item.ts_code]?.nineturn ?? null,
+        forecast: enrichmentData?.data[item.ts_code]?.forecast ?? null,
+        cyq_perf: enrichmentData?.data[item.ts_code]?.cyq_perf ?? null,
+      };
+    });
+  }, [recommendData, backtestData, enrichmentData]);
+
+  // --- Table column definitions ---
+  const stockColumns: ColumnsType<StockRow> = useMemo(() => [
+    {
+      title: '代码', dataIndex: 'ts_code', key: 'ts_code',
+      render: (v: string) => <span className="font-mono text-xs">{v}</span>,
+    },
+    {
+      title: '名称', dataIndex: 'name', key: 'name',
+      render: (v: string) => <span className="text-xs text-secondary-text">{v}</span>,
+    },
+    {
+      title: '月末价', dataIndex: 'endPrice', key: 'endPrice',
+      render: (_: any, row: StockRow) => (
+        <span className="text-xs text-secondary-text whitespace-nowrap">
+          {row.endPrice != null ? row.endPrice.toFixed(2) : '--'}
+          {row.endDate ? <span className="text-tertiary-text ml-1">({fmtDate(row.endDate).slice(5)})</span> : null}
+        </span>
+      ),
+    },
+    {
+      title: <>九转信号{loadingEnrichment ? <Loader2 className="h-3 w-3 animate-spin inline ml-1" /> : null}</>,
+      key: 'nineturn',
+      render: (_, row) => {
+        const nt = row.nineturn;
+        if (!nt) return <span className="text-xs text-tertiary-text">--</span>;
+        if (nt.nine_up_turn) return <span className="text-xs text-emerald-400 font-medium">上涨9转</span>;
+        if (nt.nine_down_turn) return <span className="text-xs text-red-400 font-medium">下跌9转</span>;
+        if (nt.up_count || nt.down_count) return (
+          <span className="text-xs">
+            {nt.up_count ? <span className="text-red-400">↑{nt.up_count}</span> : null}
+            {nt.up_count && nt.down_count ? ' ' : null}
+            {nt.down_count ? <span className="text-emerald-400">↓{nt.down_count}</span> : null}
+          </span>
+        );
+        return <span className="text-xs text-tertiary-text">--</span>;
+      },
+    },
+    {
+      title: <>盈利预测{loadingEnrichment ? <Loader2 className="h-3 w-3 animate-spin inline ml-1" /> : null}</>,
+      key: 'forecast',
+      render: (_, row) => {
+        const fc = row.forecast;
+        if (!fc) return <span className="text-xs text-tertiary-text">--</span>;
+        const hasRating = !!fc.rating;
+        const hasPrice = fc.min_price != null || fc.max_price != null;
+        const hasImpDg = !!fc.imp_dg;
+        if (!hasRating && !hasPrice && !hasImpDg) return <span className="text-xs text-tertiary-text">--</span>;
+        return (
+          <div className="text-xs">
+            {hasRating && <div className="font-medium text-cyan-400">{fc.rating}</div>}
+            {hasPrice && (
+              <div className="text-secondary-text">
+                {fc.min_price != null ? fc.min_price!.toFixed(2) : '?'}~{fc.max_price != null ? fc.max_price!.toFixed(2) : '?'}
+              </div>
+            )}
+            {hasImpDg && <div className="text-tertiary-text">{fc.imp_dg}</div>}
+          </div>
+        );
+      },
+    },
+    {
+      title: <>筹码胜率{loadingEnrichment ? <Loader2 className="h-3 w-3 animate-spin inline ml-1" /> : null}</>,
+      key: 'cyq_perf',
+      sorter: (a, b) => (a.cyq_perf?.winner_rate ?? -Infinity) - (b.cyq_perf?.winner_rate ?? -Infinity),
+      render: (_, row) => {
+        const cyq = row.cyq_perf;
+        if (!cyq) return <span className="text-xs text-tertiary-text">--</span>;
+        return (
+          <div className="text-xs">
+            {cyq.winner_rate != null && (
+              <div className={cyq.winner_rate >= 0.5 ? 'text-red-400' : 'text-emerald-400'}>
+                {(cyq.winner_rate * 100).toFixed(1)}%
+              </div>
+            )}
+            {cyq.cost_avg != null && (
+              <div className="text-tertiary-text">{cyq.cost_avg.toFixed(2)}</div>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      title: '累计收益', key: 'cumRet',
+      sorter: (a, b) => (a.cumRet ?? -Infinity) - (b.cumRet ?? -Infinity),
+      defaultSortOrder: 'descend',
+      render: (_, row) => (
+        <span className={`text-xs font-medium ${row.cumRet != null ? (row.cumRet >= 0 ? 'text-red-400' : 'text-emerald-400') : 'text-tertiary-text'}`}>
+          {fmtPct(row.cumRet)}
+        </span>
+      ),
+    },
+    {
+      title: <span style={{ whiteSpace: 'nowrap' }}>推荐数</span>, dataIndex: 'broker_count', key: 'broker_count',
+      sorter: (a, b) => a.broker_count - b.broker_count,
+      render: (v: number) => <span className="text-xs text-tertiary-text whitespace-nowrap">{v}</span>,
+    },
+  ], [loadingEnrichment]);
+
+  // Broker groups
+  const brokerGroups = useMemo((): Map<string, BrokerRecommendItem[]> => {
+    if (!recommendData?.items?.length) return new Map();
+    const map = new Map<string, BrokerRecommendItem[]>();
+    for (const item of recommendData.items) {
+      const existing = map.get(item.broker) || [];
+      existing.push(item);
+      map.set(item.broker, existing);
+    }
+    return map;
+  }, [recommendData]);
 
   return (
     <AppPage>
@@ -172,28 +356,22 @@ const BrokerRecommendPage: React.FC = () => {
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
               <label className="text-sm text-secondary-text">月份</label>
-              {loadingMonths ? (
-                <Loader2 className="h-4 w-4 animate-spin text-tertiary-text" />
-              ) : months.length > 0 ? (
-                <select
-                  value={selectedMonth}
-                  onChange={e => setSelectedMonth(e.target.value)}
-                  className="h-9 rounded-lg border border-border/30 bg-muted/30 px-3 text-sm"
-                >
-                  {months.map(m => (
-                    <option key={m} value={m}>{m}</option>
-                  ))}
-                </select>
-              ) : (
-                <span className="text-sm text-tertiary-text">暂无数据</span>
-              )}
+              <DatePicker
+                picker="month"
+                locale={zhCN.DatePicker}
+                value={selectedMonth}
+                onChange={(d) => { if (d) setSearchParams({ month: d.format('YYYYMM') }); }}
+                allowClear={false}
+                disabledDate={(d) => d.isAfter(dayjs(), 'month')}
+                className="h-9"
+              />
             </div>
 
             <Button
               variant="outline"
               size="sm"
               onClick={handleFetch}
-              disabled={!selectedMonth || loadingData}
+              disabled={loadingData}
             >
               {loadingData ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" />}
               获取当月数据
@@ -203,7 +381,7 @@ const BrokerRecommendPage: React.FC = () => {
               {backtestData
                 ? `回测区间: ${fmtDate(backtestData.buy_date)} → ${fmtDate(backtestData.sell_date)}`
                 : recommendData
-                ? `展示 ${selectedMonth} 月券商金股`
+                ? `${monthStr} 月券商金股`
                 : '--'}
             </span>
           </div>
@@ -250,31 +428,37 @@ const BrokerRecommendPage: React.FC = () => {
         {/* Chart */}
         {backtestData && chartData.length > 0 && backtestData.brokers.length > 0 && (
           <Card className="p-4">
-            <div className="text-sm font-medium mb-3">券商组合收益曲线</div>
+            <div className="text-sm font-medium mb-2">券商组合收益曲线</div>
+            {/* Legend: click to toggle, greyed out when hidden */}
+            <div className="flex flex-wrap gap-x-3 gap-y-1 mb-1">
+              {backtestData.brokers.map((b, i) => {
+                const visible = visibleChartBrokers.has(b.broker);
+                return (
+                  <button
+                    key={b.broker}
+                    onClick={() => toggleChartBroker(b.broker)}
+                    className={`inline-flex items-center gap-1 text-xs transition-opacity ${
+                      visible ? 'opacity-100' : 'opacity-30 hover:opacity-60'
+                    }`}
+                  >
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{ backgroundColor: BROKER_COLORS[i % BROKER_COLORS.length] }}
+                    />
+                    <span className="text-secondary-text">{b.broker}</span>
+                  </button>
+                );
+              })}
+            </div>
             <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={chartData}>
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--border))" />
+              <LineChart data={chartData} margin={{ top: 4, right: 0, bottom: 6, left: -20 }}>
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9ca3af' }} stroke="#6b7280" />
                 <YAxis
-                  tick={{ fontSize: 10 }}
-                  stroke="hsl(var(--border))"
+                  tick={{ fontSize: 10, fill: '#9ca3af' }}
+                  stroke="#6b7280"
                   tickFormatter={v => `${(v * 100).toFixed(0)}%`}
                 />
-                <Tooltip
-                  contentStyle={{
-                    background: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
-                    fontSize: '12px',
-                  }}
-                  formatter={(val: unknown) => {
-                    const n = Number(val);
-                    return isNaN(n) ? ['-'] : [`${(n * 100).toFixed(2)}%`];
-                  }}
-                />
-                <Legend
-                  wrapperStyle={{ fontSize: 10 }}
-                  formatter={(value: string) => <span className="text-xs">{value}</span>}
-                />
+                <Tooltip content={<CustomTooltip />} />
                 {backtestData.brokers.map((b, i) => (
                   <Line
                     key={b.broker}
@@ -284,6 +468,7 @@ const BrokerRecommendPage: React.FC = () => {
                     strokeWidth={1.5}
                     dot={false}
                     connectNulls
+                    hide={!visibleChartBrokers.has(b.broker)}
                   />
                 ))}
               </LineChart>
@@ -291,232 +476,215 @@ const BrokerRecommendPage: React.FC = () => {
           </Card>
         )}
 
-        {/* Broker table - always show when recommendData is available */}
+        {/* Tables */}
         {recommendData && brokerGroups.size > 0 && !loadingData && (
           <Card className="p-4">
             <div className="text-sm font-medium mb-3">
               {viewMode === 'broker' ? '券商金股明细' : '全部金股明细'}
             </div>
 
-            {/* Stock view: flat table of unique stocks */}
+            {/* Stock view: flat table */}
             {viewMode === 'stock' && (
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-border/10 text-secondary-text">
-                    <th className="text-left py-1.5 font-medium">代码</th>
-                    <th className="text-left py-1.5 font-medium">名称</th>
-                    <th className="text-center py-1.5 font-medium w-16">
-                      <button
-                        onClick={() => handleSort('brokerCount')}
-                        className="hover:text-foreground transition-colors inline-flex items-center gap-0.5"
-                      >
-                        推荐数<span className="w-3 text-xs">{sortIndicator('brokerCount')}</span>
-                      </button>
-                    </th>
-                    <th className="text-right py-1.5 font-medium w-20">
-                      <button
-                        onClick={() => handleSort('cumRet')}
-                        className="hover:text-foreground transition-colors inline-flex items-center gap-0.5"
-                      >
-                        累计收益<span className="w-3 text-xs">{sortIndicator('cumRet')}</span>
-                      </button>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(() => {
-                    // Deduplicate by ts_code, keep max broker_count
-                    const stockMap = new Map<string, { item: BrokerRecommendItem; cumRet?: number }>();
-                    for (const items of brokerGroups.values()) {
-                      for (const item of items) {
-                        const existing = stockMap.get(item.ts_code);
-                        if (!existing || item.broker_count > existing.item.broker_count) {
-                          const stockRet = backtestData?.stock_returns?.find(
-                            s => s.ts_code === item.ts_code
-                          );
-                          const cumRet = stockRet?.daily_returns?.length
-                            ? stockRet.daily_returns[stockRet.daily_returns.length - 1].cumulative
-                            : undefined;
-                          stockMap.set(item.ts_code, { item, cumRet });
-                        }
-                      }
-                    }
-                    const stocks = Array.from(stockMap.values());
-                    if (sortKey) {
-                      const dir = sortDir === 'desc' ? -1 : 1;
-                      stocks.sort((a, b) => {
-                        const va = sortKey === 'brokerCount' ? a.item.broker_count : (a.cumRet ?? -Infinity);
-                        const vb = sortKey === 'brokerCount' ? b.item.broker_count : (b.cumRet ?? -Infinity);
-                        return (va > vb ? -1 : va < vb ? 1 : 0) * dir;
-                      });
-                    } else {
-                      stocks.sort((a, b) => (b.cumRet ?? -Infinity) - (a.cumRet ?? -Infinity));
-                    }
-                    return stocks
-                      .map(({ item, cumRet }) => (
-                        <tr key={item.ts_code} className="border-b border-border/5 hover:bg-foreground/[0.02]">
-                          <td className="py-1.5 font-mono">{item.ts_code}</td>
-                          <td className="py-1.5 text-secondary-text">{item.name}</td>
-                          <td className="py-1.5 text-center text-tertiary-text">{item.broker_count}</td>
-                          <td className={`py-1.5 text-right font-medium ${cumRet != null ? (cumRet >= 0 ? 'text-red-400' : 'text-emerald-400') : 'text-tertiary-text'}`}>
-                            {fmtPct(cumRet)}
-                          </td>
-                        </tr>
-                      ));
-                  })()}
-                </tbody>
-              </table>
+              <Table
+                columns={stockColumns}
+                dataSource={stockRows}
+                rowKey="ts_code"
+                size="small"
+                pagination={false}
+                scroll={{ x: 700 }}
+              />
             )}
 
             {/* Broker view: grouped by broker */}
             {viewMode === 'broker' && (
-            <div className="space-y-2">
-              {Array.from(brokerGroups.entries()).map(([broker, items], idx) => (
-                <div key={broker} className="border border-border/20 rounded-lg overflow-hidden">
-                  {/* Broker header */}
-                  <button
-                    onClick={() => toggleBroker(broker)}
-                    className="w-full flex items-center gap-3 px-3 py-2 hover:bg-foreground/[0.02] transition-colors"
-                  >
-                    <span className="text-xs">
-                      {expandedBrokers.has(broker) ? (
-                        <ChevronDown className="h-3 w-3" />
-                      ) : (
-                        <ChevronRight className="h-3 w-3" />
-                      )}
-                    </span>
-                    <span
-                      className="w-2 h-2 rounded-full shrink-0"
-                      style={{ backgroundColor: BROKER_COLORS[idx % BROKER_COLORS.length] }}
-                    />
-                    <span className="text-sm font-medium flex-1 text-left">{broker}</span>
-                    <span className="text-xs text-secondary-text">{items.length}只</span>
-                    <span className={`text-xs font-medium ${(backtestData?.brokers.find(b => b.broker === broker)?.cumulative_return ?? 0) >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                      {fmtPct(backtestData?.brokers.find(b => b.broker === broker)?.cumulative_return)}
-                    </span>
-                    {backtestData && (
-                      <span className="text-xs text-secondary-text">
-                        胜率 {backtestData.brokers.find(b => b.broker === broker)?.win_rate != null
-                          ? `${(backtestData.brokers.find(b => b.broker === broker)!.win_rate! * 100).toFixed(0)}%`
-                          : '--'}
-                      </span>
-                    )}
-                  </button>
+              <div className="space-y-2">
+                {Array.from(brokerGroups.entries())
+                  .sort(([, aItems], [, bItems]) => {
+                    const aBt = backtestData?.brokers.find(b => b.broker === aItems[0]?.broker);
+                    const bBt = backtestData?.brokers.find(b => b.broker === bItems[0]?.broker);
+                    return (bBt?.cumulative_return ?? -Infinity) - (aBt?.cumulative_return ?? -Infinity);
+                  })
+                  .map(([broker, items], idx) => {
+                  const brokerBt = backtestData?.brokers.find(b => b.broker === broker);
+                  const brokerRows: StockRow[] = items.map(item => {
+                    const stockRet = backtestData?.stock_returns?.find(
+                      s => s.ts_code === item.ts_code
+                    );
+                    const cumRet = stockRet?.daily_returns?.length
+                      ? stockRet.daily_returns[stockRet.daily_returns.length - 1].cumulative
+                      : undefined;
+                    return {
+                      ts_code: item.ts_code,
+                      name: item.name,
+                      broker_count: item.broker_count,
+                      endPrice: stockRet?.end_price,
+                      endDate: stockRet?.end_date,
+                      cumRet,
+                      nineturn: enrichmentData?.data[item.ts_code]?.nineturn ?? null,
+                      forecast: enrichmentData?.data[item.ts_code]?.forecast ?? null,
+                      cyq_perf: enrichmentData?.data[item.ts_code]?.cyq_perf ?? null,
+                    };
+                  });
 
-                  {/* Expanded broker detail */}
-                  {expandedBrokers.has(broker) && (
-                    <div className="px-4 py-2 border-t border-border/10 bg-muted/20">
-                      {/* Stock returns table */}
-                      {backtestData ? (
-                        <table className="w-full text-xs">
-                          <thead>
-                            <tr className="border-b border-border/10 text-secondary-text">
-                              <th className="text-left py-1.5 font-medium">代码</th>
-                              <th className="text-left py-1.5 font-medium">名称</th>
-                              <th className="text-center py-1.5 font-medium w-16">
-                                <button
-                                  onClick={() => handleSort('brokerCount')}
-                                  className="hover:text-foreground transition-colors inline-flex items-center gap-0.5"
-                                >
-                                  推荐数<span className="w-3 text-xs">{sortIndicator('brokerCount')}</span>
-                                </button>
-                              </th>
-                              <th className="text-right py-1.5 font-medium w-20">
-                                <button
-                                  onClick={() => handleSort('cumRet')}
-                                  className="hover:text-foreground transition-colors inline-flex items-center gap-0.5"
-                                >
-                                  累计收益<span className="w-3 text-xs">{sortIndicator('cumRet')}</span>
-                                </button>
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {items
-                              .map((item: BrokerRecommendItem) => {
-                                const stockRet = backtestData.stock_returns?.find(
-                                  s => s.broker === broker && s.ts_code === item.ts_code
+                  return (
+                    <div key={broker} className="border border-border/20 rounded-lg overflow-hidden">
+                      {/* Broker header */}
+                      <button
+                        onClick={() => toggleBroker(broker)}
+                        className="w-full flex items-center gap-3 px-3 py-2 hover:bg-foreground/[0.02] transition-colors"
+                      >
+                        <span className="text-xs">
+                          {expandedBrokers.has(broker) ? (
+                            <ChevronDown className="h-3 w-3" />
+                          ) : (
+                            <ChevronRight className="h-3 w-3" />
+                          )}
+                        </span>
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: BROKER_COLORS[idx % BROKER_COLORS.length] }}
+                        />
+                        <span className="text-sm font-medium flex-1 text-left">{broker}</span>
+                        <span className="text-xs text-secondary-text">{items.length}只</span>
+                        <span className={`text-xs font-medium ${(brokerBt?.cumulative_return ?? 0) >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                          {fmtPct(brokerBt?.cumulative_return)}
+                        </span>
+                        {brokerBt && (
+                          <span className="text-xs text-secondary-text">
+                            胜率 {brokerBt.win_rate != null
+                              ? `${(brokerBt.win_rate * 100).toFixed(0)}%`
+                              : '--'}
+                          </span>
+                        )}
+                      </button>
+
+                      {/* Expanded broker detail */}
+                      {expandedBrokers.has(broker) && (
+                        <div className="px-4 py-2 border-t border-border/10 bg-muted/20">
+                          {backtestData ? (
+                            <>
+                              <Table
+                                columns={stockColumns}
+                                dataSource={brokerRows}
+                                rowKey="ts_code"
+                                size="small"
+                                pagination={false}
+                                scroll={{ x: 700 }}
+                                onRow={(record) => ({
+                                  onClick: () => setExpandedStock(prev => prev === record.ts_code ? null : record.ts_code),
+                                  style: {
+                                    cursor: 'pointer',
+                                    background: expandedStock === record.ts_code ? 'hsl(var(--accent))' : undefined,
+                                  },
+                                })}
+                              />
+                              {/* Expanded stock monthly trend chart */}
+                              {expandedStock && brokerRows.some(r => r.ts_code === expandedStock) && (() => {
+                                const stockRet = backtestData?.stock_returns?.find(
+                                  s => s.ts_code === expandedStock
                                 );
-                                const cumRet = stockRet?.daily_returns?.length
-                                  ? stockRet.daily_returns[stockRet.daily_returns.length - 1].cumulative
-                                  : undefined;
-                                return { item, cumRet };
-                              })
-                              .sort((a, b) => {
-                                if (!sortKey) return (b.cumRet ?? -Infinity) - (a.cumRet ?? -Infinity);
-                                const dir = sortDir === 'desc' ? -1 : 1;
-                                const va = sortKey === 'brokerCount' ? a.item.broker_count : (a.cumRet ?? -Infinity);
-                                const vb = sortKey === 'brokerCount' ? b.item.broker_count : (b.cumRet ?? -Infinity);
-                                return (va > vb ? -1 : va < vb ? 1 : 0) * dir;
-                              })
-                              .map(({ item, cumRet }) => (
-                                <tr key={item.ts_code} className="border-b border-border/5 hover:bg-foreground/[0.02]">
-                                  <td className="py-1.5 font-mono">{item.ts_code}</td>
-                                  <td className="py-1.5 text-secondary-text">{item.name}</td>
-                                  <td className="py-1.5 text-center text-tertiary-text">{item.broker_count}</td>
-                                  <td className={`py-1.5 text-right font-medium ${cumRet != null ? (cumRet >= 0 ? 'text-red-400' : 'text-emerald-400') : 'text-tertiary-text'}`}>
-                                    {fmtPct(cumRet)}
-                                  </td>
-                                </tr>
+                                if (!stockRet?.daily_returns?.length) return null;
+                                return (
+                                  <div className="mt-3 p-3 border border-border/20 rounded-lg bg-muted/10">
+                                    <div className="text-xs font-medium mb-2 text-secondary-text">
+                                      {stockRet.name || expandedStock} 月度走势
+                                    </div>
+                                    <ResponsiveContainer width="100%" height={120}>
+                                      <LineChart
+                                        margin={{ top: 2, right: 0, bottom: 4, left: -20 }}
+                                        data={stockRet.daily_returns.map((d: any) => ({
+                                          date: fmtDate(d.date),
+                                          cumulative: d.cumulative,
+                                          daily_return: d.return ?? d.daily_return,
+                                          price: d.price,
+                                        }))}
+                                      >
+                                        <XAxis dataKey="date" tick={{ fontSize: 8, fill: '#9ca3af' }} stroke="#6b7280" interval={3} />
+                                        <YAxis tick={{ fontSize: 8, fill: '#9ca3af' }} stroke="#6b7280" tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`} />
+                                        <Tooltip
+                                          content={({ active, payload, label }: any) => {
+                                            if (!active || !payload?.length) return null;
+                                            const data = payload[0]?.payload;
+                                            const dr = data?.daily_return;
+                                            const drColor = dr != null ? (dr >= 0 ? '#ef4444' : '#10b981') : '#9ca3af';
+                                            const cum = data?.cumulative;
+                                            const cumColor = cum != null ? (cum >= 0 ? '#ef4444' : '#10b981') : '#9ca3af';
+                                            return (
+                                              <div style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '6px', padding: '6px 10px', fontSize: 11 }}>
+                                                <div style={{ marginBottom: 2, color: '#9ca3af' }}>{label}</div>
+                                                <div>涨跌幅: <span style={{ color: drColor }}>{dr != null ? `${(dr * 100).toFixed(2)}%` : '--'}</span></div>
+                                                <div>价格: <span style={{ color: '#e2e8f0' }}>{data?.price != null ? data.price.toFixed(2) : '--'}</span></div>
+                                                <div>累计: <span style={{ color: cumColor }}>{cum != null ? `${(cum * 100).toFixed(2)}%` : '--'}</span></div>
+                                              </div>
+                                            );
+                                          }}
+                                        />
+                                        <Line type="monotone" dataKey="cumulative" stroke="#34d399" strokeWidth={1.5} dot={false} connectNulls />
+                                        <ReferenceLine y={0} stroke="#4b5563" strokeWidth={1} strokeDasharray="4 4" />
+                                      </LineChart>
+                                    </ResponsiveContainer>
+                                  </div>
+                                );
+                              })()}
+                            </>
+                          ) : (
+                            <div className="space-y-1">
+                              {items.map((item) => (
+                                <div key={item.ts_code} className="flex items-center gap-2 text-xs">
+                                  <span className="font-mono">{item.ts_code}</span>
+                                  <span className="text-secondary-text">{item.name}</span>
+                                  <span className="text-tertiary-text ml-auto">被{item.broker_count}家推荐</span>
+                                </div>
                               ))}
-                          </tbody>
-                        </table>
-                      ) : (
-                        <div className="space-y-1">
-                          {items.map((item: BrokerRecommendItem) => (
-                            <div key={item.ts_code} className="flex items-center gap-2 text-xs">
-                              <span className="font-mono">{item.ts_code}</span>
-                              <span className="text-secondary-text">{item.name}</span>
-                              <span className="text-tertiary-text ml-auto">被{item.broker_count}家推荐</span>
                             </div>
-                          ))}
+                          )}
+                          {/* Mini chart for this broker */}
+                          {backtestData && brokerBt && brokerBt.daily_returns.length > 0 && (() => {
+                            const finalCum = brokerBt.daily_returns[brokerBt.daily_returns.length - 1]?.cumulative ?? 0;
+                            const cumColor = finalCum >= 0 ? '#ef4444' : '#10b981';
+                            return (
+                            <div className="mt-2">
+                              <ResponsiveContainer width="100%" height={130}>
+                                <LineChart
+                                  margin={{ top: 4, right: 0, bottom: 4, left: -20 }}
+                                  data={brokerBt.daily_returns.map(d => ({
+                                    date: fmtDate(d.date),
+                                    cumulative: d.cumulative,
+                                    daily_return: d.daily_return,
+                                  }))}
+                                >
+                                  <XAxis dataKey="date" tick={{ fontSize: 8, fill: '#9ca3af' }} stroke="#6b7280" interval={3} />
+                                  <YAxis tick={{ fontSize: 8, fill: '#9ca3af' }} stroke="#6b7280" tickFormatter={v => `${(v * 100).toFixed(0)}%`} />
+                                  <Tooltip
+                                    contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '6px', fontSize: 10 }}
+                                    formatter={(val: unknown, name: unknown) => {
+                                      const n = Number(val);
+                                      if (isNaN(n)) return ['-'];
+                                      const color = n >= 0 ? '#ef4444' : '#10b981';
+                                      const label = String(name ?? '') === 'cumulative' ? '累计' : '当日';
+                                      return [<span style={{ color }}>{`${(n * 100).toFixed(2)}%`}</span>, label];
+                                    }}
+                                  />
+                                  <Line type="monotone" dataKey="cumulative" stroke={cumColor} strokeWidth={1.5} dot={false} />
+                                  <Line type="monotone" dataKey="daily_return" stroke="#60a5fa" strokeWidth={1} dot={false} strokeDasharray="3 2" />
+                                  <ReferenceLine y={0} stroke="#4b5563" strokeWidth={1} strokeDasharray="4 4" />
+                                </LineChart>
+                              </ResponsiveContainer>
+                            </div>
+                            );
+                          })()}
                         </div>
                       )}
-                      {/* Mini chart for this broker */}
-                      {backtestData && (() => {
-                        const brokerBt = backtestData.brokers.find(b => b.broker === broker);
-                        if (!brokerBt || brokerBt.daily_returns.length === 0) return null;
-                        return (
-                          <div className="mt-2">
-                            <ResponsiveContainer width="100%" height={80}>
-                              <LineChart
-                                data={brokerBt.daily_returns.map(d => ({
-                                  date: fmtDate(d.date),
-                                  cumulative: d.cumulative,
-                                }))}
-                              >
-                                <XAxis dataKey="date" tick={{ fontSize: 8 }} stroke="hsl(var(--border))" />
-                                <YAxis tick={{ fontSize: 8 }} stroke="hsl(var(--border))" tickFormatter={v => `${(v * 100).toFixed(0)}%`} />
-                                <Tooltip
-                                  contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '6px', fontSize: 10 }}
-                                  formatter={(val: unknown) => {
-                                    const n = Number(val);
-                                    return isNaN(n) ? ['-'] : [`${(n * 100).toFixed(2)}%`];
-                                  }}
-                                />
-                                <Line
-                                  type="monotone"
-                                  dataKey="cumulative"
-                                  stroke={BROKER_COLORS[idx % BROKER_COLORS.length]}
-                                  strokeWidth={1.5}
-                                  dot={false}
-                                />
-                              </LineChart>
-                            </ResponsiveContainer>
-                          </div>
-                        );
-                      })()}
                     </div>
-                  )}
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </div>
             )}
           </Card>
         )}
 
         {/* Empty state */}
-        {!recommendData && !loadingData && !loadingMonths && (
+        {!recommendData && !loadingData && (
           <EmptyState
             icon={<TrendingUp className="h-8 w-8" />}
             title="暂无券商金股数据"

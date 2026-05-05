@@ -7,6 +7,36 @@ export type BrokerRecommendItem = {
   broker_count: number;
 };
 
+export type StockEnrichment = {
+  nineturn?: {
+    up_count?: number | null;
+    down_count?: number | null;
+    nine_up_turn?: number | null;
+    nine_down_turn?: number | null;
+  } | null;
+  forecast?: {
+    eps?: number | null;
+    pe?: number | null;
+    roe?: number | null;
+    np?: number | null;
+    rating?: string | null;
+    min_price?: number | null;
+    max_price?: number | null;
+    imp_dg?: string | null;
+  } | null;
+  cyq_perf?: {
+    cost_avg?: number | null;
+    winner_rate?: number | null;
+    concentration?: number | null;
+  } | null;
+};
+
+export type EnrichmentResponse = {
+  month: string;
+  query_date: string;
+  data: Record<string, StockEnrichment>;
+};
+
 export type BrokerRecommendResponse = {
   month: string;
   total_recommendations: number;
@@ -22,6 +52,7 @@ export type BrokerFetchResponse = {
 
 export type BrokerDailyReturn = {
   date: string;
+  price?: number;
   daily_return?: number;
   cumulative?: number;
 };
@@ -41,7 +72,30 @@ export type StockReturnItem = {
   name: string;
   broker_count: number;
   broker: string;
+  end_price?: number;
+  end_date?: string;
   daily_returns: BrokerDailyReturn[];
+  nineturn?: {
+    up_count?: number | null;
+    down_count?: number | null;
+    nine_up_turn?: number | null;
+    nine_down_turn?: number | null;
+  } | null;
+  forecast?: {
+    eps?: number | null;
+    pe?: number | null;
+    roe?: number | null;
+    np?: number | null;
+    rating?: string | null;
+    min_price?: number | null;
+    max_price?: number | null;
+    imp_dg?: string | null;
+  } | null;
+  cyq_perf?: {
+    cost_avg?: number | null;
+    winner_rate?: number | null;
+    concentration?: number | null;
+  } | null;
 };
 
 export type BrokerBacktestResponse = {
@@ -86,6 +140,15 @@ export async function getBacktest(
   const resp = await apiClient.get<BrokerBacktestResponse>(
     `/api/v1/broker-recommend/${month}/backtest`,
     { params: { top_n: topN } }
+  );
+  return resp.data;
+}
+
+export async function getMonthlyEnrichment(
+  month: string
+): Promise<EnrichmentResponse> {
+  const resp = await apiClient.get<EnrichmentResponse>(
+    `/api/v1/broker-recommend/${month}/enrichment`
   );
   return resp.data;
 }

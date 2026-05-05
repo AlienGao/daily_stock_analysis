@@ -304,7 +304,7 @@ def run_postmarket_discovery():
         from data_provider.tushare_fetcher import TushareFetcher
 
         discovery_config = get_discovery_config()
-        tushare_fetcher = TushareFetcher()
+        tushare_fetcher = TushareFetcher.get_instance()
         if not tushare_fetcher.is_available():
             raise HTTPException(status_code=503, detail="数据源 Tushare 不可用")
 
@@ -448,7 +448,7 @@ def get_backtest(
         raise HTTPException(status_code=400, detail="mode 仅支持 intraday 或 postmarket")
 
     try:
-        fetcher = TushareFetcher()
+        fetcher = TushareFetcher.get_instance()
     except Exception:
         fetcher = None
 
