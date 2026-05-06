@@ -628,9 +628,28 @@ const DiscoveryPage: React.FC = () => {
   }, []);
 
   const runDiscovery = useCallback(async () => {
-    try { setRunning(true); setError(null); await discoveryApi.runPostmarketDiscovery(); await fetchReport(); }
-    catch (e: unknown) { setError(e instanceof Error ? e.message : 'err'); }
-    finally { setRunning(false); }
+    setRunning(true);
+    setError(null);
+    try {
+      const { task_id } = await discoveryApi.runPostmarketDiscovery();
+      for (let i = 0; i < 120; i++) {
+        await new Promise(r => setTimeout(r, 2000));
+        const s = await discoveryApi.getPostmarketRunStatus(task_id);
+        if (s.status === 'completed') {
+          await fetchReport();
+          return;
+        }
+        if (s.status === 'failed') {
+          setError(s.error || '盘后发现执行失败');
+          return;
+        }
+      }
+      setError('盘后发现超时（超过 4 分钟）');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'err');
+    } finally {
+      setRunning(false);
+    }
   }, [fetchReport]);
 
   const fetchBacktest = useCallback(async (mode: 'intraday' | 'postmarket') => {

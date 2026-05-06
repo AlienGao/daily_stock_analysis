@@ -199,9 +199,9 @@ class BrokerRecommendService:
 
     @staticmethod
     def _normalize_cyq_perf(data: Dict[str, Any]) -> Dict[str, Any]:
-        """从 L2 原始字段补全 computed 字段（cost_avg、concentration）。
+        """从 L2 原始字段补全 computed 字段（cost_avg、concentration、scr90）。
 
-        L2 存储的是 Tushare 原始字段，前端需要 cost_avg/concentration。
+        L2 存储的是 Tushare 原始字段，前端需要 cost_avg/concentration/scr90。
         """
         if "cost_avg" not in data or data["cost_avg"] is None:
             wavg = data.get("weight_avg")
@@ -217,6 +217,19 @@ class BrokerRecommendService:
             if c5 is not None and c95 is not None and wavg and float(wavg) > 0:
                 try:
                     data["concentration"] = round((float(c95) - float(c5)) / float(wavg), 4)
+                except (ValueError, TypeError):
+                    pass
+        if "scr90" not in data or data["scr90"] is None:
+            c5 = data.get("cost_5pct")
+            c15 = data.get("cost_15pct")
+            c50 = data.get("cost_50pct")
+            c85 = data.get("cost_85pct")
+            c95 = data.get("cost_95pct")
+            if all(v is not None for v in (c5, c15, c50, c85, c95)) and float(c50) > 0:
+                try:
+                    cost90 = (float(c95) + float(c85)) / 2
+                    cost10 = (float(c5) + float(c15)) / 2
+                    data["scr90"] = round((cost90 - cost10) / float(c50) * 100, 2)
                 except (ValueError, TypeError):
                     pass
         return data
@@ -386,6 +399,21 @@ class BrokerRecommendService:
                 except Exception:
                     pass
 
+        # L3.5: akshare 筹码集中度覆盖（当日实时数据，优先于 Tushare SCR90）
+        akshare_cyq_codes = [tc for tc in ts_codes if tc not in enrichment or "cyq_perf" not in enrichment[tc]]
+        if akshare_cyq_codes:
+            try:
+                akshare_data = BrokerRecommendService._fetch_cyq_akshare(akshare_cyq_codes)
+                if akshare_data:
+                    for ts_code, cyq in akshare_data.items():
+                        cyq["trade_date"] = query_date
+                        BrokerRecommendService._set_cached(ts_code, query_date, "cyq_perf", cyq)
+                        enrichment.setdefault(ts_code, {})["cyq_perf"] = cyq
+                        fetched_cyq[ts_code] = cyq
+                    logger.info(f"[BrokerRecommend] akshare cyq 覆盖 {len(akshare_data)} 只")
+            except Exception as e:
+                logger.debug(f"[BrokerRecommend] akshare cyq 批量获取失败: {e}")
+
         # 对 Tushare 无数据的股票缓存空标记，避免重复拉取
         for tc in still_need_nineturn:
             if tc not in fetched_nineturn and "nineturn" not in enrichment.get(tc, {}):
@@ -405,7 +433,8 @@ class BrokerRecommendService:
             if tc not in fetched_cyq and "cyq_perf" not in enrichment.get(tc, {}):
                 empty = {"trade_date": query_date, "winner_rate": None, "cost_5pct": None,
                          "cost_15pct": None, "cost_50pct": None, "cost_85pct": None,
-                         "cost_95pct": None, "weight_avg": None, "his_low": None, "his_high": None}
+                         "cost_95pct": None, "weight_avg": None, "his_low": None, "his_high": None,
+                         "scr90": None, "concentration": None, "cost_avg": None}
                 BrokerRecommendService._set_cached(tc, query_date, "cyq_perf", empty)
                 enrichment.setdefault(tc, {})["cyq_perf"] = empty
                 fetched_cyq[tc] = empty
@@ -519,16 +548,25 @@ class BrokerRecommendService:
                     cost_95 = float(row.get("cost_95pct", 0) or 0)
                     weight_avg = float(row.get("weight_avg", 0) or 0)
                     winner_rate = float(row.get("winner_rate", 0) or 0) / 100.0
+                    cost_5 = float(row.get("cost_5pct", 0) or 0)
+                    cost_15 = float(row.get("cost_15pct", 0) or 0)
+                    cost_50 = float(row.get("cost_50pct", 0) or 0)
+                    cost_85 = float(row.get("cost_85pct", 0) or 0)
+                    cost_95 = float(row.get("cost_95pct", 0) or 0)
+                    cost90 = (cost_95 + cost_85) / 2
+                    cost10 = (cost_5 + cost_15) / 2
+                    scr90 = round((cost90 - cost10) / cost_50 * 100, 2) if cost_50 > 0 else None
                     result[ts_code] = {
                         "cost_avg": round(weight_avg, 2),
                         "winner_rate": round(winner_rate, 4),
                         "concentration": round(
                             (cost_95 - cost_5) / weight_avg, 4
                         ) if weight_avg > 0 else None,
+                        "scr90": scr90,
                         "cost_5pct": cost_5,
-                        "cost_15pct": float(row.get("cost_15pct", 0) or 0),
-                        "cost_50pct": float(row.get("cost_50pct", 0) or 0),
-                        "cost_85pct": float(row.get("cost_85pct", 0) or 0),
+                        "cost_15pct": cost_15,
+                        "cost_50pct": cost_50,
+                        "cost_85pct": cost_85,
                         "cost_95pct": cost_95,
                         "weight_avg": weight_avg,
                         "his_low": float(row.get("his_low", 0) or 0),

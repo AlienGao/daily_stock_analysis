@@ -288,7 +288,9 @@ type StockRow = {
     cost_avg?: number | null;
     winner_rate?: number | null;
     concentration?: number | null;
+    scr90?: number | null;
   } | null;
+  isTopPick?: boolean;
 };
 
 const BrokerRecommendPage: React.FC = () => {
@@ -318,7 +320,9 @@ const BrokerRecommendPage: React.FC = () => {
 
   const prevMonthRef = useRef(monthStr);
   const [visibleChartBrokers, setVisibleChartBrokers] = useState<Set<string>>(new Set());
-  const [expandedStock, setExpandedStock] = useState<string | null>(null);
+  const [expandedKey, setExpandedKey] = useState<string>('');
+  const [tableKey, setTableKey] = useState(0);
+  const expandedKeyRef = useRef<string>('');
   const [activeTab, setActiveTab] = useState<string>('monthly');
   const [ytdData, setYtdData] = useState<YtdBacktestResponse | null>(null);
   const [ytdLoading, setYtdLoading] = useState(false);
@@ -343,7 +347,8 @@ const BrokerRecommendPage: React.FC = () => {
         setRecommendData(null);
         setBacktestData(null);
         setEnrichmentData(null);
-        setExpandedStock(null);
+        setExpandedKey('');
+        setTableKey(k => k + 1);
       }
       try {
         const data = await getMonthlyRecommendations(monthStr);
@@ -459,7 +464,7 @@ const BrokerRecommendPage: React.FC = () => {
   // Build deduped stock rows with enrichment
   const stockRows = useMemo((): StockRow[] => {
     if (!recommendData?.items) return [];
-    return dedupStocks(recommendData.items).map(item => {
+    const rows: StockRow[] = dedupStocks(recommendData.items).map(item => {
       const stockRet = backtestData?.stock_returns?.find(
         s => s.ts_code === item.ts_code
       );
@@ -480,7 +485,31 @@ const BrokerRecommendPage: React.FC = () => {
         cyq_perf: enrichmentData?.data[item.ts_code]?.cyq_perf ?? null,
       };
     });
-  }, [recommendData, backtestData, enrichmentData]);
+
+    // Current month: highlight top 3 by 50% concentration + 50% winner_rate
+    if (isCurrentMonth) {
+      const scored = rows
+        .filter(r => {
+          const conc = r.cyq_perf?.concentration ?? r.cyq_perf?.scr90;
+          return conc != null && r.cyq_perf?.winner_rate != null;
+        })
+        .map(r => {
+          const rawConc = (r.cyq_perf!.scr90 ?? r.cyq_perf!.concentration)!;  {/* always % */}
+          const normConc = rawConc / 100;  {/* normalize to 0-1 */}
+          const score = 0.5 * (1 - normConc) + 0.5 * r.cyq_perf!.winner_rate!;
+          return { ts_code: r.ts_code, score };
+        })
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 3);
+
+      const topSet = new Set(scored.map(s => s.ts_code));
+      for (const r of rows) {
+        if (topSet.has(r.ts_code)) r.isTopPick = true;
+      }
+    }
+
+    return rows;
+  }, [recommendData, backtestData, enrichmentData, isCurrentMonth]);
 
   // --- Table column definitions ---
   const stockColumns: ColumnsType<StockRow> = useMemo(() => [
@@ -520,6 +549,24 @@ const BrokerRecommendPage: React.FC = () => {
         </span>
       ),
     },
+    ...(isCurrentMonth ? [{
+      title: <>集中度{loadingEnrichment ? <Loader2 className="h-3 w-3 animate-spin inline ml-1" /> : null}</>,
+      key: 'concentration',
+      sorter: (a: StockRow, b: StockRow) => {
+        const valA = a.cyq_perf?.scr90 ?? a.cyq_perf?.concentration;
+        const valB = b.cyq_perf?.scr90 ?? b.cyq_perf?.concentration;
+        if (valA == null && valB == null) return 0;
+        if (valA == null) return 1;
+        if (valB == null) return -1;
+        return valA - valB;
+      },
+      sortOrder: tableSort.columnKey === 'concentration' ? tableSort.order : undefined,
+      render: (_: any, row: StockRow) => {
+        const val = row.cyq_perf?.scr90 ?? row.cyq_perf?.concentration;
+        if (val == null) return <span className="text-xs text-tertiary-text">--</span>;
+        return <span className="text-xs text-secondary-text">{val.toFixed(2)}%</span>;
+      },
+    }] : []),
     {
       title: <>九转信号{loadingEnrichment ? <Loader2 className="h-3 w-3 animate-spin inline ml-1" /> : null}</>,
       key: 'nineturn',
@@ -774,21 +821,42 @@ const BrokerRecommendPage: React.FC = () => {
             {/* Stock view: flat table with inline expandable rows */}
             {viewMode === 'stock' && (
               <Table
+                key={tableKey}
                 columns={stockColumns}
                 dataSource={stockRows}
                 rowKey="ts_code"
                 size="small"
                 pagination={false}
                 scroll={{ x: 700 }}
+                onRow={(record) => record.isTopPick ? {
+                  style: { background: 'linear-gradient(90deg, rgba(251,191,36,0.08) 0%, rgba(245,158,11,0.04) 100%)' },
+                } : {}}
                 onChange={(_pagination, _filters, sorter) => {
                   if (!Array.isArray(sorter) && sorter.columnKey) {
                     setTableSort({ columnKey: sorter.columnKey as string, order: sorter.order as 'ascend' | 'descend' });
                   }
                 }}
                 expandable={{
+                  defaultExpandedRowKeys: expandedKey ? [expandedKey] : [],
+                  onExpand: (expanded: boolean, record: any) => {
+                    const code = String(record.ts_code);
+                    if (expanded) {
+                      if (expandedKeyRef.current && expandedKeyRef.current !== code) {
+                        setExpandedKey(code);
+                        setTableKey(k => k + 1);
+                      } else {
+                        setExpandedKey(code);
+                      }
+                      expandedKeyRef.current = code;
+                    } else {
+                      setExpandedKey('');
+                      expandedKeyRef.current = '';
+                      setTableKey(k => k + 1);
+                    }
+                  },
                   expandedRowRender: (record) => {
                     const stockRet = backtestData?.stock_returns?.find(s => s.ts_code === record.ts_code);
-                    if (!stockRet?.daily_returns?.length) return null;
+                    if (!stockRet?.daily_returns?.length) return <div />;
                     const hasOHLC = stockRet.daily_returns.some(d => d.open != null);
                     return (
                       <div className="p-3 border border-border/20 rounded-lg bg-muted/10">
@@ -829,8 +897,6 @@ const BrokerRecommendPage: React.FC = () => {
                       </div>
                     );
                   },
-                  expandedRowKeys: expandedStock ? [expandedStock] : [],
-                  onExpandedRowsChange: (keys) => setExpandedStock(keys.length > 0 ? String(keys[0]) : null),
                   rowExpandable: (record) => {
                     const stockRet = backtestData?.stock_returns?.find(s => s.ts_code === record.ts_code);
                     return !!(stockRet?.daily_returns?.length);
@@ -909,21 +975,42 @@ const BrokerRecommendPage: React.FC = () => {
                         <div className="px-4 py-2 border-t border-border/10 bg-muted/20">
                           {backtestData ? (
                             <Table
+                              key={tableKey}
                               columns={stockColumns}
                               dataSource={brokerRows}
                               rowKey="ts_code"
                               size="small"
                               pagination={false}
                               scroll={{ x: 700 }}
+                              onRow={(record) => record.isTopPick ? {
+                                style: { background: 'linear-gradient(90deg, rgba(251,191,36,0.08) 0%, rgba(245,158,11,0.04) 100%)' },
+                              } : {}}
                               onChange={(_pagination, _filters, sorter) => {
                                 if (!Array.isArray(sorter) && sorter.columnKey) {
                                   setTableSort({ columnKey: sorter.columnKey as string, order: sorter.order as 'ascend' | 'descend' });
                                 }
                               }}
                               expandable={{
+                                defaultExpandedRowKeys: expandedKey ? [expandedKey] : [],
+                                onExpand: (expanded: boolean, record: any) => {
+                                  const code = String(record.ts_code);
+                                  if (expanded) {
+                                    if (expandedKeyRef.current && expandedKeyRef.current !== code) {
+                                      setExpandedKey(code);
+                                      setTableKey(k => k + 1);
+                                    } else {
+                                      setExpandedKey(code);
+                                    }
+                                    expandedKeyRef.current = code;
+                                  } else {
+                                    setExpandedKey('');
+                                    expandedKeyRef.current = '';
+                                    setTableKey(k => k + 1);
+                                  }
+                                },
                                 expandedRowRender: (record) => {
                                   const stockRet = backtestData?.stock_returns?.find(s => s.ts_code === record.ts_code);
-                                  if (!stockRet?.daily_returns?.length) return null;
+                                  if (!stockRet?.daily_returns?.length) return <div />;
                                   const hasOHLC = stockRet.daily_returns.some(d => d.open != null);
                                   return (
                                     <div className="p-3 border border-border/20 rounded-lg bg-muted/10">
@@ -980,8 +1067,6 @@ const BrokerRecommendPage: React.FC = () => {
                                     </div>
                                   );
                                 },
-                                expandedRowKeys: expandedStock ? [expandedStock] : [],
-                                onExpandedRowsChange: (keys) => setExpandedStock(keys.length > 0 ? String(keys[0]) : null),
                                 rowExpandable: (record) => {
                                   const stockRet = backtestData?.stock_returns?.find(s => s.ts_code === record.ts_code);
                                   return !!(stockRet?.daily_returns?.length);

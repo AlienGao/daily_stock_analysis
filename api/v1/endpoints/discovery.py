@@ -7,7 +7,8 @@
 import json
 import logging
 import os
-from datetime import date
+import threading
+from datetime import date, datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -243,6 +244,20 @@ class PostmarketReportResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Async postmarket task tracker
+# ---------------------------------------------------------------------------
+
+_postmarket_tasks: Dict[str, dict] = {}
+
+
+class RunStatusResponse(BaseModel):
+    task_id: str
+    status: str  # "running" | "completed" | "failed"
+    error: str = ""
+    top_n_count: int = 0
+
+
+# ---------------------------------------------------------------------------
 # Intraday Top 10 (from scanner JSON)
 # ---------------------------------------------------------------------------
 
@@ -405,103 +420,113 @@ def get_postmarket_report(
 
 @router.post(
     "/postmarket/run",
-    summary="手动触发盘后发现",
+    summary="手动触发盘后发现（异步）",
 )
 def run_postmarket_discovery():
-    """手动触发一次盘后股票发现，返回 Top 10 结果。"""
-    try:
-        from src.discovery.config import get_discovery_config
-        from src.discovery.engine import StockDiscoveryEngine
-        from src.discovery.factors import (
-            MoneyFlowFactor, MarginFactor, ChipFactor,
-            TechnicalFactor, LimitFactor,
-        )
-        from data_provider.tushare_fetcher import TushareFetcher
+    """启动后台盘后股票发现任务，返回 task_id 用于轮询状态。"""
+    import uuid
 
-        discovery_config = get_discovery_config()
-        tushare_fetcher = TushareFetcher.get_instance()
-        if not tushare_fetcher.is_available():
-            raise HTTPException(status_code=503, detail="数据源 Tushare 不可用")
+    task_id = str(uuid.uuid4())[:8]
+    _postmarket_tasks[task_id] = {
+        "status": "running",
+        "started_at": datetime.now().isoformat(),
+        "top_n_count": 0,
+    }
 
-        engine = StockDiscoveryEngine(discovery_config, tushare_fetcher)
-        engine.register_factors([
-            MoneyFlowFactor(),
-            MarginFactor(),
-            ChipFactor(),
-            TechnicalFactor(),
-            LimitFactor(),
-        ])
-
-        results = engine.discover(mode="postmarket")
-        if not results:
-            return {"mode": "postmarket", "top_n": [], "message": "未发现符合条件的股票"}
-
-        report = engine.format_report(results, mode="postmarket")
-
-        # 保存报告 + 结构化数据
-        reports_dir = Path(__file__).resolve().parent.parent.parent.parent / "discovery_reports"
-        reports_dir.mkdir(parents=True, exist_ok=True)
-        date_str = date.today().strftime('%Y%m%d')
-        filename = f"postmarket_{date_str}.md"
-        (reports_dir / filename).write_text(report, encoding="utf-8")
-
-        # 保存结构化 Top N 供前端卡片渲染
-        top_n_data = []
-        for i, r in enumerate(results, 1):
-            top_n_data.append({
-                "rank": i,
-                "ts_code": r.ts_code,
-                "stock_code": r.stock_code,
-                "stock_name": r.stock_name,
-                "score": r.score,
-                "sector": r.sector,
-                "factor_scores": r.factor_scores,
-                "reasons": r.reasons,
-                "buy_price_low": r.buy_price_low,
-                "buy_price_high": r.buy_price_high,
-                "stop_loss": r.stop_loss,
-                "take_profit_1": r.take_profit_1,
-                "take_profit_2": r.take_profit_2,
-                "discovered_at": r.discovered_at,
-                "price_at_discovery": r.price_at_discovery,
-            })
-        json_file = reports_dir / f"postmarket_{date_str}_topn.json"
-        json_file.write_text(json.dumps(top_n_data, ensure_ascii=False, indent=2), encoding="utf-8")
-
-        # 同步到 .env STOCK_LIST
+    def _run():
         try:
-            from src.services.system_config_service import SystemConfigService
-            codes = [r.stock_code for r in results]
-            SystemConfigService().apply_simple_updates([("STOCK_LIST", ",".join(codes))])
-        except Exception:
-            pass
+            from src.discovery.config import get_discovery_config
+            from src.discovery.engine import StockDiscoveryEngine
+            from src.discovery.factors import (
+                MoneyFlowFactor, MarginFactor, ChipFactor,
+                TechnicalFactor, LimitFactor,
+            )
+            from data_provider.tushare_fetcher import TushareFetcher
 
-        items = []
-        for i, r in enumerate(results, 1):
-            items.append(DiscoveryItem(
-                rank=i,
-                ts_code=r.ts_code,
-                stock_code=r.stock_code,
-                stock_name=r.stock_name,
-                score=r.score,
-                sector=r.sector,
-                factor_scores=r.factor_scores,
-                reasons=r.reasons,
-                buy_price_low=r.buy_price_low,
-                buy_price_high=r.buy_price_high,
-                stop_loss=r.stop_loss,
-                take_profit_1=r.take_profit_1,
-                take_profit_2=r.take_profit_2,
-                discovered_at=r.discovered_at,
-                price_at_discovery=r.price_at_discovery,
-            ))
+            discovery_config = get_discovery_config()
+            tushare_fetcher = TushareFetcher.get_instance()
+            if not tushare_fetcher.is_available():
+                _postmarket_tasks[task_id] = {"status": "failed", "error": "数据源 Tushare 不可用"}
+                return
 
-        return {"mode": "postmarket", "top_n": items, "report_preview": report[:500]}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error("手动盘后发现失败: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"盘后发现失败: {str(e)}")
+            engine = StockDiscoveryEngine(discovery_config, tushare_fetcher)
+            engine.register_factors([
+                MoneyFlowFactor(),
+                MarginFactor(),
+                ChipFactor(),
+                TechnicalFactor(),
+                LimitFactor(),
+            ])
+
+            results = engine.discover(mode="postmarket")
+            if not results:
+                _postmarket_tasks[task_id] = {
+                    "status": "completed",
+                    "top_n_count": 0,
+                    "finished_at": datetime.now().isoformat(),
+                }
+                return
+
+            report = engine.format_report(results, mode="postmarket")
+
+            # 保存报告 + 结构化数据
+            reports_dir = Path(__file__).resolve().parent.parent.parent.parent / "discovery_reports"
+            reports_dir.mkdir(parents=True, exist_ok=True)
+            date_str = date.today().strftime('%Y%m%d')
+            filename = f"postmarket_{date_str}.md"
+            (reports_dir / filename).write_text(report, encoding="utf-8")
+
+            top_n_data = []
+            for i, r in enumerate(results, 1):
+                top_n_data.append({
+                    "rank": i,
+                    "ts_code": r.ts_code,
+                    "stock_code": r.stock_code,
+                    "stock_name": r.stock_name,
+                    "score": r.score,
+                    "sector": r.sector,
+                    "factor_scores": r.factor_scores,
+                    "reasons": r.reasons,
+                    "buy_price_low": r.buy_price_low,
+                    "buy_price_high": r.buy_price_high,
+                    "stop_loss": r.stop_loss,
+                    "take_profit_1": r.take_profit_1,
+                    "take_profit_2": r.take_profit_2,
+                    "discovered_at": r.discovered_at,
+                    "price_at_discovery": r.price_at_discovery,
+                })
+            json_file = reports_dir / f"postmarket_{date_str}_topn.json"
+            json_file.write_text(json.dumps(top_n_data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+            _postmarket_tasks[task_id] = {
+                "status": "completed",
+                "top_n_count": len(top_n_data),
+                "finished_at": datetime.now().isoformat(),
+            }
+        except Exception as e:
+            logger.error("手动盘后发现失败: %s", e, exc_info=True)
+            _postmarket_tasks[task_id] = {"status": "failed", "error": str(e)}
+
+    threading.Thread(target=_run, daemon=True).start()
+    return {"task_id": task_id, "status": "running"}
+
+
+@router.get(
+    "/postmarket/run/status",
+    response_model=RunStatusResponse,
+    summary="查询盘后发现任务状态",
+)
+def get_postmarket_run_status(task_id: str = Query(..., description="任务 ID")):
+    """轮询后台盘后发现任务的执行状态。"""
+    task = _postmarket_tasks.get(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务 ID 不存在")
+    return RunStatusResponse(
+        task_id=task_id,
+        status=task.get("status", "unknown"),
+        error=task.get("error", ""),
+        top_n_count=task.get("top_n_count", 0),
+    )
 
 
 # ---------------------------------------------------------------------------

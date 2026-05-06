@@ -42,6 +42,18 @@ export type PostmarketRunResponse = {
   message?: string;
 };
 
+export type RunTaskResponse = {
+  task_id: string;
+  status: string;
+};
+
+export type RunStatusResponse = {
+  task_id: string;
+  status: string;  // "running" | "completed" | "failed"
+  error: string;
+  top_n_count: number;
+};
+
 export type TradeRecordItem = {
   stock_code: string;
   stock_name: string;
@@ -120,9 +132,16 @@ export const discoveryApi = {
     return resp.data as PostmarketReportResponse;
   },
 
-  async runPostmarketDiscovery(): Promise<PostmarketRunResponse> {
+  async runPostmarketDiscovery(): Promise<RunTaskResponse> {
     const resp = await apiClient.post('/api/v1/discovery/postmarket/run');
-    return resp.data as PostmarketRunResponse;
+    return resp.data as RunTaskResponse;
+  },
+
+  async getPostmarketRunStatus(taskId: string): Promise<RunStatusResponse> {
+    const resp = await apiClient.get('/api/v1/discovery/postmarket/run/status', {
+      params: { task_id: taskId },
+    });
+    return resp.data as RunStatusResponse;
   },
 
   async getBacktest(

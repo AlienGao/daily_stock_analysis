@@ -1628,6 +1628,8 @@ class TushareFetcher(BaseFetcher):
             if df is not None and not df.empty:
                 row = df.iloc[0].to_dict()
                 cost_5 = safe_float(row.get('cost_5pct'), 0)
+                cost_15 = safe_float(row.get('cost_15pct'), 0)
+                cost_85 = safe_float(row.get('cost_85pct'), 0)
                 cost_95 = safe_float(row.get('cost_95pct'), 0)
                 weight_avg = safe_float(row.get('weight_avg'), 0)
                 result = {
@@ -1637,12 +1639,12 @@ class TushareFetcher(BaseFetcher):
                     'cost_avg': weight_avg,  # cyq_perf 用 weight_avg 而非 cost_avg
                     'cost_5pct': cost_5,
                     'cost_95pct': cost_95,
-                    'cost_15pct': safe_float(row.get('cost_15pct'), 0),
-                    'cost_85pct': safe_float(row.get('cost_85pct'), 0),
+                    'cost_15pct': cost_15,
+                    'cost_85pct': cost_85,
                     'cost_50pct': safe_float(row.get('cost_50pct'), 0),
                     'his_low': safe_float(row.get('his_low'), 0),
                     'his_high': safe_float(row.get('his_high'), 0),
-                    'concentration': round((cost_95 - cost_5) / weight_avg, 4) if weight_avg > 0 else 0,
+                    'concentration': round(((cost_95 + cost_85) / 2 - (cost_5 + cost_15) / 2) / weight_avg, 4) if weight_avg > 0 else 0,
                 }
                 logger.info(f"[筹码胜率] {stock_code} 胜率={result['winner_rate']:.1f}%, "
                            f"加权均价={weight_avg:.2f}")

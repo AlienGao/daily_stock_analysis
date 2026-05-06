@@ -458,6 +458,29 @@ class StockAnalysisPipeline:
                 except Exception as e:
                     logger.debug(f"{stock_name}({code}) 筹码胜率获取失败: {e}")
 
+            # 筹码胜率预检：低集中度 + 高胜率，不满足则跳过分析
+            if winner_data is not None:
+                conc = winner_data.get("concentration", 1.0)
+                wr = winner_data.get("winner_rate", 0.0)
+                if conc > 0 and (conc > 0.15 or wr < 70):
+                    logger.info(
+                        "[筹码过滤] %s(%s) 不满足条件，跳过分析: "
+                        "concentration=%.1f%%, winner_rate=%.1f%% (要求 <15%% 且 >70%%)",
+                        stock_name, code, conc * 100, wr,
+                    )
+                    return AnalysisResult(
+                        code=code,
+                        name=stock_name,
+                        sentiment_score=0,
+                        trend_prediction="",
+                        operation_advice="跳过",
+                        success=False,
+                        error_message=(
+                            f"筹码胜率不满足: concentration={conc:.1%}, "
+                            f"winner_rate={wr:.1f}%"
+                        ),
+                    )
+
             # Look up pre-computed discovery factor signals for this stock
             factor_signals = self._factor_signals_cache.get(code)
 
@@ -1903,14 +1926,8 @@ class StockAnalysisPipeline:
                             )
                         else:
                             logger.info("[Discovery] 发现的股票均已在自选列表中")
-                        # 将发现结果回写到 .env STOCK_LIST，确保持久化（即使后续分析失败也有兜底）
-                        try:
-                            from src.services.system_config_service import SystemConfigService
-                            merged_stock_list = ",".join(stock_codes if stock_codes else [])
-                            SystemConfigService().apply_simple_updates([("STOCK_LIST", merged_stock_list)])
-                            logger.info("[Discovery] STOCK_LIST 已同步到 .env: %d 只", len(stock_codes if stock_codes else []))
-                        except Exception as e:
-                            logger.debug("[Discovery] 同步 STOCK_LIST 失败: %s", e)
+                        # 盘后发现不再自动回写 .env STOCK_LIST，避免覆盖手动维护的自选股
+                        logger.info("[Discovery] 发现 %d 只股票（未写入 .env STOCK_LIST）", len(stock_codes if stock_codes else []))
                     else:
                         logger.info("[Discovery] 未发现符合条件的股票，继续分析现有自选股")
                 except Exception as e:

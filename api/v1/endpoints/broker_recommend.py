@@ -82,6 +82,7 @@ class CyqPerfSummary(BaseModel):
     cost_avg: Optional[float] = None
     winner_rate: Optional[float] = None
     concentration: Optional[float] = None
+    scr90: Optional[float] = None
 
 
 class BrokerBacktestItem(BaseModel):

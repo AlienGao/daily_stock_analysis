@@ -28,6 +28,7 @@ export type StockEnrichment = {
     cost_avg?: number | null;
     winner_rate?: number | null;
     concentration?: number | null;
+    scr90?: number | null;
   } | null;
 };
 
@@ -99,6 +100,7 @@ export type StockReturnItem = {
     cost_avg?: number | null;
     winner_rate?: number | null;
     concentration?: number | null;
+    scr90?: number | null;
   } | null;
 };
 
