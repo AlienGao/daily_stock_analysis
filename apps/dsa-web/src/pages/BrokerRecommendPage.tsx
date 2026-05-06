@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import dayjs, { type Dayjs } from 'dayjs';
 import { DatePicker, Table, Tabs } from 'antd';
@@ -8,17 +8,194 @@ import type { ColumnsType } from 'antd/es/table';
 import { TrendingUp, RefreshCw, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { AppPage, Button, Card, EmptyState } from '../components/common';
+
+/** SVG candlestick chart for monthly stock trend.
+ *  Shows OHLC candles with 5-day moving average overlay. */
+const CandlestickMiniChart: React.FC<{
+  data: Array<{ date: string; price?: number | null; open?: number | null; high?: number | null; low?: number | null }>;
+  height?: number;
+}> = ({ data, height = 160 }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  const validData = data.filter(d => d.price != null);
+  if (validData.length < 2) return null;
+
+  const pads = { t: 14, r: 6, b: 20, l: 42 };
+  const count = validData.length;
+  const chartW = Math.max(count * 14 + pads.l + pads.r, pads.l + pads.r + 40);
+  const chartH = height - pads.t - pads.b;
+  const xStep = (chartW - pads.l - pads.r) / Math.max(count - 1, 1);
+
+  const allPrices: number[] = [];
+  validData.forEach(d => {
+    if (d.high != null) allPrices.push(d.high);
+    if (d.low != null) allPrices.push(d.low);
+    allPrices.push(d.price!);
+    if (d.open != null) allPrices.push(d.open);
+  });
+  const priceMin = Math.min(...allPrices);
+  const priceMax = Math.max(...allPrices);
+  const margin = (priceMax - priceMin) * 0.08 || priceMin * 0.02 || 0.1;
+  const yMin = priceMin - margin;
+  const yMax = priceMax + margin;
+  const yRange = yMax - yMin || 1;
+  const scaleY = (p: number) => pads.t + chartH * (1 - (p - yMin) / yRange);
+
+  const candleW = Math.max(Math.min(xStep * 0.65, 10), 2.5);
+
+  // 5-day simple moving average
+  const sma5: Array<{ x: number; y: number }> = [];
+  for (let i = 4; i < count; i++) {
+    let sum = 0;
+    for (let j = i - 4; j <= i; j++) sum += validData[j].price!;
+    const avg = sum / 5;
+    const x = pads.l + i * xStep;
+    sma5.push({ x, y: scaleY(avg) });
+  }
+
+  const gridLines = 4;
+  const yTicks: number[] = [];
+  for (let i = 1; i < gridLines; i++) {
+    yTicks.push(yMax - (yRange * i) / gridLines);
+  }
+
+  const xTickInterval = Math.max(Math.ceil(count / 5), 1);
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative', width: '100%', overflowX: 'auto' }}>
+      <svg width={chartW} height={height} viewBox={`0 0 ${chartW} ${height}`}
+        style={{ display: 'block', minWidth: '100%' }}>
+        {/* Grid */}
+        {yTicks.map((price, i) => {
+          const y = scaleY(price);
+          return (
+            <g key={`g-${i}`}>
+              <line x1={pads.l} x2={chartW - pads.r} y1={y} y2={y}
+                stroke="#1f2937" strokeWidth={0.8} />
+              <text x={pads.l - 3} y={y + 3.5} textAnchor="end" fill="#6b7280"
+                fontSize={9} fontFamily="monospace">{price.toFixed(2)}</text>
+            </g>
+          );
+        })}
+        {/* Top & bottom price labels */}
+        <text x={pads.l - 3} y={pads.t + 3.5} textAnchor="end" fill="#6b7280"
+          fontSize={9} fontFamily="monospace">{yMax.toFixed(2)}</text>
+        <text x={pads.l - 3} y={pads.t + chartH + 3.5} textAnchor="end" fill="#6b7280"
+          fontSize={9} fontFamily="monospace">{yMin.toFixed(2)}</text>
+
+        {/* MA5 line */}
+        {sma5.length > 1 && (
+          <polyline
+            points={sma5.map(p => `${p.x},${p.y}`).join(' ')}
+            fill="none" stroke="#f59e0b" strokeWidth={1.2}
+            strokeDasharray="3 2" opacity={0.8}
+          />
+        )}
+
+        {/* Candles */}
+        {validData.map((d, i) => {
+          const x = pads.l + i * xStep;
+          const closeP = d.price!;
+          const hasOhlc = d.open != null && d.high != null && d.low != null;
+          const isUp = hasOhlc ? closeP >= d.open! : true;
+          const color = isUp ? '#ef4444' : '#10b981';
+          const bodyTop = hasOhlc ? scaleY(Math.max(d.open!, closeP)) : scaleY(closeP) - 1.5;
+          const bodyBot = hasOhlc ? scaleY(Math.min(d.open!, closeP)) : scaleY(closeP) + 1.5;
+          const bodyH = Math.max(bodyBot - bodyTop, 1);
+          return (
+            <g key={i} onMouseEnter={() => setHoverIdx(i)} onMouseLeave={() => setHoverIdx(null)}
+              style={{ cursor: 'crosshair' }}>
+              {/* Wick */}
+              {hasOhlc && (
+                <line x1={x} x2={x} y1={scaleY(d.high!)} y2={scaleY(d.low!)}
+                  stroke={color} strokeWidth={1} />
+              )}
+              {/* Body */}
+              <rect x={x - candleW / 2} y={bodyTop} width={candleW} height={bodyH} rx={0.8}
+                fill={isUp ? color : (hasOhlc ? '#0f1723' : color)} stroke={color} strokeWidth={1}
+                opacity={hasOhlc && !isUp ? 0.9 : 1} />
+              {/* Hover indicator */}
+              {hoverIdx === i && (
+                <line x1={x} x2={x} y1={pads.t} y2={pads.t + chartH}
+                  stroke="#e2e8f0" strokeWidth={0.8} strokeDasharray="2 3" opacity={0.5} />
+              )}
+            </g>
+          );
+        })}
+
+        {/* X-axis labels */}
+        {validData.map((d, i) => {
+          if (i % xTickInterval !== 0 && i !== count - 1) return null;
+          const x = pads.l + i * xStep;
+          const label = d.date.length >= 8 ? `${d.date.slice(4,6)}/${d.date.slice(6,8)}` : d.date;
+          return (
+            <text key={`xl-${i}`} x={x} y={height - 3} textAnchor="middle" fill="#6b7280"
+              fontSize={9} fontFamily="monospace">{label}</text>
+          );
+        })}
+      </svg>
+
+      {/* Tooltip — positioned near cursor */}
+      {hoverIdx != null && validData[hoverIdx] && (() => {
+        const d = validData[hoverIdx];
+        const hasOhlc = d.open != null && d.high != null && d.low != null;
+        const isUp = hasOhlc ? d.price! >= d.open! : true;
+        const chgColor = isUp ? '#ef4444' : '#10b981';
+        const chg = hasOhlc && d.open! > 0 ? ((d.price! - d.open!) / d.open! * 100) : null;
+        const xPct = ((pads.l + hoverIdx * xStep) / chartW) * 100;
+        const isRight = xPct > 65;
+        return (
+          <div style={{
+            position: 'absolute', top: 2,
+            [isRight ? 'right' : 'left']: isRight ? 4 : `${xPct}%`,
+            transform: isRight ? 'none' : 'translateX(-50%)',
+            background: '#111827', border: '1px solid #374151',
+            borderRadius: 6, padding: '4px 8px', fontSize: 10, zIndex: 10,
+            whiteSpace: 'nowrap', pointerEvents: 'none',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+          }}>
+            <div style={{ color: '#9ca3af', marginBottom: 1 }}>
+              {d.date.length >= 8 ? `${d.date.slice(0,4)}-${d.date.slice(4,6)}-${d.date.slice(6,8)}` : d.date}
+            </div>
+            {hasOhlc ? (
+              <>
+                <div style={{ fontFamily: 'monospace' }}>
+                  <span style={{ color: '#9ca3af' }}>O </span>{d.open!.toFixed(2)}
+                  <span style={{ color: '#9ca3af', marginLeft: 6 }}>C </span>
+                  <span style={{ color: chgColor }}>{d.price!.toFixed(2)}</span>
+                </div>
+                <div style={{ fontFamily: 'monospace' }}>
+                  <span style={{ color: '#9ca3af' }}>H </span>{d.high!.toFixed(2)}
+                  <span style={{ color: '#9ca3af', marginLeft: 7 }}>L </span>{d.low!.toFixed(2)}
+                </div>
+                {chg != null && (
+                  <div style={{ color: chgColor, fontFamily: 'monospace' }}>
+                    {chg >= 0 ? '+' : ''}{chg.toFixed(2)}%
+                  </div>
+                )}
+              </>
+            ) : (
+              <div style={{ fontFamily: 'monospace' }}>收盘: {d.price!.toFixed(2)}</div>
+            )}
+          </div>
+        );
+      })()}
+    </div>
+  );
+};
 import {
   getMonthlyRecommendations,
   fetchMonth,
   getBacktest,
   getMonthlyEnrichment,
   getYtdBacktest,
+  getConsecutiveStocks,
   type BrokerRecommendResponse,
   type BrokerRecommendItem,
   type BrokerBacktestResponse,
   type EnrichmentResponse,
   type YtdBacktestResponse,
+  type ConsecutiveStockItem,
 } from '../api/brokerRecommend';
 
 const BROKER_COLORS = [
@@ -86,6 +263,8 @@ type StockRow = {
   ts_code: string;
   name: string;
   broker_count: number;
+  isConsecutive?: boolean;
+  dailyChange?: number | null;
   endPrice?: number;
   endDate?: string;
   cumRet?: number;
@@ -117,39 +296,66 @@ const BrokerRecommendPage: React.FC = () => {
   const monthParam = searchParams.get('month');
   const selectedMonth: Dayjs = monthParam ? dayjs(monthParam, 'YYYYMM') : dayjs();
   const [loadingData, setLoadingData] = useState(false);
+  const [fetchTrigger, setFetchTrigger] = useState(0);
   const [recommendData, setRecommendData] = useState<BrokerRecommendResponse | null>(null);
   const [backtestData, setBacktestData] = useState<BrokerBacktestResponse | null>(null);
   const [enrichmentData, setEnrichmentData] = useState<EnrichmentResponse | null>(null);
   const [loadingEnrichment, setLoadingEnrichment] = useState(false);
   const [expandedBrokers, setExpandedBrokers] = useState<Set<string>>(new Set());
-  const [viewMode, setViewMode] = useState<'broker' | 'stock'>('broker');
+  const viewParam = searchParams.get('view');
+  const viewMode: 'broker' | 'stock' = viewParam === 'stock' ? 'stock' : 'broker';
+  const setViewMode = useCallback((mode: 'broker' | 'stock') => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (mode === 'broker') next.delete('view');
+      else next.set('view', mode);
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  const monthStr = selectedMonth.format('YYYYMM');
+  const isCurrentMonth = monthStr === dayjs().format('YYYYMM');
+
+  const prevMonthRef = useRef(monthStr);
   const [visibleChartBrokers, setVisibleChartBrokers] = useState<Set<string>>(new Set());
   const [expandedStock, setExpandedStock] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('monthly');
   const [ytdData, setYtdData] = useState<YtdBacktestResponse | null>(null);
   const [ytdLoading, setYtdLoading] = useState(false);
+  const [consecutiveData, setConsecutiveData] = useState<ConsecutiveStockItem[]>([]);
+  const consecutiveSet = useMemo(() => new Set(consecutiveData.map(c => c.ts_code)), [consecutiveData]);
 
-  const monthStr = selectedMonth.format('YYYYMM');
+  // Controlled sort state to preserve across data refreshes
+  const [tableSort, setTableSort] = useState<{ columnKey?: string; order?: 'ascend' | 'descend' }>({
+    columnKey: 'cumRet', order: 'descend',
+  });
 
-  // Auto-load recommendations when selectedMonth changes
+  // Auto-load recommendations when selectedMonth changes or refresh triggered
   useEffect(() => {
     if (!monthStr) return;
+    const isMonthChange = prevMonthRef.current !== monthStr;
+    prevMonthRef.current = monthStr;
+
     async function load() {
       setLoadingData(true);
       setLoadingEnrichment(true);
-      setRecommendData(null);
-      setBacktestData(null);
-      setEnrichmentData(null);
-      setExpandedStock(null);
+      if (isMonthChange) {
+        setRecommendData(null);
+        setBacktestData(null);
+        setEnrichmentData(null);
+        setExpandedStock(null);
+      }
       try {
         const data = await getMonthlyRecommendations(monthStr);
         setRecommendData(data);
-        const [bt, enrich] = await Promise.all([
+        const [bt, enrich, cons] = await Promise.all([
           getBacktest(monthStr),
           getMonthlyEnrichment(monthStr),
+          getConsecutiveStocks(monthStr),
         ]);
         setBacktestData(bt);
         setEnrichmentData(enrich);
+        setConsecutiveData(cons);
       } catch (e) {
         console.error('Failed to load:', e);
       } finally {
@@ -158,13 +364,15 @@ const BrokerRecommendPage: React.FC = () => {
       }
     }
     load();
-  }, [monthStr]);
+  }, [monthStr, fetchTrigger]);
 
   const handleFetch = useCallback(async () => {
     if (!monthStr) return;
     setLoadingData(true);
     try {
       await fetchMonth(monthStr);
+      // 当前月抓取后触发数据刷新（价格、筹码胜率、累计收益）
+      setFetchTrigger(t => t + 1);
     } catch (e) {
       console.error('Failed to fetch:', e);
     } finally {
@@ -262,6 +470,8 @@ const BrokerRecommendPage: React.FC = () => {
         ts_code: item.ts_code,
         name: item.name,
         broker_count: item.broker_count,
+        isConsecutive: consecutiveSet.has(item.ts_code),
+        dailyChange: stockRet?.daily_change,
         endPrice: stockRet?.end_price,
         endDate: stockRet?.end_date,
         cumRet,
@@ -280,10 +490,29 @@ const BrokerRecommendPage: React.FC = () => {
     },
     {
       title: '名称', dataIndex: 'name', key: 'name',
-      render: (v: string) => <span className="text-xs text-secondary-text">{v}</span>,
+      sorter: (a, b) => (a.isConsecutive ? 0 : 1) - (b.isConsecutive ? 0 : 1),
+      sortOrder: tableSort.columnKey === 'name' ? tableSort.order : undefined,
+      render: (v: string, row: StockRow) => (
+        <span className="text-xs text-secondary-text">
+          {v}
+          {row.isConsecutive && (
+            <span className="ml-1 px-1 py-0.5 text-[10px] bg-amber-500/15 text-amber-400 rounded">连续</span>
+          )}
+        </span>
+      ),
     },
+    ...(isCurrentMonth ? [{
+      title: '当天涨幅', dataIndex: 'dailyChange', key: 'dailyChange',
+      sorter: (a: StockRow, b: StockRow) => (a.dailyChange ?? -Infinity) - (b.dailyChange ?? -Infinity),
+      sortOrder: tableSort.columnKey === 'dailyChange' ? tableSort.order : undefined,
+      render: (_: any, row: StockRow) => (
+        <span className={`text-xs font-medium ${row.dailyChange != null ? (row.dailyChange >= 0 ? 'text-red-400' : 'text-emerald-400') : 'text-tertiary-text'}`}>
+          {row.dailyChange != null ? `${row.dailyChange >= 0 ? '+' : ''}${(row.dailyChange * 100).toFixed(2)}%` : '--'}
+        </span>
+      ),
+    }] : []),
     {
-      title: '月末价', dataIndex: 'endPrice', key: 'endPrice',
+      title: isCurrentMonth ? '最新价' : '月末价', dataIndex: 'endPrice', key: 'endPrice',
       render: (_: any, row: StockRow) => (
         <span className="text-xs text-secondary-text whitespace-nowrap">
           {row.endPrice != null ? row.endPrice.toFixed(2) : '--'}
@@ -336,6 +565,7 @@ const BrokerRecommendPage: React.FC = () => {
       title: <>筹码胜率{loadingEnrichment ? <Loader2 className="h-3 w-3 animate-spin inline ml-1" /> : null}</>,
       key: 'cyq_perf',
       sorter: (a, b) => (a.cyq_perf?.winner_rate ?? -Infinity) - (b.cyq_perf?.winner_rate ?? -Infinity),
+      sortOrder: tableSort.columnKey === 'cyq_perf' ? tableSort.order : undefined,
       render: (_, row) => {
         const cyq = row.cyq_perf;
         if (!cyq) return <span className="text-xs text-tertiary-text">--</span>;
@@ -344,6 +574,11 @@ const BrokerRecommendPage: React.FC = () => {
             {cyq.winner_rate != null && (
               <div className={cyq.winner_rate >= 0.5 ? 'text-red-400' : 'text-emerald-400'}>
                 {(cyq.winner_rate * 100).toFixed(1)}%
+                {enrichmentData?.query_date && (
+                  <span className="text-tertiary-text ml-1">
+                    ({enrichmentData.query_date.slice(4, 6)}-{enrichmentData.query_date.slice(6)})
+                  </span>
+                )}
               </div>
             )}
             {cyq.cost_avg != null && (
@@ -356,7 +591,7 @@ const BrokerRecommendPage: React.FC = () => {
     {
       title: '累计收益', key: 'cumRet',
       sorter: (a, b) => (a.cumRet ?? -Infinity) - (b.cumRet ?? -Infinity),
-      defaultSortOrder: 'descend',
+      sortOrder: tableSort.columnKey === 'cumRet' ? (tableSort.order ?? 'descend') : undefined,
       render: (_, row) => (
         <span className={`text-xs font-medium ${row.cumRet != null ? (row.cumRet >= 0 ? 'text-red-400' : 'text-emerald-400') : 'text-tertiary-text'}`}>
           {fmtPct(row.cumRet)}
@@ -366,9 +601,10 @@ const BrokerRecommendPage: React.FC = () => {
     {
       title: <span style={{ whiteSpace: 'nowrap' }}>推荐数</span>, dataIndex: 'broker_count', key: 'broker_count',
       sorter: (a, b) => a.broker_count - b.broker_count,
+      sortOrder: tableSort.columnKey === 'broker_count' ? tableSort.order : undefined,
       render: (v: number) => <span className="text-xs text-tertiary-text whitespace-nowrap">{v}</span>,
     },
-  ], [loadingEnrichment]);
+  ], [loadingEnrichment, monthStr, tableSort, isCurrentMonth]);
 
   // Broker groups
   const brokerGroups = useMemo((): Map<string, BrokerRecommendItem[]> => {
@@ -409,6 +645,7 @@ const BrokerRecommendPage: React.FC = () => {
               />
             </div>
 
+            {isCurrentMonth && (
             <Button
               variant="outline"
               size="sm"
@@ -416,8 +653,9 @@ const BrokerRecommendPage: React.FC = () => {
               disabled={loadingData}
             >
               {loadingData ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" />}
-              获取当月数据
+              刷新数据
             </Button>
+            )}
 
             <span className="text-xs text-tertiary-text ml-auto">
               {backtestData
@@ -429,16 +667,24 @@ const BrokerRecommendPage: React.FC = () => {
           </div>
         </Card>
 
-        {/* Loading */}
-        {loadingData && (
+        {/* Loading - only show full skeleton when no cached data */}
+        {loadingData && !recommendData && (
           <Card className="p-4 text-center text-sm text-tertiary-text">
             <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
             加载中...
           </Card>
         )}
 
+        {/* Subtle refresh indicator when loading with existing data */}
+        {loadingData && recommendData && (
+          <div className="text-xs text-tertiary-text flex items-center gap-1 mb-1">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            更新中...
+          </div>
+        )}
+
         {/* Overview */}
-        {recommendData && !loadingData && (
+        {recommendData && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <Card className="p-3 text-center">
               <div className="text-lg font-bold">{recommendData.total_recommendations}</div>
@@ -518,14 +764,14 @@ const BrokerRecommendPage: React.FC = () => {
           </Card>
         )}
 
-        {/* Tables */}
-        {recommendData && brokerGroups.size > 0 && !loadingData && (
+        {/* Tables - keep visible during refresh to preserve sort state */}
+        {recommendData && brokerGroups.size > 0 && (
           <Card className="p-4">
             <div className="text-sm font-medium mb-3">
               {viewMode === 'broker' ? '券商金股明细' : '全部金股明细'}
             </div>
 
-            {/* Stock view: flat table */}
+            {/* Stock view: flat table with inline expandable rows */}
             {viewMode === 'stock' && (
               <Table
                 columns={stockColumns}
@@ -534,6 +780,62 @@ const BrokerRecommendPage: React.FC = () => {
                 size="small"
                 pagination={false}
                 scroll={{ x: 700 }}
+                onChange={(_pagination, _filters, sorter) => {
+                  if (!Array.isArray(sorter) && sorter.columnKey) {
+                    setTableSort({ columnKey: sorter.columnKey as string, order: sorter.order as 'ascend' | 'descend' });
+                  }
+                }}
+                expandable={{
+                  expandedRowRender: (record) => {
+                    const stockRet = backtestData?.stock_returns?.find(s => s.ts_code === record.ts_code);
+                    if (!stockRet?.daily_returns?.length) return null;
+                    const hasOHLC = stockRet.daily_returns.some(d => d.open != null);
+                    return (
+                      <div className="p-3 border border-border/20 rounded-lg bg-muted/10">
+                        <div className="text-xs font-medium mb-2 text-secondary-text">
+                          {stockRet.name || record.ts_code} 月度走势
+                        </div>
+                        {hasOHLC ? (
+                          <CandlestickMiniChart
+                            data={stockRet.daily_returns.map((d: any) => ({
+                              date: d.date,
+                              price: d.price,
+                              open: d.open,
+                              high: d.high,
+                              low: d.low,
+                            }))}
+                            height={140}
+                          />
+                        ) : (
+                          <ResponsiveContainer width="100%" height={120}>
+                            <LineChart
+                              margin={{ top: 2, right: 0, bottom: 4, left: -20 }}
+                              data={stockRet.daily_returns.map((d: any) => ({
+                                date: fmtDate(d.date),
+                                cumulative: d.cumulative,
+                              }))}
+                            >
+                              <XAxis dataKey="date" tick={{ fontSize: 8, fill: '#9ca3af' }} stroke="#6b7280" interval={3} />
+                              <YAxis tick={{ fontSize: 8, fill: '#9ca3af' }} stroke="#6b7280" tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`} />
+                              <Tooltip
+                                contentStyle={{ background: '#111827', border: '1px solid #374151', borderRadius: 8, fontSize: 11 }}
+                                formatter={(value: any) => `${(Number(value) * 100).toFixed(2)}%`}
+                                labelFormatter={(label: any) => String(label)}
+                              />
+                              <Line type="monotone" dataKey="cumulative" stroke="#f59e0b" strokeWidth={1.5} dot={false} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        )}
+                      </div>
+                    );
+                  },
+                  expandedRowKeys: expandedStock ? [expandedStock] : [],
+                  onExpandedRowsChange: (keys) => setExpandedStock(keys.length > 0 ? String(keys[0]) : null),
+                  rowExpandable: (record) => {
+                    const stockRet = backtestData?.stock_returns?.find(s => s.ts_code === record.ts_code);
+                    return !!(stockRet?.daily_returns?.length);
+                  },
+                }}
               />
             )}
 
@@ -559,6 +861,8 @@ const BrokerRecommendPage: React.FC = () => {
                       ts_code: item.ts_code,
                       name: item.name,
                       broker_count: item.broker_count,
+                      isConsecutive: consecutiveSet.has(item.ts_code),
+                      dailyChange: stockRet?.daily_change,
                       endPrice: stockRet?.end_price,
                       endDate: stockRet?.end_date,
                       cumRet,
@@ -604,71 +908,86 @@ const BrokerRecommendPage: React.FC = () => {
                       {expandedBrokers.has(broker) && (
                         <div className="px-4 py-2 border-t border-border/10 bg-muted/20">
                           {backtestData ? (
-                            <>
-                              <Table
-                                columns={stockColumns}
-                                dataSource={brokerRows}
-                                rowKey="ts_code"
-                                size="small"
-                                pagination={false}
-                                scroll={{ x: 700 }}
-                                onRow={(record) => ({
-                                  onClick: () => setExpandedStock(prev => prev === record.ts_code ? null : record.ts_code),
-                                  style: {
-                                    cursor: 'pointer',
-                                    background: expandedStock === record.ts_code ? 'hsl(var(--accent))' : undefined,
-                                  },
-                                })}
-                              />
-                              {/* Expanded stock monthly trend chart */}
-                              {expandedStock && brokerRows.some(r => r.ts_code === expandedStock) && (() => {
-                                const stockRet = backtestData?.stock_returns?.find(
-                                  s => s.ts_code === expandedStock
-                                );
-                                if (!stockRet?.daily_returns?.length) return null;
-                                return (
-                                  <div className="mt-3 p-3 border border-border/20 rounded-lg bg-muted/10">
-                                    <div className="text-xs font-medium mb-2 text-secondary-text">
-                                      {stockRet.name || expandedStock} 月度走势
-                                    </div>
-                                    <ResponsiveContainer width="100%" height={120}>
-                                      <LineChart
-                                        margin={{ top: 2, right: 0, bottom: 4, left: -20 }}
-                                        data={stockRet.daily_returns.map((d: any) => ({
-                                          date: fmtDate(d.date),
-                                          cumulative: d.cumulative,
-                                          daily_return: d.return ?? d.daily_return,
-                                          price: d.price,
-                                        }))}
-                                      >
-                                        <XAxis dataKey="date" tick={{ fontSize: 8, fill: '#9ca3af' }} stroke="#6b7280" interval={3} />
-                                        <YAxis tick={{ fontSize: 8, fill: '#9ca3af' }} stroke="#6b7280" tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`} />
-                                        <Tooltip
-                                          content={({ active, payload, label }: any) => {
-                                            if (!active || !payload?.length) return null;
-                                            const data = payload[0]?.payload;
-                                            const dr = data?.daily_return;
-                                            const drColor = dr != null ? (dr >= 0 ? '#ef4444' : '#10b981') : '#9ca3af';
-                                            const cum = data?.cumulative;
-                                            const cumColor = cum != null ? (cum >= 0 ? '#ef4444' : '#10b981') : '#9ca3af';
-                                            return (
-                                              <div style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '6px', padding: '6px 10px', fontSize: 11 }}>
-                                                <div style={{ marginBottom: 2, color: '#9ca3af' }}>{label}</div>
-                                                <div>涨跌幅: <span style={{ color: drColor }}>{dr != null ? `${(dr * 100).toFixed(2)}%` : '--'}</span></div>
-                                                <div>价格: <span style={{ color: '#e2e8f0' }}>{data?.price != null ? data.price.toFixed(2) : '--'}</span></div>
-                                                <div>累计: <span style={{ color: cumColor }}>{cum != null ? `${(cum * 100).toFixed(2)}%` : '--'}</span></div>
-                                              </div>
-                                            );
-                                          }}
+                            <Table
+                              columns={stockColumns}
+                              dataSource={brokerRows}
+                              rowKey="ts_code"
+                              size="small"
+                              pagination={false}
+                              scroll={{ x: 700 }}
+                              onChange={(_pagination, _filters, sorter) => {
+                                if (!Array.isArray(sorter) && sorter.columnKey) {
+                                  setTableSort({ columnKey: sorter.columnKey as string, order: sorter.order as 'ascend' | 'descend' });
+                                }
+                              }}
+                              expandable={{
+                                expandedRowRender: (record) => {
+                                  const stockRet = backtestData?.stock_returns?.find(s => s.ts_code === record.ts_code);
+                                  if (!stockRet?.daily_returns?.length) return null;
+                                  const hasOHLC = stockRet.daily_returns.some(d => d.open != null);
+                                  return (
+                                    <div className="p-3 border border-border/20 rounded-lg bg-muted/10">
+                                      <div className="text-xs font-medium mb-2 text-secondary-text">
+                                        {stockRet.name || record.ts_code} 月度走势
+                                      </div>
+                                      {hasOHLC ? (
+                                        <CandlestickMiniChart
+                                          data={stockRet.daily_returns.map((d: any) => ({
+                                            date: d.date,
+                                            price: d.price,
+                                            open: d.open,
+                                            high: d.high,
+                                            low: d.low,
+                                          }))}
+                                          height={140}
                                         />
-                                        <Line type="monotone" dataKey="cumulative" stroke="#34d399" strokeWidth={1.5} dot={false} connectNulls />
-                                        <ReferenceLine y={0} stroke="#4b5563" strokeWidth={1} strokeDasharray="4 4" />
-                                      </LineChart>
-                                    </ResponsiveContainer>
-                                  </div>
-                                );
-                              })()}
-                            </>
+                                      ) : (
+                                        <ResponsiveContainer width="100%" height={120}>
+                                          <LineChart
+                                            margin={{ top: 2, right: 0, bottom: 4, left: -20 }}
+                                            data={stockRet.daily_returns.map((d: any) => ({
+                                              date: fmtDate(d.date),
+                                              cumulative: d.cumulative,
+                                              daily_return: d.return ?? d.daily_return,
+                                              price: d.price,
+                                            }))}
+                                          >
+                                            <XAxis dataKey="date" tick={{ fontSize: 8, fill: '#9ca3af' }} stroke="#6b7280" interval={3} />
+                                            <YAxis tick={{ fontSize: 8, fill: '#9ca3af' }} stroke="#6b7280" tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`} />
+                                            <Tooltip
+                                              content={({ active, payload, label }: any) => {
+                                                if (!active || !payload?.length) return null;
+                                                const data = payload[0]?.payload;
+                                                const dr = data?.daily_return;
+                                                const drColor = dr != null ? (dr >= 0 ? '#ef4444' : '#10b981') : '#9ca3af';
+                                                const cum = data?.cumulative;
+                                                const cumColor = cum != null ? (cum >= 0 ? '#ef4444' : '#10b981') : '#9ca3af';
+                                                return (
+                                                  <div style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '6px', padding: '6px 10px', fontSize: 11 }}>
+                                                    <div style={{ marginBottom: 2, color: '#9ca3af' }}>{label}</div>
+                                                    <div>涨跌幅: <span style={{ color: drColor }}>{dr != null ? `${(dr * 100).toFixed(2)}%` : '--'}</span></div>
+                                                    <div>价格: <span style={{ color: '#e2e8f0' }}>{data?.price != null ? data.price.toFixed(2) : '--'}</span></div>
+                                                    <div>累计: <span style={{ color: cumColor }}>{cum != null ? `${(cum * 100).toFixed(2)}%` : '--'}</span></div>
+                                                  </div>
+                                                );
+                                              }}
+                                            />
+                                            <Line type="monotone" dataKey="cumulative" stroke="#34d399" strokeWidth={1.5} dot={false} connectNulls />
+                                            <ReferenceLine y={0} stroke="#4b5563" strokeWidth={1} strokeDasharray="4 4" />
+                                          </LineChart>
+                                        </ResponsiveContainer>
+                                      )}
+                                    </div>
+                                  );
+                                },
+                                expandedRowKeys: expandedStock ? [expandedStock] : [],
+                                onExpandedRowsChange: (keys) => setExpandedStock(keys.length > 0 ? String(keys[0]) : null),
+                                rowExpandable: (record) => {
+                                  const stockRet = backtestData?.stock_returns?.find(s => s.ts_code === record.ts_code);
+                                  return !!(stockRet?.daily_returns?.length);
+                                },
+                              }}
+                            />
                           ) : (
                             <div className="space-y-1">
                               {items.map((item) => (

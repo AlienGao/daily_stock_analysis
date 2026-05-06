@@ -9,13 +9,19 @@
     scanner.start()   # 阻塞循环，永久运行
 """
 
+import base64
+import hashlib
+import hmac
 import json
 import logging
 import os
 import time
+import traceback
 from datetime import date, datetime, timezone, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
+
+import requests
 
 from src.discovery.config import DiscoveryConfig
 from src.discovery.engine import StockDiscoveryEngine
@@ -27,7 +33,7 @@ _OUTPUT_PATH = "/tmp/discovery_top10.json"
 _REPORTS_DIR = Path(__file__).resolve().parent.parent.parent / "discovery_reports"
 
 _TZ_CN = timezone(timedelta(hours=8))
-_MARKET_OPEN = (9, 30)   # 盘中扫描开始
+_MARKET_OPEN = (9, 25)   # 盘中扫描开始
 _MARKET_CLOSE = (15, 0)  # 盘中扫描结束
 
 
@@ -46,6 +52,7 @@ class IntradayScanner:
         self.engine = engine
         self._previous: Dict[str, int] = {}
         self._round = 0
+        self._notified: Set[str] = set()  # 已通知过的 ts_code，避免重复推送
 
     # ------------------------------------------------------------------
     # Public API
@@ -141,11 +148,17 @@ class IntradayScanner:
                     annotated = self._annotate_changes(results)
                     self._write_output(annotated, results)
                     self._print_round(annotated)
+                    self._notify_new_stocks(annotated)
                     self._previous = {
                         r.ts_code: i for i, r in enumerate(results)
                     }
+                elif self._round == 1 or self._previous:
+                    # 结果为空时清空输出，避免前端展示过期数据
+                    self._write_empty_output()
+                    self._previous = {}
             except Exception as e:
                 logger.warning("[Scanner] 本轮扫描异常: %s", e)
+                logger.warning("[Scanner] 异常详情:\n%s", traceback.format_exc())
 
             elapsed = time.time() - round_start
             sleep_sec = max(1, min(
@@ -166,6 +179,74 @@ class IntradayScanner:
         wait_min = (next_open - self._now()).total_seconds() / 60
         logger.info("[Scanner] 休眠至 %s (%.0f 分钟)", next_open.strftime("%m-%d %H:%M"), wait_min)
         time.sleep((next_open - self._now()).total_seconds())
+
+    # ------------------------------------------------------------------
+    # Feishu notification
+    # ------------------------------------------------------------------
+
+    def _notify_new_stocks(self, annotated: List[dict]) -> None:
+        """飞书通知新上榜股票。同一股票每天只通知一次。"""
+        url = self.config.feishu_webhook_url
+        if not url:
+            return
+
+        new_entries = [e for e in annotated if e["change"] == "new" and e["ts_code"] not in self._notified]
+        if not new_entries:
+            return
+
+        lines = ["**盘中扫描 — 新上榜股票**\n"]
+        for e in new_entries:
+            price_str = f"¥{e['price_at_discovery']:.2f}" if e.get("price_at_discovery") else "-"
+            lines.append(
+                f"- **{e['stock_name']}**({e['stock_code']}) "
+                f"评分 {e['score']:.1f} | {price_str} | {e.get('discovered_at', '')}"
+            )
+            self._notified.add(e["ts_code"])
+
+        content = "\n".join(lines)
+        try:
+            self._post_feishu_card(content)
+        except Exception as e:
+            logger.warning("[Scanner] 飞书通知发送失败: %s", e)
+
+    def _post_feishu_card(self, content: str) -> None:
+        """发送飞书交互卡片消息。"""
+        url = self.config.feishu_webhook_url
+        secret = self.config.feishu_webhook_secret
+
+        payload = {
+            "msg_type": "interactive",
+            "card": {
+                "config": {"wide_screen_mode": True},
+                "header": {
+                    "title": {"tag": "plain_text", "content": "盘中扫描发现"}
+                },
+                "elements": [
+                    {"tag": "div", "text": {"tag": "lark_md", "content": content}}
+                ],
+            },
+        }
+
+        if secret:
+            timestamp = str(int(time.time()))
+            sign = base64.b64encode(
+                hmac.new(
+                    f"{timestamp}\n{secret}".encode("utf-8"),
+                    digestmod=hashlib.sha256,
+                ).digest()
+            ).decode("utf-8")
+            payload["timestamp"] = timestamp
+            payload["sign"] = sign
+
+        resp = requests.post(url, json=payload, timeout=30)
+        if resp.status_code == 200:
+            result = resp.json()
+            if result.get("code") == 0:
+                logger.info("[Scanner] 飞书通知已发送，%d 只新股", len(self._notified))
+            else:
+                logger.warning("[Scanner] 飞书返回错误: %s", result.get("msg", ""))
+        else:
+            logger.warning("[Scanner] 飞书请求失败: HTTP %d", resp.status_code)
 
     # ------------------------------------------------------------------
     # Change detection
@@ -191,6 +272,8 @@ class IntradayScanner:
                 "stop_loss": r.stop_loss,
                 "take_profit_1": r.take_profit_1,
                 "take_profit_2": r.take_profit_2,
+                "discovered_at": r.discovered_at,
+                "price_at_discovery": r.price_at_discovery,
                 "change": "",
             }
 
@@ -292,6 +375,29 @@ class IntradayScanner:
             logger.debug("[Scanner] 盘中 TopN JSON 已保存: %s", json_file)
         except Exception as e:
             logger.warning("[Scanner] 保存盘中报告失败: %s", e)
+
+    def _write_empty_output(self) -> None:
+        """清空 Top N JSON，避免白名单无结果时前端展示过期数据。"""
+        try:
+            os.makedirs(os.path.dirname(_OUTPUT_PATH), exist_ok=True)
+            payload = {
+                "updated": datetime.now(timezone.utc).isoformat(),
+                "round": self._round,
+                "top_n": [],
+                "dropped": [],
+            }
+            with open(_OUTPUT_PATH, "w", encoding="utf-8") as f:
+                json.dump(payload, f, ensure_ascii=False, indent=2)
+
+            # 同步清空 discovery_reports 下的 topn JSON
+            _REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+            date_str = date.today().strftime('%Y%m%d')
+            json_file = _REPORTS_DIR / f"intraday_{date_str}_topn.json"
+            json_file.write_text("[]", encoding="utf-8")
+
+            logger.info("[Scanner] 本轮无符合条件的股票，已清空输出")
+        except Exception as e:
+            logger.warning("[Scanner] 写入空输出失败: %s", e)
 
 
 def run_intraday_scan(config: DiscoveryConfig, tushare_fetcher=None, akshare_fetcher=None) -> None:

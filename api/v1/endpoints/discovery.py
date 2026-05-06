@@ -9,7 +9,7 @@ import logging
 import os
 from datetime import date
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
@@ -19,6 +19,70 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 _SCAN_OUTPUT = "/tmp/discovery_top10.json"
+
+
+def _get_live_prices(ts_codes: List[str]) -> Dict[str, float]:
+    """获取实时价格，Sina 优先（轻量），akshare 兜底。"""
+    # 1) Sina（只请求需要的股票，快）
+    try:
+        import re
+        import requests
+        symbols = []
+        for ts_code in ts_codes:
+            code = ts_code.split(".")[0] if "." in ts_code else ts_code
+            sym = f"sh{code}" if code.startswith(("6", "9")) else f"sz{code}"
+            symbols.append(sym)
+        url = f"http://hq.sinajs.cn/list={','.join(symbols)}"
+        resp = requests.get(url, headers={"Referer": "http://finance.sina.com.cn"}, timeout=5)
+        resp.encoding = "gbk"
+        prices: Dict[str, float] = {}
+        for line in resp.text.strip().split("\n"):
+            m = re.search(r'hq_str_(\w+)="([^"]*)"', line)
+            if not m:
+                continue
+            fields = m.group(2).split(",")
+            if len(fields) < 4:
+                continue
+            try:
+                prices[m.group(1)] = float(fields[3])
+            except (ValueError, IndexError):
+                pass
+        result = {}
+        for i, ts_code in enumerate(ts_codes):
+            if i < len(symbols) and symbols[i] in prices:
+                result[ts_code] = prices[symbols[i]]
+        if result:
+            return result
+    except Exception:
+        pass
+
+    # 2) akshare fallback（全市场拉取，慢，加超时保护）
+    try:
+        import akshare as ak
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(ak.stock_zh_a_spot_em)
+            df = future.result(timeout=8)
+        if df is not None and not df.empty:
+            pmap: Dict[str, float] = {}
+            for _, row in df.iterrows():
+                code = str(row.get('代码', '')).strip()
+                price = row.get('最新价')
+                if code and price is not None:
+                    try:
+                        pmap[code] = float(price)
+                    except (ValueError, TypeError):
+                        pass
+            result: Dict[str, float] = {}
+            for ts_code in ts_codes:
+                code = ts_code.split(".")[0] if "." in ts_code else ts_code
+                if code in pmap:
+                    result[ts_code] = pmap[code]
+            if result:
+                return result
+    except Exception:
+        return {}
+    return {}
 
 
 # ---------------------------------------------------------------------------
@@ -44,8 +108,24 @@ def _parse_markdown_top_n(md: str) -> list[dict]:
 
         rank = int(m.group(1))
         stock_code = m.group(2)
-        stock_name = m.group(3).strip()
+        stock_full = m.group(3).strip()
+        # 解析名称和行业: "深南电路 · PCB" → stock_name="深南电路", sector="PCB"
+        if ' · ' in stock_full:
+            stock_name, sector = stock_full.rsplit(' · ', 1)
+        else:
+            stock_name, sector = stock_full, ''
         score = float(m.group(4))
+
+        # 发现时间和价格: *发现 15:30:00 · ¥51.20*
+        discovered_at = ''
+        price_at_discovery = None
+        dm = re.search(r'\*发现\s+(\d{2}:\d{2}:\d{2})\s+·\s+¥([0-9.]+)\*', block)
+        if dm:
+            discovered_at = dm.group(1)
+            try:
+                price_at_discovery = float(dm.group(2))
+            except ValueError:
+                pass
 
         # 推荐理由
         reasons = re.findall(r'^- (.+)$', block, re.MULTILINE)
@@ -82,7 +162,10 @@ def _parse_markdown_top_n(md: str) -> list[dict]:
             "stock_code": stock_code,
             "stock_name": stock_name,
             "score": score,
+            "sector": sector,
             "reasons": reasons,
+            "discovered_at": discovered_at,
+            "price_at_discovery": price_at_discovery,
             "buy_price_low": buy_low,
             "buy_price_high": buy_high,
             "take_profit_1": tp1,
@@ -139,6 +222,9 @@ class DiscoveryItem(BaseModel):
     take_profit_1: Optional[float] = None
     take_profit_2: Optional[float] = None
     change: str = ""
+    discovered_at: str = ""
+    price_at_discovery: Optional[float] = None
+    live_price: Optional[float] = None
 
 
 class IntradayTopResponse(BaseModel):
@@ -166,7 +252,7 @@ class PostmarketReportResponse(BaseModel):
     summary="获取盘中扫描 Top 10",
 )
 def get_intraday_top10():
-    """返回盘中扫描器最新一轮结果（从 /tmp/discovery_top10.json 读取）。"""
+    """返回盘中扫描器最新一轮结果（从 /tmp/discovery_top10.json 读取），并刷新实时价格。"""
     if not os.path.exists(_SCAN_OUTPUT):
         return IntradayTopResponse(mode="intraday")
 
@@ -174,11 +260,32 @@ def get_intraday_top10():
         with open(_SCAN_OUTPUT, "r", encoding="utf-8") as f:
             data = json.load(f)
 
+        # 每次请求刷新实时价格，避免展示扫描时刻的陈旧价格
+        live_prices: Dict[str, float] = {}
+        ts_codes = [e.get("ts_code", "") for e in data.get("top_n", []) if e.get("ts_code")]
+        if ts_codes:
+            live_prices = _get_live_prices(ts_codes)
+
         top_n = []
         for entry in data.get("top_n", []):
+            ts_code = entry.get("ts_code", "")
+            live_price = live_prices.get(ts_code) or entry.get("price_at_discovery")
+            tp1 = entry.get("take_profit_1")
+            stop = entry.get("stop_loss")
+
+            # 用实时价格重新过滤，避免展示已失效的标的
+            if live_price and tp1 and live_price >= tp1:
+                continue  # 现价已超过止盈目标
+            if live_price and tp1 and stop:
+                if live_price <= stop:
+                    continue  # 现价已跌破止损线
+                pnl = (tp1 - live_price) / (live_price - stop)
+                if pnl <= 0:
+                    continue  # 盈亏比非正
+
             top_n.append(DiscoveryItem(
                 rank=entry.get("rank", 0),
-                ts_code=entry.get("ts_code", ""),
+                ts_code=ts_code,
                 stock_code=entry.get("stock_code", ""),
                 stock_name=entry.get("stock_name", ""),
                 score=entry.get("score", 0),
@@ -187,11 +294,17 @@ def get_intraday_top10():
                 reasons=entry.get("reasons", []),
                 buy_price_low=entry.get("buy_price_low"),
                 buy_price_high=entry.get("buy_price_high"),
-                stop_loss=entry.get("stop_loss"),
-                take_profit_1=entry.get("take_profit_1"),
+                stop_loss=stop,
+                take_profit_1=tp1,
                 take_profit_2=entry.get("take_profit_2"),
                 change=entry.get("change", ""),
+                discovered_at=entry.get("discovered_at", ""),
+                price_at_discovery=entry.get("price_at_discovery"),
+                live_price=live_prices.get(ts_code) if live_prices.get(ts_code) != entry.get("price_at_discovery") else None,
             ))
+        # Re-rank after filtering
+        for i, item in enumerate(top_n):
+            item.rank = i + 1
 
         dropped = []
         for entry in data.get("dropped", []):
@@ -274,6 +387,8 @@ def get_postmarket_report(
                 stop_loss=entry.get("stop_loss"),
                 take_profit_1=entry.get("take_profit_1"),
                 take_profit_2=entry.get("take_profit_2"),
+                discovered_at=entry.get("discovered_at", ""),
+                price_at_discovery=entry.get("price_at_discovery"),
             ))
 
         return PostmarketReportResponse(
@@ -347,6 +462,8 @@ def run_postmarket_discovery():
                 "stop_loss": r.stop_loss,
                 "take_profit_1": r.take_profit_1,
                 "take_profit_2": r.take_profit_2,
+                "discovered_at": r.discovered_at,
+                "price_at_discovery": r.price_at_discovery,
             })
         json_file = reports_dir / f"postmarket_{date_str}_topn.json"
         json_file.write_text(json.dumps(top_n_data, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -375,6 +492,8 @@ def run_postmarket_discovery():
                 stop_loss=r.stop_loss,
                 take_profit_1=r.take_profit_1,
                 take_profit_2=r.take_profit_2,
+                discovered_at=r.discovered_at,
+                price_at_discovery=r.price_at_discovery,
             ))
 
         return {"mode": "postmarket", "top_n": items, "report_preview": report[:500]}

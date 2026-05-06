@@ -55,6 +55,9 @@ class BrokerDailyReturn(BaseModel):
     price: Optional[float] = None
     daily_return: Optional[float] = None
     cumulative: Optional[float] = None
+    open: Optional[float] = None
+    high: Optional[float] = None
+    low: Optional[float] = None
 
 
 class NineTurnSignal(BaseModel):
@@ -98,6 +101,7 @@ class StockReturnItem(BaseModel):
     broker: str
     end_price: Optional[float] = None
     end_date: Optional[str] = None
+    daily_change: Optional[float] = None
     daily_returns: List[BrokerDailyReturn]
     nineturn: Optional[NineTurnSignal] = None
     forecast: Optional[ForecastSummary] = None
@@ -260,18 +264,46 @@ def get_monthly_enrichment(month: str) -> EnrichmentResponse:
     return EnrichmentResponse(month=month, query_date=query_date, data=data)
 
 
+class ConsecutiveStockItem(BaseModel):
+    ts_code: str
+    name: str
+    broker_count_current: int
+    broker_count_prev: int
+    brokers_current: List[str]
+    brokers_prev: List[str]
+
+
+@router.get("/{month}/consecutive", response_model=List[ConsecutiveStockItem])
+def get_consecutive_stocks(month: str) -> List[ConsecutiveStockItem]:
+    """获取连续两个月都被券商推荐的金股。"""
+    service = BrokerRecommendService()
+    data = service.get_consecutive_stocks(month)
+    return [ConsecutiveStockItem(**item) for item in data]
+
+
 @router.post("/{month}/fetch", response_model=BrokerFetchResponse)
 def fetch_month(month: str) -> BrokerFetchResponse:
-    """抓取并存储指定月份的券商金股数据。"""
+    """抓取并存储指定月份的券商金股数据。
+
+    当前月份：同时清除 enrichment 缓存，强制后续请求刷新价格和筹码胜率。
+    """
+    from datetime import datetime
+
     service = BrokerRecommendService()
     count = service.fetch_and_store_month(month)
+
+    # 当前月份：清除 L1/L2 缓存，确保价格和筹码胜率重新拉取
+    current_month = datetime.now().strftime("%Y%m")
+    if month == current_month:
+        service.invalidate_enrichment_cache(month)
+
     return BrokerFetchResponse(month=month, saved_count=count)
 
 
 @router.get("/{month}/backtest", response_model=BrokerBacktestResponse)
 def get_backtest(
     month: str,
-    top_n: int = Query(default=10, ge=1, le=50, description="每个券商最多取几只金股"),
+    top_n: int = Query(default=15, ge=1, le=50, description="每个券商最多取几只金股"),
 ) -> BrokerBacktestResponse:
     """对指定月份金股池按券商分组做回测。"""
     service = BrokerRecommendService()
@@ -309,12 +341,16 @@ def get_backtest(
             broker=sr["broker"],
             end_price=sr.get("end_price"),
             end_date=sr.get("end_date"),
+            daily_change=sr.get("daily_change"),
             daily_returns=[
                 BrokerDailyReturn(
                     date=dr["date"],
                     price=dr.get("price"),
                     daily_return=dr.get("return"),
                     cumulative=dr.get("cumulative"),
+                    open=dr.get("open"),
+                    high=dr.get("high"),
+                    low=dr.get("low"),
                 )
                 for dr in sr.get("daily_returns", [])
             ],

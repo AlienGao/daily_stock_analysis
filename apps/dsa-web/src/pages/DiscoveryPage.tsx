@@ -2,7 +2,7 @@ import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Compass, RefreshCw, TrendingUp, TrendingDown,
-  Loader2, ArrowUp, ArrowDown, Minus, Sparkles,
+  Loader2, ArrowUp, ArrowDown, Sparkles,
   ChevronDown, Target, Shield, Zap, Gauge,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -155,10 +155,15 @@ const calcPnLRatio = (profitPct: number | null, lossPct: number | null): number 
   return profitPct / lossPct;
 };
 
+const getRefPrice = (item: DiscoveryItem): number | null => {
+  if (item.price_at_discovery != null && item.price_at_discovery > 0) return item.price_at_discovery;
+  return calcBuyRef(item.buy_price_low, item.buy_price_high);
+};
+
 const calcItemPnLRatio = (item: DiscoveryItem): number | null => {
-  const buyRef = calcBuyRef(item.buy_price_low, item.buy_price_high);
-  const profitPct = calcPctFromBase(buyRef, item.take_profit_1);
-  const lossPctRaw = calcPctFromBase(buyRef, item.stop_loss);
+  const refPrice = getRefPrice(item);
+  const profitPct = calcPctFromBase(refPrice, item.take_profit_1);
+  const lossPctRaw = calcPctFromBase(refPrice, item.stop_loss);
   const lossPct = lossPctRaw != null ? Math.abs(lossPctRaw) : null;
   return calcPnLRatio(profitPct, lossPct);
 };
@@ -166,8 +171,8 @@ const calcItemPnLRatio = (item: DiscoveryItem): number | null => {
 const chCfg = (c?: string) => {
   switch (c) {
     case 'new': return { icon: <Sparkles className="h-3 w-3" />, label: '新进', cls: 'text-cyan bg-cyan/8 border-cyan/15' };
-    case 'up': return { icon: <ArrowUp className="h-3 w-3" />, label: '上升', cls: 'text-emerald-400 bg-emerald-400/8 border-emerald-400/15' };
-    case 'down': return { icon: <ArrowDown className="h-3 w-3" />, label: '下降', cls: 'text-amber-400 bg-amber-400/8 border-amber-400/15' };
+    case 'up': return { icon: <ArrowUp className="h-3 w-3" />, label: '上升', cls: 'text-red-400 bg-red-400/8 border-red-400/15' };
+    case 'down': return { icon: <ArrowDown className="h-3 w-3" />, label: '下降', cls: 'text-emerald-400 bg-emerald-400/8 border-emerald-400/15' };
     default: return null;
   }
 };
@@ -187,9 +192,9 @@ const StockCard: React.FC<{
     ? `${fmtPx(item.buy_price_low)}${item.buy_price_high != null && item.buy_price_high !== item.buy_price_low ? ` - ${fmtPx(item.buy_price_high)}` : ''}`
     : '--';
   const keyReasons = item.reasons?.slice(0, 6) ?? [];
-  const buyRef = calcBuyRef(item.buy_price_low, item.buy_price_high);
-  const profitPct = calcPctFromBase(buyRef, item.take_profit_1);
-  const lossPctRaw = calcPctFromBase(buyRef, item.stop_loss);
+  const refPrice = getRefPrice(item);
+  const profitPct = calcPctFromBase(refPrice, item.take_profit_1);
+  const lossPctRaw = calcPctFromBase(refPrice, item.stop_loss);
   const lossPct = lossPctRaw != null ? Math.abs(lossPctRaw) : null;
   const pnlRatio = calcPnLRatio(profitPct, lossPct);
 
@@ -202,9 +207,9 @@ const StockCard: React.FC<{
     >
       {/* ── Collapsed ── */}
       <div className="space-y-3 px-4 py-4 md:px-5">
-        <div className="flex items-start gap-3.5">
+        <div className="flex items-center gap-3.5">
           {/* Rank */}
-          <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold
+          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold
             ${item.rank <= 3
               ? 'bg-gradient-to-br from-cyan/15 to-cyan/3 text-cyan ring-1 ring-cyan/15'
               : 'bg-muted/30 text-secondary-text'
@@ -217,14 +222,28 @@ const StockCard: React.FC<{
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[15px] font-semibold tracking-tight text-foreground">{item.stock_code}</span>
               <span className="text-[13px] text-secondary-text">{item.stock_name}</span>
+              {item.sector && (
+                <span className="rounded-md border border-border/40 bg-muted/30 px-1.5 py-0.5 text-[10px] text-tertiary-text">{item.sector}</span>
+              )}
               {ch && (
                 <span className={`inline-flex items-center gap-1 rounded-lg border px-1.5 py-0.5 text-[11px] font-medium ${ch.cls}`}>
                   {ch.icon}{ch.label}
                 </span>
               )}
-            </div>
-            <div className="mt-1 text-[11px] text-tertiary-text">
-              点击展开查看推荐理由与因子评分
+              {item.discovered_at && (
+                <span className="text-[15px] font-semibold text-foreground">{item.discovered_at} 发现</span>
+              )}
+              {item.price_at_discovery != null && (
+                <span className="text-[15px] font-semibold text-foreground">· ¥{item.price_at_discovery.toFixed(2)}</span>
+              )}
+              {item.live_price != null && item.price_at_discovery != null && (
+                <span className={`text-[15px] font-semibold tabular-nums ${item.live_price >= item.price_at_discovery ? 'text-red-400' : 'text-emerald-400'}`}>
+                  → ¥{item.live_price.toFixed(2)}
+                </span>
+              )}
+              {item.live_price != null && item.price_at_discovery == null && (
+                <span className="text-[15px] font-semibold text-foreground">→ ¥{item.live_price.toFixed(2)}</span>
+              )}
             </div>
           </div>
 
@@ -232,7 +251,7 @@ const StockCard: React.FC<{
           <ScoreRing score={item.score} />
 
           {/* Chevron */}
-          <div className={`mt-4 shrink-0 text-tertiary-text/50 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>
+          <div className={`shrink-0 text-tertiary-text/50 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>
             <ChevronDown className="h-4 w-4" />
           </div>
         </div>
@@ -248,19 +267,19 @@ const StockCard: React.FC<{
                 </div>
                 <div className="text-sm font-semibold tabular-nums text-cyan">{buyRange}</div>
               </div>
-              <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.06] px-3 py-2">
-                <div className="mb-1 flex items-center gap-1 text-[10px] text-emerald-400/80">
+              <div className="rounded-xl border border-red-400/15 bg-red-400/[0.06] px-3 py-2">
+                <div className="mb-1 flex items-center gap-1 text-[10px] text-red-400/80">
                   <Zap className="h-3 w-3" />
                   止盈 1
                 </div>
-                <div className="text-sm font-semibold tabular-nums text-emerald-400">{fmtPx(item.take_profit_1)}</div>
+                <div className="text-sm font-semibold tabular-nums text-red-400">{fmtPx(item.take_profit_1)}</div>
               </div>
-              <div className="rounded-xl border border-red-400/15 bg-red-400/[0.06] px-3 py-2">
-                <div className="mb-1 flex items-center gap-1 text-[10px] text-red-400/80">
+              <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.06] px-3 py-2">
+                <div className="mb-1 flex items-center gap-1 text-[10px] text-emerald-400/80">
                   <Shield className="h-3 w-3" />
                   止损
                 </div>
-                <div className="text-sm font-semibold tabular-nums text-red-400">{fmtPx(item.stop_loss)}</div>
+                <div className="text-sm font-semibold tabular-nums text-emerald-400">{fmtPx(item.stop_loss)}</div>
               </div>
             </div>
 
@@ -268,15 +287,17 @@ const StockCard: React.FC<{
               <span className="rounded-lg border border-cyan/20 bg-cyan/[0.1] px-2.5 py-1 font-semibold text-cyan">
                 盈亏比 {pnlRatio != null ? `${pnlRatio.toFixed(2)} : 1` : '--'}
               </span>
-              <span className="rounded-lg border border-emerald-400/20 bg-emerald-400/[0.08] px-2.5 py-1 font-medium text-emerald-300">
+              <span className="rounded-lg border border-red-400/20 bg-red-400/[0.08] px-2.5 py-1 font-medium text-red-300">
                 预期盈利 {fmtPct(profitPct)}
               </span>
-              <span className="rounded-lg border border-red-400/20 bg-red-400/[0.08] px-2.5 py-1 font-medium text-red-300">
+              <span className="rounded-lg border border-emerald-400/20 bg-emerald-400/[0.08] px-2.5 py-1 font-medium text-emerald-300">
                 预期亏损 {fmtPct(lossPct)}
               </span>
-              {buyRef != null && (
-                <span className="text-[11px] text-tertiary-text">
-                  基准买入价 {buyRef.toFixed(2)}（区间中位）
+              {refPrice != null && (
+                <span className="text-[15px] font-semibold text-foreground">
+                  {item.price_at_discovery != null && item.price_at_discovery > 0
+                    ? <>发现价 ¥{item.price_at_discovery.toFixed(2)}{item.live_price != null && <span className={item.live_price >= item.price_at_discovery ? 'text-red-400' : 'text-emerald-400'}> → ¥{item.live_price.toFixed(2)}</span>}</>
+                    : `基准买入价 ${refPrice.toFixed(2)}（区间中位）`}
                 </span>
               )}
             </div>
@@ -321,9 +342,9 @@ const StockCard: React.FC<{
                       { label: '买入区间', v: item.buy_price_low != null
                         ? `${fmtPx(item.buy_price_low)}${item.buy_price_high != null && item.buy_price_high !== item.buy_price_low ? ` — ${fmtPx(item.buy_price_high)}` : ''}`
                         : '--', c: 'border-cyan/10 bg-cyan/[0.03] text-cyan', ic: Target },
-                      { label: '止盈 1', v: fmtPx(item.take_profit_1), c: 'border-emerald-400/10 bg-emerald-400/[0.03] text-emerald-400', ic: Zap },
-                      { label: '止盈 2', v: fmtPx(item.take_profit_2), c: 'border-emerald-400/10 bg-emerald-400/[0.03] text-emerald-400', ic: Zap },
-                      { label: '止损', v: fmtPx(item.stop_loss), c: 'border-red-400/10 bg-red-400/[0.03] text-red-400', ic: Shield },
+                      { label: '止盈 1', v: fmtPx(item.take_profit_1), c: 'border-red-400/10 bg-red-400/[0.03] text-red-400', ic: Zap },
+                      { label: '止盈 2', v: fmtPx(item.take_profit_2), c: 'border-red-400/10 bg-red-400/[0.03] text-red-400', ic: Zap },
+                      { label: '止损', v: fmtPx(item.stop_loss), c: 'border-emerald-400/10 bg-emerald-400/[0.03] text-emerald-400', ic: Shield },
                     ] as const).map(({ label, v, c, ic: Ic }) => (
                       <div key={label} className={`rounded-xl border p-3 text-center ${c}`}>
                         <div className="text-[10px] text-current/60 mb-1 flex items-center justify-center gap-1">
@@ -403,7 +424,7 @@ const BacktestCard: React.FC<{
         <span className="text-tertiary-text text-[11px] font-medium tracking-wide">回测</span>
 
         <div className="flex items-center gap-3">
-          <span className={`font-bold text-sm tabular-nums ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+          <span className={`font-bold text-sm tabular-nums ${isPositive ? 'text-red-400' : 'text-emerald-400'}`}>
             {isPositive ? '+' : ''}{pct}%
           </span>
           <span className="text-tertiary-text">
@@ -417,11 +438,11 @@ const BacktestCard: React.FC<{
         <div className="flex items-center gap-2 text-[11px] text-tertiary-text">
           <span>初始 {fmtWan(initCapital)}</span>
           <span className="text-foreground/60">→</span>
-          <span className={`font-medium tabular-nums ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+          <span className={`font-medium tabular-nums ${isPositive ? 'text-red-400' : 'text-emerald-400'}`}>
             最终 {fmtWan(data.final_capital)}
           </span>
           {data.total_pnl !== 0 && (
-            <span className={`tabular-nums ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+            <span className={`tabular-nums ${isPositive ? 'text-red-400' : 'text-emerald-400'}`}>
               ({pnlSign}{fmtWan(data.total_pnl)})
             </span>
           )}
@@ -432,6 +453,8 @@ const BacktestCard: React.FC<{
           <input
             type="date"
             value={startDate ? fmtDate(startDate) : ''}
+            min="2026-05-01"
+            max={new Date().toISOString().slice(0, 10)}
             onChange={e => onStartDate(e.target.value.replace(/-/g, ''))}
             onClick={e => e.stopPropagation()}
             className="h-7 w-28 rounded-lg border border-border/30 bg-muted/30 px-2 text-[11px] text-foreground"
@@ -440,6 +463,8 @@ const BacktestCard: React.FC<{
           <input
             type="date"
             value={endDate ? fmtDate(endDate) : ''}
+            min="2026-05-01"
+            max={new Date().toISOString().slice(0, 10)}
             onChange={e => onEndDate(e.target.value.replace(/-/g, ''))}
             onClick={e => e.stopPropagation()}
             className="h-7 w-28 rounded-lg border border-border/30 bg-muted/30 px-2 text-[11px] text-foreground"
@@ -474,9 +499,9 @@ const BacktestCard: React.FC<{
         <div className="px-2 py-3">
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={chartData}>
-              <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--border))" />
+              <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} stroke="hsl(var(--border))" />
               <YAxis
-                tick={{ fontSize: 10 }}
+                tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                 stroke="hsl(var(--border))"
                 tickFormatter={v => `${(v / 10000).toFixed(0)}w`}
                 domain={['auto', 'auto']}
@@ -497,7 +522,7 @@ const BacktestCard: React.FC<{
               <Line
                 type="monotone"
                 dataKey="capital"
-                stroke={isPositive ? '#34d399' : '#f87171'}
+                stroke={isPositive ? '#f87171' : '#34d399'}
                 strokeWidth={2}
                 dot={false}
                 activeDot={{ r: 4 }}
@@ -533,10 +558,10 @@ const BacktestCard: React.FC<{
                   <td className="px-2 py-1.5 text-right tabular-nums">{t.buy_price.toFixed(2)}</td>
                   <td className="px-2 py-1.5 text-right text-tertiary-text">{fmtDate(t.sell_date)}</td>
                   <td className="px-2 py-1.5 text-right tabular-nums">{t.sell_price.toFixed(2)}</td>
-                  <td className={`px-2 py-1.5 text-right font-medium tabular-nums ${t.return_pct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  <td className={`px-2 py-1.5 text-right font-medium tabular-nums ${t.return_pct >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                     {t.return_pct >= 0 ? '+' : ''}{(t.return_pct * 100).toFixed(2)}%
                   </td>
-                  <td className={`px-2 py-1.5 text-right font-medium tabular-nums ${t.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  <td className={`px-2 py-1.5 text-right font-medium tabular-nums ${t.pnl >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                     {t.pnl >= 0 ? '+' : ''}{t.pnl.toFixed(0)}
                   </td>
                 </tr>
@@ -749,19 +774,6 @@ const DiscoveryPage: React.FC = () => {
             />
           ) : cardGrid}
 
-          {/* Dropped */}
-          {intraday?.dropped && intraday.dropped.length > 0 && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4">
-              <p className="text-[11px] font-medium text-tertiary-text mb-2 tracking-wide">退出榜单</p>
-              <div className="flex flex-wrap gap-2">
-                {intraday.dropped.map(item => (
-                  <span key={item.stock_code} className="inline-flex items-center gap-1 rounded-lg bg-muted/30 ring-1 ring-border/20 px-2.5 py-1 text-[11px] text-tertiary-text">
-                    <Minus className="h-3 w-3" />{item.stock_code} {item.stock_name}
-                  </span>
-                ))}
-              </div>
-            </motion.div>
-          )}
         </div>
       )}
 

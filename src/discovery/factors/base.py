@@ -31,6 +31,8 @@ class DiscoveryResult:
     take_profit_1: Optional[float] = None
     take_profit_2: Optional[float] = None
     change_pct: float = 0.0
+    discovered_at: str = ""
+    price_at_discovery: Optional[float] = None
 
 
 class BaseFactor(ABC):

@@ -758,10 +758,98 @@ class BrokerBacktestResult(Base):
     computed_at = Column(DateTime, default=datetime.now)
 
 
+class BrokerEnrichmentNineturn(Base):
+    """九转信号增强数据缓存。
+
+    按 (ts_code, trade_date) 缓存，过去月份的 trade_date 固定，永久有效；
+    当前月份 trade_date 随交易日刷新，实现每日自动更新。
+    """
+
+    __tablename__ = 'broker_enrichment_nineturn'
+
+    ts_code = Column(String(12), primary_key=True)
+    trade_date = Column(String(8), primary_key=True)
+    up_count = Column(Integer, default=0)
+    down_count = Column(Integer, default=0)
+    nine_up_turn = Column(Integer, default=0)
+    nine_down_turn = Column(Integer, default=0)
+    cached_at = Column(DateTime, default=datetime.now)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "up_count": self.up_count,
+            "down_count": self.down_count,
+            "nine_up_turn": self.nine_up_turn,
+            "nine_down_turn": self.nine_down_turn,
+        }
+
+
+class BrokerEnrichmentForecast(Base):
+    """盈利预测增强数据缓存。"""
+
+    __tablename__ = 'broker_enrichment_forecast'
+
+    ts_code = Column(String(12), primary_key=True)
+    trade_date = Column(String(8), primary_key=True)
+    eps = Column(Float)
+    pe = Column(Float)
+    roe = Column(Float)
+    np = Column(Float)
+    rating = Column(String(50))
+    min_price = Column(Float)
+    max_price = Column(Float)
+    imp_dg = Column(String(200))
+    cached_at = Column(DateTime, default=datetime.now)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "eps": self.eps,
+            "pe": self.pe,
+            "roe": self.roe,
+            "np": self.np,
+            "rating": self.rating or "",
+            "min_price": self.min_price,
+            "max_price": self.max_price,
+            "imp_dg": self.imp_dg or "",
+        }
+
+
+class BrokerEnrichmentCyqPerf(Base):
+    """筹码胜率增强数据缓存。"""
+
+    __tablename__ = 'broker_enrichment_cyq_perf'
+
+    ts_code = Column(String(12), primary_key=True)
+    trade_date = Column(String(8), primary_key=True)
+    winner_rate = Column(Float)
+    cost_5pct = Column(Float)
+    cost_15pct = Column(Float)
+    cost_50pct = Column(Float)
+    cost_85pct = Column(Float)
+    cost_95pct = Column(Float)
+    weight_avg = Column(Float)
+    his_low = Column(Float)
+    his_high = Column(Float)
+    cached_at = Column(DateTime, default=datetime.now)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "winner_rate": self.winner_rate,
+            "cost_5pct": self.cost_5pct,
+            "cost_15pct": self.cost_15pct,
+            "cost_50pct": self.cost_50pct,
+            "cost_85pct": self.cost_85pct,
+            "cost_95pct": self.cost_95pct,
+            "weight_avg": self.weight_avg,
+            "his_low": self.his_low,
+            "his_high": self.his_high,
+        }
+
+
 class DatabaseManager:
     """
     数据库管理器 - 单例模式
-    
+
     职责：
     1. 管理数据库连接池
     2. 提供 Session 上下文管理
@@ -2058,6 +2146,69 @@ class DatabaseManager:
             ).scalars().all()
             return list(months)
 
+    def get_consecutive_monthly_stocks(self, month: str) -> List[Dict[str, Any]]:
+        """获取连续两个月都被券商推荐的金股。
+
+        Args:
+            month: YYYYMM 格式的当前月份
+
+        Returns:
+            [{"ts_code", "name", "broker_count_current", "broker_count_prev",
+              "brokers_current": ["券商A", ...], "brokers_prev": ["券商B", ...]}]
+        """
+        # 计算上个月
+        year = int(month[:4])
+        mon = int(month[4:6])
+        if mon == 1:
+            prev_month = f"{year - 1}12"
+        else:
+            prev_month = f"{year}{mon - 1:02d}"
+
+        with self.get_session() as session:
+            # 当前月数据
+            current_rows = session.execute(
+                select(BrokerRecommendMonthly).where(
+                    BrokerRecommendMonthly.month == month
+                )
+            ).scalars().all()
+
+            # 上月数据
+            prev_rows = session.execute(
+                select(BrokerRecommendMonthly).where(
+                    BrokerRecommendMonthly.month == prev_month
+                )
+            ).scalars().all()
+
+        if not current_rows or not prev_rows:
+            return []
+
+        # 按 ts_code 分组
+        prev_by_code: Dict[str, List[BrokerRecommendMonthly]] = {}
+        for r in prev_rows:
+            prev_by_code.setdefault(r.ts_code, []).append(r)
+
+        result = []
+        current_by_code: Dict[str, List[BrokerRecommendMonthly]] = {}
+        for r in current_rows:
+            current_by_code.setdefault(r.ts_code, []).append(r)
+
+        for ts_code, cur_list in current_by_code.items():
+            prev_list = prev_by_code.get(ts_code)
+            if not prev_list:
+                continue
+            result.append({
+                "ts_code": ts_code,
+                "name": cur_list[0].name,
+                "broker_count_current": len(cur_list),
+                "broker_count_prev": len(prev_list),
+                "brokers_current": [r.broker for r in cur_list],
+                "brokers_prev": [r.broker for r in prev_list],
+            })
+
+        # 按当月推荐券商数降序
+        result.sort(key=lambda x: -x["broker_count_current"])
+        return result
+
     def save_broker_backtest(self, month: str, buy_date: str, sell_date: str,
                              total_recommendations: int, unique_stocks: int, unique_brokers: int,
                              stock_returns: List[Dict[str, Any]],
@@ -2122,8 +2273,107 @@ class DatabaseManager:
                 "stock_returns": json.loads(row.stock_returns_json or "[]"),
             }
 
+    # ------------------------------------------------------------------
+    # Enrichment 缓存（九转/盈利预测/筹码胜率持久化）
+    # ------------------------------------------------------------------
+
+    def get_enrichment_cache(
+        self, ts_codes: List[str], trade_date: str
+    ) -> Dict[str, Dict[str, Dict[str, Any]]]:
+        """批量读取增强数据缓存。
+
+        Returns:
+            {ts_code: {"nineturn": {...}, "forecast": {...}, "cyq_perf": {...}}}
+        """
+        result: Dict[str, Dict[str, Dict[str, Any]]] = {}
+        with self.get_session() as session:
+            nt_rows = session.execute(
+                select(BrokerEnrichmentNineturn).where(
+                    BrokerEnrichmentNineturn.ts_code.in_(ts_codes),
+                    BrokerEnrichmentNineturn.trade_date == trade_date,
+                )
+            ).scalars().all()
+            for r in nt_rows:
+                result.setdefault(r.ts_code, {})["nineturn"] = r.to_dict()
+
+            fc_rows = session.execute(
+                select(BrokerEnrichmentForecast).where(
+                    BrokerEnrichmentForecast.ts_code.in_(ts_codes),
+                    BrokerEnrichmentForecast.trade_date == trade_date,
+                )
+            ).scalars().all()
+            for r in fc_rows:
+                result.setdefault(r.ts_code, {})["forecast"] = r.to_dict()
+
+            cyq_rows = session.execute(
+                select(BrokerEnrichmentCyqPerf).where(
+                    BrokerEnrichmentCyqPerf.ts_code.in_(ts_codes),
+                    BrokerEnrichmentCyqPerf.trade_date == trade_date,
+                )
+            ).scalars().all()
+            for r in cyq_rows:
+                result.setdefault(r.ts_code, {})["cyq_perf"] = r.to_dict()
+
+        return result
+
+    def save_enrichment_cache(
+        self,
+        nineturn_data: Optional[Dict[str, Dict[str, Any]]] = None,
+        forecast_data: Optional[Dict[str, Dict[str, Any]]] = None,
+        cyq_data: Optional[Dict[str, Dict[str, Any]]] = None,
+    ) -> None:
+        """批量保存增强数据缓存。使用 merge 避免重复插入。"""
+        with self.get_session() as session:
+            try:
+                if nineturn_data:
+                    for ts_code, data in nineturn_data.items():
+                        trade_date = data.get("trade_date", "")
+                        if not trade_date:
+                            continue
+                        session.merge(BrokerEnrichmentNineturn(
+                            ts_code=ts_code,
+                            trade_date=trade_date,
+                            up_count=data.get("up_count", 0),
+                            down_count=data.get("down_count", 0),
+                            nine_up_turn=data.get("nine_up_turn", 0),
+                            nine_down_turn=data.get("nine_down_turn", 0),
+                        ))
+                if forecast_data:
+                    for ts_code, data in forecast_data.items():
+                        session.merge(BrokerEnrichmentForecast(
+                            ts_code=ts_code,
+                            trade_date=data.get("trade_date", ""),
+                            eps=data.get("eps"),
+                            pe=data.get("pe"),
+                            roe=data.get("roe"),
+                            np=data.get("np"),
+                            rating=data.get("rating", ""),
+                            min_price=data.get("min_price"),
+                            max_price=data.get("max_price"),
+                            imp_dg=data.get("imp_dg", ""),
+                        ))
+                if cyq_data:
+                    for ts_code, data in cyq_data.items():
+                        session.merge(BrokerEnrichmentCyqPerf(
+                            ts_code=ts_code,
+                            trade_date=data.get("trade_date", ""),
+                            winner_rate=data.get("winner_rate"),
+                            cost_5pct=data.get("cost_5pct"),
+                            cost_15pct=data.get("cost_15pct"),
+                            cost_50pct=data.get("cost_50pct"),
+                            cost_85pct=data.get("cost_85pct"),
+                            cost_95pct=data.get("cost_95pct"),
+                            weight_avg=data.get("weight_avg"),
+                            his_low=data.get("his_low"),
+                            his_high=data.get("his_high"),
+                        ))
+                session.commit()
+            except Exception as e:
+                session.rollback()
+                logger.warning(f"[EnrichmentCache] 保存失败: {e}")
+
     def get_analysis_context(
-        self, 
+        self,
         code: str,
         target_date: Optional[date] = None
     ) -> Optional[Dict[str, Any]]:

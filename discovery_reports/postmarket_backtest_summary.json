@@ -18,5 +18,15 @@
     "total_days": 0,
     "final_capital": 5000000.0,
     "initial_capital": 5000000.0
+  },
+  {
+    "date": "20260506",
+    "mode": "postmarket",
+    "cumulative_return": 0.027256144321096687,
+    "win_rate": 0.7,
+    "total_trades": 10,
+    "total_days": 1,
+    "final_capital": 5136280.72,
+    "initial_capital": 5000000.0
   }
 ]

@@ -55,6 +55,9 @@ export type BrokerDailyReturn = {
   price?: number;
   daily_return?: number;
   cumulative?: number;
+  open?: number | null;
+  high?: number | null;
+  low?: number | null;
 };
 
 export type BrokerBacktestItem = {
@@ -74,6 +77,7 @@ export type StockReturnItem = {
   broker: string;
   end_price?: number;
   end_date?: string;
+  daily_change?: number | null;
   daily_returns: BrokerDailyReturn[];
   nineturn?: {
     up_count?: number | null;
@@ -133,6 +137,15 @@ export type YtdBacktestResponse = {
   brokers: YtdBrokerItem[];
 };
 
+export type ConsecutiveStockItem = {
+  ts_code: string;
+  name: string;
+  broker_count_current: number;
+  broker_count_prev: number;
+  brokers_current: string[];
+  brokers_prev: string[];
+};
+
 export async function getAvailableMonths(): Promise<string[]> {
   const resp = await apiClient.get<string[]>('/api/v1/broker-recommend/months');
   return resp.data;
@@ -183,6 +196,15 @@ export async function getYtdBacktest(
   const resp = await apiClient.get<YtdBacktestResponse>(
     '/api/v1/broker-recommend/ytd',
     { params: { year, top_n: topN } }
+  );
+  return resp.data;
+}
+
+export async function getConsecutiveStocks(
+  month: string
+): Promise<ConsecutiveStockItem[]> {
+  const resp = await apiClient.get<ConsecutiveStockItem[]>(
+    `/api/v1/broker-recommend/${month}/consecutive`
   );
   return resp.data;
 }

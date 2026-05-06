@@ -1,0 +1,282 @@
+[
+  {
+    "rank": 1,
+    "ts_code": "002281.SZ",
+    "stock_code": "002281",
+    "stock_name": "光迅科技",
+    "score": 16.4,
+    "sector": "通信设备",
+    "factor_scores": {
+      "sector": 0.0,
+      "ma_entry": 30.81223701490719,
+      "momentum": 87.10851775226797,
+      "rebound": 67.8598689304138
+    },
+    "reasons": [
+      "主力资金净流入",
+      "换手活跃(10.3%)",
+      "炸板后横盘(跌幅8.6%)",
+      "大单回补",
+      "换手充分",
+      "所属板块: 通信设备",
+      "拥挤惩罚(-30分)"
+    ],
+    "buy_price_low": 82.2,
+    "buy_price_high": 114.4,
+    "stop_loss": 79.7,
+    "take_profit_1": 151.5,
+    "take_profit_2": 158.7,
+    "discovered_at": "15:44:40",
+    "price_at_discovery": 150.82,
+    "change": ""
+  },
+  {
+    "rank": 2,
+    "ts_code": "300870.SZ",
+    "stock_code": "300870",
+    "stock_name": "欧陆通",
+    "score": 2.700000000000003,
+    "sector": "电源设备",
+    "factor_scores": {
+      "sector": 0.0,
+      "ma_entry": 30.81223701490719,
+      "momentum": 100.0,
+      "rebound": 0.0
+    },
+    "reasons": [
+      "主力资金净流入",
+      "换手活跃(5.2%)",
+      "所属板块: 电源设备",
+      "拥挤惩罚(-30分)"
+    ],
+    "buy_price_low": 249.4,
+    "buy_price_high": 334.7,
+    "stop_loss": 241.9,
+    "take_profit_1": 424.2,
+    "take_profit_2": 444.4,
+    "discovered_at": "15:44:40",
+    "price_at_discovery": 405.3,
+    "change": ""
+  },
+  {
+    "rank": 3,
+    "ts_code": "002415.SZ",
+    "stock_code": "002415",
+    "stock_name": "海康威视",
+    "score": 2.700000000000003,
+    "sector": "计算机设备",
+    "factor_scores": {
+      "sector": 0.0,
+      "ma_entry": 30.81223701490719,
+      "momentum": 100.0,
+      "rebound": 0.0
+    },
+    "reasons": [
+      "主力资金净流入",
+      "放量启动(量比2.1)",
+      "所属板块: 计算机设备",
+      "拥挤惩罚(-30分)"
+    ],
+    "buy_price_low": 29.3,
+    "buy_price_high": 32.6,
+    "stop_loss": 28.4,
+    "take_profit_1": 38.1,
+    "take_profit_2": 39.9,
+    "discovered_at": "15:44:40",
+    "price_at_discovery": 36.04,
+    "change": ""
+  },
+  {
+    "rank": 4,
+    "ts_code": "300548.SZ",
+    "stock_code": "300548",
+    "stock_name": "长芯博创",
+    "score": 2.700000000000003,
+    "sector": "通信设备",
+    "factor_scores": {
+      "sector": 0.0,
+      "ma_entry": 30.81223701490719,
+      "momentum": 100.0,
+      "rebound": 0.0
+    },
+    "reasons": [
+      "主力资金净流入",
+      "换手活跃(7.7%)",
+      "所属板块: 通信设备",
+      "拥挤惩罚(-30分)"
+    ],
+    "buy_price_low": 167.1,
+    "buy_price_high": 232.6,
+    "stop_loss": 162.0,
+    "take_profit_1": 269.5,
+    "take_profit_2": 282.4,
+    "discovered_at": "15:44:40",
+    "price_at_discovery": 252.48,
+    "change": ""
+  },
+  {
+    "rank": 5,
+    "ts_code": "002049.SZ",
+    "stock_code": "002049",
+    "stock_name": "紫光国微",
+    "score": 2.700000000000003,
+    "sector": "半导体",
+    "factor_scores": {
+      "sector": 0.0,
+      "ma_entry": 30.81223701490719,
+      "momentum": 100.0,
+      "rebound": 0.0
+    },
+    "reasons": [
+      "主力资金净流入",
+      "温和放量(量比1.3)",
+      "换手活跃(4.0%)",
+      "所属板块: 半导体",
+      "拥挤惩罚(-30分)"
+    ],
+    "buy_price_low": 64.0,
+    "buy_price_high": 70.2,
+    "stop_loss": 62.0,
+    "take_profit_1": 81.2,
+    "take_profit_2": 85.1,
+    "discovered_at": "15:44:40",
+    "price_at_discovery": 79.05,
+    "change": ""
+  },
+  {
+    "rank": 6,
+    "ts_code": "300474.SZ",
+    "stock_code": "300474",
+    "stock_name": "景嘉微",
+    "score": 2.700000000000003,
+    "sector": "电子元件",
+    "factor_scores": {
+      "sector": 0.0,
+      "ma_entry": 30.81223701490719,
+      "momentum": 100.0,
+      "rebound": 0.0
+    },
+    "reasons": [
+      "主力资金净流入",
+      "温和放量(量比1.9)",
+      "换手活跃(5.1%)",
+      "所属板块: 电子元件",
+      "拥挤惩罚(-30分)"
+    ],
+    "buy_price_low": 54.9,
+    "buy_price_high": 59.9,
+    "stop_loss": 53.2,
+    "take_profit_1": 69.3,
+    "take_profit_2": 72.6,
+    "discovered_at": "15:44:40",
+    "price_at_discovery": 67.16,
+    "change": ""
+  },
+  {
+    "rank": 7,
+    "ts_code": "300502.SZ",
+    "stock_code": "300502",
+    "stock_name": "新易盛",
+    "score": 0,
+    "sector": "通信设备",
+    "factor_scores": {
+      "sector": 0.0,
+      "ma_entry": 85.95622129267589,
+      "momentum": 33.35268290128736,
+      "rebound": 0.0
+    },
+    "reasons": [
+      "KDJ超卖(28)",
+      "所属板块: 通信设备",
+      "拥挤惩罚(-30分)"
+    ],
+    "buy_price_low": 430.6,
+    "buy_price_high": 524.6,
+    "stop_loss": 417.6,
+    "take_profit_1": 552.1,
+    "take_profit_2": 578.4,
+    "discovered_at": "15:44:40",
+    "price_at_discovery": 522.48,
+    "change": ""
+  },
+  {
+    "rank": 8,
+    "ts_code": "300782.SZ",
+    "stock_code": "300782",
+    "stock_name": "卓胜微",
+    "score": 0,
+    "sector": "半导体",
+    "factor_scores": {
+      "sector": 0.0,
+      "ma_entry": 85.95622129267589,
+      "momentum": 33.35268290128736,
+      "rebound": 0.0
+    },
+    "reasons": [
+      "KDJ超卖(18)",
+      "所属板块: 半导体",
+      "拥挤惩罚(-30分)"
+    ],
+    "buy_price_low": 84.5,
+    "buy_price_high": 100.5,
+    "stop_loss": 81.9,
+    "take_profit_1": 104.6,
+    "take_profit_2": 109.6,
+    "discovered_at": "15:44:40",
+    "price_at_discovery": 103.2,
+    "change": ""
+  },
+  {
+    "rank": 9,
+    "ts_code": "300394.SZ",
+    "stock_code": "300394",
+    "stock_name": "天孚通信",
+    "score": 0,
+    "sector": "通信设备",
+    "factor_scores": {
+      "sector": 0.0,
+      "ma_entry": 85.95622129267589,
+      "momentum": 33.35268290128736,
+      "rebound": 0.0
+    },
+    "reasons": [
+      "KDJ超卖(12)",
+      "所属板块: 通信设备",
+      "拥挤惩罚(-30分)"
+    ],
+    "buy_price_low": 294.1,
+    "buy_price_high": 336.9,
+    "stop_loss": 285.1,
+    "take_profit_1": 322.9,
+    "take_profit_2": 338.2,
+    "discovered_at": "15:44:40",
+    "price_at_discovery": 316.16,
+    "change": ""
+  },
+  {
+    "rank": 10,
+    "ts_code": "603881.SH",
+    "stock_code": "603881",
+    "stock_name": "数据港",
+    "score": 29.8,
+    "sector": "互联网服务",
+    "factor_scores": {
+      "sector": 0.0,
+      "ma_entry": 85.95622129267589,
+      "momentum": 33.35268290128736,
+      "rebound": 0.0
+    },
+    "reasons": [
+      "KDJ超卖(17)",
+      "所属板块: 互联网服务"
+    ],
+    "buy_price_low": 34.8,
+    "buy_price_high": 38.3,
+    "stop_loss": 33.8,
+    "take_profit_1": 38.8,
+    "take_profit_2": 40.6,
+    "discovered_at": "15:44:40",
+    "price_at_discovery": 38.5,
+    "change": ""
+  }
+]

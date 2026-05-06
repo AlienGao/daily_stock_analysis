@@ -93,6 +93,23 @@ class DiscoveryConfig:
         default_factory=lambda: _env_int("DISCOVER_SCAN_TOP_N", 10)
     )
 
+    # --- 通知 ---
+    feishu_webhook_url: str = field(
+        default_factory=lambda: os.getenv("FEISHU_WEBHOOK_URL", "").strip()
+    )
+    feishu_webhook_secret: str = field(
+        default_factory=lambda: os.getenv("FEISHU_WEBHOOK_SECRET", "").strip()
+    )
+
+    # --- 股票白名单 ---
+    discover_whitelist: set = field(
+        default_factory=lambda: set(
+            c.strip()
+            for c in os.getenv("DISCOVERY_STOCK_WHITELIST", "").split(",")
+            if c.strip()
+        )
+    )
+
     @staticmethod
     def env_config_keys() -> List[str]:
         """返回所有环境变量键名，用于 .env.example 同步和 WebUI 配置。"""
@@ -111,6 +128,7 @@ class DiscoveryConfig:
             "DISCOVER_SCAN_INTERVAL",
             "DISCOVER_SCAN_MAX_RUNTIME",
             "DISCOVER_SCAN_TOP_N",
+            "DISCOVERY_STOCK_WHITELIST",
         ]
 
 

@@ -1,30 +1,58 @@
-# 忽略 Python 缓存
+# Python 缓存
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 
-# 忽略虚拟环境
+# 虚拟环境
 venv/
 .venv/
 env/
 .env.local
 
-# 忽略 IDE
+# IDE
 .idea/
 .vscode/
 *.swp
 *.swo
 
-# 忽略数据文件（可选，如果想持久化就注释掉）
-# data/
-# logs/
-# reports/
-
-# 忽略测试文件
+# 测试
+tests/
 test_*.py
 *_test.py
+.pytest_cache/
 
-# 忽略文档
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# 文档（保留 README）
 *.md
 !README.md
+
+# Node
+apps/dsa-web/node_modules/
+node_modules/
+
+# 桌面端
+apps/dsa-desktop/
+
+# CI / 工作流
+.github/
+
+# Docker 自身
+docker/
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# 临时文件
+*.log
+*.tmp
+.DS_Store
+
+# 数据目录（通过 volume 挂载）
+data/
+logs/
+reports/

@@ -15,6 +15,9 @@ export type DiscoveryItem = {
   take_profit_1?: number | null;
   take_profit_2?: number | null;
   change?: string;
+  discovered_at?: string;
+  price_at_discovery?: number | null;
+  live_price?: number | null;
 };
 
 export type IntradayTopResponse = {

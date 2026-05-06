@@ -6,11 +6,14 @@
 
 import json
 import logging
+import random
+import re
 import time
 from pathlib import Path
 from typing import Dict, List, Literal, Optional
 
 import pandas as pd
+import requests
 
 from src.discovery.config import DiscoveryConfig
 from src.discovery.factors.base import BaseFactor, DiscoveryResult
@@ -184,6 +187,87 @@ class StockDiscoveryEngine:
             return {}
 
     # ------------------------------------------------------------------
+    # Real-time prices (akshare primary, Sina fallback)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _get_batch_realtime_prices_akshare(ts_codes: List[str]) -> Dict[str, float]:
+        """通过 akshare 获取全 A 股实时价格（单次调用）。"""
+        if not ts_codes:
+            return {}
+        try:
+            import akshare as ak
+            df = ak.stock_zh_a_spot_em()
+            if df is None or df.empty:
+                return {}
+            # akshare 返回列：代码, 名称, 最新价, ...
+            price_map: Dict[str, float] = {}
+            for _, row in df.iterrows():
+                code = str(row.get('代码', '')).strip()
+                price = row.get('最新价')
+                if code and price is not None:
+                    try:
+                        price_map[code] = float(price)
+                    except (ValueError, TypeError):
+                        pass
+            # map ts_code → price (akshare code has no suffix)
+            result: Dict[str, float] = {}
+            for ts_code in ts_codes:
+                code = ts_code.split(".")[0] if "." in ts_code else ts_code
+                if code in price_map:
+                    result[ts_code] = price_map[code]
+            return result
+        except Exception as e:
+            logger.debug(f"[Discovery] akshare 实时价格获取失败: {e}")
+            return {}
+
+
+    @staticmethod
+    def _to_sina_symbol(ts_code: str) -> str:
+        """将 ts_code 转为新浪行情符号，如 600379.SH → sh600379"""
+        code = ts_code.split(".")[0] if "." in ts_code else ts_code
+        if code.startswith(("6", "9")):
+            return f"sh{code}"
+        return f"sz{code}"
+
+    @staticmethod
+    def _get_batch_realtime_prices(ts_codes: List[str]) -> Dict[str, float]:
+        """通过新浪批量接口获取实时价格。"""
+        if not ts_codes:
+            return {}
+        symbols = [StockDiscoveryEngine._to_sina_symbol(c) for c in ts_codes]
+        url = f"http://hq.sinajs.cn/list={','.join(symbols)}"
+        try:
+            resp = requests.get(
+                url,
+                headers={"Referer": "http://finance.sina.com.cn"},
+                timeout=10,
+            )
+            resp.encoding = "gbk"
+            prices: Dict[str, float] = {}
+            for line in resp.text.strip().split("\n"):
+                m = re.search(r'hq_str_(\w+)="([^"]*)"', line)
+                if not m:
+                    continue
+                sym = m.group(1)
+                fields = m.group(2).split(",")
+                if len(fields) < 4:
+                    continue
+                try:
+                    prices[sym] = float(fields[3])  # fields[3] = 当前价
+                except (ValueError, IndexError):
+                    pass
+            # map back: sina symbol → ts_code
+            result: Dict[str, float] = {}
+            for i, ts_code in enumerate(ts_codes):
+                if i < len(symbols) and symbols[i] in prices:
+                    result[ts_code] = prices[symbols[i]]
+            return result
+        except Exception as e:
+            logger.debug(f"[Discovery] 批量实时价格获取失败: {e}")
+            return {}
+
+    # ------------------------------------------------------------------
     # Sector labels (concept tags)
     # ------------------------------------------------------------------
 
@@ -254,14 +338,21 @@ class StockDiscoveryEngine:
     def _resolve_stock_names(self, ts_codes: List[str]) -> Dict[str, str]:
         unresolved = [c for c in ts_codes if c not in self._stock_names]
         if unresolved and self.tushare_fetcher:
-            for ts_code in unresolved:
-                try:
-                    clean_code = ts_code.split(".")[0] if "." in ts_code else ts_code
-                    name = self.tushare_fetcher.get_stock_name(clean_code)
-                    if name:
-                        self._stock_names[ts_code] = name
-                except Exception:
-                    pass
+            # 批量拉取全量 A 股名称（一次 API 调用），写入 self._stock_names
+            try:
+                api = getattr(self.tushare_fetcher, '_api', None)
+                if api:
+                    df = api.stock_basic(exchange='', list_status='L', fields='ts_code,name')
+                    if df is not None and not df.empty:
+                        for _, row in df.iterrows():
+                            ts = row['ts_code']
+                            code = ts.split('.')[0] if '.' in ts else ts
+                            name = row['name']
+                            self._stock_names[ts] = name
+                            self._stock_names[code] = name
+                        logger.info("[Discovery] 预加载 %d 只股票名称", len(df))
+            except Exception as e:
+                logger.debug("[Discovery] 批量预加载名称失败: %s", e)
         return {c: self._stock_names.get(c, c) for c in ts_codes}
 
     # ------------------------------------------------------------------
@@ -324,13 +415,15 @@ class StockDiscoveryEngine:
             sectors = {idx: industry_map.get(idx, "未知") for idx in scores.index}
             series_with_sector = pd.Series(list(sectors.values()), index=scores.index)
 
-            for sector, group_idx in series_with_sector.groupby(series_with_sector, dropna=False).items():
-                group_scores = scores.reindex(group_idx)
+            for sector, group_idx in series_with_sector.groupby(series_with_sector, dropna=False):
+                # pandas 3.x: groupby yields Series, use .index for label-based lookup
+                idx = group_idx.index
+                group_scores = scores.reindex(idx)
                 if group_scores.std() > 1e-6:
                     normalized = (group_scores - group_scores.mean()) / group_scores.std()
-                    neutral.loc[group_idx] = ((normalized + 2) / 4 * 100).clip(0, 100)
+                    neutral.loc[idx] = ((normalized + 2) / 4 * 100).clip(0, 100)
                 else:
-                    neutral.loc[group_idx] = 50.0
+                    neutral.loc[idx] = 50.0
 
             neutral_scores[name] = neutral.reindex(scores.index, fill_value=50.0)
 
@@ -463,7 +556,7 @@ class StockDiscoveryEngine:
 
         # Phase 4: 合并评分 → 综合评分
         combined = pd.DataFrame(score_columns).fillna(0)
-        combined["_total"] = combined.sum(axis=1)
+        combined["_total"] = combined.sum(axis=1) / max(1, len(score_columns))
         combined = combined.sort_values("_total", ascending=False)
 
         # Phase 4.5: 收集推荐理由
@@ -506,36 +599,66 @@ class StockDiscoveryEngine:
         if mode == "intraday":
             top_n = self.config.scan_top_n
 
-        candidate_codes = combined.head(max(top_n * 3, 30)).index.tolist()
+        candidate_codes = combined.index.tolist()
+        # 解析所有候选股票名称
         names = self._resolve_stock_names(candidate_codes)
 
-        # 获取板块标签
+        # 获取板块标签 & 实时价格
         sector_labels = self._get_sector_labels(candidate_codes)
+        industry_map = self._get_industry_map(candidate_codes)  # 行业映射作为 fallback
+        live_prices: Dict[str, float] = {}
+        if mode in ("intraday", "postmarket"):
+            for i in range(0, len(candidate_codes), 20):
+                chunk = candidate_codes[i:i + 20]
+                prices = self._get_batch_realtime_prices(chunk)
+                if prices:
+                    live_prices.update(prices)
+            if not live_prices:
+                live_prices = self._get_batch_realtime_prices_akshare(candidate_codes)
 
         results = []
         st_skipped = 0
+        overbought_skipped = 0
+        lowpnl_skipped = 0
+        whitelist_skipped = 0
         for ts_code, row in combined.iterrows():
             if len(results) >= top_n:
                 break
             stock_code = ts_code.split(".")[0] if "." in ts_code else ts_code
-            stock_name = names.get(ts_code, stock_code)
+            stock_name = names.get(ts_code) or self._stock_names.get(ts_code) or self._stock_names.get(stock_code) or stock_code
+
+            if self.config.discover_whitelist and stock_code not in self.config.discover_whitelist:
+                whitelist_skipped += 1
+                continue
 
             if is_st_stock(stock_name):
                 st_skipped += 1
                 continue
 
-            # 还原原始 0-100 评分
+            # 还原原始 0-100 评分（中性化后 row[name] 已是 0-100，无需除权重）
             factor_breakdown = {}
             raw_score = row["_total"]
-            for name, f in self._factors.items():
-                if name not in row.index:
+            for name in row.index:
+                if name.startswith("_"):
                     continue
-                adj = dynamic_adjustments.get(name, 1.0)
-                eff_w = f.weight * adj * weight_scale / 100.0
-                factor_breakdown[name] = row[name] / eff_w if eff_w > 0 else 0.0
+                factor_breakdown[name] = row[name]
 
             prices = price_map.get(ts_code, {})
             buy_low, buy_high, stop, tp1, tp2 = _calc_price_levels(prices, factor_score=raw_score)
+
+            # 过滤超买股 & 低盈亏比股（盘中用实时价，盘后用收盘价）
+            discovery_price = live_prices.get(ts_code) or prices.get("close")
+            if discovery_price and tp1 and discovery_price >= tp1:
+                overbought_skipped += 1
+                continue
+            if discovery_price and tp1 and stop:
+                if discovery_price <= stop:
+                    lowpnl_skipped += 1  # 现价已跌破止损线
+                    continue
+                pnl_ratio = (tp1 - discovery_price) / (discovery_price - stop)
+                if pnl_ratio <= 0:
+                    lowpnl_skipped += 1
+                    continue
 
             # 追加板块标签到推荐理由
             reasons = list(all_reasons.get(ts_code, []))
@@ -543,12 +666,16 @@ class StockDiscoveryEngine:
             if labels:
                 reasons.append(f"所属板块: {', '.join(labels)}")
 
+            # 板块/行业
+            sector = labels[0] if labels else industry_map.get(ts_code, "")
+
             results.append(
                 DiscoveryResult(
                     ts_code=ts_code,
                     stock_code=stock_code,
                     stock_name=stock_name,
                     score=round(raw_score, 1),
+                    sector=sector,
                     factor_scores=factor_breakdown,
                     reasons=reasons,
                     buy_price_low=buy_low,
@@ -556,22 +683,33 @@ class StockDiscoveryEngine:
                     stop_loss=stop,
                     take_profit_1=tp1,
                     take_profit_2=tp2,
+                    discovered_at=time.strftime("%H:%M:%S"),
+                    price_at_discovery=live_prices.get(ts_code) or prices.get("close"),
                 )
             )
 
         if st_skipped > 0:
             logger.info("[Discovery] 已剔除 %d 只 ST 股", st_skipped)
+        if overbought_skipped > 0:
+            logger.info("[Discovery] 已剔除 %d 只超买股（发现价 >= 止盈目标）", overbought_skipped)
+        if lowpnl_skipped > 0:
+            logger.info("[Discovery] 已剔除 %d 只低盈亏比股（盈亏比 <= 0）", lowpnl_skipped)
+        if whitelist_skipped > 0:
+            logger.info("[Discovery] 已剔除 %d 只非白名单股", whitelist_skipped)
 
         # Phase 5.5: 拥挤度惩罚
         results = self._apply_crowding_penalty(results)
 
-        # Phase 5.6: IC 追踪（异步，不阻断）
+        # Phase 5.6: IC 追踪（后台线程，不阻塞）
         try:
+            from concurrent.futures import ThreadPoolExecutor
             from src.discovery.ic_tracker import ICTracker
-            tracker = ICTracker(eval_days=5)
-            ic_results = tracker.evaluate(raw_scores, trade_date)
-            if ic_results:
-                logger.info(f"[IC] {trade_date}: " + ", ".join(f"{k}={v:.3f}" for k, v in ic_results.items()))
+            def _run_ic():
+                tracker = ICTracker(eval_days=5)
+                ic_results = tracker.evaluate(raw_scores, trade_date)
+                if ic_results:
+                    logger.info(f"[IC] {trade_date}: " + ", ".join(f"{k}={v:.3f}" for k, v in ic_results.items()))
+            ThreadPoolExecutor(max_workers=1).submit(_run_ic)
         except Exception as e:
             logger.debug(f"[IC] IC评估失败: {e}")
 
@@ -598,7 +736,11 @@ class StockDiscoveryEngine:
         lines = [f"## {mode_label} Top {len(results)}", ""]
 
         for i, r in enumerate(results, 1):
-            lines.append(f"### #{i} {r.stock_code} {r.stock_name} — 综合评分 {r.score:.1f}")
+            sector_tag = f" · {r.sector}" if r.sector else ""
+            lines.append(f"### #{i} {r.stock_code} {r.stock_name}{sector_tag} — 综合评分 {r.score:.1f}")
+            if r.discovered_at:
+                price_str = f"¥{r.price_at_discovery:.2f}" if r.price_at_discovery else "-"
+                lines.append(f"*发现 {r.discovered_at} · {price_str}*")
             lines.append("")
 
             if r.reasons:

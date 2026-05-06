@@ -6,6 +6,7 @@
 
 import calendar
 import logging
+import random
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, timedelta
@@ -26,6 +27,9 @@ class BrokerRecommendService:
     _enrichment_cache: Dict[str, Any] = {}
     _enrichment_cache_ts: Dict[str, float] = {}
     _cache_lock = Lock()
+
+    # 缓存每个月份的 query_date，避免 trade_cal API 波动导致缓存 key 不一致
+    _query_date_cache: Dict[str, str] = {}
 
     # 不同数据类型的 TTL（秒）：盈利预测可缓存更久
     _CACHE_TTL = {
@@ -63,6 +67,43 @@ class BrokerRecommendService:
         with cls._cache_lock:
             cls._enrichment_cache[key] = data
             cls._enrichment_cache_ts[key] = time.time()
+
+    def invalidate_enrichment_cache(self, month: str) -> int:
+        """清除指定月份的 enrichment 缓存（L1 内存 + L2 SQLite）。
+
+        用于当前月抓取新数据后强制刷新价格和筹码胜率。
+        """
+        from datetime import datetime
+        removed_l1 = 0
+
+        # L1 内存缓存：按 query_date 前缀匹配清除
+        query_date = self._resolve_enrichment_date(month)
+        # 对于当前月，query_date 返回最近交易日，直接用它清除
+        prefix = f"{query_date}:"
+        with self._cache_lock:
+            keys_to_del = [k for k in self._enrichment_cache if prefix in k]
+            for k in keys_to_del:
+                del self._enrichment_cache[k]
+                self._enrichment_cache_ts.pop(k, None)
+            removed_l1 = len(keys_to_del)
+
+        # L2 SQLite 缓存：清除该日期的 enrichment ORM 记录
+        try:
+            from sqlalchemy import delete as sa_delete
+            from src.storage import BrokerEnrichmentNineturn, BrokerEnrichmentForecast, BrokerEnrichmentCyqPerf
+            with self.db.get_session() as session:
+                for model in (BrokerEnrichmentNineturn, BrokerEnrichmentForecast, BrokerEnrichmentCyqPerf):
+                    session.execute(sa_delete(model).where(model.trade_date == query_date))
+                session.commit()
+        except Exception as e:
+            logger.debug(f"[BrokerRecommend] L2 cache clear failed: {e}")
+
+        # 同时清除 _query_date_cache，强制重新计算交易日
+        self._query_date_cache.pop(month, None)
+
+        if removed_l1 > 0:
+            logger.info(f"[BrokerRecommend] 已清除 {removed_l1} 条 L1 + L2 enrichment 缓存 (month={month}, date={query_date})")
+        return removed_l1
 
     def fetch_and_store_month(self, month: str) -> int:
         """获取指定月份券商金股并存入数据库。
@@ -106,28 +147,37 @@ class BrokerRecommendService:
         return df
 
     def _resolve_enrichment_date(self, month: str) -> str:
-        """确定增强数据的查询日期：过去月份取最后交易日，否则取当前最近交易日。
+        """确定增强数据的查询日期。
 
-        cyq_perf/stk_nineturn 等 API 在非交易日可能返回空数据，
-        因此需要精确找到目标月份最后一个交易日。
+        历史月份：首次计算后缓存，后续直接返回（确保 cache key 一致）。
+        当前月份：返回最近交易日（不缓存，实现每日刷新）。
         """
+        from datetime import datetime
         year = int(month[:4])
         mon = int(month[4:6])
         last_day = calendar.monthrange(year, mon)[1]
         month_last = f"{month}{last_day:02d}"
-        from datetime import datetime
         today = datetime.now().strftime("%Y%m%d")
 
         if month_last <= today:
-            # 过去月份：查询当月完整交易日历，取最后一天
+            # 历史月份：优先返回缓存结果，避免 trade_cal API 波动
+            if month in BrokerRecommendService._query_date_cache:
+                return BrokerRecommendService._query_date_cache[month]
+            # 尝试获取真实交易日，失败则用 weekday 估算
             try:
                 trading_days = self._get_trading_days(f"{month}01", month_last)
                 if trading_days:
-                    return trading_days[-1]
+                    result = trading_days[-1]
+                    BrokerRecommendService._query_date_cache[month] = result
+                    return result
             except Exception:
                 pass
+            # fallback: 回退到该月最后一个工作日
+            result = self._last_weekday(month_last)
+            BrokerRecommendService._query_date_cache[month] = result
+            return result
 
-        # 当前/未来月份：取最近可获得数据的交易日
+        # 当前/未来月份：动态获取最近交易日，不缓存
         try:
             from data_provider.tushare_fetcher import TushareFetcher
             tf = TushareFetcher.get_instance()
@@ -138,10 +188,56 @@ class BrokerRecommendService:
             pass
         return month_last
 
+    @staticmethod
+    def _last_weekday(date_str: str) -> str:
+        """回退到最近的工作日（周一到周五）。"""
+        from datetime import timedelta
+        d = date(int(date_str[:4]), int(date_str[4:6]), int(date_str[6:8]))
+        while d.weekday() >= 5:
+            d -= timedelta(days=1)
+        return d.strftime("%Y%m%d")
+
+    @staticmethod
+    def _normalize_cyq_perf(data: Dict[str, Any]) -> Dict[str, Any]:
+        """从 L2 原始字段补全 computed 字段（cost_avg、concentration）。
+
+        L2 存储的是 Tushare 原始字段，前端需要 cost_avg/concentration。
+        """
+        if "cost_avg" not in data or data["cost_avg"] is None:
+            wavg = data.get("weight_avg")
+            if wavg is not None:
+                try:
+                    data["cost_avg"] = round(float(wavg), 2)
+                except (ValueError, TypeError):
+                    pass
+        if "concentration" not in data or data["concentration"] is None:
+            c5 = data.get("cost_5pct")
+            c95 = data.get("cost_95pct")
+            wavg = data.get("weight_avg")
+            if c5 is not None and c95 is not None and wavg and float(wavg) > 0:
+                try:
+                    data["concentration"] = round((float(c95) - float(c5)) / float(wavg), 4)
+                except (ValueError, TypeError):
+                    pass
+        return data
+
+    @staticmethod
+    def _effective_month_end(month: str) -> str:
+        """回测有效截止日。当月取今天（DB 数据完整，避免重复拉 Tushare），历史月取月末。"""
+        year = int(month[:4])
+        mon = int(month[4:6])
+        last_day = calendar.monthrange(year, mon)[1]
+        month_end = f"{month}{last_day:02d}"
+        today = date.today().strftime("%Y%m%d")
+        if month_end > today:
+            return today
+        return month_end
+
     def get_monthly_enrichment(self, month: str) -> Dict[str, Dict[str, Any]]:
         """获取指定月份所有推荐股票的增强数据（九转、盈利预测、筹码胜率）。
 
-        按单只股票缓存，不同数据类型独立 TTL（forecast 24h，其余 4h）。
+        L1 进程内缓存 → L2 SQLite 持久化缓存 → L3 Tushare API。
+        历史月份 trade_date 固定 → SQLite 永久有效；当前月份按交易日刷新。
         返回 {ts_code: {nineturn, forecast, cyq_perf}} 字典。
         """
         df = self.get_monthly_recommendations(month)
@@ -152,63 +248,97 @@ class BrokerRecommendService:
         query_date = self._resolve_enrichment_date(month)
 
         enrichment: Dict[str, Dict[str, Any]] = {}
-        cache_hits = 0
-
-        # 第一步：从缓存中读取（per-stock + per-type）
         uncached_nineturn: List[str] = []
         uncached_forecast: List[str] = []
-        uncached_cyq: List[str] = []  # 实际上 cyq 是全量，但我们也按 stock 缓存结果
+        uncached_cyq: List[str] = []
 
+        # L1: 进程内缓存
         for tc in ts_codes:
             entry: Dict[str, Any] = {}
             nt = self._get_cached(tc, query_date, "nineturn")
             if nt is not None:
                 entry["nineturn"] = nt
-                cache_hits += 1
             else:
                 uncached_nineturn.append(tc)
-
             fc = self._get_cached(tc, query_date, "forecast")
             if fc is not None:
                 entry["forecast"] = fc
-                cache_hits += 1
             else:
                 uncached_forecast.append(tc)
-
             cyq = self._get_cached(tc, query_date, "cyq_perf")
             if cyq is not None:
                 entry["cyq_perf"] = cyq
-                cache_hits += 1
             else:
                 uncached_cyq.append(tc)
-
             if entry:
                 enrichment[tc] = entry
 
         total_fields = len(ts_codes) * 3
-        if cache_hits == total_fields:
-            logger.info(f"[BrokerRecommend] enrichment 全部缓存命中 {month} ({len(ts_codes)} stocks)")
+        l1_hits = sum(1 for v in enrichment.values() for _ in v)
+        if l1_hits == total_fields:
+            logger.info(f"[BrokerRecommend] enrichment L1 全部命中 {month} ({len(ts_codes)} stocks)")
             return enrichment
 
-        logger.info(f"[BrokerRecommend] enrichment {month}: 缓存命中 {cache_hits}/{total_fields}, "
-                    f"待获取 nineturn={len(uncached_nineturn)} forecast={len(uncached_forecast)} cyq={len(uncached_cyq)}")
+        # L2: SQLite 持久化缓存
+        still_need_nineturn: List[str] = []
+        still_need_forecast: List[str] = []
+        still_need_cyq: List[str] = []
 
-        # 第二步：使用批量接口获取未缓存数据（3 次 API 调用替代逐条 100+ 次）
+        if uncached_nineturn or uncached_forecast or uncached_cyq:
+            all_missed = list(set(uncached_nineturn + uncached_forecast + uncached_cyq))
+            db_cache = self.db.get_enrichment_cache(all_missed, query_date)
+            if db_cache:
+                for tc, data in db_cache.items():
+                    if "nineturn" in data:
+                        BrokerRecommendService._set_cached(tc, query_date, "nineturn", data["nineturn"])
+                        enrichment.setdefault(tc, {})["nineturn"] = data["nineturn"]
+                    if "forecast" in data:
+                        BrokerRecommendService._set_cached(tc, query_date, "forecast", data["forecast"])
+                        enrichment.setdefault(tc, {})["forecast"] = data["forecast"]
+                    if "cyq_perf" in data:
+                        normalized = BrokerRecommendService._normalize_cyq_perf(data["cyq_perf"])
+                        if normalized.get("cost_avg") is not None:
+                            BrokerRecommendService._set_cached(tc, query_date, "cyq_perf", normalized)
+                            enrichment.setdefault(tc, {})["cyq_perf"] = normalized
+
+            for tc in uncached_nineturn:
+                if tc not in enrichment or "nineturn" not in enrichment[tc]:
+                    still_need_nineturn.append(tc)
+            for tc in uncached_forecast:
+                if tc not in enrichment or "forecast" not in enrichment[tc]:
+                    still_need_forecast.append(tc)
+            for tc in uncached_cyq:
+                if tc not in enrichment or "cyq_perf" not in enrichment[tc]:
+                    still_need_cyq.append(tc)
+
+        l2_hits = sum(1 for v in enrichment.values() for _ in v)
+        if l2_hits == total_fields:
+            logger.info(f"[BrokerRecommend] enrichment L1+L2 全部命中 {month} ({len(ts_codes)} stocks)")
+            return enrichment
+
+        logger.info(f"[BrokerRecommend] enrichment {month}: L1+L2 命中 {l2_hits}/{total_fields}, "
+                    f"待 fetch nineturn={len(still_need_nineturn)} forecast={len(still_need_forecast)} cyq={len(still_need_cyq)}")
+
+        # L3: Tushare API 批量获取
         from data_provider.tushare_fetcher import TushareFetcher
         tf = TushareFetcher.get_instance()
         if not tf.is_available():
             logger.warning("[BrokerRecommend] Tushare 不可用，仅返回缓存数据")
             return enrichment
 
+        fetched_nineturn: Dict[str, Dict[str, Any]] = {}
+        fetched_forecast: Dict[str, Dict[str, Any]] = {}
+        fetched_cyq: Dict[str, Dict[str, Any]] = {}
+
         with ThreadPoolExecutor(max_workers=3) as pool:
             futures: dict = {}
 
-            if uncached_nineturn:
-                futures[pool.submit(tf.get_bulk_nineturn, uncached_nineturn, query_date)] = "nineturn"
-            if uncached_forecast:
-                futures[pool.submit(tf.get_bulk_forecast, uncached_forecast, query_date)] = "forecast"
-            if uncached_cyq:
-                futures[pool.submit(self._fetch_cyq_enrichment, tf, uncached_cyq, query_date)] = "cyq"
+            if still_need_nineturn:
+                futures[pool.submit(tf.get_bulk_nineturn, still_need_nineturn, query_date)] = "nineturn"
+            if still_need_forecast:
+                futures[pool.submit(tf.get_bulk_forecast, still_need_forecast, query_date)] = "forecast"
+            if still_need_cyq:
+                futures[pool.submit(self._fetch_cyq_enrichment, tf, still_need_cyq, query_date)] = "cyq"
 
             for future in as_completed(futures, timeout=60):
                 tag = futures[future]
@@ -218,6 +348,7 @@ class BrokerRecommendService:
                         if nt_data:
                             for ts_code, nt in nt_data.items():
                                 result = {
+                                    "trade_date": query_date,
                                     "up_count": nt.get("up_count", 0),
                                     "down_count": nt.get("down_count", 0),
                                     "nine_up_turn": nt.get("nine_up_turn", 0),
@@ -225,11 +356,13 @@ class BrokerRecommendService:
                                 }
                                 BrokerRecommendService._set_cached(ts_code, query_date, "nineturn", result)
                                 enrichment.setdefault(ts_code, {})["nineturn"] = result
+                                fetched_nineturn[ts_code] = result
                     elif tag == "forecast":
                         fc_data = future.result(timeout=30)
                         if fc_data:
                             for ts_code, fc in fc_data.items():
                                 result = {
+                                    "trade_date": query_date,
                                     "eps": fc.get("eps"),
                                     "pe": fc.get("pe"),
                                     "roe": fc.get("roe"),
@@ -241,29 +374,144 @@ class BrokerRecommendService:
                                 }
                                 BrokerRecommendService._set_cached(ts_code, query_date, "forecast", result)
                                 enrichment.setdefault(ts_code, {})["forecast"] = result
+                                fetched_forecast[ts_code] = result
                     elif tag == "cyq":
                         cyq_data = future.result(timeout=30)
                         if cyq_data:
                             for ts_code, cyq in cyq_data.items():
+                                cyq["trade_date"] = query_date
                                 BrokerRecommendService._set_cached(ts_code, query_date, "cyq_perf", cyq)
                                 enrichment.setdefault(ts_code, {})["cyq_perf"] = cyq
+                                fetched_cyq[ts_code] = cyq
                 except Exception:
                     pass
+
+        # 对 Tushare 无数据的股票缓存空标记，避免重复拉取
+        for tc in still_need_nineturn:
+            if tc not in fetched_nineturn and "nineturn" not in enrichment.get(tc, {}):
+                empty = {"trade_date": query_date, "up_count": 0, "down_count": 0,
+                         "nine_up_turn": 0, "nine_down_turn": 0}
+                BrokerRecommendService._set_cached(tc, query_date, "nineturn", empty)
+                enrichment.setdefault(tc, {})["nineturn"] = empty
+                fetched_nineturn[tc] = empty
+        for tc in still_need_forecast:
+            if tc not in fetched_forecast and "forecast" not in enrichment.get(tc, {}):
+                empty = {"trade_date": query_date, "eps": None, "pe": None, "roe": None, "np": None,
+                         "rating": "", "min_price": None, "max_price": None, "imp_dg": ""}
+                BrokerRecommendService._set_cached(tc, query_date, "forecast", empty)
+                enrichment.setdefault(tc, {})["forecast"] = empty
+                fetched_forecast[tc] = empty
+        for tc in still_need_cyq:
+            if tc not in fetched_cyq and "cyq_perf" not in enrichment.get(tc, {}):
+                empty = {"trade_date": query_date, "winner_rate": None, "cost_5pct": None,
+                         "cost_15pct": None, "cost_50pct": None, "cost_85pct": None,
+                         "cost_95pct": None, "weight_avg": None, "his_low": None, "his_high": None}
+                BrokerRecommendService._set_cached(tc, query_date, "cyq_perf", empty)
+                enrichment.setdefault(tc, {})["cyq_perf"] = empty
+                fetched_cyq[tc] = empty
+
+        # 持久化到 SQLite（含空标记）
+        if fetched_nineturn or fetched_forecast or fetched_cyq:
+            try:
+                self.db.save_enrichment_cache(
+                    nineturn_data=fetched_nineturn or None,
+                    forecast_data=fetched_forecast or None,
+                    cyq_data=fetched_cyq or None,
+                )
+            except Exception:
+                pass
 
         logger.info(f"[BrokerRecommend] enrichment 完成 {month}: nineturn={sum(1 for v in enrichment.values() if 'nineturn' in v)}, "
                     f"forecast={sum(1 for v in enrichment.values() if 'forecast' in v)}, "
                     f"cyq={sum(1 for v in enrichment.values() if 'cyq_perf' in v)}")
         return enrichment
 
+    @staticmethod
+    def _fetch_cyq_akshare(ts_codes: List[str]) -> Optional[Dict[str, Dict[str, Any]]]:
+        """使用 akshare (东方财富) 获取筹码分布，支持当日盘中实时数据。"""
+        import os
+        from unittest.mock import patch
+
+        try:
+            import akshare as ak
+        except ImportError:
+            logger.debug("[BrokerRecommend] akshare 未安装，跳过 cyq")
+            return None
+
+        # 构建无代理污染的 requests Session（akshare 内部使用 requests.get）
+        import requests as _requests
+        _session = _requests.Session()
+        _session.trust_env = False  # 禁止读取环境变量中的代理配置
+        _session.headers.update({
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+            "Accept": "*/*",
+            "Accept-Language": "zh-CN,zh;q=0.9",
+            "Referer": "https://quote.eastmoney.com/",
+        })
+
+        # 临时清除代理环境变量，防止 akshare/requests 内部读取
+        _saved_proxy_vars = {}
+        for k in ("all_proxy", "ALL_PROXY", "http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY", "no_proxy", "NO_PROXY",
+                  "USE_PROXY", "PROXY_HOST", "PROXY_PORT"):
+            if k in os.environ:
+                _saved_proxy_vars[k] = os.environ.pop(k)
+
+        def _patched_get(url, **kwargs):
+            return _session.get(url, **kwargs)
+
+        result: Dict[str, Dict[str, Any]] = {}
+        try:
+            with patch.object(_requests, "get", side_effect=_patched_get):
+                for ts_code in ts_codes:
+                    try:
+                        symbol = ts_code.split(".")[0] if "." in ts_code else ts_code
+                        df = ak.stock_cyq_em(symbol=symbol)
+                        if df is None or df.empty:
+                            continue
+
+                        row = df.iloc[-1]
+                        winner_rate = float(row.get("获利比例", 0) or 0)
+                        cost_avg = float(row.get("平均成本", 0) or 0)
+                        concentration = float(row.get("90集中度", 0) or 0)
+                        cost_low_90 = float(row.get("90成本-低", 0) or 0)
+                        cost_high_90 = float(row.get("90成本-高", 0) or 0)
+                        cost_low_70 = float(row.get("70成本-低", 0) or 0)
+                        cost_high_70 = float(row.get("70成本-高", 0) or 0)
+
+                        his_low = float(df["平均成本"].min()) if len(df) > 0 else cost_low_90
+                        his_high = float(df["平均成本"].max()) if len(df) > 0 else cost_high_90
+
+                        result[ts_code] = {
+                            "cost_avg": round(cost_avg, 2),
+                            "winner_rate": round(winner_rate, 4),
+                            "concentration": round(concentration, 4),
+                            "cost_5pct": cost_low_90,
+                            "cost_15pct": cost_low_70,
+                            "cost_50pct": None,
+                            "cost_85pct": cost_high_70,
+                            "cost_95pct": cost_high_90,
+                            "weight_avg": cost_avg,
+                            "his_low": round(his_low, 2),
+                            "his_high": round(his_high, 2),
+                        }
+                        time.sleep(2.0 + random.random() * 2.0)  # 2-4s 随机延迟，避免触发东方财富反爬
+                    except Exception as e:
+                        logger.debug(f"[BrokerRecommend] akshare cyq failed for {ts_code}: {e}")
+                        continue
+        finally:
+            # 恢复代理环境变量
+            os.environ.update(_saved_proxy_vars)
+        return result if result else None
+
     def _fetch_cyq_enrichment(
         self, tf: Any, ts_codes: List[str], query_date: str
     ) -> Optional[Dict[str, Dict[str, Any]]]:
-        """获取筹码胜率数据（在线程池中执行）。"""
+        """获取筹码胜率数据（在线程池中执行）。使用 Tushare 日线 CYQ 数据。"""
         try:
             cyq_df = tf.get_bulk_cyq_perf(query_date) if tf.is_available() else None
             if cyq_df is None or cyq_df.empty:
                 return None
-            result: Dict[str, Dict[str, Any]] = {}
+            result = {}
             for ts_code in ts_codes:
                 if ts_code in cyq_df.index:
                     row = cyq_df.loc[ts_code]
@@ -277,15 +525,232 @@ class BrokerRecommendService:
                         "concentration": round(
                             (cost_95 - cost_5) / weight_avg, 4
                         ) if weight_avg > 0 else None,
+                        "cost_5pct": cost_5,
+                        "cost_15pct": float(row.get("cost_15pct", 0) or 0),
+                        "cost_50pct": float(row.get("cost_50pct", 0) or 0),
+                        "cost_85pct": float(row.get("cost_85pct", 0) or 0),
+                        "cost_95pct": cost_95,
+                        "weight_avg": weight_avg,
+                        "his_low": float(row.get("his_low", 0) or 0),
+                        "his_high": float(row.get("his_high", 0) or 0),
                     }
             return result
         except Exception as e:
-            logger.debug(f"[BrokerRecommend] cyq enrichment 失败: {e}")
+            logger.debug(f"[BrokerRecommend] Tushare cyq fallback 失败: {e}")
             return None
+
+    # ── 本地 CYQ 计算（StockDaily kline + Tushare 总市值换算流通股本） ──
+
+    _total_share_cache: Dict[str, float] = {}
+
+    @classmethod
+    def _get_total_shares(cls, ts_codes: List[str]) -> Dict[str, float]:
+        """获取总股本（万股），带内存缓存。
+
+        通过 Tushare daily_basic 的 total_mv / close 反推总股本，
+        一次 API 调用覆盖全市场，无需 stock_basic 高级权限。
+        """
+        from data_provider.tushare_fetcher import TushareFetcher
+
+        missing = [tc for tc in ts_codes if tc not in cls._total_share_cache]
+        if not missing:
+            return {tc: cls._total_share_cache[tc] for tc in ts_codes if tc in cls._total_share_cache}
+
+        tf = TushareFetcher.get_instance()
+        if tf.is_available():
+            trade_date = tf.get_trade_time(early_time="00:00", late_time="19:00")
+            if trade_date:
+                try:
+                    df_basic = tf.get_daily_basic_all(trade_date)
+                    if df_basic is not None and not df_basic.empty:
+                        for tc in missing:
+                            if tc not in df_basic.index:
+                                continue
+                            row = df_basic.loc[tc]
+                            total_mv = row.get("total_mv")
+                            if total_mv is None or float(total_mv) <= 0:
+                                continue
+                            # 从 StockDaily 取当日 close 来反推总股本
+                            try:
+                                code = tc.split(".")[0] if "." in tc else tc
+                                t_date = date(int(trade_date[:4]), int(trade_date[4:6]), int(trade_date[6:8]))
+                                t_records = DatabaseManager.get_instance().get_data_range(code, t_date, t_date)
+                                if t_records and t_records[0].close:
+                                    close_price = float(t_records[0].close)
+                                    if close_price > 0:
+                                        # total_share(万股) = total_mv(万元) / close(元)
+                                        cls._total_share_cache[tc] = float(total_mv) / close_price
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
+
+        return {tc: cls._total_share_cache[tc] for tc in ts_codes if tc in cls._total_share_cache}
+
+    @staticmethod
+    def _calc_cyq_from_klines(klines: List[Dict[str, float]]) -> Optional[Dict[str, Any]]:
+        """纯 Python 实现东方财富 CYQ 算法（与 akshare stock_cyq_em JS 逻辑一致）。
+
+        klines: [{"open", "close", "high", "low", "hsl"}, ...] 按日期升序，hsl 为换手率百分比(0-100)。
+        返回最后一根 K 线的筹码分布指标。
+        """
+        if len(klines) < 5:
+            return None
+
+        factor = 150
+        range_days = 120
+        start = max(0, len(klines) - range_days)
+        kdata = klines[start:]
+
+        maxprice = max(k["high"] for k in kdata)
+        minprice = min(k["low"] for k in kdata)
+        if maxprice <= minprice:
+            return None
+
+        accuracy = max(0.01, (maxprice - minprice) / (factor - 1))
+        xdata = [0.0] * factor
+
+        for day in kdata:
+            open_p = day["open"]
+            close = day["close"]
+            high = day["high"]
+            low = day["low"]
+            hsl = min(1.0, day.get("hsl", 0) / 100.0)
+            avg = (open_p + close + high + low) / 4.0
+
+            # 衰减
+            for n in range(factor):
+                xdata[n] *= (1.0 - hsl)
+
+            h_idx = int((high - minprice) / accuracy)
+            l_idx = int((low - minprice) / accuracy + 0.999999)  # ceil
+            gp = 2.0 / (high - low) if high != low else float(factor - 1)
+            avg_idx = int((avg - minprice) / accuracy)
+            avg_idx = max(0, min(factor - 1, avg_idx))
+
+            if high == low:
+                xdata[avg_idx] += gp * hsl / 2.0
+            else:
+                for j in range(l_idx, h_idx + 1):
+                    if j < 0 or j >= factor:
+                        continue
+                    curprice = minprice + accuracy * j
+                    if curprice <= avg:
+                        if abs(avg - low) < 1e-8:
+                            xdata[j] += gp * hsl
+                        else:
+                            xdata[j] += (curprice - low) / (avg - low) * gp * hsl
+                    else:
+                        if abs(high - avg) < 1e-8:
+                            xdata[j] += gp * hsl
+                        else:
+                            xdata[j] += (high - curprice) / (high - avg) * gp * hsl
+
+        current_price = kdata[-1]["close"]
+        total_chips = sum(xdata)
+        if total_chips <= 0:
+            return None
+
+        # 获利比例
+        below = 0.0
+        for i in range(factor):
+            if current_price >= minprice + i * accuracy:
+                below += xdata[i]
+        winner_rate = below / total_chips
+
+        # 成本函数：指定筹码量对应的价格
+        def cost_at(chips: float) -> float:
+            acc = 0.0
+            for i in range(factor):
+                if acc + xdata[i] > chips:
+                    return minprice + i * accuracy
+                acc += xdata[i]
+            return minprice + (factor - 1) * accuracy
+
+        avg_cost = cost_at(total_chips * 0.5)
+
+        def percent_chips(pct: float) -> Dict[str, Any]:
+            lo = cost_at(total_chips * (1.0 - pct) / 2.0)
+            hi = cost_at(total_chips * (1.0 + pct) / 2.0)
+            conc = (hi - lo) / (hi + lo) if (hi + lo) != 0 else 0.0
+            return {"lo": round(lo, 2), "hi": round(hi, 2), "concentration": round(conc, 4)}
+
+        pct90 = percent_chips(0.9)
+        pct70 = percent_chips(0.7)
+
+        return {
+            "cost_avg": round(avg_cost, 2),
+            "winner_rate": round(winner_rate, 4),
+            "concentration": round(pct90["concentration"], 4),
+            "cost_5pct": pct90["lo"],
+            "cost_15pct": pct70["lo"],
+            "cost_50pct": None,
+            "cost_85pct": pct70["hi"],
+            "cost_95pct": pct90["hi"],
+            "weight_avg": round(avg_cost, 2),
+            "his_low": round(minprice, 2),
+            "his_high": round(maxprice, 2),
+        }
+
+    def _compute_cyq_local(
+        self, ts_codes: List[str],
+    ) -> Optional[Dict[str, Dict[str, Any]]]:
+        """用本地 StockDaily kline + Tushare 流通股本计算筹码分布。"""
+        from datetime import datetime, timedelta
+
+        end_date = datetime.now().strftime("%Y%m%d")
+        start_date = (datetime.now() - timedelta(days=200)).strftime("%Y%m%d")
+
+        # 批量获取总股本
+        total_shares = self._get_total_shares(ts_codes)
+        if not total_shares:
+            return None
+
+        result: Dict[str, Dict[str, Any]] = {}
+        for ts_code in ts_codes:
+            try:
+                total_share = total_shares.get(ts_code)
+                if not total_share:
+                    continue
+
+                code = ts_code.split(".")[0] if "." in ts_code else ts_code
+                s_date = date(int(start_date[:4]), int(start_date[4:6]), int(start_date[6:8]))
+                e_date = date(int(end_date[:4]), int(end_date[4:6]), int(end_date[6:8]))
+                records = self.db.get_data_range(code, s_date, e_date)
+
+                if not records or len(records) < 10:
+                    continue
+
+                klines: List[Dict[str, float]] = []
+                for r in records:
+                    if r.open is None or r.close is None or r.high is None or r.low is None:
+                        continue
+                    vol = float(r.volume) if r.volume else 0
+                    # 换手率(%) = volume(手) / total_share(万股)
+                    hsl = (vol / total_share) if total_share > 0 else 0
+                    klines.append({
+                        "open": float(r.open),
+                        "close": float(r.close),
+                        "high": float(r.high),
+                        "low": float(r.low),
+                        "hsl": min(hsl, 100.0),  # 单日换手率上限 100%
+                    })
+
+                cyq = BrokerRecommendService._calc_cyq_from_klines(klines)
+                if cyq:
+                    result[ts_code] = cyq
+            except Exception:
+                continue
+
+        return result if result else None
 
     def get_available_months(self) -> List[str]:
         """获取有数据的月份列表。"""
         return self.db.get_broker_recommend_months()
+
+    def get_consecutive_stocks(self, month: str) -> List[Dict[str, Any]]:
+        """获取连续两个月都被券商推荐的金股。"""
+        return self.db.get_consecutive_monthly_stocks(month)
 
     @staticmethod
     def _next_month_str(month: str) -> str:
@@ -368,44 +833,90 @@ class BrokerRecommendService:
         return {}
 
     def _get_stock_prices(
-        self, ts_code: str, start_date: str, end_date: str
+        self, ts_code: str, start_date: str, end_date: str, skip_tushare: bool = False
     ) -> Dict[str, float]:
         """获取指定股票在日期范围内的收盘价。DB 无数据或不完整时从 Tushare 拉取补全。"""
         try:
             code = ts_code.split(".")[0] if "." in ts_code else ts_code
-            records = self.db.get_data_range(
-                code,
-                date(int(start_date[:4]), int(start_date[4:6]), int(start_date[6:8])),
-                date(int(end_date[:4]), int(end_date[4:6]), int(end_date[6:8])),
-            )
+            s_date = date(int(start_date[:4]), int(start_date[4:6]), int(start_date[6:8]))
+            e_date = date(int(end_date[:4]), int(end_date[4:6]), int(end_date[6:8]))
+
+            # 当月 DB 无最新数据时自动向前扩展查询范围（无需 Tushare）
+            if skip_tushare:
+                from datetime import timedelta
+                s_date = s_date - timedelta(days=30)
+
+            records = self.db.get_data_range(code, s_date, e_date)
             if records:
                 prices = {}
                 for r in records:
                     d = r.date.strftime("%Y%m%d") if isinstance(r.date, date) else str(r.date)[:8]
                     if r.close:
                         prices[d] = float(r.close)
-                # DB 数据不完整时从 Tushare 补全
-                last_db_date = max(prices.keys()) if prices else ""
-                if last_db_date < end_date:
-                    tf_prices = self._fetch_tushare_prices(ts_code, code, start_date, end_date)
-                    prices.update(tf_prices)
+                if not skip_tushare:
+                    last_db_date = max(prices.keys()) if prices else ""
+                    if last_db_date < end_date:
+                        tf_prices = self._fetch_tushare_prices(ts_code, code, start_date, end_date)
+                        prices.update(tf_prices)
                 return prices
 
-            # DB 无数据，从 Tushare 拉取
+            if skip_tushare:
+                return {}
             return self._fetch_tushare_prices(ts_code, code, start_date, end_date)
         except Exception:
             pass
         return {}
 
-    def _prefetch_prices(
+    def _get_stock_ohlc(
+        self, ts_code: str, start_date: str, end_date: str
+    ) -> Dict[str, Dict[str, Optional[float]]]:
+        """获取单只股票的 OHLC 数据，返回 {date: {open, high, low, close}}。"""
+        try:
+            code = ts_code.split(".")[0] if "." in ts_code else ts_code
+            s_date = date(int(start_date[:4]), int(start_date[4:6]), int(start_date[6:8]))
+            e_date = date(int(end_date[:4]), int(end_date[4:6]), int(end_date[6:8]))
+            records = self.db.get_data_range(code, s_date, e_date)
+            if records:
+                result: Dict[str, Dict[str, Optional[float]]] = {}
+                for r in records:
+                    d = r.date.strftime("%Y%m%d") if isinstance(r.date, date) else str(r.date)[:8]
+                    result[d] = {
+                        "open": float(r.open) if r.open else None,
+                        "high": float(r.high) if r.high else None,
+                        "low": float(r.low) if r.low else None,
+                        "close": float(r.close) if r.close else None,
+                    }
+                return result
+        except Exception:
+            pass
+        return {}
+
+    def _prefetch_ohlc(
         self, ts_codes: List[str], start_date: str, end_date: str, max_workers: int = 20
+    ) -> Dict[str, Dict[str, Dict[str, Optional[float]]]]:
+        """并行预取多只股票的 OHLC 数据。"""
+        ohlc: Dict[str, Dict[str, Dict[str, Optional[float]]]] = {}
+        if not ts_codes:
+            return ohlc
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            futures = {pool.submit(self._get_stock_ohlc, tc, start_date, end_date): tc for tc in ts_codes}
+            for f in as_completed(futures, timeout=120):
+                tc = futures[f]
+                try:
+                    ohlc[tc] = f.result(timeout=15)
+                except Exception:
+                    ohlc[tc] = {}
+        return ohlc
+
+    def _prefetch_prices(
+        self, ts_codes: List[str], start_date: str, end_date: str, max_workers: int = 20, skip_tushare: bool = False
     ) -> Dict[str, Dict[str, float]]:
         """并行预取多只股票的价格数据，减少串行 Tushare 调用延迟。"""
         prices: Dict[str, Dict[str, float]] = {}
         if not ts_codes:
             return prices
         with ThreadPoolExecutor(max_workers=max_workers) as pool:
-            futures = {pool.submit(self._get_stock_prices, tc, start_date, end_date): tc for tc in ts_codes}
+            futures = {pool.submit(self._get_stock_prices, tc, start_date, end_date, skip_tushare): tc for tc in ts_codes}
             for f in as_completed(futures, timeout=120):
                 tc = futures[f]
                 try:
@@ -414,12 +925,77 @@ class BrokerRecommendService:
                     prices[tc] = {}
         return prices
 
+    def _get_realtime_prices_batch(self, ts_codes: List[str]) -> tuple:
+        """批量获取当日实时最新价（Sina 接口，支持逗号分隔批量查询）。
+
+        仅在当月回测使用，作为 DB 数据的补充。批量查询避免逐个调用。
+        返回 (prices_dict, daily_changes_dict)。
+        """
+        from datetime import date as dt_date
+        import requests as _requests
+
+        today = dt_date.today().strftime("%Y%m%d")
+        prices: Dict[str, Dict[str, float]] = {}
+        daily_changes: Dict[str, float] = {}
+        symbols: List[str] = []
+        sym_to_ts: Dict[str, str] = {}
+        for ts in ts_codes:
+            parts = ts.split(".") if "." in ts else [ts, ""]
+            base = parts[0]
+            exchange = parts[1].upper() if len(parts) > 1 else ""
+            if exchange == "BJ":
+                sym = f"bj{base}"
+            elif base.startswith(("6", "5", "90")):
+                sym = f"sh{base}"
+            else:
+                sym = f"sz{base}"
+            symbols.append(sym)
+            sym_to_ts[sym] = ts
+
+        # Sina 单次最多约 50 个标的，分批
+        for i in range(0, len(symbols), 50):
+            batch = symbols[i:i + 50]
+            url = f"http://hq.sinajs.cn/list={','.join(batch)}"
+            try:
+                resp = _requests.get(
+                    url,
+                    headers={"Referer": "https://finance.sina.com.cn"},
+                    timeout=8,
+                )
+                resp.encoding = "gbk"
+                for line in resp.text.strip().split("\n"):
+                    if '="' not in line:
+                        continue
+                    parts = line.split('="', 1)
+                    if len(parts) != 2:
+                        continue
+                    label = parts[0].strip()
+                    sym = label.split("_")[-1] if "_" in label else label
+                    data = parts[1].rstrip('";\n')
+                    fields = data.split(",")
+                    # fields[2]=昨收, fields[3]=最新价
+                    if len(fields) > 3 and fields[3] and fields[2]:
+                        try:
+                            ts_code = sym_to_ts.get(sym)
+                            if ts_code:
+                                price = float(fields[3])
+                                prev_close = float(fields[2])
+                                prices.setdefault(ts_code, {})[today] = price
+                                if prev_close > 0:
+                                    daily_changes[ts_code] = round((price - prev_close) / prev_close, 4)
+                        except (ValueError, TypeError):
+                            continue
+            except Exception:
+                continue
+        return prices, daily_changes
+
     def compute_backtest(self, month: str, top_n_per_broker: int = 10) -> Dict[str, Any]:
         """对指定月份金股池按券商分组做回测。
 
-        回测逻辑：当月第一个交易日开盘买入 → 当月最后一个交易日收盘卖出。
+        回测逻辑：当月第一个交易日开盘买入 → 有效截止日收盘卖出。
+        （历史月取月末最后交易日，当月取今天，避免拉 Tushare 补全月末缺失数据）
         按券商分组，每组内等权分配资金。
-        结果持久化到数据库，后续相同月份直接返回存储结果。
+        结果持久化到数据库，历史月份后续直接返回存储结果。
 
         Args:
             month: YYYYMM 格式月份
@@ -428,8 +1004,14 @@ class BrokerRecommendService:
         Returns:
             回测结果字典
         """
-        # 优先从存储读取（不含 enrichment，前端从独立 enrichment 端点获取）
-        stored = self.db.get_broker_backtest(month)
+        # 当月回测截止日取今天（DB 数据截至今天，避免每次拉 Tushare 补全月末数据）
+        effective_end = self._effective_month_end(month)
+        is_current = (month == date.today().strftime("%Y%m"))
+
+        # 历史月份优先从存储读取；当月跳过存储（卖价每日变化）
+        stored = None
+        if not is_current:
+            stored = self.db.get_broker_backtest(month)
         if stored and stored.get("brokers"):
             # 检查是否有当前月份的股票不在存储结果中（新入库的价格数据）
             current_df = self.get_monthly_recommendations(month)
@@ -443,23 +1025,25 @@ class BrokerRecommendService:
                     mon = int(month[4:6])
                     last_day = calendar.monthrange(year, mon)[1]
                     month_start = f"{month}01"
-                    month_end = f"{month}{last_day:02d}"
+                    month_end = effective_end
                     trading_days = self._get_trading_days(month_start, month_end)
                     if len(trading_days) < 2:
                         trading_days = [stored.get("buy_date", month_start), stored.get("sell_date", month_end)]
                     buy_date = trading_days[0]
                     sell_date = trading_days[-1]
                     # 并行预取缺失股票价格
-                    price_cache = self._prefetch_prices(list(missing), month_start, month_end)
+                    price_cache = self._prefetch_prices(list(missing), month_start, month_end, skip_tushare=is_current)
                     for ts in missing:
                         prices = price_cache.get(ts, {})
                         if not prices:
                             continue
                         available_dates = sorted(prices.keys())
-                        if len(available_dates) < 2:
+                        buy_dates = [d for d in available_dates if d >= buy_date]
+                        sell_dates = [d for d in available_dates if d <= sell_date]
+                        if not buy_dates or not sell_dates:
                             continue
-                        buy_price = prices[available_dates[0]]
-                        sell_price = prices[available_dates[-1]]
+                        buy_price = prices[buy_dates[0]]
+                        sell_price = prices[sell_dates[-1]]
                         if not buy_price or not sell_price or buy_price <= 0:
                             continue
                         row = current_df[current_df["ts_code"] == ts]
@@ -482,7 +1066,7 @@ class BrokerRecommendService:
                             "ts_code": ts, "name": name,
                             "broker_count": broker_count, "broker": broker,
                             "end_price": round(sell_price, 2),
-                            "end_date": available_dates[-1],
+                            "end_date": sell_dates[-1],
                             "daily_returns": daily_rets,
                         })
                     # 持久化更新后的结果
@@ -496,6 +1080,22 @@ class BrokerRecommendService:
                         stock_returns=stored["stock_returns"],
                         broker_returns=stored["brokers"],
                     )
+            # 补充 OHLC 数据用于蜡烛图
+            stored_stocks = {sr["ts_code"]: sr for sr in stored.get("stock_returns", [])}
+            if stored_stocks:
+                ohlc_cache = self._prefetch_ohlc(list(stored_stocks.keys()), stored.get("buy_date", f"{month}01"), stored.get("sell_date", effective_end))
+                ohlc_merged = 0
+                for sr in stored["stock_returns"]:
+                    ohlc = ohlc_cache.get(sr["ts_code"], {})
+                    for dr in sr.get("daily_returns", []):
+                        d = dr.get("date", "")
+                        if d in ohlc:
+                            dr["open"] = ohlc[d].get("open")
+                            dr["high"] = ohlc[d].get("high")
+                            dr["low"] = ohlc[d].get("low")
+                            ohlc_merged += 1
+                logger.info(f"[BrokerRecommend] 回测 {month} OHLC 合并 {ohlc_merged} 条 (ohlc_cache 覆盖 {len(ohlc_cache)} 只股票)")
+
             stored["next_month"] = self._next_month_str(month)
             logger.info(f"[BrokerRecommend] 回测 {month} 命中存储")
             return stored
@@ -504,18 +1104,18 @@ class BrokerRecommendService:
         if df is None or df.empty:
             return {"error": f"{month} 月无数据"}
 
-        # 当月第一个交易日开盘买入 → 当月最后一个交易日收盘卖出
+        # 当月第一个交易日开盘买入 → 有效截止日收盘卖出
         next_month = self._next_month_str(month)
         year = int(month[:4])
         mon = int(month[4:6])
 
-        last_day = calendar.monthrange(year, mon)[1]
         month_start = f"{month}01"
-        month_end = f"{month}{last_day:02d}"
+        month_end = effective_end
         trading_days = self._get_trading_days(month_start, month_end)
+        single_day = len(trading_days) < 2
 
-        if len(trading_days) < 2:
-            return {"error": f"{next_month} 交易日不足"}
+        if not trading_days:
+            return {"error": f"{month} 月暂无交易日"}
 
         buy_date = trading_days[0]
         sell_date = trading_days[-1]
@@ -523,7 +1123,20 @@ class BrokerRecommendService:
         # 并行预取所有股票价格（DB 有则秒查，无则并发拉 Tushare）
         all_ts = df["ts_code"].unique().tolist()
         logger.info(f"[BrokerRecommend] 回测 {month} 预取 {len(all_ts)} 只股票价格...")
-        price_cache = self._prefetch_prices(all_ts, month_start, month_end)
+        price_cache = self._prefetch_prices(all_ts, month_start, month_end, skip_tushare=is_current)
+
+        # 当月补充实时最新价（Sina 批量接口，2~3s）
+        daily_changes: Dict[str, float] = {}
+        if is_current:
+            try:
+                rt_prices, rt_changes = self._get_realtime_prices_batch(all_ts)
+                if rt_prices:
+                    for ts, p in rt_prices.items():
+                        price_cache.setdefault(ts, {}).update(p)
+                    logger.info(f"[BrokerRecommend] 回测 {month} 实时价补充 {len(rt_prices)} 只")
+                daily_changes = rt_changes
+            except Exception:
+                pass
 
         # 按券商分组回测
         brokers_result: List[Dict[str, Any]] = []
@@ -533,7 +1146,7 @@ class BrokerRecommendService:
 
         for broker in all_brokers:
             broker_df = df[df["broker"] == broker].drop_duplicates("ts_code")
-            stocks = broker_df.head(top_n_per_broker)
+            stocks = broker_df
 
             broker_daily_returns: Dict[str, List[Dict[str, Any]]] = {}
             broker_wins = 0
@@ -550,10 +1163,18 @@ class BrokerRecommendService:
                     continue
 
                 available_dates = sorted(prices.keys())
-                if len(available_dates) < 2:
+                # 买入价取首交易日或之后第一个有数据日（避免 skip_tushare 扩展导致的跨月取价）
+                buy_dates = [d for d in available_dates if d >= buy_date]
+                if not buy_dates:
                     continue
-                buy_price = prices[available_dates[0]]
-                sell_price = prices[available_dates[-1]]
+                buy_price = prices[buy_dates[0]]
+                # 卖出价取截止日或之前最后一个有数据日
+                sell_dates = [d for d in available_dates if d <= sell_date]
+                if not sell_dates:
+                    continue
+                sell_price = prices[sell_dates[-1]]
+                actual_buy_date = buy_dates[0]
+                actual_sell_date = sell_dates[-1]
 
                 if not buy_price or not sell_price or buy_price <= 0:
                     continue
@@ -592,7 +1213,8 @@ class BrokerRecommendService:
                         "broker_count": broker_count,
                         "broker": broker,
                         "end_price": round(sell_price, 2),
-                        "end_date": available_dates[-1],
+                        "end_date": actual_sell_date,
+                        "daily_change": daily_changes.get(ts),
                         "daily_returns": [],
                     }
                     for td in trading_days:
@@ -639,25 +1261,38 @@ class BrokerRecommendService:
 
         stock_returns_list = list(stock_results.values())
 
-        # 持久化存储（仅价格收益，不含增强数据）
-        self.db.save_broker_backtest(
-            month=month,
-            buy_date=buy_date,
-            sell_date=sell_date,
-            total_recommendations=len(df),
-            unique_stocks=df["ts_code"].nunique(),
-            unique_brokers=len(all_brokers),
-            stock_returns=[{
-                "ts_code": sr["ts_code"],
-                "name": sr["name"],
-                "broker_count": sr["broker_count"],
-                "broker": sr["broker"],
-                "end_price": sr.get("end_price"),
-                "end_date": sr.get("end_date"),
-                "daily_returns": sr["daily_returns"],
-            } for sr in stock_returns_list],
-            broker_returns=brokers_result,
-        )
+        # 并行预取 OHLC 数据用于蜡烛图展示
+        if stock_returns_list:
+            ohlc_cache = self._prefetch_ohlc(list(stock_results.keys()), month_start, month_end)
+            for sr in stock_returns_list:
+                ohlc = ohlc_cache.get(sr["ts_code"], {})
+                for dr in sr["daily_returns"]:
+                    d = dr.get("date", "")
+                    if d in ohlc:
+                        dr["open"] = ohlc[d].get("open")
+                        dr["high"] = ohlc[d].get("high")
+                        dr["low"] = ohlc[d].get("low")
+
+        # 持久化存储（仅历史月份；当月不存，避免 sell_date 不完整）
+        if not is_current:
+            self.db.save_broker_backtest(
+                month=month,
+                buy_date=buy_date,
+                sell_date=sell_date,
+                total_recommendations=len(df),
+                unique_stocks=df["ts_code"].nunique(),
+                unique_brokers=len(all_brokers),
+                stock_returns=[{
+                    "ts_code": sr["ts_code"],
+                    "name": sr["name"],
+                    "broker_count": sr["broker_count"],
+                    "broker": sr["broker"],
+                    "end_price": sr.get("end_price"),
+                    "end_date": sr.get("end_date"),
+                    "daily_returns": sr["daily_returns"],
+                } for sr in stock_returns_list],
+                broker_returns=brokers_result,
+            )
 
         return {
             "month": month,
@@ -809,12 +1444,13 @@ class BrokerRecommendService:
 
         直接修改 stock_results dict（in-place）。
         """
-        # 1. 筹码胜率（全量拉取，fail-open）
+        # 1. 筹码胜率（Tushare CYQ）
         try:
             from data_provider.tushare_fetcher import TushareFetcher
             tf = TushareFetcher.get_instance()
             cyq_df = tf.get_bulk_cyq_perf(trade_date) if tf.is_available() else None
             if cyq_df is not None and not cyq_df.empty:
+                cyq_data = {}
                 for ts_code in ts_codes:
                     if ts_code in cyq_df.index:
                         row = cyq_df.loc[ts_code]
@@ -822,12 +1458,17 @@ class BrokerRecommendService:
                         cost_95 = float(row.get("cost_95pct", 0) or 0)
                         weight_avg = float(row.get("weight_avg", 0) or 0)
                         winner_rate = float(row.get("winner_rate", 0) or 0) / 100.0
-                        stock_results[ts_code]["cyq_perf"] = {
+                        cyq_data[ts_code] = {
                             "cost_avg": round(weight_avg, 2),
                             "winner_rate": round(winner_rate, 4),
-                            "concentration": round(
-                                (cost_95 - cost_5) / weight_avg, 4
-                            ) if weight_avg > 0 else None,
+                            "concentration": round((cost_95 - cost_5) / weight_avg, 4) if weight_avg > 0 else None,
+                        }
+                if cyq_data:
+                    for ts_code, data in cyq_data.items():
+                        stock_results[ts_code]["cyq_perf"] = {
+                            "cost_avg": data["cost_avg"],
+                            "winner_rate": data["winner_rate"],
+                            "concentration": data["concentration"],
                         }
         except Exception as e:
             logger.debug(f"[BrokerRecommend] 筹码胜率 enrichment 失败: {e}")
