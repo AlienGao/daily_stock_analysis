@@ -550,7 +550,7 @@ const BrokerRecommendPage: React.FC = () => {
       ),
     },
     ...(isCurrentMonth ? [{
-      title: <>集中度{loadingEnrichment ? <Loader2 className="h-3 w-3 animate-spin inline ml-1" /> : null}</>,
+      title: <span>集中度{loadingEnrichment ? <Loader2 className="h-3 w-3 animate-spin inline ml-1" /> : null}</span>,
       key: 'concentration',
       sorter: (a: StockRow, b: StockRow) => {
         const valA = a.cyq_perf?.scr90 ?? a.cyq_perf?.concentration;
@@ -568,7 +568,7 @@ const BrokerRecommendPage: React.FC = () => {
       },
     }] : []),
     {
-      title: <>九转信号{loadingEnrichment ? <Loader2 className="h-3 w-3 animate-spin inline ml-1" /> : null}</>,
+      title: <span>九转信号{loadingEnrichment ? <Loader2 className="h-3 w-3 animate-spin inline ml-1" /> : null}</span>,
       key: 'nineturn',
       render: (_, row) => {
         const nt = row.nineturn;
@@ -586,7 +586,7 @@ const BrokerRecommendPage: React.FC = () => {
       },
     },
     {
-      title: <>盈利预测{loadingEnrichment ? <Loader2 className="h-3 w-3 animate-spin inline ml-1" /> : null}</>,
+      title: <span>盈利预测{loadingEnrichment ? <Loader2 className="h-3 w-3 animate-spin inline ml-1" /> : null}</span>,
       key: 'forecast',
       render: (_, row) => {
         const fc = row.forecast;
@@ -609,7 +609,7 @@ const BrokerRecommendPage: React.FC = () => {
       },
     },
     {
-      title: <>筹码胜率{loadingEnrichment ? <Loader2 className="h-3 w-3 animate-spin inline ml-1" /> : null}</>,
+      title: <span>筹码胜率{loadingEnrichment ? <Loader2 className="h-3 w-3 animate-spin inline ml-1" /> : null}</span>,
       key: 'cyq_perf',
       sorter: (a, b) => (a.cyq_perf?.winner_rate ?? -Infinity) - (b.cyq_perf?.winner_rate ?? -Infinity),
       sortOrder: tableSort.columnKey === 'cyq_perf' ? tableSort.order : undefined,
@@ -856,7 +856,17 @@ const BrokerRecommendPage: React.FC = () => {
                   },
                   expandedRowRender: (record) => {
                     const stockRet = backtestData?.stock_returns?.find(s => s.ts_code === record.ts_code);
-                    if (!stockRet?.daily_returns?.length) return <div />;
+                    if (!stockRet?.daily_returns?.length) {
+                      // 当月无图表数据时展示基本信息
+                      if (isCurrentMonth) {
+                        return (
+                          <div className="p-3 border border-border/20 rounded-lg bg-muted/10 text-xs text-secondary-text">
+                            {record.name || record.ts_code} — 暂无走势数据
+                          </div>
+                        );
+                      }
+                      return <div />;
+                    }
                     const hasOHLC = stockRet.daily_returns.some(d => d.open != null);
                     return (
                       <div className="p-3 border border-border/20 rounded-lg bg-muted/10">
@@ -898,6 +908,8 @@ const BrokerRecommendPage: React.FC = () => {
                     );
                   },
                   rowExpandable: (record) => {
+                    // 当月只要有数据就允许展开
+                    if (isCurrentMonth) return true;
                     const stockRet = backtestData?.stock_returns?.find(s => s.ts_code === record.ts_code);
                     return !!(stockRet?.daily_returns?.length);
                   },
@@ -1010,7 +1022,16 @@ const BrokerRecommendPage: React.FC = () => {
                                 },
                                 expandedRowRender: (record) => {
                                   const stockRet = backtestData?.stock_returns?.find(s => s.ts_code === record.ts_code);
-                                  if (!stockRet?.daily_returns?.length) return <div />;
+                                  if (!stockRet?.daily_returns?.length) {
+                                    if (isCurrentMonth) {
+                                      return (
+                                        <div className="p-3 border border-border/20 rounded-lg bg-muted/10 text-xs text-secondary-text">
+                                          {record.name || record.ts_code} — 暂无走势数据
+                                        </div>
+                                      );
+                                    }
+                                    return <div />;
+                                  }
                                   const hasOHLC = stockRet.daily_returns.some(d => d.open != null);
                                   return (
                                     <div className="p-3 border border-border/20 rounded-lg bg-muted/10">
@@ -1068,6 +1089,7 @@ const BrokerRecommendPage: React.FC = () => {
                                   );
                                 },
                                 rowExpandable: (record) => {
+                                  if (isCurrentMonth) return true;
                                   const stockRet = backtestData?.stock_returns?.find(s => s.ts_code === record.ts_code);
                                   return !!(stockRet?.daily_returns?.length);
                                 },

@@ -236,14 +236,21 @@ class BrokerRecommendService:
 
     @staticmethod
     def _effective_month_end(month: str) -> str:
-        """回测有效截止日。当月取今天（DB 数据完整，避免重复拉 Tushare），历史月取月末。"""
+        """回测有效截止日。历史月取月末；当月：收盘前取前一交易日，收盘后取今天。"""
         year = int(month[:4])
         mon = int(month[4:6])
         last_day = calendar.monthrange(year, mon)[1]
         month_end = f"{month}{last_day:02d}"
-        today = date.today().strftime("%Y%m%d")
-        if month_end > today:
-            return today
+        today = date.today()
+        today_str = today.strftime("%Y%m%d")
+        if month_end > today_str:
+            from datetime import datetime
+            now = datetime.now()
+            # A 股 15:00 收盘，收盘后当天数据完整可展示
+            if now.hour >= 15:
+                return today_str
+            else:
+                return (today - timedelta(days=1)).strftime("%Y%m%d")
         return month_end
 
     def get_monthly_enrichment(self, month: str) -> Dict[str, Dict[str, Any]]:
@@ -1042,7 +1049,7 @@ class BrokerRecommendService:
         Returns:
             回测结果字典
         """
-        # 当月回测截止日取今天（DB 数据截至今天，避免每次拉 Tushare 补全月末数据）
+        # 当月回测截止日：收盘前取前一交易日，收盘后取今天
         effective_end = self._effective_month_end(month)
         is_current = (month == date.today().strftime("%Y%m"))
 

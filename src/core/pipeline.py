@@ -458,27 +458,22 @@ class StockAnalysisPipeline:
                 except Exception as e:
                     logger.debug(f"{stock_name}({code}) 筹码胜率获取失败: {e}")
 
-            # 筹码胜率预检：低集中度 + 高胜率，不满足则跳过分析
+            # 筹码胜率预检：低集中度 + 高胜率，不满足则扣分
+            chip_penalty = 0
+            chip_penalty_reason = ""
             if winner_data is not None:
                 conc = winner_data.get("concentration", 1.0)
                 wr = winner_data.get("winner_rate", 0.0)
                 if conc > 0 and (conc > 0.15 or wr < 70):
+                    # 集中度越高扣分越多，胜率越低扣分越多
+                    conc_penalty = max(0, (conc - 0.15) * 100) if conc > 0.15 else 0
+                    wr_penalty = max(0, (70 - wr) * 0.3) if wr < 70 else 0
+                    chip_penalty = min(20, conc_penalty + wr_penalty)
+                    chip_penalty_reason = f"concentration={conc:.1%}, winner_rate={wr:.1f}%"
                     logger.info(
-                        "[筹码过滤] %s(%s) 不满足条件，跳过分析: "
+                        "[筹码扣分] %s(%s) 不满足条件，扣 %.1f 分: "
                         "concentration=%.1f%%, winner_rate=%.1f%% (要求 <15%% 且 >70%%)",
-                        stock_name, code, conc * 100, wr,
-                    )
-                    return AnalysisResult(
-                        code=code,
-                        name=stock_name,
-                        sentiment_score=0,
-                        trend_prediction="",
-                        operation_advice="跳过",
-                        success=False,
-                        error_message=(
-                            f"筹码胜率不满足: concentration={conc:.1%}, "
-                            f"winner_rate={wr:.1f}%"
-                        ),
+                        stock_name, code, chip_penalty, conc * 100, wr,
                     )
 
             # Look up pre-computed discovery factor signals for this stock
@@ -487,7 +482,7 @@ class StockAnalysisPipeline:
             if use_agent:
                 logger.info(f"{stock_name}({code}) 启用 Agent 模式进行分析")
                 self._emit_progress(58, f"{stock_name}：正在切换 Agent 分析链路")
-                return self._analyze_with_agent(
+                result = self._analyze_with_agent(
                     code,
                     report_type,
                     query_id,
@@ -505,6 +500,16 @@ class StockAnalysisPipeline:
                     replace_history=replace_history,
                     persist_history=persist_history,
                 )
+                # 应用筹码扣分
+                if chip_penalty > 0 and result and result.success:
+                    original_score = result.sentiment_score
+                    result.sentiment_score = max(0, result.sentiment_score - chip_penalty)
+                    logger.info(
+                        "[筹码扣分] %s(%s) 评分 %d → %d (扣 %.1f 分, %s)",
+                        stock_name, code, original_score, result.sentiment_score,
+                        chip_penalty, chip_penalty_reason,
+                    )
+                return result
 
             # Step 4: 多维度情报搜索（最新消息+风险排查+业绩预期）
             news_context = None
@@ -668,6 +673,16 @@ class StockAnalysisPipeline:
                     )
                 except Exception as e:
                     logger.warning(f"{stock_name}({code}) 保存分析历史失败: {e}")
+
+            # 应用筹码扣分
+            if chip_penalty > 0 and result and result.success:
+                original_score = result.sentiment_score
+                result.sentiment_score = max(0, result.sentiment_score - chip_penalty)
+                logger.info(
+                    "[筹码扣分] %s(%s) 评分 %d → %d (扣 %.1f 分, %s)",
+                    stock_name, code, original_score, result.sentiment_score,
+                    chip_penalty, chip_penalty_reason,
+                )
 
             return result
 

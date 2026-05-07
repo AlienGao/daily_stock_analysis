@@ -2,9 +2,9 @@
 """发现引擎回测模块。
 
 盘中: 当日收盘价买入 → 下一交易日收盘价卖出 → 滚动复利
-盘后: 下一交易日开盘价买入 → 再下一交易日开盘价卖出 → 滚动复利
+盘后: 信号日选股 → 次交易日开盘价买入 → 再次日开盘价卖出 → 滚动复利
 
-支持日期筛选、资金曲线、逐笔交易记录。
+支持日期筛选、资金曲线、逐笔交易记录、组合 OHLC。
 """
 
 import json
@@ -95,7 +95,7 @@ class DiscoveryBacktest:
         Args:
             mode: "intraday" 或 "postmarket"
             lookback_days: 默认回看天数（自然日），start_date 未指定时使用。
-                最小需要 2 天（盘中）或 3 天（盘后）才能完成一次完整交易。
+                最小需要 2 天才能完成一次完整交易。
             start_date: 开始日期 YYYYMMDD（可选，优先于 lookback_days）
             end_date: 结束日期 YYYYMMDD（可选，默认今天）
             initial_capital: 初始资金
@@ -268,7 +268,7 @@ class DiscoveryBacktest:
         )
 
     # ------------------------------------------------------------------
-    # Postmarket: 次日 open 买入 → 次次日 open 卖出
+    # Postmarket: 信号日选股 → 次交易日 open 买入 → 再次日 open 卖出
     # ------------------------------------------------------------------
 
     def _compute_postmarket(
@@ -300,6 +300,13 @@ class DiscoveryBacktest:
             day_pnl = 0.0
             wins = 0
 
+            # 组合 OHLC 加权计算（基于买入日）
+            total_weight = 0.0
+            w_open = 0.0
+            w_high = 0.0
+            w_low = 0.0
+            w_close = 0.0
+
             for p in picks:
                 code = p.get("stock_code", "")
                 name = p.get("stock_name", "")
@@ -328,6 +335,17 @@ class DiscoveryBacktest:
                         allocated_capital=round(alloc, 2),
                     ))
 
+                    # 累加 OHLC 权重（买入日价格）
+                    h = self._get_price(code, td_buy, "high")
+                    lo = self._get_price(code, td_buy, "low")
+                    c = self._get_price(code, td_buy, "close")
+                    if h and lo and c:
+                        w_open += alloc * open_buy
+                        w_high += alloc * h
+                        w_low += alloc * lo
+                        w_close += alloc * c
+                        total_weight += alloc
+
             if not stock_returns:
                 continue
 
@@ -339,7 +357,7 @@ class DiscoveryBacktest:
             cum = (capital - initial_capital) / initial_capital
 
             daily_results.append(DailyBacktestResult(
-                trade_date=td,
+                trade_date=td_buy,
                 stock_returns=stock_returns,
                 avg_return=avg_ret,
                 cumulative_return=cum,
@@ -347,7 +365,14 @@ class DiscoveryBacktest:
                 win_count=wins,
                 total_count=len(values),
             ))
-            capital_curve.append({"date": td, "capital": round(capital, 2)})
+
+            curve_point: Dict = {"date": td_buy, "capital": round(capital, 2)}
+            if total_weight > 0:
+                curve_point["open"] = round(w_open / total_weight, 2)
+                curve_point["high"] = round(w_high / total_weight, 2)
+                curve_point["low"] = round(w_low / total_weight, 2)
+                curve_point["close"] = round(w_close / total_weight, 2)
+            capital_curve.append(curve_point)
 
         return BacktestSummary(
             mode="postmarket",
@@ -429,6 +454,8 @@ class DiscoveryBacktest:
                     ds = row.date.strftime("%Y%m%d") if isinstance(row.date, date) else str(row.date)[:8]
                     self._price_cache.setdefault(ds, {})[row.code] = {
                         "open": float(row.open) if row.open else None,
+                        "high": float(row.high) if row.high else None,
+                        "low": float(row.low) if row.low else None,
                         "close": float(row.close) if row.close else None,
                     }
                 db_codes = {row.code for row in rows}
@@ -464,6 +491,8 @@ class DiscoveryBacktest:
                             code = ts.split(".")[0] if "." in ts else ts
                             self._price_cache.setdefault(td, {})[code] = {
                                 "open": float(row["open"]) if pd.notna(row.get("open")) else None,
+                                "high": float(row["high"]) if pd.notna(row.get("high")) else None,
+                                "low": float(row["low"]) if pd.notna(row.get("low")) else None,
                                 "close": float(row["close"]) if pd.notna(row.get("close")) else None,
                             }
                 except Exception:

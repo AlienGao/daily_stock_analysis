@@ -557,6 +557,10 @@ class BacktestDailyItem(BaseModel):
 class CapitalCurvePoint(BaseModel):
     date: str
     capital: float
+    open: Optional[float] = None
+    high: Optional[float] = None
+    low: Optional[float] = None
+    close: Optional[float] = None
 
 
 class BacktestResponse(BaseModel):
@@ -639,7 +643,14 @@ def get_backtest(
     ]
 
     curve = [
-        CapitalCurvePoint(date=p["date"], capital=p["capital"])
+        CapitalCurvePoint(
+            date=p["date"],
+            capital=p["capital"],
+            open=p.get("open"),
+            high=p.get("high"),
+            low=p.get("low"),
+            close=p.get("close"),
+        )
         for p in summary.capital_curve
     ]
 

@@ -380,6 +380,169 @@ const StockCard: React.FC<{
 const fmtWan = (v: number) => `${(v / 10000).toFixed(1)}万`;
 const fmtDate = (s: string) => `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
 
+/** Portfolio candlestick chart — SVG-based, Y-axis shows returns %. */
+const PortfolioCandleChart: React.FC<{
+  data: Array<{ date: string; capital: number; open?: number; high?: number; low?: number; close?: number }>;
+  initCapital: number;
+  height?: number;
+}> = ({ data, initCapital, height = 200 }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  const [width, setWidth] = useState(400);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const ro = new ResizeObserver(entries => {
+      for (const e of entries) setWidth(e.contentRect.width);
+    });
+    ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, []);
+
+  const raw = data.filter(d => d.open != null && d.high != null && d.low != null && d.close != null);
+  if (raw.length < 2) return null;
+
+  // Convert to returns % relative to first day's open
+  const base = raw[0].open!;
+  const toPct = (v: number) => (v - base) / base * 100;
+  const ohlcData = raw.map(d => ({
+    date: d.date,
+    capital: d.capital,
+    open: toPct(d.open!),
+    high: toPct(d.high!),
+    low: toPct(d.low!),
+    close: toPct(d.close!),
+  }));
+
+  const pads = { t: 10, r: 6, b: 22, l: 48 };
+  const chartW = width;
+  const chartH = height - pads.t - pads.b;
+  const count = ohlcData.length;
+  const xStep = (chartW - pads.l - pads.r) / Math.max(count - 1, 1);
+  const candleW = Math.max(Math.min(xStep * 0.6, 12), 3);
+
+  const allPct: number[] = [];
+  ohlcData.forEach(d => { allPct.push(d.high, d.low, d.open, d.close); });
+  allPct.push(0); // baseline
+  const pctMin = Math.min(...allPct);
+  const pctMax = Math.max(...allPct);
+  const margin = (pctMax - pctMin) * 0.12 || 0.1;
+  const yMin = pctMin - margin;
+  const yMax = pctMax + margin;
+  const yRange = yMax - yMin || 1;
+  const scaleY = (p: number) => pads.t + chartH * (1 - (p - yMin) / yRange);
+
+  const fmtPct = (v: number) => {
+    if (Math.abs(v) < 0.005) return '0%';
+    return `${v > 0 ? '+' : ''}${v.toFixed(2)}%`;
+  };
+
+  const gridLines = 4;
+  const yTicks: number[] = [];
+  for (let i = 1; i < gridLines; i++) yTicks.push(yMax - (yRange * i) / gridLines);
+  const xTickInterval = Math.max(Math.ceil(count / 6), 1);
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
+      <svg width={chartW} height={height} style={{ display: 'block' }}>
+        {/* Grid */}
+        {yTicks.map((v, i) => {
+          const y = scaleY(v);
+          return (
+            <g key={`g-${i}`}>
+              <line x1={pads.l} x2={chartW - pads.r} y1={y} y2={y} stroke="hsl(var(--border))" strokeWidth={0.5} opacity={0.4} />
+              <text x={pads.l - 4} y={y + 3} textAnchor="end" fill="hsl(var(--muted-foreground))" fontSize={9} fontFamily="monospace">
+                {fmtPct(v)}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* 0% baseline */}
+        <line x1={pads.l} x2={chartW - pads.r} y1={scaleY(0)} y2={scaleY(0)}
+          stroke="hsl(var(--border))" strokeWidth={0.8} strokeDasharray="4 4" opacity={0.5} />
+        <text x={chartW - pads.r - 2} y={scaleY(0) - 3} textAnchor="end"
+          fill="hsl(var(--muted-foreground))" fontSize={8} opacity={0.6}>0%</text>
+
+        {/* Candles */}
+        {ohlcData.map((d, i) => {
+          const x = pads.l + i * xStep;
+          const isUp = d.close >= d.open;
+          const color = isUp ? '#ef4444' : '#10b981';
+          const bodyTop = scaleY(Math.max(d.open, d.close));
+          const bodyBot = scaleY(Math.min(d.open, d.close));
+          const bodyH = Math.max(bodyBot - bodyTop, 1);
+          return (
+            <g key={i} onMouseEnter={() => setHoverIdx(i)} onMouseLeave={() => setHoverIdx(null)}
+              style={{ cursor: 'crosshair' }}>
+              <line x1={x} x2={x} y1={scaleY(d.high)} y2={scaleY(d.low)} stroke={color} strokeWidth={1} />
+              <rect x={x - candleW / 2} y={bodyTop} width={candleW} height={bodyH} rx={0.8}
+                fill={isUp ? color : '#0f1723'} stroke={color} strokeWidth={1} />
+              {hoverIdx === i && (
+                <line x1={x} x2={x} y1={pads.t} y2={pads.t + chartH}
+                  stroke="hsl(var(--border))" strokeWidth={0.8} strokeDasharray="2 3" opacity={0.6} />
+              )}
+            </g>
+          );
+        })}
+
+        {/* X-axis labels */}
+        {ohlcData.map((d, i) => {
+          if (i % xTickInterval !== 0 && i !== count - 1) return null;
+          const x = pads.l + i * xStep;
+          return (
+            <text key={`xl-${i}`} x={x} y={height - 4} textAnchor="middle"
+              fill="hsl(var(--muted-foreground))" fontSize={9} fontFamily="monospace">{d.date}</text>
+          );
+        })}
+      </svg>
+
+      {/* Tooltip */}
+      {hoverIdx != null && ohlcData[hoverIdx] && (() => {
+        const d = ohlcData[hoverIdx];
+        const r = raw[hoverIdx]; // absolute values
+        const isUp = d.close >= d.open;
+        const chgColor = isUp ? '#ef4444' : '#10b981';
+        const dayChg = d.open !== 0 ? ((d.close - d.open) / Math.abs(d.open) * 100) : null;
+        const cumChg = d.close;
+        const xPx = pads.l + hoverIdx * xStep;
+        const isRight = xPx > chartW * 0.65;
+        return (
+          <div style={{
+            position: 'absolute', top: 4,
+            [isRight ? 'right' : 'left']: isRight ? 8 : `${(xPx / chartW) * 100}%`,
+            transform: isRight ? 'none' : 'translateX(-50%)',
+            background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))',
+            borderRadius: 8, padding: '6px 10px', fontSize: 11, zIndex: 10,
+            whiteSpace: 'nowrap', pointerEvents: 'none',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
+          }}>
+            <div style={{ color: '#9ca3af', marginBottom: 3, fontSize: 10 }}>{d.date}</div>
+            <div style={{ fontFamily: 'monospace' }}>
+              <span style={{ color: '#9ca3af' }}>O </span>{fmtPct(d.open)}
+              <span style={{ color: '#9ca3af', marginLeft: 6 }}>H </span>{fmtPct(d.high)}
+            </div>
+            <div style={{ fontFamily: 'monospace' }}>
+              <span style={{ color: '#9ca3af' }}>L </span>{fmtPct(d.low)}
+              <span style={{ color: '#9ca3af', marginLeft: 6 }}>C </span>
+              <span style={{ color: chgColor }}>{fmtPct(d.close)}</span>
+            </div>
+            {dayChg != null && (
+              <div style={{ color: chgColor, fontFamily: 'monospace', marginTop: 2 }}>
+                当日 {dayChg >= 0 ? '+' : ''}{dayChg.toFixed(2)}%
+              </div>
+            )}
+            <div style={{ marginTop: 2, borderTop: '1px solid hsl(var(--border))', paddingTop: 3, fontSize: 10, color: '#9ca3af' }}>
+              <span>累计 {cumChg >= 0 ? '+' : ''}{cumChg.toFixed(2)}%</span>
+              <span style={{ marginLeft: 8 }}>资金 ¥{r.capital.toLocaleString()}</span>
+            </div>
+          </div>
+        );
+      })()}
+    </div>
+  );
+};
+
 const BacktestCard: React.FC<{
   data: BacktestResponse;
   loading: boolean;
@@ -413,8 +576,13 @@ const BacktestCard: React.FC<{
   const pnlSign = data.total_pnl >= 0 ? '+' : '';
   const initCapital = data.initial_capital || 5_000_000;
   const initialLine = initCapital;
+  const isPostmarket = data.mode === 'postmarket';
   const chartData = data.capital_curve.length > 0
-    ? data.capital_curve.map(p => ({ date: fmtDate(p.date), capital: p.capital }))
+    ? data.capital_curve.map(p => ({
+        date: fmtDate(p.date),
+        capital: p.capital,
+        ...(p.open != null && { open: p.open, high: p.high, low: p.low, close: p.close }),
+      }))
     : [{ date: fmtDate(new Date().toISOString().slice(0, 10).replace(/-/g, '')), capital: initCapital }];
 
   return (
@@ -497,38 +665,42 @@ const BacktestCard: React.FC<{
       {/* ── Chart ── */}
       {section === 'chart' && (
         <div className="px-2 py-3">
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={chartData}>
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} stroke="hsl(var(--border))" />
-              <YAxis
-                tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                stroke="hsl(var(--border))"
-                tickFormatter={v => `${(v / 10000).toFixed(0)}w`}
-                domain={['auto', 'auto']}
-              />
-              <Tooltip
-                contentStyle={{
-                  background: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                }}
-                formatter={(val: unknown) => {
-                  const n = Number(val);
-                  return isNaN(n) ? ['-', '资金'] : [`¥${n.toLocaleString()}`, '资金'];
-                }}
-              />
-              <ReferenceLine y={initialLine} stroke="hsl(var(--border))" strokeDasharray="4 4" />
-              <Line
-                type="monotone"
-                dataKey="capital"
-                stroke={isPositive ? '#f87171' : '#34d399'}
-                strokeWidth={2}
-                dot={false}
-                activeDot={{ r: 4 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          {isPostmarket && chartData.some(d => d.open != null) ? (
+            <PortfolioCandleChart data={chartData} initCapital={initCapital} height={200} />
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={chartData}>
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} stroke="hsl(var(--border))" />
+                <YAxis
+                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                  stroke="hsl(var(--border))"
+                  tickFormatter={v => `${(v / 10000).toFixed(0)}w`}
+                  domain={['auto', 'auto']}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                  }}
+                  formatter={(val: unknown) => {
+                    const n = Number(val);
+                    return isNaN(n) ? ['-', '资金'] : [`¥${n.toLocaleString()}`, '资金'];
+                  }}
+                />
+                <ReferenceLine y={initialLine} stroke="hsl(var(--border))" strokeDasharray="4 4" />
+                <Line
+                  type="monotone"
+                  dataKey="capital"
+                  stroke={isPositive ? '#f87171' : '#34d399'}
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
         </div>
       )}
 

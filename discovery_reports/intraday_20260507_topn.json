@@ -1,0 +1,262 @@
+[
+  {
+    "rank": 1,
+    "stock_code": "300499",
+    "stock_name": "高澜股份",
+    "score": 20.0,
+    "sector": "",
+    "factor_scores": {
+      "sector": 0.0,
+      "ma_entry": 100.0,
+      "momentum": 100.0,
+      "rebound": 0.0
+    },
+    "reasons": [
+      "KDJ超卖(22)",
+      "BOLL中轨支撑",
+      "主力资金净流入",
+      "温和放量(量比1.3)",
+      "换手活跃(12.8%)",
+      "拥挤惩罚(-30分)"
+    ],
+    "buy_price_low": 33.6,
+    "buy_price_high": 40.1,
+    "stop_loss": 32.6,
+    "take_profit_1": 42.5,
+    "take_profit_2": 44.5
+  },
+  {
+    "rank": 2,
+    "stock_code": "002837",
+    "stock_name": "英维克",
+    "score": 20.6,
+    "sector": "专用设备",
+    "factor_scores": {
+      "sector": 0.0,
+      "ma_entry": 90.28767751074867,
+      "momentum": 100.0,
+      "rebound": 0.0
+    },
+    "reasons": [
+      "KDJ超卖(19)",
+      "主力资金净流入",
+      "温和放量(量比1.2)",
+      "换手活跃(5.9%)",
+      "所属板块: 专用设备",
+      "拥挤惩罚(-27分)"
+    ],
+    "buy_price_low": 80.9,
+    "buy_price_high": 98.6,
+    "stop_loss": 78.5,
+    "take_profit_1": 102.7,
+    "take_profit_2": 107.5
+  },
+  {
+    "rank": 3,
+    "stock_code": "300782",
+    "stock_name": "卓胜微",
+    "score": 15.299999999999997,
+    "sector": "半导体",
+    "factor_scores": {
+      "sector": 0.0,
+      "ma_entry": 100.0,
+      "momentum": 81.31869585381135,
+      "rebound": 0.0
+    },
+    "reasons": [
+      "KDJ超卖(20)",
+      "BOLL中轨支撑",
+      "主力资金净流入",
+      "温和放量(量比1.3)",
+      "换手活跃(6.7%)",
+      "所属板块: 半导体",
+      "拥挤惩罚(-30分)"
+    ],
+    "buy_price_low": 87.4,
+    "buy_price_high": 101.4,
+    "stop_loss": 84.7,
+    "take_profit_1": 108.4,
+    "take_profit_2": 113.5
+  },
+  {
+    "rank": 4,
+    "stock_code": "600703",
+    "stock_name": "三安光电",
+    "score": 12.799999999999997,
+    "sector": "光学光电子",
+    "factor_scores": {
+      "sector": 0.0,
+      "ma_entry": 32.621310796106464,
+      "momentum": 67.49887776685823,
+      "rebound": 71.20678554868209
+    },
+    "reasons": [
+      "主力资金净流入",
+      "温和放量(量比1.3)",
+      "换手活跃(6.6%)",
+      "炸板后横盘(跌幅7.4%)",
+      "大单回补",
+      "换手充分",
+      "所属板块: 光学光电子",
+      "拥挤惩罚(-30分)"
+    ],
+    "buy_price_low": 10.7,
+    "buy_price_high": 13.2,
+    "stop_loss": 10.4,
+    "take_profit_1": 15.4,
+    "take_profit_2": 16.1
+  },
+  {
+    "rank": 5,
+    "stock_code": "300394",
+    "stock_name": "天孚通信",
+    "score": 9.399999999999999,
+    "sector": "通信设备",
+    "factor_scores": {
+      "sector": 0.0,
+      "ma_entry": 90.28767751074867,
+      "momentum": 67.49887776685823,
+      "rebound": 0.0
+    },
+    "reasons": [
+      "KDJ超卖(13)",
+      "主力资金净流入",
+      "温和放量(量比1.6)",
+      "换手活跃(7.0%)",
+      "所属板块: 通信设备",
+      "拥挤惩罚(-30分)"
+    ],
+    "buy_price_low": 293.1,
+    "buy_price_high": 336.6,
+    "stop_loss": 284.2,
+    "take_profit_1": 332.0,
+    "take_profit_2": 347.8
+  },
+  {
+    "rank": 6,
+    "stock_code": "688041",
+    "stock_name": "海光信息",
+    "score": 11.200000000000003,
+    "sector": "半导体",
+    "factor_scores": {
+      "sector": 0.0,
+      "ma_entry": 32.621310796106464,
+      "momentum": 49.072453650920714,
+      "rebound": 71.20678554868209
+    },
+    "reasons": [
+      "主力资金净流入",
+      "温和放量(量比1.4)",
+      "炸板后横盘(跌幅16.3%)",
+      "大单回补",
+      "换手充分",
+      "所属板块: 半导体",
+      "拥挤惩罚(-27分)"
+    ],
+    "buy_price_low": 196.7,
+    "buy_price_high": 257.6,
+    "stop_loss": 190.8,
+    "take_profit_1": 361.6,
+    "take_profit_2": 378.9
+  },
+  {
+    "rank": 7,
+    "stock_code": "300383",
+    "stock_name": "光环新网",
+    "score": 5.700000000000003,
+    "sector": "互联网服务",
+    "factor_scores": {
+      "sector": 0.0,
+      "ma_entry": 61.45449415342756,
+      "momentum": 81.31869585381135,
+      "rebound": 0.0
+    },
+    "reasons": [
+      "BOLL中轨支撑",
+      "主力资金净流入",
+      "温和放量(量比1.5)",
+      "换手活跃(11.6%)",
+      "所属板块: 互联网服务",
+      "拥挤惩罚(-30分)"
+    ],
+    "buy_price_low": 15.4,
+    "buy_price_high": 17.1,
+    "stop_loss": 15.0,
+    "take_profit_1": 18.2,
+    "take_profit_2": 19.0
+  },
+  {
+    "rank": 8,
+    "stock_code": "301308",
+    "stock_name": "江波龙",
+    "score": 5.799999999999997,
+    "sector": "半导体",
+    "factor_scores": {
+      "sector": 40.22057589987866,
+      "ma_entry": 32.621310796106464,
+      "momentum": 58.28566570888947,
+      "rebound": 0.0
+    },
+    "reasons": [
+      "板块首板",
+      "主力资金净流入",
+      "温和放量(量比1.3)",
+      "换手活跃(9.6%)",
+      "所属板块: 半导体",
+      "拥挤惩罚(-27分)"
+    ],
+    "buy_price_low": 282.7,
+    "buy_price_high": 364.4,
+    "stop_loss": 274.2,
+    "take_profit_1": 505.4,
+    "take_profit_2": 529.5
+  },
+  {
+    "rank": 9,
+    "stock_code": "603986",
+    "stock_name": "兆易创新",
+    "score": 3.5,
+    "sector": "半导体",
+    "factor_scores": {
+      "sector": 40.22057589987866,
+      "ma_entry": 32.621310796106464,
+      "momentum": 49.072453650920714,
+      "rebound": 0.0
+    },
+    "reasons": [
+      "板块首板",
+      "主力资金净流入",
+      "换手活跃(6.3%)",
+      "所属板块: 半导体",
+      "拥挤惩罚(-27分)"
+    ],
+    "buy_price_low": 234.1,
+    "buy_price_high": 284.7,
+    "stop_loss": 227.0,
+    "take_profit_1": 361.5,
+    "take_profit_2": 378.7
+  },
+  {
+    "rank": 10,
+    "stock_code": "300502",
+    "stock_name": "新易盛",
+    "score": 0.1999999999999993,
+    "sector": "通信设备",
+    "factor_scores": {
+      "sector": 0.0,
+      "ma_entry": 90.28767751074867,
+      "momentum": 30.6460295349832,
+      "rebound": 0.0
+    },
+    "reasons": [
+      "KDJ超卖(21)",
+      "所属板块: 通信设备",
+      "拥挤惩罚(-30分)"
+    ],
+    "buy_price_low": 441.9,
+    "buy_price_high": 528.3,
+    "stop_loss": 428.5,
+    "take_profit_1": 548.6,
+    "take_profit_2": 574.7
+  }
+]

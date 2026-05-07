@@ -78,6 +78,10 @@ export type BacktestDailyItem = {
 export type CapitalCurvePoint = {
   date: string;
   capital: number;
+  open?: number;
+  high?: number;
+  low?: number;
+  close?: number;
 };
 
 export type BacktestResponse = {

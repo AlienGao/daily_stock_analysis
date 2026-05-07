@@ -1232,6 +1232,7 @@ def main() -> int:
 
     # === 启动 Web 服务 (如果启用) ===
     start_serve = (args.serve or args.serve_only) and os.getenv("GITHUB_ACTIONS") != "true"
+    print(f"[DEBUG] start_serve={start_serve}, args.serve={args.serve}", flush=True)
 
     # 兼容旧版 WEBUI_HOST/WEBUI_PORT：如果用户未通过 --host/--port 指定，则使用旧变量
     if start_serve:
@@ -1283,6 +1284,9 @@ def main() -> int:
             logger.info("\n用户中断，程序退出")
         return 0
 
+    class _ModeExit(Exception):
+        """模式调度内部 early-return 的载体，不向外暴露。"""
+
     try:
         # 模式0: 回测
         if getattr(args, 'backtest', False):
@@ -1299,7 +1303,7 @@ def main() -> int:
                 f"回测完成: processed={stats.get('processed')} saved={stats.get('saved')} "
                 f"completed={stats.get('completed')} insufficient={stats.get('insufficient')} errors={stats.get('errors')}"
             )
-            return 0
+            raise _ModeExit(0)
 
         # 模式1: 仅大盘复盘
         if args.market_review:
@@ -1321,7 +1325,7 @@ def main() -> int:
                 )
                 if effective_region == '':
                     logger.info("今日大盘复盘相关市场均为非交易日，跳过执行。可使用 --force-run 强制执行。")
-                    return 0
+                    raise _ModeExit(0)
 
             logger.info("模式: 仅大盘复盘")
             notifier = NotificationService()
@@ -1359,7 +1363,7 @@ def main() -> int:
                 send_notification=not args.no_notify,
                 override_region=effective_region,
             )
-            return 0
+            raise _ModeExit(0)
 
         # 模式: 盘中实时扫描
         if getattr(args, 'scan', False):
@@ -1378,7 +1382,7 @@ def main() -> int:
             if not tushare_fetcher.is_available():
                 logger.warning("Tushare 不可用，盘中扫描可能无法获取数据")
             run_intraday_scan(discovery_config, tushare_fetcher, akshare_fetcher)
-            return 0
+            raise _ModeExit(0)
 
         # 模式: 仅股票发现
         if getattr(args, 'discover_only', False):
@@ -1433,7 +1437,7 @@ def main() -> int:
                 _sync_discovery_to_stock_list(results)
             else:
                 logger.info("未发现符合条件的股票")
-            return 0
+            raise _ModeExit(0)
 
         # 模式: R&D 待审核因子列表
         if getattr(args, 'rd_loop_list', False):
@@ -1458,7 +1462,7 @@ def main() -> int:
                 print(f"\n使用 --rd-loop-approve <name> 批准因子")
                 print(f"{'='*80}\n")
                 logger.info("待审核因子: %d 个", len(pending))
-            return 0
+            raise _ModeExit(0)
 
         # 模式: R&D 批准因子
         if getattr(args, 'rd_loop_approve', None):
@@ -1473,14 +1477,14 @@ def main() -> int:
             else:
                 logger.warning("批准失败，因子不存在: %s", factor_name)
                 print(f"批准失败，因子不存在: {factor_name}")
-                return 1
-            return 0
+                raise _ModeExit(1)
+            raise _ModeExit(0)
 
         # 模式: R&D 因子发现闭环
         if getattr(args, 'rd_loop', False):
             if os.getenv("RD_LOOP_AUTO_ENABLED", "").strip().lower() not in ("true", "1", "yes", "on"):
                 logger.warning("R&D 因子发现闭环已禁用（RD_LOOP_AUTO_ENABLED=false），跳过执行。")
-                return 0
+                raise _ModeExit(0)
             logger.info("模式: R&D 因子发现闭环")
             from src.discovery.rd_loop import RDLoop
             from src.agent.llm_adapter import LLMToolAdapter
@@ -1516,7 +1520,7 @@ def main() -> int:
 
             logger.info("\n%s", result.leaderboard_markdown())
             print(result.leaderboard_markdown())
-            return 0
+            raise _ModeExit(0)
 
         # 模式2: 定时任务模式
         if args.schedule or config.schedule_enabled:
@@ -1574,7 +1578,7 @@ def main() -> int:
                 background_tasks=background_tasks,
                 schedule_time_provider=schedule_time_provider,
             )
-            return 0
+            raise _ModeExit(0)
 
         # 模式3: 正常单次运行
         if config.run_immediately:
@@ -1584,8 +1588,8 @@ def main() -> int:
 
         logger.info("\n程序执行完成")
 
-        # 如果启用了服务且是非定时任务模式，保持程序运行
-        keep_running = start_serve and not (args.schedule or config.schedule_enabled)
+        # 如果启用了服务，保持程序运行
+        keep_running = start_serve
         if keep_running:
             logger.info("API 服务运行中 (按 Ctrl+C 退出)...")
             try:
@@ -1596,13 +1600,30 @@ def main() -> int:
 
         return 0
 
+    except _ModeExit as e:
+        exit_code = e.args[0] if e.args else 0
+        print(f"[DEBUG] _ModeExit caught, exit_code={exit_code}", flush=True)
     except KeyboardInterrupt:
         logger.info("\n用户中断，程序退出")
-        return 130
-
+        exit_code = 130
+        print(f"[DEBUG] KeyboardInterrupt caught", flush=True)
     except Exception as e:
         logger.exception(f"程序执行失败: {e}")
-        return 1
+        exit_code = 1
+        print(f"[DEBUG] Exception caught: {e}", flush=True)
+
+    # --webui/--serve 模式下，无论上面怎么退出，都保持 Web 服务运行
+    print(f"[DEBUG] 保活检查点: start_serve={start_serve}, exit_code={exit_code}", flush=True)
+    if start_serve:
+        logger.info("Web 服务继续运行 (按 Ctrl+C 退出)...")
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            logger.info("\n用户中断，程序退出")
+
+    print(f"[DEBUG] main() returning exit_code={exit_code}", flush=True)
+    return exit_code
 
 
 if __name__ == "__main__":
