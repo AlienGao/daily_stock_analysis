@@ -1668,3 +1668,129 @@ class BrokerRecommendService:
         # 构建 dict 映射以复用 _enrich_stock_results
         stock_map = {sr["ts_code"]: sr for sr in stock_list}
         self._enrich_stock_results(stock_map, ts_codes, trade_date)
+
+    # ------------------------------------------------------------------
+    # 机构调研 Top 10
+    # ------------------------------------------------------------------
+
+    _SURVEY_WEIGHTS = {
+        "特定对象调研": 2.0,
+        "策略会": 1.0,
+        "分析师会议": 1.0,
+    }
+    _SURVEY_CACHE_PATH = "/tmp/institution_survey_top10.json"
+
+    @classmethod
+    def _calc_survey_weight(cls, rece_mode: str) -> float:
+        """根据调研方式计算权重。"""
+        if "特定对象调研" in rece_mode:
+            return 2.0
+        if "策略会" in rece_mode or "分析师会议" in rece_mode:
+            return 1.0
+        return 0.3
+
+    def get_institution_survey_top10(self) -> Dict[str, Any]:
+        """获取近两周机构调研加权 Top 10。"""
+        import json as _json
+        from datetime import datetime
+
+        today_str = datetime.now().strftime("%Y-%m-%d")
+
+        # 尝试读取缓存
+        try:
+            with open(self._SURVEY_CACHE_PATH, "r", encoding="utf-8") as f:
+                cached = _json.load(f)
+            if cached.get("date") == today_str:
+                logger.info("[InstitutionSurvey] 命中缓存")
+                return cached
+        except (FileNotFoundError, _json.JSONDecodeError, KeyError):
+            pass
+
+        # 计算日期范围
+        end_date = datetime.now().strftime("%Y%m%d")
+        start_date = (datetime.now() - timedelta(days=14)).strftime("%Y%m%d")
+
+        from data_provider.tushare_fetcher import TushareFetcher
+        tf = TushareFetcher.get_instance()
+        if not tf or not tf.is_available():
+            return {"error": "Tushare 未配置", "date": today_str, "items": []}
+
+        df = tf.get_stk_surv(start_date, end_date)
+        if df is None or df.empty:
+            return {"date": today_str, "start_date": start_date, "end_date": end_date, "total_stocks": 0, "items": []}
+
+        # 计算权重列并持久化原始数据
+        df["weight"] = df["rece_mode"].apply(
+            lambda m: self._calc_survey_weight(str(m) if m else "")
+        )
+        # 按日期分批写入，每日覆盖旧数据
+        for surv_day in df["surv_date"].dropna().unique():
+            day_df = df[df["surv_date"] == surv_day]
+            try:
+                self.db.save_institution_survey(day_df, clear_date=str(surv_day))
+            except Exception:
+                pass
+
+        # 按 ts_code 聚合加权分
+        stock_scores: Dict[str, Dict[str, Any]] = {}
+        for _, row in df.iterrows():
+            ts_code = str(row.get("ts_code", ""))
+            if not ts_code:
+                continue
+            name = str(row.get("name", ""))
+            if 'ST' in name.upper():
+                continue
+            if ts_code not in stock_scores:
+                stock_scores[ts_code] = {
+                    "ts_code": ts_code,
+                    "name": name,
+                    "weighted_score": 0.0,
+                    "visit_count": 0,
+                    "details": [],
+                }
+            rece_mode = str(row.get("rece_mode", ""))
+            weight = self._calc_survey_weight(rece_mode)
+            stock_scores[ts_code]["weighted_score"] += weight
+            stock_scores[ts_code]["visit_count"] += 1
+            stock_scores[ts_code]["details"].append({
+                "surv_date": str(row.get("surv_date", "")),
+                "rece_org": str(row.get("rece_org", "")),
+                "org_type": str(row.get("org_type", "")),
+                "rece_mode": rece_mode,
+                "weight": weight,
+                "fund_visitors": str(row.get("fund_visitors", "")),
+                "rece_place": str(row.get("rece_place", "")),
+                "comp_rece": str(row.get("comp_rece", "")),
+            })
+
+        # 排序取 Top 10
+        sorted_stocks = sorted(stock_scores.values(), key=lambda x: x["weighted_score"], reverse=True)[:10]
+
+        # 附加摘要信息
+        for stock in sorted_stocks:
+            stock["weighted_score"] = round(stock["weighted_score"], 1)
+            stock["last_surv_date"] = max((d["surv_date"] for d in stock["details"]), default="")
+            org_counter: Dict[str, int] = {}
+            for d in stock["details"]:
+                org = d["rece_org"]
+                org_counter[org] = org_counter.get(org, 0) + 1
+            stock["top_orgs"] = [o for o, _ in sorted(org_counter.items(), key=lambda x: x[1], reverse=True)[:5]]
+            # 按日期降序排列详情
+            stock["details"].sort(key=lambda x: x["surv_date"], reverse=True)
+
+        result = {
+            "date": today_str,
+            "start_date": start_date,
+            "end_date": end_date,
+            "total_stocks": len(stock_scores),
+            "items": sorted_stocks,
+        }
+
+        # 写入缓存
+        try:
+            with open(self._SURVEY_CACHE_PATH, "w", encoding="utf-8") as f:
+                _json.dump(result, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            logger.warning(f"[InstitutionSurvey] 写入缓存失败: {e}")
+
+        return result

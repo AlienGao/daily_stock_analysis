@@ -206,6 +206,68 @@ def get_ytd_backtest(
     )
 
 
+# ---- 机构调研 Top 10 ----
+
+class SurveyDetail(BaseModel):
+    surv_date: str
+    rece_org: str
+    org_type: str
+    rece_mode: str
+    weight: float
+    fund_visitors: str
+    rece_place: str
+    comp_rece: str
+
+
+class InstitutionSurveyItem(BaseModel):
+    ts_code: str
+    name: str
+    weighted_score: float
+    visit_count: int
+    last_surv_date: str
+    top_orgs: List[str]
+    details: List[SurveyDetail]
+
+
+class InstitutionSurveyResponse(BaseModel):
+    date: str
+    start_date: str
+    end_date: str
+    total_stocks: int
+    items: List[InstitutionSurveyItem]
+
+
+@router.get("/institution-survey", response_model=InstitutionSurveyResponse)
+def get_institution_survey() -> InstitutionSurveyResponse:
+    """近两周机构调研加权 Top 10。"""
+    service = BrokerRecommendService()
+    result = service.get_institution_survey_top10()
+
+    if "error" in result:
+        raise HTTPException(status_code=500, detail=result["error"])
+
+    items = [
+        InstitutionSurveyItem(
+            ts_code=item["ts_code"],
+            name=item["name"],
+            weighted_score=item["weighted_score"],
+            visit_count=item["visit_count"],
+            last_surv_date=item["last_surv_date"],
+            top_orgs=item["top_orgs"],
+            details=[SurveyDetail(**d) for d in item["details"]],
+        )
+        for item in result.get("items", [])
+    ]
+
+    return InstitutionSurveyResponse(
+        date=result["date"],
+        start_date=result["start_date"],
+        end_date=result["end_date"],
+        total_stocks=result["total_stocks"],
+        items=items,
+    )
+
+
 @router.get("/{month}", response_model=BrokerRecommendResponse)
 def get_monthly_recommendations(month: str) -> BrokerRecommendResponse:
     """获取指定月份的券商金股推荐列表（不含增强数据，增强数据请用 /{month}/enrichment）。"""

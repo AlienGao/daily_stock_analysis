@@ -1791,6 +1791,18 @@ class DataFetcherManager:
             logger.warning(f"[Tushare 政策库] 获取失败: {e}")
             return None
 
+    def get_institution_survey(self, start_date: str, end_date: str) -> Optional['pd.DataFrame']:
+        """获取 Tushare 机构调研数据 (doc_id 275)，返回原始 DataFrame。"""
+        fetcher = self._get_tushare_fetcher()
+        if fetcher is None:
+            return None
+
+        try:
+            return fetcher.get_stk_surv(start_date, end_date)
+        except Exception as e:
+            logger.warning(f"[Tushare 机构调研] 获取失败: {e}")
+            return None
+
     def get_stock_name(self, stock_code: str, allow_realtime: bool = True) -> Optional[str]:
         """
         获取股票中文名称（自动切换数据源）

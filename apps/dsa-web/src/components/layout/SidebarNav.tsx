@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { BarChart3, Compass, Home, LogOut, MessageSquareQuote, Settings2, TrendingUp } from 'lucide-react';
+import { BarChart3, Compass, Home, LogOut, MessageSquareQuote, Settings2, TrendingUp, Users } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAgentChatStore } from '../../stores/agentChatStore';
@@ -27,6 +27,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'home', label: '首页', to: '/', icon: Home, exact: true },
   { key: 'discovery', label: '寻股', to: '/discovery', icon: Compass, exact: true },
   { key: 'broker-recommend', label: '金股', to: '/broker-recommend', icon: TrendingUp },
+  { key: 'institution-survey', label: '机调', to: '/institution-survey', icon: Users },
   { key: 'chat', label: '问股', to: '/chat', icon: MessageSquareQuote, badge: 'completion' },
   // RD loop 禁用中，暂时隐藏
   // { key: 'rd-loop-review', label: '审核', to: '/rd-loop-review', icon: ClipboardCheck },

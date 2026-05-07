@@ -210,3 +210,41 @@ export async function getConsecutiveStocks(
   );
   return resp.data;
 }
+
+// ---- 机构调研 Top 10 ----
+
+export type SurveyDetail = {
+  surv_date: string;
+  rece_org: string;
+  org_type: string;
+  rece_mode: string;
+  weight: number;
+  fund_visitors: string;
+  rece_place: string;
+  comp_rece: string;
+};
+
+export type InstitutionSurveyItem = {
+  ts_code: string;
+  name: string;
+  weighted_score: number;
+  visit_count: number;
+  last_surv_date: string;
+  top_orgs: string[];
+  details: SurveyDetail[];
+};
+
+export type InstitutionSurveyResponse = {
+  date: string;
+  start_date: string;
+  end_date: string;
+  total_stocks: number;
+  items: InstitutionSurveyItem[];
+};
+
+export async function getInstitutionSurvey(): Promise<InstitutionSurveyResponse> {
+  const resp = await apiClient.get<InstitutionSurveyResponse>(
+    '/api/v1/broker-recommend/institution-survey'
+  );
+  return resp.data;
+}

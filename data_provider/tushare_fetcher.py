@@ -2236,6 +2236,25 @@ class TushareFetcher(BaseFetcher):
             return None
 
 
+    def get_stk_surv(self, start_date: str, end_date: str) -> Optional[pd.DataFrame]:
+        """机构调研 (doc_id 275)"""
+        if self._api is None:
+            return None
+
+        try:
+            df = self._call_api_with_rate_limit(
+                "stk_surv",
+                start_date=start_date,
+                end_date=end_date,
+            )
+            if df is None or df.empty:
+                return None
+            return df
+        except Exception as e:
+            logger.warning(f"[Tushare] 获取机构调研数据失败: {e}")
+            return None
+
+
 if __name__ == "__main__":
     # 测试代码
     logging.basicConfig(level=logging.DEBUG)

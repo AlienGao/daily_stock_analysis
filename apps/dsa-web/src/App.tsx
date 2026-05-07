@@ -16,6 +16,7 @@ import { useAgentChatStore } from './stores/agentChatStore';
 import './App.css';
 
 const BrokerRecommendPage = lazy(() => import('./pages/BrokerRecommendPage'));
+const InstitutionSurveyPage = lazy(() => import('./pages/InstitutionSurveyPage'));
 
 const AppContent: React.FC = () => {
   const location = useLocation();
@@ -70,6 +71,7 @@ const AppContent: React.FC = () => {
         <Route path="/discovery" element={<DiscoveryPage />} />
         <Route path="/backtest" element={<BacktestPage />} />
         <Route path="/broker-recommend" element={<Suspense fallback={<div className="flex justify-center py-12"><div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan/20 border-t-cyan" /></div>}><BrokerRecommendPage /></Suspense>} />
+        <Route path="/institution-survey" element={<Suspense fallback={<div className="flex justify-center py-12"><div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan/20 border-t-cyan" /></div>}><InstitutionSurveyPage /></Suspense>} />
         {/* RD loop 禁用中 */}
         {/* <Route path="/rd-loop-review" element={<RdLoopReviewPage />} /> */}
         <Route path="/settings" element={<SettingsPage />} />

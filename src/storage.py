@@ -737,6 +737,48 @@ class BrokerRecommendMonthly(Base):
         }
 
 
+class InstitutionSurvey(Base):
+    """机构调研明细。
+
+    存储每日机构调研原始记录，每条记录对应一次调研活动。
+    """
+
+    __tablename__ = 'institution_survey'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    surv_date = Column(String(8), nullable=False, index=True)
+    ts_code = Column(String(12), nullable=False, index=True)
+    name = Column(String(50))
+    rece_org = Column(String(200))
+    org_type = Column(String(50))
+    rece_mode = Column(String(100))
+    weight = Column(Float, default=0.0)
+    fund_visitors = Column(String(200))
+    rece_place = Column(String(200))
+    comp_rece = Column(String(200))
+    created_at = Column(DateTime, default=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('surv_date', 'ts_code', 'rece_org', name='uix_is_surv_date_ts_org'),
+        Index('ix_is_surv_date', 'surv_date'),
+        Index('ix_is_ts_code', 'ts_code'),
+    )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'surv_date': self.surv_date,
+            'ts_code': self.ts_code,
+            'name': self.name,
+            'rece_org': self.rece_org,
+            'org_type': self.org_type,
+            'rece_mode': self.rece_mode,
+            'weight': self.weight,
+            'fund_visitors': self.fund_visitors,
+            'rece_place': self.rece_place,
+            'comp_rece': self.comp_rece,
+        }
+
+
 class BrokerBacktestResult(Base):
     """券商金股月度回测结果快照。
 
@@ -2272,6 +2314,76 @@ class DatabaseManager:
                 "brokers": json.loads(row.broker_returns_json or "[]"),
                 "stock_returns": json.loads(row.stock_returns_json or "[]"),
             }
+
+    # ------------------------------------------------------------------
+    # 机构调研
+    # ------------------------------------------------------------------
+
+    def save_institution_survey(self, df: pd.DataFrame, clear_date: Optional[str] = None) -> int:
+        """批量保存机构调研数据。
+
+        Args:
+            df: 包含 surv_date, ts_code, name, rece_org, org_type, rece_mode,
+                weight, fund_visitors, rece_place, comp_rece 的 DataFrame
+            clear_date: 若提供，先清除该日期的旧数据再写入
+
+        Returns:
+            保存的记录数
+        """
+        if df is None or df.empty:
+            return 0
+
+        with self.get_session() as session:
+            try:
+                if clear_date:
+                    session.query(InstitutionSurvey).filter(
+                        InstitutionSurvey.surv_date == clear_date
+                    ).delete()
+
+                records = []
+                for _, row in df.iterrows():
+                    records.append(InstitutionSurvey(
+                        surv_date=str(row.get('surv_date', '')),
+                        ts_code=str(row.get('ts_code', '')),
+                        name=str(row.get('name', '')) if pd.notna(row.get('name')) else '',
+                        rece_org=str(row.get('rece_org', '')) if pd.notna(row.get('rece_org')) else '',
+                        org_type=str(row.get('org_type', '')) if pd.notna(row.get('org_type')) else '',
+                        rece_mode=str(row.get('rece_mode', '')) if pd.notna(row.get('rece_mode')) else '',
+                        weight=float(row.get('weight', 0.0) or 0.0),
+                        fund_visitors=str(row.get('fund_visitors', '')) if pd.notna(row.get('fund_visitors')) else '',
+                        rece_place=str(row.get('rece_place', '')) if pd.notna(row.get('rece_place')) else '',
+                        comp_rece=str(row.get('comp_rece', '')) if pd.notna(row.get('comp_rece')) else '',
+                    ))
+
+                session.add_all(records)
+                session.commit()
+                logger.info(f"[InstitutionSurvey] 保存 {len(records)} 条 (clear_date={clear_date})")
+                return len(records)
+            except Exception as e:
+                session.rollback()
+                logger.error(f"[InstitutionSurvey] 保存失败: {e}")
+                raise
+
+    def get_institution_survey(
+        self, start_date: Optional[str] = None, end_date: Optional[str] = None
+    ) -> List[InstitutionSurvey]:
+        """获取机构调研数据。
+
+        Args:
+            start_date: 起始日期 YYYYMMDD（含）
+            end_date: 截止日期 YYYYMMDD（含）
+
+        Returns:
+            InstitutionSurvey 列表
+        """
+        with self.get_session() as session:
+            stmt = select(InstitutionSurvey)
+            if start_date:
+                stmt = stmt.where(InstitutionSurvey.surv_date >= start_date)
+            if end_date:
+                stmt = stmt.where(InstitutionSurvey.surv_date <= end_date)
+            stmt = stmt.order_by(desc(InstitutionSurvey.surv_date))
+            return list(session.execute(stmt).scalars().all())
 
     # ------------------------------------------------------------------
     # Enrichment 缓存（九转/盈利预测/筹码胜率持久化）

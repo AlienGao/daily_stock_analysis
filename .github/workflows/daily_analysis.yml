@@ -359,6 +359,19 @@ jobs:
             echo "✅ LITELLM 配置文件已写入: $LITELLM_CONFIG"
           fi
 
+          # 拼接当日盘后发现股票到 STOCK_LIST 前面
+          TODAY=$(TZ='Asia/Shanghai' date '+%Y%m%d')
+          DISCOVERY_FILE="discovery_reports/postmarket_${TODAY}_topn.json"
+          if [ -f "$DISCOVERY_FILE" ]; then
+            DISCOVERED=$(jq -r '[.[].stock_code] | join(",")' "$DISCOVERY_FILE" 2>/dev/null)
+            if [ -n "$DISCOVERED" ] && [ "$DISCOVERED" != "null" ] && [ "$DISCOVERED" != "" ]; then
+              STOCK_LIST="${DISCOVERED},${STOCK_LIST}"
+              echo "🔍 盘后发现 ${DISCOVERED}，已拼接到 STOCK_LIST 前面"
+            fi
+          else
+            echo "⚠️ 今日盘后文件不存在: ${DISCOVERY_FILE}"
+          fi
+
           # 判断运行模式
           MODE="${{ github.event.inputs.mode || 'full' }}"
           

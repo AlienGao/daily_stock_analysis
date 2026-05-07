@@ -2146,6 +2146,7 @@ class SearchService:
             news_strategy_profile: 新闻窗口策略档位（ultra_short/short/medium/long）
         """
         self._providers: List[BaseSearchProvider] = []
+        self._intel_cache: Dict[str, Dict[str, SearchResponse]] = {}
         self.news_max_age_days = max(1, news_max_age_days)
         raw_profile = (news_strategy_profile or "short").strip().lower()
         self.news_strategy_profile = normalize_news_strategy_profile(news_strategy_profile)
@@ -2983,6 +2984,11 @@ class SearchService:
         Returns:
             {维度名称: SearchResponse} 字典
         """
+        cache_key = str(stock_code or "").strip()
+        if cache_key in self._intel_cache:
+            logger.info("情报搜索命中缓存: %s(%s), %d 个维度", stock_name, stock_code, len(self._intel_cache[cache_key]))
+            return dict(self._intel_cache[cache_key])
+
         results = {}
         search_count = 0
 
@@ -3169,7 +3175,9 @@ class SearchService:
             
             # 短暂延迟避免请求过快
             time.sleep(0.5)
-        
+
+        if results:
+            self._intel_cache[cache_key] = dict(results)
         return results
     
     def format_intel_report(self, intel_results: Dict[str, SearchResponse], stock_name: str) -> str:
