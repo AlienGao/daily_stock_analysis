@@ -468,7 +468,7 @@ class StockAnalysisPipeline:
                     # 集中度越高扣分越多，胜率越低扣分越多
                     conc_penalty = max(0, (conc - 0.15) * 100) if conc > 0.15 else 0
                     wr_penalty = max(0, (70 - wr) * 0.3) if wr < 70 else 0
-                    chip_penalty = min(20, conc_penalty + wr_penalty)
+                    chip_penalty = min(10, conc_penalty + wr_penalty)
                     chip_penalty_reason = f"concentration={conc:.1%}, winner_rate={wr:.1f}%"
                     logger.info(
                         "[筹码扣分] %s(%s) 不满足条件，扣 %.1f 分: "

@@ -358,10 +358,12 @@ class ScanModeResponse(BaseModel):
     summary="获取盘中扫描模式",
 )
 def get_scan_mode():
-    from src.discovery.config import get_active_config
+    from src.discovery.config import DiscoveryConfig, get_active_config
     cfg = get_active_config()
     if not cfg:
-        return ScanModeResponse(use_whitelist=False, has_whitelist=False)
+        # 扫描器未运行时，从环境变量读取白名单配置
+        tmp = DiscoveryConfig()
+        return ScanModeResponse(use_whitelist=tmp.use_whitelist, has_whitelist=bool(tmp.discover_whitelist))
     return ScanModeResponse(
         use_whitelist=cfg.use_whitelist,
         has_whitelist=bool(cfg.discover_whitelist),
@@ -374,10 +376,12 @@ def get_scan_mode():
     summary="切换盘中扫描模式",
 )
 def set_scan_mode(use_whitelist: bool = Query(...)):
-    from src.discovery.config import get_active_config
+    from src.discovery.config import DiscoveryConfig, get_active_config, set_active_config
     cfg = get_active_config()
     if not cfg:
-        raise HTTPException(503, "扫描器未启动")
+        # 扫描器未运行时，创建临时 config 存储偏好
+        cfg = DiscoveryConfig()
+        set_active_config(cfg)
     cfg.use_whitelist = use_whitelist
     return ScanModeResponse(
         use_whitelist=cfg.use_whitelist,
