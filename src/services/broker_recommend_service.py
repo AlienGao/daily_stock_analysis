@@ -943,6 +943,24 @@ class BrokerRecommendService:
                         "close": float(r.close) if r.close else None,
                     }
                 return result
+
+            # DB 无数据，尝试从 Tushare 拉取并入库后重新查询
+            try:
+                self._fetch_tushare_prices(ts_code, code, start_date, end_date)
+                records = self.db.get_data_range(code, s_date, e_date)
+                if records:
+                    result = {}
+                    for r in records:
+                        d = r.date.strftime("%Y%m%d") if isinstance(r.date, date) else str(r.date)[:8]
+                        result[d] = {
+                            "open": float(r.open) if r.open else None,
+                            "high": float(r.high) if r.high else None,
+                            "low": float(r.low) if r.low else None,
+                            "close": float(r.close) if r.close else None,
+                        }
+                    return result
+            except Exception:
+                pass
         except Exception:
             pass
         return {}
@@ -993,6 +1011,7 @@ class BrokerRecommendService:
         today = dt_date.today().strftime("%Y%m%d")
         prices: Dict[str, Dict[str, float]] = {}
         daily_changes: Dict[str, float] = {}
+        today_ohlc: Dict[str, Dict[str, float]] = {}
         symbols: List[str] = []
         sym_to_ts: Dict[str, str] = {}
         for ts in ts_codes:
@@ -1029,7 +1048,7 @@ class BrokerRecommendService:
                     sym = label.split("_")[-1] if "_" in label else label
                     data = parts[1].rstrip('";\n')
                     fields = data.split(",")
-                    # fields[2]=昨收, fields[3]=最新价
+                    # fields[1]=今开, fields[2]=昨收, fields[3]=最新价, fields[4]=最高, fields[5]=最低
                     if len(fields) > 3 and fields[3] and fields[2]:
                         try:
                             ts_code = sym_to_ts.get(sym)
@@ -1039,11 +1058,22 @@ class BrokerRecommendService:
                                 prices.setdefault(ts_code, {})[today] = price
                                 if prev_close > 0:
                                     daily_changes[ts_code] = round((price - prev_close) / prev_close, 4)
+                                # 提取今日 OHLC（Sina 实时行情包含当日开高低）
+                                ohlc = {}
+                                if len(fields) > 1 and fields[1]:
+                                    ohlc["open"] = float(fields[1])
+                                if len(fields) > 4 and fields[4]:
+                                    ohlc["high"] = float(fields[4])
+                                if len(fields) > 5 and fields[5]:
+                                    ohlc["low"] = float(fields[5])
+                                ohlc["close"] = price
+                                if len(ohlc) >= 3:  # 至少有 open/high/low/close 中 3 个
+                                    today_ohlc[ts_code] = ohlc
                         except (ValueError, TypeError):
                             continue
             except Exception:
                 continue
-        return prices, daily_changes
+        return prices, daily_changes, today_ohlc
 
     def compute_backtest(self, month: str, top_n_per_broker: int = 10) -> Dict[str, Any]:
         """对指定月份金股池按券商分组做回测。
@@ -1101,6 +1131,8 @@ class BrokerRecommendService:
                         buy_price = prices[buy_dates[0]]
                         sell_price = prices[sell_dates[-1]]
                         if not buy_price or not sell_price or buy_price <= 0:
+                            continue
+                        if buy_dates[0] == sell_dates[-1]:
                             continue
                         row = current_df[current_df["ts_code"] == ts]
                         name = str(row["name"].iloc[0]) if not row.empty else ""
@@ -1185,7 +1217,7 @@ class BrokerRecommendService:
         daily_changes: Dict[str, float] = {}
         if is_current:
             try:
-                rt_prices, rt_changes = self._get_realtime_prices_batch(all_ts)
+                rt_prices, rt_changes, rt_ohlc = self._get_realtime_prices_batch(all_ts)
                 if rt_prices:
                     for ts, p in rt_prices.items():
                         price_cache.setdefault(ts, {}).update(p)
@@ -1196,6 +1228,45 @@ class BrokerRecommendService:
                         trading_days.append(today_str)
                         trading_days.sort()
                         sell_date = trading_days[-1]
+                    # 为缺少历史价格的股票补充昨收价（Sina 有昨收但未存入 price_cache）
+                    prev_td = trading_days[-2] if len(trading_days) >= 2 else None
+                    if prev_td and rt_changes:
+                        prev_filled = 0
+                        for ts, td_price in rt_prices.items():
+                            if not td_price:
+                                continue
+                            ts_prices = price_cache.get(ts, {})
+                            dates_after_buy = [d for d in ts_prices if d >= buy_date]
+                            if len(dates_after_buy) < 2:
+                                today_price = list(td_price.values())[0]
+                                dchg = rt_changes.get(ts)
+                                if dchg is not None and dchg > -1:
+                                    prev_close = round(today_price / (1 + dchg), 2)
+                                    price_cache.setdefault(ts, {})[prev_td] = prev_close
+                                    prev_filled += 1
+                        if prev_filled:
+                            logger.info(f"[BrokerRecommend] 回测 {month} 昨收价补充 {prev_filled} 只")
+                    # 将 Sina 实时今日 OHLC 写入 DB，确保后续 _prefetch_ohlc 能查到蜡烛图数据
+                    if rt_ohlc:
+                        ohlc_saved = 0
+                        today_date = date.today()
+                        for ts, ohlc in rt_ohlc.items():
+                            code = ts.split(".")[0] if "." in ts else ts
+                            try:
+                                row = {
+                                    "date": today_date,
+                                    "open": ohlc.get("open"),
+                                    "high": ohlc.get("high"),
+                                    "low": ohlc.get("low"),
+                                    "close": ohlc.get("close"),
+                                }
+                                df_ohlc = pd.DataFrame([row])
+                                self.db.save_daily_data(df_ohlc, code, "Sina")
+                                ohlc_saved += 1
+                            except Exception:
+                                pass
+                        if ohlc_saved:
+                            logger.info(f"[BrokerRecommend] 回测 {month} 今日 OHLC 写入 {ohlc_saved} 只")
                 daily_changes = rt_changes
             except Exception:
                 pass
@@ -1241,6 +1312,31 @@ class BrokerRecommendService:
                 if not buy_price or not sell_price or buy_price <= 0:
                     continue
 
+                # 确保个股信息至少出现在结果列表中（显示最新价、日涨幅）
+                if ts not in stock_results:
+                    stock_results[ts] = {
+                        "ts_code": ts,
+                        "name": name,
+                        "broker_count": broker_count,
+                        "broker": broker,
+                        "end_price": round(sell_price, 2),
+                        "end_date": actual_sell_date,
+                        "daily_change": daily_changes.get(ts),
+                        "daily_returns": [],
+                    }
+
+                if actual_buy_date == actual_sell_date:
+                    continue  # 仅有一天价格数据，不参与回测统计，daily_returns 保持空
+
+                # 初始化该股票的 daily_returns 占位（仅在有足够历史数据时）
+                if not stock_results[ts]["daily_returns"]:
+                    for td in trading_days:
+                        stock_results[ts]["daily_returns"].append({
+                            "date": td,
+                            "return": None,
+                            "cumulative": None,
+                        })
+
                 ret = (sell_price - buy_price) / buy_price
                 broker_wins += 1 if ret > 0 else 0
                 broker_total += 1
@@ -1266,25 +1362,6 @@ class BrokerRecommendService:
                         prev_price = p
 
                 broker_daily_returns[ts] = daily_rets
-
-                # 个股结果
-                if ts not in stock_results:
-                    stock_results[ts] = {
-                        "ts_code": ts,
-                        "name": name,
-                        "broker_count": broker_count,
-                        "broker": broker,
-                        "end_price": round(sell_price, 2),
-                        "end_date": actual_sell_date,
-                        "daily_change": daily_changes.get(ts),
-                        "daily_returns": [],
-                    }
-                    for td in trading_days:
-                        stock_results[ts]["daily_returns"].append({
-                            "date": td,
-                            "return": None,
-                            "cumulative": None,
-                        })
 
                 for dr in daily_rets:
                     for sd in stock_results[ts]["daily_returns"]:
@@ -1382,18 +1459,23 @@ class BrokerRecommendService:
 
         from datetime import datetime
         today = datetime.now().strftime("%Y%m%d")
+        current_month = datetime.now().strftime("%Y%m")
         broker_ytd: Dict[str, Dict[str, Any]] = {}
 
         for month in year_months:
-            # 优先从存储读取，若 sell_date 在未来则跳过（当月未结束、无完整交易数据）
-            stored = self.db.get_broker_backtest(month)
-            if stored and stored.get("brokers") and stored.get("sell_date", "99991231") <= today:
-                bt = stored
-            elif stored and stored.get("sell_date", "99991231") > today:
-                logger.info(f"[BrokerRecommend] YTD 跳过未完成月份 {month}")
-                continue
-            else:
+            is_current = month == current_month
+            # 当月始终实时计算，确保包含最新交易日；历史月优先读存储缓存
+            if is_current:
                 bt = self.compute_backtest(month, top_n_per_broker=10)
+            else:
+                stored = self.db.get_broker_backtest(month)
+                if stored and stored.get("brokers") and stored.get("sell_date", "99991231") <= today:
+                    bt = stored
+                elif stored and stored.get("sell_date", "99991231") > today:
+                    logger.info(f"[BrokerRecommend] YTD 跳过未完成月份 {month}")
+                    continue
+                else:
+                    bt = self.compute_backtest(month, top_n_per_broker=10)
 
             if "error" in bt:
                 continue

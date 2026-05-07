@@ -189,11 +189,17 @@ class DiscoveryBacktest:
         capital = initial_capital
         total_trades = 0
         total_wins = 0
+        today_str = date.today().strftime("%Y%m%d")
 
         for i, td in enumerate(trading_days[:-1]):
             if td not in picks_by_date:
                 continue
             td_next = trading_days[i + 1]
+
+            # 卖点未到：不展示未平仓交易
+            if td_next > today_str:
+                continue
+
             picks = picks_by_date[td]
             n = len(picks)
             if n == 0:
@@ -203,6 +209,13 @@ class DiscoveryBacktest:
             stock_returns: Dict[str, float] = {}
             day_pnl = 0.0
             wins = 0
+
+            # 组合 OHLC 加权（基于持仓日 td_next 的价格走势）
+            total_weight = 0.0
+            w_open = 0.0
+            w_high = 0.0
+            w_low = 0.0
+            w_close = 0.0
 
             for p in picks:
                 code = p.get("stock_code", "")
@@ -232,6 +245,17 @@ class DiscoveryBacktest:
                         allocated_capital=round(alloc, 2),
                     ))
 
+                    # 累加 OHLC 权重（持仓日 td_next 的价格）
+                    o = self._get_price(code, td_next, "open")
+                    h = self._get_price(code, td_next, "high")
+                    lo = self._get_price(code, td_next, "low")
+                    if o and h and lo and close_next:
+                        w_open += alloc * o
+                        w_high += alloc * h
+                        w_low += alloc * lo
+                        w_close += alloc * close_next
+                        total_weight += alloc
+
             if not stock_returns:
                 continue
 
@@ -251,7 +275,13 @@ class DiscoveryBacktest:
                 win_count=wins,
                 total_count=len(values),
             ))
-            capital_curve.append({"date": td, "capital": round(capital, 2)})
+            curve_point: Dict = {"date": td_next, "capital": round(capital, 2)}
+            if total_weight > 0:
+                curve_point["open"] = round(w_open / total_weight, 2)
+                curve_point["high"] = round(w_high / total_weight, 2)
+                curve_point["low"] = round(w_low / total_weight, 2)
+                curve_point["close"] = round(w_close / total_weight, 2)
+            capital_curve.append(curve_point)
 
         return BacktestSummary(
             mode="intraday",
@@ -285,11 +315,18 @@ class DiscoveryBacktest:
         total_trades = 0
         total_wins = 0
 
+        today_str = date.today().strftime("%Y%m%d")
+
         for i, td in enumerate(trading_days[:-2]):
             if td not in picks_by_date:
                 continue
             td_buy = trading_days[i + 1]
             td_sell = trading_days[i + 2]
+
+            # 卖点未到：不展示未平仓交易，等卖点收盘后再出现
+            if td_sell > today_str:
+                continue
+
             picks = picks_by_date[td]
             n = len(picks)
             if n == 0:
@@ -507,17 +544,15 @@ class DiscoveryBacktest:
         if val is not None:
             return float(val)
 
-        # Fallback: 如果当天缺 open/close，尝试前一天 close
-        if field in ("open", "close") and self._fetcher is not None:
-            try:
-                from datetime import timedelta as _td
-                prev_str = (date(int(date_str[:4]), int(date_str[4:6]), int(date_str[6:8])) - _td(days=1)).strftime("%Y%m%d")
-                prev_cache = self._price_cache.get(prev_str, {}).get(code, {})
-                prev_val = prev_cache.get("close")
-                if prev_val is not None:
-                    return float(prev_val)
-            except Exception:
-                pass
+        # Fallback 仅用于未来日期：用缓存中最近交易日的 close 替代
+        today_str = date.today().strftime("%Y%m%d")
+        if date_str <= today_str:
+            return None
+
+        for ds in sorted(self._price_cache.keys(), reverse=True):
+            cv = self._price_cache[ds].get(code, {}).get("close")
+            if cv is not None:
+                return float(cv)
 
         return None
 

@@ -34,9 +34,9 @@ const getDefaultTabByCnMarketTime = (): TabKey => {
   const minute = Number(partMap.minute ?? '0');
   const minuteOfDay = hour * 60 + minute;
 
-  // A-share regular session (CN): Mon-Fri, 09:30-15:00.
+  // A-share session (CN): Mon-Fri, 09:15-15:00.
   const isWeekday = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].includes(weekday);
-  const isIntraday = minuteOfDay >= (9 * 60 + 30) && minuteOfDay < (15 * 60);
+  const isIntraday = minuteOfDay >= (9 * 60 + 15) && minuteOfDay < (15 * 60);
 
   return isWeekday && isIntraday ? 'intraday' : 'postmarket';
 };
@@ -400,7 +400,7 @@ const PortfolioCandleChart: React.FC<{
   }, []);
 
   const raw = data.filter(d => d.open != null && d.high != null && d.low != null && d.close != null);
-  if (raw.length < 2) return null;
+  if (raw.length < 1) return null;
 
   // Convert to returns % relative to first day's open
   const base = raw[0].open!;
@@ -451,7 +451,7 @@ const PortfolioCandleChart: React.FC<{
           return (
             <g key={`g-${i}`}>
               <line x1={pads.l} x2={chartW - pads.r} y1={y} y2={y} stroke="hsl(var(--border))" strokeWidth={0.5} opacity={0.4} />
-              <text x={pads.l - 4} y={y + 3} textAnchor="end" fill="hsl(var(--muted-foreground))" fontSize={9} fontFamily="monospace">
+              <text x={pads.l - 14} y={y + 3} textAnchor="end" fill="hsl(var(--muted-foreground))" fontSize={9} fontFamily="monospace">
                 {fmtPct(v)}
               </text>
             </g>
@@ -492,7 +492,7 @@ const PortfolioCandleChart: React.FC<{
           const x = pads.l + i * xStep;
           return (
             <text key={`xl-${i}`} x={x} y={height - 4} textAnchor="middle"
-              fill="hsl(var(--muted-foreground))" fontSize={9} fontFamily="monospace">{d.date}</text>
+              fill="hsl(var(--muted-foreground))" fontSize={9} fontFamily="monospace">{d.date.slice(5)}</text>
           );
         })}
       </svg>
@@ -500,41 +500,59 @@ const PortfolioCandleChart: React.FC<{
       {/* Tooltip */}
       {hoverIdx != null && ohlcData[hoverIdx] && (() => {
         const d = ohlcData[hoverIdx];
-        const r = raw[hoverIdx]; // absolute values
+        const r = raw[hoverIdx];
         const isUp = d.close >= d.open;
         const chgColor = isUp ? '#ef4444' : '#10b981';
         const dayChg = d.open !== 0 ? ((d.close - d.open) / Math.abs(d.open) * 100) : null;
-        const cumChg = d.close;
+        const cumChg = initCapital > 0 ? ((r.capital - initCapital) / initCapital) * 100 : 0;
         const xPx = pads.l + hoverIdx * xStep;
-        const isRight = xPx > chartW * 0.65;
+        const tooltipW = 170;
+        const margin = 8;
+        const isNearRight = xPx > chartW - tooltipW / 2 - margin;
+        const isNearLeft = xPx < tooltipW / 2 + margin;
+        const leftPx = Math.max(margin, Math.min(chartW - tooltipW - margin, xPx - tooltipW / 2));
         return (
           <div style={{
-            position: 'absolute', top: 4,
-            [isRight ? 'right' : 'left']: isRight ? 8 : `${(xPx / chartW) * 100}%`,
-            transform: isRight ? 'none' : 'translateX(-50%)',
-            background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))',
-            borderRadius: 8, padding: '6px 10px', fontSize: 11, zIndex: 10,
-            whiteSpace: 'nowrap', pointerEvents: 'none',
-            boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
+            position: 'absolute',
+            top: 6,
+            left: leftPx,
+            background: 'hsl(var(--card))',
+            border: '1px solid hsl(var(--border))',
+            borderRadius: 8,
+            padding: '8px 12px',
+            fontSize: 11,
+            zIndex: 50,
+            width: tooltipW,
+            pointerEvents: 'none',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05)',
           }}>
-            <div style={{ color: '#9ca3af', marginBottom: 3, fontSize: 10 }}>{d.date}</div>
-            <div style={{ fontFamily: 'monospace' }}>
-              <span style={{ color: '#9ca3af' }}>O </span>{fmtPct(d.open)}
-              <span style={{ color: '#9ca3af', marginLeft: 6 }}>H </span>{fmtPct(d.high)}
+            <div style={{ color: '#9ca3af', marginBottom: 4, fontSize: 10, fontWeight: 500, letterSpacing: '0.02em' }}>
+              {d.date}
             </div>
-            <div style={{ fontFamily: 'monospace' }}>
-              <span style={{ color: '#9ca3af' }}>L </span>{fmtPct(d.low)}
-              <span style={{ color: '#9ca3af', marginLeft: 6 }}>C </span>
-              <span style={{ color: chgColor }}>{fmtPct(d.close)}</span>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 8px', fontFamily: 'monospace', fontSize: 11 }}>
+              <span style={{ color: '#9ca3af' }}>开盘</span>
+              <span style={{ textAlign: 'right', color: d.open >= 0 ? '#ef4444' : '#10b981', fontWeight: 500 }}>{fmtPct(d.open)}</span>
+              <span style={{ color: '#9ca3af' }}>最高</span>
+              <span style={{ textAlign: 'right', color: '#ef4444', fontWeight: 500 }}>{fmtPct(d.high)}</span>
+              <span style={{ color: '#9ca3af' }}>最低</span>
+              <span style={{ textAlign: 'right', color: '#10b981', fontWeight: 500 }}>{fmtPct(d.low)}</span>
+              <span style={{ color: '#9ca3af' }}>收盘</span>
+              <span style={{ textAlign: 'right', color: chgColor, fontWeight: 600 }}>{fmtPct(d.close)}</span>
             </div>
             {dayChg != null && (
-              <div style={{ color: chgColor, fontFamily: 'monospace', marginTop: 2 }}>
-                当日 {dayChg >= 0 ? '+' : ''}{dayChg.toFixed(2)}%
+              <div style={{
+                color: chgColor, fontFamily: 'monospace', marginTop: 4,
+                fontSize: 11, fontWeight: 600, textAlign: 'right',
+              }}>
+                涨跌 {dayChg >= 0 ? '+' : ''}{dayChg.toFixed(2)}%
               </div>
             )}
-            <div style={{ marginTop: 2, borderTop: '1px solid hsl(var(--border))', paddingTop: 3, fontSize: 10, color: '#9ca3af' }}>
-              <span>累计 {cumChg >= 0 ? '+' : ''}{cumChg.toFixed(2)}%</span>
-              <span style={{ marginLeft: 8 }}>资金 ¥{r.capital.toLocaleString()}</span>
+            <div style={{
+              marginTop: 4, borderTop: '1px solid hsl(var(--border))', paddingTop: 4,
+              fontSize: 10, color: '#9ca3af', display: 'flex', justifyContent: 'space-between',
+            }}>
+              <span>累计 <span style={{ color: cumChg >= 0 ? '#ef4444' : '#10b981', fontWeight: 500 }}>{cumChg >= 0 ? '+' : ''}{cumChg.toFixed(2)}%</span></span>
+              <span style={{ color: '#d1d5db' }}>{fmtWan(r.capital)}</span>
             </div>
           </div>
         );
@@ -586,7 +604,7 @@ const BacktestCard: React.FC<{
     : [{ date: fmtDate(new Date().toISOString().slice(0, 10).replace(/-/g, '')), capital: initCapital }];
 
   return (
-    <div className="rounded-xl border border-border/20 bg-card/40 overflow-hidden">
+    <div className="rounded-xl border border-border/20 bg-card/40">
       {/* ── Summary bar ── */}
       <div className="px-4 py-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[12px] border-b border-border/15">
         <span className="text-tertiary-text text-[11px] font-medium tracking-wide">回测</span>
@@ -665,12 +683,12 @@ const BacktestCard: React.FC<{
       {/* ── Chart ── */}
       {section === 'chart' && (
         <div className="px-2 py-3">
-          {isPostmarket && chartData.some(d => d.open != null) ? (
+          {chartData.filter(d => d.open != null && d.high != null && d.low != null && d.close != null).length >= 1 ? (
             <PortfolioCandleChart data={chartData} initCapital={initCapital} height={200} />
           ) : (
             <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={chartData}>
-                <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} stroke="hsl(var(--border))" />
+              <LineChart data={chartData} margin={{ left: 12 }}>
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} stroke="hsl(var(--border))" tickFormatter={v => String(v).slice(5)} />
                 <YAxis
                   tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                   stroke="hsl(var(--border))"

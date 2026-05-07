@@ -65,6 +65,11 @@ const CandlestickMiniChart: React.FC<{
     <div ref={containerRef} style={{ position: 'relative', width: '100%', overflowX: 'auto' }}>
       <svg width={chartW} height={height} viewBox={`0 0 ${chartW} ${height}`}
         style={{ display: 'block', minWidth: '100%' }}>
+        <defs>
+          <filter id="tipShadow" x="-10%" y="-10%" width="130%" height="130%">
+            <feDropShadow dx={0} dy={1} stdDeviation={2} floodColor="#000" floodOpacity={0.4} />
+          </filter>
+        </defs>
         {/* Grid */}
         {yTicks.map((price, i) => {
           const y = scaleY(price);
@@ -133,53 +138,49 @@ const CandlestickMiniChart: React.FC<{
               fontSize={9} fontFamily="monospace">{label}</text>
           );
         })}
+        {/* Tooltip — SVG-native, perfectly aligned */}
+        {hoverIdx != null && validData[hoverIdx] && (() => {
+          const d = validData[hoverIdx];
+          const hasOhlc = d.open != null && d.high != null && d.low != null;
+          const isUp = hasOhlc ? d.price! >= d.open! : true;
+          const chgColor = isUp ? '#ef4444' : '#10b981';
+          const chg = hasOhlc && d.open! > 0 ? ((d.price! - d.open!) / d.open! * 100) : null;
+          const cx = pads.l + hoverIdx * xStep;
+          const tipW = 105, tipH = hasOhlc ? 52 : 30;
+          const tipX = cx + tipW + 6 > chartW - pads.r ? cx - tipW - 6 : cx + 6;
+          const tipY = pads.t;
+          const dateStr = d.date.length >= 8 ? `${d.date.slice(0,4)}-${d.date.slice(4,6)}-${d.date.slice(6,8)}` : d.date;
+          return (
+            <g pointerEvents="none">
+              <rect x={tipX} y={tipY} width={tipW} height={tipH} rx={4}
+                fill="#111827" stroke="#374151" strokeWidth={0.8}
+                filter="url(#tipShadow)" />
+              <text x={tipX + 4} y={tipY + 12} fill="#9ca3af" fontSize={9} fontFamily="monospace">{dateStr}</text>
+              {hasOhlc ? (
+                <>
+                  <text x={tipX + 4} y={tipY + 25} fill="#9ca3af" fontSize={9} fontFamily="monospace">
+                    O {d.open!.toFixed(2)}  </text>
+                  <text x={tipX + 60} y={tipY + 25} fill={chgColor} fontSize={9} fontFamily="monospace">
+                    C {d.price!.toFixed(2)}</text>
+                  <text x={tipX + 4} y={tipY + 38} fill="#9ca3af" fontSize={9} fontFamily="monospace">
+                    H {d.high!.toFixed(2)}  </text>
+                  <text x={tipX + 60} y={tipY + 38} fill="#9ca3af" fontSize={9} fontFamily="monospace">
+                    L {d.low!.toFixed(2)}</text>
+                  {chg != null && (
+                    <text x={tipX + 4} y={tipY + 50} fill={chgColor} fontSize={9} fontFamily="monospace"
+                      fontWeight="bold">
+                      {chg >= 0 ? '+' : ''}{chg.toFixed(2)}%
+                    </text>
+                  )}
+                </>
+              ) : (
+                <text x={tipX + 4} y={tipY + 22} fill="#e2e8f0" fontSize={9} fontFamily="monospace">
+                  收盘: {d.price!.toFixed(2)}</text>
+              )}
+            </g>
+          );
+        })()}
       </svg>
-
-      {/* Tooltip — positioned near cursor */}
-      {hoverIdx != null && validData[hoverIdx] && (() => {
-        const d = validData[hoverIdx];
-        const hasOhlc = d.open != null && d.high != null && d.low != null;
-        const isUp = hasOhlc ? d.price! >= d.open! : true;
-        const chgColor = isUp ? '#ef4444' : '#10b981';
-        const chg = hasOhlc && d.open! > 0 ? ((d.price! - d.open!) / d.open! * 100) : null;
-        const xPct = ((pads.l + hoverIdx * xStep) / chartW) * 100;
-        const isRight = xPct > 65;
-        return (
-          <div style={{
-            position: 'absolute', top: 2,
-            [isRight ? 'right' : 'left']: isRight ? 4 : `${xPct}%`,
-            transform: isRight ? 'none' : 'translateX(-50%)',
-            background: '#111827', border: '1px solid #374151',
-            borderRadius: 6, padding: '4px 8px', fontSize: 10, zIndex: 10,
-            whiteSpace: 'nowrap', pointerEvents: 'none',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
-          }}>
-            <div style={{ color: '#9ca3af', marginBottom: 1 }}>
-              {d.date.length >= 8 ? `${d.date.slice(0,4)}-${d.date.slice(4,6)}-${d.date.slice(6,8)}` : d.date}
-            </div>
-            {hasOhlc ? (
-              <>
-                <div style={{ fontFamily: 'monospace' }}>
-                  <span style={{ color: '#9ca3af' }}>O </span>{d.open!.toFixed(2)}
-                  <span style={{ color: '#9ca3af', marginLeft: 6 }}>C </span>
-                  <span style={{ color: chgColor }}>{d.price!.toFixed(2)}</span>
-                </div>
-                <div style={{ fontFamily: 'monospace' }}>
-                  <span style={{ color: '#9ca3af' }}>H </span>{d.high!.toFixed(2)}
-                  <span style={{ color: '#9ca3af', marginLeft: 7 }}>L </span>{d.low!.toFixed(2)}
-                </div>
-                {chg != null && (
-                  <div style={{ color: chgColor, fontFamily: 'monospace' }}>
-                    {chg >= 0 ? '+' : ''}{chg.toFixed(2)}%
-                  </div>
-                )}
-              </>
-            ) : (
-              <div style={{ fontFamily: 'monospace' }}>收盘: {d.price!.toFixed(2)}</div>
-            )}
-          </div>
-        );
-      })()}
     </div>
   );
 };
