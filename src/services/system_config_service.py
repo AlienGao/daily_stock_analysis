@@ -1957,7 +1957,7 @@ class SystemConfigService:
                     "SERVERCHAN3_SENDKEY",
                     "CUSTOM_WEBHOOK_URLS",
                     "WECOM_WEBHOOK_URL",
-                    "ASTRBOT_WEBHOOK_URL",
+                    "ASTRBOT_URL",
                 ),
             )
             or (
