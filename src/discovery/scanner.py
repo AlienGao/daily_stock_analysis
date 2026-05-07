@@ -23,7 +23,7 @@ from typing import Dict, List, Optional, Set
 
 import requests
 
-from src.discovery.config import DiscoveryConfig
+from src.discovery.config import DiscoveryConfig, set_active_config
 from src.discovery.engine import StockDiscoveryEngine
 from src.discovery.factors.base import DiscoveryResult
 
@@ -416,5 +416,6 @@ def run_intraday_scan(config: DiscoveryConfig, tushare_fetcher=None, akshare_fet
         PopularityFactor(),
     ])
 
+    set_active_config(config)
     scanner = IntradayScanner(config, engine)
     scanner.start()

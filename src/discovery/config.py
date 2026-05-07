@@ -6,7 +6,7 @@
 
 import os
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
 
 
 def _env_bool(key: str, default: bool = False) -> bool:
@@ -109,6 +109,9 @@ class DiscoveryConfig:
             if c.strip()
         )
     )
+    use_whitelist: bool = field(
+        default_factory=lambda: _env_bool("DISCOVERY_USE_WHITELIST", False)
+    )
 
     @staticmethod
     def env_config_keys() -> List[str]:
@@ -129,9 +132,25 @@ class DiscoveryConfig:
             "DISCOVER_SCAN_MAX_RUNTIME",
             "DISCOVER_SCAN_TOP_N",
             "DISCOVERY_STOCK_WHITELIST",
+            "DISCOVERY_USE_WHITELIST",
         ]
 
 
 def get_discovery_config() -> DiscoveryConfig:
     """获取发现引擎配置单例。"""
     return DiscoveryConfig()
+
+
+# --- 运行时 active config 持有器（供 API 端点访问同一个实例） ---
+_active_config: Optional[DiscoveryConfig] = None
+
+
+def set_active_config(config: DiscoveryConfig) -> None:
+    """注册当前运行中的 config 实例。"""
+    global _active_config
+    _active_config = config
+
+
+def get_active_config() -> Optional[DiscoveryConfig]:
+    """获取当前运行中的 config 实例，未启动时返回 None。"""
+    return _active_config

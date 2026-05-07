@@ -8,7 +8,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { AppPage, Button, EmptyState } from '../components/common';
-import { discoveryApi, type DiscoveryItem, type BacktestResponse } from '../api/discovery';
+import { discoveryApi, type DiscoveryItem, type BacktestResponse, type ScanModeResponse } from '../api/discovery';
 
 type TabKey = 'intraday' | 'postmarket';
 const AUTO_REFRESH_MS = 60_000;
@@ -768,6 +768,7 @@ const DiscoveryPage: React.FC = () => {
   const [btEndDate, setBtEndDate] = useState<string>('');
   const intradayFetchInFlightRef = useRef(false);
   const intradayLastFetchAtRef = useRef(0);
+  const [scanMode, setScanMode] = useState<ScanModeResponse>({ use_whitelist: false, has_whitelist: false });
 
   const fetchIntraday = useCallback(async (force = false) => {
     const now = Date.now();
@@ -838,7 +839,7 @@ const DiscoveryPage: React.FC = () => {
   }, [btStartDate, btEndDate]);
 
   useEffect(() => {
-    if (tab === 'intraday') { fetchIntraday(); fetchBacktest('intraday'); }
+    if (tab === 'intraday') { fetchIntraday(); fetchBacktest('intraday'); discoveryApi.getScanMode().then(setScanMode).catch(() => {}); }
     else { fetchReport(); fetchBacktest('postmarket'); }
   }, [tab, fetchIntraday, fetchReport, fetchBacktest]);
   useEffect(() => {
@@ -945,6 +946,29 @@ const DiscoveryPage: React.FC = () => {
               <RefreshCw className="h-3 w-3" /> 刷新
             </button>
             <span className="text-tertiary-text/40">· 60s 自动</span>
+
+            {/* 全市场 / 白名单 切换 */}
+            <div className="ml-auto inline-flex rounded-md border border-border/30 overflow-hidden shrink-0">
+              <button
+                onClick={() => { discoveryApi.setScanMode(false).then(setScanMode).then(() => fetchIntraday(true)).catch(() => {}); }}
+                className={`px-2.5 py-1 text-[11px] transition-colors ${!scanMode.use_whitelist ? 'bg-cyan/20 text-cyan font-medium' : 'text-tertiary-text hover:text-secondary-text'}`}
+              >
+                全市场
+              </button>
+              <button
+                onClick={() => { if (!scanMode.has_whitelist) return; discoveryApi.setScanMode(true).then(setScanMode).then(() => fetchIntraday(true)).catch(() => {}); }}
+                className={`px-2.5 py-1 text-[11px] border-l border-border/30 transition-colors ${
+                  !scanMode.has_whitelist
+                    ? 'text-tertiary-text/40 cursor-not-allowed'
+                    : scanMode.use_whitelist
+                    ? 'bg-cyan/20 text-cyan font-medium'
+                    : 'text-tertiary-text hover:text-secondary-text'
+                }`}
+                title={!scanMode.has_whitelist ? '未配置 DISCOVERY_STOCK_WHITELIST' : undefined}
+              >
+                白名单
+              </button>
+            </div>
           </div>
 
           <BacktestCard

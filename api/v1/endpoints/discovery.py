@@ -344,6 +344,48 @@ def get_intraday_top10():
 
 
 # ---------------------------------------------------------------------------
+# Intraday scan mode (whitelist vs full market)
+# ---------------------------------------------------------------------------
+
+class ScanModeResponse(BaseModel):
+    use_whitelist: bool
+    has_whitelist: bool
+
+
+@router.get(
+    "/intraday/scan-mode",
+    response_model=ScanModeResponse,
+    summary="获取盘中扫描模式",
+)
+def get_scan_mode():
+    from src.discovery.config import get_active_config
+    cfg = get_active_config()
+    if not cfg:
+        return ScanModeResponse(use_whitelist=False, has_whitelist=False)
+    return ScanModeResponse(
+        use_whitelist=cfg.use_whitelist,
+        has_whitelist=bool(cfg.discover_whitelist),
+    )
+
+
+@router.post(
+    "/intraday/scan-mode",
+    response_model=ScanModeResponse,
+    summary="切换盘中扫描模式",
+)
+def set_scan_mode(use_whitelist: bool = Query(...)):
+    from src.discovery.config import get_active_config
+    cfg = get_active_config()
+    if not cfg:
+        raise HTTPException(503, "扫描器未启动")
+    cfg.use_whitelist = use_whitelist
+    return ScanModeResponse(
+        use_whitelist=cfg.use_whitelist,
+        has_whitelist=bool(cfg.discover_whitelist),
+    )
+
+
+# ---------------------------------------------------------------------------
 # Post-market report (from reports/
 # ---------------------------------------------------------------------------
 

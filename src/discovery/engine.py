@@ -627,7 +627,7 @@ class StockDiscoveryEngine:
             stock_code = ts_code.split(".")[0] if "." in ts_code else ts_code
             stock_name = names.get(ts_code) or self._stock_names.get(ts_code) or self._stock_names.get(stock_code) or stock_code
 
-            if mode == "intraday" and self.config.discover_whitelist and stock_code not in self.config.discover_whitelist:
+            if mode == "intraday" and self.config.use_whitelist and self.config.discover_whitelist and stock_code not in self.config.discover_whitelist:
                 whitelist_skipped += 1
                 continue
 

@@ -98,6 +98,11 @@ export type BacktestResponse = {
   capital_curve: CapitalCurvePoint[];
 };
 
+export type ScanModeResponse = {
+  use_whitelist: boolean;
+  has_whitelist: boolean;
+};
+
 const INTRADAY_MIN_REQUEST_GAP_MS = 60_000;
 let intradayInFlight: Promise<IntradayTopResponse> | null = null;
 let intradayLastFetchedAt = 0;
@@ -156,5 +161,17 @@ export const discoveryApi = {
       params: { mode, days: options?.days ?? 60, ...options },
     });
     return resp.data as BacktestResponse;
+  },
+
+  async getScanMode(): Promise<ScanModeResponse> {
+    const resp = await apiClient.get('/api/v1/discovery/intraday/scan-mode');
+    return resp.data as ScanModeResponse;
+  },
+
+  async setScanMode(useWhitelist: boolean): Promise<ScanModeResponse> {
+    const resp = await apiClient.post('/api/v1/discovery/intraday/scan-mode', null, {
+      params: { use_whitelist: useWhitelist },
+    });
+    return resp.data as ScanModeResponse;
   },
 };

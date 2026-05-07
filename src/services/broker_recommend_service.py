@@ -234,8 +234,7 @@ class BrokerRecommendService:
                     pass
         return data
 
-    @staticmethod
-    def _effective_month_end(month: str) -> str:
+    def _effective_month_end(self, month: str) -> str:
         """回测有效截止日。历史月取月末；当月：收盘前取前一交易日，收盘后取今天。"""
         year = int(month[:4])
         mon = int(month[4:6])
@@ -250,6 +249,18 @@ class BrokerRecommendService:
             if now.hour >= 15:
                 return today_str
             else:
+                # 用交易日历找前一个交易日
+                month_start = f"{month}01"
+                trading_days = self._get_trading_days(month_start, today_str)
+                # 排除今天，取前一个交易日
+                prev_days = [d for d in trading_days if d < today_str]
+                if prev_days:
+                    return prev_days[-1]
+                # fallback：向前找最近的工作日
+                for i in range(1, 8):
+                    candidate = today - timedelta(days=i)
+                    if candidate.weekday() < 5:
+                        return candidate.strftime("%Y%m%d")
                 return (today - timedelta(days=1)).strftime("%Y%m%d")
         return month_end
 
@@ -1179,6 +1190,11 @@ class BrokerRecommendService:
                     for ts, p in rt_prices.items():
                         price_cache.setdefault(ts, {}).update(p)
                     logger.info(f"[BrokerRecommend] 回测 {month} 实时价补充 {len(rt_prices)} 只")
+                    # 有实时数据时，把今天加入交易日列表
+                    today_str = date.today().strftime("%Y%m%d")
+                    if today_str not in trading_days:
+                        trading_days.append(today_str)
+                        trading_days.sort()
                 daily_changes = rt_changes
             except Exception:
                 pass
