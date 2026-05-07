@@ -1195,6 +1195,7 @@ class BrokerRecommendService:
                     if today_str not in trading_days:
                         trading_days.append(today_str)
                         trading_days.sort()
+                        sell_date = trading_days[-1]
                 daily_changes = rt_changes
             except Exception:
                 pass
