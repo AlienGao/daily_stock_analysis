@@ -13,6 +13,7 @@ import { discoveryApi, type DiscoveryItem, type BacktestResponse, type ScanModeR
 type TabKey = 'intraday' | 'postmarket';
 const AUTO_REFRESH_MS = 60_000;
 const MIN_INTRADAY_FETCH_GAP_MS = 60_000;
+const BACKTEST_REFRESH_MS = 300_000;
 
 const getDefaultTabByCnMarketTime = (): TabKey => {
   const now = new Date();
@@ -865,6 +866,10 @@ const DiscoveryPage: React.FC = () => {
     const id = setInterval(fetchIntraday, AUTO_REFRESH_MS);
     return () => clearInterval(id);
   }, [tab, fetchIntraday]);
+  useEffect(() => {
+    const id = setInterval(() => fetchBacktest(tab), BACKTEST_REFRESH_MS);
+    return () => clearInterval(id);
+  }, [tab, fetchBacktest]);
   useEffect(() => { document.title = '寻股 - DSA'; }, []);
 
   const toggle = (code: string) => setExpanded(prev => {

@@ -9,6 +9,8 @@
 
 import json
 import logging
+import re
+import requests
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
@@ -536,6 +538,67 @@ class DiscoveryBacktest:
                     pass
         except Exception as e:
             logger.debug("[Backtest] Tushare 批量取价失败: %s", e)
+
+        # 实时行情补充：通过 Sina API 补齐今日盘中价格
+        today_str = date.today().strftime("%Y%m%d")
+        if today_str in trading_days:
+            self._prefetch_sina_realtime(codes, today_str)
+
+    def _prefetch_sina_realtime(self, codes: List[str], date_str: str) -> None:
+        """通过 Sina 实时行情补齐当日 OHLC（盘中可用）。"""
+        sina_codes: List[str] = []
+        for c in codes:
+            if not c.isdigit() or len(c) != 6:
+                continue
+            # 检查是否已有当日完整数据
+            existing = (self._price_cache.get(date_str, {}).get(c) or {})
+            if existing.get("open") and existing.get("high") and existing.get("low") and existing.get("close"):
+                continue
+            prefix = "sh" if c.startswith(("6", "68")) else "sz" if c.startswith(("0", "3")) else "bj"
+            sina_codes.append(f"{prefix}{c}")
+
+        if not sina_codes:
+            return
+
+        try:
+            url = f"http://hq.sinajs.cn/list={','.join(sina_codes)}"
+            headers = {"Referer": "http://finance.sina.com.cn"}
+            resp = requests.get(url, headers=headers, timeout=10)
+            resp.encoding = "gbk"
+            body = resp.text
+        except Exception as e:
+            logger.debug("[Backtest] Sina 实时行情请求失败: %s", e)
+            return
+
+        for sc in sina_codes:
+            try:
+                pattern = re.compile(rf"var hq_str_{sc}=\"([^\"]*)\"")
+                m = pattern.search(body)
+                if not m:
+                    continue
+                fields = m.group(1).split(",")
+                if len(fields) < 6:
+                    continue
+                code = sc[2:]  # 去掉 sh/sz/bj 前缀
+                open_p = float(fields[1]) if fields[1] and fields[1] != "0.000" else None
+                high_p = float(fields[4]) if fields[4] and fields[4] != "0.000" else None
+                low_p = float(fields[5]) if fields[5] and fields[5] != "0.000" else None
+                close_p = float(fields[3]) if fields[3] and fields[3] != "0.000" else None  # 最新价
+
+                if open_p is None and high_p is None and low_p is None and close_p is None:
+                    continue
+
+                cache_entry = self._price_cache.setdefault(date_str, {}).setdefault(code, {})
+                if open_p is not None:
+                    cache_entry["open"] = open_p
+                if high_p is not None:
+                    cache_entry["high"] = high_p
+                if low_p is not None:
+                    cache_entry["low"] = low_p
+                if close_p is not None:
+                    cache_entry["close"] = close_p
+            except Exception:
+                pass
 
     def _get_price(self, code: str, date_str: str, field: str) -> Optional[float]:
         day_cache = self._price_cache.get(date_str, {})
