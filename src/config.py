@@ -574,15 +574,14 @@ def get_effective_agent_models_to_try(config: "Config") -> List[str]:
     return ordered_models
 
 
-def setup_env(override: bool = False):
+def setup_env(override: bool = True):
     """
     Initialize environment variables from .env file.
 
     Args:
         override: If True, overwrite existing environment variables with values
-                  from .env file. Set to True when reloading config after updates.
-                  Default is False to preserve behavior on initial load where
-                  system environment variables take precedence.
+                  from .env file. Default is True so .env values always take
+                  precedence over system environment variables.
     """
     Config._capture_bootstrap_runtime_env_overrides()
     # src/config.py -> src/ -> root
