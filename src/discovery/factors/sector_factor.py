@@ -59,11 +59,11 @@ class SectorFactor(BaseFactor):
             logger.debug("[SectorFactor] 复用涨停池缓存 (slot=%d)", slot)
             return self._zt_pool_cache
 
-        # ── 降级：实时行情 pct_chg 过滤 ──
+        # ── 降级：DB 实时行情 pct_chg 过滤 ──
         try:
-            from src.discovery.realtime_spot import get_provider
-            provider = get_provider()
-            spot_df = provider.fetch()
+            from src.storage import DatabaseManager
+            db = DatabaseManager()
+            spot_df = db.get_realtime_spot()
             if spot_df is not None and not spot_df.empty:
                 pct = spot_df["pct_chg"]
                 limit_up = spot_df[pct >= 9.5].copy()
@@ -76,7 +76,7 @@ class SectorFactor(BaseFactor):
                     return limit_up
                 logger.debug("[SectorFactor] 实时行情无涨停候选")
         except Exception as e:
-            logger.warning("[SectorFactor] 实时行情获取失败，回退 Tushare: %s", e)
+            logger.warning("[SectorFactor] 实时行情 DB 查询失败，回退 Tushare: %s", e)
 
         # ── 再降级：Tushare limit_list_d ──
         tushare_fetcher = kwargs.get("tushare_fetcher")

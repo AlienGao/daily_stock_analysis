@@ -2442,6 +2442,15 @@ class SearchService:
                         self._cache.pop(k, None)
             self._cache[key] = (time.time(), response)
 
+    def _put_intel_cache(self, stock_code: str, dimension: str, response: 'SearchResponse') -> None:
+        """Store a SearchResponse in _intel_cache for cross-method reuse."""
+        key = str(stock_code or "").strip()
+        if not key:
+            return
+        if key not in self._intel_cache:
+            self._intel_cache[key] = {}
+        self._intel_cache[key][dimension] = response
+
     def _effective_news_window_days(self) -> int:
         """Resolve effective news window from strategy profile and global max-age."""
         return resolve_news_window_days(
@@ -2780,6 +2789,12 @@ class SearchService:
             provider_max_results,
         )
 
+        # 优先命中跨方法共享缓存（来自 search_comprehensive_intel 或同进程前次调用）
+        intel_key = str(stock_code or "").strip()
+        if intel_key in self._intel_cache and "latest_news" in self._intel_cache[intel_key]:
+            logger.info(f"新闻搜索命中 intel_cache: {stock_name}({stock_code})")
+            return self._intel_cache[intel_key]["latest_news"]
+
         cache_key = self._cache_key(
             f"{query}|news_pref={'zh' if prefer_chinese else 'default'}",
             max_results,
@@ -2788,6 +2803,8 @@ class SearchService:
         cached, cache_owner, cache_event = self._get_cached_or_reserve(cache_key)
         if cached is not None:
             logger.info(f"使用缓存搜索结果: {stock_name}({stock_code})")
+            # 同步到 intel_cache，供后续多 Agent 轮次复用
+            self._put_intel_cache(intel_key, "latest_news", cached)
             return cached
 
         if not cache_owner and cache_event is not None:
@@ -2844,6 +2861,7 @@ class SearchService:
                     if not prefer_chinese:
                         logger.info(f"使用 {provider.name} 搜索成功")
                         self._put_cache(cache_key, limited_response)
+                        self._put_intel_cache(intel_key, "latest_news", limited_response)
                         return limited_response
 
                     if fallback_response is None:
@@ -2867,6 +2885,7 @@ class SearchService:
 
                         if visible_preferred_count >= max_results:
                             self._put_cache(cache_key, limited_response)
+                            self._put_intel_cache(intel_key, "latest_news", limited_response)
                             return limited_response
                     else:
                         logger.info(
@@ -2890,6 +2909,7 @@ class SearchService:
                 best_to_return = best_preferred_response or fallback_response
                 if best_to_return is not None:
                     self._put_cache(cache_key, best_to_return)
+                    self._put_intel_cache(intel_key, "latest_news", best_to_return)
                     return best_to_return
 
             if had_provider_success:

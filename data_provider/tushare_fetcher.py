@@ -179,7 +179,7 @@ class TushareFetcher(BaseFetcher):
         """
         if rate_limit_per_minute is None:
             rate_limit_per_minute = int(os.getenv("TUSHARE_RATE_LIMIT", "500"))
-        self.rate_limit_per_minute = rate_limit_per_minute
+        self.rate_limit_per_minute = int(rate_limit_per_minute)
         self._call_count = 0  # 当前分钟内的调用次数
         self._minute_start: Optional[float] = None  # 当前计数周期开始时间
         self._api: Optional[object] = None  # Tushare API 实例
@@ -2154,8 +2154,9 @@ class TushareFetcher(BaseFetcher):
 
             records = []
             for ts_code, row in df.iterrows():
+                bare_code = str(ts_code).split('.')[0].zfill(6)
                 records.append({
-                    'code': ts_code,
+                    'code': bare_code,
                     'date': trade_dt,
                     'close_qfq': safe_float(row.get('close')),
                     'macd_dif': safe_float(row.get('macd_dif')),
@@ -2440,10 +2441,79 @@ if __name__ == "__main__":
             logger.warning(f"[Tushare] 获取政策库失败: {e}")
             return None
 
-    # ============================================================
-    # 测试筹码分布数据
-    # ============================================================
-    print("=" * 50)
+    def sync_all_daily(
+        self,
+        trade_date: str,
+        lookback_calendar_days: int = 75,
+    ) -> List[pd.DataFrame]:
+        """全市场日线数据同步。
+
+        遍历全 A 股，逐只拉取近 N 个自然日的日线数据。
+
+        Args:
+            trade_date: 目标交易日期 (YYYYMMDD)
+            lookback_calendar_days: 向前推的自然日数，默认 75（覆盖 ~60 个交易日）
+
+        Returns:
+            raw DataFrame 列表，每条为一只股票的 daily() 返回
+        """
+        stock_df = self.get_stock_list()
+        if stock_df is None or stock_df.empty:
+            logger.warning("[sync_all_daily] 无股票列表")
+            return []
+
+        code_col = next(
+            (c for c in ["ts_code", "code"] if c in stock_df.columns), None
+        )
+        if not code_col:
+            return []
+
+        codes = stock_df[code_col].dropna().astype(str).tolist()
+        if not codes:
+            return []
+
+        from datetime import datetime as dt, timedelta
+        end_dt = dt.strptime(trade_date, "%Y%m%d")
+        start_dt = end_dt - timedelta(days=lookback_calendar_days)
+        ts_start = start_dt.strftime("%Y%m%d")
+        ts_end = end_dt.strftime("%Y%m%d")
+
+        logger.info(
+            "[sync_all_daily] 开始同步 %d 只股票, 日期范围 %s ~ %s",
+            len(codes), ts_start, ts_end,
+        )
+
+        results: List[pd.DataFrame] = []
+        errors = 0
+        for i, ts_code in enumerate(codes):
+            try:
+                code_clean = ts_code.strip()
+                df = self._api.daily(
+                    ts_code=code_clean,
+                    start_date=ts_start,
+                    end_date=ts_end,
+                )
+                self._call_count += 1
+                self._minute_start = self._minute_start or time.time()
+                self._check_rate_limit()
+                if df is not None and not df.empty:
+                    results.append(df)
+            except Exception as e:
+                errors += 1
+                if errors <= 5:
+                    logger.debug("[sync_all_daily] %s 失败: %s", ts_code, e)
+
+            if (i + 1) % 500 == 0:
+                logger.info(
+                    "[sync_all_daily] 进度 %d/%d (%.0f%%), errors=%d",
+                    i + 1, len(codes), (i + 1) / len(codes) * 100, errors,
+                )
+
+        logger.info(
+            "[sync_all_daily] 完成: %d 只成功, %d 失败",
+            len(results), errors,
+        )
+        return results
     try:
         chip = fetcher.get_chip_distribution('600519')  # 茅台
     except Exception as e:

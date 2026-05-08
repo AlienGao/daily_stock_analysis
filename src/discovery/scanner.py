@@ -53,6 +53,7 @@ class IntradayScanner:
         self._previous: Dict[str, int] = {}
         self._round = 0
         self._notified: Set[str] = set()  # 已通知过的 ts_code，避免重复推送
+        self._last_realtime_slot: int = -1  # 上次写入 DB 的 slot
 
     # ------------------------------------------------------------------
     # Public API
@@ -114,6 +115,9 @@ class IntradayScanner:
             )
             time.sleep(min(3600, (next_check - self._now()).total_seconds()))
 
+        # Step 1.5: 确保历史日K线数据完整（前 60 个交易日）
+        self._ensure_daily_kline_complete()
+
         # Step 2: 等到盘中开盘
         market_open = self._now().replace(
             hour=_MARKET_OPEN[0], minute=_MARKET_OPEN[1], second=0, microsecond=0
@@ -143,6 +147,7 @@ class IntradayScanner:
             round_start = time.time()
 
             try:
+                self._refresh_realtime_spot()
                 results = self.engine.discover(mode="intraday")
                 if results:
                     annotated = self._annotate_changes(results)
@@ -181,15 +186,114 @@ class IntradayScanner:
 
         logger.info("[Scanner] 盘中扫描结束（已收盘），共 %d 轮", self._round)
 
+        # Step 3.5: 等待 Tushare 日线数据更新（~15:30），补全当日日K线
+        data_ready = self._now().replace(hour=15, minute=30, second=0, microsecond=0)
+        if self._now() < data_ready:
+            wait = (data_ready - self._now()).total_seconds()
+            logger.info("[Scanner] 等待日线数据更新，%ds 后同步...", int(wait))
+            time.sleep(wait)
+        self._ensure_daily_kline_complete()
+
         # Step 4: 收盘后休眠至下一交易日 8:00
         next_open = self._time_to(8, 0)
         wait_min = (next_open - self._now()).total_seconds() / 60
         logger.info("[Scanner] 休眠至 %s (%.0f 分钟)", next_open.strftime("%m-%d %H:%M"), wait_min)
         time.sleep((next_open - self._now()).total_seconds())
 
-    # ------------------------------------------------------------------
-    # Feishu notification
-    # ------------------------------------------------------------------
+    def _refresh_realtime_spot(self) -> bool:
+        """拉取最新实时行情并落库。
+
+        与 RealtimeSpotProvider slot 对齐：同一 slot 内多次调用复用缓存，
+        slot 变更时才写入 DB。返回 True 表示有更新。
+        """
+        try:
+            from src.discovery.realtime_spot import get_provider
+            from src.storage import DatabaseManager
+            import time as _time
+            provider = get_provider()
+            df = provider.fetch()
+            if df is None or df.empty:
+                return False
+            slot = int(_time.time() // 30)
+            if slot == self._last_realtime_slot:
+                return False
+            if hasattr(df, "reset_index"):
+                df = df.reset_index()
+            source = provider._cache.get("source", "unknown")
+            db = DatabaseManager()
+            db.upsert_realtime_spot(df, source=source, slot=slot)
+            self._last_realtime_slot = slot
+            logger.debug("[Scanner] 实时行情落库: %d 条 (slot=%d, source=%s)", len(df), slot, source)
+            return True
+        except Exception as e:
+            logger.warning("[Scanner] 实时行情刷新失败: %s", e)
+            return False
+
+    def _ensure_daily_kline_complete(self) -> None:
+        """校验 stock_daily 是否有近 60 个交易日数据，缺失则自动补全。
+
+        在每日首次进入扫描前调用一次（开盘前），全量同步耗时约 10~12 分钟。
+        若数据已完整则秒级返回（仅查询 MAX(date)）。
+        """
+        try:
+            from datetime import date as _date, timedelta
+            from src.storage import DatabaseManager
+            from sqlalchemy import text
+
+            db = DatabaseManager()
+            today = _date.today()
+            cutoff = today - timedelta(days=75)
+
+            with db.get_session() as s:
+                max_date_raw = s.execute(text("SELECT MAX(date) FROM stock_daily")).scalar()
+                stock_count = s.execute(text(
+                    "SELECT COUNT(DISTINCT code) FROM stock_daily WHERE date >= :cutoff"
+                ), {"cutoff": cutoff}).scalar()
+
+            if isinstance(max_date_raw, str):
+                max_date = _date.fromisoformat(max_date_raw)
+            elif hasattr(max_date_raw, 'date'):
+                max_date = max_date_raw.date()
+            else:
+                max_date = max_date_raw
+
+            if max_date is not None and (today - max_date).days <= 1:
+                logger.info(
+                    "[Scanner] 日K线数据完整 (max_date=%s, %d stocks), 跳过同步",
+                    max_date, stock_count,
+                )
+                return
+
+            if max_date is None:
+                logger.info("[Scanner] stock_daily 为空，开始全量同步日K线...")
+            else:
+                logger.info(
+                    "[Scanner] 日K线数据滞后 (max_date=%s, today=%s), 开始同步...",
+                    max_date, today,
+                )
+
+            fetcher = getattr(self.engine, "tushare_fetcher", None)
+            if fetcher is None:
+                logger.warning("[Scanner] 无 TushareFetcher，跳过日K线同步")
+                return
+
+            from scripts.sync_daily_kline import sync_all_daily, normalize_tushare_daily
+            import pandas as pd
+
+            trade_date = today.strftime("%Y%m%d")
+            raw_dfs = sync_all_daily(fetcher, trade_date=trade_date, lookback_calendar_days=75)
+            if not raw_dfs:
+                logger.warning("[Scanner] 日K线同步无数据返回")
+                return
+
+            normalized = [d for d in (normalize_tushare_daily(df) for df in raw_dfs) if not d.empty]
+            if not normalized:
+                return
+            merged = pd.concat(normalized, ignore_index=True)
+            saved = db.save_daily_batch(merged, data_source="tushare_auto")
+            logger.info("[Scanner] 日K线自动补全完成: %d 行", saved)
+        except Exception as e:
+            logger.warning("[Scanner] 日K线完整性校验失败 (fail-open): %s", e)
 
     def _notify_new_stocks(self, annotated: List[dict]) -> None:
         """飞书通知新上榜股票。同一股票每天只通知一次。"""

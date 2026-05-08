@@ -152,6 +152,8 @@ class RealtimeSpotProvider:
                         "price": parts[3],
                         "pct_chg": parts[32],
                         "pre_close": parts[4],
+                        "high": float(parts[33]) if parts[33] else 0,
+                        "low": float(parts[34]) if parts[34] else 0,
                         # 腾讯成交量单位「手」，成交额单位「万元」
                         "volume": float(parts[6]) * 100 if parts[6] else 0,
                         "amount": float(parts[37]) * 10000 if parts[37] else 0,
@@ -263,6 +265,12 @@ class RealtimeSpotProvider:
         preclose_col = next(
             (c for c in ["昨收", "昨日收盘", "pre_close", "lastClose"] if c in df.columns), None
         )
+        high_col = next(
+            (c for c in ["最高", "最高价", "high"] if c in df.columns), None
+        )
+        low_col = next(
+            (c for c in ["最低", "最低价", "low"] if c in df.columns), None
+        )
         volume_col = next(
             (c for c in ["成交量", "volume"] if c in df.columns), None
         )
@@ -284,6 +292,8 @@ class RealtimeSpotProvider:
         result["pre_close"] = (
             pd.to_numeric(df[preclose_col], errors="coerce") if preclose_col else pd.NA
         )
+        result["high"] = pd.to_numeric(df[high_col], errors="coerce") if high_col else pd.NA
+        result["low"] = pd.to_numeric(df[low_col], errors="coerce") if low_col else pd.NA
         result["volume"] = pd.to_numeric(df[volume_col], errors="coerce") if volume_col else pd.NA
         result["amount"] = pd.to_numeric(df[amount_col], errors="coerce") if amount_col else pd.NA
         result["source"] = source

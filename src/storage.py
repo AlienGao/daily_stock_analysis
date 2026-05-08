@@ -227,6 +227,36 @@ class FundamentalSnapshot(Base):
         return f"<FundamentalSnapshot(query_id={self.query_id}, code={self.code})>"
 
 
+class RealtimeSpot(Base):
+    """盘中实时行情快照。
+
+    每 30 秒由 Scanner 刷新一次，按 code 去重 upsert。
+    各盘中因子从此表查询当前行情，避免重复拉取。
+    """
+    __tablename__ = 'realtime_spot'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(10), nullable=False, index=True)
+    name = Column(String(50))
+    price = Column(Float)
+    pct_chg = Column(Float)
+    pre_close = Column(Float)
+    high = Column(Float)
+    low = Column(Float)
+    volume = Column(Float)
+    amount = Column(Float)
+    source = Column(String(20))
+    slot = Column(Integer)
+    updated_at = Column(DateTime, default=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('code', name='uix_realtime_spot_code'),
+    )
+
+    def __repr__(self) -> str:
+        return f"<RealtimeSpot(code={self.code}, price={self.price}, slot={self.slot})>"
+
+
 class AnalysisHistory(Base):
     """
     分析结果历史记录模型
@@ -1300,7 +1330,11 @@ class DatabaseManager:
     @staticmethod
     def _normalize_daily_date(value: Any) -> Any:
         if isinstance(value, str):
+            if len(value) == 8 and value.isdigit():
+                return datetime.strptime(value, '%Y%m%d').date()
             return datetime.strptime(value, '%Y-%m-%d').date()
+        if isinstance(value, (int, float)):
+            return datetime.strptime(str(int(value)), '%Y%m%d').date()
         if isinstance(value, pd.Timestamp):
             return value.date()
         if isinstance(value, datetime):
@@ -1974,9 +2008,146 @@ class DatabaseManager:
             
             return list(results)
     
+    # ------------------------------------------------------------------
+    # Realtime spot (intraday snapshot)
+    # ------------------------------------------------------------------
+
+    def upsert_realtime_spot(
+        self,
+        df: pd.DataFrame,
+        source: str,
+        slot: int,
+    ) -> int:
+        """批量 upsert 实时行情快照。
+
+        DataFrame 列: code, name, price, pct_chg, pre_close, volume, amount
+        按 code 唯一键 upsert，同一 code 新数据覆盖旧数据。
+        """
+        if df is None or df.empty:
+            return 0
+
+        now = datetime.now()
+        records: List[Dict[str, Any]] = []
+        for _, row in df.iterrows():
+            code = str(row.get("code", "")).strip()
+            if not code:
+                continue
+            records.append({
+                "code": code,
+                "name": str(row.get("name", ""))[:50],
+                "price": self._normalize_sql_value(row.get("price")),
+                "pct_chg": self._normalize_sql_value(row.get("pct_chg")),
+                "pre_close": self._normalize_sql_value(row.get("pre_close")),
+                "high": self._normalize_sql_value(row.get("high")),
+                "low": self._normalize_sql_value(row.get("low")),
+                "volume": self._normalize_sql_value(row.get("volume")),
+                "amount": self._normalize_sql_value(row.get("amount")),
+                "source": source,
+                "slot": slot,
+                "updated_at": now,
+            })
+
+        if not records:
+            return 0
+
+        def _write(session: Session) -> int:
+            if self._is_sqlite_engine:
+                _CHUNK = 100
+                for i in range(0, len(records), _CHUNK):
+                    chunk = records[i : i + _CHUNK]
+                    stmt = sqlite_insert(RealtimeSpot).values(chunk)
+                    excluded = stmt.excluded
+                    session.execute(
+                        stmt.on_conflict_do_update(
+                            index_elements=["code"],
+                            set_={
+                                "name": excluded.name,
+                                "price": excluded.price,
+                                "pct_chg": excluded.pct_chg,
+                                "pre_close": excluded.pre_close,
+                                "high": excluded.high,
+                                "low": excluded.low,
+                                "volume": excluded.volume,
+                                "amount": excluded.amount,
+                                "source": excluded.source,
+                                "slot": excluded.slot,
+                                "updated_at": excluded.updated_at,
+                            },
+                        )
+                    )
+                return len(records)
+            else:
+                codes = [r["code"] for r in records]
+                existing = {
+                    row.code: row
+                    for row in session.execute(
+                        select(RealtimeSpot).where(RealtimeSpot.code.in_(codes))
+                    ).scalars().all()
+                }
+                new_count = 0
+                for rec in records:
+                    ent = existing.get(rec["code"])
+                    if ent is None:
+                        session.add(RealtimeSpot(**rec))
+                        new_count += 1
+                    else:
+                        for key in ("name", "price", "pct_chg", "pre_close",
+                                     "high", "low", "volume", "amount", "source", "slot"):
+                            setattr(ent, key, rec[key])
+                        ent.updated_at = now
+                return new_count
+
+        try:
+            saved = self._run_write_transaction("upsert_realtime_spot", _write)
+            logger.debug("[DB] upsert_realtime_spot: %d 条 (slot=%d, source=%s)", saved, slot, source)
+            return saved
+        except Exception as e:
+            logger.error("[DB] upsert_realtime_spot 失败: %s", e)
+            raise
+
+    def get_realtime_spot(self) -> pd.DataFrame:
+        """获取全量实时行情快照，返回 DataFrame (index=code)。"""
+        with self.get_session() as session:
+            rows = session.execute(
+                select(RealtimeSpot)
+            ).scalars().all()
+            if not rows:
+                return pd.DataFrame()
+            df = pd.DataFrame([{
+                "code": r.code, "name": r.name, "price": r.price,
+                "pct_chg": r.pct_chg, "pre_close": r.pre_close,
+                "high": r.high, "low": r.low,
+                "volume": r.volume, "amount": r.amount,
+                "source": r.source, "slot": r.slot,
+            } for r in rows])
+            return df.set_index("code")
+
+    def get_realtime_spot_for_codes(self, codes: List[str]) -> pd.DataFrame:
+        """按代码列表查询实时行情。"""
+        if not codes:
+            return pd.DataFrame()
+        with self.get_session() as session:
+            rows = session.execute(
+                select(RealtimeSpot).where(RealtimeSpot.code.in_(codes))
+            ).scalars().all()
+            if not rows:
+                return pd.DataFrame()
+            df = pd.DataFrame([{
+                "code": r.code, "name": r.name, "price": r.price,
+                "pct_chg": r.pct_chg, "pre_close": r.pre_close,
+                "high": r.high, "low": r.low,
+                "volume": r.volume, "amount": r.amount,
+                "source": r.source, "slot": r.slot,
+            } for r in rows])
+            return df.set_index("code")
+
+    # ------------------------------------------------------------------
+    # Daily data
+    # ------------------------------------------------------------------
+
     def save_daily_data(
-        self, 
-        df: pd.DataFrame, 
+        self,
+        df: pd.DataFrame,
         code: str,
         data_source: str = "Unknown"
     ) -> int:
@@ -2125,6 +2296,189 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"保存 {code} 数据失败: {e}")
             raise
+
+    def save_daily_batch(self, df: pd.DataFrame, data_source: str = "tushare_sync") -> int:
+        """批量保存多股票日线数据。
+
+        与 save_daily_data 不同，此方法接收多只股票的混合 DataFrame，
+        按 (code, date) 执行 bulk UPSERT。
+
+        Args:
+            df: 包含 ts_code, trade_date, open, high, low, close, vol, amount, pct_chg 的 DataFrame
+            data_source: 数据来源标签
+
+        Returns:
+            写入总行数（含更新）
+        """
+        if df is None or df.empty:
+            return 0
+
+        code_col = next(
+            (c for c in ["ts_code", "code"] if c in df.columns), None
+        )
+        if code_col is None:
+            logger.warning("[save_daily_batch] 无代码列")
+            return 0
+
+        now = datetime.now()
+        records: List[Dict[str, Any]] = []
+        seen: set = set()
+        for _, row in df.iterrows():
+            raw_code = str(row.get(code_col, "")).strip()
+            code = raw_code.split(".")[0] if "." in raw_code else raw_code
+            row_date = self._normalize_daily_date(row.get("trade_date") or row.get("date"))
+            if not code or not row_date:
+                continue
+            key = (code, row_date)
+            if key in seen:
+                continue
+            seen.add(key)
+            records.append({
+                "code": code,
+                "date": row_date,
+                "open": self._normalize_sql_value(row.get("open")),
+                "high": self._normalize_sql_value(row.get("high")),
+                "low": self._normalize_sql_value(row.get("low")),
+                "close": self._normalize_sql_value(row.get("close")),
+                "volume": self._normalize_sql_value(row.get("vol") or row.get("volume")),
+                "amount": self._normalize_sql_value(row.get("amount")),
+                "pct_chg": self._normalize_sql_value(row.get("pct_chg")),
+                "data_source": data_source,
+                "created_at": now,
+                "updated_at": now,
+            })
+
+        if not records:
+            return 0
+
+        def _write(session: Session) -> int:
+            if self._is_sqlite_engine:
+                _CHUNK = 40
+                for i in range(0, len(records), _CHUNK):
+                    chunk = records[i : i + _CHUNK]
+                    stmt = sqlite_insert(StockDaily).values(chunk)
+                    excluded = stmt.excluded
+                    session.execute(
+                        stmt.on_conflict_do_update(
+                            index_elements=["code", "date"],
+                            set_={
+                                "open": excluded.open,
+                                "high": excluded.high,
+                                "low": excluded.low,
+                                "close": excluded.close,
+                                "volume": excluded.volume,
+                                "amount": excluded.amount,
+                                "pct_chg": excluded.pct_chg,
+                                "data_source": excluded.data_source,
+                                "updated_at": excluded.updated_at,
+                            },
+                        )
+                    )
+                return len(records)
+            else:
+                saved = 0
+                for rec in records:
+                    existing = session.execute(
+                        select(StockDaily).where(
+                            and_(
+                                StockDaily.code == rec["code"],
+                                StockDaily.date == rec["date"],
+                            )
+                        )
+                    ).scalars().first()
+                    if existing is None:
+                        session.add(StockDaily(**rec))
+                    else:
+                        for col in ("open", "high", "low", "close", "volume",
+                                     "amount", "pct_chg"):
+                            setattr(existing, col, rec[col])
+                        existing.data_source = rec["data_source"]
+                        existing.updated_at = now
+                    saved += 1
+                return saved
+
+        try:
+            saved = self._run_write_transaction("save_daily_batch", _write)
+            logger.info("[save_daily_batch] 写入 %d 行 (%d 只股票)", saved, len(seen))
+            return saved
+        except Exception as e:
+            logger.error("[save_daily_batch] 失败: %s", e)
+            raise
+
+    def get_recent_close_matrix(
+        self, trade_date: str, lookback_trading_days: int = 60,
+    ) -> pd.DataFrame:
+        """获取全市场近期收盘价矩阵。
+
+        返回 pivot DataFrame: index=code, columns=date (YYYY-MM-DD), values=close。
+        用于计算 MA5/MA10/MA20/MA30 等均线指标。
+
+        Args:
+            trade_date: 目标交易日期 (YYYYMMDD)，以此为截止日期
+            lookback_trading_days: 往前推的交易天数
+
+        Returns:
+            pivot DataFrame，若无数据返回空 DataFrame
+        """
+        from datetime import timedelta
+        end_dt = datetime.strptime(trade_date, "%Y%m%d").date()
+        cutoff = end_dt - timedelta(days=lookback_trading_days * 2)
+
+        with self.get_session() as session:
+            rows = session.execute(
+                select(
+                    StockDaily.code,
+                    StockDaily.date,
+                    StockDaily.close,
+                ).where(
+                    StockDaily.date >= cutoff,
+                ).order_by(StockDaily.code, StockDaily.date)
+            ).all()
+
+            if not rows:
+                return pd.DataFrame()
+
+            df = pd.DataFrame(rows, columns=["code", "date", "close"])
+            # Drop duplicates keeping last
+            df = df.drop_duplicates(subset=["code", "date"], keep="last")
+            pivot = df.pivot(index="code", columns="date", values="close")
+            pivot = pivot.sort_index(axis=1)
+            return pivot
+
+    def get_recent_ohlc_matrix(
+        self, trade_date: str, lookback_trading_days: int = 30,
+    ) -> pd.DataFrame:
+        """获取全市场近期 OHLC 矩阵，用于本地计算 KDJ/BOLL。
+
+        返回 pivot DataFrame: index=code, columns=MultiIndex (ohlc, date)
+        ohlc 层级: high, low, close
+        """
+        from datetime import timedelta
+        end_dt = datetime.strptime(trade_date, "%Y%m%d").date()
+        cutoff = end_dt - timedelta(days=lookback_trading_days * 2)
+
+        with self.get_session() as session:
+            rows = session.execute(
+                select(
+                    StockDaily.code,
+                    StockDaily.date,
+                    StockDaily.high,
+                    StockDaily.low,
+                    StockDaily.close,
+                ).where(
+                    StockDaily.date >= cutoff,
+                ).order_by(StockDaily.code, StockDaily.date)
+            ).all()
+
+            if not rows:
+                return pd.DataFrame()
+
+            df = pd.DataFrame(rows, columns=["code", "date", "high", "low", "close"])
+            df = df.drop_duplicates(subset=["code", "date"], keep="last")
+            # MultiIndex: columns = (ohlc_field, date)
+            pivot = df.pivot(index="code", columns="date", values=["high", "low", "close"])
+            pivot = pivot.sort_index(axis=1)
+            return pivot
 
     def save_broker_recommend_monthly(self, month: str, df: pd.DataFrame) -> int:
         """批量保存券商月度金股推荐数据。
