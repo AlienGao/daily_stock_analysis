@@ -31,7 +31,7 @@ def _get_live_prices(ts_codes: List[str]) -> Dict[str, float]:
         symbols = []
         for ts_code in ts_codes:
             code = ts_code.split(".")[0] if "." in ts_code else ts_code
-            sym = f"sh{code}" if code.startswith(("6", "9")) else f"sz{code}"
+            sym = f"sh{code}" if code.startswith(("60", "68")) else f"sz{code}"
             symbols.append(sym)
         url = f"http://hq.sinajs.cn/list={','.join(symbols)}"
         resp = requests.get(url, headers={"Referer": "http://finance.sina.com.cn"}, timeout=5)
@@ -523,23 +523,39 @@ def run_postmarket_discovery():
             from src.discovery.factors import (
                 MoneyFlowFactor, MarginFactor, ChipFactor,
                 TechnicalFactor, LimitFactor,
+                FundamentalFactor, PopularityFactor, HotMoneyFactor,
+                NorthboundFactor, InstitutionHoldFactor, ProfitForecastFactor,
+                PerformanceFactor, BuybackFactor, InsiderBuyFactor,
+                BrokerRecommendFactor,
             )
             from data_provider.tushare_fetcher import TushareFetcher
+            from data_provider.akshare_fetcher import AkshareFetcher
 
             discovery_config = get_active_config() or get_discovery_config()
             set_active_config(discovery_config)
             tushare_fetcher = TushareFetcher.get_instance()
+            akshare_fetcher = AkshareFetcher()
             if not tushare_fetcher.is_available():
                 _postmarket_tasks[task_id] = {"status": "failed", "error": "数据源 Tushare 不可用"}
                 return
 
-            engine = StockDiscoveryEngine(discovery_config, tushare_fetcher)
+            engine = StockDiscoveryEngine(discovery_config, tushare_fetcher, akshare_fetcher)
             engine.register_factors([
                 MoneyFlowFactor(),
                 MarginFactor(),
                 ChipFactor(),
                 TechnicalFactor(),
                 LimitFactor(),
+                FundamentalFactor(),
+                PopularityFactor(),
+                HotMoneyFactor(),
+                NorthboundFactor(),
+                InstitutionHoldFactor(),
+                ProfitForecastFactor(),
+                PerformanceFactor(),
+                BuybackFactor(),
+                InsiderBuyFactor(),
+                BrokerRecommendFactor(),
             ])
 
             results = engine.discover(mode="postmarket")

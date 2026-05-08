@@ -226,7 +226,7 @@ class StockDiscoveryEngine:
     def _to_sina_symbol(ts_code: str) -> str:
         """将 ts_code 转为新浪行情符号，如 600379.SH → sh600379"""
         code = ts_code.split(".")[0] if "." in ts_code else ts_code
-        if code.startswith(("6", "9")):
+        if code.startswith(("60", "68")):
             return f"sh{code}"
         return f"sz{code}"
 
@@ -272,30 +272,47 @@ class StockDiscoveryEngine:
     # ------------------------------------------------------------------
 
     def _get_sector_labels(self, ts_codes: List[str]) -> Dict[str, List[str]]:
-        """从北向持股数据中获取各股票的所属板块标签。"""
+        """获取各股票的所属板块标签。
+
+        优先从 SectorFactor 涨停池的 sector_map 读取（akshare stock_zt_pool_em），
+        北向持股数据已 geo-blocked，降级到 Tushare industry。
+        """
+        labels: Dict[str, List[str]] = {}
+
+        # ── 优先：SectorFactor 涨停池 sector_map ──
+        try:
+            sector_factor = self._factors.get("sector")
+            if sector_factor is not None and hasattr(sector_factor, "sector_map"):
+                smap = sector_factor.sector_map
+                for ts_code in ts_codes:
+                    stock_code = ts_code.split(".")[0] if "." in ts_code else ts_code
+                    sec = smap.get(stock_code)
+                    if sec and sec != "nan":
+                        labels[stock_code] = [sec]
+                if labels:
+                    logger.debug("[Discovery] 从涨停池获取板块标签: %d 只", len(labels))
+                    return labels
+        except Exception as e:
+            logger.debug("[Discovery] 涨停池板块标签获取失败: %s", e)
+
+        # ── 降级: akshare 北向持股（已被 geo-blocked，静默失败）──
         try:
             import akshare as ak
 
             df = ak.stock_hsgt_hold_stock_em(market="北向", indicator="今日排行")
-            if df is None or df.empty:
-                return {}
+            if df is not None and not df.empty:
+                code_col = next((c for c in df.columns if "代码" in c), None)
+                sector_col = next((c for c in df.columns if "所属板块" in c), None)
+                if code_col and sector_col:
+                    for _, row in df.iterrows():
+                        code = str(row.get(code_col, "")).strip()
+                        sector = str(row.get(sector_col, "")).strip()
+                        if code and sector and sector != "nan":
+                            labels[code] = sector.split(",")[:3]
+        except Exception:
+            pass  # geo-blocked，静默
 
-            labels: Dict[str, List[str]] = {}
-            code_col = next((c for c in df.columns if "代码" in c), None)
-            sector_col = next((c for c in df.columns if "所属板块" in c), None)
-
-            if code_col is None or sector_col is None:
-                return {}
-
-            for _, row in df.iterrows():
-                code = str(row.get(code_col, "")).strip()
-                sector = str(row.get(sector_col, "")).strip()
-                if code and sector and sector != "nan":
-                    labels[code] = sector.split(",")[:3]  # 最多3个板块
-            return labels
-        except Exception as e:
-            logger.debug(f"[Discovery] 获取板块标签失败: {e}")
-            return {}
+        return labels
 
     # ------------------------------------------------------------------
     # Dynamic weight adjustment
@@ -467,10 +484,37 @@ class StockDiscoveryEngine:
         )
 
         # Phase 1: 拉取因子数据（优先复用 session 缓存）
+        # 实时因子（如 sector）每轮重新拉取，不缓存
+        _REALTIME_FACTORS = {"sector"}
+
         factor_data: Dict[str, pd.DataFrame] = {}
         if self._factor_data_cache and self._cache_trade_date == trade_date:
-            logger.info("[Discovery] 因子数据命中 session 缓存，跳过拉取")
-            factor_data = self._factor_data_cache
+            # 复用非实时缓存
+            factor_data = {
+                k: v for k, v in self._factor_data_cache.items()
+                if k not in _REALTIME_FACTORS
+            }
+            if factor_data:
+                logger.info("[Discovery] 因子数据命中 session 缓存（%s），跳过拉取",
+                            ", ".join(factor_data.keys()))
+            # 实时因子始终重新拉取
+            for factor in available:
+                if factor.name not in _REALTIME_FACTORS:
+                    continue
+                try:
+                    logger.debug(f"[Discovery] 拉取实时因子数据: {factor.name}")
+                    df = factor.fetch_data(
+                        trade_date,
+                        tushare_fetcher=self.tushare_fetcher,
+                        akshare_fetcher=self.akshare_fetcher,
+                    )
+                    if df is not None and not df.empty:
+                        factor_data[factor.name] = df
+                        logger.info(f"[Discovery] {factor.name}: 获取 {len(df)} 条数据")
+                    else:
+                        logger.warning(f"[Discovery] {factor.name}: 无数据")
+                except Exception as e:
+                    logger.warning(f"[Discovery] 拉取实时因子 {factor.name} 失败: {e}")
         else:
             for factor in available:
                 try:
@@ -488,9 +532,12 @@ class StockDiscoveryEngine:
                 except Exception as e:
                     logger.warning(f"[Discovery] 拉取因子 {factor.name} 失败: {e}")
 
-            # 更新 session 缓存
+            # 更新 session 缓存（排除实时因子）
             if factor_data:
-                self._factor_data_cache = factor_data
+                self._factor_data_cache = {
+                    k: v for k, v in factor_data.items()
+                    if k not in _REALTIME_FACTORS
+                }
                 self._cache_trade_date = trade_date
 
         if not factor_data:

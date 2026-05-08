@@ -1,0 +1,152 @@
+[
+  {
+    "rank": 1,
+    "ts_code": "600076.SH",
+    "stock_code": "600076",
+    "stock_name": "康欣新材",
+    "score": 73.9,
+    "sector": "",
+    "factor_scores": {
+      "money_flow": 100.0,
+      "technical": 67.82501900892093,
+      "limit": 53.82126866263906
+    },
+    "reasons": [
+      "特大单净流入",
+      "主力净流入率>10%",
+      "大单净流入",
+      "MACD金叉",
+      "MACD红柱",
+      "RSI健康(57)",
+      "BOLL收窄",
+      "涨停"
+    ],
+    "buy_price_low": 3.1,
+    "buy_price_high": 3.5,
+    "stop_loss": 3.0,
+    "take_profit_1": 3.8,
+    "take_profit_2": 4.0,
+    "discovered_at": "18:52:47",
+    "price_at_discovery": 3.6
+  },
+  {
+    "rank": 2,
+    "ts_code": "002009.SZ",
+    "stock_code": "002009",
+    "stock_name": "天奇股份",
+    "score": 73.9,
+    "sector": "专用设备",
+    "factor_scores": {
+      "money_flow": 100.0,
+      "technical": 67.82501900892093,
+      "limit": 53.82126866263906
+    },
+    "reasons": [
+      "特大单净流入",
+      "主力净流入率>10%",
+      "MACD金叉",
+      "MACD红柱",
+      "RSI健康(67)",
+      "BOLL收窄",
+      "涨停",
+      "所属板块: 专用设备"
+    ],
+    "buy_price_low": 21.9,
+    "buy_price_high": 24.6,
+    "stop_loss": 21.2,
+    "take_profit_1": 28.3,
+    "take_profit_2": 29.7,
+    "discovered_at": "18:52:47",
+    "price_at_discovery": 26.96
+  },
+  {
+    "rank": 3,
+    "ts_code": "002997.SZ",
+    "stock_code": "002997",
+    "stock_name": "瑞鹄模具",
+    "score": 73.9,
+    "sector": "汽车零部件",
+    "factor_scores": {
+      "money_flow": 100.0,
+      "technical": 67.82501900892093,
+      "limit": 53.82126866263906
+    },
+    "reasons": [
+      "特大单净流入",
+      "主力净流入率>10%",
+      "大单净流入",
+      "MACD金叉",
+      "MACD红柱",
+      "RSI健康(67)",
+      "BOLL收窄",
+      "涨停",
+      "所属板块: 汽车零部件"
+    ],
+    "buy_price_low": 27.9,
+    "buy_price_high": 31.4,
+    "stop_loss": 27.0,
+    "take_profit_1": 35.4,
+    "take_profit_2": 37.1,
+    "discovered_at": "18:52:47",
+    "price_at_discovery": 33.7
+  },
+  {
+    "rank": 4,
+    "ts_code": "001333.SZ",
+    "stock_code": "001333",
+    "stock_name": "光华股份",
+    "score": 73.9,
+    "sector": "",
+    "factor_scores": {
+      "money_flow": 100.0,
+      "technical": 67.82501900892093,
+      "limit": 53.82126866263906
+    },
+    "reasons": [
+      "特大单净流入",
+      "主力净流入率>10%",
+      "大单净流入",
+      "MACD金叉",
+      "MACD红柱",
+      "RSI健康(64)",
+      "BOLL收窄",
+      "涨停"
+    ],
+    "buy_price_low": 22.6,
+    "buy_price_high": 24.8,
+    "stop_loss": 21.9,
+    "take_profit_1": 27.1,
+    "take_profit_2": 28.3,
+    "discovered_at": "18:52:47",
+    "price_at_discovery": 25.77
+  },
+  {
+    "rank": 5,
+    "ts_code": "000659.SZ",
+    "stock_code": "000659",
+    "stock_name": "珠海中富",
+    "score": 73.9,
+    "sector": "",
+    "factor_scores": {
+      "money_flow": 100.0,
+      "technical": 67.82501900892093,
+      "limit": 53.82126866263906
+    },
+    "reasons": [
+      "特大单净流入",
+      "主力净流入率>10%",
+      "MACD金叉",
+      "MACD红柱",
+      "RSI健康(62)",
+      "BOLL收窄",
+      "涨停"
+    ],
+    "buy_price_low": 3.8,
+    "buy_price_high": 4.2,
+    "stop_loss": 3.7,
+    "take_profit_1": 4.6,
+    "take_profit_2": 4.8,
+    "discovered_at": "18:52:47",
+    "price_at_discovery": 4.4
+  }
+]

@@ -163,14 +163,6 @@ const getRefPrice = (item: DiscoveryItem): number | null => {
   return calcBuyRef(item.buy_price_low, item.buy_price_high);
 };
 
-const calcItemPnLRatio = (item: DiscoveryItem): number | null => {
-  const refPrice = getRefPrice(item);
-  const profitPct = calcPctFromBase(refPrice, item.take_profit_1);
-  const lossPctRaw = calcPctFromBase(refPrice, item.stop_loss);
-  const lossPct = lossPctRaw != null ? Math.abs(lossPctRaw) : null;
-  return calcPnLRatio(profitPct, lossPct);
-};
-
 const chCfg = (c?: string) => {
   switch (c) {
     case 'new': return { icon: <Sparkles className="h-3 w-3" />, label: '新进', cls: 'text-cyan bg-cyan/8 border-cyan/15' };
@@ -907,23 +899,13 @@ const DiscoveryPage: React.FC = () => {
     () => (tab === 'intraday' ? intraday?.top_n ?? [] : postTopN),
     [tab, intraday?.top_n, postTopN]
   );
-  const sortedCardList = useMemo(() => {
-    return [...cardList].sort((a, b) => {
-      const ratioA = calcItemPnLRatio(a);
-      const ratioB = calcItemPnLRatio(b);
-      if (ratioA == null && ratioB == null) return a.rank - b.rank;
-      if (ratioA == null) return 1;
-      if (ratioB == null) return -1;
-      return ratioB - ratioA;
-    });
-  }, [cardList]);
-  const hasCards = sortedCardList.length > 0;
+  const hasCards = cardList.length > 0;
 
   /* ── Card grid ── */
   const cardGrid = (
     <div className="grid gap-2">
       <AnimatePresence>
-        {sortedCardList.map((item) => (
+        {cardList.map((item) => (
           <StockCard
             key={item.stock_code}
             item={item}
