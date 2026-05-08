@@ -242,9 +242,20 @@ export type InstitutionSurveyResponse = {
   items: InstitutionSurveyItem[];
 };
 
-export async function getInstitutionSurvey(): Promise<InstitutionSurveyResponse> {
+export async function getInstitutionSurvey(params?: {
+  start_date?: string;
+  end_date?: string;
+}): Promise<InstitutionSurveyResponse> {
   const resp = await apiClient.get<InstitutionSurveyResponse>(
-    '/api/v1/broker-recommend/institution-survey'
+    '/api/v1/broker-recommend/institution-survey',
+    { params }
+  );
+  return resp.data;
+}
+
+export async function getInstitutionSurveyDates(): Promise<string[]> {
+  const resp = await apiClient.get<string[]>(
+    '/api/v1/broker-recommend/institution-survey/dates'
   );
   return resp.data;
 }

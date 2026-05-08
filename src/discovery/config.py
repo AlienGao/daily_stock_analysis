@@ -113,6 +113,20 @@ class DiscoveryConfig:
         default_factory=lambda: _env_bool("DISCOVERY_USE_WHITELIST", False)
     )
 
+    # --- 扫描范围：full_market / whitelist / broker_gold（盘中/盘后独立） ---
+    intraday_scan_universe: str = field(
+        default_factory=lambda: os.getenv("DISCOVERY_INTRADAY_SCAN_UNIVERSE",
+                                  os.getenv("DISCOVERY_SCAN_UNIVERSE", "full_market")).strip()
+    )
+    postmarket_scan_universe: str = field(
+        default_factory=lambda: os.getenv("DISCOVERY_POSTMARKET_SCAN_UNIVERSE",
+                                  os.getenv("DISCOVERY_SCAN_UNIVERSE", "full_market")).strip()
+    )
+    # 兼容旧配置（盘中/盘后共用时用此值作为默认）
+    scan_universe: str = field(
+        default_factory=lambda: os.getenv("DISCOVERY_SCAN_UNIVERSE", "full_market").strip()
+    )
+
     @staticmethod
     def env_config_keys() -> List[str]:
         """返回所有环境变量键名，用于 .env.example 同步和 WebUI 配置。"""
@@ -133,6 +147,7 @@ class DiscoveryConfig:
             "DISCOVER_SCAN_TOP_N",
             "DISCOVERY_STOCK_WHITELIST",
             "DISCOVERY_USE_WHITELIST",
+            "DISCOVERY_SCAN_UNIVERSE",
         ]
 
 
@@ -154,3 +169,63 @@ def set_active_config(config: DiscoveryConfig) -> None:
 def get_active_config() -> Optional[DiscoveryConfig]:
     """获取当前运行中的 config 实例，未启动时返回 None。"""
     return _active_config
+
+
+# --- 运行时状态持久化（JSON 文件，跨服务重启保留扫描模式和白名单） ---
+
+import json as _json
+from pathlib import Path as _Path
+
+_RUNTIME_STATE_PATH = _Path(__file__).resolve().parent.parent.parent / "discovery_runtime.json"
+
+
+def _ensure_active_config() -> DiscoveryConfig:
+    """获取或创建 active config（供 API 修改用）。"""
+    global _active_config
+    if _active_config is None:
+        _active_config = DiscoveryConfig()
+        _load_runtime_state_into(_active_config)
+    return _active_config
+
+
+def _load_runtime_state_into(cfg: DiscoveryConfig) -> None:
+    """从 JSON 文件加载运行时状态到 config 实例。"""
+    try:
+        if _RUNTIME_STATE_PATH.exists():
+            data = _json.loads(_RUNTIME_STATE_PATH.read_text(encoding="utf-8"))
+            if "intraday_scan_universe" in data:
+                cfg.intraday_scan_universe = data["intraday_scan_universe"]
+            if "postmarket_scan_universe" in data:
+                cfg.postmarket_scan_universe = data["postmarket_scan_universe"]
+            if "discover_whitelist" in data:
+                cfg.discover_whitelist = set(data["discover_whitelist"])
+    except Exception:
+        pass
+
+
+def save_runtime_state() -> None:
+    """持久化当前 active config 的扫描模式和白名单到 JSON 文件。"""
+    cfg = _ensure_active_config()
+    data = {
+        "intraday_scan_universe": cfg.intraday_scan_universe,
+        "postmarket_scan_universe": cfg.postmarket_scan_universe,
+        "discover_whitelist": sorted(cfg.discover_whitelist),
+    }
+    _RUNTIME_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    _RUNTIME_STATE_PATH.write_text(_json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def get_effective_whitelist() -> list:
+    """返回当前生效的白名单列表（优先 active config，其次 env）。"""
+    cfg = get_active_config()
+    if cfg and cfg.discover_whitelist:
+        return sorted(cfg.discover_whitelist)
+    tmp = DiscoveryConfig()
+    return sorted(tmp.discover_whitelist)
+
+
+def set_whitelist(codes: list) -> None:
+    """运行时更新白名单并持久化（立即生效，无需重启）。"""
+    cfg = _ensure_active_config()
+    cfg.discover_whitelist = set(c.strip() for c in codes if c.strip())
+    save_runtime_state()

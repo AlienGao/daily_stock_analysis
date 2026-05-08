@@ -599,6 +599,26 @@ class StockDiscoveryEngine:
         if mode == "intraday":
             top_n = self.config.scan_top_n
 
+        # --- 扫描范围过滤 ---
+        universe_code_set: Optional[set] = None
+        universe = self.config.intraday_scan_universe if mode == "intraday" else self.config.postmarket_scan_universe
+        if universe == "whitelist" and self.config.discover_whitelist:
+            universe_code_set = self.config.discover_whitelist
+        elif universe == "broker_gold":
+            from src.services.broker_recommend_service import BrokerRecommendService
+            from datetime import datetime as _dt
+            month = _dt.now().strftime("%Y%m")
+            try:
+                service = BrokerRecommendService()
+                df = service.get_monthly_recommendations(month)
+                if df is not None and not df.empty:
+                    universe_code_set = set(
+                        ts.split(".")[0] if "." in ts else ts
+                        for ts in df["ts_code"].unique()
+                    )
+            except Exception:
+                logger.warning("[Discovery] 获取金股列表失败，回退全市场扫描", exc_info=True)
+
         candidate_codes = combined.index.tolist()
         # 解析所有候选股票名称
         names = self._resolve_stock_names(candidate_codes)
@@ -627,7 +647,7 @@ class StockDiscoveryEngine:
             stock_code = ts_code.split(".")[0] if "." in ts_code else ts_code
             stock_name = names.get(ts_code) or self._stock_names.get(ts_code) or self._stock_names.get(stock_code) or stock_code
 
-            if mode == "intraday" and self.config.use_whitelist and self.config.discover_whitelist and stock_code not in self.config.discover_whitelist:
+            if universe_code_set and stock_code not in universe_code_set:
                 whitelist_skipped += 1
                 continue
 

@@ -344,49 +344,86 @@ def get_intraday_top10():
 
 
 # ---------------------------------------------------------------------------
-# Intraday scan mode (whitelist vs full market)
+# Scan mode (per-mode: intraday / postmarket)
 # ---------------------------------------------------------------------------
 
 class ScanModeResponse(BaseModel):
-    use_whitelist: bool
+    scan_universe: str  # full_market / whitelist / broker_gold
     has_whitelist: bool
 
 
 @router.get(
-    "/intraday/scan-mode",
+    "/scan-mode",
     response_model=ScanModeResponse,
-    summary="获取盘中扫描模式",
+    summary="获取扫描范围（盘中/盘后独立）",
 )
-def get_scan_mode():
-    from src.discovery.config import DiscoveryConfig, get_active_config
-    cfg = get_active_config()
-    if not cfg:
-        # 扫描器未运行时，从环境变量读取白名单配置
-        tmp = DiscoveryConfig()
-        return ScanModeResponse(use_whitelist=tmp.use_whitelist, has_whitelist=bool(tmp.discover_whitelist))
+def get_scan_mode(mode: str = Query("intraday", description="intraday 或 postmarket")):
+    from src.discovery.config import _ensure_active_config
+    cfg = _ensure_active_config()
+    universe = cfg.intraday_scan_universe if mode == "intraday" else cfg.postmarket_scan_universe
     return ScanModeResponse(
-        use_whitelist=cfg.use_whitelist,
+        scan_universe=universe,
         has_whitelist=bool(cfg.discover_whitelist),
     )
 
 
 @router.post(
-    "/intraday/scan-mode",
+    "/scan-mode",
     response_model=ScanModeResponse,
-    summary="切换盘中扫描模式",
+    summary="切换扫描范围（盘中/盘后独立）",
 )
-def set_scan_mode(use_whitelist: bool = Query(...)):
-    from src.discovery.config import DiscoveryConfig, get_active_config, set_active_config
-    cfg = get_active_config()
-    if not cfg:
-        # 扫描器未运行时，创建临时 config 存储偏好
-        cfg = DiscoveryConfig()
-        set_active_config(cfg)
-    cfg.use_whitelist = use_whitelist
+def set_scan_mode(
+    scan_universe: str = Query(..., description="full_market / whitelist / broker_gold"),
+    mode: str = Query("intraday", description="intraday 或 postmarket"),
+):
+    from src.discovery.config import _ensure_active_config, save_runtime_state
+    cfg = _ensure_active_config()
+    if mode == "intraday":
+        cfg.intraday_scan_universe = scan_universe
+    else:
+        cfg.postmarket_scan_universe = scan_universe
+    save_runtime_state()
+    result_universe = cfg.intraday_scan_universe if mode == "intraday" else cfg.postmarket_scan_universe
     return ScanModeResponse(
-        use_whitelist=cfg.use_whitelist,
+        scan_universe=result_universe,
         has_whitelist=bool(cfg.discover_whitelist),
     )
+
+
+# ---------------------------------------------------------------------------
+# Whitelist management
+# ---------------------------------------------------------------------------
+
+class WhitelistResponse(BaseModel):
+    codes: list
+    count: int
+
+
+@router.get(
+    "/whitelist",
+    response_model=WhitelistResponse,
+    summary="获取扫描白名单",
+)
+def get_whitelist():
+    from src.discovery.config import get_effective_whitelist
+    codes = get_effective_whitelist()
+    return WhitelistResponse(codes=codes, count=len(codes))
+
+
+class UpdateWhitelistRequest(BaseModel):
+    codes: List[str] = []
+
+
+@router.put(
+    "/whitelist",
+    response_model=WhitelistResponse,
+    summary="更新扫描白名单（立即生效）",
+)
+def update_whitelist(body: UpdateWhitelistRequest):
+    from src.discovery.config import set_whitelist, get_effective_whitelist
+    set_whitelist(body.codes)
+    updated = get_effective_whitelist()
+    return WhitelistResponse(codes=updated, count=len(updated))
 
 
 # ---------------------------------------------------------------------------
@@ -481,7 +518,7 @@ def run_postmarket_discovery():
 
     def _run():
         try:
-            from src.discovery.config import get_discovery_config
+            from src.discovery.config import get_active_config, set_active_config, get_discovery_config
             from src.discovery.engine import StockDiscoveryEngine
             from src.discovery.factors import (
                 MoneyFlowFactor, MarginFactor, ChipFactor,
@@ -489,7 +526,8 @@ def run_postmarket_discovery():
             )
             from data_provider.tushare_fetcher import TushareFetcher
 
-            discovery_config = get_discovery_config()
+            discovery_config = get_active_config() or get_discovery_config()
+            set_active_config(discovery_config)
             tushare_fetcher = TushareFetcher.get_instance()
             if not tushare_fetcher.is_available():
                 _postmarket_tasks[task_id] = {"status": "failed", "error": "数据源 Tushare 不可用"}

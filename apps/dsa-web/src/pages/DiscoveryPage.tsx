@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { DatePicker } from 'antd';
+import dayjs from 'dayjs';
 import { AppPage, Button, EmptyState } from '../components/common';
 import { discoveryApi, type DiscoveryItem, type BacktestResponse, type ScanModeResponse } from '../api/discovery';
 
@@ -379,7 +381,10 @@ const StockCard: React.FC<{
    ────────────────────────────────────────────── */
 
 const fmtWan = (v: number) => `${(v / 10000).toFixed(1)}万`;
-const fmtDate = (s: string) => `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
+const fmtDate = (s: string) => {
+  const d = `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
+  return s.length > 8 ? d + s.slice(8) : d;
+};
 
 /** Portfolio candlestick chart — SVG-based, Y-axis shows returns %. */
 const PortfolioCandleChart: React.FC<{
@@ -415,12 +420,14 @@ const PortfolioCandleChart: React.FC<{
     close: toPct(d.close!),
   }));
 
-  const pads = { t: 10, r: 6, b: 22, l: 48 };
-  const chartW = width;
-  const chartH = height - pads.t - pads.b;
+  const pads = { t: 10, r: 8, b: 22, l: 48 };
   const count = ohlcData.length;
-  const xStep = (chartW - pads.l - pads.r) / Math.max(count - 1, 1);
-  const candleW = Math.max(Math.min(xStep * 0.6, 12), 3);
+  const candleStep = 28;
+  const candleW = 8;
+  // Chart grows with data; scrolls horizontally when wider than container
+  const chartW = Math.max(width, pads.l + count * candleStep + pads.r);
+  const chartH = height - pads.t - pads.b;
+  const dayToX = (i: number) => pads.l + i * candleStep;
 
   const allPct: number[] = [];
   ohlcData.forEach(d => { allPct.push(d.high, d.low, d.open, d.close); });
@@ -441,10 +448,20 @@ const PortfolioCandleChart: React.FC<{
   const gridLines = 4;
   const yTicks: number[] = [];
   for (let i = 1; i < gridLines; i++) yTicks.push(yMax - (yRange * i) / gridLines);
-  const xTickInterval = Math.max(Math.ceil(count / 6), 1);
+  // X-axis labels: at candle positions, every Nth candle to avoid overlap
+  const xLabelInterval = Math.max(Math.ceil(50 / candleStep), 1);
+  const xLabels: Array<{ x: number; label: string }> = [];
+  for (let i = 0; i < count; i += xLabelInterval) {
+    xLabels.push({ x: dayToX(i), label: ohlcData[i].date.slice(5).replace('-', '/') });
+  }
+  // Always include last
+  const lastIdx = count - 1;
+  if (xLabels.length === 0 || ohlcData[lastIdx].date.slice(5).replace('-', '/') !== xLabels[xLabels.length - 1].label) {
+    xLabels.push({ x: dayToX(lastIdx), label: ohlcData[lastIdx].date.slice(5).replace('-', '/') });
+  }
 
   return (
-    <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
+    <div ref={containerRef} style={{ position: 'relative', width: '100%', overflowX: 'auto' }}>
       <svg width={chartW} height={height} style={{ display: 'block' }}>
         {/* Grid */}
         {yTicks.map((v, i) => {
@@ -467,7 +484,7 @@ const PortfolioCandleChart: React.FC<{
 
         {/* Candles */}
         {ohlcData.map((d, i) => {
-          const x = pads.l + i * xStep;
+          const x = dayToX(i);
           const isUp = d.close >= d.open;
           const color = isUp ? '#ef4444' : '#10b981';
           const bodyTop = scaleY(Math.max(d.open, d.close));
@@ -488,14 +505,10 @@ const PortfolioCandleChart: React.FC<{
         })}
 
         {/* X-axis labels */}
-        {ohlcData.map((d, i) => {
-          if (i % xTickInterval !== 0 && i !== count - 1) return null;
-          const x = pads.l + i * xStep;
-          return (
-            <text key={`xl-${i}`} x={x} y={height - 4} textAnchor="middle"
-              fill="hsl(var(--muted-foreground))" fontSize={9} fontFamily="monospace">{d.date.slice(5)}</text>
-          );
-        })}
+        {xLabels.map((lbl, i) => (
+          <text key={`xl-${i}`} x={lbl.x} y={height - 4} textAnchor="middle"
+            fill="hsl(var(--muted-foreground))" fontSize={9} fontFamily="monospace">{lbl.label}</text>
+        ))}
       </svg>
 
       {/* Tooltip */}
@@ -504,13 +517,11 @@ const PortfolioCandleChart: React.FC<{
         const r = raw[hoverIdx];
         const isUp = d.close >= d.open;
         const chgColor = isUp ? '#ef4444' : '#10b981';
-        const dayChg = d.open !== 0 ? ((d.close - d.open) / Math.abs(d.open) * 100) : null;
+        const dayChg = r.open != null && r.open !== 0 ? ((r.close! - r.open!) / Math.abs(r.open!) * 100) : null;
         const cumChg = initCapital > 0 ? ((r.capital - initCapital) / initCapital) * 100 : 0;
-        const xPx = pads.l + hoverIdx * xStep;
+        const xPx = dayToX(hoverIdx);
         const tooltipW = 170;
         const margin = 8;
-        const isNearRight = xPx > chartW - tooltipW / 2 - margin;
-        const isNearLeft = xPx < tooltipW / 2 + margin;
         const leftPx = Math.max(margin, Math.min(chartW - tooltipW - margin, xPx - tooltipW / 2));
         return (
           <div style={{
@@ -595,7 +606,6 @@ const BacktestCard: React.FC<{
   const pnlSign = data.total_pnl >= 0 ? '+' : '';
   const initCapital = data.initial_capital || 5_000_000;
   const initialLine = initCapital;
-  const isPostmarket = data.mode === 'postmarket';
   const chartData = data.capital_curve.length > 0
     ? data.capital_curve.map(p => ({
         date: fmtDate(p.date),
@@ -637,24 +647,28 @@ const BacktestCard: React.FC<{
 
         {/* Date filter */}
         <div className="ml-auto flex items-center gap-1.5">
-          <input
-            type="date"
-            value={startDate ? fmtDate(startDate) : ''}
-            min="2026-05-01"
-            max={new Date().toISOString().slice(0, 10)}
-            onChange={e => onStartDate(e.target.value.replace(/-/g, ''))}
-            onClick={e => e.stopPropagation()}
-            className="h-7 w-28 rounded-lg border border-border/30 bg-muted/30 px-2 text-[11px] text-foreground"
+          <DatePicker
+            value={startDate ? dayjs(fmtDate(startDate)) : null}
+            onChange={d => onStartDate(d ? d.format('YYYYMMDD') : '')}
+            minDate={dayjs('2026-05-01')}
+            maxDate={dayjs()}
+            placeholder="开始日期"
+            style={{ width: 120 }}
+            size="small"
+            allowClear
+            showToday={false}
           />
           <span className="text-tertiary-text text-[11px]">-</span>
-          <input
-            type="date"
-            value={endDate ? fmtDate(endDate) : ''}
-            min="2026-05-01"
-            max={new Date().toISOString().slice(0, 10)}
-            onChange={e => onEndDate(e.target.value.replace(/-/g, ''))}
-            onClick={e => e.stopPropagation()}
-            className="h-7 w-28 rounded-lg border border-border/30 bg-muted/30 px-2 text-[11px] text-foreground"
+          <DatePicker
+            value={endDate ? dayjs(fmtDate(endDate)) : null}
+            onChange={d => onEndDate(d ? d.format('YYYYMMDD') : '')}
+            minDate={dayjs('2026-05-01')}
+            maxDate={dayjs()}
+            placeholder="结束日期"
+            style={{ width: 120 }}
+            size="small"
+            allowClear
+            showToday={false}
           />
           <button
             onClick={e => { e.stopPropagation(); onRefresh(); }}
@@ -689,7 +703,7 @@ const BacktestCard: React.FC<{
           ) : (
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={chartData} margin={{ left: 12 }}>
-                <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} stroke="hsl(var(--border))" tickFormatter={v => String(v).slice(5)} />
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} stroke="hsl(var(--border))" tickFormatter={v => String(v).slice(5).replace('-', '/')} />
                 <YAxis
                   tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                   stroke="hsl(var(--border))"
@@ -787,7 +801,8 @@ const DiscoveryPage: React.FC = () => {
   const [btEndDate, setBtEndDate] = useState<string>('');
   const intradayFetchInFlightRef = useRef(false);
   const intradayLastFetchAtRef = useRef(0);
-  const [scanMode, setScanMode] = useState<ScanModeResponse>({ use_whitelist: false, has_whitelist: false });
+  const [intradayScanMode, setIntradayScanMode] = useState<ScanModeResponse>({ scan_universe: 'full_market', has_whitelist: false });
+  const [postmarketScanMode, setPostmarketScanMode] = useState<ScanModeResponse>({ scan_universe: 'full_market', has_whitelist: false });
 
   const fetchIntraday = useCallback(async (force = false) => {
     const now = Date.now();
@@ -857,10 +872,20 @@ const DiscoveryPage: React.FC = () => {
     finally { setBacktestLoading(false); }
   }, [btStartDate, btEndDate]);
 
+  const fetchScanMode = useCallback((mode: 'intraday' | 'postmarket') => {
+    discoveryApi.getScanMode(mode).then((data: any) => {
+      if (data.scan_universe === undefined && data.use_whitelist !== undefined) {
+        data = { scan_universe: data.use_whitelist ? 'whitelist' : 'full_market', has_whitelist: data.has_whitelist ?? false };
+      }
+      if (mode === 'intraday') setIntradayScanMode(data as ScanModeResponse);
+      else setPostmarketScanMode(data as ScanModeResponse);
+    }).catch(() => {});
+  }, []);
+
   useEffect(() => {
-    if (tab === 'intraday') { fetchIntraday(); fetchBacktest('intraday'); discoveryApi.getScanMode().then(setScanMode).catch(() => {}); }
-    else { fetchReport(); fetchBacktest('postmarket'); }
-  }, [tab, fetchIntraday, fetchReport, fetchBacktest]);
+    if (tab === 'intraday') { fetchIntraday(); fetchBacktest('intraday'); fetchScanMode('intraday'); }
+    else { fetchReport(); fetchBacktest('postmarket'); fetchScanMode('postmarket'); }
+  }, [tab, fetchIntraday, fetchReport, fetchBacktest, fetchScanMode]);
   useEffect(() => {
     if (tab !== 'intraday') return;
     const id = setInterval(fetchIntraday, AUTO_REFRESH_MS);
@@ -970,26 +995,32 @@ const DiscoveryPage: React.FC = () => {
             </button>
             <span className="text-tertiary-text/40">· 60s 自动</span>
 
-            {/* 全市场 / 白名单 切换 */}
+            {/* 全市场 / 白名单 / 金股 切换 */}
             <div className="ml-auto inline-flex rounded-md border border-border/30 overflow-hidden shrink-0">
               <button
-                onClick={() => { discoveryApi.setScanMode(false).then(setScanMode).then(() => fetchIntraday(true)).catch(() => {}); }}
-                className={`px-2.5 py-1 text-[11px] transition-colors ${!scanMode.use_whitelist ? 'bg-cyan/20 text-cyan font-medium' : 'text-tertiary-text hover:text-secondary-text'}`}
+                onClick={() => { setIntradayScanMode(prev => ({ ...prev, scan_universe: 'full_market' })); discoveryApi.setScanMode('full_market', 'intraday').then(setIntradayScanMode).then(() => fetchIntraday(true)).catch(() => {}); }}
+                className={`px-2.5 py-1 text-[11px] transition-colors ${intradayScanMode.scan_universe === 'full_market' ? 'bg-cyan/20 text-cyan font-medium' : 'text-tertiary-text hover:text-secondary-text'}`}
               >
                 全市场
               </button>
               <button
-                onClick={() => { if (!scanMode.has_whitelist) return; discoveryApi.setScanMode(true).then(setScanMode).then(() => fetchIntraday(true)).catch(() => {}); }}
+                onClick={() => { if (!intradayScanMode.has_whitelist) return; setIntradayScanMode(prev => ({ ...prev, scan_universe: 'whitelist' })); discoveryApi.setScanMode('whitelist', 'intraday').then(setIntradayScanMode).then(() => fetchIntraday(true)).catch(() => {}); }}
                 className={`px-2.5 py-1 text-[11px] border-l border-border/30 transition-colors ${
-                  !scanMode.has_whitelist
+                  !intradayScanMode.has_whitelist
                     ? 'text-tertiary-text/40 cursor-not-allowed'
-                    : scanMode.use_whitelist
+                    : intradayScanMode.scan_universe === 'whitelist'
                     ? 'bg-cyan/20 text-cyan font-medium'
                     : 'text-tertiary-text hover:text-secondary-text'
                 }`}
-                title={!scanMode.has_whitelist ? '未配置 DISCOVERY_STOCK_WHITELIST' : undefined}
+                title={!intradayScanMode.has_whitelist ? '未配置 DISCOVERY_STOCK_WHITELIST' : undefined}
               >
                 白名单
+              </button>
+              <button
+                onClick={() => { setIntradayScanMode(prev => ({ ...prev, scan_universe: 'broker_gold' })); discoveryApi.setScanMode('broker_gold', 'intraday').then(setIntradayScanMode).then(() => fetchIntraday(true)).catch(() => {}); }}
+                className={`px-2.5 py-1 text-[11px] border-l border-border/30 transition-colors ${intradayScanMode.scan_universe === 'broker_gold' ? 'bg-cyan/20 text-cyan font-medium' : 'text-tertiary-text hover:text-secondary-text'}`}
+              >
+                金股
               </button>
             </div>
           </div>
@@ -1035,6 +1066,35 @@ const DiscoveryPage: React.FC = () => {
                 报告日期 {reportDate}
               </span>
             )}
+
+            {/* 全市场 / 白名单 / 金股 切换 */}
+            <div className="ml-auto inline-flex rounded-md border border-border/30 overflow-hidden shrink-0">
+              <button
+                onClick={() => { setPostmarketScanMode(prev => ({ ...prev, scan_universe: 'full_market' })); discoveryApi.setScanMode('full_market', 'postmarket').then(setPostmarketScanMode).catch(() => {}); }}
+                className={`px-2.5 py-1 text-[11px] transition-colors ${postmarketScanMode.scan_universe === 'full_market' ? 'bg-cyan/20 text-cyan font-medium' : 'text-tertiary-text hover:text-secondary-text'}`}
+              >
+                全市场
+              </button>
+              <button
+                onClick={() => { if (!postmarketScanMode.has_whitelist) return; setPostmarketScanMode(prev => ({ ...prev, scan_universe: 'whitelist' })); discoveryApi.setScanMode('whitelist', 'postmarket').then(setPostmarketScanMode).catch(() => {}); }}
+                className={`px-2.5 py-1 text-[11px] border-l border-border/30 transition-colors ${
+                  !postmarketScanMode.has_whitelist
+                    ? 'text-tertiary-text/40 cursor-not-allowed'
+                    : postmarketScanMode.scan_universe === 'whitelist'
+                    ? 'bg-cyan/20 text-cyan font-medium'
+                    : 'text-tertiary-text hover:text-secondary-text'
+                }`}
+                title={!postmarketScanMode.has_whitelist ? '未配置 DISCOVERY_STOCK_WHITELIST' : undefined}
+              >
+                白名单
+              </button>
+              <button
+                onClick={() => { setPostmarketScanMode(prev => ({ ...prev, scan_universe: 'broker_gold' })); discoveryApi.setScanMode('broker_gold', 'postmarket').then(setPostmarketScanMode).catch(() => {}); }}
+                className={`px-2.5 py-1 text-[11px] border-l border-border/30 transition-colors ${postmarketScanMode.scan_universe === 'broker_gold' ? 'bg-cyan/20 text-cyan font-medium' : 'text-tertiary-text hover:text-secondary-text'}`}
+              >
+                金股
+              </button>
+            </div>
           </div>
 
           <BacktestCard

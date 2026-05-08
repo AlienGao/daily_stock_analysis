@@ -1689,51 +1689,90 @@ class BrokerRecommendService:
             return 1.0
         return 0.3
 
-    def get_institution_survey_top10(self) -> Dict[str, Any]:
-        """获取近两周机构调研加权 Top 10。"""
+    def get_institution_survey_top10(
+        self, start_date: Optional[str] = None, end_date: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """获取机构调研加权 Top 10。
+
+        Args:
+            start_date: 起始日期 YYYYMMDD（可选，默认 14 天前）
+            end_date: 截止日期 YYYYMMDD（可选，默认今天）
+        """
         import json as _json
         from datetime import datetime
 
         today_str = datetime.now().strftime("%Y-%m-%d")
 
-        # 尝试读取缓存
-        try:
-            with open(self._SURVEY_CACHE_PATH, "r", encoding="utf-8") as f:
-                cached = _json.load(f)
-            if cached.get("date") == today_str:
-                logger.info("[InstitutionSurvey] 命中缓存")
-                return cached
-        except (FileNotFoundError, _json.JSONDecodeError, KeyError):
-            pass
-
         # 计算日期范围
-        end_date = datetime.now().strftime("%Y%m%d")
-        start_date = (datetime.now() - timedelta(days=14)).strftime("%Y%m%d")
+        if end_date:
+            _end = end_date
+        else:
+            _end = datetime.now().strftime("%Y%m%d")
+        if start_date:
+            _start = start_date
+        else:
+            _start = (datetime.strptime(_end, "%Y%m%d") - timedelta(days=14)).strftime("%Y%m%d")
 
-        from data_provider.tushare_fetcher import TushareFetcher
-        tf = TushareFetcher.get_instance()
-        if not tf or not tf.is_available():
-            return {"error": "Tushare 未配置", "date": today_str, "items": []}
+        use_db = end_date is not None or start_date is not None
 
-        df = tf.get_stk_surv(start_date, end_date)
-        if df is None or df.empty:
-            return {"date": today_str, "start_date": start_date, "end_date": end_date, "total_stocks": 0, "items": []}
-
-        # 计算权重列并持久化原始数据
-        df["weight"] = df["rece_mode"].apply(
-            lambda m: self._calc_survey_weight(str(m) if m else "")
-        )
-        # 按日期分批写入，每日覆盖旧数据
-        for surv_day in df["surv_date"].dropna().unique():
-            day_df = df[df["surv_date"] == surv_day]
+        # 默认模式：走 Tushare API + 缓存
+        if not use_db:
+            # 尝试读取缓存
             try:
-                self.db.save_institution_survey(day_df, clear_date=str(surv_day))
-            except Exception:
+                with open(self._SURVEY_CACHE_PATH, "r", encoding="utf-8") as f:
+                    cached = _json.load(f)
+                if cached.get("date") == today_str:
+                    logger.info("[InstitutionSurvey] 命中缓存")
+                    return cached
+            except (FileNotFoundError, _json.JSONDecodeError, KeyError):
                 pass
 
-        # 按 ts_code 聚合加权分
+            from data_provider.tushare_fetcher import TushareFetcher
+            tf = TushareFetcher.get_instance()
+            if not tf or not tf.is_available():
+                return {"error": "Tushare 未配置", "date": today_str, "items": []}
+
+            df = tf.get_stk_surv(_start, _end)
+            if df is None or df.empty:
+                return {"date": today_str, "start_date": _start, "end_date": _end, "total_stocks": 0, "items": []}
+
+            # 计算权重列并持久化原始数据
+            df["weight"] = df["rece_mode"].apply(
+                lambda m: self._calc_survey_weight(str(m) if m else "")
+            )
+            # 按日期分批写入，每日覆盖旧数据
+            for surv_day in df["surv_date"].dropna().unique():
+                day_df = df[df["surv_date"] == surv_day]
+                try:
+                    self.db.save_institution_survey(day_df, clear_date=str(surv_day))
+                except Exception:
+                    pass
+
+            rows = [row for _, row in df.iterrows()]
+        else:
+            # 历史模式：走数据库查询
+            records = self.db.get_institution_survey(_start, _end)
+            if not records:
+                return {"date": today_str, "start_date": _start, "end_date": _end, "total_stocks": 0, "items": []}
+
+            # 将 ORM 对象转为 dict 列表（兼容下面的聚合逻辑）
+            rows = []
+            for r in records:
+                rows.append({
+                    "ts_code": r.ts_code,
+                    "name": r.name,
+                    "rece_mode": r.rece_mode or "",
+                    "surv_date": r.surv_date,
+                    "rece_org": r.rece_org or "",
+                    "org_type": r.org_type or "",
+                    "fund_visitors": r.fund_visitors or "",
+                    "rece_place": r.rece_place or "",
+                    "comp_rece": r.comp_rece or "",
+                })
+
+        # 按 ts_code 聚合加权分（DB/Tushare 共用）
         stock_scores: Dict[str, Dict[str, Any]] = {}
-        for _, row in df.iterrows():
+        for row in rows:
             ts_code = str(row.get("ts_code", ""))
             if not ts_code:
                 continue
@@ -1780,17 +1819,22 @@ class BrokerRecommendService:
 
         result = {
             "date": today_str,
-            "start_date": start_date,
-            "end_date": end_date,
+            "start_date": _start,
+            "end_date": _end,
             "total_stocks": len(stock_scores),
             "items": sorted_stocks,
         }
 
-        # 写入缓存
-        try:
-            with open(self._SURVEY_CACHE_PATH, "w", encoding="utf-8") as f:
-                _json.dump(result, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            logger.warning(f"[InstitutionSurvey] 写入缓存失败: {e}")
+        # 仅默认模式写入缓存
+        if not use_db:
+            try:
+                with open(self._SURVEY_CACHE_PATH, "w", encoding="utf-8") as f:
+                    _json.dump(result, f, ensure_ascii=False, indent=2)
+            except Exception as e:
+                logger.warning(f"[InstitutionSurvey] 写入缓存失败: {e}")
 
         return result
+
+    def get_institution_survey_dates(self) -> List[str]:
+        """获取数据库中所有有机构调研数据的日期列表（降序）。"""
+        return self.db.get_institution_survey_dates()

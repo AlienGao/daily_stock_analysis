@@ -1,0 +1,133 @@
+[
+  {
+    "rank": 1,
+    "stock_code": "301162",
+    "stock_name": "国能日新",
+    "score": 13.0,
+    "sector": "软件开发",
+    "factor_scores": {
+      "sector": 0.0,
+      "ma_entry": 100.0,
+      "momentum": 100.0,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "reasons": [
+      "KDJ超卖(27)",
+      "BOLL中轨支撑",
+      "主力资金净流入",
+      "换手活跃(3.4%)",
+      "所属板块: 软件开发",
+      "拥挤惩罚(-27分)"
+    ],
+    "buy_price_low": 59.1,
+    "buy_price_high": 65.7,
+    "stop_loss": 57.3,
+    "take_profit_1": 70.7,
+    "take_profit_2": 74.1
+  },
+  {
+    "rank": 2,
+    "stock_code": "300782",
+    "stock_name": "卓胜微",
+    "score": 9.200000000000003,
+    "sector": "半导体",
+    "factor_scores": {
+      "sector": 0.0,
+      "ma_entry": 96.24563065415607,
+      "momentum": 100.0,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "reasons": [
+      "KDJ超卖(27)",
+      "主力资金净流入",
+      "换手活跃(6.2%)",
+      "所属板块: 半导体",
+      "拥挤惩罚(-30分)"
+    ],
+    "buy_price_low": 89.5,
+    "buy_price_high": 102.3,
+    "stop_loss": 86.8,
+    "take_profit_1": 111.9,
+    "take_profit_2": 117.2
+  },
+  {
+    "rank": 3,
+    "stock_code": "601083",
+    "stock_name": "锦江航运",
+    "score": 7.5,
+    "sector": "",
+    "factor_scores": {
+      "sector": 0.0,
+      "ma_entry": 96.24563065415607,
+      "momentum": 76.38262264456279,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "reasons": [
+      "KDJ超卖(23)",
+      "主力资金净流入",
+      "换手活跃(4.1%)",
+      "拥挤惩罚(-27分)"
+    ],
+    "buy_price_low": 12.0,
+    "buy_price_high": 12.6,
+    "stop_loss": 11.6,
+    "take_profit_1": 12.9,
+    "take_profit_2": 13.5
+  },
+  {
+    "rank": 4,
+    "stock_code": "300502",
+    "stock_name": "新易盛",
+    "score": 3.6000000000000014,
+    "sector": "通信设备",
+    "factor_scores": {
+      "sector": 0.0,
+      "ma_entry": 96.24563065415607,
+      "momentum": 71.51992477708549,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "reasons": [
+      "KDJ超卖(28)",
+      "主力资金净流入",
+      "温和放量(量比1.5)",
+      "换手活跃(6.0%)",
+      "所属板块: 通信设备",
+      "拥挤惩罚(-30分)"
+    ],
+    "buy_price_low": 454.2,
+    "buy_price_high": 533.7,
+    "stop_loss": 440.4,
+    "take_profit_1": 591.7,
+    "take_profit_2": 619.9
+  },
+  {
+    "rank": 5,
+    "stock_code": "002384",
+    "stock_name": "东山精密",
+    "score": 0,
+    "sector": "电子元件",
+    "factor_scores": {
+      "sector": 39.79760885641367,
+      "ma_entry": 34.27637274208455,
+      "momentum": 66.65722690960818,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "reasons": [
+      "板块首板",
+      "主力资金净流入",
+      "换手活跃(6.3%)",
+      "所属板块: 电子元件",
+      "拥挤惩罚(-30分)"
+    ],
+    "buy_price_low": 110.2,
+    "buy_price_high": 162.7,
+    "stop_loss": 106.8,
+    "take_profit_1": 221.6,
+    "take_profit_2": 232.2
+  }
+]

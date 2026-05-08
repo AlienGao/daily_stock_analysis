@@ -99,7 +99,7 @@ export type BacktestResponse = {
 };
 
 export type ScanModeResponse = {
-  use_whitelist: boolean;
+  scan_universe: string;  // full_market / whitelist / broker_gold
   has_whitelist: boolean;
 };
 
@@ -163,15 +163,25 @@ export const discoveryApi = {
     return resp.data as BacktestResponse;
   },
 
-  async getScanMode(): Promise<ScanModeResponse> {
-    const resp = await apiClient.get('/api/v1/discovery/intraday/scan-mode');
+  async getScanMode(mode: 'intraday' | 'postmarket' = 'intraday'): Promise<ScanModeResponse> {
+    const resp = await apiClient.get('/api/v1/discovery/scan-mode', { params: { mode } });
     return resp.data as ScanModeResponse;
   },
 
-  async setScanMode(useWhitelist: boolean): Promise<ScanModeResponse> {
-    const resp = await apiClient.post('/api/v1/discovery/intraday/scan-mode', null, {
-      params: { use_whitelist: useWhitelist },
+  async setScanMode(scanUniverse: string, mode: 'intraday' | 'postmarket' = 'intraday'): Promise<ScanModeResponse> {
+    const resp = await apiClient.post('/api/v1/discovery/scan-mode', null, {
+      params: { scan_universe: scanUniverse, mode },
     });
     return resp.data as ScanModeResponse;
+  },
+
+  async getWhitelist(): Promise<{ codes: string[]; count: number }> {
+    const resp = await apiClient.get('/api/v1/discovery/whitelist');
+    return resp.data;
+  },
+
+  async updateWhitelist(codes: string[]): Promise<{ codes: string[]; count: number }> {
+    const resp = await apiClient.put('/api/v1/discovery/whitelist', { codes });
+    return resp.data;
   },
 };

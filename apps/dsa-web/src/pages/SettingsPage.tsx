@@ -2,6 +2,7 @@ import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth, useSystemConfig } from '../hooks';
 import { createParsedApiError, getParsedApiError, type ParsedApiError } from '../api/error';
+import { discoveryApi } from '../api/discovery';
 import { systemConfigApi } from '../api/systemConfig';
 import { ApiErrorAlert, Button, ConfirmDialog, EmptyState } from '../components/common';
 import {
@@ -148,6 +149,9 @@ const SettingsPage: React.FC = () => {
   const [showImportConfirm, setShowImportConfirm] = useState(false);
   const [desktopUpdateState, setDesktopUpdateState] = useState<DesktopUpdateState | null>(null);
   const [isCheckingDesktopUpdate, setIsCheckingDesktopUpdate] = useState(false);
+  const [whitelistCodes, setWhitelistCodes] = useState<string>('');
+  const [whitelistSaving, setWhitelistSaving] = useState(false);
+  const [whitelistMsg, setWhitelistMsg] = useState<string>('');
   const desktopImportRef = useRef<HTMLInputElement | null>(null);
   const desktopRuntimeApi = getDesktopRuntimeApi();
   const isDesktopRuntime = Boolean(desktopRuntimeApi);
@@ -160,6 +164,11 @@ const SettingsPage: React.FC = () => {
   // Set page title
   useEffect(() => {
     document.title = '系统设置 - DSA';
+  }, []);
+
+  // Load whitelist on settings page mount
+  useEffect(() => {
+    discoveryApi.getWhitelist().then((data) => setWhitelistCodes(data.codes.join(', '))).catch(() => {});
   }, []);
 
   const {
@@ -636,6 +645,51 @@ const SettingsPage: React.FC = () => {
                   }}
                   disabled={isSaving || isLoading}
                 />
+              </SettingsSectionCard>
+            ) : null}
+            {activeCategory === 'base' ? (
+              <SettingsSectionCard
+                title="扫描白名单"
+                description="配置寻股扫描白名单（逗号分隔股票代码）。保存后立即生效，盘中下一轮扫描即使用新白名单。"
+              >
+                <div className="space-y-3">
+                  <textarea
+                    className="w-full min-h-[80px] rounded-xl border border-border/40 bg-muted/25 px-3 py-2 text-sm text-primary-text placeholder:text-tertiary-text/60 focus:border-cyan/50 focus:outline-none focus:ring-1 focus:ring-cyan/30 resize-y"
+                    placeholder="例如：600519, 300750, 000858"
+                    value={whitelistCodes}
+                    onChange={(e) => setWhitelistCodes(e.target.value)}
+                    disabled={whitelistSaving}
+                  />
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="settings-secondary"
+                      onClick={async () => {
+                        setWhitelistSaving(true);
+                        setWhitelistMsg('');
+                        try {
+                          const codes = whitelistCodes.split(/[，,\s]+/).map(s => s.trim()).filter(Boolean);
+                          const result = await discoveryApi.updateWhitelist(codes);
+                          setWhitelistCodes(result.codes.join(', '));
+                          setWhitelistMsg(`已保存 ${result.count} 只股票，立即生效`);
+                        } catch {
+                          setWhitelistMsg('保存失败，请重试');
+                        } finally {
+                          setWhitelistSaving(false);
+                        }
+                      }}
+                      disabled={whitelistSaving}
+                      isLoading={whitelistSaving}
+                      loadingText="保存中..."
+                    >
+                      保存白名单
+                    </Button>
+                    {whitelistMsg ? (
+                      <span className={`text-xs ${whitelistMsg.includes('失败') ? 'text-red' : 'text-emerald-400'}`}>
+                        {whitelistMsg}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
               </SettingsSectionCard>
             ) : null}
             {activeCategory === 'ai_model' ? (

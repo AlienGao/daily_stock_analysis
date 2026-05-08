@@ -12,7 +12,7 @@ import logging
 import re
 import requests
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -202,6 +202,8 @@ class DiscoveryBacktest:
             if td_next > today_str:
                 continue
 
+            is_open = td_next == today_str  # 当天盘中，用实时价展示
+
             picks = picks_by_date[td]
             n = len(picks)
             if n == 0:
@@ -212,12 +214,12 @@ class DiscoveryBacktest:
             day_pnl = 0.0
             wins = 0
 
-            # 组合 OHLC 加权（基于持仓日 td_next 的价格走势）
-            total_weight = 0.0
+            # 组合 OHLC：用 收益率×资金=P&L 计算各价位组合价值（避免量纲错误）
+            prev_capital = capital
             w_open = 0.0
             w_high = 0.0
             w_low = 0.0
-            w_close = 0.0
+            has_ohlc = False
 
             for p in picks:
                 code = p.get("stock_code", "")
@@ -235,28 +237,28 @@ class DiscoveryBacktest:
                     if ret > 0:
                         wins += 1
 
+                    sell_time = datetime.now().strftime("%H:%M:%S") if is_open else "15:00:00"
                     trade_records.append(TradeRecord(
                         stock_code=code,
                         stock_name=name,
-                        buy_date=td,
+                        buy_date=td + " 15:00:00",
                         buy_price=round(close_today, 2),
-                        sell_date=td_next,
+                        sell_date=td_next + " " + sell_time,
                         sell_price=round(close_next, 2),
                         return_pct=round(ret, 6),
                         pnl=round(pnl, 2),
                         allocated_capital=round(alloc, 2),
                     ))
 
-                    # 累加 OHLC 权重（持仓日 td_next 的价格）
+                    # P&L 贡献 = alloc × (price/buy_price − 1)，量纲为元
                     o = self._get_price(code, td_next, "open")
                     h = self._get_price(code, td_next, "high")
                     lo = self._get_price(code, td_next, "low")
-                    if o and h and lo and close_next:
-                        w_open += alloc * o
-                        w_high += alloc * h
-                        w_low += alloc * lo
-                        w_close += alloc * close_next
-                        total_weight += alloc
+                    if o and h and lo:
+                        w_open += alloc * (o / close_today - 1)
+                        w_high += alloc * (h / close_today - 1)
+                        w_low += alloc * (lo / close_today - 1)
+                        has_ohlc = True
 
             if not stock_returns:
                 continue
@@ -278,11 +280,14 @@ class DiscoveryBacktest:
                 total_count=len(values),
             ))
             curve_point: Dict = {"date": td_next, "capital": round(capital, 2)}
-            if total_weight > 0:
-                curve_point["open"] = round(w_open / total_weight, 2)
-                curve_point["high"] = round(w_high / total_weight, 2)
-                curve_point["low"] = round(w_low / total_weight, 2)
-                curve_point["close"] = round(w_close / total_weight, 2)
+            if has_ohlc:
+                # open=买入成本（不含隔夜跳空），body 直接反映交易完整盈亏
+                curve_point["open"] = round(prev_capital, 2)
+                ph = prev_capital + w_high
+                pl = prev_capital + w_low
+                curve_point["high"] = round(max(ph, prev_capital, capital), 2)
+                curve_point["low"] = round(min(pl, prev_capital, capital), 2)
+                curve_point["close"] = round(capital, 2)
             capital_curve.append(curve_point)
 
         return BacktestSummary(
@@ -325,9 +330,11 @@ class DiscoveryBacktest:
             td_buy = trading_days[i + 1]
             td_sell = trading_days[i + 2]
 
-            # 卖点未到：不展示未平仓交易，等卖点收盘后再出现
-            if td_sell > today_str:
+            # 买入日未到：跳过
+            if td_buy > today_str:
                 continue
+
+            is_open = td_sell > today_str  # 未平仓（卖点未到，用实时价展示）
 
             picks = picks_by_date[td]
             n = len(picks)
@@ -339,18 +346,23 @@ class DiscoveryBacktest:
             day_pnl = 0.0
             wins = 0
 
-            # 组合 OHLC 加权计算（基于买入日）
-            total_weight = 0.0
-            w_open = 0.0
+            # 组合 OHLC：基于买入日价格，用收益率×资金=P&L 计算组合价值
+            prev_capital = capital
             w_high = 0.0
             w_low = 0.0
             w_close = 0.0
+            has_ohlc = False
 
             for p in picks:
                 code = p.get("stock_code", "")
                 name = p.get("stock_name", "")
                 open_buy = self._get_price(code, td_buy, "open")
-                open_sell = self._get_price(code, td_sell, "open")
+                # 未平仓用 Sina 实时价作为卖出参考价
+                open_sell = (
+                    self._get_price(code, today_str, "close")
+                    if is_open
+                    else self._get_price(code, td_sell, "open")
+                )
                 if (
                     open_buy and open_sell and open_buy > 0
                     and code and name
@@ -362,28 +374,28 @@ class DiscoveryBacktest:
                     if ret > 0:
                         wins += 1
 
+                    sell_time = datetime.now().strftime("%H:%M:%S") if is_open else "09:30:00"
                     trade_records.append(TradeRecord(
                         stock_code=code,
                         stock_name=name,
-                        buy_date=td_buy,
+                        buy_date=td_buy + " 09:30:00",
                         buy_price=round(open_buy, 2),
-                        sell_date=td_sell,
+                        sell_date=(today_str if is_open else td_sell) + " " + sell_time,
                         sell_price=round(open_sell, 2),
                         return_pct=round(ret, 6),
                         pnl=round(pnl, 2),
                         allocated_capital=round(alloc, 2),
                     ))
 
-                    # 累加 OHLC 权重（买入日价格）
+                    # P&L 贡献 = alloc × (price/buy_price − 1)，买入日 OHLC
                     h = self._get_price(code, td_buy, "high")
                     lo = self._get_price(code, td_buy, "low")
                     c = self._get_price(code, td_buy, "close")
                     if h and lo and c:
-                        w_open += alloc * open_buy
-                        w_high += alloc * h
-                        w_low += alloc * lo
-                        w_close += alloc * c
-                        total_weight += alloc
+                        w_high += alloc * (h / open_buy - 1)
+                        w_low += alloc * (lo / open_buy - 1)
+                        w_close += alloc * (c / open_buy - 1)
+                        has_ohlc = True
 
             if not stock_returns:
                 continue
@@ -406,11 +418,14 @@ class DiscoveryBacktest:
             ))
 
             curve_point: Dict = {"date": td_buy, "capital": round(capital, 2)}
-            if total_weight > 0:
-                curve_point["open"] = round(w_open / total_weight, 2)
-                curve_point["high"] = round(w_high / total_weight, 2)
-                curve_point["low"] = round(w_low / total_weight, 2)
-                curve_point["close"] = round(w_close / total_weight, 2)
+            if has_ohlc:
+                curve_point["open"] = round(prev_capital, 2)
+                ph = prev_capital + w_high
+                pl = prev_capital + w_low
+                pc = prev_capital + w_close
+                curve_point["high"] = round(max(ph, prev_capital, pc), 2)
+                curve_point["low"] = round(min(pl, prev_capital, pc), 2)
+                curve_point["close"] = round(pc, 2)
             capital_curve.append(curve_point)
 
         return BacktestSummary(
@@ -607,9 +622,9 @@ class DiscoveryBacktest:
         if val is not None:
             return float(val)
 
-        # Fallback 仅用于未来日期：用缓存中最近交易日的 close 替代
+        # Fallback：未来日期及当天（收盘价可能尚未生成）用缓存中最近交易日的 close 替代
         today_str = date.today().strftime("%Y%m%d")
-        if date_str <= today_str:
+        if date_str < today_str:
             return None
 
         for ds in sorted(self._price_cache.keys(), reverse=True):

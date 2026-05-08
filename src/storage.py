@@ -2385,6 +2385,17 @@ class DatabaseManager:
             stmt = stmt.order_by(desc(InstitutionSurvey.surv_date))
             return list(session.execute(stmt).scalars().all())
 
+    def get_institution_survey_dates(self) -> List[str]:
+        """获取机构调研数据中所有有数据的日期列表（降序）。"""
+        from sqlalchemy import distinct
+
+        with self.get_session() as session:
+            stmt = (
+                select(distinct(InstitutionSurvey.surv_date))
+                .order_by(desc(InstitutionSurvey.surv_date))
+            )
+            return [row[0] for row in session.execute(stmt).all()]
+
     # ------------------------------------------------------------------
     # Enrichment 缓存（九转/盈利预测/筹码胜率持久化）
     # ------------------------------------------------------------------

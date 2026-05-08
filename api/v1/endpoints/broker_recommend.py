@@ -238,10 +238,13 @@ class InstitutionSurveyResponse(BaseModel):
 
 
 @router.get("/institution-survey", response_model=InstitutionSurveyResponse)
-def get_institution_survey() -> InstitutionSurveyResponse:
-    """近两周机构调研加权 Top 10。"""
+def get_institution_survey(
+    start_date: Optional[str] = Query(None, description="起始日期 YYYYMMDD"),
+    end_date: Optional[str] = Query(None, description="截止日期 YYYYMMDD"),
+) -> InstitutionSurveyResponse:
+    """机构调研加权 Top 10（默认近两周，传日期参数则查历史）。"""
     service = BrokerRecommendService()
-    result = service.get_institution_survey_top10()
+    result = service.get_institution_survey_top10(start_date=start_date, end_date=end_date)
 
     if "error" in result:
         raise HTTPException(status_code=500, detail=result["error"])
@@ -266,6 +269,13 @@ def get_institution_survey() -> InstitutionSurveyResponse:
         total_stocks=result["total_stocks"],
         items=items,
     )
+
+
+@router.get("/institution-survey/dates")
+def get_institution_survey_dates() -> List[str]:
+    """获取所有有机构调研数据的日期列表（降序）。"""
+    service = BrokerRecommendService()
+    return service.get_institution_survey_dates()
 
 
 @router.get("/{month}", response_model=BrokerRecommendResponse)

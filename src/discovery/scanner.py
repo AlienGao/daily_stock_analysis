@@ -23,7 +23,7 @@ from typing import Dict, List, Optional, Set
 
 import requests
 
-from src.discovery.config import DiscoveryConfig, set_active_config
+from src.discovery.config import DiscoveryConfig, set_active_config, _load_runtime_state_into
 from src.discovery.engine import StockDiscoveryEngine
 from src.discovery.factors.base import DiscoveryResult
 
@@ -160,15 +160,22 @@ class IntradayScanner:
                 logger.warning("[Scanner] 本轮扫描异常: %s", e)
                 logger.warning("[Scanner] 异常详情:\n%s", traceback.format_exc())
 
-            elapsed = time.time() - round_start
+            # 对齐到固定时间点扫描（如 9:25, 9:30, 9:35...）
+            # 计算从开盘到现在的间隔数，下一轮对准下一个整间隔
+            interval = self.config.scan_interval_seconds
+            now = self._now()
+            elapsed_from_open = (now - market_open).total_seconds()
+            next_round_idx = int(elapsed_from_open / interval) + 1
+            next_target = market_open + timedelta(seconds=next_round_idx * interval)
             sleep_sec = max(1, min(
-                self.config.scan_interval_seconds - elapsed,
+                (next_target - self._now()).total_seconds(),
                 (market_close - self._now()).total_seconds(),
             ))
             if sleep_sec > 0:
                 logger.debug(
-                    "[Scanner] 第 %d 轮耗时 %.1fs, 休眠 %.0fs",
-                    self._round, elapsed, sleep_sec,
+                    "[Scanner] 第 %d 轮耗时 %.1fs, 下次扫描 %s (%.0fs 后)",
+                    self._round, time.time() - round_start,
+                    next_target.strftime("%H:%M:%S"), sleep_sec,
                 )
                 time.sleep(sleep_sec)
 
@@ -417,5 +424,6 @@ def run_intraday_scan(config: DiscoveryConfig, tushare_fetcher=None, akshare_fet
     ])
 
     set_active_config(config)
+    _load_runtime_state_into(config)
     scanner = IntradayScanner(config, engine)
     scanner.start()
