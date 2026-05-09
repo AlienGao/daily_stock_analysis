@@ -256,9 +256,10 @@ class RealtimeSpotProvider:
                     if not line or '"' not in line:
                         continue
                     # var hq_str_sh600519="content";
-                    # 从行前缀提取代码: "hq_str_sh600519" → "600519"
+                    # 从行前缀提取代码: "hq_str_sh600519=" → "600519"
                     prefix = line.split('"')[0]
                     raw_code = prefix.split("_")[-1] if "_" in prefix else ""
+                    raw_code = raw_code.rstrip("=")
                     if len(raw_code) < 6:
                         continue
                     content = line.split('"')[1]
