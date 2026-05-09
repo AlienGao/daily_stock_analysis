@@ -499,7 +499,7 @@ class StockDiscoveryEngine:
 
         # Phase 1: 拉取因子数据（优先复用 session 缓存）
         # 实时因子（如 sector）每轮重新拉取，不缓存
-        _REALTIME_FACTORS = {"sector"}
+        _REALTIME_FACTORS = {"sector", "momentum"}
 
         factor_data: Dict[str, pd.DataFrame] = {}
         if self._factor_data_cache and self._cache_trade_date == trade_date:
@@ -692,13 +692,28 @@ class StockDiscoveryEngine:
         industry_map = self._get_industry_map(candidate_codes)  # 行业映射作为 fallback
         live_prices: Dict[str, float] = {}
         if mode in ("intraday", "postmarket"):
-            for i in range(0, len(candidate_codes), 20):
-                chunk = candidate_codes[i:i + 20]
-                prices = self._get_batch_realtime_prices(chunk)
-                if prices:
-                    live_prices.update(prices)
-            if not live_prices:
-                live_prices = self._get_batch_realtime_prices_akshare(candidate_codes)
+            try:
+                from src.storage import DatabaseManager
+                bare_codes = [c.split(".")[0] if "." in c else c for c in candidate_codes]
+                spot_df = DatabaseManager().get_current_prices(bare_codes)
+                if not spot_df.empty:
+                    for ts_code in candidate_codes:
+                        code = ts_code.split(".")[0] if "." in ts_code else ts_code
+                        try:
+                            val = spot_df.at[code, "price"]
+                            if pd.notna(val):
+                                live_prices[ts_code] = float(val)
+                        except (KeyError, ValueError, TypeError):
+                            pass
+            except Exception:
+                logger.warning("[Discovery] 从 realtime_spot 获取实时价格失败，回退 HTTP", exc_info=True)
+                for i in range(0, len(candidate_codes), 20):
+                    chunk = candidate_codes[i:i + 20]
+                    prices = self._get_batch_realtime_prices(chunk)
+                    if prices:
+                        live_prices.update(prices)
+                if not live_prices:
+                    live_prices = self._get_batch_realtime_prices_akshare(candidate_codes)
 
         # Phase 4.9: 暂存全量评分数据供外部（Scanner/main）落库
         self._last_full_scan_df = combined
@@ -762,6 +777,12 @@ class StockDiscoveryEngine:
             # 板块/行业
             sector = labels[0] if labels else industry_map.get(ts_code, "")
 
+            factor_weights = {
+                name: self._factors[name].weight
+                for name in factor_breakdown
+                if name in self._factors
+            }
+
             results.append(
                 DiscoveryResult(
                     ts_code=ts_code,
@@ -770,6 +791,7 @@ class StockDiscoveryEngine:
                     score=round(raw_score, 1),
                     sector=sector,
                     factor_scores=factor_breakdown,
+                    factor_weights=factor_weights,
                     reasons=reasons,
                     buy_price_low=buy_low,
                     buy_price_high=buy_high,

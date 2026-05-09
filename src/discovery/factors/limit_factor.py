@@ -30,6 +30,22 @@ class LimitFactor(BaseFactor):
     weight = 15.0
 
     def fetch_data(self, trade_date: str, **kwargs) -> Optional[pd.DataFrame]:
+        # 优先读 limit_pool DB（盘后已由 Tushare 全量刷新）
+        try:
+            from src.storage import DatabaseManager
+            db = DatabaseManager()
+            df = db.get_limit_pool(trade_date=trade_date)
+            if df is not None and not df.empty:
+                df = df.reset_index().copy()
+                # 裸代码 → ts_code，与其他 Tushare 因子索引一致
+                df.index = [self._bare_to_ts_code(c) for c in df["code"]]
+                if "limit_type" in df.columns and "limit" not in df.columns:
+                    df["limit"] = df["limit_type"]
+                return df
+        except Exception as e:
+            logger.debug("[LimitFactor] limit_pool DB 查询失败，回退 Tushare: %s", e)
+
+        # 降级到 Tushare API（返回 ts_code 索引）
         tushare_fetcher = kwargs.get("tushare_fetcher")
         if tushare_fetcher is None:
             return None
@@ -90,3 +106,15 @@ class LimitFactor(BaseFactor):
             if r:
                 reasons[ts_code] = r
         return reasons
+
+    @staticmethod
+    def _bare_to_ts_code(code: str) -> str:
+        """裸代码 → ts_code 格式 (e.g. '600519' → '600519.SH')。"""
+        c = str(code).strip().zfill(6)
+        if c.startswith(("60", "68")):
+            return f"{c}.SH"
+        elif c.startswith(("00", "30")):
+            return f"{c}.SZ"
+        elif c.startswith(("4", "8", "92")):
+            return f"{c}.BJ"
+        return c

@@ -37,6 +37,7 @@ from sqlalchemy import (
     UniqueConstraint,
     Text,
     select,
+    insert,
     and_,
     or_,
     delete,
@@ -242,9 +243,13 @@ class RealtimeSpot(Base):
     pct_chg = Column(Float)
     pre_close = Column(Float)
     high = Column(Float)
+    open_price = Column(Float)
     low = Column(Float)
     volume = Column(Float)
     amount = Column(Float)
+    turnover_rate = Column(Float)
+    volume_ratio = Column(Float)
+    trade_date = Column(String(10))  # YYYY-MM-DD
     source = Column(String(20))
     slot = Column(Integer)
     updated_at = Column(DateTime, default=datetime.now)
@@ -255,6 +260,76 @@ class RealtimeSpot(Base):
 
     def __repr__(self) -> str:
         return f"<RealtimeSpot(code={self.code}, price={self.price}, slot={self.slot})>"
+
+
+class LimitPool(Base):
+    """统一涨跌停池。
+
+    盘中由 Scanner 每 60 秒用 akshare stock_zt_pool_em 先删后插刷新，
+    盘后由 Tushare limit_list_d 全量 upsert 覆盖。
+    每日独立保存 (code, trade_date 联合唯一），各因子从此表读取。
+    """
+    __tablename__ = 'limit_pool'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(10), nullable=False, index=True)
+    name = Column(String(50))
+    trade_date = Column(String(8))
+    limit_type = Column(String(2))         # U/D/Z, None from akshare (涨停)
+    pct_chg = Column(Float)
+    price = Column(Float)
+    limit_times = Column(Integer, default=0)    # 连板数
+    open_times = Column(Integer, default=0)     # 炸板/打开次数
+    up_stat = Column(String(10))                # 封板状态
+    first_seal_time = Column(String(10))        # 首次封板时间
+    last_seal_time = Column(String(10))         # 最后封板时间
+    break_count = Column(Integer, default=0)    # 炸板次数
+    limit_stats = Column(String(50))            # 涨停统计
+    sector = Column(String(100))                # 所属行业
+    source = Column(String(20))                 # akshare / tushare / realtime_spot
+    slot = Column(Integer)
+    updated_at = Column(DateTime, default=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('code', 'trade_date', name='uix_limit_pool_code_date'),
+        Index('ix_limit_pool_trade_date', 'trade_date'),
+    )
+
+    def __repr__(self) -> str:
+        return f"<LimitPool(code={self.code}, date={self.trade_date}, type={self.limit_type})>"
+
+
+class MoneyFlow(Base):
+    """个股资金流向（盘后 Tushare moneyflow 落库）。
+
+    每日按 (code, trade_date) 唯一，盘后定时任务全量 upsert。
+    """
+
+    __tablename__ = 'money_flow'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(10), nullable=False, index=True)
+    name = Column(String(50))
+    trade_date = Column(String(8))
+    buy_elg_amount = Column(Float)
+    sell_elg_amount = Column(Float)
+    buy_lg_amount = Column(Float)
+    sell_lg_amount = Column(Float)
+    buy_md_amount = Column(Float)
+    sell_md_amount = Column(Float)
+    buy_sm_amount = Column(Float)
+    sell_sm_amount = Column(Float)
+    net_mf_amount = Column(Float)
+    source = Column(String(20))
+    updated_at = Column(DateTime, default=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('code', 'trade_date', name='uix_money_flow_code_date'),
+        Index('ix_money_flow_trade_date', 'trade_date'),
+    )
+
+    def __repr__(self) -> str:
+        return f"<MoneyFlow(code={self.code}, date={self.trade_date})>"
 
 
 class AnalysisHistory(Base):
@@ -1075,6 +1150,8 @@ class DatabaseManager:
         self._ensure_stock_tech_indicator_table()
         self._ensure_scan_result_intraday_table()
         self._ensure_scan_result_postmarket_table()
+        self._ensure_limit_pool_table()
+        self._ensure_stock_daily_date_index()
 
         self._initialized = True
         logger.info(f"数据库初始化完成: {db_url}")
@@ -1195,6 +1272,41 @@ class DatabaseManager:
             logger.info("已创建表 scan_result_postmarket")
         except Exception as exc:
             logger.warning("创建 scan_result_postmarket 失败: %s", exc)
+
+    def _ensure_limit_pool_table(self) -> None:
+        """SQLite: create limit_pool if missing (pre-create_all catch-up)."""
+        if not self._is_sqlite_engine:
+            return
+        try:
+            with self._engine.connect() as conn:
+                rows = conn.execute(
+                    text("SELECT name FROM sqlite_master WHERE type='table' AND name='limit_pool'")
+                ).fetchall()
+            if rows:
+                return
+        except Exception as exc:
+            logger.warning("检查 limit_pool 表存在性失败: %s", exc)
+            return
+        try:
+            LimitPool.__table__.create(self._engine)
+            logger.info("已创建表 limit_pool")
+        except Exception as exc:
+            logger.warning("创建 limit_pool 失败: %s", exc)
+
+    def _ensure_stock_daily_date_index(self) -> None:
+        """SQLite: create ix_stock_daily_date if missing."""
+        if not self._is_sqlite_engine:
+            return
+        try:
+            with self._engine.begin() as conn:
+                conn.execute(
+                    text("CREATE INDEX IF NOT EXISTS ix_stock_daily_date ON stock_daily (date)")
+                )
+        except Exception as exc:
+            err_msg = str(exc)
+            if "already exists" in err_msg.lower():
+                return
+            logger.warning("创建 ix_stock_daily_date 索引失败: %s", exc)
 
     # ------------------------------------------------------------------
     # StockTechIndicator CRUD
@@ -2155,8 +2267,10 @@ class DatabaseManager:
 
         now = datetime.now()
         records: List[Dict[str, Any]] = []
-        for _, row in df.iterrows():
+        for idx, row in df.iterrows():
             code = str(row.get("code", "")).strip()
+            if not code:
+                code = str(idx).strip()  # code may be the DataFrame index
             if not code:
                 continue
             records.append({
@@ -2166,9 +2280,13 @@ class DatabaseManager:
                 "pct_chg": self._normalize_sql_value(row.get("pct_chg")),
                 "pre_close": self._normalize_sql_value(row.get("pre_close")),
                 "high": self._normalize_sql_value(row.get("high")),
+                "open_price": self._normalize_sql_value(row.get("open_price")),
                 "low": self._normalize_sql_value(row.get("low")),
                 "volume": self._normalize_sql_value(row.get("volume")),
                 "amount": self._normalize_sql_value(row.get("amount")),
+                "turnover_rate": self._normalize_sql_value(row.get("turnover_rate")),
+                "volume_ratio": self._normalize_sql_value(row.get("volume_ratio")),
+                "trade_date": str(row.get("trade_date", date.today().isoformat()))[:10],
                 "source": source,
                 "slot": slot,
                 "updated_at": now,
@@ -2193,9 +2311,13 @@ class DatabaseManager:
                                 "pct_chg": excluded.pct_chg,
                                 "pre_close": excluded.pre_close,
                                 "high": excluded.high,
+                                "open_price": excluded.open_price,
                                 "low": excluded.low,
                                 "volume": excluded.volume,
                                 "amount": excluded.amount,
+                                "turnover_rate": excluded.turnover_rate,
+                                "volume_ratio": excluded.volume_ratio,
+                                "trade_date": excluded.trade_date,
                                 "source": excluded.source,
                                 "slot": excluded.slot,
                                 "updated_at": excluded.updated_at,
@@ -2219,7 +2341,8 @@ class DatabaseManager:
                         new_count += 1
                     else:
                         for key in ("name", "price", "pct_chg", "pre_close",
-                                     "high", "low", "volume", "amount", "source", "slot"):
+                                     "high", "open_price", "low", "volume", "amount",
+                                     "turnover_rate", "volume_ratio", "trade_date", "source", "slot"):
                             setattr(ent, key, rec[key])
                         ent.updated_at = now
                 return new_count
@@ -2243,8 +2366,12 @@ class DatabaseManager:
             df = pd.DataFrame([{
                 "code": r.code, "name": r.name, "price": r.price,
                 "pct_chg": r.pct_chg, "pre_close": r.pre_close,
+                "open_price": r.open_price,
                 "high": r.high, "low": r.low,
                 "volume": r.volume, "amount": r.amount,
+                "turnover_rate": r.turnover_rate,
+                "volume_ratio": r.volume_ratio,
+                "trade_date": r.trade_date,
                 "source": r.source, "slot": r.slot,
             } for r in rows])
             return df.set_index("code")
@@ -2262,9 +2389,443 @@ class DatabaseManager:
             df = pd.DataFrame([{
                 "code": r.code, "name": r.name, "price": r.price,
                 "pct_chg": r.pct_chg, "pre_close": r.pre_close,
+                "open_price": r.open_price,
                 "high": r.high, "low": r.low,
                 "volume": r.volume, "amount": r.amount,
+                "turnover_rate": r.turnover_rate,
+                "volume_ratio": r.volume_ratio,
+                "trade_date": r.trade_date,
                 "source": r.source, "slot": r.slot,
+            } for r in rows])
+            return df.set_index("code")
+
+    def _get_latest_daily_spot(self) -> pd.DataFrame:
+        """获取全市场最近交易日收盘价快照（非交易日回退用）。"""
+        try:
+            with self.get_session() as s:
+                from sqlalchemy import text
+                last_date_row = s.execute(
+                    text("SELECT MAX(date) FROM stock_daily")
+                ).fetchone()
+                if not last_date_row or not last_date_row[0]:
+                    return pd.DataFrame()
+                last_date = last_date_row[0]
+
+                rows = s.execute(
+                    select(StockDaily).where(StockDaily.date == last_date)
+                ).scalars().all()
+
+                if not rows:
+                    return pd.DataFrame()
+
+                df = pd.DataFrame([{
+                    "code": r.code,
+                    "name": "",
+                    "price": r.close,
+                    "pct_chg": pd.NA,
+                    "pre_close": pd.NA,
+                    "open_price": r.open,
+                    "high": r.high,
+                    "low": r.low,
+                    "volume": pd.NA,
+                    "amount": pd.NA,
+                    "turnover_rate": pd.NA,
+                    "volume_ratio": pd.NA,
+                    "trade_date": str(last_date),
+                } for r in rows])
+                return df.set_index("code")
+        except Exception as e:
+            logger.warning("[DB] _get_latest_daily_spot 失败: %s", e)
+            return pd.DataFrame()
+
+    def get_current_spot(self) -> pd.DataFrame:
+        """获取全市场当前价格快照，交易日用 realtime_spot，非交易日用 stock_daily 最近收盘。"""
+        from src.discovery.engine import is_trading_day
+
+        if is_trading_day():
+            df = self.get_realtime_spot()
+            if not df.empty:
+                return df
+        return self._get_latest_daily_spot()
+
+    def get_current_prices(self, codes: List[str]) -> pd.DataFrame:
+        """获取指定代码当前价格快照，交易日用 realtime_spot，非交易日用 stock_daily 最近收盘。
+
+        返回 DataFrame index=code，列: price, pct_chg, open, high, low, pre_close。
+        """
+        from src.discovery.engine import is_trading_day
+
+        if is_trading_day():
+            df = self.get_realtime_spot_for_codes(codes)
+            if not df.empty:
+                return df
+
+        # 非交易日：取最近交易日收盘价
+        full = self._get_latest_daily_spot()
+        if full.empty:
+            return full
+        return full[full.index.isin(codes)]
+
+    # ------------------------------------------------------------------
+    # Limit pool (unified limit-up/down/broken data)
+    # ------------------------------------------------------------------
+
+    def clear_limit_pool_date(self, trade_date: str) -> int:
+        """删除指定交易日全部涨跌停记录（盘中刷新前调用）。"""
+        try:
+            def _clear(session: Session) -> int:
+                result = session.execute(
+                    delete(LimitPool).where(LimitPool.trade_date == trade_date)
+                )
+                return result.rowcount
+            count = self._run_write_transaction("clear_limit_pool_date", _clear)
+            if count:
+                logger.debug("[DB] clear_limit_pool_date(%s): %d 条", trade_date, count)
+            return count
+        except Exception as e:
+            logger.error("[DB] clear_limit_pool_date 失败: %s", e)
+            raise
+
+    def insert_limit_pool_bulk(
+        self, df: pd.DataFrame, source: str, slot: int
+    ) -> int:
+        """批量插入涨跌停记录（盘中用，已先删当天数据）。"""
+        if df is None or df.empty:
+            return 0
+
+        now = datetime.now()
+        records: List[Dict[str, Any]] = []
+        for _, row in df.iterrows():
+            code = str(row.get("code", "")).strip()
+            if not code:
+                continue
+            def _s(v, max_len=50):
+                s_val = str(v) if v is not None and str(v) != "nan" else ""
+                return s_val[:max_len] if max_len else s_val
+            records.append({
+                "code": code,
+                "name": _s(row.get("name"), 50),
+                "trade_date": _s(row.get("trade_date"), 8),
+                "limit_type": _s(row.get("limit_type"), 2) or None,
+                "pct_chg": self._normalize_sql_value(row.get("pct_chg")),
+                "price": self._normalize_sql_value(row.get("price")),
+                "limit_times": int(row.get("limit_times", 0) or 0),
+                "open_times": int(row.get("open_times", 0) or 0),
+                "up_stat": _s(row.get("up_stat"), 10) or None,
+                "first_seal_time": _s(row.get("first_seal_time"), 10) or None,
+                "last_seal_time": _s(row.get("last_seal_time"), 10) or None,
+                "break_count": int(row.get("break_count", 0) or 0),
+                "limit_stats": _s(row.get("limit_stats"), 50) or None,
+                "sector": _s(row.get("sector"), 100) or None,
+                "source": source,
+                "slot": slot,
+                "updated_at": now,
+            })
+
+        if not records:
+            return 0
+
+        def _write(session: Session) -> int:
+            _CHUNK = 100
+            for i in range(0, len(records), _CHUNK):
+                chunk = records[i : i + _CHUNK]
+                session.execute(
+                    insert(LimitPool).values(chunk)
+                )
+            return len(records)
+
+        try:
+            saved = self._run_write_transaction("insert_limit_pool", _write)
+            logger.debug("[DB] insert_limit_pool: %d 条 (source=%s)", saved, source)
+            return saved
+        except Exception as e:
+            logger.error("[DB] insert_limit_pool 失败: %s", e)
+            raise
+
+    def upsert_limit_pool(
+        self, df: pd.DataFrame, source: str, slot: int
+    ) -> int:
+        """upsert 涨跌停记录 by (code, trade_date)（盘后用 Tushare 数据覆盖）。"""
+        if df is None or df.empty:
+            return 0
+
+        now = datetime.now()
+        records: List[Dict[str, Any]] = []
+        for _, row in df.iterrows():
+            code = str(row.get("code", "")).strip()
+            if not code:
+                continue
+            trade_date = str(row.get("trade_date", ""))[:8]
+            if not trade_date:
+                continue
+            def _s(v, max_len=50):
+                s_val = str(v) if v is not None and str(v) != "nan" else ""
+                return s_val[:max_len] if max_len else s_val
+            records.append({
+                "code": code,
+                "name": _s(row.get("name"), 50),
+                "trade_date": trade_date,
+                "limit_type": _s(row.get("limit_type"), 2) or None,
+                "pct_chg": self._normalize_sql_value(row.get("pct_chg")),
+                "price": self._normalize_sql_value(row.get("price")),
+                "limit_times": int(row.get("limit_times", 0) or 0),
+                "open_times": int(row.get("open_times", 0) or 0),
+                "up_stat": _s(row.get("up_stat"), 10) or None,
+                "first_seal_time": _s(row.get("first_seal_time"), 10) or None,
+                "last_seal_time": _s(row.get("last_seal_time"), 10) or None,
+                "break_count": int(row.get("break_count", 0) or 0),
+                "limit_stats": _s(row.get("limit_stats"), 50) or None,
+                "sector": _s(row.get("sector"), 100) or None,
+                "source": source,
+                "slot": slot,
+                "updated_at": now,
+            })
+
+        if not records:
+            return 0
+
+        def _write(session: Session) -> int:
+            if self._is_sqlite_engine:
+                _CHUNK = 100
+                for i in range(0, len(records), _CHUNK):
+                    chunk = records[i : i + _CHUNK]
+                    stmt = sqlite_insert(LimitPool).values(chunk)
+                    excluded = stmt.excluded
+                    session.execute(
+                        stmt.on_conflict_do_update(
+                            index_elements=["code", "trade_date"],
+                            set_={
+                                "name": excluded.name,
+                                "limit_type": excluded.limit_type,
+                                "pct_chg": excluded.pct_chg,
+                                "price": excluded.price,
+                                "limit_times": excluded.limit_times,
+                                "open_times": excluded.open_times,
+                                "up_stat": excluded.up_stat,
+                                "first_seal_time": excluded.first_seal_time,
+                                "last_seal_time": excluded.last_seal_time,
+                                "break_count": excluded.break_count,
+                                "limit_stats": excluded.limit_stats,
+                                "sector": excluded.sector,
+                                "source": excluded.source,
+                                "slot": excluded.slot,
+                                "updated_at": excluded.updated_at,
+                            },
+                        )
+                    )
+                return len(records)
+            else:
+                codes = [r["code"] for r in records]
+                dates = [r["trade_date"] for r in records]
+                existing = {}
+                for row in session.execute(
+                    select(LimitPool).where(
+                        and_(LimitPool.code.in_(codes), LimitPool.trade_date.in_(dates))
+                    )
+                ).scalars().all():
+                    existing[(row.code, row.trade_date)] = row
+                new_count = 0
+                for rec in records:
+                    ent = existing.get((rec["code"], rec["trade_date"]))
+                    if ent is None:
+                        session.add(LimitPool(**rec))
+                        new_count += 1
+                    else:
+                        for key in ("name", "limit_type", "pct_chg", "price",
+                                     "limit_times", "open_times", "up_stat",
+                                     "first_seal_time", "last_seal_time",
+                                     "break_count", "limit_stats", "sector",
+                                     "source", "slot"):
+                            setattr(ent, key, rec[key])
+                        ent.updated_at = now
+                return new_count
+
+        try:
+            saved = self._run_write_transaction("upsert_limit_pool", _write)
+            logger.debug("[DB] upsert_limit_pool: %d 条 (source=%s)", saved, source)
+            return saved
+        except Exception as e:
+            logger.error("[DB] upsert_limit_pool 失败: %s", e)
+            raise
+
+    def get_limit_pool(
+        self, trade_date: Optional[str] = None,
+        limit_type: Optional[str] = None,
+        min_pct_chg: Optional[float] = None,
+    ) -> pd.DataFrame:
+        """获取涨跌停池，返回 DataFrame (index=code)。默认查今天。"""
+        if trade_date is None:
+            from datetime import date
+            trade_date = date.today().strftime("%Y%m%d")
+        with self.get_session() as session:
+            stmt = select(LimitPool).where(LimitPool.trade_date == trade_date)
+            if limit_type:
+                stmt = stmt.where(LimitPool.limit_type == limit_type)
+            if min_pct_chg is not None:
+                stmt = stmt.where(LimitPool.pct_chg >= min_pct_chg)
+            rows = session.execute(stmt).scalars().all()
+            if not rows:
+                return pd.DataFrame()
+            df = pd.DataFrame([{
+                "code": r.code, "name": r.name, "trade_date": r.trade_date,
+                "limit_type": r.limit_type, "pct_chg": r.pct_chg,
+                "price": r.price, "limit_times": r.limit_times,
+                "open_times": r.open_times, "up_stat": r.up_stat,
+                "first_seal_time": r.first_seal_time,
+                "last_seal_time": r.last_seal_time,
+                "break_count": r.break_count, "limit_stats": r.limit_stats,
+                "sector": r.sector, "source": r.source, "slot": r.slot,
+            } for r in rows])
+            return df.set_index("code")
+
+    def get_limit_pool_for_codes(
+        self, codes: List[str], trade_date: Optional[str] = None
+    ) -> pd.DataFrame:
+        """按代码列表查询涨跌停记录。"""
+        if not codes:
+            return pd.DataFrame()
+        if trade_date is None:
+            from datetime import date
+            trade_date = date.today().strftime("%Y%m%d")
+        with self.get_session() as session:
+            rows = session.execute(
+                select(LimitPool).where(
+                    and_(LimitPool.code.in_(codes), LimitPool.trade_date == trade_date)
+                )
+            ).scalars().all()
+            if not rows:
+                return pd.DataFrame()
+            df = pd.DataFrame([{
+                "code": r.code, "name": r.name, "trade_date": r.trade_date,
+                "limit_type": r.limit_type, "pct_chg": r.pct_chg,
+                "price": r.price, "limit_times": r.limit_times,
+                "open_times": r.open_times, "up_stat": r.up_stat,
+                "first_seal_time": r.first_seal_time,
+                "last_seal_time": r.last_seal_time,
+                "break_count": r.break_count, "limit_stats": r.limit_stats,
+                "sector": r.sector, "source": r.source, "slot": r.slot,
+            } for r in rows])
+            return df.set_index("code")
+
+    def upsert_money_flow(self, df: pd.DataFrame, source: str = "tushare") -> int:
+        """upsert 资金流向 by (code, trade_date)（盘后 Tushare 全量覆盖）。"""
+        if df is None or df.empty:
+            return 0
+
+        now = datetime.now()
+        records: List[Dict[str, Any]] = []
+        for _, row in df.iterrows():
+            code = str(row.get("code", "")).strip()
+            if not code:
+                continue
+            trade_date = str(row.get("trade_date", ""))[:8]
+            if not trade_date:
+                continue
+
+            records.append({
+                "code": code,
+                "name": str(row.get("name", ""))[:50] if row.get("name") else "",
+                "trade_date": trade_date,
+                "buy_elg_amount": self._normalize_sql_value(row.get("buy_elg_amount")),
+                "sell_elg_amount": self._normalize_sql_value(row.get("sell_elg_amount")),
+                "buy_lg_amount": self._normalize_sql_value(row.get("buy_lg_amount")),
+                "sell_lg_amount": self._normalize_sql_value(row.get("sell_lg_amount")),
+                "buy_md_amount": self._normalize_sql_value(row.get("buy_md_amount")),
+                "sell_md_amount": self._normalize_sql_value(row.get("sell_md_amount")),
+                "buy_sm_amount": self._normalize_sql_value(row.get("buy_sm_amount")),
+                "sell_sm_amount": self._normalize_sql_value(row.get("sell_sm_amount")),
+                "net_mf_amount": self._normalize_sql_value(row.get("net_mf_amount")),
+                "source": source,
+                "updated_at": now,
+            })
+
+        if not records:
+            return 0
+
+        def _write(session: Session) -> int:
+            if self._is_sqlite_engine:
+                _CHUNK = 200
+                for i in range(0, len(records), _CHUNK):
+                    chunk = records[i : i + _CHUNK]
+                    stmt = sqlite_insert(MoneyFlow).values(chunk)
+                    excluded = stmt.excluded
+                    session.execute(
+                        stmt.on_conflict_do_update(
+                            index_elements=["code", "trade_date"],
+                            set_={
+                                "name": excluded.name,
+                                "buy_elg_amount": excluded.buy_elg_amount,
+                                "sell_elg_amount": excluded.sell_elg_amount,
+                                "buy_lg_amount": excluded.buy_lg_amount,
+                                "sell_lg_amount": excluded.sell_lg_amount,
+                                "buy_md_amount": excluded.buy_md_amount,
+                                "sell_md_amount": excluded.sell_md_amount,
+                                "buy_sm_amount": excluded.buy_sm_amount,
+                                "sell_sm_amount": excluded.sell_sm_amount,
+                                "net_mf_amount": excluded.net_mf_amount,
+                                "source": excluded.source,
+                                "updated_at": excluded.updated_at,
+                            },
+                        )
+                    )
+                return len(records)
+            else:
+                codes = [r["code"] for r in records]
+                dates = [r["trade_date"] for r in records]
+                existing = {}
+                for row in session.execute(
+                    select(MoneyFlow).where(
+                        and_(MoneyFlow.code.in_(codes), MoneyFlow.trade_date.in_(dates))
+                    )
+                ).scalars().all():
+                    existing[(row.code, row.trade_date)] = row
+                new_count = 0
+                for rec in records:
+                    ent = existing.get((rec["code"], rec["trade_date"]))
+                    if ent is None:
+                        session.add(MoneyFlow(**rec))
+                        new_count += 1
+                    else:
+                        for key in ("name", "buy_elg_amount", "sell_elg_amount",
+                                     "buy_lg_amount", "sell_lg_amount",
+                                     "buy_md_amount", "sell_md_amount",
+                                     "buy_sm_amount", "sell_sm_amount",
+                                     "net_mf_amount", "source"):
+                            setattr(ent, key, rec[key])
+                        ent.updated_at = now
+                return new_count
+
+        try:
+            saved = self._run_write_transaction("upsert_money_flow", _write)
+            logger.debug("[DB] upsert_money_flow: %d 条 (source=%s)", saved, source)
+            return saved
+        except Exception as e:
+            logger.error("[DB] upsert_money_flow 失败: %s", e)
+            raise
+
+    def get_money_flow(
+        self, trade_date: Optional[str] = None,
+    ) -> pd.DataFrame:
+        """获取资金流向，返回 DataFrame (index=code)。默认查今天。"""
+        if trade_date is None:
+            trade_date = date.today().strftime("%Y%m%d")
+        with self.get_session() as session:
+            stmt = select(MoneyFlow).where(MoneyFlow.trade_date == trade_date)
+            rows = session.execute(stmt).scalars().all()
+            if not rows:
+                return pd.DataFrame()
+            df = pd.DataFrame([{
+                "code": r.code, "name": r.name, "trade_date": r.trade_date,
+                "buy_elg_amount": r.buy_elg_amount,
+                "sell_elg_amount": r.sell_elg_amount,
+                "buy_lg_amount": r.buy_lg_amount,
+                "sell_lg_amount": r.sell_lg_amount,
+                "buy_md_amount": r.buy_md_amount,
+                "sell_md_amount": r.sell_md_amount,
+                "buy_sm_amount": r.buy_sm_amount,
+                "sell_sm_amount": r.sell_sm_amount,
+                "net_mf_amount": r.net_mf_amount,
+                "source": r.source,
             } for r in rows])
             return df.set_index("code")
 
@@ -2606,6 +3167,52 @@ class DatabaseManager:
             pivot = df.pivot(index="code", columns="date", values=["high", "low", "close"])
             pivot = pivot.sort_index(axis=1)
             return pivot
+
+    def prune_historical_data(self, retention_years: int = 10) -> dict:
+        """清理超过保留年限的历史数据。
+
+        Args:
+            retention_years: 保留多少年的数据，默认 10 年
+
+        Returns:
+            dict: {"stock_daily_deleted": int, "tech_indicator_deleted": int, "elapsed_seconds": float}
+        """
+        from datetime import timedelta
+        cutoff = datetime.now().date() - timedelta(days=retention_years * 365)
+
+        result = {"stock_daily_deleted": 0, "tech_indicator_deleted": 0, "elapsed_seconds": 0}
+        t0 = time.time()
+
+        try:
+            with self._engine.begin() as conn:
+                r = conn.execute(
+                    text("DELETE FROM stock_daily WHERE date < :cutoff"),
+                    {"cutoff": cutoff},
+                )
+                result["stock_daily_deleted"] = r.rowcount
+        except Exception as exc:
+            logger.warning("清理 stock_daily 历史数据失败: %s", exc)
+
+        try:
+            with self._engine.begin() as conn:
+                r = conn.execute(
+                    text("DELETE FROM stock_tech_indicator WHERE date < :cutoff"),
+                    {"cutoff": cutoff},
+                )
+                result["tech_indicator_deleted"] = r.rowcount
+        except Exception as exc:
+            logger.warning("清理 stock_tech_indicator 历史数据失败: %s", exc)
+
+        result["elapsed_seconds"] = time.time() - t0
+        if result["stock_daily_deleted"] or result["tech_indicator_deleted"]:
+            logger.info(
+                "历史数据清理完成: stock_daily=%d 行, tech_indicator=%d 行, 耗时 %.2fs, 保留 %d 年",
+                result["stock_daily_deleted"],
+                result["tech_indicator_deleted"],
+                result["elapsed_seconds"],
+                retention_years,
+            )
+        return result
 
     def save_broker_recommend_monthly(self, month: str, df: pd.DataFrame) -> int:
         """批量保存券商月度金股推荐数据。

@@ -2,7 +2,7 @@
 """均线买点因子 (MA Entry Factor).
 
 核心盘中因子：在热门板块内找「均线附近、赔率好」的股票。
-数据来源: Tushare stk_factor + daily_basic + stock_daily 历史日线 (MA计算)
+数据来源: stock_daily 历史日线 + realtime_spot 实时行情（本地计算 MA/KDJ/BOLL）
 盘中可用，盘后不可用（盘后有技术面因子替代）。
 """
 
@@ -31,122 +31,68 @@ class MaEntryFactor(BaseFactor):
     weight = 35.0
 
     def fetch_data(self, trade_date: str, **kwargs) -> Optional[pd.DataFrame]:
-        tushare_fetcher = kwargs.get("tushare_fetcher")
-        if tushare_fetcher is None:
+        from src.storage import DatabaseManager
+
+        db_mgr = DatabaseManager()
+
+        # ── 实时行情 ──
+        spot = db_mgr.get_realtime_spot()
+        if spot is None or spot.empty:
+            logger.warning("[MaEntryFactor] 实时行情不可用，跳过")
             return None
 
-        tf = tushare_fetcher.get_bulk_stk_factor(trade_date)
-        day_basic = tushare_fetcher.get_daily_basic_all(trade_date)
-
-        if tf is None:
+        spot_cols = ["price", "volume"]
+        if not all(c in spot.columns for c in spot_cols):
+            logger.warning("[MaEntryFactor] 实时行情缺少 price/volume 列")
             return None
 
-        result = tf.copy()
-        if day_basic is not None and not day_basic.empty:
-            for col in ["turnover_rate", "volume_ratio"]:
-                if col in day_basic.columns:
-                    result[col] = day_basic[col]
+        result = spot[spot_cols].copy()
+        result.columns = ["close", "vol"]
+        result["vol"] = result["vol"] / 100.0  # 手
 
-        # 辅助列：裸代码，用于与 DB 表 (index=code) 对齐
-        result["_code"] = [str(x).split(".")[0].zfill(6) for x in result.index]
-
-        # 统一 DB 连接
-        db_mgr = None
-        spot, close_matrix = None, None
-        try:
-            from src.storage import DatabaseManager
-            db_mgr = DatabaseManager()
-        except Exception:
-            pass
-
-        # ── 实时行情：价格/成交量替换 + high/low（KDJ用） ──
-        if db_mgr:
-            try:
-                spot = db_mgr.get_realtime_spot()
-            except Exception as e:
-                logger.warning("[MaEntryFactor] 获取实时行情失败: %s", e)
-
-        if spot is not None and not spot.empty:
-            spot_cols = [c for c in ["price", "volume"] if c in spot.columns]
-            if spot_cols:
-                spot_rt = spot[spot_cols].rename(
-                    columns={"price": "rt_price", "volume": "rt_volume"}
-                )
-                result = result.merge(spot_rt, left_on="_code", right_index=True, how="left")
-                rt_mask = result["rt_price"].notna()
-                result.loc[rt_mask, "close"] = result.loc[rt_mask, "rt_price"]
-                result.loc[rt_mask, "vol"] = result.loc[rt_mask, "rt_volume"] / 100.0
-                result = result.drop(columns=["rt_price", "rt_volume"])
-                logger.debug("[MaEntryFactor] 已替换 %d 只股票的实时价格/成交量", rt_mask.sum())
-
-                # 盘中量能预估：按已过交易时间比例推估全天量
-                elapsed = self._trading_minutes_elapsed()
-                if elapsed >= 15:
-                    result["est_vol"] = result["vol"] * (240.0 / elapsed)
-                else:
-                    result["est_vol"] = result["vol"]
+        # ── 盘中量能预估 ──
+        elapsed = self._trading_minutes_elapsed()
+        if elapsed >= 15:
+            result["est_vol"] = result["vol"] * (240.0 / elapsed)
+        else:
+            result["est_vol"] = result["vol"]
 
         # ── MA + 近 5 日均量（stock_daily） ──
-        if db_mgr:
-            try:
-                close_matrix = db_mgr.get_recent_close_matrix(trade_date, 60)
-                if close_matrix is not None and not close_matrix.empty:
-                    mas = self._compute_mas(close_matrix)
-                    result = result.merge(mas, left_on="_code", right_index=True, how="left")
+        close_matrix = db_mgr.get_recent_close_matrix(trade_date, 60)
+        if close_matrix is not None and not close_matrix.empty:
+            mas = self._compute_mas(close_matrix)
+            result = result.merge(mas, left_index=True, right_index=True, how="left")
 
-                    avg_vol = self._get_avg_volume(db_mgr, trade_date)
-                    if avg_vol is not None and not avg_vol.empty:
-                        result = result.merge(
-                            avg_vol.rename("avg_vol"), left_on="_code", right_index=True, how="left",
-                        )
-            except Exception as e:
-                logger.warning("[MaEntryFactor] 计算MA失败: %s", e)
+            avg_vol = self._get_avg_volume(db_mgr, trade_date)
+            if avg_vol is not None and not avg_vol.empty:
+                result["avg_vol"] = avg_vol
+        else:
+            logger.warning("[MaEntryFactor] close_matrix 不可用，跳过 MA/均量计算")
 
-        # ── 本地 KDJ + BOLL（替换 stk_factor 的盘后值） ──
-        if db_mgr and spot is not None and not spot.empty:
-            try:
-                ohlc_matrix = db_mgr.get_recent_ohlc_matrix(trade_date, 30)
-                if ohlc_matrix is not None and not ohlc_matrix.empty:
-                    kdj_df = self._compute_kdj(ohlc_matrix, spot)
-                    if kdj_df is not None and not kdj_df.empty:
-                        kdj_renamed = kdj_df.rename(columns=lambda c: f"_local_{c}")
-                        result = result.merge(kdj_renamed, left_on="_code", right_index=True, how="left")
-                        for col in ["kdj_k", "kdj_d", "kdj_j"]:
-                            local_col = f"_local_{col}"
-                            if local_col in result.columns:
-                                m = result[local_col].notna()
-                                result.loc[m, col] = result.loc[m, local_col]
-                                result = result.drop(columns=[local_col])
-                        logger.debug("[MaEntryFactor] KDJ本地实时计算完成")
+        # ── 本地 KDJ + BOLL（stock_daily + 实时行情覆盖） ──
+        ohlc_matrix = db_mgr.get_recent_ohlc_matrix(trade_date, 30)
+        if ohlc_matrix is not None and not ohlc_matrix.empty:
+            kdj_df = self._compute_kdj(ohlc_matrix, spot)
+            if kdj_df is not None and not kdj_df.empty:
+                result = result.merge(kdj_df, left_index=True, right_index=True, how="left")
+                logger.debug("[MaEntryFactor] KDJ 本地实时计算完成")
 
-                if close_matrix is not None and not close_matrix.empty:
-                    boll_mid = self._compute_boll_mid(close_matrix, spot)
-                    if boll_mid is not None and not boll_mid.empty:
-                        result = result.merge(
-                            boll_mid.rename("_local_bmid"), left_on="_code", right_index=True, how="left",
-                        )
-                        m = result["_local_bmid"].notna()
-                        result.loc[m, "boll_mid"] = result.loc[m, "_local_bmid"]
-                        result = result.drop(columns=["_local_bmid"])
-                        logger.debug("[MaEntryFactor] BOLL中轨本地实时计算完成")
+        if close_matrix is not None and not close_matrix.empty:
+            boll_mid = self._compute_boll_mid(close_matrix, spot)
+            if boll_mid is not None and not boll_mid.empty:
+                result["boll_mid"] = boll_mid
+                logger.debug("[MaEntryFactor] BOLL 中轨本地实时计算完成")
 
-                    # MA5/10/20 纳入当日实时收盘价
-                    mas_rt = self._compute_mas_realtime(close_matrix, spot)
-                    if mas_rt is not None and not mas_rt.empty:
-                        mas_rt_renamed = mas_rt.rename(columns=lambda c: f"_rt_{c}")
-                        result = result.merge(mas_rt_renamed, left_on="_code", right_index=True, how="left")
-                        for col in ["ma5", "ma10", "ma20"]:
-                            rt_col = f"_rt_{col}"
-                            if rt_col in result.columns:
-                                m_ma = result[rt_col].notna()
-                                result.loc[m_ma, col] = result.loc[m_ma, rt_col]
-                                result = result.drop(columns=[rt_col])
-                        logger.debug("[MaEntryFactor] MA实时计算完成")
-            except Exception as e:
-                logger.warning("[MaEntryFactor] 本地KDJ/BOLL计算失败: %s", e)
+            mas_rt = self._compute_mas_realtime(close_matrix, spot)
+            if mas_rt is not None and not mas_rt.empty:
+                for col in ["ma5", "ma10", "ma20"]:
+                    if col in mas_rt.columns:
+                        m = mas_rt[col].notna()
+                        result.loc[m, col] = mas_rt.loc[m, col]
+                logger.debug("[MaEntryFactor] MA 实时计算完成")
 
-        result = result.drop(columns=["_code"])
-        return result
+        mask = result["close"].notna() & (result["close"] > 0)
+        return result.loc[mask] if mask.any() else result
 
     @staticmethod
     def _get_avg_volume(db_mgr, trade_date: str, window: int = 5) -> "pd.Series":

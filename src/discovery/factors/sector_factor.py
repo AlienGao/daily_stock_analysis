@@ -40,46 +40,39 @@ class SectorFactor(BaseFactor):
     def fetch_data(self, trade_date: str, **kwargs) -> Optional[pd.DataFrame]:
         """获取涨停候选数据。
 
-        1. 偶数槽 → stock_zt_pool_em 涨停池（每60s刷新）
-        2. 奇数槽 → 复用上一轮涨停池缓存
-        3. 降级 → akshare 实时行情 pct_chg >= 9.5%
-        4. 再降级 → Tushare limit_list_d
+        1. 优先读 limit_pool DB（Scanner 每 60s 刷新落库）
+        2. 降级 → akshare stock_zt_pool_em
+        3. 再降级 → Tushare limit_list_d(U)
         """
         slot = int(time.time() // 30)
 
-        # ── 偶数槽：拉取 stock_zt_pool_em ──
+        # ── 偶数槽：查询 DB（新数据由 Scanner 60s 刷新落库）──
         if slot % 2 == 0 and slot != self._last_zt_slot:
-            df = self._fetch_zt_pool(trade_date)
+            df = self._read_from_limit_pool(trade_date)
             if df is not None and not df.empty:
                 return df
-            logger.info("[SectorFactor] 涨停池拉取失败，降级到实时行情")
+            # DB 为空 → 降级到 akshare
+            logger.info("[SectorFactor] limit_pool DB 无数据，降级到 akshare")
+            df = self._fetch_zt_pool_fallback(trade_date)
+            if df is not None and not df.empty:
+                return df
 
         # ── 奇数槽：复用缓存 ──
         if self._zt_pool_cache is not None and not self._zt_pool_cache.empty:
             logger.debug("[SectorFactor] 复用涨停池缓存 (slot=%d)", slot)
             return self._zt_pool_cache
 
-        # ── 降级：DB 实时行情 pct_chg 过滤 ──
-        try:
-            from src.storage import DatabaseManager
-            db = DatabaseManager()
-            spot_df = db.get_realtime_spot()
-            if spot_df is not None and not spot_df.empty:
-                pct = spot_df["pct_chg"]
-                limit_up = spot_df[pct >= 9.5].copy()
-                if not limit_up.empty:
-                    limit_up = self._with_ts_code_index(limit_up)
-                    logger.info(
-                        "[SectorFactor] 实时行情涨停候选: %d 只 (pct_chg >= 9.5%%)",
-                        len(limit_up),
-                    )
-                    self._populate_sector_map_from_basic(kwargs.get("tushare_fetcher"))
-                    return limit_up
-                logger.debug("[SectorFactor] 实时行情无涨停候选")
-        except Exception as e:
-            logger.warning("[SectorFactor] 实时行情 DB 查询失败，回退 Tushare: %s", e)
+        # ── 无缓存：读 DB ──
+        df = self._read_from_limit_pool(trade_date)
+        if df is not None and not df.empty:
+            return df
 
-        # ── 再降级：Tushare limit_list_d ──
+        # ── 降级 1：akshare ──
+        df = self._fetch_zt_pool_fallback(trade_date)
+        if df is not None and not df.empty:
+            return df
+
+        # ── 降级 2：Tushare ──
         tushare_fetcher = kwargs.get("tushare_fetcher")
         if tushare_fetcher is None:
             return None
@@ -166,8 +159,48 @@ class SectorFactor(BaseFactor):
     # Helpers
     # ------------------------------------------------------------------
 
-    def _fetch_zt_pool(self, trade_date: str) -> Optional[pd.DataFrame]:
-        """调用 stock_zt_pool_em 获取涨停池，转为 ts_code 索引的 DataFrame。"""
+    def _read_from_limit_pool(self, trade_date: str) -> Optional[pd.DataFrame]:
+        """从 limit_pool DB 读取涨停数据，转为 ts_code 索引 DataFrame。"""
+        try:
+            from src.storage import DatabaseManager
+
+            db = DatabaseManager()
+            lp = db.get_limit_pool(trade_date=trade_date, min_pct_chg=9.5)
+            if lp is None or lp.empty:
+                return None
+
+            df = lp.reset_index().copy()
+            df.rename(columns={"index": "code"}, inplace=False)
+
+            # 填充 sector_map
+            for _, row in df.iterrows():
+                code = str(row.get("code", "")).strip().zfill(6)
+                sec = str(row.get("sector", "")).strip()
+                if code and sec and sec not in ("nan", ""):
+                    self.sector_map[code] = sec
+
+            # 转为 ts_code 索引
+            df = df.set_index("code")
+            df = self._with_ts_code_index(df)
+
+            # 缓存
+            self._zt_pool_cache = df
+            self._last_zt_slot = int(time.time() // 30)
+
+            logger.info(
+                "[SectorFactor] limit_pool DB 涨停池: %d 只, 龙头(≥3板)=%d, 2板=%d, 首板=%d",
+                len(df),
+                len(df[df["limit_times"] >= 3]) if "limit_times" in df.columns else 0,
+                len(df[df["limit_times"] == 2]) if "limit_times" in df.columns else 0,
+                len(df[df["limit_times"] == 1]) if "limit_times" in df.columns else 0,
+            )
+            return df
+        except Exception as e:
+            logger.warning("[SectorFactor] 读取 limit_pool 失败: %s", e)
+            return None
+
+    def _fetch_zt_pool_fallback(self, trade_date: str) -> Optional[pd.DataFrame]:
+        """调用 akshare stock_zt_pool_em 降级拉取涨停池。"""
         try:
             import akshare as ak
 
@@ -177,38 +210,28 @@ class SectorFactor(BaseFactor):
                 return None
 
             df = df.copy()
-            # 重命名列为统一格式
             col_map = {
-                "代码": "code",
-                "名称": "name",
-                "涨跌幅": "pct_chg",
-                "最新价": "price",
-                "连板数": "limit_times",
-                "所属行业": "sector",
-                "首次封板时间": "首次封板时间",
-                "最后封板时间": "最后封板时间",
-                "炸板次数": "炸板次数",
-                "涨停统计": "涨停统计",
+                "代码": "code", "名称": "name", "涨跌幅": "pct_chg",
+                "最新价": "price", "连板数": "limit_times", "所属行业": "sector",
+                "首次封板时间": "首次封板时间", "最后封板时间": "最后封板时间",
+                "炸板次数": "炸板次数", "涨停统计": "涨停统计",
             }
             df.rename(columns={k: v for k, v in col_map.items() if k in df.columns}, inplace=True)
 
-            # 构建 sector_map {裸代码: 行业}
             for _, row in df.iterrows():
                 code = str(row.get("code", "")).strip().zfill(6)
                 sec = str(row.get("sector", "")).strip()
                 if code and sec:
                     self.sector_map[code] = sec
 
-            # 转为 ts_code 索引 (e.g. 000839 → 000839.SZ)
             df = df.set_index("code")
             df = self._with_ts_code_index(df)
 
-            # 缓存
             self._zt_pool_cache = df
             self._last_zt_slot = int(time.time() // 30)
 
             logger.info(
-                "[SectorFactor] 涨停池: %d 只, 龙头(≥3板)=%d, 2板=%d, 首板=%d",
+                "[SectorFactor] akshare 涨停池: %d 只, 龙头(≥3板)=%d, 2板=%d, 首板=%d",
                 len(df),
                 len(df[df["limit_times"] >= 3]),
                 len(df[df["limit_times"] == 2]),
@@ -216,7 +239,7 @@ class SectorFactor(BaseFactor):
             )
             return df
         except Exception as e:
-            logger.warning("[SectorFactor] stock_zt_pool_em 异常: %s", e)
+            logger.warning("[SectorFactor] akshare stock_zt_pool_em 异常: %s", e)
             return None
 
     @staticmethod

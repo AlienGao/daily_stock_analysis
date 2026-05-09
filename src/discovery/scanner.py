@@ -21,6 +21,7 @@ from datetime import date, datetime, timezone, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
+import pandas as pd
 import requests
 
 from src.discovery.config import DiscoveryConfig, set_active_config, _load_runtime_state_into
@@ -54,6 +55,7 @@ class IntradayScanner:
         self._round = 0
         self._notified: Set[str] = set()  # 已通知过的 ts_code，避免重复推送
         self._last_realtime_slot: int = -1  # 上次写入 DB 的 slot
+        self._last_limit_slot: int = -1  # 上次刷新 limit_pool 的 slot
 
     # ------------------------------------------------------------------
     # Public API
@@ -143,6 +145,7 @@ class IntradayScanner:
 
             try:
                 self._refresh_realtime_spot()
+                self._refresh_limit_pool()
                 results = self.engine.discover(mode="intraday")
                 if results:
                     annotated = self._annotate_changes(results)
@@ -224,6 +227,136 @@ class IntradayScanner:
         except Exception as e:
             logger.warning("[Scanner] 实时行情刷新失败: %s", e)
             return False
+
+    def _refresh_limit_pool(self) -> bool:
+        """拉取最新涨停数据落库（每 60s 刷新，偶 30s slot）。
+
+        3-tier fallback: akshare stock_zt_pool_em → realtime_spot DB → Tushare
+        盘中 delete-then-insert（炸板退池自动清除），同时填充 SectorFactor.sector_map。
+        """
+        try:
+            import time as _time
+            from src.storage import DatabaseManager
+
+            slot = int(_time.time() // 30)
+            if slot % 2 != 0:
+                return False
+            if slot == self._last_limit_slot:
+                return False
+
+            db = DatabaseManager()
+            today = date.today().strftime("%Y%m%d")
+
+            df, source = self._fetch_limit_pool_akshare(today)
+            if df is None or df.empty:
+                df, source = self._fetch_limit_pool_realtime_spot(db)
+            if df is None or df.empty:
+                df, source = self._fetch_limit_pool_tushare(today)
+
+            if df is None or df.empty:
+                return False
+
+            db.clear_limit_pool_date(today)
+            saved = db.insert_limit_pool_bulk(df, source=source, slot=slot)
+            self._fill_sector_map_from_pool(df)
+            self._last_limit_slot = slot
+            logger.info("[Scanner] limit_pool 刷新: %d 条 (source=%s)", saved, source)
+            return True
+        except Exception as e:
+            logger.warning("[Scanner] limit_pool 刷新失败: %s", e)
+            return False
+
+    @staticmethod
+    def _fetch_limit_pool_akshare(trade_date: str):
+        """Tier 1: akshare stock_zt_pool_em → limit_pool 格式 DataFrame。"""
+        try:
+            import akshare as ak
+            df = ak.stock_zt_pool_em(date=trade_date)
+            if df is None or df.empty:
+                return None, None
+            df = df.copy()
+            col_map = {
+                "代码": "code", "名称": "name", "涨跌幅": "pct_chg",
+                "最新价": "price", "连板数": "limit_times", "所属行业": "sector",
+                "首次封板时间": "first_seal_time", "最后封板时间": "last_seal_time",
+                "炸板次数": "break_count", "涨停统计": "limit_stats",
+            }
+            df.rename(columns={k: v for k, v in col_map.items() if k in df.columns}, inplace=True)
+            df["code"] = df["code"].astype(str).str.strip().str.zfill(6)
+            df["trade_date"] = trade_date
+            for c in ("pct_chg", "price"):
+                if c in df.columns:
+                    df[c] = pd.to_numeric(df[c], errors="coerce")
+            for c in ("limit_times", "break_count"):
+                if c in df.columns:
+                    df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0).astype(int)
+            return df, "akshare"
+        except Exception:
+            return None, None
+
+    @staticmethod
+    def _fetch_limit_pool_realtime_spot(db) -> tuple:
+        """Tier 2: realtime_spot DB pct_chg >= 9.5% → limit_pool 格式 DataFrame。"""
+        try:
+            spot = db.get_realtime_spot()
+            if spot is None or spot.empty:
+                return None, None
+            if "code" in spot.index.name or spot.index.name is None:
+                pass
+            pct = spot["pct_chg"]
+            limit_up = spot[pct >= 9.5].copy()
+            if limit_up.empty:
+                return None, None
+            today = date.today().strftime("%Y%m%d")
+            out = pd.DataFrame()
+            out["code"] = limit_up.index.astype(str).str.strip().str.zfill(6)
+            out["name"] = limit_up.get("name", pd.Series("", index=limit_up.index)).values
+            out["pct_chg"] = limit_up["pct_chg"].values
+            out["price"] = limit_up.get("price", pd.Series(index=limit_up.index)).values
+            out["trade_date"] = today
+            return out, "realtime_spot"
+        except Exception:
+            return None, None
+
+    def _fetch_limit_pool_tushare(self, trade_date: str) -> tuple:
+        """Tier 3: Tushare get_limit_list(U) → limit_pool 格式 DataFrame。"""
+        try:
+            fetcher = getattr(self.engine, "tushare_fetcher", None)
+            if fetcher is None:
+                return None, None
+            df = fetcher.get_limit_list(trade_date, limit_type="U")
+            if df is None or df.empty:
+                return None, None
+            df = df.reset_index()
+            out = pd.DataFrame()
+            out["code"] = df["ts_code"].astype(str).str.split(".").str[0].str.zfill(6)
+            out["name"] = df.get("name", pd.Series("", index=df.index)).values if "name" in df.columns else ""
+            out["trade_date"] = trade_date
+            out["limit_type"] = df.get("limit_type", "U")
+            for c in ("pct_chg", "limit_times", "open_times", "up_stat", "limit_stats"):
+                if c in df.columns:
+                    out[c] = df[c].values
+            if "limit" in df.columns and "limit_stats" not in out.columns:
+                out["limit_stats"] = df["limit"].values
+            return out, "tushare"
+        except Exception:
+            return None, None
+
+    def _fill_sector_map_from_pool(self, df) -> None:
+        """从 limit_pool 数据填充 SectorFactor.sector_map。"""
+        if df is None or df.empty or "sector" not in df.columns:
+            return
+        try:
+            sf = self.engine.get_factor("sector")
+            if sf is None or not hasattr(sf, "sector_map"):
+                return
+            for _, row in df.iterrows():
+                code = str(row.get("code", "")).strip().zfill(6)
+                sec = str(row.get("sector", "")).strip()
+                if code and sec and sec not in ("nan", ""):
+                    sf.sector_map[code] = sec
+        except Exception:
+            pass
 
     def _ensure_daily_kline_complete(self) -> None:
         """校验 stock_daily 是否有近 60 个交易日数据，缺失则自动补全。
@@ -373,6 +506,7 @@ class IntradayScanner:
                 "score": r.score,
                 "sector": r.sector,
                 "factor_scores": r.factor_scores,
+                "factor_weights": getattr(r, "factor_weights", {}),
                 "reasons": r.reasons,
                 "buy_price_low": r.buy_price_low,
                 "buy_price_high": r.buy_price_high,
@@ -405,6 +539,7 @@ class IntradayScanner:
                     "score": 0,
                     "sector": "",
                     "factor_scores": {},
+                    "factor_weights": {},
                     "change": "out",
                 })
 
@@ -475,6 +610,7 @@ class IntradayScanner:
                     "score": r.score,
                     "sector": getattr(r, "sector", ""),
                     "factor_scores": getattr(r, "factor_scores", {}),
+                    "factor_weights": getattr(r, "factor_weights", {}),
                     "reasons": getattr(r, "reasons", []),
                     "buy_price_low": getattr(r, "buy_price_low", None),
                     "buy_price_high": getattr(r, "buy_price_high", None),
@@ -527,6 +663,88 @@ class IntradayScanner:
                 DatabaseManager().save_scan_results_intraday(records, scan_date)
         except Exception as e:
             logger.warning("[Scanner] 全量扫描结果落库失败: %s", e)
+
+
+def refresh_limit_pool_postmarket(tushare_fetcher) -> int:
+    """盘后用 Tushare limit_list_d 全量刷新 limit_pool（U/D/Z 三类全部）。
+
+    Returns:
+        落库条数，失败返回 0
+    """
+    import time as _time
+    from datetime import date
+
+    try:
+        from src.storage import DatabaseManager
+
+        today = date.today().strftime("%Y%m%d")
+
+        # 拉取全部涨跌停（U/D/Z）
+        df = tushare_fetcher.get_limit_list(today)
+        if df is None or df.empty:
+            logger.warning("[Scanner] 盘后 limit_pool 刷新: Tushare 无数据")
+            return 0
+
+        df = df.reset_index()
+        out = pd.DataFrame()
+        out["code"] = df["ts_code"].astype(str).str.split(".").str[0].str.zfill(6)
+        out["name"] = df.get("name", pd.Series("", index=df.index)).values if "name" in df.columns else ""
+        out["trade_date"] = today
+        out["limit_type"] = df.get("limit_type", "")
+        for c in ("pct_chg", "limit_times", "open_times", "up_stat"):
+            if c in df.columns:
+                out[c] = pd.to_numeric(df[c], errors="coerce") if c in ("pct_chg",) else df[c].values
+        if "limit" in df.columns:
+            out["limit_stats"] = df["limit"].values
+        if "limit_times" in df.columns:
+            out["limit_times"] = pd.to_numeric(out.get("limit_times", 0), errors="coerce").fillna(0).astype(int)
+        if "open_times" in df.columns:
+            out["open_times"] = pd.to_numeric(out.get("open_times", 0), errors="coerce").fillna(0).astype(int)
+
+        db = DatabaseManager()
+        slot = int(_time.time() // 30)
+        saved = db.upsert_limit_pool(out, source="tushare", slot=slot)
+        logger.info("[Scanner] 盘后 limit_pool 全量刷新: %d 条 (U/D/Z)", saved)
+        return saved
+    except Exception as e:
+        logger.warning("[Scanner] 盘后 limit_pool 刷新失败: %s", e)
+        return 0
+
+
+def refresh_money_flow_postmarket(tushare_fetcher) -> int:
+    """盘后用 Tushare moneyflow 全量刷新 money_flow 表。
+
+    Returns:
+        落库条数，失败返回 0
+    """
+    import time as _time
+
+    try:
+        from src.storage import DatabaseManager
+
+        df = tushare_fetcher.get_bulk_money_flow()
+        if df is None or df.empty:
+            logger.warning("[Scanner] 盘后 money_flow 刷新: Tushare 无数据")
+            return 0
+
+        df = df.reset_index()
+        out = pd.DataFrame()
+        out["code"] = df["ts_code"].astype(str).str.split(".").str[0].str.zfill(6)
+        out["name"] = df.get("name", pd.Series("", index=df.index)).values if "name" in df.columns else ""
+        out["trade_date"] = df.get("trade_date", "")
+        for c in ("buy_elg_amount", "sell_elg_amount", "buy_lg_amount",
+                   "sell_lg_amount", "buy_md_amount", "sell_md_amount",
+                   "buy_sm_amount", "sell_sm_amount", "net_mf_amount"):
+            if c in df.columns:
+                out[c] = pd.to_numeric(df[c], errors="coerce")
+
+        db = DatabaseManager()
+        saved = db.upsert_money_flow(out, source="tushare")
+        logger.info("[Scanner] 盘后 money_flow 全量刷新: %d 条", saved)
+        return saved
+    except Exception as e:
+        logger.warning("[Scanner] 盘后 money_flow 刷新失败: %s", e)
+        return 0
 
 
 def run_intraday_scan(config: DiscoveryConfig, tushare_fetcher=None, akshare_fetcher=None) -> None:

@@ -1038,10 +1038,17 @@ def start_bot_stream_clients(config: Config) -> None:
 
 
 def _save_discovery_report(report: str, results=None) -> Optional[Path]:
-    """Save discovery report to discovery_reports/postmarket_YYYYMMDD.md + _topn.json."""
+    """Save discovery report to discovery_reports/postmarket_YYYYMMDD.md + _topn.json.
+    非交易日 → discovery_reports/non_trading/ 子目录（仅展示，不回测）。
+    """
     try:
         from datetime import date
-        reports_dir = Path(__file__).resolve().parent / "discovery_reports"
+        from src.discovery.engine import is_trading_day
+        base_dir = Path(__file__).resolve().parent / "discovery_reports"
+        if is_trading_day():
+            reports_dir = base_dir
+        else:
+            reports_dir = base_dir / "non_trading"
         reports_dir.mkdir(parents=True, exist_ok=True)
         date_str = date.today().strftime('%Y%m%d')
         filepath = reports_dir / f"postmarket_{date_str}.md"
@@ -1443,6 +1450,20 @@ def main() -> int:
                 BrokerRecommendFactor(),
             ])
 
+            # 盘后：用 Tushare 全量刷新 limit_pool（U/D/Z 全部涨跌停类型）
+            try:
+                from src.discovery.scanner import refresh_limit_pool_postmarket
+                refresh_limit_pool_postmarket(tushare_fetcher)
+            except Exception:
+                logger.warning("[Discover] limit_pool 盘后刷新失败，继续使用已有数据", exc_info=True)
+
+            # 盘后：用 Tushare 全量刷新 money_flow
+            try:
+                from src.discovery.scanner import refresh_money_flow_postmarket
+                refresh_money_flow_postmarket(tushare_fetcher)
+            except Exception:
+                logger.warning("[Discover] money_flow 盘后刷新失败，继续使用已有数据", exc_info=True)
+
             results = engine.discover(mode="postmarket")
             # 全量评分落库（全市场股票，非仅 Top N）
             if engine._last_full_scan_df is not None:
@@ -1574,6 +1595,13 @@ def main() -> int:
                 # Pre-step: run lightweight R&D loop to discover new factors (opt-in)
                 if os.getenv("RD_LOOP_AUTO_ENABLED", "").strip().lower() in ("true", "1", "yes", "on"):
                     _run_auto_rd_loop()
+
+                # 每日维护：清理超过 10 年的历史数据
+                try:
+                    from src.storage import DatabaseManager
+                    DatabaseManager().prune_historical_data(retention_years=10)
+                except Exception:
+                    pass
 
                 run_full_analysis(runtime_config, args, scheduled_stock_codes)
 

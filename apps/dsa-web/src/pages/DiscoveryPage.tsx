@@ -368,9 +368,8 @@ const StockCard: React.FC<{
                     <div className="text-[11px] font-medium text-tertiary-text tracking-wide">因子得分</div>
                     {(() => {
                       const entries = Object.entries(item.factor_scores).filter(([, v]) => v > 0);
-                      const total = entries.reduce((s, [, v]) => s + v, 0) || 1;
                       return entries.map(([k, v]) => (
-                        <FactorBar key={k} label={factorLabel(k)} value={v} pctShare={Math.round((v / total) * 100)} />
+                        <FactorBar key={k} label={factorLabel(k)} value={v} pctShare={item.factor_weights?.[k] ?? 0} />
                       ));
                     })()}
                   </div>
@@ -1083,13 +1082,12 @@ const DiscoveryPage: React.FC = () => {
               expandedRowRender: (entry) => {
                 const scoreItem = entry.intraday || entry.postmarket;
                 if (!scoreItem) return null;
-                const total = Object.values(scoreItem.factor_scores).reduce((s, v) => s + v, 0) || 1;
                 return (
                   <div className="space-y-1 py-1">
                     {Object.entries(scoreItem.factor_scores)
                       .filter(([, score]) => score > 0)
                       .map(([name, score]) => {
-                      const pct = Math.round((score / total) * 100);
+                      const pct = scoreItem.factor_weights?.[name] ?? 0;
                       return (
                       <div key={name} className="flex items-center gap-2">
                         <span className="text-[11px] text-secondary-text w-28 shrink-0 truncate" title={`${FACTOR_LABELS[name] || name} (${pct}%)`}>

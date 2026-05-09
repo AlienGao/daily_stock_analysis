@@ -1000,79 +1000,49 @@ class BrokerRecommendService:
         return prices
 
     def _get_realtime_prices_batch(self, ts_codes: List[str]) -> tuple:
-        """批量获取当日实时最新价（Sina 接口，支持逗号分隔批量查询）。
+        """批量获取当日实时最新价（从 realtime_spot DB 读取）。
 
-        仅在当月回测使用，作为 DB 数据的补充。批量查询避免逐个调用。
-        返回 (prices_dict, daily_changes_dict)。
+        仅在当月回测使用，作为 DB 数据的补充。
+        返回 (prices_dict, daily_changes_dict, today_ohlc_dict)。
         """
         from datetime import date as dt_date
-        import requests as _requests
 
         today = dt_date.today().strftime("%Y%m%d")
         prices: Dict[str, Dict[str, float]] = {}
         daily_changes: Dict[str, float] = {}
         today_ohlc: Dict[str, Dict[str, float]] = {}
-        symbols: List[str] = []
-        sym_to_ts: Dict[str, str] = {}
-        for ts in ts_codes:
-            parts = ts.split(".") if "." in ts else [ts, ""]
-            base = parts[0]
-            exchange = parts[1].upper() if len(parts) > 1 else ""
-            if exchange == "BJ":
-                sym = f"bj{base}"
-            elif base.startswith(("6", "5", "90")):
-                sym = f"sh{base}"
-            else:
-                sym = f"sz{base}"
-            symbols.append(sym)
-            sym_to_ts[sym] = ts
 
-        # Sina 单次最多约 50 个标的，分批
-        for i in range(0, len(symbols), 50):
-            batch = symbols[i:i + 50]
-            url = f"http://hq.sinajs.cn/list={','.join(batch)}"
-            try:
-                resp = _requests.get(
-                    url,
-                    headers={"Referer": "https://finance.sina.com.cn"},
-                    timeout=8,
-                )
-                resp.encoding = "gbk"
-                for line in resp.text.strip().split("\n"):
-                    if '="' not in line:
-                        continue
-                    parts = line.split('="', 1)
-                    if len(parts) != 2:
-                        continue
-                    label = parts[0].strip()
-                    sym = label.split("_")[-1] if "_" in label else label
-                    data = parts[1].rstrip('";\n')
-                    fields = data.split(",")
-                    # fields[1]=今开, fields[2]=昨收, fields[3]=最新价, fields[4]=最高, fields[5]=最低
-                    if len(fields) > 3 and fields[3] and fields[2]:
-                        try:
-                            ts_code = sym_to_ts.get(sym)
-                            if ts_code:
-                                price = float(fields[3])
-                                prev_close = float(fields[2])
-                                prices.setdefault(ts_code, {})[today] = price
-                                if prev_close > 0:
-                                    daily_changes[ts_code] = round((price - prev_close) / prev_close, 4)
-                                # 提取今日 OHLC（Sina 实时行情包含当日开高低）
-                                ohlc = {}
-                                if len(fields) > 1 and fields[1]:
-                                    ohlc["open"] = float(fields[1])
-                                if len(fields) > 4 and fields[4]:
-                                    ohlc["high"] = float(fields[4])
-                                if len(fields) > 5 and fields[5]:
-                                    ohlc["low"] = float(fields[5])
-                                ohlc["close"] = price
-                                if len(ohlc) >= 3:  # 至少有 open/high/low/close 中 3 个
-                                    today_ohlc[ts_code] = ohlc
-                        except (ValueError, TypeError):
-                            continue
-            except Exception:
-                continue
+        try:
+            from src.storage import DatabaseManager
+            bare_codes = [ts.split(".")[0] if "." in ts else ts for ts in ts_codes]
+            spot_df = DatabaseManager().get_current_prices(bare_codes)
+            if spot_df is None or spot_df.empty:
+                return prices, daily_changes, today_ohlc
+
+            for ts in ts_codes:
+                code = ts.split(".")[0] if "." in ts else ts
+                try:
+                    row = spot_df.loc[code]
+                    price = float(row["price"])
+                    prices[ts] = {today: price}
+                    pct = row.get("pct_chg")
+                    if pd.notna(pct):
+                        daily_changes[ts] = round(float(pct) / 100, 4)
+                    ohlc = {}
+                    if pd.notna(row.get("open_price")):
+                        ohlc["open"] = float(row["open_price"])
+                    if pd.notna(row.get("high")):
+                        ohlc["high"] = float(row["high"])
+                    if pd.notna(row.get("low")):
+                        ohlc["low"] = float(row["low"])
+                    ohlc["close"] = price
+                    if len(ohlc) >= 3:
+                        today_ohlc[ts] = ohlc
+                except (KeyError, ValueError, TypeError):
+                    continue
+        except Exception:
+            logger.warning("[BrokerRecommend] realtime_spot 读取出错", exc_info=True)
+
         return prices, daily_changes, today_ohlc
 
     def compute_backtest(self, month: str, top_n_per_broker: int = 10) -> Dict[str, Any]:
@@ -1246,8 +1216,9 @@ class BrokerRecommendService:
                                     prev_filled += 1
                         if prev_filled:
                             logger.info(f"[BrokerRecommend] 回测 {month} 昨收价补充 {prev_filled} 只")
-                    # 将 Sina 实时今日 OHLC 写入 DB，确保后续 _prefetch_ohlc 能查到蜡烛图数据
-                    if rt_ohlc:
+                    # 将实时今日 OHLC 写入 DB（仅交易日）
+                    from src.discovery.engine import is_trading_day
+                    if rt_ohlc and is_trading_day():
                         ohlc_saved = 0
                         today_date = date.today()
                         for ts, ohlc in rt_ohlc.items():

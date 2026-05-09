@@ -23,66 +23,24 @@ _SCAN_OUTPUT = "/tmp/discovery_top10.json"
 
 
 def _get_live_prices(ts_codes: List[str]) -> Dict[str, float]:
-    """获取实时价格，Sina 优先（轻量），akshare 兜底。"""
-    # 1) Sina（只请求需要的股票，快）
+    """获取实时价格，从 realtime_spot DB 读取。"""
     try:
-        import re
-        import requests
-        symbols = []
-        for ts_code in ts_codes:
-            code = ts_code.split(".")[0] if "." in ts_code else ts_code
-            sym = f"sh{code}" if code.startswith(("60", "68")) else f"sz{code}"
-            symbols.append(sym)
-        url = f"http://hq.sinajs.cn/list={','.join(symbols)}"
-        resp = requests.get(url, headers={"Referer": "http://finance.sina.com.cn"}, timeout=5)
-        resp.encoding = "gbk"
-        prices: Dict[str, float] = {}
-        for line in resp.text.strip().split("\n"):
-            m = re.search(r'hq_str_(\w+)="([^"]*)"', line)
-            if not m:
-                continue
-            fields = m.group(2).split(",")
-            if len(fields) < 4:
-                continue
-            try:
-                prices[m.group(1)] = float(fields[3])
-            except (ValueError, IndexError):
-                pass
-        result = {}
-        for i, ts_code in enumerate(ts_codes):
-            if i < len(symbols) and symbols[i] in prices:
-                result[ts_code] = prices[symbols[i]]
-        if result:
-            return result
-    except Exception:
-        pass
-
-    # 2) akshare fallback（全市场拉取，慢，加超时保护）
-    try:
-        import akshare as ak
-        import concurrent.futures
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(ak.stock_zh_a_spot_em)
-            df = future.result(timeout=8)
-        if df is not None and not df.empty:
-            pmap: Dict[str, float] = {}
-            for _, row in df.iterrows():
-                code = str(row.get('代码', '')).strip()
-                price = row.get('最新价')
-                if code and price is not None:
-                    try:
-                        pmap[code] = float(price)
-                    except (ValueError, TypeError):
-                        pass
+        from src.storage import DatabaseManager
+        bare_codes = [c.split(".")[0] if "." in c else c for c in ts_codes]
+        spot_df = DatabaseManager().get_current_prices(bare_codes)
+        if spot_df is not None and not spot_df.empty:
             result: Dict[str, float] = {}
             for ts_code in ts_codes:
                 code = ts_code.split(".")[0] if "." in ts_code else ts_code
-                if code in pmap:
-                    result[ts_code] = pmap[code]
-            if result:
-                return result
+                try:
+                    val = spot_df.at[code, "price"]
+                    if pd.notna(val):
+                        result[ts_code] = float(val)
+                except (KeyError, ValueError, TypeError):
+                    pass
+            return result
     except Exception:
-        return {}
+        logger.warning("[Discovery API] realtime_spot 读取出错", exc_info=True)
     return {}
 
 
@@ -226,6 +184,7 @@ class DiscoveryItem(BaseModel):
     discovered_at: str = ""
     price_at_discovery: Optional[float] = None
     live_price: Optional[float] = None
+    factor_weights: dict = {}
 
 
 class IntradayTopResponse(BaseModel):
@@ -259,9 +218,10 @@ def _get_latest_completed_task() -> Optional[dict]:
     return max(completed, key=lambda t: t.get("finished_at", ""))
 
 
-def _build_discovery_items(raw_items: list) -> List[DiscoveryItem]:
+def _build_discovery_items(raw_items: list, mode: str = "") -> List[DiscoveryItem]:
     """将原始 dict 列表转为 DiscoveryItem 列表。"""
     items: List[DiscoveryItem] = []
+    fallback_weights = _get_factor_weights(mode) if mode else {}
     for entry in raw_items:
         items.append(DiscoveryItem(
             rank=entry.get("rank", 0),
@@ -271,6 +231,7 @@ def _build_discovery_items(raw_items: list) -> List[DiscoveryItem]:
             score=entry.get("score", 0),
             sector=entry.get("sector", ""),
             factor_scores=entry.get("factor_scores", {}),
+            factor_weights=entry.get("factor_weights") or fallback_weights,
             reasons=entry.get("reasons", []),
             buy_price_low=entry.get("buy_price_low"),
             buy_price_high=entry.get("buy_price_high"),
@@ -349,6 +310,7 @@ def get_intraday_top10():
                 discovered_at=entry.get("discovered_at", ""),
                 price_at_discovery=entry.get("price_at_discovery"),
                 live_price=live_prices.get(ts_code) if live_prices.get(ts_code) != entry.get("price_at_discovery") else None,
+                factor_weights=entry.get("factor_weights") or _get_factor_weights("intraday"),
             ))
         # Re-rank after filtering
         for i, item in enumerate(top_n):
@@ -362,6 +324,7 @@ def get_intraday_top10():
                 stock_name=entry.get("stock_name", ""),
                 score=0,
                 change="out",
+                factor_weights={},
             ))
 
         return IntradayTopResponse(
@@ -500,7 +463,7 @@ def get_postmarket_report(
         # 最后尝试内存中的最近完成任务
         recent = _get_latest_completed_task()
         if recent and recent.get("report"):
-            top_n = _build_discovery_items(recent.get("top_n", []))
+            top_n = _build_discovery_items(recent.get("top_n", []), mode="postmarket")
             return PostmarketReportResponse(
                 date=recent.get("date_str", report_date),
                 report=recent["report"],
@@ -541,6 +504,7 @@ def get_postmarket_report(
                 take_profit_2=entry.get("take_profit_2"),
                 discovered_at=entry.get("discovered_at", ""),
                 price_at_discovery=entry.get("price_at_discovery"),
+                factor_weights=entry.get("factor_weights") or _get_factor_weights("postmarket"),
             ))
 
         return PostmarketReportResponse(
@@ -855,6 +819,7 @@ class StockScoreItem(BaseModel):
     rank: int
     total_score: float
     factor_scores: Dict[str, float]
+    factor_weights: Dict[str, float] = {}
     sector: str
 
 
@@ -883,7 +848,7 @@ def _format_scanned_at(scan_date: str, scan_time: str) -> str:
     return d
 
 
-def _row_to_item(row) -> Optional[StockScoreItem]:
+def _row_to_item(row, factor_weights: Dict[str, float] = None) -> Optional[StockScoreItem]:
     """将 ORM 行转为 StockScoreItem。"""
     if row is None:
         return None
@@ -898,8 +863,38 @@ def _row_to_item(row) -> Optional[StockScoreItem]:
         rank=row.rank,
         total_score=round(float(row.total_score or 0), 2),
         factor_scores=factor_scores,
+        factor_weights=factor_weights or {},
         sector=row.sector or "",
     )
+
+
+def _get_factor_weights(mode: str) -> Dict[str, float]:
+    """获取指定模式下所有活跃因子的权重映射。"""
+    from src.discovery.config import get_discovery_config
+    from src.discovery.engine import StockDiscoveryEngine
+    from src.discovery.factors import (
+        SectorFactor, MaEntryFactor, MomentumFactor, ReboundFactor,
+        MoneyFlowFactor, MarginFactor, ChipFactor, TechnicalFactor,
+        LimitFactor, FundamentalFactor, PopularityFactor, HotMoneyFactor,
+        NorthboundFactor, InstitutionHoldFactor, ProfitForecastFactor,
+        PerformanceFactor, BuybackFactor, InsiderBuyFactor,
+        BrokerRecommendFactor,
+    )
+    config = get_discovery_config()
+    engine = StockDiscoveryEngine(config)
+    engine.register_factors([
+        SectorFactor(), MaEntryFactor(), MomentumFactor(), ReboundFactor(),
+        MoneyFlowFactor(), MarginFactor(), ChipFactor(), TechnicalFactor(),
+        LimitFactor(), FundamentalFactor(), PopularityFactor(), HotMoneyFactor(),
+        NorthboundFactor(), InstitutionHoldFactor(), ProfitForecastFactor(),
+        PerformanceFactor(), BuybackFactor(), InsiderBuyFactor(),
+        BrokerRecommendFactor(),
+    ])
+    return {
+        name: factor.weight
+        for name, factor in engine._factors.items()
+        if factor.is_available(mode)
+    }
 
 
 @router.get(
@@ -924,6 +919,7 @@ def get_stock_score(
     db = DatabaseManager()
     items: List[StockScoreEntry] = []
     Model = ScanResultIntraday if mode == "intraday" else ScanResultPostmarket
+    factor_weights = _get_factor_weights(mode)
 
     with db.get_session() as session:
         from sqlalchemy import desc
@@ -937,7 +933,7 @@ def get_stock_score(
             )
 
             stock_name = (row and row.stock_name) or code
-            score_item = _row_to_item(row)
+            score_item = _row_to_item(row, factor_weights=factor_weights)
 
             items.append(StockScoreEntry(
                 stock_code=code,

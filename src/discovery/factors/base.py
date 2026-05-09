@@ -33,6 +33,7 @@ class DiscoveryResult:
     change_pct: float = 0.0
     discovered_at: str = ""
     price_at_discovery: Optional[float] = None
+    factor_weights: Dict[str, float] = field(default_factory=dict)
 
 
 class BaseFactor(ABC):

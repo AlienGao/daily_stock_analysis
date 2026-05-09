@@ -18,6 +18,7 @@ export type DiscoveryItem = {
   discovered_at?: string;
   price_at_discovery?: number | null;
   live_price?: number | null;
+  factor_weights?: Record<string, number>;
 };
 
 export type IntradayTopResponse = {
@@ -103,6 +104,7 @@ export type StockScoreItem = {
   rank: number;
   total_score: number;
   factor_scores: Record<string, number>;
+  factor_weights: Record<string, number>;
   sector: string;
 };
 

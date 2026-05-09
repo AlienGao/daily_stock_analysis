@@ -98,6 +98,32 @@ def _review_one(
     """
     code = single.code
     qid = getattr(single, "query_id", None) or uuid.uuid4().hex
+
+    # 复用单股分析时已搜索的新闻，避免重复调 Bocha
+    news_context = None
+    if getattr(single, "query_id", None):
+        try:
+            news_items = pipeline.db.get_news_intel_by_query_id(single.query_id)
+            if news_items:
+                dim_labels = {
+                    'latest_news': '最新消息', 'announcements': '公司公告',
+                    'market_analysis': '机构分析', 'risk_check': '风险排查',
+                    'earnings': '业绩预期', 'industry': '行业分析',
+                }
+                by_dim: dict = {}
+                for item in news_items:
+                    by_dim.setdefault(item.dimension, []).append(item)
+                lines = [f"【{single.name or code} 情报搜索结果（复用）】"]
+                for dim, items in by_dim.items():
+                    label = dim_labels.get(dim, dim)
+                    lines.append(f"\n{label}:")
+                    for item in items[:5]:
+                        lines.append(f"- {item.title}: {item.snippet or ''}")
+                news_context = "\n".join(lines)
+                logger.debug("[%s] 复用 news_intel 新闻 %d 条", code, len(news_items))
+        except Exception:
+            pass
+
     try:
         multi = pipeline.analyze_stock(
             code,
@@ -107,6 +133,7 @@ def _review_one(
             force_agent=True,
             replace_history=False,
             persist_history=False,
+            prefetched_news_context=news_context,
         )
     except Exception as exc:
         logger.exception("[%s] Top-N multi 复核异常", code)

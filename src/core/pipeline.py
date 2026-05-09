@@ -254,6 +254,7 @@ class StockAnalysisPipeline:
         force_agent: bool = False,
         replace_history: bool = False,
         persist_history: bool = True,
+        prefetched_news_context: Optional[str] = None,
     ) -> Optional[AnalysisResult]:
         """
         分析单只股票（增强版：含量比、换手率、筹码分析、多维度情报）
@@ -515,9 +516,11 @@ class StockAnalysisPipeline:
                 return result
 
             # Step 4: 多维度情报搜索（最新消息+风险排查+业绩预期）
-            news_context = None
+            news_context = prefetched_news_context
+            if news_context:
+                logger.info(f"{stock_name}({code}) 复用已有新闻上下文，跳过搜索")
             self._emit_progress(46, f"{stock_name}：正在检索新闻与舆情")
-            if self.search_service is not None and self.search_service.is_available:
+            if news_context is None and self.search_service is not None and self.search_service.is_available:
                 logger.info(f"{stock_name}({code}) 开始多维度情报搜索...")
 
                 # 使用多维度搜索（最多5次搜索）

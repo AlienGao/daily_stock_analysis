@@ -1621,39 +1621,15 @@ class AkshareFetcher(BaseFetcher):
             return None
 
     def get_market_stats(self) -> Optional[Dict[str, Any]]:
-        """
-        获取市场涨跌统计
-
-        数据源优先级：
-        1. 东财接口 (ak.stock_zh_a_spot_em)
-        2. 新浪接口 (ak.stock_zh_a_spot)
-        """
-        import akshare as ak
-
-        # 优先东财接口
+        """获取市场涨跌统计，从 DB 读取（交易日 realtime_spot，非交易日 stock_daily 最近收盘）。"""
         try:
-            self._set_random_user_agent()
-            self._enforce_rate_limit()
-
-            logger.info("[API调用] ak.stock_zh_a_spot_em() 获取市场统计...")
-            df = ak.stock_zh_a_spot_em()
-            if df is not None and not df.empty:
-                return self._calc_market_stats(df)
+            from src.storage import DatabaseManager
+            spot_df = DatabaseManager().get_current_spot()
+            if spot_df is not None and not spot_df.empty:
+                spot_df = spot_df.reset_index()  # code index → column
+                return self._calc_market_stats(spot_df)
         except Exception as e:
-            logger.warning(f"[Akshare] 东财接口获取市场统计失败: {e}，尝试新浪接口")
-
-        # 东财失败后，尝试新浪接口
-        try:
-            self._set_random_user_agent()
-            self._enforce_rate_limit()
-
-            logger.info("[API调用] ak.stock_zh_a_spot() 获取市场统计(新浪)...")
-            df = ak.stock_zh_a_spot()
-            if df is not None and not df.empty:
-                return self._calc_market_stats(df)
-        except Exception as e:
-            logger.error(f"[Akshare] 新浪接口获取市场统计也失败: {e}")
-
+            logger.error(f"[Akshare] 从 DB 获取市场统计失败: {e}")
         return None
 
     def _calc_market_stats(
@@ -1667,11 +1643,11 @@ class AkshareFetcher(BaseFetcher):
         
         # 1. 提取基础比对数据：最新价、昨收
         # 兼容不同接口返回的列名 sina/em efinance tushare xtdata
-        code_col = next((c for c in ['代码', '股票代码', 'ts_code','stock_code'] if c in df.columns), None)
-        name_col = next((c for c in ['名称', '股票名称','name','name'] if c in df.columns), None)
-        close_col = next((c for c in ['最新价', '最新价', 'close','lastPrice'] if c in df.columns), None)
-        pre_close_col = next((c for c in ['昨收', '昨日收盘', 'pre_close','lastClose'] if c in df.columns), None)
-        amount_col = next((c for c in ['成交额', '成交额', 'amount','amount'] if c in df.columns), None) 
+        code_col = next((c for c in ['代码', '股票代码', 'ts_code', 'stock_code', 'code'] if c in df.columns), None)
+        name_col = next((c for c in ['名称', '股票名称', 'name'] if c in df.columns), None)
+        close_col = next((c for c in ['最新价', 'close', 'lastPrice', 'price'] if c in df.columns), None)
+        pre_close_col = next((c for c in ['昨收', '昨日收盘', 'pre_close', 'lastClose'] if c in df.columns), None)
+        amount_col = next((c for c in ['成交额', 'amount'] if c in df.columns), None) 
         
         limit_up_count = 0
         limit_down_count = 0

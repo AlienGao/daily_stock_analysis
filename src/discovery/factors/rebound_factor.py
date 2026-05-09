@@ -28,15 +28,36 @@ class ReboundFactor(BaseFactor):
     weight = 15.0
 
     def fetch_data(self, trade_date: str, **kwargs) -> Optional[pd.DataFrame]:
+        # 优先从 limit_pool DB 读取炸板数据（limit_type='Z'）
+        try:
+            from src.storage import DatabaseManager
+            db = DatabaseManager()
+            df_z = db.get_limit_pool(trade_date=trade_date, limit_type="Z")
+            if df_z is not None and not df_z.empty:
+                df_z = df_z.reset_index().copy()
+                # 裸代码 → ts_code，与其他 Tushare 因子索引一致
+                df_z.index = [self._bare_to_ts_code(c) for c in df_z["code"]]
+                # merge 资金流（ts_code 索引，可直接对齐）
+                tushare_fetcher = kwargs.get("tushare_fetcher")
+                if tushare_fetcher is not None:
+                    mf = tushare_fetcher.get_bulk_money_flow(trade_date)
+                    if mf is not None and not mf.empty:
+                        for col in ["buy_elg_amount", "sell_elg_amount",
+                                    "buy_lg_amount", "sell_lg_amount"]:
+                            if col in mf.columns:
+                                df_z[col] = mf[col]
+                return df_z
+        except Exception as e:
+            logger.debug("[ReboundFactor] limit_pool DB 查询失败，回退 Tushare: %s", e)
+
+        # 降级到 Tushare API（返回 ts_code 索引，资金流自动对齐）
         tushare_fetcher = kwargs.get("tushare_fetcher")
         if tushare_fetcher is None:
             return None
 
-        # 获取炸板股票 (limit_type='Z')
         df = tushare_fetcher.get_limit_list(trade_date, limit_type="Z")
         if df is not None and not df.empty:
             df = df.copy()
-            # 合并资金流数据判断大单回补
             mf = tushare_fetcher.get_bulk_money_flow(trade_date)
             if mf is not None and not mf.empty:
                 for col in ["buy_elg_amount", "sell_elg_amount",
@@ -108,3 +129,15 @@ class ReboundFactor(BaseFactor):
             if r:
                 reasons[ts_code] = r
         return reasons
+
+    @staticmethod
+    def _bare_to_ts_code(code: str) -> str:
+        """裸代码 → ts_code 格式 (e.g. '600519' → '600519.SH')。"""
+        c = str(code).strip().zfill(6)
+        if c.startswith(("60", "68")):
+            return f"{c}.SH"
+        elif c.startswith(("00", "30")):
+            return f"{c}.SZ"
+        elif c.startswith(("4", "8", "92")):
+            return f"{c}.BJ"
+        return c

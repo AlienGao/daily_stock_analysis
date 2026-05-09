@@ -51,15 +51,14 @@ class AnalysisHistoryTestCase(unittest.TestCase):
         auth._auth_enabled = False
         self._temp_dir = tempfile.TemporaryDirectory()
         self._db_path = os.path.join(self._temp_dir.name, "test_analysis_history.db")
-        os.environ["DATABASE_PATH"] = self._db_path
 
-        Config._instance = None
         DatabaseManager.reset_instance()
-        self.db = DatabaseManager.get_instance()
+        self.db = DatabaseManager(db_url=f"sqlite:///{self._db_path}")
 
     def tearDown(self) -> None:
         """清理资源"""
         DatabaseManager.reset_instance()
+        Config.reset_instance()
         self._temp_dir.cleanup()
 
     def _build_result(self) -> AnalysisResult:
@@ -831,13 +830,12 @@ class InteractiveAnalysisHistoryDeduplicationTestCase(unittest.TestCase):
         auth._auth_enabled = False
         self._temp_dir = tempfile.TemporaryDirectory()
         self._db_path = os.path.join(self._temp_dir.name, "test_interactive_history.db")
-        os.environ["DATABASE_PATH"] = self._db_path
-        Config._instance = None
         DatabaseManager.reset_instance()
-        self.db = DatabaseManager.get_instance()
+        self.db = DatabaseManager(db_url=f"sqlite:///{self._db_path}")
 
     def tearDown(self) -> None:
         DatabaseManager.reset_instance()
+        Config.reset_instance()
         self._temp_dir.cleanup()
 
     @staticmethod
