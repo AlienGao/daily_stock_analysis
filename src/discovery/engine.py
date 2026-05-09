@@ -115,7 +115,7 @@ class StockDiscoveryEngine:
         self.akshare_fetcher = akshare_fetcher
         self._factors: Dict[str, BaseFactor] = {}
         self._stock_names: Dict[str, str] = {}
-        self._selection_count: Dict[str, int] = self._load_selection_history()
+        self._selection_count: Dict[str, list] = self._load_selection_history()
         # 同 session 因子数据缓存，避免重复拉取
         self._factor_data_cache: Dict[str, Dict[str, pd.DataFrame]] = {}
         self._cache_trade_date: Optional[str] = None
@@ -142,33 +142,73 @@ class StockDiscoveryEngine:
 
     # ------------------------------------------------------------------
     # Selection history (crowding penalty)
+    # 格式: {date: [codes]}，保留最近 10 个交易日，按天去重
     # ------------------------------------------------------------------
 
-    def _load_selection_history(self) -> Dict[str, int]:
+    def _load_selection_history(self) -> Dict[str, list]:
         if _SELECTION_HISTORY_FILE.exists():
             try:
-                return json.loads(_SELECTION_HISTORY_FILE.read_text())
+                raw = json.loads(_SELECTION_HISTORY_FILE.read_text())
             except Exception:
-                pass
+                return {}
+            # 迁移旧格式 {code: count} → {date: [codes]}
+            if raw and not any(isinstance(v, list) for v in raw.values()):
+                logger.info("[Discovery] 迁移旧格式拥挤惩罚数据")
+                raw = {"legacy": sorted(raw.keys())}
+            return raw
         return {}
 
     def _save_selection_history(self) -> None:
         if not is_trading_day(self):
             return
+        # 只保留最近 10 天
+        dates = sorted(self._selection_count.keys(), reverse=True)
+        if len(dates) > 10:
+            for old in dates[10:]:
+                del self._selection_count[old]
         _REPORTS_DIR.mkdir(parents=True, exist_ok=True)
         _SELECTION_HISTORY_FILE.write_text(json.dumps(self._selection_count, ensure_ascii=False))
 
-    def _apply_crowding_penalty(self, results: List[DiscoveryResult]) -> List[DiscoveryResult]:
-        """对频繁上榜的股票施加负向惩罚，防止策略拥挤。"""
+    def _apply_crowding_penalty(
+        self, results: List[DiscoveryResult], trade_date: Optional[str] = None
+    ) -> List[DiscoveryResult]:
+        """近 5 个交易日被选中天数越多，惩罚越重。同一天内去重。"""
+        if not results:
+            return results
+
+        today = trade_date or self.tushare_fetcher.get_trade_time(
+            early_time="00:00", late_time="18:00"
+        ) if self.tushare_fetcher else None
+        if not today:
+            today = __import__("datetime").date.today().strftime("%Y%m%d")
+
+        # 当天已选中集合（同一天多次扫描不去重累加）
+        today_set = set(self._selection_count.get(today, []))
+        new_today = {r.ts_code for r in results} - today_set
+
+        # 合并当天
+        self._selection_count[today] = sorted(today_set | set(r.ts_code for r in results))
+
+        # 最近 5 个交易日窗口（含今天）
+        recent = sorted(self._selection_count.keys(), reverse=True)[:5]
+        recent_codes: Dict[str, int] = {}
+        for d in recent:
+            for c in self._selection_count.get(d, []):
+                recent_codes[c] = recent_codes.get(c, 0) + 1
+
+        # 只对今天新出现的票施加惩罚（避免每 60s 重复扣同一批票）
         for r in results:
-            cnt = self._selection_count.get(r.ts_code, 0)
-            if cnt >= 3:
-                penalty = min(cnt * 3, 30)
-                r.score = max(0, r.score - penalty)
-                r.reasons.append(f"拥挤惩罚(-{penalty}分)")
-        # 更新历史计数
-        for r in results:
-            self._selection_count[r.ts_code] = self._selection_count.get(r.ts_code, 0) + 1
+            days = recent_codes.get(r.ts_code, 0)
+            if days >= 5:
+                r.score = max(0, r.score - 30)
+                r.reasons.append(f"拥挤惩罚(近5日全勤-30分)")
+            elif days == 4:
+                r.score = max(0, r.score - 20)
+                r.reasons.append(f"拥挤惩罚(近5日选中4天-20分)")
+            elif days == 3:
+                r.score = max(0, r.score - 10)
+                r.reasons.append(f"拥挤惩罚(近5日选中3天-10分)")
+
         self._save_selection_history()
         return results
 
@@ -813,7 +853,7 @@ class StockDiscoveryEngine:
             logger.info("[Discovery] 已剔除 %d 只非白名单股", whitelist_skipped)
 
         # Phase 5.5: 拥挤度惩罚
-        results = self._apply_crowding_penalty(results)
+        results = self._apply_crowding_penalty(results, trade_date)
 
         # Phase 5.6: IC 追踪（后台线程，不阻塞）
         try:

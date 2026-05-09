@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 """实时行情数据提供者 (Real-time Spot Data Provider).
 
-为盘中因子提供全市场实时行情快照，双数据源交替拉取，
+为盘中因子提供全市场实时行情快照，三级数据源降级拉取，
 缓存 30 秒（对齐 :00/:30 秒边界），确保每轮扫描获取最新数据。
 
 数据源:
-  - 腾讯 HTTP (qt.gtimg.cn) → 分批拉取，~3s，偶数槽
-  - 东财 push2 (82.push2.eastmoney.com) → 全量拉取，~2s，奇数槽
+  - 腾讯 HTTP (qt.gtimg.cn) → 主力，直连，分批拉取，~1s
+  - 新浪 HTTP (hq.sinajs.cn) → 降级 1，直连，分批拉取，~10s
+  - 东财 push2 (82.push2.eastmoney.com) → 降级 2，走代理，分页拉取，~15s
 
 用法:
     provider = get_provider()
@@ -25,20 +26,17 @@ logger = logging.getLogger(__name__)
 
 
 class RealtimeSpotProvider:
-    """全市场实时行情提供者（双源交替，对齐 :00/:30 秒边界）。
+    """全市场实时行情提供者（三级降级，对齐 :00/:30 秒边界）。
 
     每次 fetch() 检查当前是否已进入新的半分钟时间槽（每 30 秒一个槽），
-    若未进入新槽则返回缓存，若进入新槽则拉取新数据。偶数槽用腾讯，奇数槽用东财。
+    若未进入新槽则返回缓存，若进入新槽则拉取新数据。
 
-    Attributes:
-        _cache: 缓存字典 {data, slot, source}
-        _last_slot: 上次拉取的半分钟槽编号
+    数据源优先级: 腾讯 HTTP → 新浪 HTTP → 东财 push2（走代理）
     """
 
     BATCH_SIZE = 800  # 腾讯单次请求最大代码数（~7200 字节 URL）
     _code_list_cache: List[str] = []
     _code_list_date: str = ""  # YYYY-MM-DD，每日刷新代码列表
-    _code_list_df: Optional[pd.DataFrame] = None  # 东财拉取代码列表时附带的全量数据
 
     def __init__(self):
         self._cache: Dict = {"data": None, "slot": -1, "source": ""}
@@ -51,14 +49,11 @@ class RealtimeSpotProvider:
     def fetch(self) -> Optional[pd.DataFrame]:
         """获取全市场实时行情快照。
 
-        对齐到每分钟 :00 和 :30 秒边界：同一半分钟槽内返回缓存，
-        跨槽时交替使用腾讯/新浪刷新。
-
-        每天首轮拉取优先用 Sina 获取代码列表，同时复用其行情数据，
-        避免腾讯槽再重复请求。后续轮次：偶数槽腾讯分批，奇数槽新浪。
+        对齐到每分钟 :00 和 :30 秒边界：同一半分钟槽内返回缓存。
+        数据源优先级: 腾讯 → 新浪 → 东财 (全部失败则返回过期缓存)。
         """
         now = time.time()
-        slot = int(now // 30)  # 每 30 秒一个槽，一天 2880 个
+        slot = int(now // 30)
 
         if self._last_slot == slot and self._cache["data"] is not None:
             logger.debug(
@@ -66,34 +61,23 @@ class RealtimeSpotProvider:
             )
             return self._cache["data"]
 
-        # 确保代码列表可用（每日首次触发东财拉取，附带全量行情数据）
         self._get_code_list()
 
-        # 若代码列表刷新刚拉取了东财全量数据，直接复用（省一次请求）
-        if self._code_list_df is not None and not self._code_list_df.empty:
-            df = self._code_list_df
-            self._code_list_df = None
-            source_label = "eastmoney"
-            logger.info("[RealtimeSpot] 复用代码列表刷新时的东财全量数据 (slot=%d)", slot)
-        else:
-            # 偶数槽腾讯，奇数槽东财
-            use_tx = (slot % 2 == 0)
-            source_label = "tencent" if use_tx else "eastmoney"
+        # 腾讯主力
+        df = self._fetch_tencent()
+        source_label = "tencent"
 
-            if use_tx:
-                df = self._fetch_tencent()
-                if df is None or df.empty:
-                    logger.info("[RealtimeSpot] 腾讯失败，尝试东财回退")
-                    df = self._fetch_eastmoney()
-                    if df is not None and not df.empty:
-                        source_label = "eastmoney"
-            else:
-                df = self._fetch_eastmoney()
-                if df is None or df.empty:
-                    logger.info("[RealtimeSpot] 东财失败，尝试腾讯回退")
-                    df = self._fetch_tencent()
-                    if df is not None and not df.empty:
-                        source_label = "tencent"
+        # 降级 1: 新浪
+        if df is None or df.empty:
+            logger.info("[RealtimeSpot] 腾讯失败，降级新浪")
+            df = self._fetch_sina()
+            source_label = "sina"
+
+        # 降级 2: 东财（走代理，分页）
+        if df is None or df.empty:
+            logger.info("[RealtimeSpot] 新浪失败，降级东财 push2")
+            df = self._fetch_eastmoney()
+            source_label = "eastmoney"
 
         # 两个都失败，返回过期缓存
         if df is None or df.empty:
@@ -174,10 +158,12 @@ class RealtimeSpotProvider:
             return None
 
     @staticmethod
-    def _fetch_eastmoney() -> Optional[pd.DataFrame]:
+    def _fetch_eastmoney(max_pages: int = 10) -> Optional[pd.DataFrame]:
         """东财 push2 全市场实时行情 (82.push2.eastmoney.com)，通过 Clash 代理。
 
-        一次拉取全市场 ~5500 只 A 股，含换手率 (f8) 和量比 (f10)。
+        分页拉取（每页 100 只，API 硬限制），默认最多 10 页（1000 只）用于快速兜底。
+        max_pages=60 可拉取 ~5500 只全市场数据，但耗时约 12-18 秒。
+        含换手率 (f8) 和量比 (f10)。
         """
         import os
         try:
@@ -195,37 +181,121 @@ class RealtimeSpotProvider:
                 ),
             })
 
-            params = {
-                "pn": "1", "pz": "6000", "po": "1", "np": "1",
-                "ut": "bd1d9ddb04089700cf9c27f6f7426281",
-                "fltt": "2", "invt": "2", "fid": "f12",
-                "fs": "m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048",
-                "fields": "f2,f3,f5,f6,f8,f10,f12,f14,f15,f16,f17,f18",
-            }
-
-            logger.debug("[RealtimeSpot] 使用东财 push2 接口获取实时行情...")
+            logger.debug("[RealtimeSpot] 使用东财 push2 接口获取实时行情 (最多 %d 页)...", max_pages)
             api_start = time.time()
-            r = session.get(
-                "https://82.push2.eastmoney.com/api/qt/clist/get",
-                params=params, timeout=15,
-            )
-            r.raise_for_status()
-            data = r.json()
 
-            if data.get("rc") != 0 or data.get("data") is None:
-                logger.warning("[RealtimeSpot] 东财 API 返回异常: rc=%s", data.get("rc"))
+            all_items = []
+            for page in range(1, max_pages + 1):
+                params = {
+                    "pn": str(page), "pz": "100", "po": "1", "np": "1",
+                    "ut": "bd1d9ddb04089700cf9c27f6f7426281",
+                    "fltt": "2", "invt": "2", "fid": "f12",
+                    "fs": "m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048",
+                    "fields": "f2,f3,f5,f6,f8,f10,f12,f14,f15,f16,f17,f18",
+                }
+                r = session.get(
+                    "https://82.push2.eastmoney.com/api/qt/clist/get",
+                    params=params, timeout=15,
+                )
+                r.raise_for_status()
+                data = r.json()
+
+                if data.get("rc") != 0 or data.get("data") is None:
+                    if page == 1:
+                        logger.warning("[RealtimeSpot] 东财 API 返回异常: rc=%s", data.get("rc"))
+                        return None
+                    break
+
+                items = data["data"].get("diff", [])
+                if not items:
+                    break
+                all_items.extend(items)
+
+            if not all_items:
                 return None
 
-            items = data["data"].get("diff", [])
-            if not items:
-                return None
-
-            df = pd.DataFrame(items)
+            df = pd.DataFrame(all_items)
             elapsed = time.time() - api_start
-            logger.info("[RealtimeSpot] 东财返回 %d 只股票, 耗时 %.1fs", len(df), elapsed)
+            logger.info("[RealtimeSpot] 东财返回 %d 只股票 (%d 页), 耗时 %.1fs",
+                       len(df), page, elapsed)
             return df
         except Exception as e:
             logger.warning("[RealtimeSpot] 东财接口异常: %s", e)
+            return None
+
+    @classmethod
+    def _fetch_sina(cls) -> Optional[pd.DataFrame]:
+        """新浪 HTTP 全市场实时行情 (hq.sinajs.cn)，分批拉取。
+
+        新浪不提供换手率和量比，pct_chg 由 price/pre_close 计算。
+        """
+        try:
+            codes = cls._get_code_list()
+            if not codes:
+                logger.warning("[RealtimeSpot] 新浪无可用代码列表")
+                return None
+
+            # 复用腾讯格式 (sh/sz/bj 前缀)
+            sina_codes = cls._to_tencent_codes(codes)
+
+            session = requests.Session()
+            session.headers.update({
+                "Referer": "https://finance.sina.com.cn",
+            })
+            all_rows = []
+            api_start = time.time()
+
+            for i in range(0, len(sina_codes), cls.BATCH_SIZE):
+                batch = sina_codes[i : i + cls.BATCH_SIZE]
+                url = f"http://hq.sinajs.cn/list={','.join(batch)}"
+                r = session.get(url, timeout=30)
+                r.encoding = "gbk"
+
+                for line in r.text.strip().split("\n"):
+                    line = line.strip()
+                    if not line or '"' not in line:
+                        continue
+                    # var hq_str_sh600519="content";
+                    # 从行前缀提取代码: "hq_str_sh600519" → "600519"
+                    prefix = line.split('"')[0]
+                    raw_code = prefix.split("_")[-1] if "_" in prefix else ""
+                    if len(raw_code) < 6:
+                        continue
+                    content = line.split('"')[1]
+                    parts = content.split(",")
+                    if len(parts) < 30:
+                        continue
+                    try:
+                        price = float(parts[3]) if parts[3] else 0.0
+                        pre_close = float(parts[2]) if parts[2] else 0.0
+                        pct_chg = round((price - pre_close) / pre_close * 100, 2) if pre_close > 0 else 0.0
+                        # 新浪成交量「股」，成交额「元」
+                        all_rows.append({
+                            "code": raw_code,
+                            "name": parts[0],
+                            "price": price,
+                            "pct_chg": pct_chg,
+                            "pre_close": pre_close,
+                            "open": float(parts[1]) if parts[1] else 0.0,
+                            "high": float(parts[4]) if parts[4] else 0.0,
+                            "low": float(parts[5]) if parts[5] else 0.0,
+                            "volume": float(parts[8]) if parts[8] else 0.0,
+                            "amount": float(parts[9]) if parts[9] else 0.0,
+                            "turnover_rate": 0.0,
+                            "volume_ratio": 0.0,
+                        })
+                    except (ValueError, IndexError):
+                        continue
+
+            elapsed = time.time() - api_start
+            if all_rows:
+                df = pd.DataFrame(all_rows)
+                logger.info("[RealtimeSpot] 新浪返回 %d 只股票, %d 批, 耗时 %.1fs",
+                            len(df), (len(sina_codes) + cls.BATCH_SIZE - 1) // cls.BATCH_SIZE, elapsed)
+                return df
+            return None
+        except Exception as e:
+            logger.warning("[RealtimeSpot] 新浪接口异常: %s", e)
             return None
 
     # ------------------------------------------------------------------
@@ -236,27 +306,19 @@ class RealtimeSpotProvider:
     def _get_code_list(cls) -> List[str]:
         """获取全市场 A 股代码列表，每日刷新一次。
 
-        优先从东财拉取（同时拿到全量实时数据），回退腾讯自身。
+        从 DB 获取（stock_daily + realtime_spot 合并去重），
+        东财 push2 的 pz 硬限制为 100，不能用于代码列表。
         """
         today = date.today().isoformat()
         if cls._code_list_cache and cls._code_list_date == today:
             return cls._code_list_cache
 
-        codes, df = cls._get_code_list_from_eastmoney()
-        if codes:
-            cls._code_list_cache = codes
-            cls._code_list_date = today
-            logger.info("[RealtimeSpot] 代码列表刷新: %d 只 (东财)", len(codes))
-            if df is not None and not df.empty:
-                cls._code_list_df = df
-            return codes
-
-        # 东财不可用时，从 DB 中获取代码列表（优先 realtime_spot，其次 stock_daily）
         codes = cls._get_code_list_from_db()
         if codes:
             cls._code_list_cache = codes
             cls._code_list_date = today
-            logger.info("[RealtimeSpot] 代码列表刷新: %d 只 (DB 兜底)", len(codes))
+            logger.info("[RealtimeSpot] 代码列表刷新: %d 只 (DB)", len(codes))
+            return codes
         return codes
 
     @staticmethod
@@ -281,21 +343,6 @@ class RealtimeSpotProvider:
         except Exception as e:
             logger.warning("[RealtimeSpot] DB 代码列表获取失败: %s", e)
             return []
-
-    @staticmethod
-    def _get_code_list_from_eastmoney() -> tuple:
-        """从东财 push2 获取全市场代码列表及行情数据。
-        Returns: (codes_list, raw_dataframe)
-        """
-        try:
-            df = RealtimeSpotProvider._fetch_eastmoney()
-            if df is None or df.empty:
-                return [], None
-            codes = df["f12"].astype(str).str.zfill(6).tolist()
-            return [str(c).strip().zfill(6) for c in codes], df
-        except Exception as e:
-            logger.warning("[RealtimeSpot] 东财代码列表获取失败: %s", e)
-            return [], None
 
     @staticmethod
     def _to_tencent_codes(codes: List[str]) -> List[str]:
