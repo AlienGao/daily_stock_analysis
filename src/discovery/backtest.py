@@ -18,6 +18,8 @@ from typing import Dict, List, Optional
 
 import pandas as pd
 
+from src.discovery.engine import is_trading_day
+
 logger = logging.getLogger(__name__)
 
 _REPORTS_DIR = Path(__file__).resolve().parent.parent.parent / "discovery_reports"
@@ -643,7 +645,9 @@ class DiscoveryBacktest:
         return _REPORTS_DIR / f"{mode}_backtest_summary.json"
 
     def _save_backtest_summary(self, summary: BacktestSummary) -> None:
-        """追加回测结果到汇总文件。"""
+        """追加回测结果到汇总文件（仅交易日）。"""
+        if not is_trading_day(self):
+            return
         _REPORTS_DIR.mkdir(parents=True, exist_ok=True)
         summary_file = self._get_summary_file(summary.mode)
 

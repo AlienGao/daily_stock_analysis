@@ -809,6 +809,91 @@ class InstitutionSurvey(Base):
         }
 
 
+class ScanResultIntraday(Base):
+    """盘中扫描全量结果（每轮覆盖当日全市场股票评分）。
+
+    按 (scan_date, ts_code) 唯一约束，同一天多轮扫描会覆盖前一轮数据。
+    factor_scores_json 存储各因子的加权得分 JSON。
+    """
+
+    __tablename__ = 'scan_result_intraday'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    scan_date = Column(String(8), nullable=False, index=True)
+    scan_round = Column(Integer, default=0)
+    scan_time = Column(String(6), nullable=False, default="")
+    ts_code = Column(String(12), nullable=False, index=True)
+    stock_code = Column(String(10), nullable=False, index=True)
+    stock_name = Column(String(50))
+    rank = Column(Integer, nullable=False)
+    total_score = Column(Float)
+    factor_scores_json = Column(Text)
+    sector = Column(String(100), default="")
+    created_at = Column(DateTime, default=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('scan_date', 'ts_code', name='uix_isr_date_code'),
+        Index('ix_isr_scan_date', 'scan_date'),
+        Index('ix_isr_rank', 'scan_date', 'rank'),
+    )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'scan_date': self.scan_date,
+            'scan_round': self.scan_round,
+            'scan_time': self.scan_time,
+            'ts_code': self.ts_code,
+            'stock_code': self.stock_code,
+            'stock_name': self.stock_name,
+            'rank': self.rank,
+            'total_score': self.total_score,
+            'factor_scores': json.loads(self.factor_scores_json or "{}"),
+            'sector': self.sector,
+        }
+
+
+class ScanResultPostmarket(Base):
+    """盘后扫描全量结果（每日覆盖当日全市场股票评分）。
+
+    结构同 ScanResultIntraday，scan_round 恒为 0。
+    """
+
+    __tablename__ = 'scan_result_postmarket'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    scan_date = Column(String(8), nullable=False, index=True)
+    scan_round = Column(Integer, default=0)
+    scan_time = Column(String(6), nullable=False, default="")
+    ts_code = Column(String(12), nullable=False, index=True)
+    stock_code = Column(String(10), nullable=False, index=True)
+    stock_name = Column(String(50))
+    rank = Column(Integer, nullable=False)
+    total_score = Column(Float)
+    factor_scores_json = Column(Text)
+    sector = Column(String(100), default="")
+    created_at = Column(DateTime, default=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('scan_date', 'ts_code', name='uix_psr_date_code'),
+        Index('ix_psr_scan_date', 'scan_date'),
+        Index('ix_psr_rank', 'scan_date', 'rank'),
+    )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'scan_date': self.scan_date,
+            'scan_round': self.scan_round,
+            'scan_time': self.scan_time,
+            'ts_code': self.ts_code,
+            'stock_code': self.stock_code,
+            'stock_name': self.stock_name,
+            'rank': self.rank,
+            'total_score': self.total_score,
+            'factor_scores': json.loads(self.factor_scores_json or "{}"),
+            'sector': self.sector,
+        }
+
+
 class BrokerBacktestResult(Base):
     """券商金股月度回测结果快照。
 
@@ -988,6 +1073,8 @@ class DatabaseManager:
         self._ensure_analysis_history_query_source_column()
         self._ensure_backtest_results_trigger_source_column()
         self._ensure_stock_tech_indicator_table()
+        self._ensure_scan_result_intraday_table()
+        self._ensure_scan_result_postmarket_table()
 
         self._initialized = True
         logger.info(f"数据库初始化完成: {db_url}")
@@ -1068,6 +1155,46 @@ class DatabaseManager:
             logger.info("已创建表 stock_tech_indicator")
         except Exception as exc:
             logger.warning("创建 stock_tech_indicator 失败: %s", exc)
+
+    def _ensure_scan_result_intraday_table(self) -> None:
+        """SQLite: create scan_result_intraday if missing (pre-create_all catch-up)."""
+        if not self._is_sqlite_engine:
+            return
+        try:
+            with self._engine.connect() as conn:
+                rows = conn.execute(
+                    text("SELECT name FROM sqlite_master WHERE type='table' AND name='scan_result_intraday'")
+                ).fetchall()
+            if rows:
+                return
+        except Exception as exc:
+            logger.warning("检查 scan_result_intraday 表存在性失败: %s", exc)
+            return
+        try:
+            ScanResultIntraday.__table__.create(self._engine)
+            logger.info("已创建表 scan_result_intraday")
+        except Exception as exc:
+            logger.warning("创建 scan_result_intraday 失败: %s", exc)
+
+    def _ensure_scan_result_postmarket_table(self) -> None:
+        """SQLite: create scan_result_postmarket if missing (pre-create_all catch-up)."""
+        if not self._is_sqlite_engine:
+            return
+        try:
+            with self._engine.connect() as conn:
+                rows = conn.execute(
+                    text("SELECT name FROM sqlite_master WHERE type='table' AND name='scan_result_postmarket'")
+                ).fetchall()
+            if rows:
+                return
+        except Exception as exc:
+            logger.warning("检查 scan_result_postmarket 表存在性失败: %s", exc)
+            return
+        try:
+            ScanResultPostmarket.__table__.create(self._engine)
+            logger.info("已创建表 scan_result_postmarket")
+        except Exception as exc:
+            logger.warning("创建 scan_result_postmarket 失败: %s", exc)
 
     # ------------------------------------------------------------------
     # StockTechIndicator CRUD
@@ -2749,6 +2876,114 @@ class DatabaseManager:
                 .order_by(desc(InstitutionSurvey.surv_date))
             )
             return [row[0] for row in session.execute(stmt).all()]
+
+    # ------------------------------------------------------------------
+    # Scan Results (intraday / postmarket full-replacement)
+    # ------------------------------------------------------------------
+
+    def save_scan_results_intraday(
+        self, records: List[Dict[str, Any]], scan_date: str
+    ) -> int:
+        """保存盘中扫描全量结果（当日全覆盖，每轮替换前一轮）。
+
+        Args:
+            records: list of dicts with keys: scan_date, scan_round, scan_time,
+                     ts_code, stock_code, stock_name, rank, total_score,
+                     factor_scores (dict), sector
+            scan_date: YYYYMMDD
+
+        Returns:
+            保存的记录数
+        """
+        if not records:
+            return 0
+
+        def _write(session: Session) -> int:
+            session.query(ScanResultIntraday).filter(
+                ScanResultIntraday.scan_date == scan_date
+            ).delete()
+
+            entities = []
+            for r in records:
+                factor_json = json.dumps(r.get("factor_scores", {}), ensure_ascii=False)
+                entities.append(
+                    ScanResultIntraday(
+                        scan_date=r.get("scan_date", scan_date),
+                        scan_round=r.get("scan_round", 0),
+                        scan_time=r.get("scan_time", ""),
+                        ts_code=r.get("ts_code", ""),
+                        stock_code=r.get("stock_code", ""),
+                        stock_name=r.get("stock_name", ""),
+                        rank=r.get("rank", 0),
+                        total_score=self._normalize_sql_value(r.get("total_score")),
+                        factor_scores_json=factor_json,
+                        sector=r.get("sector", ""),
+                    )
+                )
+            session.add_all(entities)
+            return len(entities)
+
+        try:
+            saved = self._run_write_transaction("save_scan_results_intraday", _write)
+            logger.info(
+                "[ScanResultIntraday] 保存 %d 条 (scan_date=%s)",
+                saved, scan_date,
+            )
+            return saved
+        except Exception as e:
+            logger.error("[ScanResultIntraday] 保存失败: %s", e)
+            raise
+
+    def save_scan_results_postmarket(
+        self, records: List[Dict[str, Any]], scan_date: str
+    ) -> int:
+        """保存盘后扫描全量结果（每日全覆盖）。
+
+        Args:
+            records: list of dicts (same structure as intraday)
+            scan_date: YYYYMMDD
+
+        Returns:
+            保存的记录数
+        """
+        if not records:
+            return 0
+
+        def _write(session: Session) -> int:
+            session.query(ScanResultPostmarket).filter(
+                ScanResultPostmarket.scan_date == scan_date
+            ).delete()
+
+            entities = []
+            for r in records:
+                factor_json = json.dumps(r.get("factor_scores", {}), ensure_ascii=False)
+                entities.append(
+                    ScanResultPostmarket(
+                        scan_date=r.get("scan_date", scan_date),
+                        scan_round=r.get("scan_round", 0),
+                        scan_time=r.get("scan_time", ""),
+                        ts_code=r.get("ts_code", ""),
+                        stock_code=r.get("stock_code", ""),
+                        stock_name=r.get("stock_name", ""),
+                        rank=r.get("rank", 0),
+                        total_score=self._normalize_sql_value(r.get("total_score")),
+                        factor_scores_json=factor_json,
+                        sector=r.get("sector", ""),
+                    )
+                )
+            session.add_all(entities)
+            return len(entities)
+
+        try:
+            saved = self._run_write_transaction("save_scan_results_postmarket", _write)
+            logger.info(
+                "[ScanResultPostmarket] 保存 %d 条 (scan_date=%s)",
+                saved, scan_date,
+            )
+            return saved
+        except Exception as e:
+            logger.error("[ScanResultPostmarket] 保存失败: %s", e)
+            raise
 
     # ------------------------------------------------------------------
     # Enrichment 缓存（九转/盈利预测/筹码胜率持久化）

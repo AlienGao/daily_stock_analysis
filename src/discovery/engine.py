@@ -10,7 +10,7 @@ import random
 import re
 import time
 from pathlib import Path
-from typing import Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 import pandas as pd
 import requests
@@ -46,6 +46,17 @@ _FACTOR_DISPLAY: Dict[str, str] = {
 
 _REPORTS_DIR = Path(__file__).resolve().parent.parent.parent / "discovery_reports"
 _SELECTION_HISTORY_FILE = _REPORTS_DIR / "selection_history.json"
+
+
+def is_trading_day(engine=None) -> bool:
+    """检查今天是否为 A 股交易日，用于判断是否应保存回测文件。"""
+    fetcher = None
+    if engine is not None:
+        fetcher = getattr(engine, "tushare_fetcher", None) or getattr(engine, "_fetcher", None)
+    if fetcher is not None and hasattr(fetcher, "is_trading_day"):
+        return fetcher.is_trading_day()
+    from datetime import date
+    return date.today().weekday() < 5
 
 
 def _calc_price_levels(prices: Dict[str, float], factor_score: float = 50.0) -> tuple:
@@ -142,6 +153,8 @@ class StockDiscoveryEngine:
         return {}
 
     def _save_selection_history(self) -> None:
+        if not is_trading_day(self):
+            return
         _REPORTS_DIR.mkdir(parents=True, exist_ok=True)
         _SELECTION_HISTORY_FILE.write_text(json.dumps(self._selection_count, ensure_ascii=False))
 
@@ -223,9 +236,9 @@ class StockDiscoveryEngine:
 
 
     @staticmethod
-    def _to_sina_symbol(ts_code: str) -> str:
+    def _to_sina_symbol(ts_code) -> str:
         """将 ts_code 转为新浪行情符号，如 600379.SH → sh600379"""
-        code = ts_code.split(".")[0] if "." in ts_code else ts_code
+        code = str(ts_code).split(".")[0]
         if code.startswith(("60", "68")):
             return f"sh{code}"
         return f"sz{code}"
@@ -429,20 +442,21 @@ class StockDiscoveryEngine:
         for name, scores in factor_scores.items():
             neutral = pd.Series(50.0, index=scores.index, name=name)
 
-            sectors = {idx: industry_map.get(idx, "未知") for idx in scores.index}
-            series_with_sector = pd.Series(list(sectors.values()), index=scores.index)
+            # Build sector → position list, avoiding label-based ops on duplicate indices
+            sectors_values = [industry_map.get(idx, "未知") for idx in scores.index]
+            sector_positions: Dict[str, list] = {}
+            for i, sector in enumerate(sectors_values):
+                sector_positions.setdefault(sector, []).append(i)
 
-            for sector, group_idx in series_with_sector.groupby(series_with_sector, dropna=False):
-                # pandas 3.x: groupby yields Series, use .index for label-based lookup
-                idx = group_idx.index
-                group_scores = scores.reindex(idx)
+            for sector, positions in sector_positions.items():
+                group_scores = scores.iloc[positions]
                 if group_scores.std() > 1e-6:
                     normalized = (group_scores - group_scores.mean()) / group_scores.std()
-                    neutral.loc[idx] = ((normalized + 2) / 4 * 100).clip(0, 100)
+                    neutral.iloc[positions] = ((normalized + 2) / 4 * 100).clip(0, 100)
                 else:
-                    neutral.loc[idx] = 50.0
+                    neutral.iloc[positions] = 50.0
 
-            neutral_scores[name] = neutral.reindex(scores.index, fill_value=50.0)
+            neutral_scores[name] = neutral
 
         return neutral_scores
 
@@ -576,6 +590,9 @@ class StockDiscoveryEngine:
                     tushare_fetcher=self.tushare_fetcher,
                 )
                 if raw is not None and not raw.empty:
+                    if raw.index.has_duplicates:
+                        raw = raw.groupby(raw.index).mean()
+                    raw.index = raw.index.map(str)
                     raw_scores[factor.name] = raw
                     base_weight = factor.weight
                     # 应用动态调整系数
@@ -683,6 +700,15 @@ class StockDiscoveryEngine:
             if not live_prices:
                 live_prices = self._get_batch_realtime_prices_akshare(candidate_codes)
 
+        # Phase 4.9: 暂存全量评分数据供外部（Scanner/main）落库
+        self._last_full_scan_df = combined
+        self._last_scan_names = names
+        self._last_scan_sectors = sector_labels
+        self._last_scan_industry_map = industry_map
+        self._last_scan_trade_date = trade_date
+        self._last_scan_time = time.strftime("%H:%M:%S")
+        self._last_scan_mode = mode
+
         results = []
         st_skipped = 0
         overbought_skipped = 0
@@ -789,6 +815,67 @@ class StockDiscoveryEngine:
         )
 
         return results
+
+    def get_last_full_scan_records(self, scan_round: int = 0) -> List[Dict[str, Any]]:
+        """返回最近一次 discover() 的全市场评分记录，供落库。
+
+        Args:
+            scan_round: 盘中轮次号（盘后恒为 0）
+
+        Returns:
+            list of dicts: scan_date, scan_round, scan_time, ts_code,
+            stock_code, stock_name, rank, total_score, factor_scores, sector
+        """
+        df = getattr(self, '_last_full_scan_df', None)
+        if df is None or df.empty:
+            return []
+
+        names = getattr(self, '_last_scan_names', {})
+        sectors = getattr(self, '_last_scan_sectors', {})
+        industry_map = getattr(self, '_last_scan_industry_map', {})
+        trade_date = getattr(self, '_last_scan_trade_date', '')
+        scan_time = getattr(self, '_last_scan_time', '')
+        mode = getattr(self, '_last_scan_mode', '')
+
+        factor_cols = [c for c in df.columns if not c.startswith('_')]
+        records: List[Dict[str, Any]] = []
+
+        for rank, (ts_code, row) in enumerate(df.iterrows(), start=1):
+            ts_code = str(ts_code)
+            stock_code = ts_code.split(".")[0] if "." in ts_code else ts_code
+            stock_name = (
+                names.get(ts_code)
+                or self._stock_names.get(ts_code)
+                or self._stock_names.get(stock_code)
+                or stock_code
+            )
+
+            labels = sectors.get(stock_code, [])
+            if labels:
+                sector = labels[0]
+            else:
+                sector = industry_map.get(ts_code, "")
+
+            factor_scores: Dict[str, float] = {}
+            for col in factor_cols:
+                val = row.get(col)
+                if val is not None and not pd.isna(val):
+                    factor_scores[col] = round(float(val), 2)
+
+            records.append({
+                "scan_date": trade_date,
+                "scan_round": scan_round if mode == "intraday" else 0,
+                "scan_time": scan_time,
+                "ts_code": ts_code,
+                "stock_code": stock_code,
+                "stock_name": stock_name,
+                "rank": rank,
+                "total_score": float(row.get("_total", 0)),
+                "factor_scores": factor_scores,
+                "sector": sector,
+            })
+
+        return records
 
     # ------------------------------------------------------------------
     # Report formatting

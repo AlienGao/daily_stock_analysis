@@ -73,6 +73,7 @@ class SectorFactor(BaseFactor):
                         "[SectorFactor] 实时行情涨停候选: %d 只 (pct_chg >= 9.5%%)",
                         len(limit_up),
                     )
+                    self._populate_sector_map_from_basic(kwargs.get("tushare_fetcher"))
                     return limit_up
                 logger.debug("[SectorFactor] 实时行情无涨停候选")
         except Exception as e:
@@ -235,3 +236,19 @@ class SectorFactor(BaseFactor):
                 new_index.append(code_str)
         df.index = new_index
         return df
+
+    def _populate_sector_map_from_basic(self, tushare_fetcher) -> None:
+        """从 Tushare stock_basic 补齐 sector_map（实时行情降级路径用）。"""
+        if tushare_fetcher is None or self.sector_map:
+            return
+        try:
+            stock_list = tushare_fetcher.get_stock_list()
+            if stock_list is not None and not stock_list.empty:
+                for _, row in stock_list.iterrows():
+                    code = str(row.get("code", "")).strip().zfill(6)
+                    industry = str(row.get("industry", "")).strip()
+                    if code and industry:
+                        self.sector_map[code] = industry
+                logger.debug("[SectorFactor] 已从 stock_basic 补齐 %d 条行业映射", len(self.sector_map))
+        except Exception as e:
+            logger.warning("[SectorFactor] 补齐行业映射失败: %s", e)

@@ -250,6 +250,39 @@ class PostmarketReportResponse(BaseModel):
 _postmarket_tasks: Dict[str, dict] = {}
 
 
+def _get_latest_completed_task() -> Optional[dict]:
+    """获取最近一个已完成且有报告的盘后任务（用于非交易日文件不存在时回退）。"""
+    completed = [t for t in _postmarket_tasks.values()
+                 if t.get("status") == "completed" and t.get("report")]
+    if not completed:
+        return None
+    return max(completed, key=lambda t: t.get("finished_at", ""))
+
+
+def _build_discovery_items(raw_items: list) -> List[DiscoveryItem]:
+    """将原始 dict 列表转为 DiscoveryItem 列表。"""
+    items: List[DiscoveryItem] = []
+    for entry in raw_items:
+        items.append(DiscoveryItem(
+            rank=entry.get("rank", 0),
+            ts_code=entry.get("ts_code", ""),
+            stock_code=entry.get("stock_code", ""),
+            stock_name=entry.get("stock_name", ""),
+            score=entry.get("score", 0),
+            sector=entry.get("sector", ""),
+            factor_scores=entry.get("factor_scores", {}),
+            reasons=entry.get("reasons", []),
+            buy_price_low=entry.get("buy_price_low"),
+            buy_price_high=entry.get("buy_price_high"),
+            stop_loss=entry.get("stop_loss"),
+            take_profit_1=entry.get("take_profit_1"),
+            take_profit_2=entry.get("take_profit_2"),
+            discovered_at=entry.get("discovered_at", ""),
+            price_at_discovery=entry.get("price_at_discovery"),
+        ))
+    return items
+
+
 class RunStatusResponse(BaseModel):
     task_id: str
     status: str  # "running" | "completed" | "failed"
@@ -442,25 +475,46 @@ def get_postmarket_report(
     if report_date is None:
         report_date = date.today().strftime("%Y%m%d")
 
+    from datetime import timedelta
     reports_dir = Path(__file__).resolve().parent.parent.parent.parent / "discovery_reports"
-    filepath = reports_dir / f"postmarket_{report_date}.md"
     effective_date = report_date
 
-    if not filepath.exists():
-        # 尝试前一天
-        from datetime import timedelta
+    # 按优先级查找报告文件：交易日目录 → 前一天 → non_trading/ 目录 → 内存缓存
+    def _find_report(candidate_date: str) -> tuple:
+        """Search for report md file. Returns (filepath, effective_dir, effective_date) or (None, None, None)."""
+        # Check main reports_dir
+        fp = reports_dir / f"postmarket_{candidate_date}.md"
+        if fp.exists():
+            return (fp, reports_dir, candidate_date)
+        # Check non_trading subdirectory
+        fp = reports_dir / "non_trading" / f"postmarket_{candidate_date}.md"
+        if fp.exists():
+            return (fp, reports_dir / "non_trading", candidate_date)
+        return (None, None, None)
+
+    filepath, found_dir, effective_date = _find_report(report_date)
+    if filepath is None:
         yesterday = (date.today() - timedelta(days=1)).strftime("%Y%m%d")
-        filepath = reports_dir / f"postmarket_{yesterday}.md"
-        effective_date = yesterday
-        if not filepath.exists():
-            return PostmarketReportResponse(date=report_date, report="", exists=False)
+        filepath, found_dir, effective_date = _find_report(yesterday)
+    if filepath is None:
+        # 最后尝试内存中的最近完成任务
+        recent = _get_latest_completed_task()
+        if recent and recent.get("report"):
+            top_n = _build_discovery_items(recent.get("top_n", []))
+            return PostmarketReportResponse(
+                date=recent.get("date_str", report_date),
+                report=recent["report"],
+                exists=True,
+                top_n=top_n,
+            )
+        return PostmarketReportResponse(date=report_date, report="", exists=False)
 
     try:
         report = filepath.read_text(encoding="utf-8")
 
         # 优先加载结构化 Top N JSON，不存在则从 markdown 解析
         top_n: List[DiscoveryItem] = []
-        topn_file = reports_dir / f"postmarket_{effective_date}_topn.json"
+        topn_file = found_dir / f"postmarket_{effective_date}_topn.json"
         raw_items: list[dict] = []
         if topn_file.exists():
             try:
@@ -569,13 +623,7 @@ def run_postmarket_discovery():
 
             report = engine.format_report(results, mode="postmarket")
 
-            # 保存报告 + 结构化数据
-            reports_dir = Path(__file__).resolve().parent.parent.parent.parent / "discovery_reports"
-            reports_dir.mkdir(parents=True, exist_ok=True)
-            date_str = date.today().strftime('%Y%m%d')
-            filename = f"postmarket_{date_str}.md"
-            (reports_dir / filename).write_text(report, encoding="utf-8")
-
+            # 构建 top_n_data（始终在内存中保存，供无文件时报告端点使用）
             top_n_data = []
             for i, r in enumerate(results, 1):
                 top_n_data.append({
@@ -595,13 +643,41 @@ def run_postmarket_discovery():
                     "discovered_at": r.discovered_at,
                     "price_at_discovery": r.price_at_discovery,
                 })
+
+            # 保存报告 + 结构化数据到 discovery_reports
+            # 交易日 → 直接保存（供回测使用）；非交易日 → non_trading/ 子目录（仅展示，不回测）
+            from src.discovery.engine import is_trading_day
+            date_str = date.today().strftime('%Y%m%d')
+            base_dir = Path(__file__).resolve().parent.parent.parent.parent / "discovery_reports"
+            if is_trading_day(engine):
+                reports_dir = base_dir
+            else:
+                reports_dir = base_dir / "non_trading"
+            reports_dir.mkdir(parents=True, exist_ok=True)
+            filename = f"postmarket_{date_str}.md"
+            (reports_dir / filename).write_text(report, encoding="utf-8")
             json_file = reports_dir / f"postmarket_{date_str}_topn.json"
             json_file.write_text(json.dumps(top_n_data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+            # 全市场扫描结果落库（供查分功能使用）
+            if engine._last_full_scan_df is not None:
+                try:
+                    from src.storage import DatabaseManager
+                    records = engine.get_last_full_scan_records()
+                    if records:
+                        DatabaseManager().save_scan_results_postmarket(
+                            records, engine._last_scan_trade_date
+                        )
+                except Exception as e_save:
+                    logger.warning("全量扫描结果落库失败: %s", e_save)
 
             _postmarket_tasks[task_id] = {
                 "status": "completed",
                 "top_n_count": len(top_n_data),
                 "finished_at": datetime.now().isoformat(),
+                "report": report,
+                "top_n": top_n_data,
+                "date_str": date_str,
             }
         except Exception as e:
             logger.error("手动盘后发现失败: %s", e, exc_info=True)
@@ -767,3 +843,107 @@ def get_backtest(
         trade_records=trades,
         capital_curve=curve,
     )
+
+
+# ------------------------------------------------------------------
+# Stock Score Lookup
+# ------------------------------------------------------------------
+
+class StockScoreItem(BaseModel):
+    """单次扫描中的个股评分。"""
+    scanned_at: str               # "2026-05-09 09:35:00"
+    rank: int
+    total_score: float
+    factor_scores: Dict[str, float]
+    sector: str
+
+
+class StockScoreEntry(BaseModel):
+    """单只股票的盘中最新的评分（含盘中+盘后两条）。"""
+    stock_code: str
+    stock_name: str
+    intraday: Optional[StockScoreItem] = None
+    postmarket: Optional[StockScoreItem] = None
+
+
+class StockScoreResponse(BaseModel):
+    """多股评分查询响应。"""
+    items: List[StockScoreEntry]
+
+
+def _format_scanned_at(scan_date: str, scan_time: str) -> str:
+    """将 YYYYMMDD + HHMMSS（或 HH:MM:SS）→ ISO 时间字符串。"""
+    if not scan_date:
+        return ""
+    d = f"{scan_date[:4]}-{scan_date[4:6]}-{scan_date[6:8]}"
+    if scan_time:
+        digits = "".join(c for c in scan_time if c.isdigit())
+        if len(digits) >= 6:
+            return f"{d} {digits[:2]}:{digits[2:4]}:{digits[4:6]}"
+    return d
+
+
+def _row_to_item(row) -> Optional[StockScoreItem]:
+    """将 ORM 行转为 StockScoreItem。"""
+    if row is None:
+        return None
+    factor_scores: Dict[str, float] = {}
+    try:
+        raw = json.loads(row.factor_scores_json or "{}")
+        factor_scores = {k: float(v) for k, v in raw.items()}
+    except (json.JSONDecodeError, TypeError):
+        pass
+    return StockScoreItem(
+        scanned_at=_format_scanned_at(row.scan_date, row.scan_time),
+        rank=row.rank,
+        total_score=round(float(row.total_score or 0), 2),
+        factor_scores=factor_scores,
+        sector=row.sector or "",
+    )
+
+
+@router.get(
+    "/stock-score",
+    response_model=StockScoreResponse,
+    summary="查询股票最新评分",
+)
+def get_stock_score(
+    codes: str = Query(..., description="股票代码，逗号分隔，如 600519,000001"),
+    mode: str = Query("intraday", description="intraday 或 postmarket"),
+):
+    """返回每只股票的最新评分（盘中/盘后隔离，含因子明细和时间戳）。"""
+    from src.storage import DatabaseManager, ScanResultIntraday, ScanResultPostmarket
+
+    if mode not in ("intraday", "postmarket"):
+        raise HTTPException(status_code=400, detail="mode 须为 intraday 或 postmarket")
+
+    code_list = [c.strip() for c in codes.split(",") if c.strip()]
+    if not code_list:
+        raise HTTPException(status_code=400, detail="请提供至少一个股票代码")
+
+    db = DatabaseManager()
+    items: List[StockScoreEntry] = []
+    Model = ScanResultIntraday if mode == "intraday" else ScanResultPostmarket
+
+    with db.get_session() as session:
+        from sqlalchemy import desc
+
+        for code in code_list:
+            row = (
+                session.query(Model)
+                .filter(Model.stock_code == code)
+                .order_by(desc(Model.scan_date), desc(Model.scan_time))
+                .first()
+            )
+
+            stock_name = (row and row.stock_name) or code
+            score_item = _row_to_item(row)
+
+            items.append(StockScoreEntry(
+                stock_code=code,
+                stock_name=stock_name,
+                intraday=score_item if mode == "intraday" else None,
+                postmarket=score_item if mode == "postmarket" else None,
+            ))
+
+    return StockScoreResponse(items=items)

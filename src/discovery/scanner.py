@@ -24,7 +24,7 @@ from typing import Dict, List, Optional, Set
 import requests
 
 from src.discovery.config import DiscoveryConfig, set_active_config, _load_runtime_state_into
-from src.discovery.engine import StockDiscoveryEngine
+from src.discovery.engine import StockDiscoveryEngine, is_trading_day
 from src.discovery.factors.base import DiscoveryResult
 
 logger = logging.getLogger(__name__)
@@ -96,12 +96,7 @@ class IntradayScanner:
         return target
 
     def _is_trading_day(self) -> bool:
-        """检查今天是否为 A 股交易日。"""
-        fetcher = getattr(self.engine, "tushare_fetcher", None)
-        if fetcher is None:
-            # 无 fetcher 时默认周一至周五都是交易日
-            return self._now().weekday() < 5
-        return fetcher.get_trade_time(early_time="09:30", late_time="15:00") is not None
+        return is_trading_day(self.engine)
 
     def _wait_for_market_and_scan(self) -> None:
         """等待到盘中交易时段，然后执行扫描循环。"""
@@ -154,6 +149,7 @@ class IntradayScanner:
                     self._write_output(annotated, results)
                     self._print_round(annotated)
                     self._notify_new_stocks(annotated)
+                    self._save_full_scan_to_db()
                     self._previous = {
                         r.ts_code: i for i, r in enumerate(results)
                     }
@@ -455,12 +451,17 @@ class IntradayScanner:
         except Exception as e:
             logger.warning("[Scanner] 写入 %s 失败: %s", _OUTPUT_PATH, e)
 
-        # 落盘 Markdown 报告到 discovery_reports/intraday_YYYYMMDD.md
+        # 落盘 Markdown 报告到 discovery_reports
+        # 交易日 → 直接保存（供回测使用）；非交易日 → non_trading/ 子目录（仅展示，不回测）
         try:
-            _REPORTS_DIR.mkdir(parents=True, exist_ok=True)
             date_str = date.today().strftime('%Y%m%d')
+            if self._is_trading_day():
+                save_dir = _REPORTS_DIR
+            else:
+                save_dir = _REPORTS_DIR / "non_trading"
+            save_dir.mkdir(parents=True, exist_ok=True)
             report = self.engine.format_report(results, mode="intraday")
-            filepath = _REPORTS_DIR / f"intraday_{date_str}.md"
+            filepath = save_dir / f"intraday_{date_str}.md"
             filepath.write_text(report, encoding="utf-8")
             logger.debug("[Scanner] 盘中报告已保存: %s", filepath)
 
@@ -481,7 +482,7 @@ class IntradayScanner:
                     "take_profit_1": getattr(r, "take_profit_1", None),
                     "take_profit_2": getattr(r, "take_profit_2", None),
                 })
-            json_file = _REPORTS_DIR / f"intraday_{date_str}_topn.json"
+            json_file = save_dir / f"intraday_{date_str}_topn.json"
             json_file.write_text(json.dumps(topn, ensure_ascii=False, indent=2), encoding="utf-8")
             logger.debug("[Scanner] 盘中 TopN JSON 已保存: %s", json_file)
         except Exception as e:
@@ -501,14 +502,31 @@ class IntradayScanner:
                 json.dump(payload, f, ensure_ascii=False, indent=2)
 
             # 同步清空 discovery_reports 下的 topn JSON
-            _REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+            if self._is_trading_day():
+                save_dir = _REPORTS_DIR
+            else:
+                save_dir = _REPORTS_DIR / "non_trading"
+            save_dir.mkdir(parents=True, exist_ok=True)
             date_str = date.today().strftime('%Y%m%d')
-            json_file = _REPORTS_DIR / f"intraday_{date_str}_topn.json"
+            json_file = save_dir / f"intraday_{date_str}_topn.json"
             json_file.write_text("[]", encoding="utf-8")
 
             logger.info("[Scanner] 本轮无符合条件的股票，已清空输出")
         except Exception as e:
             logger.warning("[Scanner] 写入空输出失败: %s", e)
+
+    def _save_full_scan_to_db(self) -> None:
+        """将本轮全市场评分落库（覆盖当日已有数据）。"""
+        df = getattr(self.engine, '_last_full_scan_df', None)
+        if df is None or df.empty:
+            return
+        try:
+            records = self.engine.get_last_full_scan_records(scan_round=self._round)
+            if records:
+                scan_date = getattr(self.engine, '_last_scan_trade_date', '')
+                DatabaseManager().save_scan_results_intraday(records, scan_date)
+        except Exception as e:
+            logger.warning("[Scanner] 全量扫描结果落库失败: %s", e)
 
 
 def run_intraday_scan(config: DiscoveryConfig, tushare_fetcher=None, akshare_fetcher=None) -> None:

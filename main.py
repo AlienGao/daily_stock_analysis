@@ -1444,6 +1444,17 @@ def main() -> int:
             ])
 
             results = engine.discover(mode="postmarket")
+            # 全量评分落库（全市场股票，非仅 Top N）
+            if engine._last_full_scan_df is not None:
+                try:
+                    from src.storage import DatabaseManager
+                    records = engine.get_last_full_scan_records()
+                    if records:
+                        DatabaseManager().save_scan_results_postmarket(
+                            records, engine._last_scan_trade_date
+                        )
+                except Exception as e:
+                    logger.warning("全量扫描结果落库失败: %s", e)
             if results:
                 report = engine.format_report(results, mode="postmarket")
                 logger.info("\n%s", report)

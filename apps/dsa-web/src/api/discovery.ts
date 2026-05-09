@@ -98,6 +98,25 @@ export type BacktestResponse = {
   capital_curve: CapitalCurvePoint[];
 };
 
+export type StockScoreItem = {
+  scanned_at: string;
+  rank: number;
+  total_score: number;
+  factor_scores: Record<string, number>;
+  sector: string;
+};
+
+export type StockScoreEntry = {
+  stock_code: string;
+  stock_name: string;
+  intraday: StockScoreItem | null;
+  postmarket: StockScoreItem | null;
+};
+
+export type StockScoreResponse = {
+  items: StockScoreEntry[];
+};
+
 export type ScanModeResponse = {
   scan_universe: string;  // full_market / whitelist / broker_gold
   has_whitelist: boolean;
@@ -183,5 +202,12 @@ export const discoveryApi = {
   async updateWhitelist(codes: string[]): Promise<{ codes: string[]; count: number }> {
     const resp = await apiClient.put('/api/v1/discovery/whitelist', { codes });
     return resp.data;
+  },
+
+  async getStockScore(codes: string, mode: 'intraday' | 'postmarket' = 'intraday'): Promise<StockScoreResponse> {
+    const resp = await apiClient.get('/api/v1/discovery/stock-score', {
+      params: { codes, mode },
+    });
+    return resp.data as StockScoreResponse;
   },
 };

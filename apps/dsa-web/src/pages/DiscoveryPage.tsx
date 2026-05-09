@@ -7,12 +7,15 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { DatePicker } from 'antd';
+import { AutoComplete, DatePicker, Table } from 'antd';
 import dayjs from 'dayjs';
 import { AppPage, Button, EmptyState } from '../components/common';
-import { discoveryApi, type DiscoveryItem, type BacktestResponse, type ScanModeResponse } from '../api/discovery';
+import { discoveryApi, type DiscoveryItem, type BacktestResponse, type ScanModeResponse, type StockScoreResponse } from '../api/discovery';
+import { useStockIndex } from '../hooks/useStockIndex';
+import { searchStocks } from '../utils/searchStocks';
 
 type TabKey = 'intraday' | 'postmarket';
+
 const AUTO_REFRESH_MS = 60_000;
 const MIN_INTRADAY_FETCH_GAP_MS = 60_000;
 const BACKTEST_REFRESH_MS = 300_000;
@@ -103,24 +106,33 @@ const FACTOR_LABELS: Record<string, string> = {
   chip: '筹码分布',
   technical: '技术形态',
   limit: '涨跌停',
+  fundamental: '基本面',
+  northbound: '北向资金',
+  institution_hold: '机构持股',
+  profit_forecast: '盈利预测',
+  buyback: '回购',
+  insider_buy: '高管增持',
+  broker_recommend: '券商推荐',
+  popularity: '人气',
+  hot_money: '游资',
+  performance: '业绩',
   momentum: '动量',
   rebound: '反弹',
   sector: '板块',
   ma_entry: '均线',
 };
 
-const factorLabel = (key: string) => {
-  const zh = FACTOR_LABELS[key];
-  return zh ? `${key}（${zh}）` : key;
-};
+const factorLabel = (key: string) => FACTOR_LABELS[key] || key;
 
-const FactorBar: React.FC<{ label: string; value: number }> = ({ label, value }) => {
+const FactorBar: React.FC<{ label: string; value: number; pctShare: number }> = ({ label, value, pctShare }) => {
   const pct = Math.min(100, Math.max(0, value));
   const hue = pct >= 70 ? '193 100% 43%' : pct >= 40 ? '37 92% 50%' : '224 12% 42%';
 
   return (
     <div className="flex items-center gap-2.5 text-[11px]">
-      <span className="w-28 shrink-0 text-tertiary-text text-right truncate" title={label}>{label}</span>
+      <span className="w-28 shrink-0 text-tertiary-text text-right truncate" title={`${label} (${pctShare}%)`}>
+        {label}<span className="text-tertiary-text/60 ml-0.5">({pctShare}%)</span>
+      </span>
       <div className="flex-1 h-1 rounded-full bg-border/30 overflow-hidden">
         <motion.div
           className="h-full rounded-full"
@@ -354,9 +366,13 @@ const StockCard: React.FC<{
                 {item.factor_scores && Object.keys(item.factor_scores).length > 0 && (
                   <div className="space-y-2.5">
                     <div className="text-[11px] font-medium text-tertiary-text tracking-wide">因子得分</div>
-                    {Object.entries(item.factor_scores).map(([k, v]) => (
-                      <FactorBar key={k} label={factorLabel(k)} value={v} />
-                    ))}
+                    {(() => {
+                      const entries = Object.entries(item.factor_scores).filter(([, v]) => v > 0);
+                      const total = entries.reduce((s, [, v]) => s + v, 0) || 1;
+                      return entries.map(([k, v]) => (
+                        <FactorBar key={k} label={factorLabel(k)} value={v} pctShare={Math.round((v / total) * 100)} />
+                      ));
+                    })()}
                   </div>
                 )}
               </div>
@@ -795,6 +811,51 @@ const DiscoveryPage: React.FC = () => {
   const intradayLastFetchAtRef = useRef(0);
   const [intradayScanMode, setIntradayScanMode] = useState<ScanModeResponse>({ scan_universe: 'full_market', has_whitelist: false });
   const [postmarketScanMode, setPostmarketScanMode] = useState<ScanModeResponse>({ scan_universe: 'full_market', has_whitelist: false });
+  const [lookupInput, setLookupInput] = useState('');
+  const [lookupResult, setLookupResult] = useState<StockScoreResponse | null>(null);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+  const [lookupExpanded, setLookupExpanded] = useState<Set<string>>(new Set());
+  const { index: stockIndex } = useStockIndex();
+
+  const lookupOptions = useMemo(() => {
+    const segments = lookupInput.split(/[,，]/);
+    const last = segments[segments.length - 1]?.trim() || '';
+    if (last.length < 1) return [];
+    const results = searchStocks(last, stockIndex, { limit: 8 });
+    return results.map(s => ({
+      value: s.displayCode,
+      label: `${s.displayCode}  ${s.nameZh}`,
+    }));
+  }, [lookupInput, stockIndex]);
+
+  const handleLookup = useCallback(async () => {
+    const trimmed = lookupInput.trim();
+    if (!trimmed) return;
+    setLookupLoading(true);
+    setLookupError(null);
+    setLookupResult(null);
+    try {
+      // Convert name segments to bare stock codes
+      const segments = trimmed.split(/[,，]/);
+      const codes = segments.map(seg => {
+        const s = seg.trim();
+        if (!s) return '';
+        // Already a bare stock code (6 digits)
+        if (/^\d{6}$/.test(s)) return s;
+        // Search stock index by name/code
+        const results = searchStocks(s, stockIndex, { limit: 1 });
+        return results.length > 0 ? results[0].displayCode : s;
+      });
+      const query = codes.join(',');
+      const data = await discoveryApi.getStockScore(query, tab);
+      setLookupResult(data);
+    } catch (e: unknown) {
+      setLookupError(e instanceof Error ? e.message : '查询失败');
+    } finally {
+      setLookupLoading(false);
+    }
+  }, [lookupInput, tab, stockIndex]);
 
   const fetchIntraday = useCallback(async (force = false) => {
     const now = Date.now();
@@ -879,6 +940,9 @@ const DiscoveryPage: React.FC = () => {
     else { fetchReport(); fetchBacktest('postmarket'); fetchScanMode('postmarket'); }
   }, [tab, fetchIntraday, fetchReport, fetchBacktest, fetchScanMode]);
   useEffect(() => {
+    if (lookupInput.trim()) void handleLookup();
+  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
     if (tab !== 'intraday') return;
     const id = setInterval(fetchIntraday, AUTO_REFRESH_MS);
     return () => clearInterval(id);
@@ -931,6 +995,37 @@ const DiscoveryPage: React.FC = () => {
           <p className="mt-1.5 text-[13px] text-tertiary-text">多因子智能选股 · 盘中实时 + 盘后深度</p>
         </div>
 
+        {/* Score lookup */}
+        <div className="flex items-center gap-2">
+          <AutoComplete
+            value={lookupInput}
+            onChange={(v) => setLookupInput(v)}
+            options={lookupOptions}
+            onSelect={(code: string) => {
+              const segments = lookupInput.split(/[,，]/);
+              segments[segments.length - 1] = ` ${code}`;
+              setLookupInput(segments.join(',').replace(/^,/, '').trim());
+            }}
+            className="w-64"
+          >
+            <input
+              type="text"
+              onKeyDown={(e) => { if (e.key === 'Enter') void handleLookup(); }}
+              placeholder="代码/名称, 逗号分隔"
+              className="w-full rounded-lg border border-border/40 bg-card px-3 py-1.5 text-[13px] text-foreground placeholder:text-tertiary-text/50 focus:outline-none focus:ring-1 focus:ring-cyan/30 transition-colors"
+            />
+          </AutoComplete>
+          <button
+            type="button"
+            onClick={() => void handleLookup()}
+            disabled={lookupLoading}
+            className="inline-flex items-center gap-1 rounded-lg bg-cyan/15 px-3 py-1.5 text-[13px] font-medium text-cyan hover:bg-cyan/20 transition-colors disabled:opacity-50"
+          >
+            {lookupLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
+            查分
+          </button>
+        </div>
+
         {/* Tab switcher */}
         <div className="flex rounded-xl bg-card/80 p-0.5 ring-1 ring-border/30">
           {(['intraday', 'postmarket'] as TabKey[]).map(t => (
@@ -958,6 +1053,83 @@ const DiscoveryPage: React.FC = () => {
       {error ? (
         <div className="mb-5 rounded-xl border border-red/25 bg-red/5 px-4 py-3 text-[13px] text-red" role="alert">{error}</div>
       ) : null}
+
+      {/* ── Lookup results ── */}
+      {lookupError && (
+        <div className="mb-5 rounded-xl border border-red/25 bg-red/5 px-4 py-3 text-[13px] text-red" role="alert">{lookupError}</div>
+      )}
+      {lookupResult && lookupResult.items.length > 0 && (
+        <div className="mb-5 rounded-xl border border-border/30 bg-card/60 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-[13px] font-medium text-secondary-text">
+              评分查询结果（{lookupResult.items.length} 只）
+            </h3>
+            <button
+              type="button"
+              onClick={() => { setLookupResult(null); setLookupInput(''); }}
+              className="text-[11px] text-tertiary-text hover:text-secondary-text transition-colors"
+            >
+              清除
+            </button>
+          </div>
+          <Table
+            size="small"
+            pagination={false}
+            dataSource={lookupResult.items}
+            rowKey="stock_code"
+            expandable={{
+              expandedRowKeys: Array.from(lookupExpanded),
+              onExpandedRowsChange: (keys) => setLookupExpanded(new Set(keys as string[])),
+              expandedRowRender: (entry) => {
+                const scoreItem = entry.intraday || entry.postmarket;
+                if (!scoreItem) return null;
+                const total = Object.values(scoreItem.factor_scores).reduce((s, v) => s + v, 0) || 1;
+                return (
+                  <div className="space-y-1 py-1">
+                    {Object.entries(scoreItem.factor_scores)
+                      .filter(([, score]) => score > 0)
+                      .map(([name, score]) => {
+                      const pct = Math.round((score / total) * 100);
+                      return (
+                      <div key={name} className="flex items-center gap-2">
+                        <span className="text-[11px] text-secondary-text w-28 shrink-0 truncate" title={`${FACTOR_LABELS[name] || name} (${pct}%)`}>
+                          {FACTOR_LABELS[name] || name}
+                          <span className="text-tertiary-text/60 ml-0.5">({pct}%)</span>
+                        </span>
+                        <div className="flex-1 h-2 rounded-full bg-border/15 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-cyan/60 to-blue/60"
+                            style={{ width: `${Math.min(100, score)}%` }}
+                          />
+                        </div>
+                        <span className="text-[11px] font-mono text-tertiary-text w-10 text-right">{score.toFixed(0)}</span>
+                      </div>
+                      );
+                    })}
+                  </div>
+                );
+              },
+            }}
+            columns={[
+              { title: '代码', dataIndex: 'stock_code', width: 100, render: (v: string) => <span className="font-mono">{v}</span> },
+              { title: '名称', dataIndex: 'stock_name', width: 100 },
+              { title: '排名', width: 70, render: (_: any, r) => {
+                const s = r.intraday || r.postmarket;
+                return s ? <span className="font-mono">#{s.rank}</span> : '-';
+              }},
+              { title: '得分', width: 70, render: (_: any, r) => {
+                const s = r.intraday || r.postmarket;
+                return s ? <span className="font-mono">{s.total_score.toFixed(1)}</span> : '-';
+              }},
+              { title: '板块', width: 100, render: (_: any, r) => (r.intraday || r.postmarket)?.sector || '-' },
+              { title: '扫描时间', width: 120, render: (_: any, r) => {
+                const t = (r.intraday || r.postmarket)?.scanned_at;
+                return t ? t.slice(5) : '-';
+              }},
+            ]}
+          />
+        </div>
+      )}
 
       {/* ═══════════════════════════════
           INTRA DAY

@@ -79,7 +79,14 @@ class MaEntryFactor(BaseFactor):
                 result = result.drop(columns=["rt_price", "rt_volume"])
                 logger.debug("[MaEntryFactor] 已替换 %d 只股票的实时价格/成交量", rt_mask.sum())
 
-        # ── MA + 前日成交量（stock_daily） ──
+                # 盘中量能预估：按已过交易时间比例推估全天量
+                elapsed = self._trading_minutes_elapsed()
+                if elapsed >= 15:
+                    result["est_vol"] = result["vol"] * (240.0 / elapsed)
+                else:
+                    result["est_vol"] = result["vol"]
+
+        # ── MA + 近 5 日均量（stock_daily） ──
         if db_mgr:
             try:
                 close_matrix = db_mgr.get_recent_close_matrix(trade_date, 60)
@@ -87,10 +94,10 @@ class MaEntryFactor(BaseFactor):
                     mas = self._compute_mas(close_matrix)
                     result = result.merge(mas, left_on="_code", right_index=True, how="left")
 
-                    prev_vol = self._get_prev_day_volume(db_mgr, trade_date)
-                    if prev_vol is not None and not prev_vol.empty:
+                    avg_vol = self._get_avg_volume(db_mgr, trade_date)
+                    if avg_vol is not None and not avg_vol.empty:
                         result = result.merge(
-                            prev_vol.rename("prev_vol"), left_on="_code", right_index=True, how="left",
+                            avg_vol.rename("avg_vol"), left_on="_code", right_index=True, how="left",
                         )
             except Exception as e:
                 logger.warning("[MaEntryFactor] 计算MA失败: %s", e)
@@ -142,16 +149,16 @@ class MaEntryFactor(BaseFactor):
         return result
 
     @staticmethod
-    def _get_prev_day_volume(db_mgr, trade_date: str) -> "pd.Series":
-        """从 stock_daily 获取每个 stock 在 trade_date 前 5 个自然日内最新交易日的成交量。
+    def _get_avg_volume(db_mgr, trade_date: str, window: int = 5) -> "pd.Series":
+        """从 stock_daily 获取每个 stock 在 trade_date 前 window 个自然日内各交易日的平均成交量。
 
-        返回 Series: index=code, values=volume（手，与 stk_factor.vol 单位一致）。
+        返回 Series: index=code, values=avg_volume（手）。
         stock_daily.volume 存储为股（手×100），此处除以 100 还原为手。
         """
         from datetime import datetime as dt, timedelta
         from sqlalchemy import text
         target = dt.strptime(trade_date, "%Y%m%d").date()
-        cutoff = target - timedelta(days=5)
+        cutoff = target - timedelta(days=window + 3)  # 留 buffer 覆盖非交易日
         with db_mgr.get_session() as s:
             rows = s.execute(
                 text(
@@ -164,10 +171,34 @@ class MaEntryFactor(BaseFactor):
             if not rows:
                 return pd.Series(dtype=float)
             df = pd.DataFrame(rows, columns=["code", "volume"])
-            # 每只股票取最新一条，volume 股→手
-            df = df.drop_duplicates(subset=["code"], keep="first")
             df["volume"] = df["volume"] / 100.0
-            return df.set_index("code")["volume"]
+            # 每只股票取最近 window 个交易日的均值
+            avg = df.groupby("code")["volume"].apply(
+                lambda x: x.head(window).mean() if len(x) > 0 else x.mean()
+            )
+            return avg
+
+    @staticmethod
+    def _trading_minutes_elapsed() -> int:
+        """A 股当日已过交易分钟数，排除午休（11:30-13:00）。
+
+        9:30 前返回 0，15:00 后返回 240。
+        """
+        from datetime import datetime as dt
+        from zoneinfo import ZoneInfo
+        now = dt.now(ZoneInfo("Asia/Shanghai"))
+        market_open = now.replace(hour=9, minute=30, second=0, microsecond=0)
+        morning_close = now.replace(hour=11, minute=30, second=0, microsecond=0)
+        afternoon_open = now.replace(hour=13, minute=0, second=0, microsecond=0)
+        market_close = now.replace(hour=15, minute=0, second=0, microsecond=0)
+
+        if now < market_open:
+            return 0
+        if now > market_close:
+            return 240
+        if now <= morning_close:
+            return int((now - market_open).total_seconds() / 60)
+        return 120 + int((now - afternoon_open).total_seconds() / 60)
 
     @staticmethod
     def _compute_mas(close_matrix: pd.DataFrame) -> pd.DataFrame:
@@ -324,7 +355,6 @@ class MaEntryFactor(BaseFactor):
             return scores
 
         price = df.get("close", pd.Series(1.0, index=df.index))
-        kdj_k = df.get("kdj_k", pd.Series(50.0, index=df.index))
         boll_mid = df.get("boll_mid", pd.Series(price, index=df.index))
 
         has_ma = "ma5" in df.columns
@@ -340,11 +370,12 @@ class MaEntryFactor(BaseFactor):
             bull_align = ma_valid & (ma5 > ma10) & (ma10 > ma20)
             scores.loc[bull_align] += 20.0
 
-            # 均线粘合: spread < 3% (+15)
+            # 均线粘合: spread < 2% (+15)
             ma_max = pd.concat([ma5, ma10, ma20], axis=1).max(axis=1)
             ma_min = pd.concat([ma5, ma10, ma20], axis=1).min(axis=1)
-            spread = (ma_max - ma_min) / ma_min.replace(0, 1)
-            scores.loc[ma_valid & (spread < 0.03)] += 15.0
+            mid = (ma_max + ma_min) / 2
+            spread = (ma_max - ma_min) / mid.replace(0, 1)
+            scores.loc[ma_valid & (spread < 0.02)] += 15.0
 
             # 回踩 MA5: 现价距 MA5 < 2% (+25)
             bias_5 = (price - ma5).abs() / ma5.replace(0, 1)
@@ -362,21 +393,23 @@ class MaEntryFactor(BaseFactor):
             bias = (price - ma5) / ma5.replace(0, 1)
             scores.loc[ma_valid & (bias > 0.08)] = 0.0
 
-            # 缩量回踩 (+15): 当日量 < 前一日量 × 0.8
-            today_vol = df.get("vol", pd.Series(0, index=df.index))
-            prev_vol = df.get("prev_vol", pd.Series(0, index=df.index))
-            has_prev = prev_vol > 0
-            vol_shrink = has_prev & (today_vol < prev_vol * 0.8)
+            # 缩量回踩 (+15): 预估全天量 < 5 日均量 × 0.8
+            today_vol = df.get("est_vol", df.get("vol", pd.Series(0, index=df.index)))
+            avg_vol = df.get("avg_vol", pd.Series(0, index=df.index))
+            has_avg = avg_vol > 0
+            vol_shrink = has_avg & (today_vol < avg_vol * 0.8)
             near_ma = ((price - ma5).abs() / ma5.replace(0, 1)) < 0.03
             scores.loc[ma_valid & vol_shrink & near_ma] += 15.0
 
-        # --- KDJ 低位超卖 (+10) ---
-        scores.loc[kdj_k < 30] += 10.0
+            # --- BOLL 中轨支撑 (+5): 价在中轨上方 2% 内，且 MA5 > MA10 ---
+            above_mid = price > boll_mid
+            near_mid = (price - boll_mid).abs() / boll_mid.replace(0, 1) < 0.02
+            mini_bull = ma_valid & (ma5 > ma10)
+            scores.loc[mini_bull & above_mid & near_mid] += 5.0
 
-        # --- BOLL 中轨支撑 (+5) ---
-        above_mid = price > boll_mid
-        near_mid = (price - boll_mid).abs() / boll_mid.replace(0, 1) < 0.02
-        scores.loc[above_mid & near_mid] += 5.0
+        # --- KDJ J 线超卖 (+10): J < 20 ---
+        kdj_j = df.get("kdj_j", pd.Series(50.0, index=df.index))
+        scores.loc[kdj_j < 20] += 10.0
 
         return scores.clip(0, 100)
 
@@ -385,7 +418,7 @@ class MaEntryFactor(BaseFactor):
         if df.empty:
             return reasons
         price = df.get("close", pd.Series(1.0, index=df.index))
-        kdj_k = df.get("kdj_k", pd.Series(50.0, index=df.index))
+        kdj_j = df.get("kdj_j", pd.Series(50.0, index=df.index))
         boll_mid = df.get("boll_mid", pd.Series(price, index=df.index))
         has_ma = "ma5" in df.columns
 
@@ -407,20 +440,21 @@ class MaEntryFactor(BaseFactor):
                     elif _ma10 > 0 and abs(_p - _ma10) / _ma10 < 0.03:
                         r.append("回踩MA10均线")
 
+                    # BOLL 中轨支撑 + MA5 > MA10
+                    _bm = boll_mid.get(ts_code, 0)
+                    if _ma5 > _ma10 and 0 <= (_p - _bm) / _bm < 0.02:
+                        r.append("BOLL中轨支撑")
+
             # 缩量回踩信号
-            if has_ma and ts_code in df.index and "prev_vol" in df.columns:
-                _prev = df.loc[ts_code, "prev_vol"]
+            if has_ma and ts_code in df.index and "avg_vol" in df.columns:
+                _avg = df.loc[ts_code, "avg_vol"]
                 _vol = df.loc[ts_code, "vol"]
-                if pd.notna(_prev) and _prev > 0 and _vol < _prev * 0.8:
+                if pd.notna(_avg) and _avg > 0 and _vol < _avg * 0.8:
                     r.append("缩量回踩")
 
-            _kdj = kdj_k.get(ts_code, 50)
-            if _kdj < 30:
-                r.append(f"KDJ超卖({_kdj:.0f})")
-            _bm = boll_mid.get(ts_code, 0)
-            _p = price.get(ts_code, 0)
-            if _bm > 0 and 0 <= (_p - _bm) / _bm < 0.02:
-                r.append("BOLL中轨支撑")
+            _kdj_j = kdj_j.get(ts_code, 50)
+            if _kdj_j < 20:
+                r.append(f"KDJ超卖(J{_kdj_j:.0f})")
             if r:
                 reasons[ts_code] = r
         return reasons

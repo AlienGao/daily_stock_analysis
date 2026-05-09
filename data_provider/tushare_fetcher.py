@@ -1088,7 +1088,14 @@ class TushareFetcher(BaseFetcher):
             logger.info(f"[Tushare] 当前时间 {china_clock} 可能无法获取当天筹码分布，尝试获取前一个交易日的数据 {start_date}")
 
         return start_date
-    
+
+    def is_trading_day(self) -> bool:
+        """检查今天是否为 A 股交易日。"""
+        china_now = self._get_china_now()
+        china_date = china_now.strftime("%Y%m%d")
+        trade_dates = self._get_trade_dates(china_date)
+        return china_date in trade_dates if trade_dates else china_now.weekday() < 5
+
     def get_sector_rankings(self, n: int = 5) -> Optional[Tuple[list, list]]:
         """
         获取行业板块涨跌榜 (Tushare Pro)
