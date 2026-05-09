@@ -711,7 +711,7 @@ class Config:
     discover_weight_limit_post: float = 15.0 # DISCOVER_WEIGHT_LIMIT_POST — 涨跌停
 
     # 扫描器设置
-    discover_scan_interval: int = 300        # DISCOVER_SCAN_INTERVAL — 盘中轮询间隔（秒）
+    discover_scan_interval: int = 60        # DISCOVER_SCAN_INTERVAL — 盘中轮询间隔（秒）
     discover_scan_max_runtime: int = 240     # DISCOVER_SCAN_MAX_RUNTIME — 最大运行时间（分钟）
     discover_scan_top_n: int = 10            # DISCOVER_SCAN_TOP_N — 盘中保持 Top N
 

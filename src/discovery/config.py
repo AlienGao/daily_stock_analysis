@@ -84,7 +84,7 @@ class DiscoveryConfig:
 
     # --- 盘中扫描器设置 ---
     scan_interval_seconds: int = field(
-        default_factory=lambda: _env_int("DISCOVER_SCAN_INTERVAL", 300)
+        default_factory=lambda: _env_int("DISCOVER_SCAN_INTERVAL", 60)
     )
     scan_max_runtime_minutes: int = field(
         default_factory=lambda: _env_int("DISCOVER_SCAN_MAX_RUNTIME", 240)

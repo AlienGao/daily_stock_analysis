@@ -41,6 +41,7 @@ from sqlalchemy import (
     and_,
     or_,
     delete,
+    update,
     desc,
     event,
     func,
@@ -297,6 +298,67 @@ class LimitPool(Base):
 
     def __repr__(self) -> str:
         return f"<LimitPool(code={self.code}, date={self.trade_date}, type={self.limit_type})>"
+
+
+class LimitUpHistory(Base):
+    """今日涨停过的股票（只增不删，用于差集检测炸板）。
+
+    每次 _refresh_limit_pool() 新股补入，已存在的不更新（保留首次出现时间）。
+    """
+
+    __tablename__ = 'limit_up_history'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(10), nullable=False, index=True)
+    name = Column(String(50))
+    trade_date = Column(String(8))
+    first_seen = Column(DateTime, default=datetime.now)
+    last_seen = Column(DateTime, default=datetime.now)
+    open_times = Column(Integer, default=0)
+    limit_times = Column(Integer, default=0)
+    sector = Column(String(100))
+    source = Column(String(20))
+    updated_at = Column(DateTime, default=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('code', 'trade_date', name='uix_limit_up_history_code_date'),
+        Index('ix_limit_up_history_trade_date', 'trade_date'),
+    )
+
+    def __repr__(self) -> str:
+        return f"<LimitUpHistory(code={self.code}, date={self.trade_date})>"
+
+
+class LimitBreak(Base):
+    """炸板股票（实时 upsert，盘中检测到差集时写入/更新）。
+
+    status: broke（炸板中）/ recovered（已回封）
+    """
+
+    __tablename__ = 'limit_break'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(10), nullable=False, index=True)
+    name = Column(String(50))
+    trade_date = Column(String(8))
+    status = Column(String(10), default="broke")   # broke / recovered
+    first_break_at = Column(DateTime)
+    recovered_at = Column(DateTime)
+    last_pct_chg = Column(Float)
+    last_price = Column(Float)
+    open_times = Column(Integer, default=0)
+    limit_times = Column(Integer, default=0)
+    sector = Column(String(100))
+    source = Column(String(20))
+    updated_at = Column(DateTime, default=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('code', 'trade_date', name='uix_limit_break_code_date'),
+        Index('ix_limit_break_trade_date', 'trade_date'),
+    )
+
+    def __repr__(self) -> str:
+        return f"<LimitBreak(code={self.code}, status={self.status})>"
 
 
 class MoneyFlow(Base):
@@ -1151,6 +1213,8 @@ class DatabaseManager:
         self._ensure_scan_result_intraday_table()
         self._ensure_scan_result_postmarket_table()
         self._ensure_limit_pool_table()
+        self._ensure_limit_up_history_table()
+        self._ensure_limit_break_table()
         self._ensure_stock_daily_date_index()
 
         self._initialized = True
@@ -1292,6 +1356,46 @@ class DatabaseManager:
             logger.info("已创建表 limit_pool")
         except Exception as exc:
             logger.warning("创建 limit_pool 失败: %s", exc)
+
+    def _ensure_limit_up_history_table(self) -> None:
+        """SQLite: create limit_up_history if missing."""
+        if not self._is_sqlite_engine:
+            return
+        try:
+            with self._engine.connect() as conn:
+                rows = conn.execute(
+                    text("SELECT name FROM sqlite_master WHERE type='table' AND name='limit_up_history'")
+                ).fetchall()
+            if rows:
+                return
+        except Exception as exc:
+            logger.warning("检查 limit_up_history 表存在性失败: %s", exc)
+            return
+        try:
+            LimitUpHistory.__table__.create(self._engine)
+            logger.info("已创建表 limit_up_history")
+        except Exception as exc:
+            logger.warning("创建 limit_up_history 失败: %s", exc)
+
+    def _ensure_limit_break_table(self) -> None:
+        """SQLite: create limit_break if missing."""
+        if not self._is_sqlite_engine:
+            return
+        try:
+            with self._engine.connect() as conn:
+                rows = conn.execute(
+                    text("SELECT name FROM sqlite_master WHERE type='table' AND name='limit_break'")
+                ).fetchall()
+            if rows:
+                return
+        except Exception as exc:
+            logger.warning("检查 limit_break 表存在性失败: %s", exc)
+            return
+        try:
+            LimitBreak.__table__.create(self._engine)
+            logger.info("已创建表 limit_break")
+        except Exception as exc:
+            logger.warning("创建 limit_break 失败: %s", exc)
 
     def _ensure_stock_daily_date_index(self) -> None:
         """SQLite: create ix_stock_daily_date if missing."""
@@ -2706,6 +2810,294 @@ class DatabaseManager:
                 "sector": r.sector, "source": r.source, "slot": r.slot,
             } for r in rows])
             return df.set_index("code")
+
+    # ------------------------------------------------------------------
+    # LimitUpHistory CRUD
+    # ------------------------------------------------------------------
+
+    def get_limit_up_history_codes(self, trade_date: str) -> set:
+        """获取今日涨停过的代码集合（用于差集检测）。"""
+        with self.get_session() as session:
+            rows = session.execute(
+                select(LimitUpHistory.code).where(LimitUpHistory.trade_date == trade_date)
+            ).fetchall()
+            return {r[0] for r in rows}
+
+    def get_limit_up_history(
+        self, trade_date: Optional[str] = None
+    ) -> pd.DataFrame:
+        """获取今日涨停历史记录，返回 DataFrame (index=code)。"""
+        if trade_date is None:
+            from datetime import date
+            trade_date = date.today().strftime("%Y%m%d")
+        with self.get_session() as session:
+            rows = session.execute(
+                select(LimitUpHistory).where(LimitUpHistory.trade_date == trade_date)
+            ).scalars().all()
+            if not rows:
+                return pd.DataFrame()
+            df = pd.DataFrame([{
+                "code": r.code, "name": r.name, "trade_date": r.trade_date,
+                "first_seen": r.first_seen, "last_seen": r.last_seen,
+                "open_times": r.open_times, "limit_times": r.limit_times,
+                "sector": r.sector, "source": r.source,
+            } for r in rows])
+            return df.set_index("code")
+
+    def insert_limit_up_history_bulk(
+        self, df: pd.DataFrame, source: str
+    ) -> int:
+        """批量插入涨停历史（新票，已存在的 (code, trade_date) 跳过）。"""
+        if df is None or df.empty:
+            return 0
+
+        now = datetime.now()
+        records: List[Dict[str, Any]] = []
+        for _, row in df.iterrows():
+            code = str(row.get("code", "")).strip()
+            if not code:
+                continue
+            records.append({
+                "code": code,
+                "name": str(row.get("name", ""))[:50] if pd.notna(row.get("name")) else "",
+                "trade_date": str(row.get("trade_date", ""))[:8],
+                "first_seen": now,
+                "last_seen": now,
+                "open_times": int(row.get("open_times", 0) or 0),
+                "limit_times": int(row.get("limit_times", 0) or 0),
+                "sector": str(row.get("sector", ""))[:100] if pd.notna(row.get("sector")) else "",
+                "source": source,
+                "updated_at": now,
+            })
+
+        if not records:
+            return 0
+
+        def _write(session: Session) -> int:
+            if self._is_sqlite_engine:
+                _CHUNK = 100
+                inserted = 0
+                for i in range(0, len(records), _CHUNK):
+                    chunk = records[i : i + _CHUNK]
+                    stmt = sqlite_insert(LimitUpHistory).values(chunk)
+                    try:
+                        session.execute(
+                            stmt.on_conflict_do_nothing(
+                                index_elements=["code", "trade_date"]
+                            )
+                        )
+                        inserted += len(chunk)
+                    except Exception:
+                        for rec in chunk:
+                            try:
+                                session.execute(
+                                    sqlite_insert(LimitUpHistory).values(rec).
+                                    on_conflict_do_nothing(
+                                        index_elements=["code", "trade_date"]
+                                    )
+                                )
+                                inserted += 1
+                            except Exception:
+                                pass
+                return inserted
+            else:
+                inserted = 0
+                for rec in records:
+                    try:
+                        session.add(LimitUpHistory(**rec))
+                        inserted += 1
+                    except Exception:
+                        pass
+                return inserted
+
+        try:
+            saved = self._run_write_transaction("insert_limit_up_history", _write)
+            logger.debug("[DB] insert_limit_up_history: %d 条 (source=%s)", saved, source)
+            return saved
+        except Exception as e:
+            logger.error("[DB] insert_limit_up_history 失败: %s", e)
+            raise
+
+    def clear_limit_up_history_date(self, trade_date: str) -> int:
+        """删除指定交易日涨停历史记录。"""
+        try:
+            def _clear(session: Session) -> int:
+                result = session.execute(
+                    delete(LimitUpHistory).where(LimitUpHistory.trade_date == trade_date)
+                )
+                return result.rowcount
+            count = self._run_write_transaction("clear_limit_up_history_date", _clear)
+            if count:
+                logger.debug("[DB] clear_limit_up_history_date(%s): %d 条", trade_date, count)
+            return count
+        except Exception as e:
+            logger.error("[DB] clear_limit_up_history_date 失败: %s", e)
+            raise
+
+    # ------------------------------------------------------------------
+    # LimitBreak CRUD
+    # ------------------------------------------------------------------
+
+    def get_limit_break(
+        self, trade_date: Optional[str] = None, status: Optional[str] = None
+    ) -> pd.DataFrame:
+        """获取炸板记录，返回 DataFrame (index=code)。默认只查 broke 状态。"""
+        if trade_date is None:
+            from datetime import date
+            trade_date = date.today().strftime("%Y%m%d")
+        with self.get_session() as session:
+            stmt = select(LimitBreak).where(LimitBreak.trade_date == trade_date)
+            if status:
+                stmt = stmt.where(LimitBreak.status == status)
+            rows = session.execute(stmt).scalars().all()
+            if not rows:
+                return pd.DataFrame()
+            df = pd.DataFrame([{
+                "code": r.code, "name": r.name, "trade_date": r.trade_date,
+                "status": r.status, "first_break_at": r.first_break_at,
+                "recovered_at": r.recovered_at, "last_pct_chg": r.last_pct_chg,
+                "last_price": r.last_price, "open_times": r.open_times,
+                "limit_times": r.limit_times,
+                "sector": r.sector, "source": r.source,
+            } for r in rows])
+            return df.set_index("code")
+
+    def get_limit_break_codes(self, trade_date: str, status: str = "broke") -> set:
+        """获取当前炸板中/已回封的代码集合。"""
+        with self.get_session() as session:
+            rows = session.execute(
+                select(LimitBreak.code).where(
+                    LimitBreak.trade_date == trade_date,
+                    LimitBreak.status == status,
+                )
+            ).fetchall()
+            return {r[0] for r in rows}
+
+    def upsert_limit_break(self, df: pd.DataFrame, source: str) -> int:
+        """upsert 炸板记录 by (code, trade_date)。"""
+        if df is None or df.empty:
+            return 0
+
+        now = datetime.now()
+        records: List[Dict[str, Any]] = []
+        for _, row in df.iterrows():
+            code = str(row.get("code", "")).strip()
+            if not code:
+                continue
+            trade_date = str(row.get("trade_date", ""))[:8]
+            if not trade_date:
+                continue
+            records.append({
+                "code": code,
+                "name": str(row.get("name", ""))[:50] if pd.notna(row.get("name")) else "",
+                "trade_date": trade_date,
+                "status": str(row.get("status", "broke"))[:10],
+                "first_break_at": row.get("first_break_at", now),
+                "recovered_at": row.get("recovered_at"),
+                "last_pct_chg": self._normalize_sql_value(row.get("last_pct_chg")),
+                "last_price": self._normalize_sql_value(row.get("last_price")),
+                "open_times": int(row.get("open_times", 0) or 0),
+                "limit_times": int(row.get("limit_times", 0) or 0),
+                "sector": str(row.get("sector", ""))[:100] if pd.notna(row.get("sector")) else "",
+                "source": source,
+                "updated_at": now,
+            })
+
+        if not records:
+            return 0
+
+        def _write(session: Session) -> int:
+            if self._is_sqlite_engine:
+                _CHUNK = 100
+                for i in range(0, len(records), _CHUNK):
+                    chunk = records[i : i + _CHUNK]
+                    stmt = sqlite_insert(LimitBreak).values(chunk)
+                    excluded = stmt.excluded
+                    session.execute(
+                        stmt.on_conflict_do_update(
+                            index_elements=["code", "trade_date"],
+                            set_={
+                                "name": excluded.name,
+                                "status": excluded.status,
+                                "first_break_at": excluded.first_break_at,
+                                "recovered_at": excluded.recovered_at,
+                                "last_pct_chg": excluded.last_pct_chg,
+                                "last_price": excluded.last_price,
+                                "open_times": excluded.open_times,
+                                "limit_times": excluded.limit_times,
+                                "sector": excluded.sector,
+                                "source": excluded.source,
+                                "updated_at": excluded.updated_at,
+                            },
+                        )
+                    )
+                return len(records)
+            else:
+                updated = 0
+                for rec in records:
+                    ent = session.execute(
+                        select(LimitBreak).where(
+                            LimitBreak.code == rec["code"],
+                            LimitBreak.trade_date == rec["trade_date"],
+                        )
+                    ).scalars().first()
+                    if ent is None:
+                        session.add(LimitBreak(**rec))
+                    else:
+                        for key in ("name", "status", "first_break_at",
+                                    "recovered_at", "last_pct_chg", "last_price",
+                                    "open_times", "limit_times", "sector", "source"):
+                            setattr(ent, key, rec[key])
+                        ent.updated_at = now
+                    updated += 1
+                return updated
+
+        try:
+            saved = self._run_write_transaction("upsert_limit_break", _write)
+            logger.debug("[DB] upsert_limit_break: %d 条 (source=%s)", saved, source)
+            return saved
+        except Exception as e:
+            logger.error("[DB] upsert_limit_break 失败: %s", e)
+            raise
+
+    def recover_limit_breaks(self, codes: List[str], trade_date: str) -> int:
+        """标记指定股票为已回封（status='recovered'），保留 first_break_at。"""
+        if not codes:
+            return 0
+        now = datetime.now()
+        def _write(session: Session) -> int:
+            result = session.execute(
+                update(LimitBreak).where(
+                    LimitBreak.code.in_(codes),
+                    LimitBreak.trade_date == trade_date,
+                    LimitBreak.status == "broke",
+                ).values(status="recovered", recovered_at=now, updated_at=now)
+            )
+            return result.rowcount
+        try:
+            count = self._run_write_transaction("recover_limit_breaks", _write)
+            if count:
+                logger.debug("[DB] recover_limit_breaks: %d 只", count)
+            return count
+        except Exception as e:
+            logger.error("[DB] recover_limit_breaks 失败: %s", e)
+            raise
+
+    def clear_limit_break_date(self, trade_date: str) -> int:
+        """删除指定交易日炸板记录。"""
+        try:
+            def _clear(session: Session) -> int:
+                result = session.execute(
+                    delete(LimitBreak).where(LimitBreak.trade_date == trade_date)
+                )
+                return result.rowcount
+            count = self._run_write_transaction("clear_limit_break_date", _clear)
+            if count:
+                logger.debug("[DB] clear_limit_break_date(%s): %d 条", trade_date, count)
+            return count
+        except Exception as e:
+            logger.error("[DB] clear_limit_break_date 失败: %s", e)
+            raise
 
     def upsert_money_flow(self, df: pd.DataFrame, source: str = "tushare") -> int:
         """upsert 资金流向 by (code, trade_date)（盘后 Tushare 全量覆盖）。"""

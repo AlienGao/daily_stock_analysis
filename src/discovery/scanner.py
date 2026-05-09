@@ -35,7 +35,7 @@ _REPORTS_DIR = Path(__file__).resolve().parent.parent.parent / "discovery_report
 
 _TZ_CN = timezone(timedelta(hours=8))
 _MARKET_OPEN = (9, 25)   # 盘中扫描开始
-_MARKET_CLOSE = (15, 0)  # 盘中扫描结束
+_MARKET_CLOSE = (15, 1)  # 盘中扫描结束（收盘后再扫一轮）
 
 
 class IntradayScanner:
@@ -256,6 +256,9 @@ class IntradayScanner:
             if df is None or df.empty:
                 return False
 
+            # ── 炸板检测（clear 之前完成新旧比对） ──
+            self._detect_limit_breaks(db, df, today, source)
+
             db.clear_limit_pool_date(today)
             saved = db.insert_limit_pool_bulk(df, source=source, slot=slot)
             self._fill_sector_map_from_pool(df)
@@ -265,6 +268,72 @@ class IntradayScanner:
         except Exception as e:
             logger.warning("[Scanner] limit_pool 刷新失败: %s", e)
             return False
+
+    @staticmethod
+    def _detect_limit_breaks(db, df: pd.DataFrame, today: str, source: str) -> None:
+        """差集检测炸板：history - current → limit_break，current - history → limit_up_history。"""
+        from datetime import datetime as _dt
+        now = _dt.now()
+
+        if df is None:
+            return
+        if df.empty or "code" not in df.columns:
+            current_codes: set = set()
+        else:
+            current_codes = set(df["code"].astype(str).str.strip().str.zfill(6))
+        history_codes = db.get_limit_up_history_codes(today)
+        broke_codes = db.get_limit_break_codes(today, status="broke")
+
+        # 1) 新涨停票 → 补入 limit_up_history（统一 zfill 存入）
+        new_codes = current_codes - history_codes
+        if new_codes:
+            raw_codes = df["code"].astype(str).str.strip().str.zfill(6)
+            new_rows = df[raw_codes.isin(new_codes)].copy()
+            new_df = pd.DataFrame()
+            new_df["code"] = new_rows["code"].astype(str).str.strip().str.zfill(6)
+            new_df["name"] = new_rows.get("name", "")
+            new_df["trade_date"] = today
+            new_df["open_times"] = new_rows.get("open_times", 0)
+            new_df["limit_times"] = new_rows.get("limit_times", 0)
+            new_df["sector"] = new_rows.get("sector", "")
+            db.insert_limit_up_history_bulk(new_df, source=source)
+            logger.info("[Scanner] 涨停历史补入 %d 只: %s", len(new_codes), new_codes)
+
+        # 2) 回封检测：当前在涨停池 + 之前炸板 → 标记 recovered
+        recovered_codes = list(current_codes & broke_codes)
+        if recovered_codes:
+            db.recover_limit_breaks(recovered_codes, today)
+            logger.info("[Scanner] 回封 %d 只: %s", len(recovered_codes), recovered_codes)
+
+        # 3) 炸板检测：history - current（曾涨停但当前不在）→ limit_break
+        missing_codes = history_codes - current_codes
+        if missing_codes:
+            # 从 limit_up_history 带出完整字段
+            hist_df = db.get_limit_up_history(today)
+            code_to_lt = {}
+            code_to_name = {}
+            code_to_sector = {}
+            code_to_ot = {}
+            if not hist_df.empty:
+                code_to_lt = hist_df["limit_times"].to_dict()
+                if "name" in hist_df.columns:
+                    code_to_name = hist_df["name"].to_dict()
+                if "sector" in hist_df.columns:
+                    code_to_sector = hist_df["sector"].to_dict()
+                if "open_times" in hist_df.columns:
+                    code_to_ot = hist_df["open_times"].to_dict()
+            break_df = pd.DataFrame()
+            break_df["code"] = list(missing_codes)
+            break_df["name"] = [str(code_to_name.get(c, "")) for c in missing_codes]
+            break_df["trade_date"] = today
+            break_df["status"] = "broke"
+            break_df["first_break_at"] = now
+            break_df["limit_times"] = [int(code_to_lt.get(c, 0) or 0) for c in missing_codes]
+            break_df["open_times"] = [int(code_to_ot.get(c, 0) or 0) for c in missing_codes]
+            break_df["sector"] = [str(code_to_sector.get(c, "")) for c in missing_codes]
+            break_df["source"] = source
+            db.upsert_limit_break(break_df, source=source)
+            logger.info("[Scanner] 检测到炸板 %d 只: %s", len(missing_codes), missing_codes)
 
     @staticmethod
     def _fetch_limit_pool_akshare(trade_date: str):
