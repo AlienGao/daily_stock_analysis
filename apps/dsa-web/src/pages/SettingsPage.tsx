@@ -11,6 +11,7 @@ import {
   IntelligentImport,
   LLMChannelEditor,
   RunFullAnalysisButton,
+  NotificationTestPanel,
   SettingsCategoryNav,
   SettingsAlert,
   SettingsField,
@@ -711,6 +712,13 @@ const SettingsPage: React.FC = () => {
             {activeCategory === 'system' && passwordChangeable ? (
               <ChangePasswordCard />
             ) : null}
+            {activeCategory === 'notification' ? (
+              <NotificationTestPanel
+                items={rawActiveItems.map((item) => ({ key: item.key, value: String(item.value ?? '') }))}
+                maskToken={maskToken}
+                disabled={isSaving || isLoading}
+              />
+            ) : null}
             {activeItems.length ? (
               <SettingsSectionCard
                 title="当前分类配置项"
@@ -758,7 +766,14 @@ const SettingsPage: React.FC = () => {
       {toast ? (
         <div className="fixed bottom-5 right-5 z-50 w-[320px] max-w-[calc(100vw-24px)]">
           {toast.type === 'success'
-            ? <SettingsAlert title="操作成功" message={toast.message} variant="success" />
+            ? (
+                <SettingsAlert
+                  title="操作成功"
+                  message={toast.message}
+                  variant="success"
+                  presentation="toast"
+                />
+              )
             : <ApiErrorAlert error={toast.error} />}
         </div>
       ) : null}
