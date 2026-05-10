@@ -18,10 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - [修复] 修正 LLM 渠道测试中 `Your request was blocked` 等服务商或网关拦截错误被误报为网络异常的问题。
 - [chore] 清理仓库根目录：移除误入库的 `.codex`、`review.md` 跟踪记录，将 smoke 测试入口迁移到 `scripts/`、环境检查脚本迁移为 `scripts/check_env.py`，并将 LiteLLM YAML 示例迁移到 `docs/examples/`。
 - [新功能] Web 设置页新增通知渠道一键测试，支持临时配置、耗时与脱敏 attempts 展示。
+- [改进] 产品化自定义 Webhook Body 模板说明，明确全局模板优先级、JSON 转义建议和 Bark / NapCat 适配示例。
 - [新功能] 系统设置页新增配置项帮助入口与多语言帮助文案基础设施，首批覆盖自选股、LLM 主模型、LLM 渠道、飞书 Webhook 与 WebUI 监听地址。
 - [改进] 设置项帮助窗口支持键盘焦点限制、Esc 关闭和关闭后焦点恢复，并移除短描述重复 hover tooltip。
 - [文档] 新增设置页配置帮助维护说明，明确帮助元数据字段、首批覆盖范围、事实源和多语言文案同步规则。
 - [测试] 补充设置项帮助元数据、API schema、前端弹窗交互测试，并修复 Bot 名称路由与调度时间 provider 测试的离线 CI 稳定性问题。
+- [修复] 港股日线跳过不支持港股的内置历史数据源，避免港股代码错配到非港股市场数据。
+- [修复] 修正分析 API 对北交所 `BJ` 前缀与 `.BJ` 后缀股票代码的校验，保持前端自动补全与 Tushare `ts_code` 调用格式一致。
 
 ## [3.15.0] - 2026-05-05
 

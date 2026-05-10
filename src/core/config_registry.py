@@ -924,8 +924,10 @@ _FIELD_DEFINITIONS: Dict[str, Dict[str, Any]] = {
     "CUSTOM_WEBHOOK_BODY_TEMPLATE": {
         "title": "Custom Webhook Body Template",
         "description": (
-            "Optional JSON body template for custom webhooks. Supports $content_json, "
-            "$content, $title_json, and $title placeholders."
+            "Optional global JSON body template for custom webhooks. It is rendered before "
+            "URL auto-detected payloads such as Bark, Slack, or Discord, and must render to a "
+            "JSON object. Prefer $content_json and $title_json; raw $content and $title are "
+            "not JSON-escaped and can make the template invalid."
         ),
         "category": "notification",
         "data_type": "string",

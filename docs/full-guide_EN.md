@@ -643,14 +643,31 @@ Supports any POST JSON Webhook, including:
 Set `CUSTOM_WEBHOOK_URLS`, separate multiple with commas.
 
 If AstrBot, NapCat, or a self-hosted service requires a custom request body, set
-`CUSTOM_WEBHOOK_BODY_TEMPLATE`. The rendered value must be a JSON object. Prefer
-`$content_json` so newlines and quotes stay valid JSON:
+`CUSTOM_WEBHOOK_BODY_TEMPLATE`. This is a global template and is rendered before
+URL auto-detected payloads such as Bark, Slack, or Discord. If the rendered value
+is not a JSON object, DSA falls back to the default payload. Prefer
+`$content_json` / `$title_json` so newlines and quotes stay valid JSON:
 
 ```env
 CUSTOM_WEBHOOK_BODY_TEMPLATE={"msg_type":"text","content":$content_json}
 ```
 
 Available placeholders: `$content_json`, `$content`, `$title_json`, `$title`.
+Raw `$content` / `$title` are not JSON-escaped, so quotes or newlines can make
+the template invalid and trigger fallback.
+
+When using Bark with a global template, include the Bark body explicitly:
+
+```env
+CUSTOM_WEBHOOK_BODY_TEMPLATE={"title":$title_json,"body":$content_json,"group":"stock"}
+```
+
+NapCat / OneBot examples must be adjusted for your actual endpoint, `user_id`,
+or `group_id`:
+
+```env
+CUSTOM_WEBHOOK_BODY_TEMPLATE={"user_id":123456,"message":$content_json}
+```
 
 ### Discord
 
@@ -769,6 +786,8 @@ Use `hk` prefix for HK stock codes:
 ```bash
 STOCK_LIST=600519,hk00700,hk01810
 ```
+
+HK daily history skips efinance, pytdx, baostock, and other built-in providers that do not support HK daily data, avoiding mismatches between HK symbols and non-HK market data. AkShare/Tushare/YFinance/Longbridge continue to provide HK fallback paths.
 
 ### Multi-Model Switching
 
@@ -981,7 +1000,7 @@ python main.py --serve-only --host 0.0.0.0 --port 8888
 | Type | Format | Examples |
 |------|------|------|
 | A-shares | 6-digit number | `600519`, `000001`, `300750` |
-| BSE (Beijing) | 8/4/92 prefix, 6-digit | `920748`, `838163`, `430047` |
+| BSE (Beijing) | 8/4/92 prefix, 6-digit; supports `BJ` prefix or `.BJ` suffix | `920748`, `BJ920493`, `920493.BJ` |
 | HK stocks | hk + 5-digit number | `hk00700`, `hk09988` |
 
 ### Notes

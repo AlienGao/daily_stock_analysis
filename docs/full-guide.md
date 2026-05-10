@@ -743,13 +743,25 @@ EMAIL_GROUP_2=user2@example.com
 
 设置 `CUSTOM_WEBHOOK_URLS`，多个用逗号分隔。
 
-如需适配 AstrBot、NapCat 或自建服务的特殊 body，可设置 `CUSTOM_WEBHOOK_BODY_TEMPLATE`。该值必须渲染为 JSON object，推荐使用 `$content_json` 避免换行和引号破坏 JSON：
+如需适配 AstrBot、NapCat 或自建服务的特殊 body，可设置 `CUSTOM_WEBHOOK_BODY_TEMPLATE`。这是全局模板，会先于 Bark、Slack、Discord 等 URL 自动识别 payload 生效；如果渲染后不是 JSON object，系统会回退默认 payload。推荐使用 `$content_json` / `$title_json` 避免换行和引号破坏 JSON：
 
 ```env
 CUSTOM_WEBHOOK_BODY_TEMPLATE={"msg_type":"text","content":$content_json}
 ```
 
-可用占位符：`$content_json`、`$content`、`$title_json`、`$title`。
+可用占位符：`$content_json`、`$content`、`$title_json`、`$title`。其中 `$content` / `$title` 是裸字符串，不做 JSON 转义；正文含双引号或换行时可能触发 fallback。
+
+Bark 使用全局模板时需显式写出 Bark body：
+
+```env
+CUSTOM_WEBHOOK_BODY_TEMPLATE={"title":$title_json,"body":$content_json,"group":"stock"}
+```
+
+NapCat / OneBot 示例需按实际 endpoint、`user_id` 或 `group_id` 调整：
+
+```env
+CUSTOM_WEBHOOK_BODY_TEMPLATE={"user_id":123456,"message":$content_json}
+```
 
 ### Discord
 
@@ -904,6 +916,8 @@ PUSHOVER_API_TOKEN=your_api_token
 ```bash
 STOCK_LIST=600519,hk00700,hk01810
 ```
+
+港股日线会跳过 efinance、pytdx、baostock 等不支持港股日线的数据源，避免把港股代码错配到非港股市场；默认改由 AkShare/Tushare/YFinance/Longbridge 等港股路径继续兜底。
 
 ### ETF 与指数分析
 
@@ -1142,7 +1156,7 @@ python main.py --serve-only --host 0.0.0.0 --port 8888
 | 类型 | 格式 | 示例 |
 |------|------|------|
 | A股 | 6位数字 | `600519`、`000001`、`300750` |
-| 北交所 | 8/4/92 开头 6 位 | `920748`、`838163`、`430047` |
+| 北交所 | 8/4/92 开头 6 位，支持 `BJ` 前缀或 `.BJ` 后缀 | `920748`、`BJ920493`、`920493.BJ` |
 | 港股 | hk + 5位数字 | `hk00700`、`hk09988` |
 | 美股 | 1-5 字母（可选 .X 后缀） | `AAPL`、`TSLA`、`BRK.B` |
 | 美股指数 | SPX/DJI/IXIC 等 | `SPX`、`DJI`、`NASDAQ`、`VIX` |
