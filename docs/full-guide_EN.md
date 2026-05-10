@@ -50,12 +50,10 @@ Click the `Fork` button in the upper right corner.
 Go to your forked repo → `Settings` → `Secrets and variables` → `Actions` → `New repository secret`
 
 <div align="center">
-  <img src="../sources/secret_config.png" alt="GitHub Secrets Configuration" width="600">
+  <img src="assets/secret_config.png" alt="GitHub Secrets Configuration" width="600">
 </div>
 
 #### AI Model Configuration (Configure at Least One)
-
-> Note: The configuration below documents existing runtime provider support and compatibility boundaries; this update is documentation-alignment only and does not introduce new runtime implementation.
 
 | Secret Name | Description | Required |
 |------------|------|:----:|
@@ -105,7 +103,7 @@ Go to your forked repo → `Settings` → `Secrets and variables` → `Actions` 
 
 > *Note: Configure at least one channel; multiple channels will all receive notifications
 >
-> The default `daily_analysis.yml` in this repository only exports fixed Secret / Variable names. Arbitrary numbered env vars such as `STOCK_GROUP_1` and `EMAIL_GROUP_1` are not auto-injected into the job, so grouped email routing is not available in the stock workflow unless you explicitly extend the workflow's `env:` mapping in your own fork. P0 maps `CUSTOM_WEBHOOK_BODY_TEMPLATE`, `WEBHOOK_VERIFY_SSL`, `FEISHU_WEBHOOK_SECRET`, `FEISHU_WEBHOOK_KEYWORD`, and `PUSHPLUS_TOPIC`; `MARKDOWN_TO_IMAGE_CHANNELS` and `MERGE_EMAIL_NOTIFICATION` remain behavior toggles for a later phase.
+> The default `daily_analysis.yml` in this repository only exports fixed Secret / Variable names. Arbitrary numbered env vars such as `STOCK_GROUP_1` and `EMAIL_GROUP_1` are not auto-injected into the job, so grouped email routing is not available in the stock workflow unless you explicitly extend the workflow's `env:` mapping in your own fork. Actions now maps `CUSTOM_WEBHOOK_BODY_TEMPLATE`, `WEBHOOK_VERIFY_SSL`, `FEISHU_WEBHOOK_SECRET`, `FEISHU_WEBHOOK_KEYWORD`, `PUSHPLUS_TOPIC`, and the P3 notification route keys; `MARKDOWN_TO_IMAGE_CHANNELS` and `MERGE_EMAIL_NOTIFICATION` remain behavior toggles outside the default workflow mapping.
 
 #### Push Behavior Configuration
 
@@ -120,6 +118,9 @@ Go to your forked repo → `Settings` → `Secrets and variables` → `Actions` 
 | `REPORT_INTEGRITY_RETRY` | Integrity retry count (default `1`, `0` = placeholder only) | Optional |
 | `REPORT_HISTORY_COMPARE_N` | History signal comparison count, `0` off (default), `>0` enable | Optional |
 | `ANALYSIS_DELAY` | Delay between stock analysis and market review (seconds) to avoid API rate limits, e.g., `10` | Optional |
+| `NOTIFICATION_REPORT_CHANNELS` | Report route channels for single-stock, aggregate daily, market review, merged push, and Feishu document success notifications. Empty means all configured channels | Optional |
+| `NOTIFICATION_ALERT_CHANNELS` | Alert route channels for EventMonitor notifications. Empty means all configured channels | Optional |
+| `NOTIFICATION_SYSTEM_ERROR_CHANNELS` | Reserved system_error route channels. No automatic system error producer is added in P3; empty means all configured channels | Optional |
 
 #### Other Configuration
 
@@ -229,6 +230,9 @@ For the P0 notification baseline and diagnostics, see [Notification Baseline](no
 | `SERVERCHAN3_SENDKEY` | ServerChan v3 Sendkey | Optional |
 | `ASTRBOT_URL` | AstrBot Webhook URL | Optional |
 | `ASTRBOT_TOKEN` | Optional AstrBot Bearer Token | Optional |
+| `NOTIFICATION_REPORT_CHANNELS` | Report route channels, comma-separated. Allowed values: wechat,feishu,telegram,email,pushover,pushplus,serverchan3,custom,discord,slack,astrbot | Optional |
+| `NOTIFICATION_ALERT_CHANNELS` | Alert route channels, comma-separated. Empty keeps all configured channels | Optional |
+| `NOTIFICATION_SYSTEM_ERROR_CHANNELS` | Reserved system_error route channels, comma-separated. Empty keeps all configured channels | Optional |
 
 > Note: the default `daily_analysis` GitHub Actions workflow only maps fixed variable names. It does not automatically import arbitrary numbered variables such as `STOCK_GROUP_N` / `EMAIL_GROUP_N`. This feature therefore works in local `.env`, Docker, or any runtime where you explicitly inject those variables.
 
@@ -311,6 +315,8 @@ For the P0 notification baseline and diagnostics, see [Notification Baseline](no
 | `MARKET_REVIEW_REGION` | Market review region: cn (A-shares), hk (HK stocks), us (US stocks), both (all three markets) | `cn` |
 | `SCHEDULE_ENABLED` | Enable scheduled tasks | `false` |
 | `SCHEDULE_TIME` | Scheduled execution time | `18:00` |
+| `SCHEDULE_RUN_IMMEDIATELY` | Run once immediately when scheduler mode starts; when unset it keeps following the legacy `RUN_IMMEDIATELY` runtime override | `true` |
+| `RUN_IMMEDIATELY` | Run once immediately for non-scheduler startup; also acts as the legacy fallback when `SCHEDULE_RUN_IMMEDIATELY` is unset | `true` |
 | `LOG_DIR` | Log directory | `./logs` |
 
 > Behavior notes:
@@ -318,6 +324,7 @@ For the P0 notification baseline and diagnostics, see [Notification Baseline](no
 > - TickFlow behavior is capability-based rather than just key-based: limited plans can still enhance main CN indices, while plans with `CN_Equity_A` universe query support also enhance market breadth.
 > - The official quickstart documents `quotes.get(universes=["CN_Equity_A"])`, but online smoke tests confirmed two additional real-world constraints: universe access depends on plan permissions, and `quotes.get(symbols=[...])` has a per-request symbol limit.
 > - TickFlow currently returns `change_pct` / `amplitude` as ratio values; this integration normalizes them to the project's percent convention so they match AkShare / Tushare / efinance semantics.
+> - In scheduler mode, if runtime env explicitly sets `RUN_IMMEDIATELY` but does not set `SCHEDULE_RUN_IMMEDIATELY`, the scheduler keeps inheriting the legacy runtime override instead of being pulled back to a persisted `.env` alias value.
 > - CN market review reports now use a post-market workstation layout with fixed market light, market temperature, index detail, sector Top tables, news catalysts, next-session plan, and risk sections. Missing data sources degrade by omitting or simplifying only the affected block.
 > - Per-stock analysis, realtime quote priority, and sector rankings fallback remain unchanged.
 
@@ -643,14 +650,31 @@ Supports any POST JSON Webhook, including:
 Set `CUSTOM_WEBHOOK_URLS`, separate multiple with commas.
 
 If AstrBot, NapCat, or a self-hosted service requires a custom request body, set
-`CUSTOM_WEBHOOK_BODY_TEMPLATE`. The rendered value must be a JSON object. Prefer
-`$content_json` so newlines and quotes stay valid JSON:
+`CUSTOM_WEBHOOK_BODY_TEMPLATE`. This is a global template and is rendered before
+URL auto-detected payloads such as Bark, Slack, or Discord. If the rendered value
+is not a JSON object, DSA falls back to the default payload. Prefer
+`$content_json` / `$title_json` so newlines and quotes stay valid JSON:
 
 ```env
 CUSTOM_WEBHOOK_BODY_TEMPLATE={"msg_type":"text","content":$content_json}
 ```
 
 Available placeholders: `$content_json`, `$content`, `$title_json`, `$title`.
+Raw `$content` / `$title` are not JSON-escaped, so quotes or newlines can make
+the template invalid and trigger fallback.
+
+When using Bark with a global template, include the Bark body explicitly:
+
+```env
+CUSTOM_WEBHOOK_BODY_TEMPLATE={"title":$title_json,"body":$content_json,"group":"stock"}
+```
+
+NapCat / OneBot examples must be adjusted for your actual endpoint, `user_id`,
+or `group_id`:
+
+```env
+CUSTOM_WEBHOOK_BODY_TEMPLATE={"user_id":123456,"message":$content_json}
+```
 
 ### Discord
 
@@ -758,6 +782,13 @@ System defaults to AkShare (free), also supports other data sources:
 - Supports US/HK stock data
 - US stock historical and real-time data both use YFinance exclusively to avoid technical indicator errors from akshare's US stock adjustment issues
 
+### Longbridge
+- Optional fallback for US/HK stocks, mainly used to supplement fields that YFinance may miss
+- Configure `LONGBRIDGE_APP_KEY`, `LONGBRIDGE_APP_SECRET`, and `LONGBRIDGE_ACCESS_TOKEN`
+- Optional knobs: `LONGBRIDGE_STATIC_INFO_TTL_SECONDS` (default `86400`) and `LONGBRIDGE_CONNECTION_COOLDOWN_SECONDS` (default `15`)
+- If credentials are absent, the optional Longbridge fetcher is not instantiated
+- When runtime errors such as `client is closed`, `context closed`, or `connection closed` occur, Longbridge enters a short cooldown window and US/HK daily or realtime requests automatically fall back to YFinance / AkShare instead of reconnecting on every request
+
 ---
 
 ## Advanced Features
@@ -769,6 +800,8 @@ Use `hk` prefix for HK stock codes:
 ```bash
 STOCK_LIST=600519,hk00700,hk01810
 ```
+
+HK daily history skips efinance, pytdx, baostock, and other built-in providers that do not support HK daily data, avoiding mismatches between HK symbols and non-HK market data. AkShare/Tushare/YFinance/Longbridge continue to provide HK fallback paths. If Longbridge is inside its connection cooldown window, the route temporarily skips it and continues with the remaining HK-capable fallbacks.
 
 ### Multi-Model Switching
 
@@ -835,6 +868,13 @@ You can tune the behavior in `.env`:
 
 ---
 
+## Decision Actionability
+
+Single-stock reports calibrate operation advice with support/resistance, volume/chip context, main-force capital flow, and risk events. This reduces direct buy/sell flips caused only by one-day price movement or score thresholds. When price is between support and resistance and capital flow is unclear, the report prefers neutral actionable wording such as hold, range-bound watch, or shakeout watch. Buy calls require support confirmation or a valid resistance breakout with volume/capital-flow confirmation; sell/reduce calls require support failure, sustained outflow, or clearly elevated risk.
+This post-processing update only adjusts advisory wording and stability logic and does not change the configured LLM model/provider routing semantics (including LiteLLM, providers, or API model settings).
+Compatibility check result: decision operability and runtime post-processing paths are changed, while model/provider/API configuration and persistence semantics remain unchanged; the compatibility boundary is now in analysis/pipeline/agent intent inference and stabilization mapping.
+Verification trail: the runtime behavior is implemented in `src/analyzer.py`, `src/core/pipeline.py`, `src/core/backtest_engine.py`, `src/report_language.py`, and `src/agent` decision-path modules (with corresponding tests in `tests/test_backtest_engine.py`, `tests/test_analyzer_news_prompt.py`, `tests/test_decision_stability.py`, and `tests/test_agent_pipeline.py`); it does not add/remove runtime config fields or config-cleanup logic in `src/config.py` or persistence code paths.
+
 ## Backtesting
 
 The backtesting module automatically validates historical AI analysis records against actual price movements, evaluating the accuracy of analysis recommendations.
@@ -853,7 +893,7 @@ The backtesting module automatically validates historical AI analysis records ag
 |-----------------|----------|-------------------|---------------|
 | Buy / Add / Strong Buy | long | up | Return >= neutral band |
 | Sell / Reduce / Strong Sell | cash | down | Decline >= neutral band |
-| Hold | long | not_down | No significant decline |
+| Hold / Hold and Watch / Range-bound Watch / Shakeout Watch / Hold and watch | long | not_down | No significant decline |
 | Wait / Observe | cash | flat | Price within neutral band |
 
 ### Configuration
@@ -903,8 +943,10 @@ FastAPI provides RESTful API service for configuration management and triggering
 ### Features
 
 - **Configuration Management** - View/modify watchlist
-- **Quick Analysis** - Trigger analysis via API
+- **Quick Analysis** - Trigger stock analysis via API; the Home page also provides a Market Review button that starts a background market recap in Docker/server mode
+- **First-run Setup Hint** - The Home page reads the read-only setup status and points users to Settings when required items such as the primary LLM channel or watchlist are missing
 - **Real-time Progress** - Analysis task status updates in real-time, supports parallel tasks; the regular stock-analysis path now prefers LiteLLM streaming during the LLM stage and pushes finer-grained `message/progress` updates through task SSE
+- **Market Review visibility** - After clicking Market Review, the API returns a `task_id` and the UI polls `GET /api/v1/analysis/status/{task_id}` to show progress; completed/failure states are rendered explicitly and failure messages are shown directly in the UI error area.
 - **Backtest Validation** - Evaluate historical analysis accuracy, query direction win rate and simulated returns
 - **API Documentation** - Visit `/docs` for Swagger UI
 
@@ -913,6 +955,7 @@ FastAPI provides RESTful API service for configuration management and triggering
 | Endpoint | Method | Description |
 |------|------|------|
 | `/api/v1/analysis/analyze` | POST | Trigger stock analysis |
+| `/api/v1/analysis/market-review` | POST | Trigger a background market review; request body may pass `{"send_notification": true}`; shares the same `GeminiAnalyzer/SearchService/NotificationService` construction semantics as `main.py --market-review` and Bot commands |
 | `/api/v1/analysis/tasks` | GET | Query task list |
 | `/api/v1/analysis/tasks/stream` | GET (SSE) | Subscribe to realtime task updates |
 | `/api/v1/analysis/status/{task_id}` | GET | Query task status |
@@ -926,6 +969,18 @@ FastAPI provides RESTful API service for configuration management and triggering
 | `/docs` | GET | API Swagger documentation |
 
 > Note: `POST /api/v1/analysis/analyze` supports only one stock when `async_mode=false`; batch `stock_codes` requires `async_mode=true`. The async `202` response returns a single `task_id` for one stock, or an `accepted` / `duplicates` summary for batch requests.
+> Note: `POST /api/v1/analysis/market-review` follows the same runtime configuration path as CLI/Bot market review (`GeminiAnalyzer(config=...)`, search setup, and prompt/rendering pipeline). The provider compatibility path prioritizes `litellm_model` and `llm_model_list`, then falls back to existing legacy keys (`GEMINI_*`, `OPENAI_*`, `ANTHROPIC_*`, `DEEPSEEK_*`) when those are not set; provider names, Base URL, and LiteLLM routing semantics are otherwise unchanged.
+> Audit note: priority and fallback are defined by `Config._load_from_env()` in `src/config.py` (`LITELLM_CONFIG` > `LLM_CHANNELS` > legacy). Regression coverage is in `tests/test_llm_channel_config.py` (configuration source parsing) and `tests/test_market_review_runtime.py` (shared runtime assembly). The endpoint lock is process/host-level only; multi-instance deployments still need external distributed idempotency controls.
+> Note: when `/api/v1/analysis/market-review` returns a `task_id`, the WebUI polls `GET /api/v1/analysis/status/{task_id}`. The UI renders clear `pending/processing` progress, shows completion feedback when status becomes `completed`, and surfaces `error` content on `failed`.
+
+> Compatibility audit evidence:
+> - Official references: LiteLLM OpenAI-compatible provider documentation <https://docs.litellm.ai/docs/providers/openai_compatible>, OpenAI Chat API <https://platform.openai.com/docs/api-reference/chat/create>, and DeepSeek API docs <https://api-docs.deepseek.com/>.
+> - Dependency boundary: this repo currently pins `litellm>=1.80.10,!=1.82.7,!=1.82.8,<2.0.0` (see `requirements.txt`); the compatibility regressions for this path were verified under that dependency window.
+> - Verifiable tests:
+>   - `tests/test_llm_channel_config.py` (configuration priority and provider/base URL mapping)
+>   - `tests/test_market_review_runtime.py` (`build_market_review_runtime` shared assembly path)
+>   - `tests/test_analysis_api_contract.py` (`/api/v1/analysis/market-review` contract and task status flow)
+> - Rollback path: if regression appears, restore historical `LITELLM_MODEL`, `LITELLM_FALLBACK_MODELS`, and legacy `GEMINI_*` / `OPENAI_*` / `ANTHROPIC_*` / `DEEPSEEK_*`, or import a desktop backup through `POST /api/v1/system/config/import` and restart; at runtime you can also clear `LITELLM_CONFIG` / `LLM_CHANNELS` to force legacy fallback.
 
 > Progress-stream note: `GET /api/v1/analysis/tasks/stream` now emits `task_progress` in addition to `task_created / task_started / task_completed / task_failed`. The regular analysis path updates `progress` and `message` across quote preparation, news retrieval, context assembly, LLM generation, and report persistence. Streaming chunks are accumulated only on the server side; history is persisted only after the final JSON parses successfully. If streaming is unavailable before the first chunk, the system falls back to the previous non-stream request. If a stream fails after partial output has already arrived, the system first retries non-stream for the same model, then continues through existing fallback models in the original order (primary + fallback list).
 > If a progress callback fails, the analysis flow continues, and the exception is now logged at warning level to help troubleshoot SSE delivery gaps.
@@ -981,7 +1036,7 @@ python main.py --serve-only --host 0.0.0.0 --port 8888
 | Type | Format | Examples |
 |------|------|------|
 | A-shares | 6-digit number | `600519`, `000001`, `300750` |
-| BSE (Beijing) | 8/4/92 prefix, 6-digit | `920748`, `838163`, `430047` |
+| BSE (Beijing) | 8/4/92 prefix, 6-digit; supports `BJ` prefix or `.BJ` suffix | `920748`, `BJ920493`, `920493.BJ` |
 | HK stocks | hk + 5-digit number | `hk00700`, `hk09988` |
 
 ### Notes
