@@ -92,6 +92,14 @@ class MarginFactor(BaseFactor):
         margin_df = margin_df.reset_index()
         if "code" in margin_df.columns and "ts_code" not in margin_df.columns:
             margin_df = margin_df.rename(columns={"code": "ts_code"})
+            # DB returns bare codes; convert to ts_code format for mv_series lookup
+            codes = margin_df["ts_code"].astype(str).str.zfill(6)
+            pre2 = codes.str[:2]
+            suffix = pre2.map(
+                {"60": ".SH", "68": ".SH", "00": ".SZ", "30": ".SZ",
+                 "43": ".BJ", "83": ".BJ", "87": ".BJ", "92": ".BJ"}
+            ).fillna("")
+            margin_df["ts_code"] = codes + suffix
         if "trade_date" not in margin_df.columns:
             logger.warning("[MarginFactor] margin 数据缺少 trade_date 列")
             return None

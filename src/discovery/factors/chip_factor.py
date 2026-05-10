@@ -229,8 +229,8 @@ class ChipFactor(BaseFactor):
         first = 0
 
         # --- 基础字段 ---
-        wr_last = df.get(f"d{last}_winner_rate", pd.Series(50.0, index=idx))
-        wr_first = df.get(f"d{first}_winner_rate", pd.Series(50.0, index=idx))
+        wr_last = df.get(f"d{last}_winner_rate", pd.Series(50.0, index=idx)).fillna(50.0)
+        wr_first = df.get(f"d{first}_winner_rate", pd.Series(50.0, index=idx)).fillna(50.0)
         cost_5 = df.get(f"d{last}_cost_5pct", pd.Series(0.0, index=idx))
         cost_15 = df.get(f"d{last}_cost_15pct", pd.Series(0.0, index=idx))
         cost_50 = df.get(f"d{last}_cost_50pct", pd.Series(0.0, index=idx))
@@ -336,6 +336,7 @@ class ChipFactor(BaseFactor):
 
         wr = df.get("d0_winner_rate") if "d0_winner_rate" in df.columns else df.get(
             "winner_rate", pd.Series(50.0, index=idx))
+        wr = wr.fillna(50.0)
         cost_5 = df.get("d0_cost_5pct") if "d0_cost_5pct" in df.columns else df.get(
             "cost_5pct", pd.Series(0.0, index=idx))
         cost_15 = df.get("d0_cost_15pct") if "d0_cost_15pct" in df.columns else df.get(
@@ -508,7 +509,7 @@ class ChipFactor(BaseFactor):
         ndays = len(set(c.split("_")[0] for c in day_cols))
         if ndays >= 1:
             last = ndays - 1
-            wr_last = df.get(f"d{last}_winner_rate", pd.Series(50.0, index=df.index))
+            wr_last = df.get(f"d{last}_winner_rate", pd.Series(50.0, index=df.index)).fillna(50.0)
         elif "winner_rate" in df.columns:
             wr_last = df["winner_rate"]
         else:

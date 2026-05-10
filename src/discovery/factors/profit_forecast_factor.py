@@ -100,9 +100,9 @@ class ProfitForecastFactor(BaseFactor):
                 parsed.append((int(m.group(1)), c))
         parsed.sort(key=lambda x: x[0])
         if len(parsed) >= 2:
-            return parsed[0][1], parsed[1][1]
+            return parsed[-2][1], parsed[-1][1]
         if len(parsed) == 1:
-            return None, parsed[0][1]
+            return None, parsed[-1][1]
         return None, None
 
     # ------------------------------------------------------------------
@@ -141,12 +141,14 @@ class ProfitForecastFactor(BaseFactor):
         # --- 3. EPS 增长 (0-30)：2026 vs 2025 预测增长率百分位 ---
         eps_older_col, eps_newer_col = self._eps_cols(df)
         if eps_older_col is not None and eps_newer_col is not None:
-            eps_old = pd.to_numeric(df[eps_older_col], errors="coerce").fillna(0)
+            eps_old = pd.to_numeric(df[eps_older_col], errors="coerce")
             eps_new = pd.to_numeric(df[eps_newer_col], errors="coerce").fillna(0)
+            has_old = eps_old.notna() & (eps_old.abs() >= 0.005)
             denom = eps_old.abs().clip(0.01)
             growth = ((eps_new - eps_old) / denom).clip(
                 self._EPS_GROWTH_CLIP_MIN, self._EPS_GROWTH_CLIP_MAX
             )
+            growth = growth.where(has_old, 0.0)
             signals['eps_growth'] = (growth.rank(pct=True) * 30).clip(0, 30)
         else:
             signals['eps_growth'] = pd.Series(15.0, index=stock_idx)
@@ -198,7 +200,7 @@ class ProfitForecastFactor(BaseFactor):
                     continue
 
                 if key == 'coverage':
-                    cnt = int(df.at[i, col_report]) if col_report and col_report in df.columns else 0
+                    cnt = int(df.at[i, col_report]) if col_report and col_report in df.columns and pd.notna(df.at[i, col_report]) else 0
                     labels.append(f"机构覆盖({cnt}家研报)")
                 elif key == 'rating_quality':
                     buy = int(df.at[i, col_buy]) if col_buy else 0

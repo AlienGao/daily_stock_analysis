@@ -177,6 +177,7 @@ class MaEntryFactor(BaseFactor):
         spot.index = spot.index.astype(str).str.replace(
             r"\.(SH|SZ|BJ)$", "", regex=True
         ).str.zfill(6)
+        spot = spot[~spot.index.duplicated(keep="first")]
 
         high_df = ohlc_matrix.xs("high", axis=1, level=0)
         low_df = ohlc_matrix.xs("low", axis=1, level=0)
@@ -253,6 +254,7 @@ class MaEntryFactor(BaseFactor):
         spot.index = spot.index.astype(str).str.replace(
             r"\.(SH|SZ|BJ)$", "", regex=True
         ).str.zfill(6)
+        spot = spot[~spot.index.duplicated(keep="first")]
 
         results = {}
         for code in close_matrix.index:
@@ -286,6 +288,7 @@ class MaEntryFactor(BaseFactor):
         spot.index = spot.index.astype(str).str.replace(
             r"\.(SH|SZ|BJ)$", "", regex=True
         ).str.zfill(6)
+        spot = spot[~spot.index.duplicated(keep="first")]
 
         results = {}
         for code in close_matrix.index:

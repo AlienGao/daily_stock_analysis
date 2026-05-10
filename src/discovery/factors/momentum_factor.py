@@ -336,6 +336,41 @@ class MomentumFactor(BaseFactor):
         return result
 
     @staticmethod
+    def _parse_cn_amount(val) -> float:
+        """解析中文金额字符串：'9937.50万'→99375000, '6.10亿'→610000000, '-8094.95万'→-80949500."""
+        if isinstance(val, (int, float)):
+            return float(val)
+        s = str(val).strip()
+        if not s:
+            return 0.0
+        neg = s.startswith("-")
+        if neg:
+            s = s[1:]
+        mul = 1.0
+        if "亿" in s:
+            s = s.replace("亿", "")
+            mul = 1e8
+        elif "万" in s:
+            s = s.replace("万", "")
+            mul = 1e4
+        try:
+            num = float(s) if s else 0.0
+        except ValueError:
+            return 0.0
+        return -num * mul if neg else num * mul
+
+    @staticmethod
+    def _parse_cn_pct(val) -> float:
+        """解析百分比字符串：'20.01%'→20.01, '-3.50%'→-3.50."""
+        if isinstance(val, (int, float)):
+            return float(val)
+        s = str(val).strip().replace("%", "")
+        try:
+            return float(s) if s else 0.0
+        except ValueError:
+            return 0.0
+
+    @staticmethod
     def _normalize_tonghuashun(df: pd.DataFrame) -> pd.DataFrame:
         """同花顺资金流字段 → 统一列。"""
         df = df.copy()
@@ -347,15 +382,15 @@ class MomentumFactor(BaseFactor):
         net_col = next((c for c in df.columns if "净额" in str(c)), None)
         amt_col = next((c for c in df.columns if "成交额" in str(c)), None)
 
-        def _get(col, default=0):
+        def _parse_series(col, parser):
             if col is None:
-                return pd.Series(default, index=df.index)
-            return pd.to_numeric(df[col], errors="coerce").fillna(default)
+                return pd.Series(0.0, index=df.index)
+            return df[col].apply(parser)
 
-        major_net = _get(net_col, 0)
-        amount = _get(amt_col, 0)
-        pct_chg = _get(pct_col, 0)
-        turnover_rate = _get(hs_col, 0)
+        major_net = _parse_series(net_col, MomentumFactor._parse_cn_amount)
+        amount = _parse_series(amt_col, MomentumFactor._parse_cn_amount)
+        pct_chg = _parse_series(pct_col, MomentumFactor._parse_cn_pct)
+        turnover_rate = _parse_series(hs_col, MomentumFactor._parse_cn_pct)
 
         # inflow_rate = 净额 / 成交额
         inflow_rate = (major_net / amount.replace(0, float("nan"))).fillna(0)

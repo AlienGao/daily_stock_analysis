@@ -691,7 +691,7 @@ class Config:
     social_sentiment_api_url: str = "https://api.adanos.org"
 
     # === 新闻与分析筛选配置 ===
-    news_max_age_days: int = 3   # 新闻最大时效（天）
+    news_max_age_days: int = 5   # 新闻最大时效（天）
     news_strategy_profile: str = "short"  # 新闻窗口策略档位：ultra_short/short/medium/long
     bias_threshold: float = 5.0  # 乖离率阈值（%），超过此值提示不追高
 
@@ -1468,7 +1468,7 @@ class Config:
             enable_akshare_news=enable_akshare_news,
             social_sentiment_api_key=os.getenv('SOCIAL_SENTIMENT_API_KEY') or None,
             social_sentiment_api_url=os.getenv('SOCIAL_SENTIMENT_API_URL', 'https://api.adanos.org').rstrip('/'),
-            news_max_age_days=parse_env_int(os.getenv('NEWS_MAX_AGE_DAYS'), 3, field_name='NEWS_MAX_AGE_DAYS', minimum=1),
+            news_max_age_days=parse_env_int(os.getenv('NEWS_MAX_AGE_DAYS'), 5, field_name='NEWS_MAX_AGE_DAYS', minimum=1),
             news_strategy_profile=cls._parse_news_strategy_profile(
                 os.getenv('NEWS_STRATEGY_PROFILE', 'short')
             ),

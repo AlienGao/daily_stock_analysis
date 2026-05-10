@@ -37,24 +37,33 @@ def _pct_rank(series: pd.Series, index) -> pd.Series:
 def _quarter_end_dates(ref_date: str, n: int = 4) -> List[str]:
     """返回 ref_date 之前最近 n 个季度末日期 (YYYYMMDD)。"""
     d = date(int(ref_date[:4]), int(ref_date[4:6]), int(ref_date[6:8]))
-    quarters = []
-    cursor = d.replace(day=1)
-    while len(quarters) < n:
-        m = cursor.month
-        if m <= 3:
-            q_end = date(cursor.year, 3, 31)
-        elif m <= 6:
-            q_end = date(cursor.year, 6, 30)
-        elif m <= 9:
-            q_end = date(cursor.year, 9, 30)
+
+    # Find most recent quarter-end <= ref_date
+    candidates = [
+        date(d.year, 3, 31),
+        date(d.year, 6, 30),
+        date(d.year, 9, 30),
+        date(d.year, 12, 31),
+        date(d.year - 1, 12, 31),
+    ]
+    q_end = max(qe for qe in candidates if qe <= d)
+
+    quarters = [q_end.strftime("%Y%m%d")]
+    cursor_year, cursor_month = q_end.year, q_end.month
+    for _ in range(n - 1):
+        cursor_month -= 3
+        if cursor_month <= 0:
+            cursor_month += 12
+            cursor_year -= 1
+        if cursor_month == 3:
+            q = date(cursor_year, 3, 31)
+        elif cursor_month == 6:
+            q = date(cursor_year, 6, 30)
+        elif cursor_month == 9:
+            q = date(cursor_year, 9, 30)
         else:
-            q_end = date(cursor.year, 12, 31)
-        if q_end <= d and q_end.strftime("%Y%m%d") not in quarters:
-            quarters.append(q_end.strftime("%Y%m%d"))
-        if m == 1:
-            cursor = date(cursor.year - 1, 12, 1)
-        else:
-            cursor = date(cursor.year, m - 1, 1)
+            q = date(cursor_year, 12, 31)
+        quarters.append(q.strftime("%Y%m%d"))
     return quarters
 
 
@@ -124,10 +133,9 @@ class PerformanceFactor(BaseFactor):
         merged = None
         for df_p in dfs:
             period = df_p["report_period"].iloc[0]
-            subset = df_p[[
-                "report_period", "name", "net_profit_yoy", "revenue_yoy",
-                "roe", "gross_margin", "industry",
-            ]].copy()
+            cols = ["report_period", "name", "net_profit_yoy", "revenue_yoy",
+                    "roe", "gross_margin", "industry"]
+            subset = df_p[[c for c in cols if c in df_p.columns]].copy()
             subset = subset.rename(columns={
                 "net_profit_yoy": f"net_profit_yoy_{period}",
                 "revenue_yoy": f"revenue_yoy_{period}",

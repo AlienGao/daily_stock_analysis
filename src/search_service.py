@@ -889,12 +889,14 @@ class AkshareNewsProvider(BaseSearchProvider):
         max_results: int = 5,
         days: int = 7,
         stock_code: Optional[str] = None,
+        stock_name: Optional[str] = None,
     ) -> SearchResponse:
         return self._execute_search(
             query,
             max_results=max_results,
             days=days,
             stock_code=stock_code,
+            stock_name=stock_name,
         )
 
     @classmethod
@@ -933,14 +935,18 @@ class AkshareNewsProvider(BaseSearchProvider):
         max_results: int,
         days: int = 7,
         stock_code: Optional[str] = None,
+        stock_name: Optional[str] = None,
     ) -> SearchResponse:
-        code = stock_code or self._extract_stock_code(query) or query.strip()
+        if stock_name and stock_code:
+            keyword = f"{stock_name} {stock_code}"
+        else:
+            keyword = stock_code or self._extract_stock_code(query) or query.strip()
         try:
             import json as _json
 
             params_obj = {
                 "uid": "",
-                "keyword": code,
+                "keyword": keyword,
                 "type": ["cmsArticleWebOld"],
                 "client": "web",
                 "clientType": "web",
@@ -997,7 +1003,7 @@ class AkshareNewsProvider(BaseSearchProvider):
                     published_date=self._parse_eastmoney_date(a.get("date", "")),
                 ))
 
-            logger.info("[AkshareNews] keyword=%s → %d results", code, len(results))
+            logger.info("[AkshareNews] keyword=%s → %d results", keyword, len(results))
             return SearchResponse(query=query, results=results, provider=self.name, success=True)
 
         except requests.exceptions.Timeout:
@@ -2285,7 +2291,7 @@ class SearchService:
         searxng_base_urls: Optional[List[str]] = None,
         searxng_public_instances_enabled: bool = True,
         akshare_news_enabled: bool = False,
-        news_max_age_days: int = 3,
+        news_max_age_days: int = 5,
         news_strategy_profile: str = "short",
     ):
         """
@@ -2326,8 +2332,8 @@ class SearchService:
         # 初始化搜索引擎（按优先级排序）
         # 优先级顺序（仅对有 key / 可用的 provider 生效，跳过未配置的）：
         #   0. AkshareNews —— 东方财富 stock_news_em，免费不限量，A 股新闻覆盖最佳
-        #   1. Bocha   —— 中文资讯+AI摘要，覆盖 A 股公告/研报最强
-        #   2. MiniMax —— Coding Plan 结构化结果，对 A 股新闻覆盖良好
+        #   1. MiniMax —— Coding Plan 结构化结果，对 A 股新闻覆盖良好
+        #   2. Bocha   —— 中文资讯+AI摘要，覆盖 A 股公告/研报最强
         #   3. Anspire —— 实时智能搜索，适合时效性场景
         #   4. Tavily  —— 全球覆盖 + 免费额度较多
         #   5. Brave   —— 隐私优先 + 全球覆盖
@@ -2338,15 +2344,15 @@ class SearchService:
             self._providers.append(AkshareNewsProvider())
             logger.info("已配置 东方财富新闻搜索（免 API Key，最高优先级）")
 
-        # 1. Bocha
-        if bocha_keys:
-            self._providers.append(BochaSearchProvider(bocha_keys))
-            logger.info(f"已配置 Bocha 搜索，共 {len(bocha_keys)} 个 API Key")
-
-        # 2. MiniMax
+        # 1. MiniMax
         if minimax_keys:
             self._providers.append(MiniMaxSearchProvider(minimax_keys))
             logger.info(f"已配置 MiniMax 搜索，共 {len(minimax_keys)} 个 API Key")
+
+        # 2. Bocha
+        if bocha_keys:
+            self._providers.append(BochaSearchProvider(bocha_keys))
+            logger.info(f"已配置 Bocha 搜索，共 {len(bocha_keys)} 个 API Key")
 
         # 3. Anspire
         if anspire_keys:
@@ -2783,7 +2789,7 @@ class SearchService:
             return response
 
         today = datetime.now().date()
-        earliest = today - timedelta(days=max(0, int(search_days) - 1))
+        earliest = today - timedelta(days=max(0, int(search_days)))
         latest = today + timedelta(days=self.FUTURE_TOLERANCE_DAYS)
 
         filtered: List[SearchResult] = []
@@ -3004,6 +3010,7 @@ class SearchService:
                     )
                 elif isinstance(provider, AkshareNewsProvider):
                     search_kwargs["stock_code"] = stock_code
+                    search_kwargs["stock_name"] = stock_name
 
                 response = provider.search(query, provider_max_results, days=search_days, **search_kwargs)
                 filtered_response = self._filter_news_response(
@@ -3305,68 +3312,87 @@ class SearchService:
             provider_max_results,
         )
         
-        # 轮流使用不同的搜索引擎
-        provider_index = 0
-        
+        # 每个维度优先使用 akshare，失败则顺序 fallback 到后续 provider
+        available_providers = [p for p in self._providers if p.is_available]
+
         for dim in search_dimensions:
             if search_count >= max_searches:
                 break
-            
-            # 选择搜索引擎（轮流使用）
-            available_providers = [p for p in self._providers if p.is_available]
+
             if not available_providers:
                 break
-            
-            provider = available_providers[provider_index % len(available_providers)]
-            provider_index += 1
-            
-            logger.info(f"[情报搜索] {dim['desc']}: 使用 {provider.name}")
 
-            if isinstance(provider, TavilySearchProvider) and dim.get('tavily_topic'):
-                response = provider.search(
-                    dim['query'],
-                    max_results=provider_max_results,
-                    days=search_days,
-                    topic=dim['tavily_topic'],
+            # 顺序尝试每个 provider，成功且有结果则停止（akshare 排第一优先）
+            dim_response: Optional[SearchResponse] = None
+            used_provider_name: Optional[str] = None
+            for provider in available_providers:
+                logger.info(f"[情报搜索] {dim['desc']}: 尝试 {provider.name}")
+
+                if isinstance(provider, TavilySearchProvider) and dim.get('tavily_topic'):
+                    response = provider.search(
+                        dim['query'],
+                        max_results=provider_max_results,
+                        days=search_days,
+                        topic=dim['tavily_topic'],
+                    )
+                elif isinstance(provider, AkshareNewsProvider):
+                    response = provider.search(
+                        dim['query'],
+                        max_results=provider_max_results,
+                        days=search_days,
+                        stock_code=stock_code,
+                        stock_name=stock_name,
+                    )
+                else:
+                    response = provider.search(
+                        dim['query'],
+                        max_results=provider_max_results,
+                        days=search_days,
+                    )
+                if dim['strict_freshness']:
+                    filtered_response = self._filter_news_response(
+                        response,
+                        search_days=search_days,
+                        max_results=target_per_dimension,
+                        log_scope=f"{stock_code}:{provider.name}:{dim['name']}",
+                    )
+                else:
+                    filtered_response = self._normalize_and_limit_response(
+                        response,
+                        max_results=target_per_dimension,
+                    )
+
+                if response.success:
+                    logger.info(
+                        "[情报搜索] %s: 原始=%s条, 过滤后=%s条",
+                        dim['desc'],
+                        len(response.results),
+                        len(filtered_response.results),
+                    )
+                else:
+                    logger.warning(f"[情报搜索] {dim['desc']}: {provider.name} 搜索失败 - {response.error_message}")
+
+                # 有结果就使用这个 provider，否则 fallback 到下一个
+                if filtered_response.success and filtered_response.results:
+                    dim_response = filtered_response
+                    used_provider_name = provider.name
+                    break
+                elif dim_response is None:
+                    dim_response = filtered_response
+
+            if dim_response is None:
+                dim_response = SearchResponse(
+                    query=dim['query'],
+                    results=[],
+                    provider="None",
+                    success=False,
+                    error_message="所有 provider 均未返回结果",
                 )
-            elif isinstance(provider, AkshareNewsProvider):
-                response = provider.search(
-                    dim['query'],
-                    max_results=provider_max_results,
-                    days=search_days,
-                    stock_code=stock_code,
-                )
-            else:
-                response = provider.search(
-                    dim['query'],
-                    max_results=provider_max_results,
-                    days=search_days,
-                )
-            if dim['strict_freshness']:
-                filtered_response = self._filter_news_response(
-                    response,
-                    search_days=search_days,
-                    max_results=target_per_dimension,
-                    log_scope=f"{stock_code}:{provider.name}:{dim['name']}",
-                )
-            else:
-                filtered_response = self._normalize_and_limit_response(
-                    response,
-                    max_results=target_per_dimension,
-                )
-            results[dim['name']] = filtered_response
+
+            logger.info(f"[情报搜索] {dim['desc']}: 最终使用 {used_provider_name or 'None'}")
+            results[dim['name']] = dim_response
             search_count += 1
-            
-            if response.success:
-                logger.info(
-                    "[情报搜索] %s: 原始=%s条, 过滤后=%s条",
-                    dim['desc'],
-                    len(response.results),
-                    len(filtered_response.results),
-                )
-            else:
-                logger.warning(f"[情报搜索] {dim['desc']}: 搜索失败 - {response.error_message}")
-            
+
             # 短暂延迟避免请求过快
             time.sleep(0.5)
 
@@ -3654,6 +3680,7 @@ def get_search_service() -> SearchService:
                     minimax_keys=config.minimax_api_keys,
                     searxng_base_urls=config.searxng_base_urls,
                     searxng_public_instances_enabled=config.searxng_public_instances_enabled,
+                    akshare_news_enabled=config.enable_akshare_news,
                     news_max_age_days=config.news_max_age_days,
                     news_strategy_profile=getattr(config, "news_strategy_profile", "short"),
                 )

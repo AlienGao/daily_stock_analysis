@@ -336,7 +336,7 @@ class DiscoveryBacktest:
             if td_buy > today_str:
                 continue
 
-            is_open = td_sell > today_str  # 未平仓（卖点未到，用实时价展示）
+            is_open = td_sell >= today_str  # 未平仓（卖点未到或当天未收盘，用实时价展示）
 
             picks = picks_by_date[td]
             n = len(picks)
@@ -562,12 +562,16 @@ class DiscoveryBacktest:
             self._prefetch_sina_realtime(codes, today_str)
 
     def _prefetch_sina_realtime(self, codes: List[str], date_str: str) -> None:
-        """通过 Sina 实时行情补齐当日 OHLC（盘中可用）。"""
+        """通过 Sina 实时行情补齐当日 OHLC（盘中可用）。
+
+        非交易时段 Sina 返回的是上一交易日旧数据，open/high/low 会被误存为
+        今日数据，导致回测伪造未来时点的买入记录。仅 close（最新价）在非
+        交易时段仍有参考意义，open/high/low 只在确认盘中才写入缓存。
+        """
         sina_codes: List[str] = []
         for c in codes:
             if not c.isdigit() or len(c) != 6:
                 continue
-            # 检查是否已有当日完整数据
             existing = (self._price_cache.get(date_str, {}).get(c) or {})
             if existing.get("open") and existing.get("high") and existing.get("low") and existing.get("close"):
                 continue
@@ -586,6 +590,13 @@ class DiscoveryBacktest:
         except Exception as e:
             logger.debug("[Backtest] Sina 实时行情请求失败: %s", e)
             return
+
+        from datetime import datetime as dt, timezone, timedelta as td
+        now_cn = dt.now(timezone(timedelta(hours=8)))
+        is_market_open = (
+            now_cn.weekday() < 5
+            and dt.strptime("09:25", "%H:%M").time() <= now_cn.time() <= dt.strptime("15:05", "%H:%M").time()
+        )
 
         for sc in sina_codes:
             try:
@@ -606,12 +617,14 @@ class DiscoveryBacktest:
                     continue
 
                 cache_entry = self._price_cache.setdefault(date_str, {}).setdefault(code, {})
-                if open_p is not None:
-                    cache_entry["open"] = open_p
-                if high_p is not None:
-                    cache_entry["high"] = high_p
-                if low_p is not None:
-                    cache_entry["low"] = low_p
+                # 非盘中时段，Sina 返回的是旧数据，open/high/low 不可信
+                if is_market_open:
+                    if open_p is not None:
+                        cache_entry["open"] = open_p
+                    if high_p is not None:
+                        cache_entry["high"] = high_p
+                    if low_p is not None:
+                        cache_entry["low"] = low_p
                 if close_p is not None:
                     cache_entry["close"] = close_p
             except Exception:
@@ -624,9 +637,11 @@ class DiscoveryBacktest:
         if val is not None:
             return float(val)
 
-        # Fallback：未来日期及当天（收盘价可能尚未生成）用缓存中最近交易日的 close 替代
+        # Fallback：未来日期及当天（收盘价可能尚未生成）用缓存中最近交易日的 close 替代。
+        # 仅对 close 字段做 fallback，open/high/low 等缓存未命中直接返回 None，
+        # 避免在开盘前用历史收盘价伪造买入记录（产生「今日 09:30」的未来时间标记）。
         today_str = date.today().strftime("%Y%m%d")
-        if date_str < today_str:
+        if date_str < today_str or field != "close":
             return None
 
         for ds in sorted(self._price_cache.keys(), reverse=True):

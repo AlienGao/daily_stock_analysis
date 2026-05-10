@@ -52,6 +52,7 @@ class PopularityFactor(BaseFactor):
         """
         tushare_fetcher = kwargs.get("tushare_fetcher")
 
+        df = None
         # ── 1. 东财 API（盘中主路径） ──
         df = self._fetch_eastmoney()
         if df is not None and not df.empty:
@@ -68,6 +69,7 @@ class PopularityFactor(BaseFactor):
         # ── 3. DB 缓存 ──
         df = self._fetch_from_db(trade_date)
         if df is not None and not df.empty:
+            df = df[~df.index.duplicated(keep='first')]
             self._trade_date = trade_date
             return df
 
@@ -238,13 +240,13 @@ class PopularityFactor(BaseFactor):
         # --- 2. 排名强度 (0-35): 逆排名线性衰减 ---
         max_rank = rank.max()
         if max_rank > 1:
-            s_rank = (35 * (1 - (rank - 1) / (max_rank - 1))).clip(0, 35)
+            s_rank = (35 * (1 - (rank - 1) / (max_rank - 1))).clip(0, 35).fillna(0)
         else:
             s_rank = pd.Series(35.0, index=idx)
         signals["rank"] = s_rank
 
         # --- 3. 涨跌幅 (0-20): 分段线性 ---
-        s_pct = _linear_map(pct_chg, -5, 0, 10, 20, 0, 20)
+        s_pct = _linear_map(pct_chg.fillna(0), -5, 0, 10, 20, 0, 20)
         signals["pct_chg"] = s_pct
 
         # --- 4. 排名趋势 (0-15): 5 日排名改善百分位 ---
@@ -315,6 +317,7 @@ class PopularityFactor(BaseFactor):
         if df.empty:
             return pd.Series(dtype=float, name=self.name)
 
+        df = df[~df.index.duplicated(keep='first')]
         signals = self._compute_signals(df)
         total = sum(signals.values()).clip(0, 100)
         total.name = self.name
@@ -324,6 +327,9 @@ class PopularityFactor(BaseFactor):
         reasons: Dict[str, List[str]] = {}
         if df.empty:
             return reasons
+
+        df = df[~df.index.duplicated(keep='first')]
+        scores = scores[~scores.index.duplicated(keep='first')]
 
         rank = df.get("rank", pd.Series(9999, index=df.index))
         rank_change = df.get("rank_change", pd.Series(0, index=df.index))

@@ -544,7 +544,7 @@ def run_postmarket_discovery():
                 MoneyFlowFactor, MarginFactor, ChipFactor,
                 TechnicalFactor, LimitFactor,
                 FundamentalFactor, PopularityFactor, HotMoneyFactor,
-                NorthboundFactor, InstitutionHoldFactor, ProfitForecastFactor,
+                InstitutionHoldFactor, ProfitForecastFactor,
                 PerformanceFactor, BuybackFactor, InsiderBuyFactor,
                 BrokerRecommendFactor,
             )
@@ -579,7 +579,6 @@ def run_postmarket_discovery():
                 FundamentalFactor(),
                 PopularityFactor(),
                 HotMoneyFactor(),
-                NorthboundFactor(),
                 InstitutionHoldFactor(),
                 ProfitForecastFactor(),
                 PerformanceFactor(),
@@ -888,7 +887,7 @@ def _get_factor_weights(mode: str) -> Dict[str, float]:
         SectorFactor, MaEntryFactor, MomentumFactor, ReboundFactor,
         MoneyFlowFactor, MarginFactor, ChipFactor, TechnicalFactor,
         LimitFactor, FundamentalFactor, PopularityFactor, HotMoneyFactor,
-        NorthboundFactor, InstitutionHoldFactor, ProfitForecastFactor,
+        InstitutionHoldFactor, ProfitForecastFactor,
         PerformanceFactor, BuybackFactor, InsiderBuyFactor,
         BrokerRecommendFactor,
     )
@@ -898,7 +897,7 @@ def _get_factor_weights(mode: str) -> Dict[str, float]:
         SectorFactor(), MaEntryFactor(), MomentumFactor(), ReboundFactor(),
         MoneyFlowFactor(), MarginFactor(), ChipFactor(), TechnicalFactor(),
         LimitFactor(), FundamentalFactor(), PopularityFactor(), HotMoneyFactor(),
-        NorthboundFactor(), InstitutionHoldFactor(), ProfitForecastFactor(),
+        InstitutionHoldFactor(), ProfitForecastFactor(),
         PerformanceFactor(), BuybackFactor(), InsiderBuyFactor(),
         BrokerRecommendFactor(),
     ])

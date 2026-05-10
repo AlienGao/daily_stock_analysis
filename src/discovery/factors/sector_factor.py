@@ -89,6 +89,9 @@ class SectorFactor(BaseFactor):
                 df["is_leader"] = df["limit_times"] >= 3
                 df["is_2board"] = df["limit_times"] == 2
                 df["is_first"] = df["limit_times"] == 1
+            self._zt_pool_cache = df
+            self._zt_cache_trade_date = trade_date
+            self._last_zt_slot = int(time.time() // 30)
         return df
 
     # ------------------------------------------------------------------

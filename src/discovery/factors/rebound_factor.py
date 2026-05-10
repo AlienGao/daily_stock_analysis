@@ -58,6 +58,7 @@ class ReboundFactor(BaseFactor):
             logger.debug("[ReboundFactor] 当前无炸板股票")
             return None
 
+        df = df.copy()
         logger.info("[ReboundFactor] 当前 %d 只炸板股票", len(df))
 
         try:
@@ -181,10 +182,12 @@ class ReboundFactor(BaseFactor):
         signals = self._compute_signals(df)
         total = sum(signals.values())
 
-        pct_chg = df.get("pct_chg", pd.Series(0, index=df.index))
-        turnover_rate = df.get("turnover_rate", pd.Series(0, index=df.index))
-        total.loc[pct_chg < -7] = 0.0
-        total.loc[turnover_rate < 1] = 0.0
+        pct_chg = df.get("pct_chg")
+        turnover_rate = df.get("turnover_rate")
+        if pct_chg is not None:
+            total.loc[pct_chg < -7] = 0.0
+        if turnover_rate is not None:
+            total.loc[turnover_rate < 1] = 0.0
 
         total = total.clip(0, 100)
         total.name = self.name
