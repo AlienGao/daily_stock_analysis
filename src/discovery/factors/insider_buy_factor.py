@@ -87,16 +87,17 @@ class InsiderBuyFactor(BaseFactor):
             None,
         )
 
-        for ts_code in scores.index:
-            if scores[ts_code] <= 0:
+        for i in range(len(scores)):
+            if scores.iloc[i] <= 0:
                 continue
+            ts_code = scores.index[i]
             r = []
             if col_add_ratio:
-                v = df[col_add_ratio].get(ts_code, 0)
+                v = float(df[col_add_ratio].iloc[i])
                 if v > 0:
                     r.append(f"举牌增持{v:.2f}%")
             if col_hold_ratio:
-                v = df[col_hold_ratio].get(ts_code, 0)
+                v = float(df[col_hold_ratio].iloc[i])
                 if v > 0:
                     r.append(f"持股比例{v:.1f}%")
             if r:

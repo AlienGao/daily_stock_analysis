@@ -75,16 +75,17 @@ class BuybackFactor(BaseFactor):
         col_progress = next((c for c in df.columns if c == "实施进度"), None)
         col_amount = next((c for c in df.columns if "已回购金额" in c), None)
 
-        for ts_code in scores.index:
-            if scores[ts_code] <= 0:
+        for i in range(len(scores)):
+            if scores.iloc[i] <= 0:
                 continue
+            ts_code = scores.index[i]
             r = []
             if col_progress:
-                v = str(df[col_progress].get(ts_code, ""))
-                if v:
+                v = str(df[col_progress].iloc[i])
+                if v and v != "nan":
                     r.append(f"回购{v}")
             if col_amount:
-                v = df[col_amount].get(ts_code, 0)
+                v = float(df[col_amount].iloc[i])
                 if v > 0:
                     r.append(f"已回购{v/1e7:.1f}万元")
             if r:

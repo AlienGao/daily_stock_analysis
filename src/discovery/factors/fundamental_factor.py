@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 """基本面因子 (Fundamental Factor).
 
-盘后因子：基于 PE/PB/换手率/市值等估值指标，识别低估值高性价比股票。
-数据来源: Tushare daily_basic
+盘后因子：基于 PE/PB/换手率/量比/市值等估值指标，识别低估值高性价比股票。
+数据来源: Tushare daily_basic + stock_basic（行业分类）
 """
 
 import logging
 from typing import Dict, List, Optional
 
+import numpy as np
 import pandas as pd
 
 from src.discovery.factors.base import BaseFactor
@@ -15,11 +16,50 @@ from src.discovery.factors.base import BaseFactor
 logger = logging.getLogger(__name__)
 
 
+def _pct_rank(series: pd.Series) -> pd.Series:
+    """返回 0-1 的百分位排名，处理全 NaN 边界。"""
+    ranked = series.rank(pct=True)
+    return ranked.fillna(0.0)
+
+
+def _linear_map(series: pd.Series, x0: float, y0: float,
+                x1: float, y1: float, clip_low: float = 0.0,
+                clip_high: float = 1e9) -> pd.Series:
+    """两点线性映射，超出范围 clip。"""
+    slope = (y1 - y0) / (x1 - x0) if x1 != x0 else 0.0
+    return (y0 + slope * (series - x0)).clip(clip_low, clip_high)
+
+
+def _industry_pct_rank(values: pd.Series, industries: pd.Series,
+                       max_points: float) -> pd.Series:
+    """行业内百分位排名 → 0~max_points。
+
+    行业只有 1-2 只股票时退化为全市场百分位。
+    """
+    result = pd.Series(0.0, index=values.index)
+    industry_counts = industries.value_counts()
+    small_groups = industry_counts[industry_counts <= 2].index
+
+    # 大行业：组内百分位
+    for ind in industry_counts[industry_counts > 2].index:
+        mask = (industries == ind) & values.notna()
+        if mask.sum() <= 1:
+            continue
+        group_vals = values[mask]
+        result[mask] = _pct_rank(group_vals) * max_points
+
+    # 小行业：全市场百分位
+    small_mask = industries.isin(small_groups) & values.notna()
+    if small_mask.any():
+        result[small_mask] = _pct_rank(values[small_mask]) * max_points
+
+    return result
+
+
 class FundamentalFactor(BaseFactor):
     """基本面因子。
 
-    基于估值指标和规模指标，判断股票的基本面吸引力。
-    关键信号：低 PE + 低 PB + 高换手率 = 价值+流动性兼备。
+    行业内的 PE/PB 百分位排名 + 换手率/量比/市值分段打分。
     """
 
     name = "fundamental"
@@ -27,90 +67,165 @@ class FundamentalFactor(BaseFactor):
     available_postmarket = True
     weight = 20.0
 
+    _LABEL_THRESHOLD_RATIO = 0.5
+
     def fetch_data(self, trade_date: str, **kwargs) -> Optional[pd.DataFrame]:
         tushare_fetcher = kwargs.get("tushare_fetcher")
         if tushare_fetcher is None:
             return None
-        return tushare_fetcher.get_daily_basic_all(trade_date)
+
+        df_basic = tushare_fetcher.get_daily_basic_all(trade_date)
+        if df_basic is None or df_basic.empty:
+            return None
+
+        # 合并行业分类
+        df_list = tushare_fetcher.get_stock_list()
+        if df_list is not None and not df_list.empty:
+            industry_map = dict(zip(df_list["code"], df_list["industry"]))
+            bare = df_basic.index.astype(str).str.replace(r"\..*", "", regex=True)
+            df_basic["industry"] = bare.map(industry_map).fillna("其他")
+        else:
+            df_basic["industry"] = "其他"
+
+        return df_basic
+
+    # ------------------------------------------------------------------
+    # 共享信号提取
+    # ------------------------------------------------------------------
+
+    def _compute_signals(self, df: pd.DataFrame) -> Dict[str, pd.Series]:
+        """提取 5 个子信号，各自归一化到满分区间。"""
+        idx = df.index
+        zeros = pd.Series(0.0, index=idx)
+
+        pe = df.get("pe", zeros)
+        pb = df.get("pb", zeros)
+        turnover = df.get("turnover_rate", zeros)
+        vol_ratio = df.get("volume_ratio", zeros)
+        total_mv = df.get("total_mv", zeros)
+        industry = df.get("industry", pd.Series("其他", index=idx))
+
+        signals: Dict[str, pd.Series] = {}
+
+        # 1. PE 行业低估 (0-30)：PE>0 的股票，行业内低 PE 排前面
+        pe_pos = pe > 0
+        s_pe = zeros.copy()
+        if pe_pos.any():
+            inv_pe = (1.0 / pe[pe_pos].replace(0, np.nan)).dropna()
+            if len(inv_pe) > 0:
+                s_pe[inv_pe.index] = _industry_pct_rank(
+                    inv_pe, industry.loc[inv_pe.index], 30.0,
+                )
+        signals["pe"] = s_pe
+
+        # 2. PB 行业低估 (0-20)
+        pb_pos = pb > 0
+        s_pb = zeros.copy()
+        if pb_pos.any():
+            inv_pb = (1.0 / pb[pb_pos].replace(0, np.nan)).dropna()
+            if len(inv_pb) > 0:
+                s_pb[inv_pb.index] = _industry_pct_rank(
+                    inv_pb, industry.loc[inv_pb.index], 20.0,
+                )
+        signals["pb"] = s_pb
+
+        # 3. 换手率活跃度 (0-20)：分段线性
+        s_turnover = zeros.copy()
+        s_turnover = s_turnover.mask(turnover >= 5, 20.0)
+        s_turnover = s_turnover.mask((turnover >= 3) & (turnover < 5),
+                                     _linear_map(turnover, 3, 15, 5, 20))
+        s_turnover = s_turnover.mask((turnover >= 1) & (turnover < 3),
+                                     _linear_map(turnover, 1, 5, 3, 15))
+        s_turnover = s_turnover.mask((turnover >= 0.5) & (turnover < 1),
+                                     _linear_map(turnover, 0.5, 0, 1, 5))
+        signals["turnover"] = s_turnover
+
+        # 4. 量比异动 (0-15)：分段线性
+        s_vr = zeros.copy()
+        s_vr = s_vr.mask(vol_ratio >= 2.0, 15.0)
+        s_vr = s_vr.mask((vol_ratio >= 1.5) & (vol_ratio < 2.0),
+                         _linear_map(vol_ratio, 1.5, 10, 2.0, 15))
+        s_vr = s_vr.mask((vol_ratio >= 1.0) & (vol_ratio < 1.5),
+                         _linear_map(vol_ratio, 1.0, 5, 1.5, 10))
+        s_vr = s_vr.mask((vol_ratio >= 0.8) & (vol_ratio < 1.0),
+                         _linear_map(vol_ratio, 0.8, 0, 1.0, 5))
+        signals["volume_ratio"] = s_vr
+
+        # 5. 中小市值弹性 (0-15)：分段线性，单位万元 → 亿
+        mv_b = total_mv / 1e8
+        s_mv = zeros.copy()
+        s_mv = s_mv.mask((mv_b >= 10) & (mv_b <= 100), 15.0)
+        s_mv = s_mv.mask((mv_b > 100) & (mv_b <= 200),
+                         _linear_map(mv_b, 100, 15, 200, 8))
+        s_mv = s_mv.mask((mv_b > 200) & (mv_b <= 500),
+                         _linear_map(mv_b, 200, 8, 500, 0))
+        signals["market_cap"] = s_mv
+
+        return signals
+
+    # ------------------------------------------------------------------
+    # score / describe
+    # ------------------------------------------------------------------
 
     def score(self, df: pd.DataFrame, **context) -> pd.Series:
-        scores = pd.Series(0.0, index=df.index, name=self.name)
-
         if df.empty:
-            return scores
+            return pd.Series(dtype=float, name=self.name)
 
-        pe = df.get("pe", pd.Series(0.0, index=df.index))
-        pb = df.get("pb", pd.Series(0.0, index=df.index))
-        turnover_rate = df.get("turnover_rate", pd.Series(0.0, index=df.index))
-        total_mv = df.get("total_mv", pd.Series(0.0, index=df.index))
-
-        # 低 PE 得分 (PE 0-15: +30分, 15-30: +15分, >50: 0分)
-        scores.loc[pe <= 0] = 0.0
-        valid_pe = pe > 0
-        scores.loc[valid_pe & (pe <= 15)] += 30.0
-        scores.loc[valid_pe & (pe > 15) & (pe <= 30)] += 15.0
-        scores.loc[valid_pe & (pe > 30) & (pe <= 50)] += 5.0
-
-        # 低 PB 得分 (PB < 1.5: +25分, 1.5-3: +15分, >5: 0分)
-        valid_pb = pb > 0
-        scores.loc[valid_pb & (pb < 1.5)] += 25.0
-        scores.loc[valid_pb & (pb >= 1.5) & (pb < 3.0)] += 15.0
-        scores.loc[valid_pb & (pb >= 3.0) & (pb <= 5.0)] += 5.0
-
-        # 高换手率得分 (换手率 > 3%: +20分, 1-3%: +10分)
-        scores.loc[turnover_rate > 3] += 20.0
-        scores.loc[(turnover_rate > 1) & (turnover_rate <= 3)] += 10.0
-
-        # 中小市值偏好 (+10分)：市值 10-200 亿
-        # total_mv 单位是元，转为亿：除以 1e8
-        mv_b = total_mv / 1e8
-        scores.loc[(mv_b >= 10) & (mv_b <= 200)] += 10.0
-
-        # 负面：PE 为负（亏损）扣分
-        scores.loc[pe < 0] = (scores.loc[pe < 0] - 15).clip(0, 100)
-
-        return scores.clip(0, 100)
+        signals = self._compute_signals(df)
+        total = sum(signals.values()).clip(0, 100)
+        total.name = self.name
+        return total
 
     def describe(self, df: pd.DataFrame, scores: pd.Series, **context) -> Dict[str, List[str]]:
-        reasons: Dict[str, List[str]] = {}
         if df.empty:
-            return reasons
+            return {}
 
-        pe = df.get("pe", pd.Series(0.0, index=df.index))
-        pb = df.get("pb", pd.Series(0.0, index=df.index))
-        turnover_rate = df.get("turnover_rate", pd.Series(0.0, index=df.index))
-        total_mv = df.get("total_mv", pd.Series(0.0, index=df.index))
+        signals = self._compute_signals(df)
 
+        signal_meta = [
+            ("pe", "PE低估"),
+            ("pb", "PB低估"),
+            ("turnover", "活跃"),
+            ("volume_ratio", "放量"),
+            ("market_cap", "中小市值"),
+        ]
+        max_map = {
+            "pe": 30, "pb": 20, "turnover": 20,
+            "volume_ratio": 15, "market_cap": 15,
+        }
+        threshold = self._LABEL_THRESHOLD_RATIO
+
+        pe_raw = df.get("pe", pd.Series(0.0, index=df.index))
+        pb_raw = df.get("pb", pd.Series(0.0, index=df.index))
+        tr_raw = df.get("turnover_rate", pd.Series(0.0, index=df.index))
+        vr_raw = df.get("volume_ratio", pd.Series(0.0, index=df.index))
+        mv_raw = df.get("total_mv", pd.Series(0.0, index=df.index))
+
+        reasons: Dict[str, List[str]] = {}
         for ts_code in scores.index:
             if scores[ts_code] <= 0:
                 continue
-            r = []
-            pe_v = pe.get(ts_code, 0)
-            pb_v = pb.get(ts_code, 0)
-            tr_v = turnover_rate.get(ts_code, 0)
-            mv_b = total_mv.get(ts_code, 0) / 1e8
+            labels = []
+            for key, label in signal_meta:
+                val = signals[key].get(ts_code, 0.0)
+                if val < max_map[key] * threshold:
+                    continue
+                if key == "pe":
+                    pe_v = pe_raw.get(ts_code, 0)
+                    labels.append(f"{label}(PE={pe_v:.0f})")
+                elif key == "pb":
+                    pb_v = pb_raw.get(ts_code, 0)
+                    labels.append(f"{label}(PB={pb_v:.1f})")
+                elif key == "turnover":
+                    tr_v = tr_raw.get(ts_code, 0)
+                    labels.append(f"高换手({tr_v:.1f}%)")
+                elif key == "volume_ratio":
+                    vr_v = vr_raw.get(ts_code, 0)
+                    labels.append(f"量比({vr_v:.1f})")
+                elif key == "market_cap":
+                    mv_b = mv_raw.get(ts_code, 0) / 1e8
+                    labels.append(f"市值({mv_b:.0f}亿)")
+            if labels:
+                reasons[ts_code] = labels
 
-            if pe_v > 0 and pe_v <= 15:
-                r.append(f"低PE({pe_v:.1f})")
-            elif pe_v > 0 and pe_v <= 30:
-                r.append(f"适中PE({pe_v:.1f})")
-
-            if pb_v > 0 and pb_v < 1.5:
-                r.append(f"低PB({pb_v:.2f})")
-            elif pb_v > 0 and pb_v < 3:
-                r.append(f"适中PB({pb_v:.2f})")
-
-            if tr_v > 3:
-                r.append(f"高换手率({tr_v:.1f}%)")
-            elif tr_v > 1:
-                r.append(f"适中换手率({tr_v:.1f}%)")
-
-            if mv_b >= 10 and mv_b <= 200:
-                r.append(f"中小市值({mv_b:.0f}亿)")
-
-            if pe_v < 0:
-                r.append("亏损")
-
-            if r:
-                reasons[ts_code] = r
         return reasons

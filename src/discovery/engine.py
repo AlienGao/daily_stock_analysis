@@ -71,12 +71,12 @@ def _calc_price_levels(prices: Dict[str, float], factor_score: float = 50.0) -> 
     boll_lower = prices.get("boll_lower", 0)
 
     if boll_lower > 0 and boll_mid > 0:
-        if factor_score >= 70:
-            # 强信号：止损更宽（给更多缓冲）
+        if factor_score >= 35:
+            # 强信号（top ~3%）：止损更宽，给更多缓冲
             buy_low = round(boll_lower * 0.97, 1)
             buy_high = round(boll_mid * 1.01, 1)
             stop_loss = round(boll_lower * 0.94, 1)
-        elif factor_score >= 50:
+        elif factor_score >= 25:
             buy_low = round(boll_lower * 0.98, 1)
             buy_high = round(boll_mid, 1)
             stop_loss = round(boll_lower * 0.95, 1)
@@ -85,11 +85,11 @@ def _calc_price_levels(prices: Dict[str, float], factor_score: float = 50.0) -> 
             buy_high = round(boll_mid * 0.99, 1)
             stop_loss = round(boll_lower * 0.96, 1)
     elif close > 0:
-        if factor_score >= 70:
+        if factor_score >= 35:
             buy_low = round(close * 0.95, 1)
             buy_high = round(close * 1.03, 1)
             stop_loss = round(close * 0.92, 1)
-        elif factor_score >= 50:
+        elif factor_score >= 25:
             buy_low = round(close * 0.97, 1)
             buy_high = round(close * 1.02, 1)
             stop_loss = round(close * 0.94, 1)
@@ -615,12 +615,6 @@ class StockDiscoveryEngine:
         # 动态权重（市场状态自适应）
         dynamic_adjustments = self._calc_dynamic_weights(mode)
 
-        # 动态归一化
-        total_weight = sum(f.weight for f in available)
-        if total_weight <= 0:
-            total_weight = 1.0
-        weight_scale = 100.0 / total_weight
-
         for factor in available:
             if factor.name not in factor_data:
                 continue
@@ -634,15 +628,9 @@ class StockDiscoveryEngine:
                         raw = raw.groupby(raw.index).mean()
                     raw.index = raw.index.map(str)
                     raw_scores[factor.name] = raw
-                    base_weight = factor.weight
-                    # 应用动态调整系数
-                    adj = dynamic_adjustments.get(factor.name, 1.0)
-                    effective_weight = base_weight * adj * weight_scale / 100.0
-                    weighted = raw * effective_weight
-                    score_columns[factor.name] = weighted
+                    score_columns[factor.name] = raw  # 暂存原始分，标准化后再加权
                     logger.debug(
                         f"[Discovery] {factor.name}: scored {len(raw)} stocks, "
-                        f"weight={base_weight}*adj={adj:.2f}->eff={effective_weight*100:.1f}%, "
                         f"max={raw.max():.1f}"
                     )
             except Exception as e:
@@ -658,9 +646,32 @@ class StockDiscoveryEngine:
         # Phase 3.6: 行业中性化
         score_columns = self._apply_industry_neutral(score_columns, factor_data)
 
+        # Phase 3.7: 横截面百分位标准化 + 加权
+        # 在行业中性化之后做：每个因子的行业内排名(0-100) → 全市场百分位(0-1) × 权重。
+        # 行业中性化已经在行业内做了标准化，这里再做跨因子的量纲统一。
+        total_weight = sum(
+            self._factors[n].weight for n in score_columns if n in self._factors
+        )
+        if total_weight <= 0:
+            total_weight = 1.0
+        for name in list(score_columns.keys()):
+            factor = self._factors.get(name)
+            if factor is None or factor.weight <= 0:
+                del score_columns[name]
+                continue
+            col = score_columns[name]
+            pct = col.rank(pct=True, na_option="bottom")  # 0-1
+            adj = dynamic_adjustments.get(name, 1.0)
+            effective_weight = factor.weight * adj / total_weight
+            score_columns[name] = pct * 100 * effective_weight
+            logger.debug(
+                f"[Discovery] {name}: pct-std max={score_columns[name].max():.1f}, "
+                f"weight={factor.weight} adj={adj:.2f} eff={effective_weight:.2f}"
+            )
+
         # Phase 4: 合并评分 → 综合评分
         combined = pd.DataFrame(score_columns).fillna(0)
-        combined["_total"] = combined.sum(axis=1) / max(1, len(score_columns))
+        combined["_total"] = combined.sum(axis=1)  # 权重已归一化，sum 即为加权总分 (0-100)
         combined = combined.sort_values("_total", ascending=False)
 
         # Phase 4.5: 收集推荐理由

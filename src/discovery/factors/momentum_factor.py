@@ -20,6 +20,14 @@ from src.discovery.factors.base import BaseFactor
 logger = logging.getLogger(__name__)
 
 
+def _linear_map(series: pd.Series, x0: float, y0: float,
+                x1: float, y1: float, clip_low: float = 0.0,
+                clip_high: float = 1e9) -> pd.Series:
+    """两点线性映射，超出范围 clip。"""
+    slope = (y1 - y0) / (x1 - x0) if x1 != x0 else 0.0
+    return (y0 + slope * (series - x0)).clip(clip_low, clip_high)
+
+
 class MomentumFactor(BaseFactor):
     """强势启动因子。
 
@@ -31,6 +39,8 @@ class MomentumFactor(BaseFactor):
     available_intraday = True
     available_postmarket = False
     weight = 25.0
+
+    _LABEL_THRESHOLD_RATIO = 0.5
 
     def fetch_data(self, trade_date: str, **kwargs) -> Optional[pd.DataFrame]:
         """3 级降级拉取数据：东财 push2 → 同花顺 → Tushare。"""
@@ -69,85 +79,129 @@ class MomentumFactor(BaseFactor):
         return None
 
     # ------------------------------------------------------------------
-    # Score / Describe (consuming unified columns)
+    # 共享信号提取
+    # ------------------------------------------------------------------
+
+    def _compute_signals(self, df: pd.DataFrame) -> Dict[str, pd.Series]:
+        """提取 4 个子信号，各自归一化到满分区间。"""
+        idx = df.index
+        zeros = pd.Series(0.0, index=idx)
+
+        inflow_rate = df.get("inflow_rate", zeros)
+        volume_ratio = df.get("volume_ratio", pd.Series(1.0, index=idx))
+        turnover_rate = df.get("turnover_rate", zeros)
+        pct_chg = df.get("pct_chg", zeros)
+
+        signals: Dict[str, pd.Series] = {}
+
+        # 1. 资金流入强度 (0-30)
+        s_inflow = zeros.copy()
+        s_inflow = s_inflow.mask(inflow_rate > 0.10, 30.0)
+        s_inflow = s_inflow.mask((inflow_rate >= 0.03) & (inflow_rate <= 0.10),
+                                 _linear_map(inflow_rate, 0.03, 15, 0.10, 30))
+        s_inflow = s_inflow.mask((inflow_rate > 0) & (inflow_rate < 0.03),
+                                 _linear_map(inflow_rate, 0, 0, 0.03, 15))
+        signals["inflow"] = s_inflow
+
+        # 2. 放量启动 (0-20)
+        s_vol = zeros.copy()
+        s_vol = s_vol.mask(volume_ratio > 2.5, 20.0)
+        s_vol = s_vol.mask((volume_ratio >= 1.2) & (volume_ratio <= 2.5),
+                           _linear_map(volume_ratio, 1.2, 10, 2.5, 20))
+        s_vol = s_vol.mask((volume_ratio >= 0.8) & (volume_ratio < 1.2),
+                           _linear_map(volume_ratio, 0.8, 3, 1.2, 10))
+        signals["volume_ratio"] = s_vol
+
+        # 3. 换手健康 (0-15)：3-10% 最优，向两侧衰减
+        s_tr = zeros.copy()
+        s_tr = s_tr.mask((turnover_rate >= 3) & (turnover_rate <= 10), 15.0)
+        s_tr = s_tr.mask((turnover_rate > 10) & (turnover_rate <= 15),
+                         _linear_map(turnover_rate, 10, 15, 15, 5))
+        s_tr = s_tr.mask((turnover_rate >= 1) & (turnover_rate < 3),
+                         _linear_map(turnover_rate, 1, 2, 3, 15))
+        signals["turnover"] = s_tr
+
+        # 4. 涨幅合理 (0-20)：2-5% 最优，温和启动不追高
+        s_pct = zeros.copy()
+        s_pct = s_pct.mask((pct_chg >= 2) & (pct_chg <= 5), 20.0)
+        s_pct = s_pct.mask((pct_chg >= 0) & (pct_chg < 2),
+                           _linear_map(pct_chg, 0, 5, 2, 20))
+        s_pct = s_pct.mask((pct_chg > 5) & (pct_chg <= 7),
+                           _linear_map(pct_chg, 5, 20, 7, 8))
+        s_pct = s_pct.mask((pct_chg > 7) & (pct_chg <= 9),
+                           _linear_map(pct_chg, 7, 8, 9, 2))
+        signals["pct_chg"] = s_pct
+
+        return signals
+
+    # ------------------------------------------------------------------
+    # Score / Describe
     # ------------------------------------------------------------------
 
     def score(self, df: pd.DataFrame, **context) -> pd.Series:
-        scores = pd.Series(0.0, index=df.index, name=self.name)
-
         if df.empty:
-            return scores
+            return pd.Series(dtype=float, name=self.name)
 
+        signals = self._compute_signals(df)
+        total = sum(signals.values())
+
+        # 净流出惩罚
         inflow_rate = df.get("inflow_rate", pd.Series(0, index=df.index))
-        volume_ratio = df.get("volume_ratio", pd.Series(1.0, index=df.index))
+        total.loc[inflow_rate < 0] = (total - 10).clip(0, 100)
+
+        # 否决项
         turnover_rate = df.get("turnover_rate", pd.Series(0, index=df.index))
         pct_chg = df.get("pct_chg", pd.Series(0, index=df.index))
+        total.loc[turnover_rate < 1] = 0.0
+        total.loc[pct_chg > 9] = 0.0
 
-        # 主力流入率分档
-        scores.loc[inflow_rate > 0.10] += 30.0
-        scores.loc[(inflow_rate >= 0.03) & (inflow_rate <= 0.10)] += 20.0
-        scores.loc[(inflow_rate > 0) & (inflow_rate < 0.03)] += 10.0
-
-        # 量比 > 2: 放量启动 (+15)
-        scores.loc[volume_ratio > 2] += 15.0
-        # 量比 1.2-2: 温和放量 (+10)
-        scores.loc[(volume_ratio >= 1.2) & (volume_ratio <= 2)] += 10.0
-
-        # 换手率 3%-15%: 活跃但不失控 (+10)
-        scores.loc[(turnover_rate >= 3) & (turnover_rate <= 15)] += 10.0
-
-        # 涨幅分档
-        scores.loc[(pct_chg >= 0) & (pct_chg < 3)] += 10.0
-        scores.loc[(pct_chg >= 3) & (pct_chg <= 7)] += 5.0
-        scores.loc[(pct_chg > 7) & (pct_chg <= 9)] += 3.0
-
-        # 主力净流出: 扣分
-        scores.loc[inflow_rate < 0] = (scores - 10).clip(0, 100)
-        # 排除: 换手率 < 1% (无人关注)
-        scores.loc[turnover_rate < 1] = 0.0
-        # 涨幅 > 9%: 涨停候选交由 SectorFactor 覆盖
-        scores.loc[pct_chg > 9] = 0.0
-
-        return scores.clip(0, 100)
+        total = total.clip(0, 100)
+        total.name = self.name
+        return total
 
     def describe(self, df: pd.DataFrame, scores: pd.Series, **context) -> Dict[str, List[str]]:
-        reasons: Dict[str, List[str]] = {}
         if df.empty:
-            return reasons
+            return {}
 
-        inflow_rate = df.get("inflow_rate", pd.Series(0, index=df.index))
-        volume_ratio = df.get("volume_ratio", pd.Series(1.0, index=df.index))
-        turnover_rate = df.get("turnover_rate", pd.Series(0, index=df.index))
-        pct_chg = df.get("pct_chg", pd.Series(0, index=df.index))
+        signals = self._compute_signals(df)
 
+        signal_meta = [
+            ("inflow", "资金流入"),
+            ("volume_ratio", "放量启动"),
+            ("turnover", "换手活跃"),
+            ("pct_chg", "温和启动"),
+        ]
+        max_map = {"inflow": 30, "volume_ratio": 20, "turnover": 15, "pct_chg": 20}
+        threshold = self._LABEL_THRESHOLD_RATIO
+
+        inflow_raw = df.get("inflow_rate", pd.Series(0, index=df.index))
+        vol_r = df.get("volume_ratio", pd.Series(1.0, index=df.index))
+        tr_r = df.get("turnover_rate", pd.Series(0, index=df.index))
+        pct_r = df.get("pct_chg", pd.Series(0, index=df.index))
+
+        reasons: Dict[str, List[str]] = {}
         for ts_code in scores.index:
             if scores[ts_code] <= 0:
                 continue
-            r = []
-            _ir = inflow_rate.get(ts_code, 0)
-            if _ir > 0.10:
-                r.append(f"强力吸筹(流入率{_ir*100:.1f}%)")
-            elif _ir >= 0.03:
-                r.append(f"资金流入(流入率{_ir*100:.1f}%)")
-            elif _ir > 0:
-                r.append(f"小幅流入(流入率{_ir*100:.1f}%)")
-            _vr = volume_ratio.get(ts_code, 1)
-            if _vr > 2:
-                r.append(f"放量启动(量比{_vr:.1f})")
-            elif _vr >= 1.2:
-                r.append(f"温和放量(量比{_vr:.1f})")
-            _tr = turnover_rate.get(ts_code, 0)
-            if 3 <= _tr <= 15:
-                r.append(f"换手活跃({_tr:.1f}%)")
-            _pct = pct_chg.get(ts_code, 0)
-            if 0 <= _pct < 3:
-                r.append(f"温和启动(涨幅{_pct:.1f}%)")
-            elif 3 <= _pct <= 7:
-                r.append(f"趋势确立(涨幅{_pct:.1f}%)")
-            elif 7 < _pct <= 9:
-                r.append(f"加速中(涨幅{_pct:.1f}%)")
-            if r:
-                reasons[ts_code] = r
+            labels = []
+            for key, label in signal_meta:
+                val = signals[key].get(ts_code, 0.0)
+                if val < max_map[key] * threshold:
+                    continue
+                if key == "inflow":
+                    ir = inflow_raw.get(ts_code, 0)
+                    labels.append(f"{label}(流入率{ir*100:.1f}%)")
+                elif key == "volume_ratio":
+                    vr = vol_r.get(ts_code, 1)
+                    labels.append(f"{label}(量比{vr:.1f})")
+                elif key == "turnover":
+                    tr = tr_r.get(ts_code, 0)
+                    labels.append(f"{label}({tr:.1f}%)")
+                elif key == "pct_chg":
+                    pct = pct_r.get(ts_code, 0)
+                    labels.append(f"{label}(涨幅{pct:.1f}%)")
+            if labels:
+                reasons[ts_code] = labels
         return reasons
 
     # ------------------------------------------------------------------

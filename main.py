@@ -1464,6 +1464,13 @@ def main() -> int:
             except Exception:
                 logger.warning("[Discover] money_flow 盘后刷新失败，继续使用已有数据", exc_info=True)
 
+            # 盘后：用 Tushare 全量刷新 margin_detail（融资融券明细）
+            try:
+                from src.discovery.scanner import refresh_margin_detail_postmarket
+                refresh_margin_detail_postmarket(tushare_fetcher)
+            except Exception:
+                logger.warning("[Discover] margin_detail 盘后刷新失败，继续使用已有数据", exc_info=True)
+
             results = engine.discover(mode="postmarket")
             # 全量评分落库（全市场股票，非仅 Top N）
             if engine._last_full_scan_df is not None:

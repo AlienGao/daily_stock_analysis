@@ -816,6 +816,54 @@ def refresh_money_flow_postmarket(tushare_fetcher) -> int:
         return 0
 
 
+def refresh_margin_detail_postmarket(tushare_fetcher) -> int:
+    """盘后用 Tushare margin_detail 全量刷新 margin_detail 表。
+
+    拉取最近 2 个交易日，覆盖边缘日期（如当天数据尚未完整发布时，
+    次日再跑可补齐前一日的剩余股票）。
+
+    Returns:
+        落库条数，失败返回 0
+    """
+    try:
+        from src.storage import DatabaseManager
+
+        trade_dates = tushare_fetcher._get_trade_dates()
+        if not trade_dates:
+            logger.warning("[Scanner] 盘后 margin_detail 刷新: 无交易日")
+            return 0
+
+        # 最近 2 个交易日，覆盖边缘日期的不完整数据
+        target_dates = trade_dates[-2:] if len(trade_dates) >= 2 else trade_dates
+
+        db = DatabaseManager()
+        total_saved = 0
+        for td in target_dates:
+            df = tushare_fetcher.get_bulk_margin_detail(trade_date=td)
+            if df is None or df.empty:
+                logger.warning(f"[Scanner] 盘后 margin_detail 刷新: {td} 无数据")
+                continue
+
+            df = df.reset_index()
+            out = pd.DataFrame()
+            out["code"] = df["ts_code"].astype(str).str.split(".").str[0].str.zfill(6)
+            out["name"] = df.get("name", pd.Series("", index=df.index)).values if "name" in df.columns else ""
+            out["trade_date"] = df.get("trade_date", td)
+            for c in ("rzye", "rzmre", "rzche", "rqye", "rqmre", "rqyl"):
+                if c in df.columns:
+                    out[c] = pd.to_numeric(df[c], errors="coerce")
+
+            saved = db.upsert_margin_detail(out, source="tushare")
+            total_saved += saved
+            logger.info(f"[Scanner] 盘后 margin_detail 刷新 {td}: {saved} 条")
+
+        logger.info("[Scanner] 盘后 margin_detail 全量刷新: 合计 %d 条", total_saved)
+        return total_saved
+    except Exception as e:
+        logger.warning("[Scanner] 盘后 margin_detail 刷新失败: %s", e)
+        return 0
+
+
 def run_intraday_scan(config: DiscoveryConfig, tushare_fetcher=None, akshare_fetcher=None) -> None:
     """一键启动盘中扫描（注册全部盘中因子）。"""
     from src.discovery.factors import (

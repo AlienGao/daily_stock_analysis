@@ -86,18 +86,19 @@ class ProfitForecastFactor(BaseFactor):
         col_add = next((c for c in df.columns if "增持" in c and "中性" not in c), None)
         col_report = next((c for c in df.columns if "研报数" in c), None)
 
-        for ts_code in scores.index:
-            if scores[ts_code] <= 0:
+        for i in range(len(scores)):
+            if scores.iloc[i] <= 0:
                 continue
+            ts_code = scores.index[i]
             r = []
             if col_buy:
-                buy = df[col_buy].get(ts_code, 0)
-                add = df[col_add].get(ts_code, 0) if col_add else 0
-                if buy + add > 0:
+                buy = df[col_buy].iloc[i]
+                add = df[col_add].iloc[i] if col_add else 0
+                if int(buy) + int(add) > 0:
                     r.append(f"机构买入+增持:{int(buy)}+{int(add)}")
             if col_report:
-                cnt = df[col_report].get(ts_code, 0)
-                if cnt > 0:
+                cnt = df[col_report].iloc[i]
+                if int(cnt) > 0:
                     r.append(f"研报数{int(cnt)}")
             if r:
                 reasons[ts_code] = r

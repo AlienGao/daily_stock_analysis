@@ -394,6 +394,36 @@ class MoneyFlow(Base):
         return f"<MoneyFlow(code={self.code}, date={self.trade_date})>"
 
 
+class MarginDetail(Base):
+    """个股融资融券明细（盘后 Tushare margin_detail 落库）。
+
+    每日按 (code, trade_date) 唯一，盘后定时任务全量 upsert。
+    """
+
+    __tablename__ = 'margin_detail'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(10), nullable=False, index=True)
+    name = Column(String(50))
+    trade_date = Column(String(8))
+    rzye = Column(Float)      # 融资余额
+    rzmre = Column(Float)     # 融资买入额
+    rzche = Column(Float)     # 融资偿还额
+    rqye = Column(Float)      # 融券余额
+    rqmre = Column(Float)     # 融券卖出额
+    rqyl = Column(Float)      # 融券余量
+    source = Column(String(20))
+    updated_at = Column(DateTime, default=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('code', 'trade_date', name='uix_margin_detail_code_date'),
+        Index('ix_margin_detail_trade_date', 'trade_date'),
+    )
+
+    def __repr__(self) -> str:
+        return f"<MarginDetail(code={self.code}, date={self.trade_date})>"
+
+
 class AnalysisHistory(Base):
     """
     分析结果历史记录模型
@@ -1215,6 +1245,7 @@ class DatabaseManager:
         self._ensure_limit_pool_table()
         self._ensure_limit_up_history_table()
         self._ensure_limit_break_table()
+        self._ensure_margin_detail_table()
         self._ensure_stock_daily_date_index()
 
         self._initialized = True
@@ -1356,6 +1387,26 @@ class DatabaseManager:
             logger.info("已创建表 limit_pool")
         except Exception as exc:
             logger.warning("创建 limit_pool 失败: %s", exc)
+
+    def _ensure_margin_detail_table(self) -> None:
+        """SQLite: create margin_detail if missing (pre-create_all catch-up)."""
+        if not self._is_sqlite_engine:
+            return
+        try:
+            with self._engine.connect() as conn:
+                rows = conn.execute(
+                    text("SELECT name FROM sqlite_master WHERE type='table' AND name='margin_detail'")
+                ).fetchall()
+            if rows:
+                return
+        except Exception as exc:
+            logger.warning("检查 margin_detail 表存在性失败: %s", exc)
+            return
+        try:
+            MarginDetail.__table__.create(self._engine)
+            logger.info("已创建表 margin_detail")
+        except Exception as exc:
+            logger.warning("创建 margin_detail 失败: %s", exc)
 
     def _ensure_limit_up_history_table(self) -> None:
         """SQLite: create limit_up_history if missing."""
@@ -3217,6 +3268,123 @@ class DatabaseManager:
                 "buy_sm_amount": r.buy_sm_amount,
                 "sell_sm_amount": r.sell_sm_amount,
                 "net_mf_amount": r.net_mf_amount,
+                "source": r.source,
+            } for r in rows])
+            return df.set_index("code")
+
+    def upsert_margin_detail(self, df: pd.DataFrame, source: str = "tushare") -> int:
+        """upsert 融资融券明细 by (code, trade_date)（盘后 Tushare 全量覆盖）。"""
+        if df is None or df.empty:
+            return 0
+
+        now = datetime.now()
+        records: List[Dict[str, Any]] = []
+        for _, row in df.iterrows():
+            code = str(row.get("code", "")).strip()
+            if not code:
+                continue
+            trade_date = str(row.get("trade_date", ""))[:8]
+            if not trade_date:
+                continue
+
+            records.append({
+                "code": code,
+                "name": str(row.get("name", ""))[:50] if row.get("name") else "",
+                "trade_date": trade_date,
+                "rzye": self._normalize_sql_value(row.get("rzye")),
+                "rzmre": self._normalize_sql_value(row.get("rzmre")),
+                "rzche": self._normalize_sql_value(row.get("rzche")),
+                "rqye": self._normalize_sql_value(row.get("rqye")),
+                "rqmre": self._normalize_sql_value(row.get("rqmre")),
+                "rqyl": self._normalize_sql_value(row.get("rqyl")),
+                "source": source,
+                "updated_at": now,
+            })
+
+        if not records:
+            return 0
+
+        def _write(session: Session) -> int:
+            if self._is_sqlite_engine:
+                _CHUNK = 200
+                for i in range(0, len(records), _CHUNK):
+                    chunk = records[i : i + _CHUNK]
+                    stmt = sqlite_insert(MarginDetail).values(chunk)
+                    excluded = stmt.excluded
+                    session.execute(
+                        stmt.on_conflict_do_update(
+                            index_elements=["code", "trade_date"],
+                            set_={
+                                "name": excluded.name,
+                                "rzye": excluded.rzye,
+                                "rzmre": excluded.rzmre,
+                                "rzche": excluded.rzche,
+                                "rqye": excluded.rqye,
+                                "rqmre": excluded.rqmre,
+                                "rqyl": excluded.rqyl,
+                                "source": excluded.source,
+                                "updated_at": excluded.updated_at,
+                            },
+                        )
+                    )
+                return len(records)
+            else:
+                codes = [r["code"] for r in records]
+                dates = [r["trade_date"] for r in records]
+                existing = {}
+                for row in session.execute(
+                    select(MarginDetail).where(
+                        and_(MarginDetail.code.in_(codes), MarginDetail.trade_date.in_(dates))
+                    )
+                ).scalars().all():
+                    existing[(row.code, row.trade_date)] = row
+                new_count = 0
+                for rec in records:
+                    ent = existing.get((rec["code"], rec["trade_date"]))
+                    if ent is None:
+                        session.add(MarginDetail(**rec))
+                        new_count += 1
+                    else:
+                        for key in ("name", "rzye", "rzmre", "rzche",
+                                     "rqye", "rqmre", "rqyl", "source"):
+                            setattr(ent, key, rec[key])
+                        ent.updated_at = now
+                return new_count
+
+        try:
+            saved = self._run_write_transaction("upsert_margin_detail", _write)
+            logger.debug("[DB] upsert_margin_detail: %d 条 (source=%s)", saved, source)
+            return saved
+        except Exception as e:
+            logger.error("[DB] upsert_margin_detail 失败: %s", e)
+            raise
+
+    def get_margin_detail_range(
+        self, codes: Optional[List[str]] = None,
+        start_date: Optional[str] = None, end_date: Optional[str] = None,
+    ) -> pd.DataFrame:
+        """获取融资融券明细多日数据，返回 DataFrame (index=code)。
+
+        Args:
+            codes: 股票代码列表，None 则查全市场
+            start_date: 起始日期 YYYYMMDD
+            end_date: 结束日期 YYYYMMDD
+        """
+        with self.get_session() as session:
+            stmt = select(MarginDetail)
+            if codes:
+                stmt = stmt.where(MarginDetail.code.in_(codes))
+            if start_date:
+                stmt = stmt.where(MarginDetail.trade_date >= start_date)
+            if end_date:
+                stmt = stmt.where(MarginDetail.trade_date <= end_date)
+            rows = session.execute(stmt).scalars().all()
+            if not rows:
+                return pd.DataFrame()
+            df = pd.DataFrame([{
+                "code": r.code, "name": r.name, "trade_date": r.trade_date,
+                "rzye": r.rzye, "rzmre": r.rzmre, "rzche": r.rzche,
+                "rqye": r.rqye, "rqmre": r.rqmre, "rqyl": r.rqyl,
                 "source": r.source,
             } for r in rows])
             return df.set_index("code")

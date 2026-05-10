@@ -2028,7 +2028,7 @@ class TushareFetcher(BaseFetcher):
     def get_bulk_margin_detail(self, trade_date: Optional[str] = None) -> Optional[pd.DataFrame]:
         """获取全市场融资融券明细 (Tushare margin_detail, doc_id=59)。
 
-        T+1 数据，默认取前一交易日。
+        默认取最新可用交易日。
 
         Returns:
             DataFrame indexed by ts_code
@@ -2040,7 +2040,7 @@ class TushareFetcher(BaseFetcher):
             if trade_date is None:
                 trade_dates = self._get_trade_dates()
                 trade_date = (
-                    self._pick_trade_date(trade_dates, use_today=False)
+                    self._pick_trade_date(trade_dates, use_today=True)
                     if trade_dates else None
                 )
             if not trade_date:
@@ -2062,6 +2062,53 @@ class TushareFetcher(BaseFetcher):
         except Exception as e:
             logger.warning(f"[Tushare] 获取全量融资融券失败: {e}")
             return None
+
+    def get_bulk_margin_detail_range(
+        self, start_date: str, end_date: str
+    ) -> Optional[pd.DataFrame]:
+        """获取多日全市场融资融券明细。
+
+        逐日调用 margin_detail（单日约 5000 条，多日会超 6000 行限制）。
+        返回合并后的 DataFrame，索引为 ts_code，含 trade_date 列。
+        """
+        if self._api is None:
+            return None
+
+        trade_dates = self._get_trade_dates()
+        if not trade_dates:
+            return None
+
+        # 取 start_date~end_date 范围内的交易日
+        target_dates = [d for d in trade_dates if start_date <= d <= end_date]
+        if not target_dates:
+            logger.warning(f"[融资融券] 日期范围 {start_date}~{end_date} 无交易日")
+            return None
+
+        fields = "ts_code,trade_date,rzye,rzmre,rzche,rqye,rqmre,rqyl"
+        frames = []
+        for td in target_dates:
+            try:
+                df = self._call_api_with_rate_limit(
+                    "margin_detail", trade_date=td, fields=fields,
+                )
+                if df is not None and not df.empty:
+                    frames.append(df)
+            except Exception as e:
+                logger.warning(f"[融资融券] 拉取 {td} 失败: {e}")
+
+        if not frames:
+            return None
+
+        result = pd.concat(frames, ignore_index=True)
+        result = result.set_index("ts_code")
+        for col in ["rzye", "rzmre", "rzche", "rqye", "rqmre", "rqyl"]:
+            if col in result.columns:
+                result[col] = pd.to_numeric(result[col], errors="coerce")
+        logger.info(
+            f"[全量融资融券] {start_date}~{end_date}, "
+            f"{len(target_dates)} 日, {len(result)} 条"
+        )
+        return result
 
     def get_bulk_cyq_perf(self, trade_date: Optional[str] = None) -> Optional[pd.DataFrame]:
         """获取全市场筹码胜率数据 (Tushare cyq_perf, doc_id=293)。
