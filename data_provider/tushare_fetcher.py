@@ -2379,6 +2379,91 @@ class TushareFetcher(BaseFetcher):
             logger.warning(f"[Tushare] 获取机构调研数据失败: {e}")
             return None
 
+    def get_repurchase(
+        self,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+    ) -> Optional[pd.DataFrame]:
+        """获取上市公司回购数据 (Tushare repurchase, doc_id 124)。
+
+        支持按公告日期筛选历史回购记录。无参数时返回近年 2000 条。
+
+        Args:
+            start_date: 公告开始日期 (YYYYMMDD)
+            end_date: 公告结束日期 (YYYYMMDD)
+
+        Returns:
+            DataFrame indexed by ts_code，含 ann_date/end_date/proc/vol/amount/high_limit/low_limit
+        """
+        if self._api is None:
+            return None
+
+        try:
+            kwargs = {}
+            if end_date:
+                kwargs["end_date"] = end_date
+            if start_date:
+                kwargs["start_date"] = start_date
+
+            df = self._call_api_with_rate_limit("repurchase", **kwargs)
+            if df is not None and not df.empty:
+                df = df.set_index("ts_code")
+                for col in ["vol", "amount", "high_limit", "low_limit"]:
+                    if col in df.columns:
+                        df[col] = pd.to_numeric(df[col], errors="coerce")
+                # 兼容方案：以接口实际返回为准，自动检测单位并归一化。
+                # Tushare 文档写 amount 万元/vol 万股，但实际 API 返回 元/股（未文档化）。
+                # 通过数量级自动判定：若 API 未来修复对齐文档，检测逻辑自动适应。
+                if "amount" in df.columns:
+                    nonzero_a = df["amount"][df["amount"] > 0]
+                    if len(nonzero_a) > 0:
+                        if nonzero_a.median() > 1e5:
+                            # 中位数 > 10万元 → API 返回的是元，归一化到万元
+                            df["amount"] = df["amount"] / 1e4
+                if "vol" in df.columns:
+                    nonzero_v = df["vol"][df["vol"] > 0]
+                    if len(nonzero_v) > 0:
+                        if nonzero_v.median() > 1e4:
+                            # 中位数 > 1万股 → API 返回的是股，归一化到万股
+                            df["vol"] = df["vol"] / 1e4
+                logger.info(
+                    "[Tushare] 回购数据 start=%s end=%s → %d 条",
+                    start_date or "none", end_date or "none", len(df),
+                )
+                return df
+            return None
+        except Exception as e:
+            logger.warning(f"[Tushare] 获取回购数据失败: {e}")
+            return None
+
+    def get_broker_recommend(self, month: str) -> Optional[pd.DataFrame]:
+        """获取券商月度金股推荐 (Tushare broker_recommend, doc_id 267)。
+
+        Args:
+            month: 月份 YYYYMM，如 "202605"
+
+        Returns:
+            DataFrame (ts_code 为 index)，含 month/broker/name 列；失败或为空时返回 None
+        """
+        if self._api is None:
+            return None
+
+        try:
+            df = self._call_api_with_rate_limit("broker_recommend", month=month)
+            if df is not None and not df.empty:
+                df = df.set_index("ts_code")
+                expected_cols = ["month", "broker", "name"]
+                df = df[[c for c in expected_cols if c in df.columns]]
+                logger.info(
+                    "[Tushare] 券商金股 month=%s → %d 条, %d 家券商",
+                    month, len(df), df["broker"].nunique() if "broker" in df.columns else 0,
+                )
+                return df
+            return None
+        except Exception as e:
+            logger.warning(f"[Tushare] 获取券商金股失败: {e}")
+            return None
+
 
 if __name__ == "__main__":
     # 测试代码

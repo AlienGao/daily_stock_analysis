@@ -16,6 +16,13 @@ from src.discovery.factors.base import BaseFactor
 logger = logging.getLogger(__name__)
 
 
+def _to_bare_codes(index: pd.Index) -> pd.Index:
+    """将 index 转为 6 位裸码，兼容 '600519' 和 '600519.SH' 两种格式。"""
+    codes = index.astype(str).str.strip()
+    codes = codes.str.replace(r"\.(SH|SZ|BJ|SHMQ|SZMQ|BJMQ)$", "", regex=True)
+    return codes.str.zfill(6)
+
+
 def _linear_map(series: pd.Series, x0: float, y0: float,
                 x1: float, y1: float, clip_low: float = 0.0,
                 clip_high: float = 1e9) -> pd.Series:
@@ -56,21 +63,27 @@ class ReboundFactor(BaseFactor):
         try:
             spot = db.get_realtime_spot()
             if spot is not None and not spot.empty:
-                bare_codes = df.index.astype(str).str.strip().str.zfill(6)
+                df_bare = _to_bare_codes(df.index)
+                spot_bare = _to_bare_codes(spot.index)
                 for col in ["pct_chg", "volume_ratio", "turnover_rate", "price"]:
                     if col in spot.columns:
-                        df[col] = bare_codes.map(spot[col])
+                        s = spot[col].copy()
+                        s.index = spot_bare
+                        df[col] = df_bare.map(s)
         except Exception as e:
             logger.warning("[ReboundFactor] realtime_spot 合并失败: %s", e)
 
         try:
             mf = db.get_money_flow(trade_date=today)
             if mf is not None and not mf.empty:
-                bare_codes = df.index.astype(str).str.strip().str.zfill(6)
+                df_bare = _to_bare_codes(df.index)
+                mf_bare = _to_bare_codes(mf.index)
                 for col in ["buy_elg_amount", "sell_elg_amount",
                             "buy_lg_amount", "sell_lg_amount"]:
                     if col in mf.columns:
-                        df[col] = bare_codes.map(mf[col])
+                        s = mf[col].copy()
+                        s.index = mf_bare
+                        df[col] = df_bare.map(s)
         except Exception as e:
             logger.warning("[ReboundFactor] money_flow 合并失败: %s", e)
 

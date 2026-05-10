@@ -58,7 +58,7 @@ class MomentumFactor(BaseFactor):
         # ── Tier 2: 同花顺 akshare（实时粗粒度） ──
         try:
             logger.info("[MomentumFactor] Tier 2: 拉取 akshare/同花顺 个股资金流...")
-            df = self._fetch_tier2_tonghuashun()
+            df = self._fetch_tier2_tonghuashun(trade_date)
             if df is not None and not df.empty:
                 logger.info("[MomentumFactor] Tier 2 成功: %d 只股票", len(df))
                 return df
@@ -94,22 +94,22 @@ class MomentumFactor(BaseFactor):
 
         signals: Dict[str, pd.Series] = {}
 
-        # 1. 资金流入强度 (0-30)
+        # 1. 资金流入强度 (0-35)
         s_inflow = zeros.copy()
-        s_inflow = s_inflow.mask(inflow_rate > 0.10, 30.0)
+        s_inflow = s_inflow.mask(inflow_rate > 0.10, 35.0)
         s_inflow = s_inflow.mask((inflow_rate >= 0.03) & (inflow_rate <= 0.10),
-                                 _linear_map(inflow_rate, 0.03, 15, 0.10, 30))
+                                 _linear_map(inflow_rate, 0.03, 17, 0.10, 35))
         s_inflow = s_inflow.mask((inflow_rate > 0) & (inflow_rate < 0.03),
-                                 _linear_map(inflow_rate, 0, 0, 0.03, 15))
+                                 _linear_map(inflow_rate, 0, 0, 0.03, 17))
         signals["inflow"] = s_inflow
 
-        # 2. 放量启动 (0-20)
+        # 2. 放量启动 (0-25)
         s_vol = zeros.copy()
-        s_vol = s_vol.mask(volume_ratio > 2.5, 20.0)
+        s_vol = s_vol.mask(volume_ratio > 2.5, 25.0)
         s_vol = s_vol.mask((volume_ratio >= 1.2) & (volume_ratio <= 2.5),
-                           _linear_map(volume_ratio, 1.2, 10, 2.5, 20))
+                           _linear_map(volume_ratio, 1.2, 12, 2.5, 25))
         s_vol = s_vol.mask((volume_ratio >= 0.8) & (volume_ratio < 1.2),
-                           _linear_map(volume_ratio, 0.8, 3, 1.2, 10))
+                           _linear_map(volume_ratio, 0.8, 4, 1.2, 12))
         signals["volume_ratio"] = s_vol
 
         # 3. 换手健康 (0-15)：3-10% 最优，向两侧衰减
@@ -121,15 +121,15 @@ class MomentumFactor(BaseFactor):
                          _linear_map(turnover_rate, 1, 2, 3, 15))
         signals["turnover"] = s_tr
 
-        # 4. 涨幅合理 (0-20)：2-5% 最优，温和启动不追高
+        # 4. 涨幅合理 (0-25)：2-5% 最优，温和启动不追高
         s_pct = zeros.copy()
-        s_pct = s_pct.mask((pct_chg >= 2) & (pct_chg <= 5), 20.0)
+        s_pct = s_pct.mask((pct_chg >= 2) & (pct_chg <= 5), 25.0)
         s_pct = s_pct.mask((pct_chg >= 0) & (pct_chg < 2),
-                           _linear_map(pct_chg, 0, 5, 2, 20))
+                           _linear_map(pct_chg, 0, 6, 2, 25))
         s_pct = s_pct.mask((pct_chg > 5) & (pct_chg <= 7),
-                           _linear_map(pct_chg, 5, 20, 7, 8))
+                           _linear_map(pct_chg, 5, 25, 7, 10))
         s_pct = s_pct.mask((pct_chg > 7) & (pct_chg <= 9),
-                           _linear_map(pct_chg, 7, 8, 9, 2))
+                           _linear_map(pct_chg, 7, 10, 9, 3))
         signals["pct_chg"] = s_pct
 
         return signals
@@ -171,7 +171,7 @@ class MomentumFactor(BaseFactor):
             ("turnover", "换手活跃"),
             ("pct_chg", "温和启动"),
         ]
-        max_map = {"inflow": 30, "volume_ratio": 20, "turnover": 15, "pct_chg": 20}
+        max_map = {"inflow": 35, "volume_ratio": 25, "turnover": 15, "pct_chg": 25}
         threshold = self._LABEL_THRESHOLD_RATIO
 
         inflow_raw = df.get("inflow_rate", pd.Series(0, index=df.index))
@@ -216,7 +216,7 @@ class MomentumFactor(BaseFactor):
             return f"{code_str}.SH"
         elif code_str.startswith(("00", "30")):
             return f"{code_str}.SZ"
-        elif code_str.startswith(("4", "8", "92")):
+        elif code_str.startswith(("43", "83", "87", "92")):
             return f"{code_str}.BJ"
         return code_str
 
@@ -316,7 +316,7 @@ class MomentumFactor(BaseFactor):
     # Tier 2: 同花顺 akshare
     # ------------------------------------------------------------------
 
-    def _fetch_tier2_tonghuashun(self) -> Optional[pd.DataFrame]:
+    def _fetch_tier2_tonghuashun(self, trade_date: str) -> Optional[pd.DataFrame]:
         """akshare 同花顺个股资金流（即时），量比通过 DB 自算。"""
         import akshare as ak
 
@@ -329,7 +329,7 @@ class MomentumFactor(BaseFactor):
 
         # 量比自算：realtime_spot.volume × 240/elapsed / avg_5d_volume
         try:
-            result = self._compute_volume_ratio(result)
+            result = self._compute_volume_ratio(result, trade_date)
         except Exception as e:
             logger.warning("[MomentumFactor] Tier 2 量比自算失败，使用默认 1.0: %s", e)
 
@@ -375,7 +375,7 @@ class MomentumFactor(BaseFactor):
         result = result[~result.index.duplicated(keep="first")]
         return result
 
-    def _compute_volume_ratio(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _compute_volume_ratio(self, df: pd.DataFrame, trade_date: str) -> pd.DataFrame:
         """量比 = 当日预估全天量 / 过去5日均量。
 
         需要 realtime_spot（当日累计量）和 stock_daily（历史日量）。
@@ -394,16 +394,26 @@ class MomentumFactor(BaseFactor):
             return df
 
         # 获取 5 日均量（不含当日）
-        avg_vol = self._get_avg_volume(db)
+        avg_vol = self._get_avg_volume(db, trade_date)
         if avg_vol is None or avg_vol.empty:
             return df
 
-        # 裸代码列用于 merge
-        df["_code"] = [str(x).split(".")[0].zfill(6) for x in df.index]
-        spot_vol = spot[["volume"]].rename(columns={"volume": "today_vol"})
+        # 两边均归一化为裸 6 位代码，避免 index 格式不一致导致 merge 静默失败
+        def _bare(x):
+            return str(x).split(".")[0].strip().zfill(6)
 
-        merged = df.merge(spot_vol, left_on="_code", right_index=True, how="left")
-        merged = merged.merge(avg_vol.rename("avg_vol"), left_on="_code", right_index=True, how="left")
+        df["_code"] = [_bare(x) for x in df.index]
+
+        spot_vol = spot[["volume"]].copy()
+        spot_vol["_code"] = [_bare(x) for x in spot_vol.index]
+        spot_vol = spot_vol.rename(columns={"volume": "today_vol"})
+
+        merged = df.merge(spot_vol[["_code", "today_vol"]], on="_code", how="left")
+
+        avg_vol_df = avg_vol.reset_index()
+        avg_vol_df.columns = ["raw_code", "avg_vol"]
+        avg_vol_df["_code"] = [_bare(x) for x in avg_vol_df["raw_code"]]
+        merged = merged.merge(avg_vol_df[["_code", "avg_vol"]], on="_code", how="left")
 
         has_data = merged["today_vol"].notna() & (merged["avg_vol"] > 0)
         est_vol = merged["today_vol"] * (240.0 / elapsed)
@@ -419,12 +429,12 @@ class MomentumFactor(BaseFactor):
         return result
 
     @staticmethod
-    def _get_avg_volume(db, window: int = 5) -> Optional["pd.Series"]:
+    def _get_avg_volume(db, trade_date: str, window: int = 5) -> Optional["pd.Series"]:
         """获取每只股票过去 window 个交易日的日均成交量（股）。"""
         from datetime import timedelta
         from sqlalchemy import text
 
-        target = dt.now(ZoneInfo("Asia/Shanghai")).date()
+        target = dt.strptime(trade_date, "%Y%m%d").date()
         cutoff = target - timedelta(days=window + 3)
         with db.get_session() as s:
             rows = s.execute(
@@ -486,7 +496,7 @@ class MomentumFactor(BaseFactor):
         major_net = (buy_elg - sell_elg) + (buy_lg - sell_lg)
         lg_net = buy_lg - sell_lg
         total = buy_elg + sell_elg + buy_lg + sell_lg
-        inflow_rate = major_net / total.replace(0, 1)
+        inflow_rate = (major_net / total.replace(0, float("nan"))).fillna(0)
 
         df["major_net"] = major_net
         df["lg_net"] = lg_net

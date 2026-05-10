@@ -67,6 +67,7 @@ class TestInsiderBuyFactor:
     def test_recent_announcement_bonus(self, factor):
         """近期公告得分高于远期."""
         from datetime import datetime, timedelta
+        today = datetime.now().strftime("%Y%m%d")
         recent = (datetime.now() - timedelta(days=5)).strftime("%Y-%m-%d")
         old = (datetime.now() - timedelta(days=180)).strftime("%Y-%m-%d")
         df = _make_df(
@@ -74,19 +75,20 @@ class TestInsiderBuyFactor:
             add_ratio=[2.0, 2.0],
             announce_date=[recent, old],
         )
-        scores = factor.score(df)
+        scores = factor.score(df, trade_date=today)
         assert scores["A.SH"] > scores["B.SZ"]
 
     def test_very_old_no_recency(self, factor):
         """超过 90 天无时效加分."""
         from datetime import datetime, timedelta
+        today = datetime.now().strftime("%Y%m%d")
         old = (datetime.now() - timedelta(days=200)).strftime("%Y-%m-%d")
         df = _make_df(
             ["A.SH"],
             add_ratio=[2.0],
             announce_date=[old],
         )
-        signals = factor._compute_signals(df)
+        signals = factor._compute_signals(df, trade_date=today)
         assert signals["recency"].iloc[0] == 0.0
 
     def test_has_price_bonus(self, factor):

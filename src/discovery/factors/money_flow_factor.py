@@ -18,12 +18,10 @@ logger = logging.getLogger(__name__)
 def _bare_to_ts_code(codes: pd.Index) -> pd.Index:
     """将 6 位代码转为 ts_code 格式 (000001 → 000001.SZ)。"""
     codes = codes.astype(str).str.zfill(6)
-    suffix_map = {
-        "6": "SH", "9": "SH",
-        "0": "SZ", "1": "SZ", "2": "SZ", "3": "SZ", "5": "SZ",
-        "4": "BJ", "8": "BJ",
-    }
-    suffixes = codes.str[0].map(suffix_map).fillna("SZ")
+    pre2 = codes.str[:2]
+    suffixes = pd.Series("SZ", index=codes.index)
+    suffixes[pre2.isin(["60", "68"])] = "SH"
+    suffixes[pre2.isin(["43", "83", "87", "92"])] = "BJ"
     return codes + "." + suffixes
 
 
@@ -39,7 +37,10 @@ class MoneyFlowFactor(BaseFactor):
     available_intraday = False
     available_postmarket = True
     weight = 25.0
-    _LABEL_THRESHOLD = 5.0
+    _LABEL_THRESHOLD = 25.0
+    _STRONG = 0.75   # 百分位阈值：top 25% → 强势标签
+    _MODERATE = 0.55  # top 45% → 偏多标签
+    _WEAK = 0.25     # bottom 25% → 偏空标签
 
     def fetch_data(self, trade_date: str, **kwargs) -> Optional[pd.DataFrame]:
         """优先读 DB money_flow 表，无数据时回退 Tushare API。"""
@@ -140,6 +141,7 @@ class MoneyFlowFactor(BaseFactor):
             return reasons
 
         signals = self._compute_signals(df)
+        p100 = 100.0
 
         for ts_code in scores.index:
             if scores[ts_code] < self._LABEL_THRESHOLD:
@@ -150,19 +152,18 @@ class MoneyFlowFactor(BaseFactor):
             elg_pct = float(signals["elg_rate_pct"].get(ts_code, 0))
             lg_pct = float(signals["lg_rate_pct"].get(ts_code, 0))
 
-            if major_pct > 80:
+            # 主力净流：阈值由 _STRONG/_MODERATE/_WEAK 决定，与百分位打分对齐
+            if major_pct >= p100 * self._STRONG:
                 r.append(f"主力净流入率超{major_pct:.0f}%股票")
-            elif major_pct > 60:
+            elif major_pct >= p100 * self._MODERATE:
                 r.append("主力资金偏多")
-            elif major_pct < 20:
+            elif major_pct <= p100 * self._WEAK:
                 r.append("主力资金偏空")
-            elif major_pct < 40:
-                r.append("主力参与度偏低")
 
             # 特大单 vs 大单主导
-            if elg_pct > 70:
+            if elg_pct >= p100 * self._STRONG:
                 r.append("特大单主导")
-            elif lg_pct > 70 and elg_pct < 50:
+            elif lg_pct >= p100 * self._STRONG and elg_pct < p100 * self._MODERATE:
                 r.append("大单资金活跃")
 
             if signals["retail_trap"].get(ts_code, False):

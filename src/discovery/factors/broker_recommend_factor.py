@@ -38,23 +38,45 @@ class BrokerRecommendFactor(BaseFactor):
     _LABEL_THRESHOLD_RATIO = 0.5
 
     def fetch_data(self, trade_date: str, **kwargs) -> Optional[pd.DataFrame]:
-        """从本地 DB 获取当月券商金股推荐数据。
+        """获取当月券商金股推荐数据：优先 DB，无数据时降级 Tushare API。
 
         Args:
             trade_date: 交易日期 YYYYMMDD，用于推断目标月份
         """
         from src.storage import DatabaseManager
 
-        if len(trade_date) >= 6:
-            month = trade_date[:6]
+        trade_date_clean = str(trade_date).replace("-", "").strip()
+        if len(trade_date_clean) >= 6:
+            month = trade_date_clean[:6]
         else:
             month = date.today().strftime("%Y%m")
 
         db = DatabaseManager()
-        rows = db.get_broker_recommend_monthly(month)
-        if not rows:
-            logger.warning("[BrokerRecommend] 本地 DB 无 %s 月数据，请先执行 fetch", month)
+        try:
+            rows = db.get_broker_recommend_monthly(month)
+        except Exception as e:
+            logger.warning("[BrokerRecommend] DB 读取失败: %s", e)
             return None
+
+        # 无数据时尝试 Tushare API 兜底并自动落库
+        if not rows:
+            tushare_fetcher = kwargs.get("tushare_fetcher")
+            if tushare_fetcher is not None:
+                logger.info(
+                    "[BrokerRecommend] 本地 DB 无 %s 月数据，尝试 Tushare API 兜底", month
+                )
+                df_api = tushare_fetcher.get_broker_recommend(month)
+                if df_api is not None and not df_api.empty:
+                    try:
+                        db.save_broker_recommend_monthly(month, df_api.reset_index())
+                        rows = db.get_broker_recommend_monthly(month)
+                    except Exception as e:
+                        logger.warning("[BrokerRecommend] 落库/重读失败: %s", e)
+                        return None
+
+            if not rows:
+                logger.warning("[BrokerRecommend] %s 月数据不可用（DB+Tushare 均空）", month)
+                return None
 
         df = pd.DataFrame([{
             'ts_code': r.ts_code,
@@ -66,11 +88,19 @@ class BrokerRecommendFactor(BaseFactor):
         # 附加数据供 _compute_signals 使用
         df.attrs['month'] = month
 
-        broker_quality = self._load_broker_quality(db, month)
-        df.attrs['broker_quality'] = broker_quality
+        try:
+            broker_quality = self._load_broker_quality(db, month)
+            df.attrs['broker_quality'] = broker_quality
+        except Exception as e:
+            logger.warning("[BrokerRecommend] 加载券商质量失败: %s", e)
+            df.attrs['broker_quality'] = {}
 
-        consecutive = db.get_consecutive_monthly_stocks(month)
-        df.attrs['consecutive_stocks'] = {c['ts_code']: c for c in consecutive}
+        try:
+            consecutive = db.get_consecutive_monthly_stocks(month)
+            df.attrs['consecutive_stocks'] = {c['ts_code']: c for c in consecutive}
+        except Exception as e:
+            logger.warning("[BrokerRecommend] 加载连续推荐失败: %s", e)
+            df.attrs['consecutive_stocks'] = {}
 
         logger.info(
             "[BrokerRecommend] %s 月: %d 条推荐, %d 只股票, %d 家券商, %d 家有历史质量",

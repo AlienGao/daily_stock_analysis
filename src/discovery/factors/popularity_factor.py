@@ -116,10 +116,14 @@ class PopularityFactor(BaseFactor):
                 logger.warning("[PopularityFactor] 人气排行返回空数据")
                 return None
 
-            marks = [
-                ("0." + item["sc"][2:] if "SZ" in item["sc"] else "1." + item["sc"][2:])
-                for item in rank_data
-            ]
+            marks = []
+            for item in rank_data:
+                sc = item["sc"]
+                code = sc[2:] if len(sc) >= 3 else sc
+                if "BJ" in sc or "SZ" in sc:
+                    marks.append("0." + code)
+                else:
+                    marks.append("1." + code)
             secids = ",".join(marks) + "?v=08926209912590994"
             r2 = session.get(
                 "https://push2.eastmoney.com/api/qt/ulist.np/get",
@@ -136,17 +140,20 @@ class PopularityFactor(BaseFactor):
 
             rows = []
             for item in rank_data:
-                sc = item["sc"]
-                bare = sc[2:] if len(sc) >= 3 else sc
-                pinfo = price_data.get(bare, {})
-                rows.append({
-                    "ts_code": bare,
-                    "name": pinfo.get("f14", ""),
-                    "price": pd.to_numeric(pinfo.get("f2", 0), errors="coerce") or 0,
-                    "pct_chg": pd.to_numeric(pinfo.get("f3", 0), errors="coerce") or 0,
-                    "rank": int(item["rk"]),
-                    "rank_change": int(item.get("hrc", 0) or 0),
-                })
+                try:
+                    sc = item["sc"]
+                    bare = sc[2:] if len(sc) >= 3 else sc
+                    pinfo = price_data.get(bare, {})
+                    rows.append({
+                        "ts_code": bare,
+                        "name": pinfo.get("f14", ""),
+                        "price": pd.to_numeric(pinfo.get("f2", 0), errors="coerce") or 0,
+                        "pct_chg": pd.to_numeric(pinfo.get("f3", 0), errors="coerce") or 0,
+                        "rank": int(item["rk"]),
+                        "rank_change": int(item.get("hrc", 0) or 0),
+                    })
+                except (KeyError, ValueError, TypeError):
+                    pass
 
             df = pd.DataFrame(rows)
             df = df.set_index("ts_code")
@@ -193,7 +200,7 @@ class PopularityFactor(BaseFactor):
             if df is None or df.empty:
                 return None
 
-            out = pd.DataFrame()
+            out = pd.DataFrame(index=df.index)
             out["name"] = df.get("name", "")
             out["pct_chg"] = pd.to_numeric(df.get("pct_change", 0), errors="coerce").fillna(0)
             out["rank"] = pd.to_numeric(df.get("rank", 9999), errors="coerce").fillna(9999).astype(int)

@@ -6,7 +6,7 @@ A股自选股智能分析系统 - 搜索服务模块
 
 职责：
 1. 提供统一的新闻搜索接口
-2. 支持 Bocha、Tavily、Brave、SerpAPI、SearXNG 多种搜索引擎
+2. 支持 AkshareNews(东方财富)、Bocha、MiniMax、Tavily、Brave、SerpAPI、SearXNG 多种搜索引擎
 3. 多 Key 负载均衡和故障转移
 4. 搜索结果缓存和格式化
 """
@@ -861,16 +861,173 @@ class SerpAPISearchProvider(BaseSearchProvider):
         return f"【网页详情】\n{preview}"
 
 
+class AkshareNewsProvider(BaseSearchProvider):
+    """东方财富个股新闻 (stock_news_em API)。
+
+    绕过 akshare (curl_cffi SSL / pyarrow regex 兼容问题)，直接调 East Money
+    JSONP 接口获取个股新闻。无 API Key，不限量，中文 A 股新闻覆盖最佳。
+
+    API: https://search-api-web.eastmoney.com/search/jsonp
+    """
+
+    _API_URL = "https://search-api-web.eastmoney.com/search/jsonp"
+    _STOCK_CODE_RE = re.compile(r"(?<!\d)(\d{6})(?!\d)")
+
+    def __init__(self):
+        super().__init__([], "AkshareNews")
+
+    @property
+    def is_available(self) -> bool:
+        return True
+
+    def _get_next_key(self) -> Optional[str]:
+        return "akshare"
+
+    def search(
+        self,
+        query: str,
+        max_results: int = 5,
+        days: int = 7,
+        stock_code: Optional[str] = None,
+    ) -> SearchResponse:
+        return self._execute_search(
+            query,
+            max_results=max_results,
+            days=days,
+            stock_code=stock_code,
+        )
+
+    @classmethod
+    def _extract_stock_code(cls, query: str) -> Optional[str]:
+        if not query:
+            return None
+        m = cls._STOCK_CODE_RE.search(query)
+        return m.group(1) if m else None
+
+    @staticmethod
+    def _parse_jsonp(text: str) -> Optional[Dict[str, Any]]:
+        import json as _json
+
+        m = re.search(r"[jJ]Query\w*\((.*)\)\s*$", text, re.DOTALL)
+        if not m:
+            return None
+        try:
+            return _json.loads(m.group(1))
+        except (_json.JSONDecodeError, ValueError):
+            return None
+
+    @staticmethod
+    def _parse_eastmoney_date(date_str: str) -> Optional[str]:
+        if not date_str or not date_str.strip():
+            return None
+        try:
+            dt = datetime.strptime(date_str.strip(), "%Y-%m-%d %H:%M:%S")
+            return dt.strftime("%Y-%m-%d")
+        except ValueError:
+            return date_str.strip()
+
+    def _do_search(
+        self,
+        query: str,
+        api_key: str,
+        max_results: int,
+        days: int = 7,
+        stock_code: Optional[str] = None,
+    ) -> SearchResponse:
+        code = stock_code or self._extract_stock_code(query) or query.strip()
+        try:
+            import json as _json
+
+            params_obj = {
+                "uid": "",
+                "keyword": code,
+                "type": ["cmsArticleWebOld"],
+                "client": "web",
+                "clientType": "web",
+                "clientVersion": "curr",
+                "param": {
+                    "cmsArticleWebOld": {
+                        "searchScope": "default",
+                        "sort": "default",
+                        "pageIndex": 1,
+                        "pageSize": min(max_results, 20),
+                        "preTag": "<em>",
+                        "postTag": "</em>",
+                    }
+                },
+            }
+            params = {
+                "cb": "jQuery",
+                "param": _json.dumps(params_obj, ensure_ascii=False),
+            }
+            headers = {
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/91.0.4472.124 Safari/537.36"
+                ),
+                "Referer": "https://www.eastmoney.com/",
+            }
+
+            r = requests.get(self._API_URL, params=params, headers=headers, timeout=10)
+
+            if r.status_code != 200:
+                return SearchResponse(
+                    query=query, results=[], provider=self.name, success=False,
+                    error_message=f"East Money HTTP {r.status_code}",
+                )
+
+            data = self._parse_jsonp(r.text)
+            if data is None:
+                return SearchResponse(
+                    query=query, results=[], provider=self.name, success=False,
+                    error_message="JSONP parse failed",
+                )
+
+            articles = (data.get("result") or {}).get("cmsArticleWebOld") or []
+            results = []
+            for a in articles:
+                title = re.sub(r"</?em>", "", a.get("title", ""))
+                content = re.sub(r"</?em>", "", a.get("content", ""))
+                results.append(SearchResult(
+                    title=title,
+                    snippet=content[:500],
+                    url=a.get("code", ""),
+                    source=a.get("mediaName", "东方财富"),
+                    published_date=self._parse_eastmoney_date(a.get("date", "")),
+                ))
+
+            logger.info("[AkshareNews] keyword=%s → %d results", code, len(results))
+            return SearchResponse(query=query, results=results, provider=self.name, success=True)
+
+        except requests.exceptions.Timeout:
+            return SearchResponse(
+                query=query, results=[], provider=self.name, success=False,
+                error_message="East Money timeout",
+            )
+        except requests.exceptions.ConnectionError as e:
+            return SearchResponse(
+                query=query, results=[], provider=self.name, success=False,
+                error_message=f"East Money connection error: {e}",
+            )
+        except Exception as e:
+            logger.error("[AkshareNews] search error: %s", e, exc_info=True)
+            return SearchResponse(
+                query=query, results=[], provider=self.name, success=False,
+                error_message=str(e),
+            )
+
+
 class BochaSearchProvider(BaseSearchProvider):
     """
     博查搜索引擎
-    
+
     特点：
     - 专为AI优化的中文搜索API
     - 结果准确、摘要完整
     - 支持时间范围过滤和AI摘要
     - 兼容Bing Search API格式
-    
+
     文档：https://bocha-ai.feishu.cn/wiki/RXEOw02rFiwzGSkd9mUcqoeAnNK
     """
     
@@ -2127,6 +2284,7 @@ class SearchService:
         minimax_keys: Optional[List[str]] = None,
         searxng_base_urls: Optional[List[str]] = None,
         searxng_public_instances_enabled: bool = True,
+        akshare_news_enabled: bool = False,
         news_max_age_days: int = 3,
         news_strategy_profile: str = "short",
     ):
@@ -2142,6 +2300,7 @@ class SearchService:
             minimax_keys: MiniMax API Key 列表
             searxng_base_urls: SearXNG 实例地址列表（自建无配额兜底）
             searxng_public_instances_enabled: 未配置自建实例时，是否自动使用公共 SearXNG 实例
+            akshare_news_enabled: 启用东方财富个股新闻（免 API Key，最高优先级）
             news_max_age_days: 新闻最大时效（天）
             news_strategy_profile: 新闻窗口策略档位（ultra_short/short/medium/long）
         """
@@ -2166,6 +2325,7 @@ class SearchService:
 
         # 初始化搜索引擎（按优先级排序）
         # 优先级顺序（仅对有 key / 可用的 provider 生效，跳过未配置的）：
+        #   0. AkshareNews —— 东方财富 stock_news_em，免费不限量，A 股新闻覆盖最佳
         #   1. Bocha   —— 中文资讯+AI摘要，覆盖 A 股公告/研报最强
         #   2. MiniMax —— Coding Plan 结构化结果，对 A 股新闻覆盖良好
         #   3. Anspire —— 实时智能搜索，适合时效性场景
@@ -2173,6 +2333,11 @@ class SearchService:
         #   5. Brave   —— 隐私优先 + 全球覆盖
         #   6. SerpAPI —— Google 镜像，配额小作为补充
         #   7. SearXNG —— 自建/公共实例兜底，不消耗配额
+        # 0. AkshareNews (东方财富)
+        if akshare_news_enabled:
+            self._providers.append(AkshareNewsProvider())
+            logger.info("已配置 东方财富新闻搜索（免 API Key，最高优先级）")
+
         # 1. Bocha
         if bocha_keys:
             self._providers.append(BochaSearchProvider(bocha_keys))
@@ -2837,6 +3002,8 @@ class SearchService:
                             prefer_chinese=prefer_chinese,
                         )
                     )
+                elif isinstance(provider, AkshareNewsProvider):
+                    search_kwargs["stock_code"] = stock_code
 
                 response = provider.search(query, provider_max_results, days=search_days, **search_kwargs)
                 filtered_response = self._filter_news_response(
@@ -3161,6 +3328,13 @@ class SearchService:
                     max_results=provider_max_results,
                     days=search_days,
                     topic=dim['tavily_topic'],
+                )
+            elif isinstance(provider, AkshareNewsProvider):
+                response = provider.search(
+                    dim['query'],
+                    max_results=provider_max_results,
+                    days=search_days,
+                    stock_code=stock_code,
                 )
             else:
                 response = provider.search(

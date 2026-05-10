@@ -40,6 +40,7 @@ class SectorFactor(BaseFactor):
     def __init__(self):
         super().__init__()
         self._zt_pool_cache: Optional[pd.DataFrame] = None
+        self._zt_cache_trade_date: Optional[str] = None
         self._last_zt_slot: int = -1
         self.sector_map: Dict[str, str] = {}
         self._sector_history: Dict[str, tuple] = {}  # {sector: (mean_cnt, std_cnt, n_days)}
@@ -62,8 +63,9 @@ class SectorFactor(BaseFactor):
             if df is not None and not df.empty:
                 return df
 
-        # ── 奇数槽：复用缓存 ──
-        if self._zt_pool_cache is not None and not self._zt_pool_cache.empty:
+        # ── 奇数槽：复用缓存（仅当日有效）──
+        if (self._zt_pool_cache is not None and not self._zt_pool_cache.empty
+                and self._zt_cache_trade_date == trade_date):
             logger.debug("[SectorFactor] 复用涨停池缓存 (slot=%d)", slot)
             return self._zt_pool_cache
 
@@ -308,7 +310,6 @@ class SectorFactor(BaseFactor):
                 return None
 
             df = lp.reset_index().copy()
-            df.rename(columns={"index": "code"}, inplace=False)
 
             for _, row in df.iterrows():
                 code = str(row.get("code", "")).strip().zfill(6)
@@ -320,6 +321,7 @@ class SectorFactor(BaseFactor):
             df = self._with_ts_code_index(df)
 
             self._zt_pool_cache = df
+            self._zt_cache_trade_date = trade_date
             self._last_zt_slot = int(time.time() // 30)
 
             n_leader = len(df[df["limit_times"] >= 3]) if "limit_times" in df.columns else 0
@@ -366,13 +368,14 @@ class SectorFactor(BaseFactor):
             for _, row in df.iterrows():
                 code = str(row.get("code", "")).strip().zfill(6)
                 sec = str(row.get("sector", "")).strip()
-                if code and sec:
+                if code and sec and sec not in ("nan", ""):
                     self.sector_map[code] = sec
 
             df = df.set_index("code")
             df = self._with_ts_code_index(df)
 
             self._zt_pool_cache = df
+            self._zt_cache_trade_date = trade_date
             self._last_zt_slot = int(time.time() // 30)
 
             n_leader = len(df[df["limit_times"] >= 3])
@@ -398,7 +401,7 @@ class SectorFactor(BaseFactor):
                 new_index.append(f"{code_str}.SH")
             elif code_str.startswith(("00", "30")):
                 new_index.append(f"{code_str}.SZ")
-            elif code_str.startswith(("4", "8", "92")):
+            elif code_str.startswith(("43", "83", "87", "92")):
                 new_index.append(f"{code_str}.BJ")
             else:
                 new_index.append(code_str)

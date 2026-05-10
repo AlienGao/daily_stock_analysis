@@ -621,6 +621,7 @@ class StockDiscoveryEngine:
                 raw = factor.score(
                     factor_data[factor.name],
                     tushare_fetcher=self.tushare_fetcher,
+                    trade_date=trade_date,
                 )
                 if raw is not None and not raw.empty:
                     if raw.index.has_duplicates:
@@ -683,6 +684,7 @@ class StockDiscoveryEngine:
                     factor_data[factor.name],
                     raw_scores[factor.name],
                     tushare_fetcher=self.tushare_fetcher,
+                    trade_date=trade_date,
                 )
                 for ts_code, reasons in desc.items():
                     if ts_code not in all_reasons:

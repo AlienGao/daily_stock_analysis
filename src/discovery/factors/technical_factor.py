@@ -122,9 +122,9 @@ class TechnicalFactor(BaseFactor):
         boll_width = (boll_u - boll_l) / boll_m.abs().replace(0, 1.0)
         signals["boll_squeeze"] = _linear_map(boll_width, 0.3, 0, 0, 10).clip(0, 10)
 
-        # 6. BOLL 下轨支撑 (0-10)
+        # 6. BOLL 下轨支撑 (0-10)：价在下轨内方有效，破位得 0
         boll_range = (boll_u - boll_l).abs().replace(0, 1.0)
-        boll_pos = (close - boll_l) / boll_range
+        boll_pos = ((close - boll_l) / boll_range).clip(0, 1)
         signals["boll_support"] = _linear_map(boll_pos, 1, 0, 0, 10).clip(0, 10)
 
         # 7. 成交量活跃度 (0-10)：横截面百分位
@@ -136,10 +136,11 @@ class TechnicalFactor(BaseFactor):
 
         # 8. 放量+BOLL 下轨共振加成 (0-6)
         # 两者同时强势时几何加成，单边弱则压回
-        s_vol_norm = _pct_rank(vol[vol_pos]) if vol_pos.any() else zeros
+        # s_vol_norm 对齐到全量 index，避免停牌股（vol=0）产生 NaN
+        s_vol_norm = _pct_rank(vol[vol_pos]).reindex(idx, fill_value=0) if vol_pos.any() else zeros
         boll_sup_norm = (_linear_map(boll_pos, 1, 0, 0, 1).clip(0, 1)
                          if vol_pos.any() else zeros)
-        signals["vol_boll_bonus"] = (s_vol_norm * boll_sup_norm * 6.0).clip(0, 6)
+        signals["vol_boll_bonus"] = (s_vol_norm * boll_sup_norm * 6.0).fillna(0).clip(0, 6)
 
         # 9. CCI 超卖 (0-15)
         signals["cci"] = _linear_map(cci.clip(upper=-100), -200, 15, -100, 0).clip(0, 15)

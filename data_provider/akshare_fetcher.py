@@ -1831,6 +1831,19 @@ class AkshareFetcher(BaseFetcher):
             elif "代码" in df.columns:
                 df = df.rename(columns={"代码": "ts_code"})
 
+            # 中文列名 → 英文统一列名
+            _INST_COL_MAP = {
+                "机构数": "inst_count",
+                "机构数变化": "inst_count_change",
+                "持股比例": "hold_ratio",
+                "持股比例增幅": "hold_ratio_change",
+                "占流通股比例": "circulate_ratio",
+                "占流通股比例增幅": "circulate_ratio_change",
+            }
+            existing = {k: v for k, v in _INST_COL_MAP.items() if k in df.columns}
+            if existing:
+                df = df.rename(columns=existing)
+
             if "ts_code" in df.columns:
                 df = df.set_index("ts_code")
             elif df.index.name is None:
@@ -1872,35 +1885,72 @@ class AkshareFetcher(BaseFetcher):
             logger.warning(f"[Akshare] 获取盈利预测失败: {e}")
             return None
 
-    def get_performance_report(self) -> Optional[pd.DataFrame]:
-        """业绩报表数据（季报/年报）"""
+    # Column mapping: akshare Chinese → English
+    _YJBB_COLUMN_MAP = {
+        "股票代码": "code",
+        "股票简称": "name",
+        "每股收益": "eps",
+        "营业总收入-营业总收入": "total_revenue",
+        "营业总收入-同比增长": "revenue_yoy",
+        "营业总收入-季度环比增长": "revenue_qoq",
+        "净利润-净利润": "net_profit",
+        "净利润-同比增长": "net_profit_yoy",
+        "净利润-季度环比增长": "net_profit_qoq",
+        "每股净资产": "bps",
+        "净资产收益率": "roe",
+        "每股经营现金流量": "ocf_per_share",
+        "销售毛利率": "gross_margin",
+        "所处行业": "industry",
+        "最新公告日期": "report_date",
+    }
+
+    def get_performance_report(self, date: Optional[str] = None) -> Optional[pd.DataFrame]:
+        """业绩报表数据（季报/年报）。
+
+        Args:
+            date: 报告期如 "20251231"，不传则返回最新一期。
+        """
         import akshare as ak
 
         try:
             self._set_random_user_agent()
             self._enforce_rate_limit()
 
-            # 默认获取最近一期财报
-            df = ak.stock_yjbb_em(symbol="")
+            if date:
+                df = ak.stock_yjbb_em(date=date)
+            else:
+                df = ak.stock_yjbb_em()
             if df is None or df.empty:
                 return None
 
-            if "股票代码" in df.columns:
-                df = df.rename(columns={"股票代码": "ts_code"})
-            elif "代码" in df.columns:
-                df = df.rename(columns={"代码": "ts_code"})
+            # Map Chinese columns to English, drop non-mapped columns
+            df = df.rename(columns=self._YJBB_COLUMN_MAP)
+            keep_cols = [c for c in self._YJBB_COLUMN_MAP.values() if c in df.columns]
+            df = df[keep_cols]
 
-            if "ts_code" in df.columns:
-                df = df.set_index("ts_code")
-            elif df.index.name is None:
-                first_col = df.columns[0]
-                df = df.set_index(first_col)
-                df.index.name = "ts_code"
+            # Clean code: strip and ensure 6-digit
+            if "code" in df.columns:
+                df["code"] = df["code"].astype(str).str.strip().str.zfill(6)
+                df = df.set_index("code")
+
+            # Convert numeric columns
+            numeric_cols = [
+                "eps", "total_revenue", "revenue_yoy", "revenue_qoq",
+                "net_profit", "net_profit_yoy", "net_profit_qoq",
+                "bps", "roe", "ocf_per_share", "gross_margin",
+            ]
+            for c in numeric_cols:
+                if c in df.columns:
+                    df[c] = pd.to_numeric(df[c], errors="coerce")
 
             return df
         except Exception as e:
             logger.warning(f"[Akshare] 获取业绩报表失败: {e}")
             return None
+
+    def get_performance_report_quarter(self, quarter: str) -> Optional[pd.DataFrame]:
+        """获取指定季度业绩报表。quarter 格式: \"20251231\"。"""
+        return self.get_performance_report(date=quarter)
 
     def get_buyback_data(self) -> Optional[pd.DataFrame]:
         """股票回购数据"""

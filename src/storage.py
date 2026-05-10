@@ -1053,6 +1053,70 @@ class InstitutionSurvey(Base):
         }
 
 
+class InstitutionHold(Base):
+    """机构持仓季度汇总 (akshare stock_institute_hold 落库)。
+
+    按 (code, quarter) 唯一，存储每季度机构持股汇总数据。
+    quarter 由刷新时的系统日期推导（如 '2025Q1'），非 API 直接返回。
+    """
+
+    __tablename__ = 'institution_hold'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(10), nullable=False, index=True)
+    quarter = Column(String(6), nullable=False, index=True)
+    name = Column(String(50))
+    inst_count = Column(Integer)
+    inst_count_change = Column(Integer)
+    hold_ratio = Column(Float)
+    hold_ratio_change = Column(Float)
+    circulate_ratio = Column(Float)
+    circulate_ratio_change = Column(Float)
+    source = Column(String(20))
+    updated_at = Column(DateTime, default=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('code', 'quarter', name='uix_institution_hold_code_quarter'),
+        Index('ix_institution_hold_quarter', 'quarter'),
+    )
+
+    def __repr__(self) -> str:
+        return (f"<InstitutionHold(code={self.code}, quarter={self.quarter}, "
+                f"count={self.inst_count})>")
+
+
+class Repurchase(Base):
+    """股票回购数据 (Tushare repurchase, doc_id 124 落库)。
+
+    按 (ts_code, ann_date) 唯一，存储上市公司回购公告明细。
+    """
+
+    __tablename__ = 'repurchase'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    ts_code = Column(String(12), nullable=False, index=True)
+    ann_date = Column(String(8), nullable=False, index=True)
+    end_date = Column(String(8))
+    proc = Column(String(50))
+    exp_date = Column(String(8))
+    vol = Column(Float)
+    amount = Column(Float)
+    high_limit = Column(Float)
+    low_limit = Column(Float)
+    source = Column(String(20))
+    updated_at = Column(DateTime, default=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('ts_code', 'ann_date',
+                         name='uix_repurchase_ts_code_ann_date'),
+        Index('ix_repurchase_ann_date', 'ann_date'),
+    )
+
+    def __repr__(self) -> str:
+        return (f"<Repurchase(ts_code={self.ts_code}, ann_date={self.ann_date}, "
+                f"proc={self.proc})>")
+
+
 class ScanResultIntraday(Base):
     """盘中扫描全量结果（每轮覆盖当日全市场股票评分）。
 
@@ -1270,6 +1334,70 @@ class BrokerEnrichmentCyqPerf(Base):
         }
 
 
+class ProfitForecast(Base):
+    """盈利预测快照 (akshare stock_profit_forecast_em 落库)。
+
+    按 (trade_date, ts_code) 唯一，每次刷新全量覆盖当日数据。
+    """
+
+    __tablename__ = 'profit_forecast'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    trade_date = Column(String(8), nullable=False, index=True)
+    ts_code = Column(String(12), nullable=False, index=True)
+    name = Column(String(50))
+    report_count = Column(Integer)
+    buy_count = Column(Integer)
+    add_count = Column(Integer)
+    neutral_count = Column(Integer)
+    reduce_count = Column(Integer)
+    sell_count = Column(Integer)
+    eps_2025 = Column(Float)
+    eps_2026 = Column(Float)
+    eps_2027 = Column(Float)
+    eps_2028 = Column(Float)
+    updated_at = Column(DateTime, default=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('trade_date', 'ts_code', name='uix_pf_date_code'),
+        Index('ix_pf_trade_date', 'trade_date'),
+    )
+
+
+class PerformanceReport(Base):
+    """业绩报表快照（akshare stock_yjbb_em 按季度落库）。
+
+    按 (code, report_period) 唯一，每次刷新全量覆盖该季度数据。
+    """
+
+    __tablename__ = 'performance_report'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(10), nullable=False, index=True)
+    name = Column(String(50))
+    report_period = Column(String(8), nullable=False, index=True)
+    report_date = Column(String(10))
+    eps = Column(Float)
+    total_revenue = Column(Float)
+    revenue_yoy = Column(Float)
+    revenue_qoq = Column(Float)
+    net_profit = Column(Float)
+    net_profit_yoy = Column(Float)
+    net_profit_qoq = Column(Float)
+    bps = Column(Float)
+    roe = Column(Float)
+    ocf_per_share = Column(Float)
+    gross_margin = Column(Float)
+    industry = Column(String(50))
+    source = Column(String(20))
+    updated_at = Column(DateTime, default=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('code', 'report_period', name='uix_pr_code_period'),
+        Index('ix_pr_report_period', 'report_period'),
+    )
+
+
 class DatabaseManager:
     """
     数据库管理器 - 单例模式
@@ -1349,6 +1477,7 @@ class DatabaseManager:
         self._ensure_popularity_rank_table()
         self._ensure_cyq_perf_table()
         self._ensure_insider_buy_table()
+        self._ensure_performance_report_table()
         self._ensure_stock_daily_date_index()
 
         self._initialized = True
@@ -1570,6 +1699,26 @@ class DatabaseManager:
             logger.info("已创建表 insider_buy")
         except Exception as exc:
             logger.warning("创建 insider_buy 失败: %s", exc)
+
+    def _ensure_performance_report_table(self) -> None:
+        """SQLite: create performance_report if missing."""
+        if not self._is_sqlite_engine:
+            return
+        try:
+            with self._engine.connect() as conn:
+                rows = conn.execute(
+                    text("SELECT name FROM sqlite_master WHERE type='table' AND name='performance_report'")
+                ).fetchall()
+            if rows:
+                return
+        except Exception as exc:
+            logger.warning("检查 performance_report 表存在性失败: %s", exc)
+            return
+        try:
+            PerformanceReport.__table__.create(self._engine)
+            logger.info("已创建表 performance_report")
+        except Exception as exc:
+            logger.warning("创建 performance_report 失败: %s", exc)
 
     def _ensure_limit_up_history_table(self) -> None:
         """SQLite: create limit_up_history if missing."""
@@ -1799,8 +1948,11 @@ class DatabaseManager:
         # 裸代码 → ts_code
         def _bare_to_ts(codes):
             codes = codes.astype(str).str.zfill(6)
-            sfx = {"6": "SH", "9": "SH", "0": "SZ", "1": "SZ", "2": "SZ", "3": "SZ", "5": "SZ", "4": "BJ", "8": "BJ"}
-            return codes + "." + codes.str[0].map(sfx).fillna("SZ")
+            pre2 = codes.str[:2]
+            sfx = pd.Series("SZ", index=codes.index)
+            sfx[pre2.isin(["60", "68"])] = "SH"
+            sfx[pre2.isin(["43", "83", "87", "92"])] = "BJ"
+            return codes + "." + sfx
         df["ts_code"] = _bare_to_ts(df["code"])
         df = df.set_index("ts_code")
         # 列名映射: DB close_qfq → factor 期望的 close
@@ -2652,11 +2804,42 @@ class DatabaseManager:
             return 0
 
         def _write(session: Session) -> int:
+            # 可空字段：新值为 None/NaN 时保留 DB 已有值，防止不同槽数据源互相覆盖
+            _NULLABLE_KEYS = {"turnover_rate", "volume_ratio", "pct_chg"}
+
+            def _is_null(v: Any) -> bool:
+                if v is None:
+                    return True
+                try:
+                    return bool(pd.isna(v)) if hasattr(v, "__float__") else False
+                except (TypeError, ValueError):
+                    return False
+
             if self._is_sqlite_engine:
                 _CHUNK = 100
                 for i in range(0, len(records), _CHUNK):
                     chunk = records[i : i + _CHUNK]
-                    stmt = sqlite_insert(RealtimeSpot).values(chunk)
+                    codes_in_chunk = [r["code"] for r in chunk]
+                    existing_rows = session.execute(
+                        select(RealtimeSpot.code, RealtimeSpot.turnover_rate,
+                               RealtimeSpot.volume_ratio, RealtimeSpot.pct_chg)
+                        .where(RealtimeSpot.code.in_(codes_in_chunk))
+                    ).fetchall()
+                    existing_map = {row.code: row for row in existing_rows}
+
+                    clean_chunk = []
+                    for rec in chunk:
+                        ex = existing_map.get(rec["code"])
+                        clean = dict(rec)
+                        if ex is not None:
+                            for key in _NULLABLE_KEYS:
+                                if _is_null(clean.get(key)):
+                                    clean[key] = ex.turnover_rate if key == "turnover_rate" else (
+                                        ex.volume_ratio if key == "volume_ratio" else ex.pct_chg
+                                    )
+                        clean_chunk.append(clean)
+
+                    stmt = sqlite_insert(RealtimeSpot).values(clean_chunk)
                     excluded = stmt.excluded
                     session.execute(
                         stmt.on_conflict_do_update(
@@ -2699,7 +2882,10 @@ class DatabaseManager:
                         for key in ("name", "price", "pct_chg", "pre_close",
                                      "high", "open_price", "low", "volume", "amount",
                                      "turnover_rate", "volume_ratio", "trade_date", "source", "slot"):
-                            setattr(ent, key, rec[key])
+                            new_val = rec[key]
+                            if key in _NULLABLE_KEYS and _is_null(new_val):
+                                continue  # 保留 DB 已有值
+                            setattr(ent, key, new_val)
                         ent.updated_at = now
                 return new_count
 
@@ -3074,6 +3260,25 @@ class DatabaseManager:
                 "sector": r.sector, "source": r.source, "slot": r.slot,
             } for r in rows])
             return df.set_index("code")
+
+    def get_limit_pool_seal_times(self, trade_date: str) -> Dict[str, tuple]:
+        """获取指定日期已存储的封板时间。
+
+        Returns:
+            {code: (first_seal_time, last_seal_time)}，仅返回有值的记录
+        """
+        with self.get_session() as session:
+            rows = session.execute(
+                select(LimitPool.code, LimitPool.first_seal_time, LimitPool.last_seal_time)
+                .where(
+                    and_(
+                        LimitPool.trade_date == trade_date,
+                        LimitPool.first_seal_time.isnot(None),
+                        LimitPool.first_seal_time != "",
+                    )
+                )
+            ).fetchall()
+            return {r[0]: (r[1], r[2]) for r in rows}
 
     # ------------------------------------------------------------------
     # LimitUpHistory CRUD
@@ -3851,12 +4056,11 @@ class DatabaseManager:
 
         def _bare_to_ts(codes: pd.Series) -> pd.Series:
             codes = codes.astype(str).str.zfill(6)
-            sfx = {
-                "6": "SH", "9": "SH",
-                "0": "SZ", "1": "SZ", "2": "SZ", "3": "SZ", "5": "SZ",
-                "4": "BJ", "8": "BJ",
-            }
-            return codes + "." + codes.str[0].map(sfx).fillna("SZ")
+            pre2 = codes.str[:2]
+            sfx = pd.Series("SZ", index=codes.index)
+            sfx[pre2.isin(["60", "68"])] = "SH"
+            sfx[pre2.isin(["43", "83", "87", "92"])] = "BJ"
+            return codes + "." + sfx
 
         df["ts_code"] = _bare_to_ts(df["code"])
         return df.drop(columns=["code"]).set_index("ts_code")
@@ -4161,10 +4365,625 @@ class DatabaseManager:
                 "add_ratio": r.add_ratio, "hold_shares": r.hold_shares,
                 "hold_ratio": r.hold_ratio,
             } for r in rows])
-            # 同一股票多条事件时取最新的一条
-            df = df.sort_values("announce_date", ascending=False)
-            df = df.drop_duplicates(subset="ts_code", keep="first")
+            # 保留全部事件，由调用方 _aggregate() 统一处理多事件聚合
             return df.set_index("ts_code")
+
+    # ------------------------------------------------------------------
+    # Institution Hold (机构持仓季度数据)
+
+    def _derive_current_quarter(self) -> str:
+        """根据系统日期推导当前财报季度。
+
+        假设季报在季度结束后约 1-2 个月陆续披露，因此：
+        - 1-3 月 → 上一年 Q4
+        - 4-6 月 → 当年 Q1
+        - 7-9 月 → 当年 Q2
+        - 10-12 月 → 当年 Q3
+        """
+        now = datetime.now()
+        y, m = now.year, now.month
+        if m <= 3:
+            return f"{y - 1}Q4"
+        elif m <= 6:
+            return f"{y}Q1"
+        elif m <= 9:
+            return f"{y}Q2"
+        else:
+            return f"{y}Q3"
+
+    def has_institution_hold_quarter(self, quarter: str) -> bool:
+        """检查指定季度是否已有机构持仓数据。"""
+        with self.get_session() as session:
+            try:
+                count = session.execute(
+                    select(InstitutionHold).where(
+                        InstitutionHold.quarter == quarter
+                    ).limit(1)
+                ).scalar_one_or_none()
+                return count is not None
+            except Exception as e:
+                logger.debug("[DB] has_institution_hold_quarter 失败: %s", e)
+                return False
+
+    def get_latest_institution_hold(self) -> pd.DataFrame:
+        """获取最新季度的机构持仓数据，返回 DataFrame (index=code)。"""
+        with self.get_session() as session:
+            try:
+                latest_q = session.execute(
+                    select(InstitutionHold.quarter).order_by(
+                        InstitutionHold.quarter.desc()
+                    ).limit(1)
+                ).scalar_one_or_none()
+                if not latest_q:
+                    return pd.DataFrame()
+
+                rows = session.execute(
+                    select(InstitutionHold).where(
+                        InstitutionHold.quarter == latest_q
+                    )
+                ).scalars().all()
+
+                if not rows:
+                    return pd.DataFrame()
+
+                return pd.DataFrame([{
+                    "code": r.code, "name": r.name,
+                    "inst_count": r.inst_count,
+                    "inst_count_change": r.inst_count_change,
+                    "hold_ratio": r.hold_ratio,
+                    "hold_ratio_change": r.hold_ratio_change,
+                    "circulate_ratio": r.circulate_ratio,
+                    "circulate_ratio_change": r.circulate_ratio_change,
+                    "quarter": r.quarter,
+                } for r in rows]).set_index("code")
+            except Exception as e:
+                logger.warning("[DB] get_latest_institution_hold 失败: %s", e)
+                return pd.DataFrame()
+
+    def get_institution_hold_for_quarters(
+        self, quarters: List[str]
+    ) -> pd.DataFrame:
+        """获取指定季度的机构持仓数据，返回 DataFrame (index=code)。"""
+        if not quarters:
+            return pd.DataFrame()
+        with self.get_session() as session:
+            try:
+                rows = session.execute(
+                    select(InstitutionHold).where(
+                        InstitutionHold.quarter.in_(quarters)
+                    )
+                ).scalars().all()
+                if not rows:
+                    return pd.DataFrame()
+                return pd.DataFrame([{
+                    "code": r.code, "name": r.name,
+                    "inst_count": r.inst_count,
+                    "inst_count_change": r.inst_count_change,
+                    "hold_ratio": r.hold_ratio,
+                    "hold_ratio_change": r.hold_ratio_change,
+                    "circulate_ratio": r.circulate_ratio,
+                    "circulate_ratio_change": r.circulate_ratio_change,
+                    "quarter": r.quarter,
+                } for r in rows]).set_index("code")
+            except Exception as e:
+                logger.warning("[DB] get_institution_hold_for_quarters 失败: %s", e)
+                return pd.DataFrame()
+
+    def upsert_institution_hold(
+        self, df: pd.DataFrame, quarter: str, source: str = "akshare"
+    ) -> int:
+        """upsert 机构持仓 by (code, quarter)。"""
+        if df is None or df.empty:
+            return 0
+
+        now = datetime.now()
+        records: List[Dict[str, Any]] = []
+        for _, row in df.iterrows():
+            code = str(row.get("code", row.name) if "code" in df.columns else row.name).strip()
+            if not code:
+                continue
+            records.append({
+                "code": code,
+                "quarter": quarter,
+                "name": str(row.get("name", ""))[:50] if row.get("name") else "",
+                "inst_count": int(row.get("inst_count", 0)) if pd.notna(row.get("inst_count")) else 0,
+                "inst_count_change": int(row.get("inst_count_change", 0)) if pd.notna(row.get("inst_count_change")) else 0,
+                "hold_ratio": self._normalize_sql_value(row.get("hold_ratio")),
+                "hold_ratio_change": self._normalize_sql_value(row.get("hold_ratio_change")),
+                "circulate_ratio": self._normalize_sql_value(row.get("circulate_ratio")),
+                "circulate_ratio_change": self._normalize_sql_value(row.get("circulate_ratio_change")),
+                "source": source,
+                "updated_at": now,
+            })
+
+        if not records:
+            return 0
+
+        def _write(session: Session) -> int:
+            if self._is_sqlite_engine:
+                _CHUNK = 200
+                for i in range(0, len(records), _CHUNK):
+                    chunk = records[i : i + _CHUNK]
+                    stmt = sqlite_insert(InstitutionHold).values(chunk)
+                    excluded = stmt.excluded
+                    session.execute(
+                        stmt.on_conflict_do_update(
+                            index_elements=["code", "quarter"],
+                            set_={
+                                "name": excluded.name,
+                                "inst_count": excluded.inst_count,
+                                "inst_count_change": excluded.inst_count_change,
+                                "hold_ratio": excluded.hold_ratio,
+                                "hold_ratio_change": excluded.hold_ratio_change,
+                                "circulate_ratio": excluded.circulate_ratio,
+                                "circulate_ratio_change": excluded.circulate_ratio_change,
+                                "source": excluded.source,
+                                "updated_at": excluded.updated_at,
+                            },
+                        )
+                    )
+                return len(records)
+            else:
+                new_count = 0
+                for rec in records:
+                    ent = session.execute(
+                        select(InstitutionHold).where(
+                            and_(InstitutionHold.code == rec["code"],
+                                 InstitutionHold.quarter == rec["quarter"])
+                        )
+                    ).scalar_one_or_none()
+                    if ent is None:
+                        session.add(InstitutionHold(**rec))
+                        new_count += 1
+                    else:
+                        for key in ("name", "inst_count", "inst_count_change",
+                                     "hold_ratio", "hold_ratio_change",
+                                     "circulate_ratio", "circulate_ratio_change"):
+                            setattr(ent, key, rec[key])
+                        ent.source = source
+                        ent.updated_at = now
+                return new_count
+
+        try:
+            saved = self._run_write_transaction("upsert_institution_hold", _write)
+            logger.debug("[DB] upsert_institution_hold quarter=%s: %d 条", quarter, saved)
+            return saved
+        except Exception as e:
+            logger.error("[DB] upsert_institution_hold 失败: %s", e)
+            raise
+
+    # ------------------------------------------------------------------
+    # 业绩报表数据
+    # ------------------------------------------------------------------
+
+    def get_performance_report(self, report_period: str) -> pd.DataFrame:
+        """获取指定报告期的业绩报表，返回 DataFrame (index=code)。"""
+        with self.get_session() as session:
+            stmt = select(PerformanceReport).where(
+                PerformanceReport.report_period == report_period
+            )
+            rows = session.execute(stmt).scalars().all()
+            if not rows:
+                return pd.DataFrame()
+            df = pd.DataFrame([{
+                "code": r.code, "name": r.name,
+                "report_period": r.report_period, "report_date": r.report_date,
+                "eps": r.eps, "total_revenue": r.total_revenue,
+                "revenue_yoy": r.revenue_yoy, "revenue_qoq": r.revenue_qoq,
+                "net_profit": r.net_profit, "net_profit_yoy": r.net_profit_yoy,
+                "net_profit_qoq": r.net_profit_qoq, "bps": r.bps,
+                "roe": r.roe, "ocf_per_share": r.ocf_per_share,
+                "gross_margin": r.gross_margin, "industry": r.industry,
+                "source": r.source,
+            } for r in rows])
+            if not df.empty:
+                df = df.set_index("code")
+            return df
+
+    def get_performance_report_multi_period(
+        self, codes: List[str], periods: List[str]
+    ) -> pd.DataFrame:
+        """获取多只股票在多个报告期的数据，返回 DataFrame (index=code, columns=period-prefixed)。"""
+        with self.get_session() as session:
+            stmt = select(PerformanceReport).where(
+                and_(
+                    PerformanceReport.code.in_(codes),
+                    PerformanceReport.report_period.in_(periods),
+                )
+            )
+            rows = session.execute(stmt).scalars().all()
+            if not rows:
+                return pd.DataFrame()
+
+            records = []
+            for r in rows:
+                records.append({
+                    "code": r.code, "report_period": r.report_period,
+                    "net_profit_yoy": r.net_profit_yoy,
+                    "revenue_yoy": r.revenue_yoy,
+                    "roe": r.roe, "gross_margin": r.gross_margin,
+                    "eps": r.eps, "industry": r.industry,
+                })
+
+            df = pd.DataFrame(records)
+            # Pivot to wide format: one row per code, columns like 20251231_net_profit_yoy
+            pivoted = df.pivot(index="code", columns="report_period")
+            # Flatten multi-level columns: net_profit_yoy_20251231
+            pivoted.columns = [f"{col[1]}_{col[0]}" for col in pivoted.columns]
+            return pivoted
+
+    def upsert_performance_report(
+        self, df: pd.DataFrame, report_period: str, source: str = "akshare"
+    ) -> int:
+        """upsert 业绩报表 by (code, report_period)。"""
+        if df is None or df.empty:
+            return 0
+
+        now = datetime.now()
+        records: List[Dict[str, Any]] = []
+        for idx, row in df.iterrows():
+            code = str(idx).strip()
+            if not code:
+                continue
+            records.append({
+                "code": code,
+                "name": str(row.get("name", ""))[:50] if pd.notna(row.get("name")) else "",
+                "report_period": report_period,
+                "report_date": str(row.get("report_date", ""))[:10] if pd.notna(row.get("report_date")) else "",
+                "eps": self._normalize_sql_value(row.get("eps")),
+                "total_revenue": self._normalize_sql_value(row.get("total_revenue")),
+                "revenue_yoy": self._normalize_sql_value(row.get("revenue_yoy")),
+                "revenue_qoq": self._normalize_sql_value(row.get("revenue_qoq")),
+                "net_profit": self._normalize_sql_value(row.get("net_profit")),
+                "net_profit_yoy": self._normalize_sql_value(row.get("net_profit_yoy")),
+                "net_profit_qoq": self._normalize_sql_value(row.get("net_profit_qoq")),
+                "bps": self._normalize_sql_value(row.get("bps")),
+                "roe": self._normalize_sql_value(row.get("roe")),
+                "ocf_per_share": self._normalize_sql_value(row.get("ocf_per_share")),
+                "gross_margin": self._normalize_sql_value(row.get("gross_margin")),
+                "industry": str(row.get("industry", ""))[:50] if pd.notna(row.get("industry")) else "",
+                "source": source,
+                "updated_at": now,
+            })
+
+        if not records:
+            return 0
+
+        def _write(session: Session) -> int:
+            if self._is_sqlite_engine:
+                _CHUNK = 200
+                for i in range(0, len(records), _CHUNK):
+                    chunk = records[i : i + _CHUNK]
+                    stmt = sqlite_insert(PerformanceReport).values(chunk)
+                    excluded = stmt.excluded
+                    session.execute(
+                        stmt.on_conflict_do_update(
+                            index_elements=["code", "report_period"],
+                            set_={
+                                "name": excluded.name,
+                                "report_date": excluded.report_date,
+                                "eps": excluded.eps,
+                                "total_revenue": excluded.total_revenue,
+                                "revenue_yoy": excluded.revenue_yoy,
+                                "revenue_qoq": excluded.revenue_qoq,
+                                "net_profit": excluded.net_profit,
+                                "net_profit_yoy": excluded.net_profit_yoy,
+                                "net_profit_qoq": excluded.net_profit_qoq,
+                                "bps": excluded.bps,
+                                "roe": excluded.roe,
+                                "ocf_per_share": excluded.ocf_per_share,
+                                "gross_margin": excluded.gross_margin,
+                                "industry": excluded.industry,
+                                "source": excluded.source,
+                                "updated_at": excluded.updated_at,
+                            },
+                        )
+                    )
+                return len(records)
+            else:
+                codes = [r["code"] for r in records]
+                existing = {}
+                for row in session.execute(
+                    select(PerformanceReport).where(
+                        and_(
+                            PerformanceReport.code.in_(codes),
+                            PerformanceReport.report_period == report_period,
+                        )
+                    )
+                ).scalars().all():
+                    existing[(row.code, row.report_period)] = row
+                new_count = 0
+                for rec in records:
+                    ent = existing.get((rec["code"], rec["report_period"]))
+                    if ent is None:
+                        session.add(PerformanceReport(**rec))
+                        new_count += 1
+                    else:
+                        for key in ("name", "report_date", "eps", "total_revenue",
+                                     "revenue_yoy", "revenue_qoq", "net_profit",
+                                     "net_profit_yoy", "net_profit_qoq", "bps",
+                                     "roe", "ocf_per_share", "gross_margin",
+                                     "industry", "source"):
+                            setattr(ent, key, rec[key])
+                        ent.updated_at = now
+                return new_count
+
+        try:
+            saved = self._run_write_transaction("upsert_performance_report", _write)
+            logger.debug(
+                "[DB] upsert_performance_report period=%s: %d 条 (source=%s)",
+                report_period, saved, source,
+            )
+            return saved
+        except Exception as e:
+            logger.error("[DB] upsert_performance_report 失败: %s", e)
+            raise
+
+    # ------------------------------------------------------------------
+    # 回购数据
+    # ------------------------------------------------------------------
+
+    def has_repurchase_data(self, ann_date: str) -> bool:
+        """检查指定公告日期之后是否有回购数据。"""
+        with self.get_session() as session:
+            try:
+                count = session.execute(
+                    select(Repurchase).where(
+                        Repurchase.ann_date >= ann_date
+                    ).limit(1)
+                ).scalar_one_or_none()
+                return count is not None
+            except Exception as e:
+                logger.debug("[DB] has_repurchase_data 失败: %s", e)
+                return False
+
+    def get_repurchase_recent(
+        self, ann_date_from: Optional[str] = None
+    ) -> pd.DataFrame:
+        """获取近期回购数据，返回 DataFrame (index=ts_code)。
+
+        默认取最近 90 天的公告数据。
+        """
+        with self.get_session() as session:
+            try:
+                stmt = select(Repurchase)
+                if ann_date_from:
+                    stmt = stmt.where(Repurchase.ann_date >= ann_date_from)
+                stmt = stmt.order_by(Repurchase.ann_date.desc())
+                rows = session.execute(stmt).scalars().all()
+                if not rows:
+                    return pd.DataFrame()
+                return pd.DataFrame([{
+                    "ts_code": r.ts_code,
+                    "ann_date": r.ann_date,
+                    "end_date": r.end_date,
+                    "proc": r.proc,
+                    "exp_date": r.exp_date,
+                    "vol": r.vol,
+                    "amount": r.amount,
+                    "high_limit": r.high_limit,
+                    "low_limit": r.low_limit,
+                } for r in rows]).set_index("ts_code")
+            except Exception as e:
+                logger.warning("[DB] get_repurchase_recent 失败: %s", e)
+                return pd.DataFrame()
+
+    def upsert_repurchase(
+        self, df: pd.DataFrame, source: str = "tushare"
+    ) -> int:
+        """upsert 回购数据 by (ts_code, ann_date)。"""
+        if df is None or df.empty:
+            return 0
+
+        now = datetime.now()
+        records: List[Dict[str, Any]] = []
+        for idx, row in df.iterrows():
+            ts_code = str(idx) if df.index.name == "ts_code" else str(
+                row.get("ts_code", row.name)
+            ).strip()
+            if not ts_code:
+                continue
+            records.append({
+                "ts_code": ts_code,
+                "ann_date": str(row.get("ann_date", ""))[:8],
+                "end_date": str(row.get("end_date", ""))[:8] if pd.notna(row.get("end_date")) else "",
+                "proc": str(row.get("proc", ""))[:50] if pd.notna(row.get("proc")) else "",
+                "exp_date": str(row.get("exp_date", ""))[:8] if pd.notna(row.get("exp_date")) else "",
+                "vol": self._normalize_sql_value(row.get("vol")),
+                "amount": self._normalize_sql_value(row.get("amount")),
+                "high_limit": self._normalize_sql_value(row.get("high_limit")),
+                "low_limit": self._normalize_sql_value(row.get("low_limit")),
+                "source": source,
+                "updated_at": now,
+            })
+
+        if not records:
+            return 0
+
+        def _write(session: Session) -> int:
+            if self._is_sqlite_engine:
+                _CHUNK = 200
+                for i in range(0, len(records), _CHUNK):
+                    chunk = records[i : i + _CHUNK]
+                    stmt = sqlite_insert(Repurchase).values(chunk)
+                    excluded = stmt.excluded
+                    session.execute(
+                        stmt.on_conflict_do_update(
+                            index_elements=["ts_code", "ann_date"],
+                            set_={
+                                "end_date": excluded.end_date,
+                                "proc": excluded.proc,
+                                "exp_date": excluded.exp_date,
+                                "vol": excluded.vol,
+                                "amount": excluded.amount,
+                                "high_limit": excluded.high_limit,
+                                "low_limit": excluded.low_limit,
+                                "source": excluded.source,
+                                "updated_at": excluded.updated_at,
+                            },
+                        )
+                    )
+                return len(records)
+            else:
+                new_count = 0
+                for rec in records:
+                    ent = session.execute(
+                        select(Repurchase).where(
+                            and_(Repurchase.ts_code == rec["ts_code"],
+                                 Repurchase.ann_date == rec["ann_date"])
+                        )
+                    ).scalar_one_or_none()
+                    if ent is None:
+                        session.add(Repurchase(**rec))
+                        new_count += 1
+                    else:
+                        for key in ("end_date", "proc", "exp_date",
+                                     "vol", "amount", "high_limit", "low_limit"):
+                            setattr(ent, key, rec[key])
+                        ent.source = source
+                        ent.updated_at = now
+                return new_count
+
+        try:
+            saved = self._run_write_transaction("upsert_repurchase", _write)
+            logger.debug("[DB] upsert_repurchase: %d 条", saved)
+            return saved
+        except Exception as e:
+            logger.error("[DB] upsert_repurchase 失败: %s", e)
+            raise
+
+    # ------------------------------------------------------------------
+    # 盈利预测快照
+    # ------------------------------------------------------------------
+
+    def save_profit_forecast(self, df: pd.DataFrame, trade_date: str) -> int:
+        """全量覆盖写入某日的盈利预测数据。
+
+        Args:
+            df: akshare get_profit_forecast() 返回的 DataFrame (index=ts_code)
+            trade_date: YYYYMMDD
+        Returns:
+            落库条数
+        """
+        if df is None or df.empty:
+            return 0
+
+        now = datetime.now()
+
+        col_buy = next((c for c in df.columns if "买入" in c), None)
+        col_add = next((c for c in df.columns if "增持" in c and "中性" not in c), None)
+        col_neutral = next((c for c in df.columns if "中性" in c), None)
+        col_reduce = next((c for c in df.columns if "减持" in c), None)
+        col_sell = next((c for c in df.columns if "卖出" in c), None)
+        col_report = next((c for c in df.columns if "研报数" in c), None)
+
+        eps_cols = [c for c in df.columns if "预测每股收益" in c]
+        eps_map = {}
+        for col in eps_cols:
+            m = re.search(r"(\d{4})", col)
+            if m:
+                eps_map[int(m.group(1))] = col
+
+        def _get_int(row, col_name):
+            if col_name is None:
+                return 0
+            v = row.get(col_name, 0)
+            try:
+                return int(float(v))
+            except (TypeError, ValueError):
+                return 0
+
+        def _get_float(row, col_name):
+            if col_name is None:
+                return None
+            v = row.get(col_name)
+            try:
+                return float(v) if pd.notna(v) else None
+            except (TypeError, ValueError):
+                return None
+
+        def _write(session):
+            session.query(ProfitForecast).filter(
+                ProfitForecast.trade_date == trade_date
+            ).delete()
+            session.flush()
+            seen = set()
+            new_count = 0
+            for idx, row in df.iterrows():
+                ts_code = str(idx) if isinstance(idx, str) else str(row.get("ts_code", ""))
+                if not ts_code or ts_code in seen:
+                    continue
+                seen.add(ts_code)
+                name = str(row.get("名称", row.get("name", "")))
+                session.add(ProfitForecast(
+                    trade_date=trade_date,
+                    ts_code=ts_code,
+                    name=name if name != "nan" else "",
+                    report_count=_get_int(row, col_report),
+                    buy_count=_get_int(row, col_buy),
+                    add_count=_get_int(row, col_add),
+                    neutral_count=_get_int(row, col_neutral),
+                    reduce_count=_get_int(row, col_reduce),
+                    sell_count=_get_int(row, col_sell),
+                    eps_2025=_get_float(row, eps_map.get(2025)),
+                    eps_2026=_get_float(row, eps_map.get(2026)),
+                    eps_2027=_get_float(row, eps_map.get(2027)),
+                    eps_2028=_get_float(row, eps_map.get(2028)),
+                    updated_at=now,
+                ))
+                new_count += 1
+            return new_count
+
+        try:
+            saved = self._run_write_transaction("save_profit_forecast", _write)
+            logger.info("[DB] save_profit_forecast date=%s: %d 条", trade_date, saved)
+            return saved
+        except Exception as e:
+            logger.error("[DB] save_profit_forecast 失败: %s", e)
+            raise
+
+    def get_latest_profit_forecast(self) -> Optional[pd.DataFrame]:
+        """获取最新日期的盈利预测快照，返回 DataFrame (index=ts_code)。"""
+        with self.get_session() as session:
+            try:
+                latest = session.execute(
+                    select(ProfitForecast.trade_date).order_by(
+                        ProfitForecast.trade_date.desc()
+                    ).limit(1)
+                ).scalar_one_or_none()
+                if not latest:
+                    return None
+
+                rows = session.execute(
+                    select(ProfitForecast).where(
+                        ProfitForecast.trade_date == latest
+                    )
+                ).scalars().all()
+                if not rows:
+                    return None
+
+                data = []
+                for r in rows:
+                    data.append({
+                        "ts_code": r.ts_code,
+                        "名称": r.name,
+                        "研报数": r.report_count,
+                        "机构投资评级(近六个月)-买入": r.buy_count,
+                        "机构投资评级(近六个月)-增持": r.add_count,
+                        "机构投资评级(近六个月)-中性": r.neutral_count,
+                        "机构投资评级(近六个月)-减持": r.reduce_count,
+                        "机构投资评级(近六个月)-卖出": r.sell_count,
+                        "2025预测每股收益": r.eps_2025,
+                        "2026预测每股收益": r.eps_2026,
+                        "2027预测每股收益": r.eps_2027,
+                        "2028预测每股收益": r.eps_2028,
+                    })
+                df = pd.DataFrame(data).set_index("ts_code")
+                logger.debug("[DB] get_latest_profit_forecast: date=%s, %d rows", latest, len(df))
+                return df
+            except Exception as e:
+                logger.warning("[DB] get_latest_profit_forecast 失败: %s", e)
+                return None
 
     # ------------------------------------------------------------------
     # Daily data

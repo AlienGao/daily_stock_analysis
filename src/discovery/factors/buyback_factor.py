@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 """回购因子 (Buyback Factor).
 
-盘后因子：基于东财股票回购数据，识别公司回购自家股票的股票。
-数据来源: akshare stock_repurchase_em()
+盘后因子：基于 Tushare repurchase API 数据，识别公司回购自家股票的股票。
+数据来源: Tushare repurchase (doc_id 124) → DB 缓存。
 """
 
 import logging
 from typing import Dict, List, Optional
 
+import numpy as np
 import pandas as pd
 
 from src.discovery.factors.base import BaseFactor
@@ -15,11 +16,21 @@ from src.discovery.factors.base import BaseFactor
 logger = logging.getLogger(__name__)
 
 
+def _pct_rank(series: pd.Series) -> pd.Series:
+    """返回 0-1 的百分位排名，处理全 NaN 边界。"""
+    ranked = series.rank(pct=True)
+    return ranked.fillna(0.0)
+
+
 class BuybackFactor(BaseFactor):
     """回购因子。
 
-    基于股票回购数据，识别公司用自有资金回购股份的行为。
-    关键信号：回购进行中 + 占比高 = 公司认为股价被低估。
+    基于上市公司回购公告数据，百分位归一化打分：
+    - 回购金额百分位 (0-40)
+    - 回购数量百分位 (0-30)
+    - 进度加分 (0-30)：实施中/完成
+
+    fetch_data 优先读 DB 缓存，无缓存时降级为 Tushare 实时请求。
     """
 
     name = "buyback"
@@ -27,67 +38,137 @@ class BuybackFactor(BaseFactor):
     available_postmarket = True
     weight = 10.0
 
+    _LABEL_THRESHOLD = 0.6
+
     def fetch_data(self, trade_date: str, **kwargs) -> Optional[pd.DataFrame]:
-        akshare_fetcher = kwargs.get("akshare_fetcher")
-        if akshare_fetcher is None:
+        """优先读 DB 近期回购数据，降级为 Tushare 实时请求。"""
+        # 计算 180 天前的日期作为过滤起点
+        from datetime import datetime as _dt, timedelta
+        try:
+            cutoff = (_dt.strptime(trade_date, "%Y%m%d") - timedelta(days=180)).strftime("%Y%m%d")
+        except (ValueError, TypeError):
+            cutoff = (_dt.now() - timedelta(days=180)).strftime("%Y%m%d")
+
+        # 1. 尝试 DB
+        try:
+            from src.storage import DatabaseManager
+            db = DatabaseManager()
+            df_db = db.get_repurchase_recent(ann_date_from=cutoff)
+            if not df_db.empty:
+                return df_db
+        except Exception:
+            pass
+
+        # 2. 降级：Tushare 实时请求，同样限定 180 天内公告
+        tushare_fetcher = kwargs.get("tushare_fetcher")
+        if tushare_fetcher is None:
             return None
-        return akshare_fetcher.get_buyback_data()
+        return tushare_fetcher.get_repurchase(start_date=cutoff)
+
+    # ------------------------------------------------------------------
+    # 信号提取
+    # ------------------------------------------------------------------
+
+    def _compute_signals(self, df: pd.DataFrame) -> Dict[str, pd.Series]:
+        """提取 3 个子信号，各自用百分位归一化到满分区间。"""
+        idx = df.index
+        zeros = pd.Series(0.0, index=idx)
+
+        amount = pd.to_numeric(
+            df.get("amount", zeros), errors="coerce"
+        ).fillna(0)
+        vol = pd.to_numeric(
+            df.get("vol", zeros), errors="coerce"
+        ).fillna(0)
+        proc = df.get("proc", pd.Series("", index=idx)).fillna("").astype(str)
+
+        signals: Dict[str, pd.Series] = {}
+
+        # 1. 回购金额百分位 (0-40)
+        valid_a = amount > 0
+        s_amount = zeros.copy()
+        if valid_a.any():
+            s_amount[valid_a] = _pct_rank(amount[valid_a]) * 40.0
+        signals["amount"] = s_amount
+
+        # 2. 回购数量百分位 (0-30)
+        valid_v = vol > 0
+        s_vol = zeros.copy()
+        if valid_v.any():
+            s_vol[valid_v] = _pct_rank(vol[valid_v]) * 30.0
+        signals["vol"] = s_vol
+
+        # 3. 进度固定加分 (0-30)
+        s_proc = zeros.copy()
+        s_proc[proc.str.contains("实施", na=False)] = 30.0
+        # "完成" 仅在无"实施"时才加分，避免覆盖"实施完成"的 30 分
+        s_proc[(proc.str.contains("完成", na=False))
+               & ~(proc.str.contains("实施", na=False))] = 15.0
+        signals["proc"] = s_proc
+
+        return signals
+
+    # ------------------------------------------------------------------
+    # score / describe
+    # ------------------------------------------------------------------
 
     def score(self, df: pd.DataFrame, **context) -> pd.Series:
-        scores = pd.Series(0.0, index=df.index, name=self.name)
-
         if df.empty:
-            return scores
+            return pd.Series(dtype=float, name=self.name)
 
-        # 已回购数量
-        col_bought = next((c for c in df.columns if "已回购股份数量" in c), None)
-        # 已回购金额
-        col_amount = next((c for c in df.columns if "已回购金额" in c), None)
-        # 计划回购上限（占总股本比）
-        col_plan_ratio = next((c for c in df.columns if "总股本比例" in c and "上限" in c), None)
-        # 实施进度
-        col_progress = next((c for c in df.columns if c == "实施进度"), None)
+        signals = self._compute_signals(df)
+        total = sum(signals.values()).clip(0, 100)
+        total.name = self.name
+        return total
 
-        if col_progress:
-            # 实施中/完成 -> 加分
-            progress = df[col_progress].astype(str)
-            scores.loc[progress.str.contains("实施中", na=False)] += 30.0
-            scores.loc[progress.str.contains("完成", na=False)] += 20.0
-
-        if col_plan_ratio:
-            plan_ratio = pd.to_numeric(df[col_plan_ratio], errors="coerce").fillna(0)
-            scores.loc[plan_ratio > 3] += 35.0
-            scores.loc[(plan_ratio > 1) & (plan_ratio <= 3)] += 20.0
-
-        if col_amount:
-            amount = pd.to_numeric(df[col_amount], errors="coerce").fillna(0)
-            # 已回购金额 > 1亿: +35分, > 1000万: +20分
-            scores.loc[amount > 1e8] += 35.0
-            scores.loc[(amount > 1e7) & (amount <= 1e8)] += 20.0
-
-        return scores.clip(0, 100)
-
-    def describe(self, df: pd.DataFrame, scores: pd.Series, **context) -> Dict[str, List[str]]:
+    def describe(self, df: pd.DataFrame, scores: pd.Series,
+                 **context) -> Dict[str, List[str]]:
         reasons: Dict[str, List[str]] = {}
         if df.empty:
             return reasons
 
-        col_progress = next((c for c in df.columns if c == "实施进度"), None)
-        col_amount = next((c for c in df.columns if "已回购金额" in c), None)
+        signals = self._compute_signals(df)
+        thresholds = {
+            "amount": 40.0 * self._LABEL_THRESHOLD,
+            "vol": 30.0 * self._LABEL_THRESHOLD,
+            "proc": 30.0 * self._LABEL_THRESHOLD,
+        }
+
+        amount = pd.to_numeric(
+            df.get("amount", pd.Series(0, index=df.index)), errors="coerce"
+        ).fillna(0)
+        vol = pd.to_numeric(
+            df.get("vol", pd.Series(0, index=df.index)), errors="coerce"
+        ).fillna(0)
+        proc = df.get("proc", pd.Series("", index=df.index)).fillna("").astype(str)
 
         for i in range(len(scores)):
-            if scores.iloc[i] <= 0:
+            if scores.iat[i] <= 0:
                 continue
-            ts_code = scores.index[i]
-            r = []
-            if col_progress:
-                v = str(df[col_progress].iloc[i])
-                if v and v != "nan":
-                    r.append(f"回购{v}")
-            if col_amount:
-                v = float(df[col_amount].iloc[i])
+            ts_code = str(scores.index[i])
+            labels = []
+
+            if signals["proc"].iat[i] >= thresholds["proc"]:
+                p = str(proc.iat[i])
+                if p and p != "nan":
+                    labels.append(f"回购{p}")
+
+            if signals["amount"].iat[i] >= thresholds["amount"]:
+                amt = amount.iat[i]
+                if amt > 0:
+                    # amount 已归一化为万元
+                    if amt >= 1e4:
+                        labels.append(f"回购{amt/1e4:.1f}亿元")
+                    else:
+                        labels.append(f"回购{amt:.0f}万元")
+
+            if signals["vol"].iat[i] >= thresholds["vol"]:
+                v = vol.iat[i]
                 if v > 0:
-                    r.append(f"已回购{v/1e7:.1f}万元")
-            if r:
-                reasons[ts_code] = r
+                    # vol 已归一化为万股
+                    labels.append(f"回购{v:.0f}万股")
+
+            if labels:
+                reasons[ts_code] = labels
+
         return reasons

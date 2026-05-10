@@ -181,7 +181,7 @@ class TestMoneyFlowFactor:
         )
         scores = factor.score(df)
         reasons = factor.describe(df, scores)
-        if scores["A.SH"] < 5.0:
+        if scores["A.SH"] < factor._LABEL_THRESHOLD:
             assert "A.SH" not in reasons
 
     def test_describe_elg_dominant(self, factor):

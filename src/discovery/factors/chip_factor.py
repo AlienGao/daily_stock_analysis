@@ -129,10 +129,11 @@ class ChipFactor(BaseFactor):
 
         # 4. 查当日收盘价（用于计算距历史高低点的真实距离）
         try:
+            from datetime import datetime as _dt
             from src.storage import DatabaseManager
             from sqlalchemy import text
             db2 = DatabaseManager()
-            date_fmt = f"{end_date[:4]}-{end_date[4:6]}-{end_date[6:8]}"
+            date_fmt = _dt.strptime(end_date, "%Y%m%d").strftime("%Y-%m-%d")
             with db2.get_session() as sess:
                 rows = sess.execute(
                     text(
@@ -156,7 +157,7 @@ class ChipFactor(BaseFactor):
 
         # 5. 查 60 日 daily 数据，计算每只股票自身日均振幅（用于波动率归一化）
         try:
-            from datetime import datetime as _dt, timedelta as _td
+            from datetime import timedelta as _td
             from src.storage import DatabaseManager
             from sqlalchemy import text
 

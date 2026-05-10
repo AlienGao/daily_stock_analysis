@@ -747,7 +747,7 @@ class TestMomentumFactor:
         df = _make_factor_df(["A.SH"], inflow_rate=[-0.05], volume_ratio=[3.0],
                              turnover_rate=[5.0], pct_chg=[2.0])
         scores = factor.score(df)
-        assert scores["A.SH"] == pytest.approx(45.0)  # 55 - 10 = 45
+        assert scores["A.SH"] == pytest.approx(55.0)  # 65 - 10 = 55
 
     def test_pct_chg_tiers(self, factor):
         df = _make_factor_df(["A", "B", "C"],

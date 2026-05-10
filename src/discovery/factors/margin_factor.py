@@ -90,6 +90,8 @@ class MarginFactor(BaseFactor):
 
         # 4. 组装宽表：每日期一行 → 每日一列
         margin_df = margin_df.reset_index()
+        if "code" in margin_df.columns and "ts_code" not in margin_df.columns:
+            margin_df = margin_df.rename(columns={"code": "ts_code"})
         if "trade_date" not in margin_df.columns:
             logger.warning("[MarginFactor] margin 数据缺少 trade_date 列")
             return None
@@ -234,7 +236,7 @@ class MarginFactor(BaseFactor):
         # 8. 买入占比快速萎缩 (-20-0): -5%→0, -100%→-20
         s = zeros.copy()
         crash = margin_ratio_trend < -5
-        s.loc[crash] = -(margin_ratio_trend[crash].abs().clip(0, 100) / 100 * 20).clip(0, 20)
+        s.loc[crash] = -(margin_ratio_trend[crash].abs().clip(0, 100) / 100 * 20)
         signals["ratio_crash"] = s
 
         return signals

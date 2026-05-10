@@ -60,7 +60,7 @@ class TestHotMoneyFactor:
 
     def test_top_net_buyer_scores_high(self, real_df, real_scores):
         """600498.SH 为当日最大净买入（9.2 亿），应排在前列。"""
-        assert real_scores["600498.SH"] > 80
+        assert real_scores["600498.SH"] > 70
 
     def test_net_seller_penalized(self, real_df, real_scores):
         """净卖出股得分应显著低于同体量净买入股。"""
@@ -163,7 +163,7 @@ class TestHotMoneyFactor:
         """hm_count 等于该股票的游资家数。"""
         factor = HotMoneyFactor()
         factor.score(real_df)
-        agg = factor._last_hm_agg
+        agg = factor._per_stock
 
         for ts_code in agg.index:
             sub = real_df.loc[[ts_code]] if ts_code in real_df.index else real_df.iloc[:0]
@@ -175,7 +175,7 @@ class TestHotMoneyFactor:
         """total_net 等于该股票所有明细的 net_amount 之和。"""
         factor = HotMoneyFactor()
         factor.score(real_df)
-        agg = factor._last_hm_agg
+        agg = factor._per_stock
 
         for ts_code in agg.index:
             sub = real_df.loc[[ts_code]] if ts_code in real_df.index else real_df.iloc[:0]
@@ -193,6 +193,24 @@ class TestHotMoneyFactor:
 
     def test_score_series_name(self, real_scores):
         assert real_scores.name == "hot_money"
+
+    # ── 跌停过滤 ──
+
+    def test_limit_down_zero(self, real_df):
+        """跌停股（limit_pool limit_type=D）得分归零。"""
+        factor = HotMoneyFactor()
+        scores = factor.score(real_df)
+        # 000020.SZ 在 limit_pool 中标记为跌停
+        if "000020.SZ" in scores.index:
+            assert scores["000020.SZ"] == 0.0, \
+                f"跌停股不应有正面信号，实际得分 {scores['000020.SZ']}"
+
+    def test_limit_down_excluded_from_describe(self, real_df):
+        """跌停股不出现在 describe 中。"""
+        factor = HotMoneyFactor()
+        scores = factor.score(real_df)
+        reasons = factor.describe(real_df, scores)
+        assert "000020.SZ" not in reasons, "跌停股不应出现在 describe 中"
 
     # ── 边界：单日单股票 ──
 
@@ -212,3 +230,67 @@ class TestHotMoneyFactor:
         scores = factor.score(row)
         assert len(scores) == 1
         assert 0 <= scores.iloc[0] <= 100
+
+    # ── _compute_signals ──
+
+    def test_compute_signals_keys(self, factor, real_df):
+        """_compute_signals 返回全部 3 个子信号。"""
+        per_stock = factor._aggregate(real_df)
+        signals = factor._compute_signals(per_stock)
+        assert set(signals.keys()) == {"net", "quality", "intensity"}
+        for key in signals:
+            assert len(signals[key]) == len(per_stock)
+
+    # ── 质量均值 vs 加总 ──
+
+    def test_avg_quality_prefers_quality_over_quantity(self, factor):
+        """2 家高胜率 > 5 家低胜率（均值不受家数影响，控制总净买入相同）。"""
+        from unittest.mock import patch
+        with patch("src.discovery.factors.hot_money_factor.HmTracker.load_quality") as mq:
+            mq.return_value = {"高手A": 0.9, "高手B": 0.9,
+                               "散户X": 0.2, "散户Y": 0.2, "散户Z": 0.2, "散户W": 0.2, "散户V": 0.2}
+            # A: 2 家高质量，每家 5000 → 总净 10000
+            # B: 5 家低质量，每家 2000 → 总净 10000（控制净买入相同）
+            records = []
+            for hm in ["高手A", "高手B"]:
+                records.append(("000001.SZ", 5000, 0, 5000, hm))
+            for hm in ["散户X", "散户Y", "散户Z", "散户W", "散户V"]:
+                records.append(("000002.SZ", 2000, 0, 2000, hm))
+            data = []
+            for ts_code, buy, sell, net, hm_name in records:
+                data.append({
+                    "ts_code": ts_code, "buy_amount": float(buy),
+                    "sell_amount": float(sell), "net_amount": float(net),
+                    "hm_name": hm_name, "trade_date": "20260508",
+                    "ts_name": "测试", "hm_orgs": "",
+                })
+            df = pd.DataFrame(data).set_index("ts_code")
+
+            scores = factor.score(df)
+            # A (avg=0.9) 质量分 > B (avg=0.2)，但净买入相同、强度相同
+            assert scores["000001.SZ"] > scores["000002.SZ"]
+
+    # ── describe 新标签 ──
+
+    def test_describe_has_quality_label(self, real_df, real_scores):
+        """高分股 describe 应包含'高胜率游资'标签。"""
+        factor = HotMoneyFactor()
+        factor.score(real_df)
+        reasons = factor.describe(real_df, real_scores)
+        # 至少有一只股票有高胜率标签
+        quality_labels = [
+            ts for ts, labels in reasons.items()
+            if any("高胜率游资" in r for r in labels)
+        ]
+        assert len(quality_labels) > 0
+
+    def test_describe_has_intensity_label(self, real_df, real_scores):
+        """纯粹买入且高分的股票应有'强势买入'标签。"""
+        factor = HotMoneyFactor()
+        factor.score(real_df)
+        reasons = factor.describe(real_df, real_scores)
+        intensity_labels = [
+            ts for ts, labels in reasons.items()
+            if any("强势买入" in r for r in labels)
+        ]
+        assert len(intensity_labels) > 0

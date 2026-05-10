@@ -683,6 +683,7 @@ class Config:
     serpapi_keys: List[str] = field(default_factory=list)  # SerpAPI Keys
     searxng_base_urls: List[str] = field(default_factory=list)  # SearXNG instance URLs (self-hosted, no quota)
     searxng_public_instances_enabled: bool = True  # Auto-discover public SearXNG instances when base URLs are absent
+    enable_akshare_news: bool = False  # Enable East Money stock_news_em as primary news source (no API key)
 
     # === Social Sentiment (US stocks only, api.adanos.org) ===
     social_sentiment_api_key: Optional[str] = None
@@ -1337,6 +1338,10 @@ class Config:
             os.getenv('SEARXNG_PUBLIC_INSTANCES_ENABLED'),
             default=True,
         )
+        enable_akshare_news = parse_env_bool(
+            os.getenv('ENABLE_AKSHARE_NEWS'),
+            default=False,
+        )
 
         # 企微消息类型与最大字节数逻辑
         wechat_msg_type = os.getenv('WECHAT_MSG_TYPE', 'markdown')
@@ -1442,6 +1447,7 @@ class Config:
             serpapi_keys=serpapi_keys,
             searxng_base_urls=searxng_base_urls,
             searxng_public_instances_enabled=searxng_public_instances_enabled,
+            enable_akshare_news=enable_akshare_news,
             social_sentiment_api_key=os.getenv('SOCIAL_SENTIMENT_API_KEY') or None,
             social_sentiment_api_url=os.getenv('SOCIAL_SENTIMENT_API_URL', 'https://api.adanos.org').rstrip('/'),
             news_max_age_days=parse_env_int(os.getenv('NEWS_MAX_AGE_DAYS'), 3, field_name='NEWS_MAX_AGE_DAYS', minimum=1),
@@ -2302,6 +2308,7 @@ class Config:
             or self.brave_api_keys
             or self.serpapi_keys
             or self.has_searxng_enabled()
+            or self.enable_akshare_news
         )
 
     def is_agent_available(self) -> bool:

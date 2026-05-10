@@ -96,7 +96,7 @@ class LimitFactor(BaseFactor):
 
         # --- 2. 连板强度 (0-35)：limit_times 递增递减 ---
         def _map_chain(n: int) -> float:
-            if n <= 0:
+            if pd.isna(n) or n <= 0:
                 return 0.0
             if n == 1:
                 return 15.0
@@ -228,6 +228,6 @@ class LimitFactor(BaseFactor):
             return f"{c}.SH"
         elif c.startswith(("00", "30")):
             return f"{c}.SZ"
-        elif c.startswith(("4", "8", "92")):
+        elif c.startswith(("43", "83", "87", "92")):
             return f"{c}.BJ"
         return c

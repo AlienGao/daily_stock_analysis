@@ -172,6 +172,12 @@ class MaEntryFactor(BaseFactor):
         if ohlc_matrix is None or ohlc_matrix.empty:
             return pd.DataFrame()
 
+        # 归一化 spot.index 为裸码，兼容 ts_code / bare code 两种格式
+        spot = spot.copy()
+        spot.index = spot.index.astype(str).str.replace(
+            r"\.(SH|SZ|BJ)$", "", regex=True
+        ).str.zfill(6)
+
         high_df = ohlc_matrix.xs("high", axis=1, level=0)
         low_df = ohlc_matrix.xs("low", axis=1, level=0)
         close_df = ohlc_matrix.xs("close", axis=1, level=0)
@@ -242,6 +248,12 @@ class MaEntryFactor(BaseFactor):
         spot: realtime_spot, index=code (bare)
         返回 Series: boll_mid, index=code
         """
+        # 归一化 spot.index 为裸码，兼容 ts_code / bare code
+        spot = spot.copy()
+        spot.index = spot.index.astype(str).str.replace(
+            r"\.(SH|SZ|BJ)$", "", regex=True
+        ).str.zfill(6)
+
         results = {}
         for code in close_matrix.index:
             row = close_matrix.loc[code].dropna()
@@ -269,6 +281,12 @@ class MaEntryFactor(BaseFactor):
         spot: realtime_spot, index=code (bare)
         返回 DataFrame: ma5, ma10, ma20, index=code
         """
+        # 归一化 spot.index 为裸码，兼容 ts_code / bare code
+        spot = spot.copy()
+        spot.index = spot.index.astype(str).str.replace(
+            r"\.(SH|SZ|BJ)$", "", regex=True
+        ).str.zfill(6)
+
         results = {}
         for code in close_matrix.index:
             row = close_matrix.loc[code].dropna()
@@ -306,7 +324,7 @@ class MaEntryFactor(BaseFactor):
         signals: Dict[str, pd.Series] = {}
 
         price = df.get("close", pd.Series(1.0, index=idx))
-        boll_mid = df.get("boll_mid", pd.Series(price, index=idx))
+        boll_mid = df.get("boll_mid", pd.Series(np.nan, index=idx))
         kdj_j = df.get("kdj_j", pd.Series(50.0, index=idx))
         today_vol = df.get("est_vol", df.get("vol", pd.Series(0, index=idx)))
         avg_vol = df.get("avg_vol", pd.Series(0, index=idx))
@@ -389,9 +407,9 @@ class MaEntryFactor(BaseFactor):
         scores.loc[signals["boll_support"]] += 5.0
         scores.loc[signals["kdj_oversold"]] += 10.0
 
-        # 排除条件在最后归零（覆盖已加分）
-        scores.loc[signals["bear_align"]] = 0.0
-        scores.loc[signals["high_bias"]] = 0.0
+        # 排除条件：减分惩罚而非归零，避免掩藏「均线粘合」等有效子信号
+        scores.loc[signals["bear_align"]] -= 25.0
+        scores.loc[signals["high_bias"]] -= 30.0
 
         return scores.clip(0, 100)
 

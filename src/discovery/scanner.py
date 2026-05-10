@@ -783,6 +783,17 @@ def refresh_limit_pool_postmarket(tushare_fetcher) -> int:
                 # 只对缺板块的行补填
                 mask = out["code"].isin(codes_missing_sec)
                 out.loc[mask, "sector"] = out.loc[mask, "code"].map(fill_map)
+
+        # 保留盘中 akshare 写入的封板时间（Tushare 不提供此字段）
+        existing_seal = db.get_limit_pool_seal_times(today)
+        if existing_seal:
+            out["first_seal_time"] = out["code"].map(
+                {c: s[0] for c, s in existing_seal.items()}
+            )
+            out["last_seal_time"] = out["code"].map(
+                {c: s[1] for c, s in existing_seal.items()}
+            )
+
         slot = int(_time.time() // 30)
         saved = db.upsert_limit_pool(out, source="tushare", slot=slot)
         logger.info("[Scanner] 盘后 limit_pool 全量刷新: %d 条 (U/D/Z)", saved)
@@ -1019,6 +1030,212 @@ def refresh_insider_buy_postmarket(akshare_fetcher=None) -> int:
         return 0
 
 
+def refresh_profit_forecast_postmarket(trade_date: str, akshare_fetcher=None) -> int:
+    """盘后用 akshare stock_profit_forecast_em 刷新 profit_forecast 表。
+
+    全量覆盖写入当日快照。每日运行，无重复检测（数据量小，直接覆盖）。
+
+    Returns:
+        落库条数，失败返回 0
+    """
+    try:
+        from src.storage import DatabaseManager
+
+        if akshare_fetcher is None:
+            from data_provider.akshare_fetcher import AkshareFetcher
+            akshare_fetcher = AkshareFetcher()
+
+        db = DatabaseManager()
+        df = akshare_fetcher.get_profit_forecast()
+        if df is None or df.empty:
+            logger.warning("[Scanner] 盘后 profit_forecast 刷新: 无数据")
+            return 0
+
+        saved = db.save_profit_forecast(df, trade_date)
+        logger.info("[Scanner] 盘后 profit_forecast 全量刷新 date=%s: %d 条", trade_date, saved)
+        return saved
+    except Exception as e:
+        logger.warning("[Scanner] 盘后 profit_forecast 刷新失败: %s", e)
+        return 0
+
+
+def refresh_institution_hold_postmarket(akshare_fetcher=None) -> int:
+    """盘后用 akshare stock_institute_hold 刷新 institution_hold 表。
+
+    季报数据，同季度多次运行自动跳过（按 quarter 去重）。
+    quarter 由系统日期推导，如当前为 5 月 → '202xQ1'。
+
+    Returns:
+        落库条数，失败返回 0
+    """
+    try:
+        from src.storage import DatabaseManager
+
+        if akshare_fetcher is None:
+            from data_provider.akshare_fetcher import AkshareFetcher
+            akshare_fetcher = AkshareFetcher()
+
+        db = DatabaseManager()
+        quarter = db._derive_current_quarter()
+
+        if db.has_institution_hold_quarter(quarter):
+            logger.info("[Scanner] 机构持仓 %s 已有数据，跳过刷新", quarter)
+            return 0
+
+        raw = akshare_fetcher.get_institution_holds()
+        if raw is None or raw.empty:
+            logger.warning("[Scanner] 盘后 institution_hold 刷新: 无数据")
+            return 0
+
+        col_map = {
+            "机构数": "inst_count",
+            "机构数变化": "inst_count_change",
+            "持股比例": "hold_ratio",
+            "持股比例增幅": "hold_ratio_change",
+            "占流通股比例": "circulate_ratio",
+            "占流通股比例增幅": "circulate_ratio_change",
+        }
+        df = raw.rename(columns=col_map)
+        if "ts_code" in df.columns:
+            df["code"] = df["ts_code"].astype(str).str.split(".").str[0].str.zfill(6)
+        elif df.index.name == "ts_code":
+            codes = df.index.astype(str).str.split(".").str[0].str.zfill(6)
+            df = df.reset_index(drop=True)
+            df["code"] = codes
+        if "证券简称" in df.columns:
+            df["name"] = df["证券简称"]
+        elif "name" not in df.columns:
+            df["name"] = ""
+
+        saved = db.upsert_institution_hold(df, quarter=quarter, source="akshare")
+        logger.info("[Scanner] 盘后 institution_hold 全量刷新 quarter=%s: %d 条",
+                     quarter, saved)
+        return saved
+    except Exception as e:
+        logger.warning("[Scanner] 盘后 institution_hold 刷新失败: %s", e)
+        return 0
+
+
+def refresh_performance_report_postmarket(akshare_fetcher=None) -> int:
+    """盘后用 akshare stock_yjbb_em 刷新 performance_report 表。
+
+    按报告期去重，同报告期多次运行自动跳过。
+    默认拉取最新 2 个季度的数据（支持趋势计算）。
+
+    Returns:
+        落库条数，失败返回 0
+    """
+    try:
+        from datetime import date as _date
+        from src.storage import DatabaseManager
+
+        if akshare_fetcher is None:
+            from data_provider.akshare_fetcher import AkshareFetcher
+            akshare_fetcher = AkshareFetcher()
+
+        db = DatabaseManager()
+        today = _date.today().strftime("%Y%m%d")
+
+        # Compute recent 2 quarter-end dates
+        from src.discovery.factors.performance_factor import _quarter_end_dates
+        periods = _quarter_end_dates(today, 2)
+        if not periods:
+            logger.warning("[Scanner] 无法确定业绩报告期")
+            return 0
+
+        total_saved = 0
+        for period in periods:
+            existing = db.get_performance_report(period)
+            if not existing.empty:
+                logger.debug("[Scanner] performance_report %s 已有 %d 条，跳过", period, len(existing))
+                continue
+
+            raw = akshare_fetcher.get_performance_report_quarter(period)
+            if raw is None or raw.empty:
+                logger.warning("[Scanner] performance_report %s: 无数据", period)
+                continue
+
+            saved = db.upsert_performance_report(raw, period, source="akshare")
+            logger.info("[Scanner] performance_report %s: %d 条", period, saved)
+            total_saved += saved
+
+        return total_saved
+    except Exception as e:
+        logger.warning("[Scanner] 盘后 performance_report 刷新失败: %s", e)
+        return 0
+
+
+def refresh_repurchase_postmarket(tushare_fetcher=None) -> int:
+    """盘后用 Tushare repurchase 刷新 repurchase 表。
+
+    拉取近 180 天的回购公告数据并 upsert 入库。
+    与 institution_hold 不同，回购数据可能每日有新公告，每次都拉取更新。
+
+    Returns:
+        落库条数，失败返回 0
+    """
+    try:
+        from datetime import date as _date, timedelta
+        from src.storage import DatabaseManager
+
+        if tushare_fetcher is None:
+            from data_provider.tushare_fetcher import TushareFetcher
+            tushare_fetcher = TushareFetcher.get_instance()
+
+        today = _date.today()
+        start_date = (today - timedelta(days=180)).strftime("%Y%m%d")
+
+        df = tushare_fetcher.get_repurchase(start_date=start_date)
+        if df is None or df.empty:
+            logger.warning("[Scanner] 盘后 repurchase 刷新: 无数据")
+            return 0
+
+        db = DatabaseManager()
+        saved = db.upsert_repurchase(df, source="tushare")
+        logger.info("[Scanner] 盘后 repurchase 刷新: %d 条", saved)
+        return saved
+    except Exception as e:
+        logger.warning("[Scanner] 盘后 repurchase 刷新失败: %s", e)
+        return 0
+
+
+def refresh_broker_recommend_postmarket(tushare_fetcher=None) -> int:
+    """盘后用 Tushare broker_recommend 刷新当月券商金股数据。
+
+    月初 1-3 日 Tushare 更新当月数据，每日调用确保数据及时入库。
+    已存在数据时跳过（当月数据不会变化）。
+
+    Returns:
+        落库条数，失败或已存在返回 0
+    """
+    try:
+        from datetime import date as _date
+        from src.storage import DatabaseManager
+
+        if tushare_fetcher is None:
+            from data_provider.tushare_fetcher import TushareFetcher
+            tushare_fetcher = TushareFetcher.get_instance()
+
+        month = _date.today().strftime("%Y%m")
+        db = DatabaseManager()
+
+        existing = db.get_broker_recommend_monthly(month)
+        if existing:
+            return 0
+
+        df = tushare_fetcher.get_broker_recommend(month)
+        if df is None or df.empty:
+            logger.warning("[Scanner] 盘后 broker_recommend 刷新: %s 月无数据", month)
+            return 0
+
+        saved = db.save_broker_recommend_monthly(month, df.reset_index())
+        logger.info("[Scanner] 盘后 broker_recommend 刷新: %s 月 %d 条", month, saved)
+        return saved
+    except Exception as e:
+        logger.warning("[Scanner] 盘后 broker_recommend 刷新失败: %s", e)
+        return 0
+
+
 def refresh_popularity_postmarket(tushare_fetcher) -> int:
     """盘后用 Tushare dc_hot 全量刷新 popularity_rank 表。
 
@@ -1159,6 +1376,10 @@ def ensure_postmarket_scan(
         ("margin_detail", lambda: refresh_margin_detail_postmarket(tushare_fetcher)),
         ("cyq_perf", lambda: refresh_cyq_perf_postmarket(tushare_fetcher)),
         ("insider_buy", lambda: refresh_insider_buy_postmarket()),
+        ("institution_hold", lambda: refresh_institution_hold_postmarket()),
+        ("repurchase", lambda: refresh_repurchase_postmarket(tushare_fetcher)),
+        ("profit_forecast", lambda: refresh_profit_forecast_postmarket(today, akshare_fetcher)),
+        ("performance_report", lambda: refresh_performance_report_postmarket(akshare_fetcher)),
         ("hm_detail", lambda: refresh_hm_detail_postmarket(tushare_fetcher)),
         ("popularity", lambda: refresh_popularity_postmarket(tushare_fetcher)),
         ("tech_indicator", lambda: refresh_tech_indicator_postmarket(tushare_fetcher)),
