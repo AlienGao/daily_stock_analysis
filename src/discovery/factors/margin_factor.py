@@ -30,6 +30,7 @@ class MarginFactor(BaseFactor):
     weight = 20.0
 
     _LOOKBACK_DAYS = 5
+    _LABEL_THRESHOLD_RATIO = 0.5
 
     def fetch_data(self, trade_date: str, **kwargs) -> Optional[pd.DataFrame]:
         """获取 5 日融资融券数据 + 市值。
@@ -136,18 +137,19 @@ class MarginFactor(BaseFactor):
         )
         return result
 
-    def score(self, df: pd.DataFrame, **context) -> pd.Series:
-        scores = pd.Series(0.0, index=df.index, name=self.name)
+    # ------------------------------------------------------------------
+    # 共享信号提取
+    # ------------------------------------------------------------------
 
-        if df.empty:
-            return scores
+    def _compute_signals(self, df: pd.DataFrame) -> Dict[str, pd.Series]:
+        """提取 8 个子信号，各自已归一化到满分区间。"""
+        idx = df.index
+        zeros = pd.Series(0.0, index=idx)
 
-        # 数有几个日期的列（d0_rzye, d1_rzye...）
         day_cols = [c for c in df.columns if c.startswith("d") and "_" in c]
         ndays = len(set(c.split("_")[0] for c in day_cols))
         if ndays < 2:
-            # 少于 2 日数据，退化为单日评分
-            return self._score_single_day(df)
+            return self._compute_signals_single_day(df)
 
         last = ndays - 1
         first = 0
@@ -155,221 +157,212 @@ class MarginFactor(BaseFactor):
         total_mv = df.get("total_mv")
         has_mv = total_mv is not None and total_mv.notna().any()
 
-        # 取最新日和最早日的列
-        rzye_last = df.get(f"d{last}_rzye", pd.Series(0.0, index=df.index))
-        rzye_first = df.get(f"d{first}_rzye", pd.Series(0.0, index=df.index))
-        rzmre_last = df.get(f"d{last}_rzmre", pd.Series(0.0, index=df.index))
-        rzmre_first = df.get(f"d{first}_rzmre", pd.Series(0.0, index=df.index))
-        rzche_last = df.get(f"d{last}_rzche", pd.Series(0.0, index=df.index))
-        rzche_first = df.get(f"d{first}_rzche", pd.Series(0.0, index=df.index))
-        rqye_last = df.get(f"d{last}_rqye", pd.Series(0.0, index=df.index))
-        rqmre_last = df.get(f"d{last}_rqmre", pd.Series(0.0, index=df.index))
+        rzye_last = df.get(f"d{last}_rzye", zeros)
+        rzye_first = df.get(f"d{first}_rzye", zeros)
+        rzmre_last = df.get(f"d{last}_rzmre", zeros)
+        rzmre_first = df.get(f"d{first}_rzmre", zeros)
+        rzche_last = df.get(f"d{last}_rzche", zeros)
+        rzche_first = df.get(f"d{first}_rzche", zeros)
+        rqye_last = df.get(f"d{last}_rqye", zeros)
+        rqmre_last = df.get(f"d{last}_rqmre", zeros)
 
         # 5 日增幅
-        rzye_growth = _safe_pct_change(rzye_last, rzye_first)
         rzmre_growth = _safe_pct_change(rzmre_last, rzmre_first)
         rzche_growth = _safe_pct_change(rzche_last, rzche_first)
-        rqye_growth = _safe_pct_change(rqye_last, df.get(f"d{first}_rqye", pd.Series(0.0, index=df.index)))
 
         # 融资买入活跃度
         rzye_safe = rzye_last.replace(0, np.nan)
         margin_ratio = (rzmre_last / rzye_safe) * 100
-        rzye_first_safe = rzye_first.replace(0, np.nan)
-        margin_ratio_first = (rzmre_first / rzye_first_safe) * 100
+        margin_ratio_first = (rzmre_first / rzye_first.replace(0, np.nan)) * 100
         margin_ratio_trend = _safe_pct_change(
             margin_ratio.fillna(0), margin_ratio_first.fillna(0)
         )
 
         # 市值归一化
         if has_mv:
-            rzye_ratio_pct = _pct_rank(_safe_ratio(rzye_last, total_mv) * 100, df.index)
-            rzmre_ratio_pct = _pct_rank(_safe_ratio(rzmre_last, total_mv) * 100, df.index)
-            rqye_ratio_pct = _pct_rank(_safe_ratio(rqye_last, total_mv) * 100, df.index)
+            rzye_ratio_pct = _pct_rank(_safe_ratio(rzye_last, total_mv) * 100, idx)
+            rzmre_ratio_pct = _pct_rank(_safe_ratio(rzmre_last, total_mv) * 100, idx)
+            rqye_ratio_pct = _pct_rank(_safe_ratio(rqye_last, total_mv) * 100, idx)
         else:
-            rzye_ratio_pct = pd.Series(50.0, index=df.index)
-            rzmre_ratio_pct = pd.Series(50.0, index=df.index)
-            rqye_ratio_pct = pd.Series(50.0, index=df.index)
+            rzye_ratio_pct = pd.Series(50.0, index=idx)
+            rzmre_ratio_pct = pd.Series(50.0, index=idx)
+            rqye_ratio_pct = pd.Series(50.0, index=idx)
 
-        # ================================================================
-        # 正向信号（多头杠杆）
-        # ================================================================
+        signals: Dict[str, pd.Series] = {}
 
-        # 融资买入额 5 日增长
-        scores.loc[rzmre_growth > 0] += 15.0
+        # 1. 融资买入额增长 (0-20): 0%→0, +100%→20
+        s = zeros.copy()
+        pos = rzmre_growth > 0
+        s.loc[pos] = (rzmre_growth[pos].clip(0, 100) / 100 * 20).clip(0, 20)
+        signals["margin_buy_growth"] = s
 
-        # 融资买入占市值比超全市场中位数
-        scores.loc[rzmre_ratio_pct > 50] += 10.0
+        # 2. 融资买入活跃度 (0-20): 分位 50→0, 100→20（rzmre=0 不触发）
+        s = zeros.copy()
+        hi = (rzmre_ratio_pct > 50) & (rzmre_last > 0)
+        s.loc[hi] = ((rzmre_ratio_pct[hi] - 50) / 50 * 20).clip(0, 20)
+        signals["margin_buy_active"] = s
 
-        # 融资偿还额下降
-        scores.loc[rzche_growth < 0] += 10.0
+        # 3. 融资偿还下降 (0-15): 0%→0, -100%→15
+        s = zeros.copy()
+        neg = rzche_growth < 0
+        s.loc[neg] = ((-rzche_growth[neg]).clip(0, 100) / 100 * 15).clip(0, 15)
+        signals["repay_decline"] = s
 
-        # 融资买入占比趋势上升
-        scores.loc[margin_ratio_trend > 0] += 15.0
+        # 4. 买入占比趋势上升 (0-20): 0%→0, +100%→20
+        s = zeros.copy()
+        pos = margin_ratio_trend > 0
+        s.loc[pos] = (margin_ratio_trend[pos].clip(0, 100) / 100 * 20).clip(0, 20)
+        signals["ratio_trend"] = s
 
-        # 融资余额占市值比高（杠杆关注度高）
-        scores.loc[rzye_ratio_pct > 70] += 20.0
-        scores.loc[(rzye_ratio_pct > 50) & (rzye_ratio_pct <= 70)] += 10.0
+        # 5. 融资余额市值比 (0-25): 分位 50→0, 100→25（rzye=0 不触发）
+        s = zeros.copy()
+        hi = (rzye_ratio_pct > 50) & (rzye_last > 0)
+        s.loc[hi] = ((rzye_ratio_pct[hi] - 50) / 50 * 25).clip(0, 25)
+        signals["balance_ratio"] = s
 
-        # ================================================================
-        # 负向信号（空头压力）
-        # ================================================================
+        # 6. 融券卖出 (-10-0): 有→-10
+        s = zeros.copy()
+        s.loc[rqmre_last > 0] = -10.0
+        signals["short_selling"] = s
 
-        # 有融券卖出
-        scores.loc[rqmre_last > 0] -= 10.0
+        # 7. 融券占比偏高 (-15-0): 分位 50→0, 100→-15（rqye=0 不触发）
+        s = zeros.copy()
+        hi = (rqye_ratio_pct > 50) & (rqye_last > 0)
+        s.loc[hi] = -((rqye_ratio_pct[hi] - 50) / 50 * 15).clip(0, 15)
+        signals["short_ratio"] = s
 
-        # 融券余额占市值比偏高
-        scores.loc[rqye_ratio_pct > 70] -= 15.0
+        # 8. 买入占比快速萎缩 (-20-0): -5%→0, -100%→-20
+        s = zeros.copy()
+        crash = margin_ratio_trend < -5
+        s.loc[crash] = -(margin_ratio_trend[crash].abs().clip(0, 100) / 100 * 20).clip(0, 20)
+        signals["ratio_crash"] = s
 
-        # 融资买入占比快速下降
-        scores.loc[margin_ratio_trend < -10] -= 20.0
+        return signals
 
-        return scores.clip(0, 100)
-
-    def _score_single_day(self, df: pd.DataFrame) -> pd.Series:
-        """单日退化评分（DB 中只有 1 日数据时）。"""
-        scores = pd.Series(0.0, index=df.index, name=self.name)
+    def _compute_signals_single_day(self, df: pd.DataFrame) -> Dict[str, pd.Series]:
+        """单日退化版信号。"""
+        idx = df.index
+        zeros = pd.Series(0.0, index=idx)
 
         total_mv = df.get("total_mv")
         has_mv = total_mv is not None and total_mv.notna().any()
 
-        # 取 d0 列（或原始列名兜底）
-        rzye = df.get("d0_rzye") if "d0_rzye" in df.columns else df.get("rzye", pd.Series(0.0, index=df.index))
-        rzmre = df.get("d0_rzmre") if "d0_rzmre" in df.columns else df.get("rzmre", pd.Series(0.0, index=df.index))
-        rqmre = df.get("d0_rqmre") if "d0_rqmre" in df.columns else df.get("rqmre", pd.Series(0.0, index=df.index))
-        rqye = df.get("d0_rqye") if "d0_rqye" in df.columns else df.get("rqye", pd.Series(0.0, index=df.index))
+        rzmre = df.get("d0_rzmre") if "d0_rzmre" in df.columns else df.get("rzmre", zeros)
+        rqmre = df.get("d0_rqmre") if "d0_rqmre" in df.columns else df.get("rqmre", zeros)
+        rqye = df.get("d0_rqye") if "d0_rqye" in df.columns else df.get("rqye", zeros)
+        rzye = df.get("d0_rzye") if "d0_rzye" in df.columns else df.get("rzye", zeros)
 
         if has_mv:
-            rzye_ratio_pct = _pct_rank(_safe_ratio(rzye, total_mv) * 100, df.index)
-            rzmre_ratio_pct = _pct_rank(_safe_ratio(rzmre, total_mv) * 100, df.index)
-            rqye_ratio_pct = _pct_rank(_safe_ratio(rqye, total_mv) * 100, df.index)
+            rzye_ratio_pct = _pct_rank(_safe_ratio(rzye, total_mv) * 100, idx)
+            rzmre_ratio_pct = _pct_rank(_safe_ratio(rzmre, total_mv) * 100, idx)
+            rqye_ratio_pct = _pct_rank(_safe_ratio(rqye, total_mv) * 100, idx)
         else:
-            rzye_ratio_pct = pd.Series(50.0, index=df.index)
-            rzmre_ratio_pct = pd.Series(50.0, index=df.index)
-            rqye_ratio_pct = pd.Series(50.0, index=df.index)
+            rzye_ratio_pct = pd.Series(50.0, index=idx)
+            rzmre_ratio_pct = pd.Series(50.0, index=idx)
+            rqye_ratio_pct = pd.Series(50.0, index=idx)
 
-        # 融资买入活跃
-        scores.loc[rzmre > 0] += 10.0
-        # 融资买入占市值比超中位数
-        scores.loc[rzmre_ratio_pct > 50] += 10.0
-        # 融资余额占市值比高
-        scores.loc[rzye_ratio_pct > 70] += 15.0
-        scores.loc[(rzye_ratio_pct > 50) & (rzye_ratio_pct <= 70)] += 10.0
-        # 融券卖出扣分
-        scores.loc[rqmre > 0] -= 10.0
-        # 融券占比偏高
-        scores.loc[rqye_ratio_pct > 70] -= 15.0
+        signals: Dict[str, pd.Series] = {}
 
-        return scores.clip(0, 100)
+        # margin_buy_active (0-20)（rzmre=0 不触发）
+        s = zeros.copy()
+        hi = (rzmre_ratio_pct > 50) & (rzmre > 0)
+        s.loc[hi] = ((rzmre_ratio_pct[hi] - 50) / 50 * 20).clip(0, 20)
+        signals["margin_buy_active"] = s
+
+        # balance_ratio (0-25)（rzye=0 不触发）
+        s = zeros.copy()
+        hi = (rzye_ratio_pct > 50) & (rzye > 0)
+        s.loc[hi] = ((rzye_ratio_pct[hi] - 50) / 50 * 25).clip(0, 25)
+        signals["balance_ratio"] = s
+
+        # short_selling (-10-0)
+        s = zeros.copy()
+        s.loc[rqmre > 0] = -10.0
+        signals["short_selling"] = s
+
+        # short_ratio (-15-0)（rqye=0 不触发）
+        s = zeros.copy()
+        hi = (rqye_ratio_pct > 50) & (rqye > 0)
+        s.loc[hi] = -((rqye_ratio_pct[hi] - 50) / 50 * 15).clip(0, 15)
+        signals["short_ratio"] = s
+
+        # 多日特有的信号给 0
+        for key in ("margin_buy_growth", "repay_decline", "ratio_trend", "ratio_crash"):
+            signals[key] = zeros.copy()
+
+        return signals
+
+    # ------------------------------------------------------------------
+    # score / describe
+    # ------------------------------------------------------------------
+
+    def score(self, df: pd.DataFrame, **context) -> pd.Series:
+        if df.empty:
+            return pd.Series(dtype=float, name=self.name)
+
+        signals = self._compute_signals(df)
+        total = sum(signals.values()).clip(0, 100)
+        total.name = self.name
+        return total
 
     def describe(self, df: pd.DataFrame, scores: pd.Series, **context) -> Dict[str, List[str]]:
         reasons: Dict[str, List[str]] = {}
         if df.empty:
             return reasons
 
-        day_cols = [c for c in df.columns if c.startswith("d") and "_" in c]
-        ndays = len(set(c.split("_")[0] for c in day_cols))
-        if ndays < 2:
-            return self._describe_single_day(df, scores)
+        signals = self._compute_signals(df)
 
-        last = ndays - 1
-        first = 0
-
-        total_mv = df.get("total_mv")
-        has_mv = total_mv is not None and total_mv.notna().any()
-
-        rzye_last = df.get(f"d{last}_rzye", pd.Series(0.0, index=df.index))
-        rzye_first = df.get(f"d{first}_rzye", pd.Series(0.0, index=df.index))
-        rzmre_last = df.get(f"d{last}_rzmre", pd.Series(0.0, index=df.index))
-        rzmre_first = df.get(f"d{first}_rzmre", pd.Series(0.0, index=df.index))
-        rzche_last = df.get(f"d{last}_rzche", pd.Series(0.0, index=df.index))
-        rzche_first = df.get(f"d{first}_rzche", pd.Series(0.0, index=df.index))
-        rqmre_last = df.get(f"d{last}_rqmre", pd.Series(0.0, index=df.index))
-        rqye_last = df.get(f"d{last}_rqye", pd.Series(0.0, index=df.index))
-
-        rzmre_growth = _safe_pct_change(rzmre_last, rzmre_first)
-        rzche_growth = _safe_pct_change(rzche_last, rzche_first)
-        rzye_safe = rzye_last.replace(0, np.nan)
-        margin_ratio = (rzmre_last / rzye_safe) * 100
-        rzye_first_safe = rzye_first.replace(0, np.nan)
-        margin_ratio_first = (rzmre_first / rzye_first_safe) * 100
-        margin_ratio_trend = _safe_pct_change(
-            margin_ratio.fillna(0), margin_ratio_first.fillna(0)
-        )
-
-        if has_mv:
-            rzye_ratio_pct = _pct_rank(_safe_ratio(rzye_last, total_mv) * 100, df.index)
-            rzmre_ratio_pct = _pct_rank(_safe_ratio(rzmre_last, total_mv) * 100, df.index)
-            rqye_ratio_pct = _pct_rank(_safe_ratio(rqye_last, total_mv) * 100, df.index)
-        else:
-            rzye_ratio_pct = pd.Series(50.0, index=df.index)
-            rzmre_ratio_pct = pd.Series(50.0, index=df.index)
-            rqye_ratio_pct = pd.Series(50.0, index=df.index)
+        signal_meta = [
+            ("margin_buy_growth", "融资买入额5日增长"),
+            ("margin_buy_active", "融资买入活跃"),
+            ("repay_decline", "融资偿还下降"),
+            ("ratio_trend", "买入占比趋势上升"),
+            ("balance_ratio", "融资余额市值比高"),
+            ("short_selling", "融券卖出"),
+            ("short_ratio", "融券占比偏高"),
+            ("ratio_crash", "买入占比快速萎缩"),
+        ]
+        threshold = self._LABEL_THRESHOLD_RATIO
 
         for ts_code in scores.index:
             if scores[ts_code] <= 0:
                 continue
-            r = []
-            if rzmre_growth.get(ts_code, 0) > 0:
-                r.append("融资买入额5日增长")
-            if rzmre_ratio_pct.get(ts_code, 50) > 50:
-                r.append("融资买入(市值比)活跃")
-            if rzche_growth.get(ts_code, 0) < 0:
-                r.append("融资偿还额下降")
-            if margin_ratio_trend.get(ts_code, 0) > 0:
-                r.append("融资买入占比趋势上升")
-            _rzye_pct = rzye_ratio_pct.get(ts_code, 50)
-            if _rzye_pct > 70:
-                r.append(f"融资余额占市值比高({_rzye_pct:.0f}分位)")
-            elif _rzye_pct > 50:
-                r.append(f"融资余额占市值比中上({_rzye_pct:.0f}分位)")
-            if rqmre_last.get(ts_code, 0) > 0:
-                r.append("有融券卖出")
-            if rqye_ratio_pct.get(ts_code, 50) > 70:
-                r.append("融券占比偏高")
-            if margin_ratio_trend.get(ts_code, 0) < -10:
-                r.append("融资买入快速萎缩")
-            if r:
-                reasons[ts_code] = r
-        return reasons
 
-    def _describe_single_day(self, df: pd.DataFrame, scores: pd.Series) -> Dict[str, List[str]]:
-        reasons: Dict[str, List[str]] = {}
-        total_mv = df.get("total_mv")
-        has_mv = total_mv is not None and total_mv.notna().any()
+            labels: List[str] = []
+            for key, label in signal_meta:
+                val = signals[key].get(ts_code, 0.0)
+                # 正信号阈值 >= max*threshold, 负信号阈值 <= max*threshold (绝对值)
+                abs_max = {
+                    "margin_buy_growth": 20, "margin_buy_active": 20,
+                    "repay_decline": 15, "ratio_trend": 20, "balance_ratio": 25,
+                    "short_selling": 10, "short_ratio": 15, "ratio_crash": 20,
+                }[key]
+                if key.startswith("short") or key == "ratio_crash":
+                    if abs(val) < abs_max * threshold:
+                        continue
+                else:
+                    if val < abs_max * threshold:
+                        continue
 
-        rzmre = df.get("d0_rzmre") if "d0_rzmre" in df.columns else df.get("rzmre", pd.Series(0.0, index=df.index))
-        rqmre = df.get("d0_rqmre") if "d0_rqmre" in df.columns else df.get("rqmre", pd.Series(0.0, index=df.index))
-        rqye = df.get("d0_rqye") if "d0_rqye" in df.columns else df.get("rqye", pd.Series(0.0, index=df.index))
-        rzye = df.get("d0_rzye") if "d0_rzye" in df.columns else df.get("rzye", pd.Series(0.0, index=df.index))
+                if key == "balance_ratio":
+                    # 附加上分位信息
+                    day_cols = [c for c in df.columns if c.startswith("d") and "_" in c]
+                    ndays = len(set(c.split("_")[0] for c in day_cols))
+                    last = max(0, ndays - 1)
+                    total_mv = df.get("total_mv")
+                    if total_mv is not None and total_mv.notna().any():
+                        rzye_last = df.get(f"d{last}_rzye", pd.Series(0.0, index=df.index))
+                        pct = _pct_rank(_safe_ratio(rzye_last, total_mv) * 100, df.index)
+                        pct_val = pct.get(ts_code, 50)
+                        labels.append(f"{label}({pct_val:.0f}分位)")
+                    else:
+                        labels.append(label)
+                else:
+                    labels.append(label)
 
-        if has_mv:
-            rzye_ratio_pct = _pct_rank(_safe_ratio(rzye, total_mv) * 100, df.index)
-            rzmre_ratio_pct = _pct_rank(_safe_ratio(rzmre, total_mv) * 100, df.index)
-            rqye_ratio_pct = _pct_rank(_safe_ratio(rqye, total_mv) * 100, df.index)
-        else:
-            rzye_ratio_pct = pd.Series(50.0, index=df.index)
-            rzmre_ratio_pct = pd.Series(50.0, index=df.index)
-            rqye_ratio_pct = pd.Series(50.0, index=df.index)
+            if labels:
+                reasons[ts_code] = labels
 
-        for ts_code in scores.index:
-            if scores[ts_code] <= 0:
-                continue
-            r = []
-            if rzmre.get(ts_code, 0) > 0:
-                r.append("融资买入活跃")
-            if rzmre_ratio_pct.get(ts_code, 50) > 50:
-                r.append("融资买入(市值比)活跃")
-            _rzye_pct = rzye_ratio_pct.get(ts_code, 50)
-            if _rzye_pct > 70:
-                r.append(f"融资余额占市值比高({_rzye_pct:.0f}分位)")
-            elif _rzye_pct > 50:
-                r.append(f"融资余额占市值比中上({_rzye_pct:.0f}分位)")
-            if rqmre.get(ts_code, 0) > 0:
-                r.append("有融券卖出")
-            if rqye_ratio_pct.get(ts_code, 50) > 70:
-                r.append("融券占比偏高")
-            if r:
-                reasons[ts_code] = r
         return reasons
 
 

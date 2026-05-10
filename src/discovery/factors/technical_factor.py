@@ -46,6 +46,17 @@ class TechnicalFactor(BaseFactor):
     _LABEL_THRESHOLD_RATIO = 0.5
 
     def fetch_data(self, trade_date: str, **kwargs) -> Optional[pd.DataFrame]:
+        # 1. 优先读 DB 缓存
+        try:
+            from src.storage import DatabaseManager
+            df = DatabaseManager().get_tech_indicators_all(trade_date)
+            if df is not None and not df.empty:
+                logger.info("[TechnicalFactor] DB 命中: %d 条", len(df))
+                return df
+        except Exception as e:
+            logger.debug("[TechnicalFactor] DB 读取失败: %s", e)
+
+        # 2. DB 无数据，fallback Tushare
         tushare_fetcher = kwargs.get("tushare_fetcher")
         if tushare_fetcher is None:
             return None

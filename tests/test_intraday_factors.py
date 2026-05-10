@@ -743,10 +743,11 @@ class TestMomentumFactor:
         assert scores["A.SH"] == 0.0
 
     def test_negative_inflow_penalty(self, factor):
+        """净流入为负时扣 10 分，但其他信号仍贡献分数。"""
         df = _make_factor_df(["A.SH"], inflow_rate=[-0.05], volume_ratio=[3.0],
                              turnover_rate=[5.0], pct_chg=[2.0])
         scores = factor.score(df)
-        assert scores["A.SH"] <= 25.0
+        assert scores["A.SH"] == pytest.approx(45.0)  # 55 - 10 = 45
 
     def test_pct_chg_tiers(self, factor):
         df = _make_factor_df(["A", "B", "C"],
@@ -763,7 +764,7 @@ class TestMomentumFactor:
         scores = pd.Series([65.0], index=["A.SH"])
         reasons = factor.describe(df, scores)
         assert "A.SH" in reasons
-        assert any("强力吸筹" in r for r in reasons["A.SH"])
+        assert any("资金流入" in r for r in reasons["A.SH"])
         assert any("放量启动" in r for r in reasons["A.SH"])
 
     def test_normalize_eastmoney(self, factor):
@@ -848,9 +849,9 @@ class TestReboundFactor:
                              open_times=[1, 2, 3],
                              limit_times=[1, 1, 1])
         scores = factor.score(df)
-        assert scores["A"] == 55.0
-        assert scores["B"] == 50.0
-        assert scores["C"] == 45.0
+        assert scores["A"] == pytest.approx(60.5)
+        assert scores["B"] == pytest.approx(55.5)
+        assert scores["C"] == pytest.approx(52.5)
 
     def test_limit_times_tiers(self, factor):
         df = _make_factor_df(["A", "B", "C"],
@@ -861,9 +862,9 @@ class TestReboundFactor:
                              open_times=[1, 1, 1],
                              limit_times=[1, 3, 6])
         scores = factor.score(df)
-        assert scores["A"] == 55.0
-        assert scores["B"] == 50.0
-        assert scores["C"] == 45.0
+        assert scores["A"] == pytest.approx(60.5)
+        assert scores["B"] == pytest.approx(53.5)
+        assert scores["C"] == pytest.approx(50.5)
 
     def test_max_capped_at_100(self, factor):
         df = _make_factor_df(["A.SH"], pct_chg=[-1.0], inflow_rate=[0.10],
@@ -879,8 +880,8 @@ class TestReboundFactor:
         scores = pd.Series([75.0], index=["A.SH"])
         reasons = factor.describe(df, scores)
         reason_text = " ".join(reasons["A.SH"])
-        assert "浅跌" in reason_text
-        assert "强力回补" in reason_text
+        assert "跌幅承接" in reason_text
+        assert "资金回补" in reason_text
         assert "2板炸板" in reason_text
 
 

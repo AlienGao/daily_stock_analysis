@@ -87,8 +87,8 @@ class TestMarginFactor:
 
     # -- 多日趋势：正向信号 --
 
-    def test_rzmre_growth_adds_15(self, factor):
-        """融资买入额 5 日增长 → +15"""
+    def test_rzmre_growth_gradient(self, factor):
+        """融资买入额 5 日增长 20% → +4 (梯度: growth/100*20)"""
         df = _make_df(
             ["A.SH", "B.SZ"],
             d0_rzmre=[100, 200], d1_rzmre=[120, 150],
@@ -99,10 +99,10 @@ class TestMarginFactor:
             total_mv=[1e9, 1e9],
         )
         scores = factor.score(df)
-        assert scores["A.SH"] >= 15.0
+        assert scores["A.SH"] == pytest.approx(8.0)  # 4(growth) + 4(ratio_trend)
 
-    def test_rzche_decline_adds_10(self, factor):
-        """融资偿还额下降 -> +10. d1 is latest, d0 is earliest."""
+    def test_rzche_decline_gradient(self, factor):
+        """融资偿还额下降 20% → +3 (梯度: -growth/100*15). d1 is latest, d0 is earliest."""
         df = _make_df(
             ["A.SH"],
             d0_rzmre=[100], d1_rzmre=[100],
@@ -113,7 +113,7 @@ class TestMarginFactor:
             total_mv=[1e9],
         )
         scores = factor.score(df)
-        assert scores["A.SH"] >= 10.0
+        assert scores["A.SH"] == pytest.approx(3.0)
 
     def test_margin_ratio_trend_up_adds_15(self, factor):
         """融资买入占比趋势上升 → +15"""

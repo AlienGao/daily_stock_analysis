@@ -927,6 +927,16 @@ def refresh_hm_detail_postmarket(tushare_fetcher, start: Optional[str] = None) -
         return 0
 
 
+def refresh_tech_indicator_postmarket(tushare_fetcher) -> int:
+    """盘后用 Tushare stk_factor 刷新技术指标表。
+
+    get_bulk_stk_factor 内部已自动写 DB（_cache_bulk_stk_factor），
+    此处仅触发拉取，写入在 TushareFetcher 中完成。
+    """
+    df = tushare_fetcher.get_bulk_stk_factor()
+    return len(df) if df is not None else 0
+
+
 def refresh_cyq_perf_postmarket(tushare_fetcher) -> int:
     """盘后用 Tushare cyq_perf 全量刷新筹码胜率表。
 
@@ -1151,6 +1161,7 @@ def ensure_postmarket_scan(
         ("insider_buy", lambda: refresh_insider_buy_postmarket()),
         ("hm_detail", lambda: refresh_hm_detail_postmarket(tushare_fetcher)),
         ("popularity", lambda: refresh_popularity_postmarket(tushare_fetcher)),
+        ("tech_indicator", lambda: refresh_tech_indicator_postmarket(tushare_fetcher)),
     ]
     for name, fn in refreshers:
         try:

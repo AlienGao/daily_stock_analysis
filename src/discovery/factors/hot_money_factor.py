@@ -33,7 +33,16 @@ class HotMoneyFactor(BaseFactor):
     weight = 20.0
 
     def fetch_data(self, trade_date: str, **kwargs) -> Optional[pd.DataFrame]:
-        """从 TushareFetcher 获取游资明细。"""
+        """优先读 DB 缓存，降级到 Tushare API。"""
+        try:
+            from src.storage import DatabaseManager
+            df = DatabaseManager().get_hm_detail_by_date(trade_date)
+            if df is not None and not df.empty:
+                logger.info("[HotMoneyFactor] DB 命中: %d 条", len(df))
+                return df
+        except Exception as e:
+            logger.debug("[HotMoneyFactor] DB 读取失败: %s", e)
+
         tushare_fetcher = kwargs.get("tushare_fetcher")
         if tushare_fetcher is None:
             return None

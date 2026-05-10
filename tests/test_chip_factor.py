@@ -116,30 +116,79 @@ class TestChipFactor:
     # -- 多日趋势 --
 
     def test_wr_decline_washout_signal(self, factor):
-        """wr 快速下降 >10% → 洗盘信号 +15."""
+        """wr 快速下降且成本稳定 → 洗盘信号加分."""
+        codes = ["A.SH", "B.SZ", "C.SH", "D.SZ", "E.SH"]
         df = _make_df(
-            ["A.SH"],
-            d0_winner_rate=[80], d1_winner_rate=[50],  # d1 是最新日，从 80 → 50
-            d0_cost_5pct=[10], d1_cost_5pct=[20],
-            d0_cost_95pct=[30], d1_cost_95pct=[40],
-            d0_weight_avg=[20], d1_weight_avg=[30],
+            codes,
+            d0_winner_rate=[50, 50, 50, 50, 80],
+            d1_winner_rate=[50, 50, 50, 50, 20],  # E: 80→20, wr_change=-75%
+            d0_cost_5pct=[10]*5, d1_cost_5pct=[10]*5,
+            d0_cost_95pct=[30]*5, d1_cost_95pct=[30]*5,
+            d0_weight_avg=[20]*5, d1_weight_avg=[20]*5,
+            d0_cost_50pct=[15, 14, 13, 12, 15],
+            d1_cost_50pct=[15, 14, 13, 12, 15],  # E: cost50 stable (trend=0 >= 0)
         )
         scores = factor.score(df)
-        assert scores["A.SH"] >= 15.0
+        # E: wr_change=-75% → wr_change_pct ≈ 20 (rank 1/5=20)
+        # cost50_trend=0 >= 0 → confirmation passes
+        # wr_change_pct > 60 AND cost50_trend >= 0 → +5 washout bonus
+        # E out-scores neutral stocks
+        assert scores["E.SH"] > scores["A.SH"]
 
     def test_wr_surge_risk_penalty(self, factor):
-        """wr 快速上升 >10% → 追高风险 -10."""
+        """wr 快速上升被扣分（追高风险）."""
+        codes = ["A.SH", "B.SZ", "C.SH", "D.SZ", "E.SH"]
         df = _make_df(
-            ["A.SH"],
-            d0_winner_rate=[30], d1_winner_rate=[60],  # d1 最新：30 → 60
-            d0_cost_5pct=[10], d1_cost_5pct=[20],
-            d0_cost_95pct=[30], d1_cost_95pct=[40],
-            d0_weight_avg=[20], d1_weight_avg=[30],
+            codes,
+            d0_winner_rate=[50, 50, 50, 50, 30],
+            d1_winner_rate=[50, 50, 50, 50, 70],  # E: 30→70, wr_change=+133%
+            d0_cost_5pct=[10]*5, d1_cost_5pct=[10]*5,
+            d0_cost_95pct=[30]*5, d1_cost_95pct=[30]*5,
+            d0_weight_avg=[20]*5, d1_weight_avg=[20]*5,
+            d0_cost_50pct=[15]*5, d1_cost_50pct=[15]*5,
         )
         scores = factor.score(df)
-        # wr_change = (60-30)/30*100 = 100% > 10% → -10
-        # wr_moderate: |60-50|=10 → 15-10/50*15 = 12
-        assert scores["A.SH"] < 12.0
+        # E: wr_change=+133% → wr_change_pct=20 (rank 1/5), cost50_pct=60
+        # wr_change_pct >= 20 & < 40 → -5 penalty
+        # wr_moderate: |70-50|=20 → 15-20/50*15=9
+        # E total ≈ 9 - 5 + 5(cost50) = 9
+        # Others: wr_moderate=15 + 5(cost50) = 20
+        assert scores["E.SH"] < scores["A.SH"]
+
+    def test_wr_decline_outflow_penalty(self, factor):
+        """wr 下降 + 成本中轴也降 → 量价齐跌真出逃，扣分."""
+        codes = ["A.SH", "B.SZ", "C.SH", "D.SZ", "E.SH"]
+        df = _make_df(
+            codes,
+            d0_winner_rate=[50, 50, 50, 50, 80],
+            d1_winner_rate=[50, 50, 50, 50, 20],  # E: 80→20, wr_change=-75%
+            d0_cost_5pct=[10]*5, d1_cost_5pct=[10]*5,
+            d0_cost_95pct=[30]*5, d1_cost_95pct=[30]*5,
+            d0_weight_avg=[20]*5, d1_weight_avg=[20]*5,
+            d0_cost_50pct=[15, 14, 13, 12, 15],
+            d1_cost_50pct=[15, 14, 13, 12, 10],  # E: cost50 declining (-33%)
+        )
+        scores = factor.score(df)
+        # E: wr_change=-75%, cost50_trend=-33% < 0 → is_outflow → -10
+        # A-D: neutral wr and cost50
+        # E scores lowest due to outflow penalty
+        assert scores["E.SH"] < scores["A.SH"]
+
+    def test_wr_change_vol_normalized(self, factor):
+        """wr 波动大的股票，相同 wr_change 归一化后影响更小."""
+        codes = ["A.SH", "B.SZ"]
+        df = _make_df(
+            codes,
+            d0_winner_rate=[50, 30], d1_winner_rate=[50, 70],
+            # A: wr_change=0%, wr_vol=0→clipped to 1 → wr_change_norm=0
+            # B: wr_change=133%, wr_vol=std([30,70])=28.3 → wr_change_norm=4.7
+            d0_cost_5pct=[10, 10], d1_cost_5pct=[10, 10],
+            d0_cost_95pct=[30, 30], d1_cost_95pct=[30, 30],
+            d0_weight_avg=[20, 20], d1_weight_avg=[20, 20],
+        )
+        signals = factor._compute_signals(df)
+        # B's wr_change_norm=4.7 >> A's 0, so -wr_change_norm ranking: B top pct
+        assert signals["wr_change_pct"]["B.SZ"] < signals["wr_change_pct"]["A.SH"]
 
     # -- 筹码集中 --
 
@@ -162,100 +211,119 @@ class TestChipFactor:
     # -- 距历史低点信号 --
 
     def test_close_to_low_rebound(self, factor):
-        """close 距 his_low 10% 内加 10 分."""
+        """close 距 his_low 越近（经波动率归一化），得分越高."""
+        codes = ["A.SH", "B.SZ", "C.SH", "D.SZ", "E.SH"]
         df = _make_df(
-            ["A.SH", "B.SZ"],
-            d0_winner_rate=[50, 50], d1_winner_rate=[50, 50],
-            d0_cost_5pct=[10, 10], d1_cost_5pct=[10, 10],
-            d0_cost_95pct=[30, 30], d1_cost_95pct=[30, 30],
-            d0_weight_avg=[20, 20], d1_weight_avg=[20, 20],
-            his_low=[10.0, np.nan], close=[10.5, 11.0],
+            codes,
+            d0_winner_rate=[50]*5, d1_winner_rate=[50]*5,
+            d0_cost_5pct=[10]*5, d1_cost_5pct=[10]*5,
+            d0_cost_95pct=[30]*5, d1_cost_95pct=[30]*5,
+            d0_weight_avg=[20]*5, d1_weight_avg=[20]*5,
+            his_low=[10]*5,
+            close=[10.2, 11.0, 12.0, 13.0, 14.0],  # A closest to his_low (2%)
+            avg_range=[0.03]*5,  # 日均振幅 3%
         )
         scores = factor.score(df)
-        # A: dist_to_low=(10.5-10)/10*100=5% < 10% → +10
-        # B: his_low=NaN → no bonus
-        assert scores["A.SH"] > scores["B.SZ"]
+        # A: dist_to_low=2%, norm=2/3=0.67 → dist_low_pct=100 (>80 → +15)
+        # E: dist_to_low=40%, norm=40/3=13.3 → dist_low_pct=20 → no bonus
+        assert scores["A.SH"] > scores["E.SH"]
 
     # -- 距历史高点信号 --
 
     def test_close_to_high_risk(self, factor):
-        """close 距 his_high 5% 内扣 10 分."""
+        """close 距 his_high 越近（经波动率归一化），得分越低."""
+        codes = ["A.SH", "B.SZ", "C.SH", "D.SZ", "E.SH"]
         df = _make_df(
-            ["A.SH", "B.SZ"],
-            d0_winner_rate=[50, 50], d1_winner_rate=[50, 50],
-            d0_cost_5pct=[10, 10], d1_cost_5pct=[10, 10],
-            d0_cost_95pct=[30, 30], d1_cost_95pct=[30, 30],
-            d0_weight_avg=[20, 20], d1_weight_avg=[20, 20],
-            his_high=[20.0, np.nan], close=[19.5, 19.5],
+            codes,
+            d0_winner_rate=[50]*5, d1_winner_rate=[50]*5,
+            d0_cost_5pct=[10]*5, d1_cost_5pct=[10]*5,
+            d0_cost_95pct=[30]*5, d1_cost_95pct=[30]*5,
+            d0_weight_avg=[20]*5, d1_weight_avg=[20]*5,
+            his_high=[20]*5,
+            close=[19.0, 18.0, 17.0, 16.0, 15.0],  # A closest to his_high (5%)
+            avg_range=[0.03]*5,  # 日均振幅 3%
         )
         scores = factor.score(df)
-        # A: dist_to_high=(20-19.5)/20*100=2.5% < 5% → -10
-        assert scores["A.SH"] < scores["B.SZ"]
+        # A: dist_to_high=5%, norm=5/3=1.67 → dist_high_pct=20 → <40 → -7 penalty
+        # E: dist_to_high=25%, norm=25/3=8.33 → dist_high_pct=100 → no penalty
+        assert scores["A.SH"] < scores["E.SH"]
 
     # -- 成本中轴趋势 --
 
     def test_cost50_uptrend_signal(self, factor):
-        """成本中轴上移加 5-10 分."""
+        """成本中轴强势上移获加分."""
+        codes = ["A.SH", "B.SZ", "C.SH", "D.SZ", "E.SH"]
         df = _make_df(
-            ["A.SH"],
-            d0_winner_rate=[50], d1_winner_rate=[50],
-            d0_cost_5pct=[10], d1_cost_5pct=[10],
-            d0_cost_95pct=[30], d1_cost_95pct=[30],
-            d0_weight_avg=[20], d1_weight_avg=[20],
-            d0_cost_50pct=[10], d1_cost_50pct=[15],  # 50% 增长
+            codes,
+            d0_winner_rate=[50]*5, d1_winner_rate=[50]*5,
+            d0_cost_5pct=[10]*5, d1_cost_5pct=[10]*5,
+            d0_cost_95pct=[30]*5, d1_cost_95pct=[30]*5,
+            d0_weight_avg=[20]*5, d1_weight_avg=[20]*5,
+            d0_cost_50pct=[10, 10, 10, 10, 10],
+            d1_cost_50pct=[10, 11, 12, 15, 20],  # E: +100% trend
         )
         scores = factor.score(df)
-        # cost50_trend = (15-10)/10*100 = 50% > 10 → +5+5=10 bonus
-        assert scores["A.SH"] >= 20.0  # 15(moderate) + 10(trend) = 25
+        # E: cost50_trend=100% → cost50_pct=100 (>80 → +10)
+        # A: cost50_trend=0% → cost50_pct=20 → no bonus
+        # E total = 15 + 10 = 25, A total = 15
+        assert scores["E.SH"] > scores["A.SH"]
 
-    def test_cost50_downtrend_penalty(self, factor):
-        """成本中轴下移 >10% 扣 5 分."""
+    def test_cost50_downtrend_no_bonus(self, factor):
+        """成本中轴下移不获加分（百分位低无奖励）."""
+        codes = ["A.SH", "B.SZ", "C.SH", "D.SZ", "E.SH"]
         df = _make_df(
-            ["A.SH"],
-            d0_winner_rate=[50], d1_winner_rate=[50],
-            d0_cost_5pct=[10], d1_cost_5pct=[10],
-            d0_cost_95pct=[30], d1_cost_95pct=[30],
-            d0_weight_avg=[20], d1_weight_avg=[20],
-            d0_cost_50pct=[20], d1_cost_50pct=[10],  # -50% 下降
+            codes,
+            d0_winner_rate=[50]*5, d1_winner_rate=[50]*5,
+            d0_cost_5pct=[10]*5, d1_cost_5pct=[10]*5,
+            d0_cost_95pct=[30]*5, d1_cost_95pct=[30]*5,
+            d0_weight_avg=[20]*5, d1_weight_avg=[20]*5,
+            d0_cost_50pct=[10, 10, 10, 10, 20],
+            d1_cost_50pct=[10, 10, 10, 10, 10],  # E: -50% downtrend
         )
         scores = factor.score(df)
-        # cost50_trend = (10-20)/20*100 = -50% < -10 → -5
-        assert scores["A.SH"] <= 10.0  # 15(moderate) - 5(penalty) = 10
+        # E: cost50_trend=-50% → cost50_pct=20 → no bonus
+        # A: cost50_trend=0% (10→10) → cost50_pct=100 (>80 → +10)
+        # A out-scores E because A gets uptrend bonus, E doesn't
+        assert scores["A.SH"] > scores["E.SH"]
 
     # -- 筹码不对称性 --
 
     def test_chip_skew_bullish(self, factor):
-        """上方筹码松散 (skew > 2) 加 5 分."""
+        """上方筹码松散 (skew 高) 获加分."""
+        codes = ["A.SH", "B.SZ", "C.SH", "D.SZ", "E.SH"]
         df = _make_df(
-            ["A.SH"],
-            d0_winner_rate=[50], d1_winner_rate=[50],
-            d0_cost_5pct=[10], d1_cost_5pct=[10],
-            d0_cost_95pct=[40], d1_cost_95pct=[40],
-            d0_weight_avg=[20], d1_weight_avg=[20],
-            d0_cost_15pct=[12], d1_cost_15pct=[12],
-            d0_cost_50pct=[15], d1_cost_50pct=[15],
-            d0_cost_85pct=[25], d1_cost_85pct=[25],
+            codes,
+            d0_winner_rate=[50]*5, d1_winner_rate=[50]*5,
+            d0_cost_5pct=[10]*5, d1_cost_5pct=[10]*5,
+            d0_cost_95pct=[30]*5, d1_cost_95pct=[30]*5,
+            d0_weight_avg=[20]*5, d1_weight_avg=[20]*5,
+            d0_cost_15pct=[19, 18, 15, 12, 10], d1_cost_15pct=[19, 18, 15, 12, 10],
+            d0_cost_50pct=[20]*5, d1_cost_50pct=[20]*5,
+            d0_cost_85pct=[30, 27, 25, 23, 21], d1_cost_85pct=[30, 27, 25, 23, 21],
         )
         scores = factor.score(df)
-        # upper=(25-15)=10, lower=(15-12)=3, skew=10/3=3.33 > 2 → +5
-        assert scores["A.SH"] >= 20.0  # 15(moderate) + 5(skew) = 20
+        # A: upper=10, lower=1 → skew=10 → skew_pct=100 (>80 → +5)
+        # E: upper=1, lower=10 → skew=0.1 → skew_pct=20 (<20 → -5)
+        assert scores["A.SH"] > scores["E.SH"]
 
     def test_chip_skew_bearish(self, factor):
-        """下方筹码松散 (skew < 0.5) 扣 5 分."""
+        """下方筹码松散 (skew 低) 得分低于上方松散股票."""
+        codes = ["A.SH", "B.SZ", "C.SH", "D.SZ", "E.SH"]
         df = _make_df(
-            ["A.SH"],
-            d0_winner_rate=[50], d1_winner_rate=[50],
-            d0_cost_5pct=[10], d1_cost_5pct=[10],
-            d0_cost_95pct=[40], d1_cost_95pct=[40],
-            d0_weight_avg=[20], d1_weight_avg=[20],
-            d0_cost_15pct=[10], d1_cost_15pct=[10],
-            d0_cost_50pct=[15], d1_cost_50pct=[15],
-            d0_cost_85pct=[16], d1_cost_85pct=[16],
+            codes,
+            d0_winner_rate=[50]*5, d1_winner_rate=[50]*5,
+            d0_cost_5pct=[10]*5, d1_cost_5pct=[10]*5,
+            d0_cost_95pct=[30]*5, d1_cost_95pct=[30]*5,
+            d0_weight_avg=[20]*5, d1_weight_avg=[20]*5,
+            d0_cost_15pct=[19, 18, 15, 12, 10], d1_cost_15pct=[19, 18, 15, 12, 10],
+            d0_cost_50pct=[20]*5, d1_cost_50pct=[20]*5,
+            d0_cost_85pct=[30, 27, 25, 23, 21], d1_cost_85pct=[30, 27, 25, 23, 21],
         )
         scores = factor.score(df)
-        # upper=(16-15)=1, lower=(15-10)=5, skew=0.2 < 0.5 → -5
-        # 15(moderate) - 5(skew) = 10
-        assert scores["A.SH"] <= 10.0
+        # A: upper=10, lower=1 → skew=10 → skew_pct=100 (>80 → +5)
+        # E: upper=1, lower=10 → skew=0.1 → skew_pct=20 → neutral (no penalty/bonus)
+        # A gets +5 skew bonus → A > E
+        assert scores["A.SH"] > scores["E.SH"]
 
     # -- clamp --
 
@@ -280,6 +348,7 @@ class TestChipFactor:
             d0_cost_95pct=[10.5], d1_cost_95pct=[10.5],
             d0_weight_avg=[10], d1_weight_avg=[10],
             his_low=[8.0], close=[9.0],
+            avg_range=[0.03],
         )
         scores = factor.score(df)
         reasons = factor.describe(df, scores)

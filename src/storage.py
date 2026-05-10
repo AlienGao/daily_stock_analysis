@@ -1774,7 +1774,45 @@ class DatabaseManager:
                 )
             ).scalars().all()
             return {r.code: r.to_dict() for r in rows}
-    
+
+    def get_tech_indicators_all(
+        self, trade_date: Optional[str] = None,
+    ) -> pd.DataFrame:
+        """获取全市场技术指标，返回 DataFrame (index=ts_code)。
+
+        从 stock_tech_indicator 表读取，裸代码转 ts_code，
+        close_qfq 映射为 close 列以匹配 get_bulk_stk_factor 返回格式。
+        """
+        if trade_date is None:
+            trade_date = date.today().strftime("%Y%m%d")
+        target_dt = datetime.strptime(trade_date, "%Y%m%d").date()
+        with self.get_session() as session:
+            rows = session.execute(
+                select(StockTechIndicator).where(
+                    StockTechIndicator.date == target_dt,
+                )
+            ).scalars().all()
+            if not rows:
+                return pd.DataFrame()
+            data = [r.to_dict() for r in rows]
+        df = pd.DataFrame(data)
+        # 裸代码 → ts_code
+        def _bare_to_ts(codes):
+            codes = codes.astype(str).str.zfill(6)
+            sfx = {"6": "SH", "9": "SH", "0": "SZ", "1": "SZ", "2": "SZ", "3": "SZ", "5": "SZ", "4": "BJ", "8": "BJ"}
+            return codes + "." + codes.str[0].map(sfx).fillna("SZ")
+        df["ts_code"] = _bare_to_ts(df["code"])
+        df = df.set_index("ts_code")
+        # 列名映射: DB close_qfq → factor 期望的 close
+        df = df.rename(columns={"close_qfq": "close"})
+        keep = [
+            "close", "macd_dif", "macd_dea", "macd",
+            "rsi_6", "rsi_12", "rsi_24",
+            "kdj_k", "kdj_d", "kdj_j",
+            "boll_upper", "boll_mid", "boll_lower", "cci",
+        ]
+        return df[[c for c in keep if c in df.columns]]
+
     @classmethod
     def get_instance(cls) -> 'DatabaseManager':
         """获取单例实例"""
@@ -3789,6 +3827,39 @@ class DatabaseManager:
                 "hm_orgs": r.hm_orgs, "source": r.source,
             } for r in rows])
             return df.set_index("code")
+
+    def get_hm_detail_by_date(self, target_date: Optional[str] = None) -> pd.DataFrame:
+        """获取单日全市场游资明细，返回 DataFrame (index=ts_code)。
+
+        用于 HotMoneyFactor DB 读路径，列名与 Tushare 返回保持一致。
+        """
+        if target_date is None:
+            target_date = datetime.now().strftime("%Y%m%d")
+        with self.get_session() as session:
+            rows = session.execute(
+                select(HmDetail).where(HmDetail.trade_date == target_date)
+            ).scalars().all()
+            if not rows:
+                return pd.DataFrame()
+            df = pd.DataFrame([{
+                "code": r.code, "trade_date": r.trade_date,
+                "ts_name": r.name,
+                "buy_amount": r.buy_amount, "sell_amount": r.sell_amount,
+                "net_amount": r.net_amount, "hm_name": r.hm_name,
+                "hm_orgs": r.hm_orgs,
+            } for r in rows])
+
+        def _bare_to_ts(codes: pd.Series) -> pd.Series:
+            codes = codes.astype(str).str.zfill(6)
+            sfx = {
+                "6": "SH", "9": "SH",
+                "0": "SZ", "1": "SZ", "2": "SZ", "3": "SZ", "5": "SZ",
+                "4": "BJ", "8": "BJ",
+            }
+            return codes + "." + codes.str[0].map(sfx).fillna("SZ")
+
+        df["ts_code"] = _bare_to_ts(df["code"])
+        return df.drop(columns=["code"]).set_index("ts_code")
 
     def upsert_hm_quality(self, perf: pd.DataFrame) -> int:
         """全量覆盖游资质量评分表（每次 compute_performance 后调用）。"""
