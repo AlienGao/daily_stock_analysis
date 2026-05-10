@@ -3,8 +3,8 @@
 
 每个因子对应一个独立文件，继承 BaseFactor 抽象基类。
 盘中因子 (5个): SectorFactor, MaEntryFactor, MomentumFactor, ReboundFactor, PopularityFactor
-盘后因子 (15个): MoneyFlowFactor, MarginFactor, ChipFactor, TechnicalFactor, LimitFactor,
-                 FundamentalFactor, HotMoneyFactor, NorthboundFactor, InstitutionHoldFactor,
+盘后因子 (14个): MoneyFlowFactor, MarginFactor, ChipFactor, TechnicalFactor, LimitFactor,
+                 FundamentalFactor, HotMoneyFactor, InstitutionHoldFactor,
                  ProfitForecastFactor, PerformanceFactor, BuybackFactor, InsiderBuyFactor,
                  PopularityFactor, BrokerRecommendFactor
 R&D 闭环生成因子: rd_gen_*.py（自动发现并注册）
@@ -32,7 +32,6 @@ from src.discovery.factors.limit_factor import LimitFactor
 from src.discovery.factors.fundamental_factor import FundamentalFactor
 from src.discovery.factors.popularity_factor import PopularityFactor
 from src.discovery.factors.hot_money_factor import HotMoneyFactor
-from src.discovery.factors.northbound_factor import NorthboundFactor
 from src.discovery.factors.institution_hold_factor import InstitutionHoldFactor
 from src.discovery.factors.profit_forecast_factor import ProfitForecastFactor
 from src.discovery.factors.performance_factor import PerformanceFactor
@@ -55,7 +54,6 @@ __all__ = [
     "FundamentalFactor",
     "PopularityFactor",
     "HotMoneyFactor",
-    "NorthboundFactor",
     "InstitutionHoldFactor",
     "ProfitForecastFactor",
     "PerformanceFactor",
@@ -72,7 +70,7 @@ _KNOWN_MODULES = {
     "base", "sector_factor", "ma_entry_factor", "momentum_factor",
     "rebound_factor", "money_flow_factor", "margin_factor", "chip_factor",
     "technical_factor", "limit_factor", "fundamental_factor", "popularity_factor",
-    "hot_money_factor", "northbound_factor", "institution_hold_factor",
+    "hot_money_factor", "institution_hold_factor",
     "profit_forecast_factor", "performance_factor", "buyback_factor",
     "insider_buy_factor", "broker_recommend_factor",
 }

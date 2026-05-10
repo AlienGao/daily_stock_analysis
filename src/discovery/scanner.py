@@ -1134,7 +1134,7 @@ def ensure_postmarket_scan(
         MoneyFlowFactor, MarginFactor, ChipFactor,
         TechnicalFactor, LimitFactor,
         FundamentalFactor, PopularityFactor, HotMoneyFactor,
-        NorthboundFactor, InstitutionHoldFactor, ProfitForecastFactor,
+        InstitutionHoldFactor, ProfitForecastFactor,
         PerformanceFactor, BuybackFactor, InsiderBuyFactor,
         BrokerRecommendFactor,
     )
@@ -1183,7 +1183,7 @@ def ensure_postmarket_scan(
         MoneyFlowFactor(), MarginFactor(), ChipFactor(),
         TechnicalFactor(), LimitFactor(),
         FundamentalFactor(), PopularityFactor(), HotMoneyFactor(),
-        NorthboundFactor(), InstitutionHoldFactor(), ProfitForecastFactor(),
+        InstitutionHoldFactor(), ProfitForecastFactor(),
         PerformanceFactor(), BuybackFactor(), InsiderBuyFactor(),
         BrokerRecommendFactor(),
     ])

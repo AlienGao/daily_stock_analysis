@@ -36,7 +36,6 @@ _FACTOR_DISPLAY: Dict[str, str] = {
     "fundamental": "基本面",
     "popularity": "人气",
     "hot_money": "游资",
-    "northbound": "北向资金",
     "institution_hold": "机构持仓",
     "profit_forecast": "盈利预测",
     "performance": "业绩",
@@ -390,7 +389,7 @@ class StockDiscoveryEngine:
             if trend_strength > 0.8:
                 # 强趋势市场：增配动量、北向
                 logger.info(f"[Discovery] 市场状态: 强趋势 (trend={trend_strength:.2f})")
-                return {"momentum": 1.3, "northbound": 1.2, "rebound": 0.7, "technical": 1.1}
+                return {"momentum": 1.3, "rebound": 0.7, "technical": 1.1}
             elif volatility > 1.5:
                 # 高波动震荡：增配反弹、业绩
                 logger.info(f"[Discovery] 市场状态: 高波动 (vol={volatility:.2f})")
@@ -441,7 +440,7 @@ class StockDiscoveryEngine:
             corr_matrix = df_scores.corr()
 
             # 资金流因子组（高度相关）
-            money_group = ["money_flow", "hot_money", "northbound"]
+            money_group = ["money_flow", "hot_money"]
             existing = [f for f in money_group if f in corr_matrix.columns]
 
             if len(existing) > 1:

@@ -2108,7 +2108,7 @@ class StockAnalysisPipeline:
                         MoneyFlowFactor, MarginFactor, ChipFactor,
                         TechnicalFactor, LimitFactor,
                         FundamentalFactor, PopularityFactor, HotMoneyFactor,
-                        NorthboundFactor, InstitutionHoldFactor, ProfitForecastFactor,
+                        InstitutionHoldFactor, ProfitForecastFactor,
                         PerformanceFactor, BuybackFactor, InsiderBuyFactor,
                         BrokerRecommendFactor,
                     )
@@ -2128,7 +2128,6 @@ class StockAnalysisPipeline:
                         FundamentalFactor(),
                         PopularityFactor(),
                         HotMoneyFactor(),
-                        NorthboundFactor(),
                         InstitutionHoldFactor(),
                         ProfitForecastFactor(),
                         PerformanceFactor(),
