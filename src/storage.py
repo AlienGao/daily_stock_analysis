@@ -424,6 +424,55 @@ class MarginDetail(Base):
         return f"<MarginDetail(code={self.code}, date={self.trade_date})>"
 
 
+class HmDetail(Base):
+    """个股游资交易明细（盘后 Tushare hm_detail 落库）。
+
+    按 (code, trade_date, hm_name) 唯一，记录游资每日买卖明细。
+    """
+
+    __tablename__ = 'hm_detail'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(10), nullable=False, index=True)
+    name = Column(String(50))
+    trade_date = Column(String(8))
+    buy_amount = Column(Float)
+    sell_amount = Column(Float)
+    net_amount = Column(Float)
+    hm_name = Column(String(100))
+    hm_orgs = Column(String(200))
+    source = Column(String(20))
+    updated_at = Column(DateTime, default=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('code', 'trade_date', 'hm_name', name='uix_hm_detail'),
+        Index('ix_hm_detail_trade_date', 'trade_date'),
+    )
+
+    def __repr__(self) -> str:
+        return f"<HmDetail(code={self.code}, date={self.trade_date}, hm={self.hm_name})>"
+
+
+class HmQuality(Base):
+    """游资质量评分（按 hm_name 唯一，每次全量计算后覆盖）。
+
+    由 HmTracker compute_performance 产出，供 HotMoneyFactor 加权使用。
+    """
+
+    __tablename__ = 'hm_quality'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    hm_name = Column(String(100), unique=True, nullable=False, index=True)
+    win_rate = Column(Float)
+    avg_return = Column(Float)
+    total_trades = Column(Integer)
+    quality_score = Column(Float)
+    computed_at = Column(DateTime, default=datetime.now)
+
+    def __repr__(self) -> str:
+        return f"<HmQuality(hm={self.hm_name}, q={self.quality_score:.1f})>"
+
+
 class AnalysisHistory(Base):
     """
     分析结果历史记录模型
@@ -1138,6 +1187,29 @@ class BrokerEnrichmentForecast(Base):
         }
 
 
+class InsiderBuy(Base):
+    """险资举牌事件缓存。"""
+
+    __tablename__ = 'insider_buy'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    ts_code = Column(String(12), nullable=False)
+    stock_name = Column(String(50))
+    announce_date = Column(String(10))
+    buyer = Column(String(200))
+    buy_shares = Column(Float)
+    avg_price = Column(Float)
+    add_ratio = Column(Float)
+    hold_shares = Column(Float)
+    hold_ratio = Column(Float)
+    source = Column(String(50), default="akshare")
+    updated_at = Column(DateTime, default=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('ts_code', 'announce_date', 'buyer', name='uix_insider_buy'),
+    )
+
+
 class BrokerEnrichmentCyqPerf(Base):
     """筹码胜率增强数据缓存。"""
 
@@ -1246,6 +1318,8 @@ class DatabaseManager:
         self._ensure_limit_up_history_table()
         self._ensure_limit_break_table()
         self._ensure_margin_detail_table()
+        self._ensure_cyq_perf_table()
+        self._ensure_insider_buy_table()
         self._ensure_stock_daily_date_index()
 
         self._initialized = True
@@ -1407,6 +1481,46 @@ class DatabaseManager:
             logger.info("已创建表 margin_detail")
         except Exception as exc:
             logger.warning("创建 margin_detail 失败: %s", exc)
+
+    def _ensure_cyq_perf_table(self) -> None:
+        """SQLite: create broker_enrichment_cyq_perf if missing."""
+        if not self._is_sqlite_engine:
+            return
+        try:
+            with self._engine.connect() as conn:
+                rows = conn.execute(
+                    text("SELECT name FROM sqlite_master WHERE type='table' AND name='broker_enrichment_cyq_perf'")
+                ).fetchall()
+            if rows:
+                return
+        except Exception as exc:
+            logger.warning("检查 broker_enrichment_cyq_perf 表存在性失败: %s", exc)
+            return
+        try:
+            BrokerEnrichmentCyqPerf.__table__.create(self._engine)
+            logger.info("已创建表 broker_enrichment_cyq_perf")
+        except Exception as exc:
+            logger.warning("创建 broker_enrichment_cyq_perf 失败: %s", exc)
+
+    def _ensure_insider_buy_table(self) -> None:
+        """SQLite: create insider_buy if missing."""
+        if not self._is_sqlite_engine:
+            return
+        try:
+            with self._engine.connect() as conn:
+                rows = conn.execute(
+                    text("SELECT name FROM sqlite_master WHERE type='table' AND name='insider_buy'")
+                ).fetchall()
+            if rows:
+                return
+        except Exception as exc:
+            logger.warning("检查 insider_buy 表存在性失败: %s", exc)
+            return
+        try:
+            InsiderBuy.__table__.create(self._engine)
+            logger.info("已创建表 insider_buy")
+        except Exception as exc:
+            logger.warning("创建 insider_buy 失败: %s", exc)
 
     def _ensure_limit_up_history_table(self) -> None:
         """SQLite: create limit_up_history if missing."""
@@ -3389,6 +3503,425 @@ class DatabaseManager:
             } for r in rows])
             return df.set_index("code")
 
+    def upsert_hm_detail(self, df: pd.DataFrame, source: str = "tushare") -> int:
+        """upsert 游资交易明细 by (code, trade_date, hm_name)。"""
+        if df is None or df.empty:
+            return 0
+
+        now = datetime.now()
+        records: List[Dict[str, Any]] = []
+        for _, row in df.iterrows():
+            code = str(row.get("code", "")).strip()
+            if not code:
+                continue
+            trade_date = str(row.get("trade_date", ""))[:8]
+            if not trade_date:
+                continue
+
+            records.append({
+                "code": code,
+                "name": str(row.get("ts_name", ""))[:50] if row.get("ts_name") else "",
+                "trade_date": trade_date,
+                "buy_amount": self._normalize_sql_value(row.get("buy_amount")),
+                "sell_amount": self._normalize_sql_value(row.get("sell_amount")),
+                "net_amount": self._normalize_sql_value(row.get("net_amount")),
+                "hm_name": str(row.get("hm_name", ""))[:100] if row.get("hm_name") else "",
+                "hm_orgs": str(row.get("hm_orgs", ""))[:200] if row.get("hm_orgs") else "",
+                "source": source,
+                "updated_at": now,
+            })
+
+        if not records:
+            return 0
+
+        def _write(session: Session) -> int:
+            if self._is_sqlite_engine:
+                _CHUNK = 200
+                for i in range(0, len(records), _CHUNK):
+                    chunk = records[i : i + _CHUNK]
+                    stmt = sqlite_insert(HmDetail).values(chunk)
+                    excluded = stmt.excluded
+                    session.execute(
+                        stmt.on_conflict_do_update(
+                            index_elements=["code", "trade_date", "hm_name"],
+                            set_={
+                                "name": excluded.name,
+                                "buy_amount": excluded.buy_amount,
+                                "sell_amount": excluded.sell_amount,
+                                "net_amount": excluded.net_amount,
+                                "hm_orgs": excluded.hm_orgs,
+                                "source": excluded.source,
+                                "updated_at": excluded.updated_at,
+                            },
+                        )
+                    )
+                return len(records)
+            else:
+                codes = [r["code"] for r in records]
+                dates = [r["trade_date"] for r in records]
+                existing = {}
+                for row in session.execute(
+                    select(HmDetail).where(
+                        and_(HmDetail.code.in_(codes), HmDetail.trade_date.in_(dates))
+                    )
+                ).scalars().all():
+                    existing[(row.code, row.trade_date, row.hm_name)] = row
+                new_count = 0
+                for rec in records:
+                    ent = existing.get((rec["code"], rec["trade_date"], rec["hm_name"]))
+                    if ent is None:
+                        session.add(HmDetail(**rec))
+                        new_count += 1
+                    else:
+                        for key in ("name", "buy_amount", "sell_amount",
+                                     "net_amount", "hm_orgs", "source"):
+                            setattr(ent, key, rec[key])
+                        ent.updated_at = now
+                return new_count
+
+        try:
+            saved = self._run_write_transaction("upsert_hm_detail", _write)
+            logger.debug("[DB] upsert_hm_detail: %d 条 (source=%s)", saved, source)
+            return saved
+        except Exception as e:
+            logger.error("[DB] upsert_hm_detail 失败: %s", e)
+            raise
+
+    def get_hm_detail_range(
+        self, codes: Optional[List[str]] = None,
+        start_date: Optional[str] = None, end_date: Optional[str] = None,
+    ) -> pd.DataFrame:
+        """获取游资交易明细多日数据，返回 DataFrame (index=code)。
+
+        Args:
+            codes: 股票代码列表，None 则查全市场
+            start_date: 起始日期 YYYYMMDD
+            end_date: 结束日期 YYYYMMDD
+        """
+        with self.get_session() as session:
+            stmt = select(HmDetail)
+            if codes:
+                stmt = stmt.where(HmDetail.code.in_(codes))
+            if start_date:
+                stmt = stmt.where(HmDetail.trade_date >= start_date)
+            if end_date:
+                stmt = stmt.where(HmDetail.trade_date <= end_date)
+            rows = session.execute(stmt).scalars().all()
+            if not rows:
+                return pd.DataFrame()
+            df = pd.DataFrame([{
+                "code": r.code, "name": r.name, "trade_date": r.trade_date,
+                "buy_amount": r.buy_amount, "sell_amount": r.sell_amount,
+                "net_amount": r.net_amount, "hm_name": r.hm_name,
+                "hm_orgs": r.hm_orgs, "source": r.source,
+            } for r in rows])
+            return df.set_index("code")
+
+    def upsert_hm_quality(self, perf: pd.DataFrame) -> int:
+        """全量覆盖游资质量评分表（每次 compute_performance 后调用）。"""
+        if perf is None or perf.empty:
+            return 0
+
+        now = datetime.now()
+        records: List[Dict[str, Any]] = []
+        for hm_name, row in perf.iterrows():
+            records.append({
+                "hm_name": str(hm_name),
+                "win_rate": self._normalize_sql_value(row.get("win_rate")),
+                "avg_return": self._normalize_sql_value(row.get("avg_return")),
+                "total_trades": int(row.get("total_trades", 0)),
+                "quality_score": self._normalize_sql_value(row.get("quality_score")),
+                "computed_at": now,
+            })
+
+        if not records:
+            return 0
+
+        def _write(session: Session) -> int:
+            if self._is_sqlite_engine:
+                stmt = sqlite_insert(HmQuality).values(records)
+                excluded = stmt.excluded
+                session.execute(
+                    stmt.on_conflict_do_update(
+                        index_elements=["hm_name"],
+                        set_={
+                            "win_rate": excluded.win_rate,
+                            "avg_return": excluded.avg_return,
+                            "total_trades": excluded.total_trades,
+                            "quality_score": excluded.quality_score,
+                            "computed_at": excluded.computed_at,
+                        },
+                    )
+                )
+                return len(records)
+            else:
+                for r in records:
+                    existing = session.execute(
+                        select(HmQuality).where(HmQuality.hm_name == r["hm_name"])
+                    ).scalar_one_or_none()
+                    if existing:
+                        for k, v in r.items():
+                            if k != "hm_name":
+                                setattr(existing, k, v)
+                    else:
+                        session.add(HmQuality(**r))
+                return len(records)
+
+        try:
+            saved = self._run_write_transaction("upsert_hm_quality", _write)
+            logger.debug("[DB] upsert_hm_quality: %d 条", saved)
+            return saved
+        except Exception:
+            logger.warning("[DB] upsert_hm_quality 失败", exc_info=True)
+            return 0
+
+    def get_all_hm_quality(self) -> Dict[str, float]:
+        """返回 {hm_name: quality_score} 映射（0-1 归一化值）。"""
+        with self.get_session() as session:
+            rows = session.execute(select(HmQuality)).scalars().all()
+            return {r.hm_name: r.quality_score for r in rows}
+
+    def upsert_cyq_perf(self, df: pd.DataFrame, source: str = "tushare") -> int:
+        """upsert 筹码胜率数据 by (ts_code, trade_date)（盘后 Tushare 全量覆盖）。"""
+        if df is None or df.empty:
+            return 0
+
+        now = datetime.now()
+        records: List[Dict[str, Any]] = []
+        for _, row in df.iterrows():
+            ts_code = str(row.get("ts_code", "")).strip()
+            if not ts_code:
+                continue
+            trade_date = str(row.get("trade_date", ""))[:8]
+            if not trade_date:
+                continue
+
+            records.append({
+                "ts_code": ts_code,
+                "trade_date": trade_date,
+                "winner_rate": self._normalize_sql_value(row.get("winner_rate")),
+                "cost_5pct": self._normalize_sql_value(row.get("cost_5pct")),
+                "cost_15pct": self._normalize_sql_value(row.get("cost_15pct")),
+                "cost_50pct": self._normalize_sql_value(row.get("cost_50pct")),
+                "cost_85pct": self._normalize_sql_value(row.get("cost_85pct")),
+                "cost_95pct": self._normalize_sql_value(row.get("cost_95pct")),
+                "weight_avg": self._normalize_sql_value(row.get("weight_avg")),
+                "his_low": self._normalize_sql_value(row.get("his_low")),
+                "his_high": self._normalize_sql_value(row.get("his_high")),
+                "cached_at": now,
+            })
+
+        if not records:
+            return 0
+
+        def _write(session: Session) -> int:
+            if self._is_sqlite_engine:
+                _CHUNK = 200
+                for i in range(0, len(records), _CHUNK):
+                    chunk = records[i : i + _CHUNK]
+                    stmt = sqlite_insert(BrokerEnrichmentCyqPerf).values(chunk)
+                    excluded = stmt.excluded
+                    session.execute(
+                        stmt.on_conflict_do_update(
+                            index_elements=["ts_code", "trade_date"],
+                            set_={
+                                "winner_rate": excluded.winner_rate,
+                                "cost_5pct": excluded.cost_5pct,
+                                "cost_15pct": excluded.cost_15pct,
+                                "cost_50pct": excluded.cost_50pct,
+                                "cost_85pct": excluded.cost_85pct,
+                                "cost_95pct": excluded.cost_95pct,
+                                "weight_avg": excluded.weight_avg,
+                                "his_low": excluded.his_low,
+                                "his_high": excluded.his_high,
+                                "cached_at": excluded.cached_at,
+                            },
+                        )
+                    )
+                return len(records)
+            else:
+                ts_codes = [r["ts_code"] for r in records]
+                dates = [r["trade_date"] for r in records]
+                existing = {}
+                for row in session.execute(
+                    select(BrokerEnrichmentCyqPerf).where(
+                        and_(BrokerEnrichmentCyqPerf.ts_code.in_(ts_codes),
+                             BrokerEnrichmentCyqPerf.trade_date.in_(dates))
+                    )
+                ).scalars().all():
+                    existing[(row.ts_code, row.trade_date)] = row
+                new_count = 0
+                for rec in records:
+                    ent = existing.get((rec["ts_code"], rec["trade_date"]))
+                    if ent is None:
+                        session.add(BrokerEnrichmentCyqPerf(**rec))
+                        new_count += 1
+                    else:
+                        for key in ("winner_rate", "cost_5pct", "cost_15pct", "cost_50pct",
+                                     "cost_85pct", "cost_95pct", "weight_avg",
+                                     "his_low", "his_high"):
+                            setattr(ent, key, rec[key])
+                        ent.cached_at = now
+                return new_count
+
+        try:
+            saved = self._run_write_transaction("upsert_cyq_perf", _write)
+            logger.debug("[DB] upsert_cyq_perf: %d 条 (source=%s)", saved, source)
+            return saved
+        except Exception as e:
+            logger.error("[DB] upsert_cyq_perf 失败: %s", e)
+            raise
+
+    def get_cyq_perf_range(
+        self, start_date: Optional[str] = None, end_date: Optional[str] = None,
+    ) -> pd.DataFrame:
+        """获取筹码胜率多日数据，返回 DataFrame (index=ts_code)。
+
+        Args:
+            start_date: 起始日期 YYYYMMDD
+            end_date: 结束日期 YYYYMMDD
+        """
+        with self.get_session() as session:
+            stmt = select(BrokerEnrichmentCyqPerf)
+            if start_date:
+                stmt = stmt.where(BrokerEnrichmentCyqPerf.trade_date >= start_date)
+            if end_date:
+                stmt = stmt.where(BrokerEnrichmentCyqPerf.trade_date <= end_date)
+            rows = session.execute(stmt).scalars().all()
+            if not rows:
+                return pd.DataFrame()
+            df = pd.DataFrame([{
+                "ts_code": r.ts_code, "trade_date": r.trade_date,
+                "winner_rate": r.winner_rate, "cost_5pct": r.cost_5pct,
+                "cost_15pct": r.cost_15pct, "cost_50pct": r.cost_50pct,
+                "cost_85pct": r.cost_85pct, "cost_95pct": r.cost_95pct,
+                "weight_avg": r.weight_avg, "his_low": r.his_low,
+                "his_high": r.his_high,
+            } for r in rows])
+            return df.set_index("ts_code")
+
+    @staticmethod
+    def _parse_cn_number(val: Any) -> Optional[float]:
+        """解析中文数字格式（万/亿）为 float。"""
+        if val is None or (isinstance(val, float) and pd.isna(val)):
+            return None
+        s = str(val).strip()
+        if not s:
+            return None
+        try:
+            if "亿" in s:
+                return float(s.replace("亿", "")) * 1e8
+            if "万" in s:
+                return float(s.replace("万", "")) * 1e4
+            return float(s)
+        except (ValueError, TypeError):
+            return None
+
+    def upsert_insider_buy(self, df: pd.DataFrame, source: str = "akshare") -> int:
+        """upsert 险资举牌事件 by (ts_code, announce_date, buyer)。"""
+        if df is None or df.empty:
+            return 0
+
+        now = datetime.now()
+        records: List[Dict[str, Any]] = []
+        for _, row in df.iterrows():
+            ts_code = str(row.get("ts_code", row.name) if "ts_code" in df.columns else row.name).strip()
+            announce_date = str(row.get("举牌公告日", row.get("announce_date", "")))[:10].strip()
+            if not ts_code or not announce_date:
+                continue
+            records.append({
+                "ts_code": ts_code,
+                "stock_name": str(row.get("股票简称", row.get("stock_name", ""))).strip(),
+                "announce_date": announce_date,
+                "buyer": str(row.get("举牌方", row.get("buyer", ""))).strip(),
+                "buy_shares": self._parse_cn_number(row.get("增持数量", row.get("buy_shares"))),
+                "avg_price": self._normalize_sql_value(row.get("交易均价", row.get("avg_price"))),
+                "add_ratio": self._normalize_sql_value(row.get("增持数量占总股本比例", row.get("add_ratio"))),
+                "hold_shares": self._parse_cn_number(row.get("变动后持股总数", row.get("hold_shares"))),
+                "hold_ratio": self._normalize_sql_value(row.get("变动后持股比例", row.get("hold_ratio"))),
+                "source": source,
+                "updated_at": now,
+            })
+
+        if not records:
+            return 0
+
+        def _write(session: Session) -> int:
+            if self._is_sqlite_engine:
+                _CHUNK = 100
+                for i in range(0, len(records), _CHUNK):
+                    chunk = records[i : i + _CHUNK]
+                    stmt = sqlite_insert(InsiderBuy).values(chunk)
+                    excluded = stmt.excluded
+                    session.execute(
+                        stmt.on_conflict_do_update(
+                            index_elements=["ts_code", "announce_date", "buyer"],
+                            set_={
+                                "stock_name": excluded.stock_name,
+                                "buy_shares": excluded.buy_shares,
+                                "avg_price": excluded.avg_price,
+                                "add_ratio": excluded.add_ratio,
+                                "hold_shares": excluded.hold_shares,
+                                "hold_ratio": excluded.hold_ratio,
+                                "source": excluded.source,
+                                "updated_at": excluded.updated_at,
+                            },
+                        )
+                    )
+                return len(records)
+            else:
+                new_count = 0
+                for rec in records:
+                    ent = session.execute(
+                        select(InsiderBuy).where(
+                            and_(InsiderBuy.ts_code == rec["ts_code"],
+                                 InsiderBuy.announce_date == rec["announce_date"],
+                                 InsiderBuy.buyer == rec["buyer"])
+                        )
+                    ).scalar_one_or_none()
+                    if ent is None:
+                        session.add(InsiderBuy(**rec))
+                        new_count += 1
+                    else:
+                        for key in ("stock_name", "buy_shares", "avg_price",
+                                     "add_ratio", "hold_shares", "hold_ratio"):
+                            setattr(ent, key, rec[key])
+                        ent.source = source
+                        ent.updated_at = now
+                return new_count
+
+        try:
+            saved = self._run_write_transaction("upsert_insider_buy", _write)
+            logger.debug("[DB] upsert_insider_buy: %d 条", saved)
+            return saved
+        except Exception as e:
+            logger.error("[DB] upsert_insider_buy 失败: %s", e)
+            raise
+
+    def get_insider_buy_recent(self, months: int = 6) -> pd.DataFrame:
+        """获取近 N 个月的险资举牌事件，返回 DataFrame (index=ts_code)。"""
+        from datetime import timedelta
+        cutoff = (datetime.now() - timedelta(days=months * 30)).strftime("%Y-%m-%d")
+        with self.get_session() as session:
+            rows = session.execute(
+                select(InsiderBuy).where(
+                    InsiderBuy.announce_date >= cutoff
+                ).order_by(InsiderBuy.announce_date.desc())
+            ).scalars().all()
+            if not rows:
+                return pd.DataFrame()
+            df = pd.DataFrame([{
+                "ts_code": r.ts_code, "stock_name": r.stock_name,
+                "announce_date": r.announce_date, "buyer": r.buyer,
+                "buy_shares": r.buy_shares, "avg_price": r.avg_price,
+                "add_ratio": r.add_ratio, "hold_shares": r.hold_shares,
+                "hold_ratio": r.hold_ratio,
+            } for r in rows])
+            # 同一股票多条事件时取最新的一条
+            df = df.sort_values("announce_date", ascending=False)
+            df = df.drop_duplicates(subset="ts_code", keep="first")
+            return df.set_index("ts_code")
+
     # ------------------------------------------------------------------
     # Daily data
     # ------------------------------------------------------------------
@@ -4075,7 +4608,7 @@ class DatabaseManager:
                 factor_json = json.dumps(r.get("factor_scores", {}), ensure_ascii=False)
                 entities.append(
                     ScanResultIntraday(
-                        scan_date=r.get("scan_date", scan_date),
+                        scan_date=scan_date,
                         scan_round=r.get("scan_round", 0),
                         scan_time=r.get("scan_time", ""),
                         ts_code=r.get("ts_code", ""),
@@ -4100,6 +4633,40 @@ class DatabaseManager:
         except Exception as e:
             logger.error("[ScanResultIntraday] 保存失败: %s", e)
             raise
+
+    def has_postmarket_scan_today(self, scan_date: str) -> bool:
+        """检查当天是否已完成盘后全量扫描。"""
+        with self.get_session() as session:
+            from sqlalchemy import exists
+            return session.execute(
+                select(exists().where(ScanResultPostmarket.scan_date == scan_date))
+            ).scalar()
+
+    def load_factor_signals_for_date(self, scan_date: str) -> Dict[str, Dict[str, Any]]:
+        """加载指定日期的盘后全量因子评分缓存。
+
+        Returns:
+            {stock_code: {score, factor_scores, reasons, ...}}
+        """
+        with self.get_session() as session:
+            rows = session.execute(
+                select(ScanResultPostmarket).where(
+                    ScanResultPostmarket.scan_date == scan_date
+                )
+            ).scalars().all()
+            cache: Dict[str, Dict[str, Any]] = {}
+            for r in rows:
+                cache[r.stock_code] = {
+                    "score": r.total_score or 0,
+                    "factor_scores": json.loads(r.factor_scores_json or "{}"),
+                    "reasons": [],
+                    "buy_price_low": None,
+                    "buy_price_high": None,
+                    "stop_loss": None,
+                    "take_profit_1": None,
+                    "take_profit_2": None,
+                }
+            return cache
 
     def save_scan_results_postmarket(
         self, records: List[Dict[str, Any]], scan_date: str
@@ -4126,7 +4693,7 @@ class DatabaseManager:
                 factor_json = json.dumps(r.get("factor_scores", {}), ensure_ascii=False)
                 entities.append(
                     ScanResultPostmarket(
-                        scan_date=r.get("scan_date", scan_date),
+                        scan_date=scan_date,
                         scan_round=r.get("scan_round", 0),
                         scan_time=r.get("scan_time", ""),
                         ts_code=r.get("ts_code", ""),

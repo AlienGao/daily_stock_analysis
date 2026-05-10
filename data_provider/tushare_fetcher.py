@@ -2025,6 +2025,40 @@ class TushareFetcher(BaseFetcher):
             logger.warning(f"[Tushare] 获取全量资金流向失败: {e}")
             return None
 
+    def get_bulk_hm_detail(self, trade_date: Optional[str] = None) -> Optional[pd.DataFrame]:
+        """获取全市场游资交易明细 (Tushare hm_detail, doc_id=312)。
+
+        返回游资每日买卖明细，含游资名称和关联机构。
+
+        Returns:
+            DataFrame indexed by ts_code
+        """
+        if self._api is None:
+            return None
+
+        try:
+            if trade_date is None:
+                trade_date = self.get_trade_time(early_time="00:00", late_time="19:00")
+            if not trade_date:
+                return None
+
+            fields = "ts_code,trade_date,ts_name,buy_amount,sell_amount,net_amount,hm_name,hm_orgs"
+            df = self._call_api_with_rate_limit(
+                "hm_detail", trade_date=trade_date, fields=fields,
+            )
+            if df is not None and not df.empty:
+                df = df.set_index("ts_code")
+                for col in ["buy_amount", "sell_amount", "net_amount"]:
+                    if col in df.columns:
+                        df[col] = pd.to_numeric(df[col], errors="coerce")
+                logger.info(f"[hm_detail] trade_date={trade_date}, {len(df)} 条")
+                return df
+            return None
+
+        except Exception as e:
+            logger.warning(f"[Tushare] 获取hm_detail失败: {e}")
+            return None
+
     def get_bulk_margin_detail(self, trade_date: Optional[str] = None) -> Optional[pd.DataFrame]:
         """获取全市场融资融券明细 (Tushare margin_detail, doc_id=59)。
 

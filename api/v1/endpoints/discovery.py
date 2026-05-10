@@ -12,6 +12,8 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
+import pandas as pd
+
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
@@ -556,6 +558,16 @@ def run_postmarket_discovery():
             if not tushare_fetcher.is_available():
                 _postmarket_tasks[task_id] = {"status": "failed", "error": "数据源 Tushare 不可用"}
                 return
+
+            # 盘前刷新 DB 基础数据，供各因子 fetch_data 直接命中
+            from src.discovery.scanner import (
+                refresh_limit_pool_postmarket,
+                refresh_money_flow_postmarket,
+                refresh_margin_detail_postmarket,
+            )
+            refresh_limit_pool_postmarket(tushare_fetcher)
+            refresh_money_flow_postmarket(tushare_fetcher)
+            refresh_margin_detail_postmarket(tushare_fetcher)
 
             engine = StockDiscoveryEngine(discovery_config, tushare_fetcher, akshare_fetcher)
             engine.register_factors([

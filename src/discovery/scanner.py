@@ -19,7 +19,7 @@ import time
 import traceback
 from datetime import date, datetime, timezone, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set  # noqa: F811
 
 import pandas as pd
 import requests
@@ -722,6 +722,8 @@ class IntradayScanner:
 
     def _save_full_scan_to_db(self) -> None:
         """将本轮全市场评分落库（覆盖当日已有数据）。"""
+        from src.storage import DatabaseManager
+
         df = getattr(self.engine, '_last_full_scan_df', None)
         if df is None or df.empty:
             return
@@ -759,7 +761,7 @@ def refresh_limit_pool_postmarket(tushare_fetcher) -> int:
         out["code"] = df["ts_code"].astype(str).str.split(".").str[0].str.zfill(6)
         out["name"] = df.get("name", pd.Series("", index=df.index)).values if "name" in df.columns else ""
         out["trade_date"] = today
-        out["limit_type"] = df.get("limit_type", "")
+        out["limit_type"] = df.get("limit", df.get("limit_type", ""))
         for c in ("pct_chg", "limit_times", "open_times", "up_stat"):
             if c in df.columns:
                 out[c] = pd.to_numeric(df[c], errors="coerce") if c in ("pct_chg",) else df[c].values
@@ -864,6 +866,139 @@ def refresh_margin_detail_postmarket(tushare_fetcher) -> int:
         return 0
 
 
+def refresh_hm_detail_postmarket(tushare_fetcher, start: Optional[str] = None) -> int:
+    """盘后用 Tushare hm_detail 刷新游资明细表。
+
+    默认拉取最近 2 个交易日（日常增量），传入 start="20220801" 可全量回填。
+    """
+    try:
+        from src.storage import DatabaseManager
+
+        trade_dates = tushare_fetcher._get_trade_dates()
+        if not trade_dates:
+            logger.warning("[Scanner] 盘后 hm_detail 刷新: 无交易日")
+            return 0
+
+        if start is not None:
+            target_dates = sorted(d for d in trade_dates if d >= start)
+        else:
+            target_dates = trade_dates[-2:] if len(trade_dates) >= 2 else trade_dates
+
+        if not target_dates:
+            logger.warning("[Scanner] 盘后 hm_detail 刷新: 无目标日期")
+            return 0
+
+        db = DatabaseManager()
+        total_saved = 0
+        for i, td in enumerate(target_dates):
+            df = tushare_fetcher.get_bulk_hm_detail(trade_date=td)
+            if df is None or df.empty:
+                continue
+
+            df = df.reset_index()
+            out = pd.DataFrame()
+            out["code"] = df["ts_code"].astype(str).str.split(".").str[0].str.zfill(6)
+            out["ts_name"] = df.get("ts_name", pd.Series("", index=df.index)).values if "ts_name" in df.columns else ""
+            out["trade_date"] = df.get("trade_date", td)
+            for c in ("buy_amount", "sell_amount", "net_amount"):
+                if c in df.columns:
+                    out[c] = pd.to_numeric(df[c], errors="coerce")
+            out["hm_name"] = df.get("hm_name", pd.Series("", index=df.index)).values if "hm_name" in df.columns else ""
+            out["hm_orgs"] = df.get("hm_orgs", pd.Series("", index=df.index)).values if "hm_orgs" in df.columns else ""
+
+            saved = db.upsert_hm_detail(out, source="tushare")
+            total_saved += saved
+            logger.info("[Scanner] 盘后 hm_detail 刷新 %s: %d 条", td, saved)
+
+        logger.info("[Scanner] 盘后 hm_detail 刷新完成: %d 天, 合计 %d 条", len(target_dates), total_saved)
+        return total_saved
+    except Exception as e:
+        logger.warning("[Scanner] hm_detail 刷新失败: %s", e)
+        return 0
+
+
+def refresh_cyq_perf_postmarket(tushare_fetcher) -> int:
+    """盘后用 Tushare cyq_perf 全量刷新筹码胜率表。
+
+    拉取最近 2 个交易日，覆盖边缘日期的不完整数据。
+
+    Returns:
+        落库条数，失败返回 0
+    """
+    try:
+        from src.storage import DatabaseManager
+
+        trade_dates = tushare_fetcher._get_trade_dates()
+        if not trade_dates:
+            logger.warning("[Scanner] 盘后 cyq_perf 刷新: 无交易日")
+            return 0
+
+        # 最近 2 个交易日
+        target_dates = trade_dates[-2:] if len(trade_dates) >= 2 else trade_dates
+
+        db = DatabaseManager()
+        total_saved = 0
+        for td in target_dates:
+            df = tushare_fetcher.get_bulk_cyq_perf(trade_date=td)
+            if df is None or df.empty:
+                logger.warning(f"[Scanner] 盘后 cyq_perf 刷新: {td} 无数据")
+                continue
+
+            df = df.reset_index()
+            df["trade_date"] = df.get("trade_date", td)
+            numeric_cols = [
+                "winner_rate", "cost_5pct", "cost_15pct", "cost_50pct",
+                "cost_85pct", "cost_95pct", "weight_avg", "his_low", "his_high",
+            ]
+            for col in numeric_cols:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors="coerce")
+
+            saved = db.upsert_cyq_perf(df, source="tushare")
+            total_saved += saved
+            logger.info(f"[Scanner] 盘后 cyq_perf 刷新 {td}: {saved} 条")
+
+        logger.info("[Scanner] 盘后 cyq_perf 全量刷新: 合计 %d 条", total_saved)
+        return total_saved
+    except Exception as e:
+        logger.warning("[Scanner] 盘后 cyq_perf 刷新失败: %s", e)
+        return 0
+
+
+def refresh_insider_buy_postmarket(akshare_fetcher=None) -> int:
+    """盘后用 akshare 拉取险资举牌数据并落库。"""
+    try:
+        from src.storage import DatabaseManager
+
+        if akshare_fetcher is None:
+            from data_provider.akshare_fetcher import AkshareFetcher
+            akshare_fetcher = AkshareFetcher()
+
+        raw = akshare_fetcher.get_insider_buy()
+        if raw is None or raw.empty:
+            logger.warning("[Scanner] 盘后 insider_buy 刷新: 无数据")
+            return 0
+
+        col_map = {
+            "股票简称": "stock_name", "举牌公告日": "announce_date",
+            "举牌方": "buyer", "增持数量": "buy_shares",
+            "交易均价": "avg_price", "增持数量占总股本比例": "add_ratio",
+            "变动后持股总数": "hold_shares", "变动后持股比例": "hold_ratio",
+        }
+        df = raw.rename(columns={k: v for k, v in col_map.items() if k in raw.columns})
+        for c in ["add_ratio", "hold_ratio", "avg_price"]:
+            if c in df.columns:
+                df[c] = pd.to_numeric(df[c], errors="coerce")
+
+        db = DatabaseManager()
+        saved = db.upsert_insider_buy(df, source="akshare")
+        logger.info("[Scanner] 盘后 insider_buy 刷新: %d 条", saved)
+        return saved
+    except Exception as e:
+        logger.warning("[Scanner] 盘后 insider_buy 刷新失败: %s", e)
+        return 0
+
+
 def run_intraday_scan(config: DiscoveryConfig, tushare_fetcher=None, akshare_fetcher=None) -> None:
     """一键启动盘中扫描（注册全部盘中因子）。"""
     from src.discovery.factors import (
@@ -884,3 +1019,107 @@ def run_intraday_scan(config: DiscoveryConfig, tushare_fetcher=None, akshare_fet
     _load_runtime_state_into(config)
     scanner = IntradayScanner(config, engine)
     scanner.start()
+
+
+def ensure_postmarket_scan(
+    tushare_fetcher, akshare_fetcher=None, force: bool = False
+) -> Dict[str, Dict[str, Any]]:
+    """确保当天盘后扫描已完成（数据刷新 + 因子评分 + 结果落库）。
+
+    若当天已扫描过（scan_result_postmarket 有记录）则直接加载缓存；
+    否则完整跑一遍 refresh → discover → 落库。
+
+    Args:
+        tushare_fetcher: TushareFetcher 实例
+        akshare_fetcher: AkshareFetcher 实例（可选）
+        force: 强制重新扫描，忽略已有缓存
+
+    Returns:
+        {stock_code: {score, factor_scores, reasons, ...}} 因子信号缓存
+    """
+    from datetime import date as dt_date
+
+    from src.discovery.config import get_discovery_config
+    from src.discovery.engine import StockDiscoveryEngine
+    from src.discovery.factors import (
+        MoneyFlowFactor, MarginFactor, ChipFactor,
+        TechnicalFactor, LimitFactor,
+        FundamentalFactor, PopularityFactor, HotMoneyFactor,
+        NorthboundFactor, InstitutionHoldFactor, ProfitForecastFactor,
+        PerformanceFactor, BuybackFactor, InsiderBuyFactor,
+        BrokerRecommendFactor,
+    )
+    from src.storage import DatabaseManager
+
+    today = dt_date.today().strftime("%Y%m%d")
+    db = DatabaseManager()
+
+    if not force and db.has_postmarket_scan_today(today):
+        cached = db.load_factor_signals_for_date(today)
+        if cached:
+            logger.info("[Scanner] 今日已扫描，加载 %d 条缓存", len(cached))
+            return cached
+
+    logger.info("[Scanner] 开始完整盘后扫描 (date=%s)...", today)
+
+    # ---- 数据刷新 ----
+    refreshers = [
+        ("limit_pool", lambda: refresh_limit_pool_postmarket(tushare_fetcher)),
+        ("money_flow", lambda: refresh_money_flow_postmarket(tushare_fetcher)),
+        ("margin_detail", lambda: refresh_margin_detail_postmarket(tushare_fetcher)),
+        ("cyq_perf", lambda: refresh_cyq_perf_postmarket(tushare_fetcher)),
+        ("insider_buy", lambda: refresh_insider_buy_postmarket()),
+        ("hm_detail", lambda: refresh_hm_detail_postmarket(tushare_fetcher)),
+    ]
+    for name, fn in refreshers:
+        try:
+            fn()
+        except Exception:
+            logger.warning("[Scanner] %s 刷新失败，继续", name, exc_info=True)
+
+    # 游资质量更新（hm_detail 有新数据才重算）
+    try:
+        from src.discovery.hm_tracker import HmTracker
+        HmTracker(db).refresh_and_update()
+    except Exception:
+        logger.warning("[Scanner] hm_quality 更新失败，继续", exc_info=True)
+
+    # ---- 因子评分 ----
+    discovery_config = get_discovery_config()
+    engine = StockDiscoveryEngine(discovery_config, tushare_fetcher, akshare_fetcher)
+    engine.register_factors([
+        MoneyFlowFactor(), MarginFactor(), ChipFactor(),
+        TechnicalFactor(), LimitFactor(),
+        FundamentalFactor(), PopularityFactor(), HotMoneyFactor(),
+        NorthboundFactor(), InstitutionHoldFactor(), ProfitForecastFactor(),
+        PerformanceFactor(), BuybackFactor(), InsiderBuyFactor(),
+        BrokerRecommendFactor(),
+    ])
+
+    results = engine.discover(mode="postmarket")
+
+    # ---- 结果落库 ----
+    records = engine.get_last_full_scan_records()
+    if records:
+        try:
+            db.save_scan_results_postmarket(records, today)
+        except Exception:
+            logger.warning("[Scanner] 全量评分落库失败", exc_info=True)
+
+    # ---- 构建缓存（全量扫描记录，非仅 top-N 结果）----
+    cache: Dict[str, Dict[str, Any]] = {}
+    if records:
+        for r in records:
+            cache[r.get("stock_code", r.get("ts_code", ""))] = {
+                "score": r.get("total_score", 0),
+                "factor_scores": r.get("factor_scores", {}),
+                "reasons": [],
+                "buy_price_low": None,
+                "buy_price_high": None,
+                "stop_loss": None,
+                "take_profit_1": None,
+                "take_profit_2": None,
+            }
+
+    logger.info("[Scanner] 盘后扫描完成: %d 只候选股, %d 条缓存", len(results or []), len(cache))
+    return cache

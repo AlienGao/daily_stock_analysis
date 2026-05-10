@@ -1,16 +1,21 @@
 # -*- coding: utf-8 -*-
 """游资因子 (Hot Money Factor).
 
-盘后因子：基于东财主力资金流（游资），识别短线热门股票。
-数据来源: akshare stock_individual_fund_flow(indicator="游资")
+盘后因子：基于 Tushare 游资每日交易明细，识别游资关注的股票。
+数据来源: Tushare hm_detail (doc_id=312)
+
+游资质量加权：通过 HmTracker 历史回测统计各游资 T+1 胜率，
+将「游资家数」升级为「质量加权共识」，区分游资优劣。
 """
 
 import logging
 from typing import Dict, List, Optional
 
+import numpy as np
 import pandas as pd
 
 from src.discovery.factors.base import BaseFactor
+from src.discovery.hm_tracker import HmTracker
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +23,8 @@ logger = logging.getLogger(__name__)
 class HotMoneyFactor(BaseFactor):
     """游资因子。
 
-    基于东财个股资金流（indicator="游资"），识别短线游资关注股票。
-    关键信号：主力净流入 + 游资净买入 = 短线热点。
+    基于 Tushare 游资每日明细（hm_detail），聚合后百分位评分。
+    关键信号：净买入额、游资质量加权共识、买入强度。
     """
 
     name = "hot_money"
@@ -28,122 +33,85 @@ class HotMoneyFactor(BaseFactor):
     weight = 20.0
 
     def fetch_data(self, trade_date: str, **kwargs) -> Optional[pd.DataFrame]:
-        akshare_fetcher = kwargs.get("akshare_fetcher")
-        if akshare_fetcher is None:
-            logger.warning("[HotMoneyFactor] 未提供 akshare_fetcher")
+        """从 TushareFetcher 获取游资明细。"""
+        tushare_fetcher = kwargs.get("tushare_fetcher")
+        if tushare_fetcher is None:
             return None
-
-        try:
-            import akshare as ak
-
-            logger.info("[HotMoneyFactor] 调用 ak.stock_individual_fund_flow(indicator='游资')...")
-            df = ak.stock_individual_fund_flow(indicator="游资")
-            if df is None or df.empty:
-                logger.warning("[HotMoneyFactor] 游资资金流返回空数据")
-                return None
-
-            # 重命名列：东财返回 '代码' 列
-            if "代码" in df.columns:
-                df = df.rename(columns={"代码": "ts_code"})
-            elif "股票代码" in df.columns:
-                df = df.rename(columns={"股票代码": "ts_code"})
-
-            # 设置 ts_code 为索引
-            if "ts_code" in df.columns:
-                df = df.set_index("ts_code")
-            elif df.index.name is None:
-                first_col = df.columns[0]
-                df = df.set_index(first_col)
-                df.index.name = "ts_code"
-
-            logger.info(f"[HotMoneyFactor] 获取 {len(df)} 只股票游资数据")
-            return df
-
-        except Exception as e:
-            logger.warning(f"[HotMoneyFactor] 获取游资数据失败: {e}")
-            return None
+        return tushare_fetcher.get_bulk_hm_detail(trade_date)
 
     def score(self, df: pd.DataFrame, **context) -> pd.Series:
-        scores = pd.Series(0.0, index=df.index, name=self.name)
+        """按 ts_code 聚合明细，百分位评分。
 
+        三个子信号：
+        - 游资净买入额 (40%) — 净买入越多越好
+        - 游资质量加权 (30%) — 历史胜率高的游资买入权重更高
+        - 买入强度 (30%) — 纯买入 vs 有买有卖
+
+        净卖出惩罚：total_net < 0 → ×0.5
+        """
         if df.empty:
-            return scores
+            return pd.Series(dtype=float, name=self.name)
 
-        # 东财个股资金流列名（游资）：
-        # 股票代码, 股票名称, 主力净流入-净额, 主力净流入-占比, ...各种资金类型
-        # 找主力净流入相关列
-        net_col = None
-        ratio_col = None
+        per_stock = df.groupby("ts_code").agg(
+            total_net=("net_amount", "sum"),
+            hm_count=("hm_name", "nunique"),
+            total_buy=("buy_amount", "sum"),
+            total_sell=("sell_amount", "sum"),
+            hm_names=("hm_name", lambda x: "|".join(sorted(set(x)))),
+        )
 
-        for col in df.columns:
-            col_str = str(col)
-            if "主力净流入-净额" in col_str and net_col is None:
-                net_col = col_str
-            elif "主力净流入-占比" in col_str and ratio_col is None:
-                ratio_col = col_str
+        total_volume = per_stock["total_buy"] + per_stock["total_sell"]
 
-        if net_col is None:
-            # 尝试找包含"净额"或"净流入"的列
-            for col in df.columns:
-                if "净额" in str(col) or ("净流入" in str(col) and "占比" not in str(col)):
-                    net_col = str(col)
-                    break
+        def _pct(s: pd.Series) -> pd.Series:
+            return s.rank(pct=True, na_option="bottom") * 100
 
-        net_flow = df.get(net_col, pd.Series(0, index=df.index)) if net_col else pd.Series(0, index=df.index)
-        ratio = df.get(ratio_col, pd.Series(0.0, index=df.index)) if ratio_col else pd.Series(0.0, index=df.index)
+        # 游资质量加权：用历史胜率替换原始家数
+        quality_map = HmTracker.load_quality()
+        quality_scores = []
+        for names in per_stock["hm_names"]:
+            score = sum(quality_map.get(n, 0.5) for n in names.split("|"))
+            quality_scores.append(score)
+        quality_pct = _pct(pd.Series(quality_scores, index=per_stock.index))
 
-        # 主力净流入 > 1亿: +40分, 5000万-1亿: +30分, 1000万-5000万: +20分
-        scores.loc[net_flow > 1e8] += 40.0
-        scores.loc[(net_flow > 5e7) & (net_flow <= 1e8)] += 30.0
-        scores.loc[(net_flow > 1e7) & (net_flow <= 5e7)] += 20.0
+        scores = (
+            _pct(per_stock["total_net"]) * 0.40
+            + quality_pct * 0.30
+            + _pct(per_stock["total_buy"] / total_volume.replace(0, float("nan"))) * 0.30
+        )
 
-        # 主力净流入占比 > 10%: +25分, 5-10%: +15分, 1-5%: +5分
-        try:
-            ratio_num = pd.to_numeric(ratio, errors="coerce").fillna(0)
-            scores.loc[ratio_num > 10] += 25.0
-            scores.loc[(ratio_num > 5) & (ratio_num <= 10)] += 15.0
-            scores.loc[(ratio_num > 1) & (ratio_num <= 5)] += 5.0
-        except Exception:
-            pass
+        penalty = np.where(per_stock["total_net"] < 0, 0.5, 1.0)
+        scores = scores * penalty
 
-        # 净流入为负: 扣分
-        scores.loc[net_flow < 0] = (scores.loc[net_flow < 0] - 20).clip(0, 100)
-
-        return scores.clip(0, 100)
+        self._last_hm_agg = per_stock
+        return pd.Series(scores, index=per_stock.index, name=self.name).clip(0, 100)
 
     def describe(self, df: pd.DataFrame, scores: pd.Series, **context) -> Dict[str, List[str]]:
         reasons: Dict[str, List[str]] = {}
         if df.empty:
             return reasons
 
-        net_col = None
-        ratio_col = None
+        per_stock = getattr(self, "_last_hm_agg", None)
+        if per_stock is None:
+            return reasons
 
-        for col in df.columns:
-            col_str = str(col)
-            if "主力净流入-净额" in col_str:
-                net_col = col_str
-            elif "主力净流入-占比" in col_str:
-                ratio_col = col_str
-
-        for ts_code in scores.index:
-            if scores[ts_code] <= 0:
+        for i in range(len(scores)):
+            if scores.iloc[i] <= 0:
                 continue
+            ts_code = scores.index[i]
             r = []
+            net_val = per_stock["total_net"].iloc[i]
+            count_val = int(per_stock["hm_count"].iloc[i])
+            names_val = per_stock["hm_names"].iloc[i]
 
-            net_v = df[net_col].get(ts_code, 0) if net_col else 0
-            ratio_v = df[ratio_col].get(ts_code, 0) if ratio_col else 0
+            if net_val > 1e8:
+                r.append(f"游资净买入{net_val/1e8:.1f}亿")
+            elif net_val > 1e4:
+                r.append(f"游资净买入{net_val/1e4:.0f}万")
+            elif net_val < -1e4:
+                r.append(f"游资净卖出{abs(net_val)/1e4:.0f}万")
 
-            if net_v > 1e8:
-                r.append(f"主力净流入大({net_v/1e8:.1f}亿)")
-            elif net_v > 5e7:
-                r.append(f"主力净流入中({net_v/1e7:.0f}万)")
-
-            if ratio_v > 10:
-                r.append(f"净流入占比高({ratio_v:.1f}%)")
-
-            if net_v < 0:
-                r.append("主力净流出")
+            if count_val > 1:
+                r.append(f"{count_val}家游资({names_val})")
 
             if r:
                 reasons[ts_code] = r

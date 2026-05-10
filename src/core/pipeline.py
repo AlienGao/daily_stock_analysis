@@ -2048,64 +2048,18 @@ class StockAnalysisPipeline:
     def _prepare_factor_signals_cache(
         self, stock_codes: List[str], tushare_fetcher, akshare_fetcher=None
     ) -> None:
-        """Run discovery engine once at batch level, cache per-stock factor scores.
+        """Ensure postmarket scan is done, load per-stock factor scores from DB.
 
-        This avoids repeated full-market API calls per stock during concurrent analysis.
-        All registered factors (including rd_gen_* from R&D loop) participate.
+        If already scanned today → loads from DB (no API calls).
+        If not → runs full refresh + discover + persist.
         """
-        from src.discovery.config import get_discovery_config
-        from src.discovery.engine import StockDiscoveryEngine
-        from src.discovery.factors import (
-            MoneyFlowFactor, MarginFactor, ChipFactor,
-            TechnicalFactor, LimitFactor,
-            FundamentalFactor, PopularityFactor, HotMoneyFactor,
-            NorthboundFactor, InstitutionHoldFactor, ProfitForecastFactor,
-            PerformanceFactor, BuybackFactor, InsiderBuyFactor,
-            BrokerRecommendFactor,
+        from src.discovery.scanner import ensure_postmarket_scan
+
+        self._factor_signals_cache = ensure_postmarket_scan(
+            tushare_fetcher, akshare_fetcher
         )
-
-        discovery_config = get_discovery_config()
-        engine = StockDiscoveryEngine(discovery_config, tushare_fetcher, akshare_fetcher)
-        # Register all postmarket factors (same as auto-discovery)
-        engine.register_factors([
-            MoneyFlowFactor(),
-            MarginFactor(),
-            ChipFactor(),
-            TechnicalFactor(),
-            LimitFactor(),
-            FundamentalFactor(),
-            PopularityFactor(),
-            HotMoneyFactor(),
-            NorthboundFactor(),
-            InstitutionHoldFactor(),
-            ProfitForecastFactor(),
-            PerformanceFactor(),
-            BuybackFactor(),
-            InsiderBuyFactor(),
-            BrokerRecommendFactor(),
-        ])
-
-        results = engine.discover(mode="postmarket")
-        if not results:
-            logger.info("[FactorSignals] 未发现候选股，因子信号缓存为空")
-            return
-
-        # Build per-stock cache from discovery results
-        for r in results:
-            signals = {
-                "score": r.score,
-                "factor_scores": dict(r.factor_scores),
-                "reasons": list(r.reasons),
-                "buy_price_low": getattr(r, "buy_price_low", None),
-                "buy_price_high": getattr(r, "buy_price_high", None),
-                "stop_loss": getattr(r, "stop_loss", None),
-                "take_profit_1": getattr(r, "take_profit_1", None),
-                "take_profit_2": getattr(r, "take_profit_2", None),
-            }
-            self._factor_signals_cache[r.stock_code] = signals
-
         logger.info(
-            "[FactorSignals] 因子信号缓存已构建: %d 只股票",
+            "[FactorSignals] 因子信号缓存已加载: %d 只股票",
             len(self._factor_signals_cache),
         )
 

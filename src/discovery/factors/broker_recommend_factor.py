@@ -1,15 +1,20 @@
 # -*- coding: utf-8 -*-
 """券商金股因子 (Broker Recommend Factor).
 
-盘后因子：基于 Tushare broker_recommend 数据，统计当月各券商金股推荐数量。
-被越多券商覆盖的股票，说明机构关注度越高。
+盘后因子：基于本地 DB broker_recommend_monthly 数据 + 历史回测结果。
+3 个子信号：
+- 推荐覆盖度 (0-40)：券商数量在当月金股中的百分位
+- 券商质量加权 (0-40)：历史回测胜率 + 平均收益
+- 连续推荐加成 (0-20)：连续月份被多家券商推荐
 
-数据来源: Tushare broker_recommend (需要 6000 积分)
+数据来源: 本地 SQLite (broker_recommend_monthly + broker_backtest_result)
 """
 
 import logging
+from datetime import date
 from typing import Dict, List, Optional
 
+import numpy as np
 import pandas as pd
 
 from src.discovery.factors.base import BaseFactor
@@ -20,8 +25,9 @@ logger = logging.getLogger(__name__)
 class BrokerRecommendFactor(BaseFactor):
     """券商金股因子。
 
-    逻辑：统计当月（最新月份）各券商对每只股票的金股推荐次数，
-    被推荐次数越多，说明机构关注度越高、共识越强。
+    被越多券商覆盖的股票说明机构关注度越高，
+    推荐券商历史胜率越高信号越可靠，
+    连续月份推荐是更强的共识信号。
     """
 
     name = "broker_recommend"
@@ -29,127 +35,207 @@ class BrokerRecommendFactor(BaseFactor):
     available_postmarket = True
     weight = 20.0
 
+    _LABEL_THRESHOLD_RATIO = 0.5
+
     def fetch_data(self, trade_date: str, **kwargs) -> Optional[pd.DataFrame]:
-        """获取当月券商金股推荐数据。
+        """从本地 DB 获取当月券商金股推荐数据。
 
         Args:
             trade_date: 交易日期 YYYYMMDD，用于推断目标月份
-
-        Returns:
-            DataFrame(columns=[month, broker, ts_code, name])
         """
-        tushare_fetcher = kwargs.get("tushare_fetcher")
-        if tushare_fetcher is None or tushare_fetcher._api is None:
-            return None
+        from src.storage import DatabaseManager
 
-        # 推断目标月份（trade_date 的 YYYYMM）
         if len(trade_date) >= 6:
             month = trade_date[:6]
         else:
-            from datetime import date
-
             month = date.today().strftime("%Y%m")
 
-        try:
-            df = tushare_fetcher._api.query(
-                "broker_recommend",
-                month=month,
-            )
-            return df
-        except Exception as e:
-            logger.warning(f"[BrokerRecommend] 获取券商金股数据失败: {e}")
+        db = DatabaseManager()
+        rows = db.get_broker_recommend_monthly(month)
+        if not rows:
+            logger.warning("[BrokerRecommend] 本地 DB 无 %s 月数据，请先执行 fetch", month)
             return None
 
-    def score(self, df: pd.DataFrame, **context) -> pd.Series:
-        """按被推荐次数评分。
+        df = pd.DataFrame([{
+            'ts_code': r.ts_code,
+            'broker': r.broker,
+            'name': r.name,
+            'broker_count': r.broker_count,
+        } for r in rows])
 
-        逻辑：
-        - 被推荐 1 次：30分
-        - 被推荐 2 次：50分
-        - 被推荐 3 次：70分
-        - 被推荐 4 次：85分
-        - 被推荐 5 次及以上：95分
+        # 附加数据供 _compute_signals 使用
+        df.attrs['month'] = month
+
+        broker_quality = self._load_broker_quality(db, month)
+        df.attrs['broker_quality'] = broker_quality
+
+        consecutive = db.get_consecutive_monthly_stocks(month)
+        df.attrs['consecutive_stocks'] = {c['ts_code']: c for c in consecutive}
+
+        logger.info(
+            "[BrokerRecommend] %s 月: %d 条推荐, %d 只股票, %d 家券商, %d 家有历史质量",
+            month, len(df), df['ts_code'].nunique(), df['broker'].nunique(),
+            len(broker_quality),
+        )
+        return df
+
+    # ------------------------------------------------------------------
+    # 券商历史质量
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _load_broker_quality(db, current_month: str) -> Dict[str, float]:
+        """加载券商历史回测综合质量分 (0-1)。
+
+        取最近 3 个有回测结果的月份，按 stock_count 加权汇总。
+        quality = win_rate * 0.7 + sigmoid(avg_return) * 0.3
+        无历史数据的券商不在此 map 中，后续默认给 0.5 中性分。
         """
-        scores = pd.Series(0.0, index=df.index, name=self.name)
+        available_months = db.get_broker_recommend_months()
+        past_months = [m for m in available_months if m != current_month][:3]
 
-        if df.empty:
-            return scores
+        broker_stats: Dict[str, Dict[str, float]] = {}
+        for pm in past_months:
+            bt = db.get_broker_backtest(pm)
+            if not bt:
+                continue
+            for br in bt.get('brokers', []):
+                name = br['broker']
+                if name not in broker_stats:
+                    broker_stats[name] = {'wins': 0.0, 'total': 0.0, 'ret_sum': 0.0}
+                n = br.get('stock_count', 1)
+                broker_stats[name]['wins'] += br.get('win_rate', 0) * n
+                broker_stats[name]['total'] += n
+                broker_stats[name]['ret_sum'] += br.get('avg_return', 0) * n
 
-        ts_code_col = next((c for c in df.columns if "ts_code" in c), None)
-        broker_col = next((c for c in df.columns if "broker" in c), None)
+        quality: Dict[str, float] = {}
+        for name, stats in broker_stats.items():
+            if stats['total'] <= 0:
+                continue
+            wr = stats['wins'] / stats['total']
+            avg_ret = stats['ret_sum'] / stats['total']
+            # sigmoid: 0%→0.5, 2%→0.73, 5%→0.92, 10%→0.99
+            ret_score = 1.0 / (1.0 + np.exp(-avg_ret * 50))
+            quality[name] = round(wr * 0.7 + ret_score * 0.3, 4)
 
-        if ts_code_col is None or broker_col is None:
-            return scores
+        return quality
 
-        # 统计每只股票被多少家不同券商推荐
+    # ------------------------------------------------------------------
+    # 共享信号提取
+    # ------------------------------------------------------------------
+
+    def _compute_signals(self, df: pd.DataFrame) -> Dict[str, pd.Series]:
+        """提取 3 个子信号，各自归一化到满分区间。
+
+        Signals 以唯一 ts_code 为索引（per-stock），score() 再 map 回 per-row。
+        """
+        ts_code_col = 'ts_code'
+        broker_col = 'broker'
+
+        stock_idx = pd.Index(df[ts_code_col].unique())
+        signals: Dict[str, pd.Series] = {}
+
+        # --- 1. 推荐覆盖度 (0-40)：broker_count 在当月金股中的百分位 ---
         broker_count = df.groupby(ts_code_col)[broker_col].nunique()
+        coverage_pct = broker_count.rank(pct=True).reindex(stock_idx).fillna(0)
+        signals['coverage'] = (coverage_pct * 40).clip(0, 40)
 
-        def map_score(n):
-            if n >= 5:
-                return 95.0
-            elif n == 4:
-                return 85.0
-            elif n == 3:
-                return 70.0
-            elif n == 2:
-                return 50.0
-            elif n == 1:
-                return 30.0
-            return 0.0
+        # --- 2. 券商质量加权 (0-40) ---
+        broker_quality = df.attrs.get('broker_quality', {})
+        if broker_quality:
+            bq_series = df[[ts_code_col, broker_col]].copy()
+            bq_series['_bq'] = bq_series[broker_col].map(broker_quality).fillna(0.5)
+            stock_quality = bq_series.groupby(ts_code_col)['_bq'].mean()
+            signals['broker_quality'] = (
+                stock_quality.reindex(stock_idx).fillna(0.5) * 40
+            ).clip(0, 40)
+        else:
+            signals['broker_quality'] = pd.Series(20.0, index=stock_idx)
 
-        broker_scores = broker_count.apply(map_score)
+        # --- 3. 连续推荐加成 (0-20) ---
+        consecutive_stocks = df.attrs.get('consecutive_stocks', {})
+        cons_scores = pd.Series(0.0, index=stock_idx)
+        for ts in stock_idx:
+            c = consecutive_stocks.get(ts)
+            if c:
+                ratio = min(c['broker_count_prev'] / max(c['broker_count_current'], 1), 1.0)
+                cons_scores[ts] = round(ratio * 20, 1)
+        signals['consecutive'] = cons_scores
 
-        # 为每行赋值：找到该行股票代码对应的评分
-        for idx, row in df.iterrows():
-            ts = str(row.get(ts_code_col, ""))
-            if ts in broker_scores.index:
-                scores.at[idx] = broker_scores[ts]
+        return signals
 
+    # ------------------------------------------------------------------
+    # score / describe
+    # ------------------------------------------------------------------
+
+    def score(self, df: pd.DataFrame, **context) -> pd.Series:
+        if df.empty:
+            return pd.Series(dtype=float, name=self.name)
+
+        ts_code_col = next((c for c in df.columns if 'ts_code' in c), 'ts_code')
+
+        signals = self._compute_signals(df)
+        stock_scores = sum(signals.values()).clip(0, 100)
+
+        scores = df[ts_code_col].map(stock_scores).fillna(0)
+        scores.name = self.name
         return scores
 
-    def describe(
-        self, df: pd.DataFrame, scores: pd.Series, **context
-    ) -> Dict[str, List[str]]:
-        """生成推荐理由。"""
+    def describe(self, df: pd.DataFrame, scores: pd.Series, **context) -> Dict[str, List[str]]:
         reasons: Dict[str, List[str]] = {}
-
         if df.empty:
             return reasons
 
-        ts_code_col = next((c for c in df.columns if "ts_code" in c), None)
-        broker_col = next((c for c in df.columns if "broker" in c), None)
-        name_col = next((c for c in df.columns if c == "name"), None)
+        ts_code_col = next((c for c in df.columns if 'ts_code' in c), 'ts_code')
+        broker_col = next((c for c in df.columns if 'broker' in c), 'broker')
+        name_col = next((c for c in df.columns if c == 'name'), 'name')
 
-        if ts_code_col is None or broker_col is None:
-            return reasons
+        signals = self._compute_signals(df)
 
-        # 构建 ts_code -> score 的映射（scores 与 df 行对齐）
-        ts_to_score: Dict[str, float] = {}
-        for idx, row in df.iterrows():
-            ts = str(row.get(ts_code_col, ""))
-            if ts and idx < len(scores):
-                ts_to_score[ts] = scores.iloc[idx]
+        # groupby 替代 iterrows：券商列表（去重排序）+ 股票名称
+        broker_by_stock: Dict[str, List[str]] = (
+            df.groupby(ts_code_col)[broker_col]
+            .apply(lambda x: sorted(x.unique()))
+            .to_dict()
+        )
+        name_by_stock: Dict[str, str] = (
+            df.groupby(ts_code_col)[name_col].first().to_dict()
+        )
 
-        # 统计每只股票的推荐券商列表
-        broker_by_stock: Dict[str, List[str]] = {}
-        name_by_stock: Dict[str, str] = {}
-        for _, row in df.iterrows():
-            ts = str(row.get(ts_code_col, ""))
-            broker = str(row.get(broker_col, ""))
-            name = str(row.get(name_col, "")) if name_col else ""
-            if ts and broker:
-                broker_by_stock.setdefault(ts, []).append(broker)
-                if name:
-                    name_by_stock[ts] = name
+        signal_meta = [
+            ('coverage', '券商覆盖', 40),
+            ('broker_quality', '券商质量', 40),
+            ('consecutive', '连续推荐', 20),
+        ]
+        threshold = self._LABEL_THRESHOLD_RATIO
+
+        stock_scores = scores.groupby(df[ts_code_col]).first()
 
         for ts, brokers in broker_by_stock.items():
-            n = len(set(brokers))  # 去重
-            score = ts_to_score.get(ts, 0)
-            if n > 0 and score > 0:
-                top_brokers = list(set(brokers))[:3]
-                reasons[ts] = [
-                    f"券商金股({n}家推荐)",
-                    f"推荐券商: {', '.join(top_brokers)}",
-                ]
+            score_val = stock_scores.get(ts, 0)
+            if score_val <= 0:
+                continue
+
+            n = len(brokers)
+            labels: List[str] = []
+
+            for key, label, max_val in signal_meta:
+                val = signals[key].get(ts, 0.0)
+                if val < max_val * threshold:
+                    continue
+                if key == 'coverage':
+                    labels.append(f"券商金股({n}家推荐)")
+                elif key == 'broker_quality':
+                    bq = df.attrs.get('broker_quality', {})
+                    avg_q = sum(bq.get(b, 0.5) for b in brokers) / max(len(brokers), 1)
+                    labels.append(f"券商质量({avg_q:.0%})")
+                elif key == 'consecutive':
+                    c = df.attrs.get('consecutive_stocks', {}).get(ts, {})
+                    prev_n = c.get('broker_count_prev', 0)
+                    curr_n = c.get('broker_count_current', n)
+                    labels.append(f"连续推荐(上月{prev_n}家→本月{curr_n}家)")
+
+            if labels:
+                reasons[ts] = labels
 
         return reasons

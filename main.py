@@ -1411,86 +1411,33 @@ def main() -> int:
         # 模式: 仅股票发现
         if getattr(args, 'discover_only', False):
             logger.info("模式: 仅股票发现（盘后）")
-            from src.discovery.config import get_discovery_config
-            from src.discovery.engine import StockDiscoveryEngine
-            from src.discovery.factors import (
-                MoneyFlowFactor, MarginFactor, ChipFactor,
-                TechnicalFactor, LimitFactor,
-                FundamentalFactor, PopularityFactor, HotMoneyFactor,
-                NorthboundFactor, InstitutionHoldFactor, ProfitForecastFactor,
-                PerformanceFactor, BuybackFactor, InsiderBuyFactor,
-                BrokerRecommendFactor,
-            )
             from data_provider.tushare_fetcher import TushareFetcher
             from data_provider.akshare_fetcher import AkshareFetcher
+            from src.discovery.scanner import ensure_postmarket_scan
 
-            discovery_config = get_discovery_config()
             tushare_fetcher = TushareFetcher.get_instance()
-            akshare_fetcher = AkshareFetcher()
             if not tushare_fetcher.is_available():
                 logger.error("Tushare 不可用，无法运行股票发现")
                 return 1
 
-            engine = StockDiscoveryEngine(discovery_config, tushare_fetcher, akshare_fetcher)
-            engine.register_factors([
-                MoneyFlowFactor(),
-                MarginFactor(),
-                ChipFactor(),
-                TechnicalFactor(),
-                LimitFactor(),
-                FundamentalFactor(),
-                PopularityFactor(),
-                HotMoneyFactor(),
-                NorthboundFactor(),
-                InstitutionHoldFactor(),
-                ProfitForecastFactor(),
-                PerformanceFactor(),
-                BuybackFactor(),
-                InsiderBuyFactor(),
-                BrokerRecommendFactor(),
-            ])
+            cache = ensure_postmarket_scan(
+                tushare_fetcher, AkshareFetcher(), force=True
+            )
 
-            # 盘后：用 Tushare 全量刷新 limit_pool（U/D/Z 全部涨跌停类型）
-            try:
-                from src.discovery.scanner import refresh_limit_pool_postmarket
-                refresh_limit_pool_postmarket(tushare_fetcher)
-            except Exception:
-                logger.warning("[Discover] limit_pool 盘后刷新失败，继续使用已有数据", exc_info=True)
-
-            # 盘后：用 Tushare 全量刷新 money_flow
-            try:
-                from src.discovery.scanner import refresh_money_flow_postmarket
-                refresh_money_flow_postmarket(tushare_fetcher)
-            except Exception:
-                logger.warning("[Discover] money_flow 盘后刷新失败，继续使用已有数据", exc_info=True)
-
-            # 盘后：用 Tushare 全量刷新 margin_detail（融资融券明细）
-            try:
-                from src.discovery.scanner import refresh_margin_detail_postmarket
-                refresh_margin_detail_postmarket(tushare_fetcher)
-            except Exception:
-                logger.warning("[Discover] margin_detail 盘后刷新失败，继续使用已有数据", exc_info=True)
-
-            results = engine.discover(mode="postmarket")
-            # 全量评分落库（全市场股票，非仅 Top N）
-            if engine._last_full_scan_df is not None:
-                try:
-                    from src.storage import DatabaseManager
-                    records = engine.get_last_full_scan_records()
-                    if records:
-                        DatabaseManager().save_scan_results_postmarket(
-                            records, engine._last_scan_trade_date
-                        )
-                except Exception as e:
-                    logger.warning("全量扫描结果落库失败: %s", e)
-            if results:
-                report = engine.format_report(results, mode="postmarket")
-                logger.info("\n%s", report)
-                print(report)
-                # 落盘到 discovery_reports/
-                _save_discovery_report(report, results)
-                # 同步发现结果到 .env STOCK_LIST
-                _sync_discovery_to_stock_list(results)
+            if cache:
+                # 格式化并输出报告
+                from src.discovery.engine import StockDiscoveryEngine
+                from src.discovery.config import get_discovery_config
+                engine = StockDiscoveryEngine(get_discovery_config(), tushare_fetcher, AkshareFetcher())
+                results = engine.discover(mode="postmarket")
+                if results:
+                    report = engine.format_report(results, mode="postmarket")
+                    logger.info("\n%s", report)
+                    print(report)
+                    _save_discovery_report(report, results)
+                    _sync_discovery_to_stock_list(results)
+                else:
+                    logger.info("未发现符合条件的股票")
             else:
                 logger.info("未发现符合条件的股票")
             raise _ModeExit(0)

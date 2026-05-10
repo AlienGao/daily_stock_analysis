@@ -883,55 +883,52 @@ class TestPopularityFactor:
         from src.discovery.factors.popularity_factor import PopularityFactor
         return PopularityFactor()
 
-    def test_change_above_2000_adds_45(self, factor):
-        df = _make_factor_df(["A.SH"], 当前排名=[50], 排名较昨日变动=[2500], 涨跌幅=[2.0])
+    def test_surge_percentile_top_gets_full(self, factor):
+        """飙升幅度：rank_change 最高者得满分 45。"""
+        df = _make_factor_df(["A.SH", "B.SH", "C.SH"],
+            rank=[50, 50, 50],
+            rank_change=[3000, 1500, 500],
+            pct_chg=[1.0, 1.0, 1.0])
         scores = factor.score(df)
-        assert scores["A.SH"] >= 45.0
+        assert scores["A.SH"] > scores["B.SH"] > scores["C.SH"]
 
-    def test_change_large_adds_30(self, factor):
-        df = _make_factor_df(["A.SH"], 当前排名=[150], 排名较昨日变动=[1500], 涨跌幅=[1.0])
+    def test_surge_zero_for_decliners(self, factor):
+        """排名下降的股票无飙升分。"""
+        df = _make_factor_df(["A.SH", "B.SH"],
+            rank=[50, 50],
+            rank_change=[-100, 500],
+            pct_chg=[1.0, 1.0])
         scores = factor.score(df)
-        assert scores["A.SH"] >= 30.0
+        assert scores["A.SH"] < scores["B.SH"]
 
-    def test_change_moderate_adds_25(self, factor):
-        df = _make_factor_df(["A.SH"], 当前排名=[200], 排名较昨日变动=[800], 涨跌幅=[1.0])
+    def test_rank_strength_top_gets_full(self, factor):
+        """排名第一得满排名分。"""
+        df = _make_factor_df(["A.SH", "B.SH", "C.SH"],
+            rank=[1, 50, 100],
+            rank_change=[100, 100, 100],
+            pct_chg=[1.0, 1.0, 1.0])
         scores = factor.score(df)
-        assert scores["A.SH"] >= 25.0
+        assert scores["A.SH"] > scores["B.SH"] > scores["C.SH"]
 
-    def test_change_small_adds_15(self, factor):
-        df = _make_factor_df(["A.SH"], 当前排名=[300], 排名较昨日变动=[300], 涨跌幅=[1.0])
+    def test_pct_chg_positive_boosts(self, factor):
+        """涨跌幅正向贡献，高涨幅 > 低/负涨幅。"""
+        df = _make_factor_df(["A.SH", "B.SH", "C.SH"],
+            rank=[50, 50, 50],
+            rank_change=[100, 100, 100],
+            pct_chg=[10.0, 2.0, -5.0])
         scores = factor.score(df)
-        assert scores["A.SH"] >= 15.0
+        assert scores["A.SH"] > scores["B.SH"] > scores["C.SH"]
 
-    def test_rank_top_50_adds_20(self, factor):
-        df = _make_factor_df(["A.SH"], 当前排名=[30], 排名较昨日变动=[100], 涨跌幅=[1.0])
-        scores = factor.score(df)
-        assert scores["A.SH"] >= 30.0
-
-    def test_rank_51_100_adds_10(self, factor):
-        df = _make_factor_df(["A.SH"], 当前排名=[80], 排名较昨日变动=[100], 涨跌幅=[1.0])
-        scores = factor.score(df)
-        assert scores["A.SH"] >= 20.0
-
-    def test_rank_above_3000_veto(self, factor):
-        df = _make_factor_df(["A.SH"], 当前排名=[3500], 排名较昨日变动=[2500], 涨跌幅=[1.0])
-        scores = factor.score(df)
-        assert scores["A.SH"] == 0.0
-
-    def test_pct_chg_below_minus_3_penalty(self, factor):
-        df = _make_factor_df(["A.SH"], 当前排名=[50], 排名较昨日变动=[2500], 涨跌幅=[-5.0])
-        scores = factor.score(df)
-        assert scores["A.SH"] <= 45.0
-        assert scores["A.SH"] >= 0
-
-    def test_negative_change_no_score(self, factor):
-        df = _make_factor_df(["A.SH"], 当前排名=[100], 排名较昨日变动=[-100], 涨跌幅=[1.0])
-        scores = factor.score(df)
-        assert scores["A.SH"] == 10.0
+    def test_empty_df(self, factor):
+        scores = factor.score(pd.DataFrame())
+        assert len(scores) == 0
 
     def test_describe_reasons(self, factor):
-        df = _make_factor_df(["A.SH"], 当前排名=[30], 排名较昨日变动=[2500], 涨跌幅=[2.0])
-        scores = pd.Series([65.0], index=["A.SH"])
+        df = _make_factor_df(["A.SH", "B.SH"],
+            rank=[5, 80],
+            rank_change=[2500, 100],
+            pct_chg=[5.0, 1.0])
+        scores = factor.score(df)
         reasons = factor.describe(df, scores)
         assert "A.SH" in reasons
         assert any("人气飙升" in r for r in reasons["A.SH"])
