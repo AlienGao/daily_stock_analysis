@@ -424,6 +424,34 @@ class MarginDetail(Base):
         return f"<MarginDetail(code={self.code}, date={self.trade_date})>"
 
 
+class PopularityRank(Base):
+    """个股人气排行（盘后 Tushare dc_hot 落库）。
+
+    每日按 (code, trade_date) 唯一，盘后定时任务全量 upsert。
+    """
+
+    __tablename__ = 'popularity_rank'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(10), nullable=False, index=True)
+    name = Column(String(50))
+    trade_date = Column(String(8))
+    rank = Column(Integer)
+    pct_change = Column(Float)
+    hot = Column(Float)
+    concept = Column(String(200))
+    source = Column(String(20))
+    updated_at = Column(DateTime, default=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('code', 'trade_date', name='uix_popularity_rank_code_date'),
+        Index('ix_popularity_rank_trade_date', 'trade_date'),
+    )
+
+    def __repr__(self) -> str:
+        return f"<PopularityRank(code={self.code}, date={self.trade_date}, rank={self.rank})>"
+
+
 class HmDetail(Base):
     """个股游资交易明细（盘后 Tushare hm_detail 落库）。
 
@@ -1318,6 +1346,7 @@ class DatabaseManager:
         self._ensure_limit_up_history_table()
         self._ensure_limit_break_table()
         self._ensure_margin_detail_table()
+        self._ensure_popularity_rank_table()
         self._ensure_cyq_perf_table()
         self._ensure_insider_buy_table()
         self._ensure_stock_daily_date_index()
@@ -1481,6 +1510,26 @@ class DatabaseManager:
             logger.info("已创建表 margin_detail")
         except Exception as exc:
             logger.warning("创建 margin_detail 失败: %s", exc)
+
+    def _ensure_popularity_rank_table(self) -> None:
+        """SQLite: create popularity_rank if missing (pre-create_all catch-up)."""
+        if not self._is_sqlite_engine:
+            return
+        try:
+            with self._engine.connect() as conn:
+                rows = conn.execute(
+                    text("SELECT name FROM sqlite_master WHERE type='table' AND name='popularity_rank'")
+                ).fetchall()
+            if rows:
+                return
+        except Exception as exc:
+            logger.warning("检查 popularity_rank 表存在性失败: %s", exc)
+            return
+        try:
+            PopularityRank.__table__.create(self._engine)
+            logger.info("已创建表 popularity_rank")
+        except Exception as exc:
+            logger.warning("创建 popularity_rank 失败: %s", exc)
 
     def _ensure_cyq_perf_table(self) -> None:
         """SQLite: create broker_enrichment_cyq_perf if missing."""
@@ -2947,6 +2996,18 @@ class DatabaseManager:
             } for r in rows])
             return df.set_index("code")
 
+    def get_existing_sectors(self, trade_date: str) -> Dict[str, str]:
+        """查询指定交易日已有板块的代码→sector 映射（非空且非空字符串）。"""
+        with self.get_session() as session:
+            rows = session.execute(
+                select(LimitPool.code, LimitPool.sector).where(
+                    LimitPool.trade_date == trade_date,
+                    LimitPool.sector.isnot(None),
+                    LimitPool.sector != "",
+                )
+            ).all()
+            return {r.code: r.sector for r in rows}
+
     def get_limit_pool_for_codes(
         self, codes: List[str], trade_date: Optional[str] = None
     ) -> pd.DataFrame:
@@ -3360,6 +3421,88 @@ class DatabaseManager:
             logger.error("[DB] upsert_money_flow 失败: %s", e)
             raise
 
+    def upsert_popularity_rank(self, df: pd.DataFrame, source: str = "tushare") -> int:
+        """upsert 人气排行 by (code, trade_date)（盘后 Tushare dc_hot 全量覆盖）。"""
+        if df is None or df.empty:
+            return 0
+
+        now = datetime.now()
+        records: List[Dict[str, Any]] = []
+        for _, row in df.iterrows():
+            code = str(row.get("code", "")).strip()
+            if not code:
+                continue
+            trade_date = str(row.get("trade_date", ""))[:8]
+            if not trade_date:
+                continue
+
+            records.append({
+                "code": code,
+                "name": str(row.get("name", ""))[:50] if row.get("name") else "",
+                "trade_date": trade_date,
+                "rank": int(row.get("rank", 0)) if pd.notna(row.get("rank")) else None,
+                "pct_change": self._normalize_sql_value(row.get("pct_change")),
+                "hot": self._normalize_sql_value(row.get("hot")),
+                "concept": str(row.get("concept", ""))[:200] if row.get("concept") else "",
+                "source": source,
+                "updated_at": now,
+            })
+
+        if not records:
+            return 0
+
+        def _write(session: Session) -> int:
+            if self._is_sqlite_engine:
+                _CHUNK = 200
+                for i in range(0, len(records), _CHUNK):
+                    chunk = records[i : i + _CHUNK]
+                    stmt = sqlite_insert(PopularityRank).values(chunk)
+                    excluded = stmt.excluded
+                    session.execute(
+                        stmt.on_conflict_do_update(
+                            index_elements=["code", "trade_date"],
+                            set_={
+                                "name": excluded.name,
+                                "rank": excluded.rank,
+                                "pct_change": excluded.pct_change,
+                                "hot": excluded.hot,
+                                "concept": excluded.concept,
+                                "source": excluded.source,
+                                "updated_at": excluded.updated_at,
+                            },
+                        )
+                    )
+                return len(records)
+            else:
+                codes = [r["code"] for r in records]
+                dates = [r["trade_date"] for r in records]
+                existing = {}
+                for row in session.execute(
+                    select(PopularityRank).where(
+                        and_(PopularityRank.code.in_(codes), PopularityRank.trade_date.in_(dates))
+                    )
+                ).scalars().all():
+                    existing[(row.code, row.trade_date)] = row
+                new_count = 0
+                for rec in records:
+                    ent = existing.get((rec["code"], rec["trade_date"]))
+                    if ent is None:
+                        session.add(PopularityRank(**rec))
+                        new_count += 1
+                    else:
+                        for key in ("name", "rank", "pct_change", "hot", "concept", "source"):
+                            setattr(ent, key, rec[key])
+                        ent.updated_at = now
+                return new_count
+
+        try:
+            saved = self._run_write_transaction("upsert_popularity_rank", _write)
+            logger.debug("[DB] upsert_popularity_rank: %d 条 (source=%s)", saved, source)
+            return saved
+        except Exception as e:
+            logger.error("[DB] upsert_popularity_rank 失败: %s", e)
+            raise
+
     def get_money_flow(
         self, trade_date: Optional[str] = None,
     ) -> pd.DataFrame:
@@ -3499,6 +3642,36 @@ class DatabaseManager:
                 "code": r.code, "name": r.name, "trade_date": r.trade_date,
                 "rzye": r.rzye, "rzmre": r.rzmre, "rzche": r.rzche,
                 "rqye": r.rqye, "rqmre": r.rqmre, "rqyl": r.rqyl,
+                "source": r.source,
+            } for r in rows])
+            return df.set_index("code")
+
+    def get_popularity_rank_range(
+        self, codes: Optional[List[str]] = None,
+        start_date: Optional[str] = None, end_date: Optional[str] = None,
+    ) -> pd.DataFrame:
+        """获取人气排行多日数据，返回 DataFrame (index=code)。
+
+        Args:
+            codes: 股票代码列表，None 则查全市场
+            start_date: 起始日期 YYYYMMDD
+            end_date: 结束日期 YYYYMMDD
+        """
+        with self.get_session() as session:
+            stmt = select(PopularityRank)
+            if codes:
+                stmt = stmt.where(PopularityRank.code.in_(codes))
+            if start_date:
+                stmt = stmt.where(PopularityRank.trade_date >= start_date)
+            if end_date:
+                stmt = stmt.where(PopularityRank.trade_date <= end_date)
+            rows = session.execute(stmt).scalars().all()
+            if not rows:
+                return pd.DataFrame()
+            df = pd.DataFrame([{
+                "code": r.code, "name": r.name, "trade_date": r.trade_date,
+                "rank": r.rank, "pct_change": r.pct_change,
+                "hot": r.hot, "concept": r.concept,
                 "source": r.source,
             } for r in rows])
             return df.set_index("code")

@@ -2025,6 +2025,42 @@ class TushareFetcher(BaseFetcher):
             logger.warning(f"[Tushare] 获取全量资金流向失败: {e}")
             return None
 
+    def get_dc_hot(self, trade_date: Optional[str] = None) -> Optional[pd.DataFrame]:
+        """获取全市场人气排行 (Tushare dc_hot, 数据板块热点)。
+
+        Returns:
+            DataFrame 含 ts_code, name, rank, pct_change, hot, trade_date 等，
+            或 None（调用失败时）。
+        """
+        if self._api is None:
+            return None
+
+        try:
+            if trade_date is None:
+                trade_date = self.get_trade_time(early_time="00:00", late_time="19:00")
+            if not trade_date:
+                return None
+
+            fields = "ts_code,ts_name,rank,pct_change,hot,concept,trade_date,data_type"
+            df = self._call_api_with_rate_limit(
+                "dc_hot", trade_date=trade_date, fields=fields,
+            )
+            if df is not None and not df.empty:
+                df = df[df["data_type"] == "A股市场"].copy()
+                df = df.rename(columns={"ts_name": "name"})
+                df["rank"] = pd.to_numeric(df["rank"], errors="coerce")
+                df["pct_change"] = pd.to_numeric(df["pct_change"], errors="coerce")
+                logger.info(
+                    "[Tushare] dc_hot trade_date=%s, %d 条 A股人气数据",
+                    trade_date, len(df),
+                )
+                return df
+            return None
+
+        except Exception as e:
+            logger.warning(f"[Tushare] 获取 dc_hot 失败: {e}")
+            return None
+
     def get_bulk_hm_detail(self, trade_date: Optional[str] = None) -> Optional[pd.DataFrame]:
         """获取全市场游资交易明细 (Tushare hm_detail, doc_id=312)。
 

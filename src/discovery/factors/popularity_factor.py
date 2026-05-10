@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 """人气因子 (Popularity Factor).
 
-盘中+盘后因子：基于东方财富人气排行，识别市场关注度高的股票。
-数据来源: 直连东财 emappdata + push2 API（过代理）
+盘中+盘后因子：基于东方财富人气排行 + Tushare dc_hot 降级，
+识别市场关注度高的股票。
 
-3 个子信号：
+4 个子信号：
 - 飙升幅度 (0-45)：rank_change 在改善股中的百分位
 - 排名强度 (0-35)：当前排名逆线性映射
 - 涨跌幅 (0-20)：pct_chg 分段线性
+- 排名趋势 (0-15)：5 日排名改善百分位（需 DB 历史数据）
 """
 
 import logging
@@ -33,6 +34,7 @@ class PopularityFactor(BaseFactor):
 
     基于东方财富人气排行榜「飙升榜」。
     关键信号：排名靠前 + 排名在上升（较昨日改善）。
+    盘中优先东财，降级使用 Tushare dc_hot。
     """
 
     name = "popularity"
@@ -40,9 +42,43 @@ class PopularityFactor(BaseFactor):
     available_postmarket = True
     weight = 15.0
 
+    _LABEL_THRESHOLD = 5.0
     _LABEL_THRESHOLD_RATIO = 0.5
 
     def fetch_data(self, trade_date: str, **kwargs) -> Optional[pd.DataFrame]:
+        """获取人气排行数据。
+
+        优先级：东财 API > Tushare dc_hot > DB 缓存。
+        """
+        tushare_fetcher = kwargs.get("tushare_fetcher")
+
+        # ── 1. 东财 API（盘中主路径） ──
+        df = self._fetch_eastmoney()
+        if df is not None and not df.empty:
+            self._trade_date = trade_date
+            return df
+
+        # ── 2. Tushare dc_hot 降级 ──
+        if tushare_fetcher:
+            df = self._fetch_tushare(tushare_fetcher, trade_date)
+            if df is not None and not df.empty:
+                self._trade_date = trade_date
+                return df
+
+        # ── 3. DB 缓存 ──
+        df = self._fetch_from_db(trade_date)
+        if df is not None and not df.empty:
+            self._trade_date = trade_date
+            return df
+
+        return None
+
+    # ------------------------------------------------------------------
+    # fetch helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _fetch_eastmoney() -> Optional[pd.DataFrame]:
         """直连东财 API（走代理），两步：排名 → 行情数据。"""
         import os
         import requests
@@ -119,7 +155,54 @@ class PopularityFactor(BaseFactor):
             return df
 
         except Exception as e:
-            logger.warning("[PopularityFactor] 获取人气数据失败: %s", e)
+            logger.warning("[PopularityFactor] 获取东财人气数据失败: %s", e)
+            return None
+
+    @staticmethod
+    def _fetch_tushare(tushare_fetcher, trade_date: str) -> Optional[pd.DataFrame]:
+        """Tushare dc_hot 降级路径。"""
+        try:
+            df = tushare_fetcher.get_dc_hot(trade_date)
+            if df is None or df.empty:
+                return None
+
+            out = pd.DataFrame()
+            out["name"] = df.get("name", "")
+            out["pct_chg"] = pd.to_numeric(df.get("pct_change", 0), errors="coerce").fillna(0)
+            out["rank"] = pd.to_numeric(df.get("rank", 9999), errors="coerce").fillna(9999).astype(int)
+            out["rank_change"] = 0
+
+            codes = df["ts_code"].astype(str).str.split(".").str[0].str.zfill(6)
+            out.index = codes
+            out.index.name = "ts_code"
+
+            logger.info("[PopularityFactor] Tushare dc_hot 降级: %d 条", len(out))
+            return out
+        except Exception as e:
+            logger.warning("[PopularityFactor] Tushare dc_hot 降级失败: %s", e)
+            return None
+
+    @staticmethod
+    def _fetch_from_db(trade_date: str) -> Optional[pd.DataFrame]:
+        """从 popularity_rank 表读取当日人气数据。"""
+        try:
+            from src.storage import DatabaseManager
+
+            db = DatabaseManager()
+            df = db.get_popularity_rank_range(start_date=trade_date, end_date=trade_date)
+            if df is None or df.empty:
+                return None
+
+            out = pd.DataFrame()
+            out["name"] = df.get("name", "")
+            out["pct_chg"] = pd.to_numeric(df.get("pct_change", 0), errors="coerce").fillna(0)
+            out["rank"] = pd.to_numeric(df.get("rank", 9999), errors="coerce").fillna(9999).astype(int)
+            out["rank_change"] = 0
+
+            logger.info("[PopularityFactor] DB 读取: %d 条", len(out))
+            return out
+        except Exception as e:
+            logger.warning("[PopularityFactor] DB 读取失败: %s", e)
             return None
 
     # ------------------------------------------------------------------
@@ -127,7 +210,7 @@ class PopularityFactor(BaseFactor):
     # ------------------------------------------------------------------
 
     def _compute_signals(self, df: pd.DataFrame) -> Dict[str, pd.Series]:
-        """提取 3 个子信号，各自归一化到满分区间。"""
+        """提取 4 个子信号，各自归一化到满分区间。"""
         idx = df.index
         zeros = pd.Series(0.0, index=idx)
 
@@ -137,7 +220,7 @@ class PopularityFactor(BaseFactor):
 
         signals: Dict[str, pd.Series] = {}
 
-        # --- 1. 飙升幅度 (0-45)：rank_change 在改善股中的百分位 ---
+        # --- 1. 飙升幅度 (0-45): rank_change 在改善股中的百分位 ---
         s_surge = zeros.copy()
         improvers = rank_change > 0
         if improvers.any():
@@ -145,7 +228,7 @@ class PopularityFactor(BaseFactor):
             s_surge.loc[improvers] = (surge_pct * 45).clip(0, 45)
         signals["surge"] = s_surge
 
-        # --- 2. 排名强度 (0-35)：逆排名线性衰减 ---
+        # --- 2. 排名强度 (0-35): 逆排名线性衰减 ---
         max_rank = rank.max()
         if max_rank > 1:
             s_rank = (35 * (1 - (rank - 1) / (max_rank - 1))).clip(0, 35)
@@ -153,11 +236,69 @@ class PopularityFactor(BaseFactor):
             s_rank = pd.Series(35.0, index=idx)
         signals["rank"] = s_rank
 
-        # --- 3. 涨跌幅 (0-20)：分段线性 ---
+        # --- 3. 涨跌幅 (0-20): 分段线性 ---
         s_pct = _linear_map(pct_chg, -5, 0, 10, 20, 0, 20)
         signals["pct_chg"] = s_pct
 
+        # --- 4. 排名趋势 (0-15): 5 日排名改善百分位 ---
+        s_trend = self._compute_rank_trend(df)
+        signals["rank_trend"] = s_trend
+
         return signals
+
+    def _compute_rank_trend(self, df: pd.DataFrame) -> pd.Series:
+        """从 DB 拉取 5 日历史排名，计算排名改善幅度百分位。
+
+        改善 = (5日均排名 - 当日排名)，正值越大越好。
+        """
+        zeros = pd.Series(0.0, index=df.index)
+        td = getattr(self, "_trade_date", "")
+        if not td:
+            return zeros
+
+        try:
+            from datetime import datetime as dt, timedelta
+
+            from src.storage import DatabaseManager
+
+            target = dt.strptime(str(td).replace("-", "")[:8], "%Y%m%d")
+            start = (target - timedelta(days=10)).strftime("%Y%m%d")
+            end = target.strftime("%Y%m%d")
+
+            db = DatabaseManager()
+            codes = [str(c).zfill(6) for c in df.index]
+            hist = db.get_popularity_rank_range(
+                codes=codes, start_date=start, end_date=end,
+            )
+            if hist is None or hist.empty:
+                return zeros
+
+            hist = hist.reset_index()
+            hist["trade_date"] = hist["trade_date"].astype(str)
+
+            today_rank = hist[hist["trade_date"] == end].set_index("code")["rank"]
+            avg_rank = hist.groupby("code")["rank"].mean()
+
+            improvements = {}
+            for code in df.index:
+                c = str(code).zfill(6)
+                t_r = today_rank.get(c)
+                a_r = avg_rank.get(c)
+                if pd.notna(t_r) and pd.notna(a_r) and a_r > 0:
+                    improvements[c] = (a_r - t_r) / a_r * 100
+                else:
+                    improvements[c] = 0.0
+
+            imp_series = pd.Series(improvements, index=df.index).fillna(0)
+            pos = imp_series > 0
+            if pos.any():
+                pct = imp_series[pos].rank(pct=True)
+                imp_series.loc[pos] = (pct * 15).clip(0, 15)
+            imp_series.loc[~pos] = 0
+            return imp_series
+        except Exception as e:
+            logger.debug("[PopularityFactor] 排名趋势计算失败: %s", e)
+            return zeros
 
     # ------------------------------------------------------------------
     # score / describe
@@ -187,12 +328,12 @@ class PopularityFactor(BaseFactor):
             ("surge", "飙升幅度", 45),
             ("rank", "排名强度", 35),
             ("pct_chg", "涨跌幅", 20),
+            ("rank_trend", "排名趋势", 15),
         ]
         threshold = self._LABEL_THRESHOLD_RATIO
 
         for ts_code in scores.index:
-            score_val = scores[ts_code]
-            if score_val <= 0:
+            if scores[ts_code] < self._LABEL_THRESHOLD:
                 continue
 
             labels: List[str] = []
@@ -211,6 +352,8 @@ class PopularityFactor(BaseFactor):
                     pct = float(pct_chg.get(ts_code, 0))
                     direction = "上涨" if pct >= 0 else "下跌"
                     labels.append(f"人气股{direction}({pct:+.1f}%)")
+                elif key == "rank_trend":
+                    labels.append("人气排名持续改善")
 
             if labels:
                 reasons[ts_code] = labels

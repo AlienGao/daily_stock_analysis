@@ -39,6 +39,7 @@ class MoneyFlowFactor(BaseFactor):
     available_intraday = False
     available_postmarket = True
     weight = 25.0
+    _LABEL_THRESHOLD = 5.0
 
     def fetch_data(self, trade_date: str, **kwargs) -> Optional[pd.DataFrame]:
         """优先读 DB money_flow 表，无数据时回退 Tushare API。"""
@@ -66,11 +67,16 @@ class MoneyFlowFactor(BaseFactor):
             return df
         return None
 
-    def score(self, df: pd.DataFrame, **context) -> pd.Series:
-        scores = pd.Series(0.0, index=df.index, name=self.name)
+    # ------------------------------------------------------------------
+    # 共享信号提取
+    # ------------------------------------------------------------------
 
-        if df.empty:
-            return scores
+    def _compute_signals(self, df: pd.DataFrame) -> Dict[str, pd.Series]:
+        """提取资金流向信号，返回信号名 → Series 的映射。
+        所有比率信号做全市场百分位归一化（0-100），值越高越优。
+        """
+        idx = df.index
+        zeros = pd.Series(0.0, index=idx)
 
         buy_elg = pd.to_numeric(df.get("buy_elg_amount", 0), errors="coerce").fillna(0)
         sell_elg = pd.to_numeric(df.get("sell_elg_amount", 0), errors="coerce").fillna(0)
@@ -84,31 +90,48 @@ class MoneyFlowFactor(BaseFactor):
         sm_net = buy_sm - sell_sm
         total_trade = buy_elg + sell_elg + buy_lg + sell_lg + buy_sm + sell_sm
 
-        def _pct_scores(series: pd.Series) -> pd.Series:
-            """将序列转为 0-100 的百分位分数（值越大分越高）。"""
+        def _to_pct(series: pd.Series) -> pd.Series:
             ranks = series.rank(pct=True, na_option="bottom")
             return (ranks * 100).clip(0, 100)
 
-        # a) 主力净流入率 = (特大单净 + 大单净) / 总成交额 — 权重 40%
         major_rate = (elg_net + lg_net) / total_trade.replace(0, float("nan"))
-        # b) 特大单净流入率 — 权重 30%
         elg_rate = elg_net / total_trade.replace(0, float("nan"))
-        # c) 大单净流入率 — 权重 20%
         lg_rate = lg_net / total_trade.replace(0, float("nan"))
+        sm_rate = sm_net / total_trade.replace(0, float("nan"))
+
+        return {
+            "elg_net": elg_net, "lg_net": lg_net, "sm_net": sm_net,
+            "major_rate": major_rate,
+            "elg_rate": elg_rate, "lg_rate": lg_rate,
+            "major_rate_pct": _to_pct(major_rate),
+            "elg_rate_pct": _to_pct(elg_rate),
+            "lg_rate_pct": _to_pct(lg_rate),
+            "sm_rate_pct": _to_pct(sm_rate),
+            "retail_trap": (elg_net < 0) & (sm_net > 0),
+        }
+
+    # ------------------------------------------------------------------
+    # score / describe
+    # ------------------------------------------------------------------
+
+    def score(self, df: pd.DataFrame, **context) -> pd.Series:
+        if df.empty:
+            return pd.Series(dtype=float, name=self.name)
+
+        signals = self._compute_signals(df)
 
         scores = (
-            _pct_scores(major_rate) * 0.40
-            + _pct_scores(elg_rate) * 0.30
-            + _pct_scores(lg_rate) * 0.20
-        ) / 0.90  # 归一化回 0-100
+            signals["major_rate_pct"] * 0.40
+            + signals["elg_rate_pct"] * 0.30
+            + signals["lg_rate_pct"] * 0.20
+        ) / 0.90
 
-        # 散户接盘惩罚：特大单流出 + 小单流入占比高 → ×0.4~×1.0
-        # 惩罚力度 = 小单净流入在全市场中的百分位 × 0.6
-        sm_rate = sm_net / total_trade.replace(0, float("nan"))
-        sm_pct = _pct_scores(sm_rate) / 100  # 0-1
-        penalty = 1.0 - 0.6 * sm_pct * (elg_net < 0).astype(float)
+        # 散户接盘惩罚：小单净流入百分位越高、且特大单流出 → 惩罚越重
+        sm_pct = signals["sm_rate_pct"] / 100
+        penalty = 1.0 - 0.6 * sm_pct * signals["retail_trap"].astype(float)
         scores = scores * penalty
 
+        scores.name = self.name
         return scores.clip(0, 100)
 
     def describe(self, df: pd.DataFrame, scores: pd.Series, **context) -> Dict[str, List[str]]:
@@ -116,32 +139,35 @@ class MoneyFlowFactor(BaseFactor):
         if df.empty:
             return reasons
 
-        buy_elg = pd.to_numeric(df.get("buy_elg_amount", 0), errors="coerce").fillna(0)
-        sell_elg = pd.to_numeric(df.get("sell_elg_amount", 0), errors="coerce").fillna(0)
-        buy_lg = pd.to_numeric(df.get("buy_lg_amount", 0), errors="coerce").fillna(0)
-        sell_lg = pd.to_numeric(df.get("sell_lg_amount", 0), errors="coerce").fillna(0)
-        buy_sm = pd.to_numeric(df.get("buy_sm_amount", 0), errors="coerce").fillna(0)
-        sell_sm = pd.to_numeric(df.get("sell_sm_amount", 0), errors="coerce").fillna(0)
-
-        elg_net = buy_elg - sell_elg
-        lg_net = buy_lg - sell_lg
-        sm_net = buy_sm - sell_sm
-        total_trade = buy_elg + sell_elg + buy_lg + sell_lg + buy_sm + sell_sm
-        major_rate = (elg_net + lg_net) / total_trade.replace(0, float("nan"))
+        signals = self._compute_signals(df)
 
         for ts_code in scores.index:
-            if scores[ts_code] <= 0:
+            if scores[ts_code] < self._LABEL_THRESHOLD:
                 continue
             r = []
-            if elg_net.get(ts_code, 0) > 0:
-                r.append("特大单净流入")
-            mf = major_rate.get(ts_code, 0)
-            if pd.notna(mf) and mf > 0.10:
-                r.append(f"主力净流入率{abs(mf)*100:.0f}%")
-            if lg_net.get(ts_code, 0) > 0:
-                r.append("大单净流入")
-            if elg_net.get(ts_code, 0) < 0 and sm_net.get(ts_code, 0) > 0:
+
+            major_pct = float(signals["major_rate_pct"].get(ts_code, 0))
+            elg_pct = float(signals["elg_rate_pct"].get(ts_code, 0))
+            lg_pct = float(signals["lg_rate_pct"].get(ts_code, 0))
+
+            if major_pct > 80:
+                r.append(f"主力净流入率超{major_pct:.0f}%股票")
+            elif major_pct > 60:
+                r.append("主力资金偏多")
+            elif major_pct < 20:
+                r.append("主力资金偏空")
+            elif major_pct < 40:
+                r.append("主力参与度偏低")
+
+            # 特大单 vs 大单主导
+            if elg_pct > 70:
+                r.append("特大单主导")
+            elif lg_pct > 70 and elg_pct < 50:
+                r.append("大单资金活跃")
+
+            if signals["retail_trap"].get(ts_code, False):
                 r.append("散户接盘预警")
+
             if r:
                 reasons[ts_code] = r
         return reasons

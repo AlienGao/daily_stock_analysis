@@ -232,7 +232,7 @@ class IntradayScanner:
         """拉取最新涨停数据落库（每 60s 刷新，偶 30s slot）。
 
         3-tier fallback: akshare stock_zt_pool_em → realtime_spot DB → Tushare
-        盘中 delete-then-insert（炸板退池自动清除），同时填充 SectorFactor.sector_map。
+        盘中 delete-then-insert（炸板退池自动清除）。
         """
         try:
             import time as _time
@@ -256,12 +256,22 @@ class IntradayScanner:
             if df is None or df.empty:
                 return False
 
+            # ── 统一板块分类：申万行业（stock_basic 缓存，零 API 成本）──
+            try:
+                stock_list = self.engine.tushare_fetcher.get_stock_list()
+                if stock_list is not None and not stock_list.empty:
+                    code_to_sw = dict(zip(stock_list["code"], stock_list["industry"]))
+                    df["sector"] = df["code"].map(code_to_sw).fillna(
+                        df.get("sector", pd.Series("", index=df.index))
+                    )
+            except Exception:
+                pass  # Tushare 不可用时保留原 sector
+
             # ── 炸板检测（clear 之前完成新旧比对） ──
             self._detect_limit_breaks(db, df, today, source)
 
             db.clear_limit_pool_date(today)
             saved = db.insert_limit_pool_bulk(df, source=source, slot=slot)
-            self._fill_sector_map_from_pool(df)
             self._last_limit_slot = slot
             logger.info("[Scanner] limit_pool 刷新: %d 条 (source=%s)", saved, source)
             return True
@@ -410,22 +420,6 @@ class IntradayScanner:
             return out, "tushare"
         except Exception:
             return None, None
-
-    def _fill_sector_map_from_pool(self, df) -> None:
-        """从 limit_pool 数据填充 SectorFactor.sector_map。"""
-        if df is None or df.empty or "sector" not in df.columns:
-            return
-        try:
-            sf = self.engine.get_factor("sector")
-            if sf is None or not hasattr(sf, "sector_map"):
-                return
-            for _, row in df.iterrows():
-                code = str(row.get("code", "")).strip().zfill(6)
-                sec = str(row.get("sector", "")).strip()
-                if code and sec and sec not in ("nan", ""):
-                    sf.sector_map[code] = sec
-        except Exception:
-            pass
 
     def _ensure_daily_kline_complete(self) -> None:
         """校验 stock_daily 是否有近 60 个交易日数据，缺失则自动补全。
@@ -773,6 +767,22 @@ def refresh_limit_pool_postmarket(tushare_fetcher) -> int:
             out["open_times"] = pd.to_numeric(out.get("open_times", 0), errors="coerce").fillna(0).astype(int)
 
         db = DatabaseManager()
+
+        # 从 Tushare stock_basic 缓存补申万行业分类（只补空，不覆盖盘中东财板块）
+        stock_list = tushare_fetcher.get_stock_list()
+        if stock_list is not None and not stock_list.empty:
+            code_to_industry = dict(zip(stock_list["code"], stock_list["industry"]))
+            # 读取当前 DB 中已有板块的代码
+            existing_sec = db.get_existing_sectors(out["trade_date"].iloc[0])
+            codes_missing_sec = [
+                c for c in out["code"].tolist()
+                if c not in existing_sec or not existing_sec[c]
+            ]
+            if codes_missing_sec:
+                fill_map = {c: code_to_industry.get(c, "") for c in codes_missing_sec}
+                # 只对缺板块的行补填
+                mask = out["code"].isin(codes_missing_sec)
+                out.loc[mask, "sector"] = out.loc[mask, "code"].map(fill_map)
         slot = int(_time.time() // 30)
         saved = db.upsert_limit_pool(out, source="tushare", slot=slot)
         logger.info("[Scanner] 盘后 limit_pool 全量刷新: %d 条 (U/D/Z)", saved)
@@ -999,6 +1009,75 @@ def refresh_insider_buy_postmarket(akshare_fetcher=None) -> int:
         return 0
 
 
+def refresh_popularity_postmarket(tushare_fetcher) -> int:
+    """盘后用 Tushare dc_hot 全量刷新 popularity_rank 表。
+
+    Returns:
+        落库条数，失败返回 0
+    """
+    try:
+        from src.storage import DatabaseManager
+
+        df = tushare_fetcher.get_dc_hot()
+        if df is None or df.empty:
+            logger.warning("[Scanner] 盘后 popularity_rank 刷新: Tushare dc_hot 无数据")
+            return 0
+
+        df = df.reset_index(drop=True)
+        out = pd.DataFrame()
+        out["code"] = df["ts_code"].astype(str).str.split(".").str[0].str.zfill(6)
+        out["name"] = df.get("name", "")
+        out["trade_date"] = df.get("trade_date", "")
+        out["rank"] = pd.to_numeric(df.get("rank", 0), errors="coerce").fillna(0).astype(int)
+        out["pct_change"] = pd.to_numeric(df.get("pct_change", 0), errors="coerce")
+        out["hot"] = pd.to_numeric(df.get("hot", 0), errors="coerce") if "hot" in df.columns else None
+        out["concept"] = df.get("concept", "") if "concept" in df.columns else ""
+
+        db = DatabaseManager()
+        saved = db.upsert_popularity_rank(out, source="tushare")
+        logger.info("[Scanner] 盘后 popularity_rank 全量刷新: %d 条", saved)
+        return saved
+    except Exception as e:
+        logger.warning("[Scanner] 盘后 popularity_rank 刷新失败: %s", e)
+        return 0
+
+
+def refresh_stock_daily_postmarket(tushare_fetcher) -> int:
+    """盘后补全当日 stock_daily 日K线数据。
+
+    增量拉取最近 2 个交易日，覆盖当日及前一天可能的遗漏。
+    盘中 IntradayScanner._ensure_daily_kline_complete 已做过一次，
+    盘后再跑一次确保当日收盘数据入库。
+
+    Returns:
+        落库条数，失败返回 0
+    """
+    try:
+        from datetime import date as _date
+        from src.storage import DatabaseManager
+        from scripts.sync_daily_kline import sync_all_daily, normalize_tushare_daily
+
+        today = _date.today()
+        trade_date = today.strftime("%Y%m%d")
+        raw_dfs = sync_all_daily(tushare_fetcher, trade_date=trade_date, lookback_calendar_days=5)
+        if not raw_dfs:
+            logger.warning("[Scanner] 盘后 stock_daily 刷新: 无数据")
+            return 0
+
+        db = DatabaseManager()
+        normalized = [d for d in (normalize_tushare_daily(df) for df in raw_dfs) if not d.empty]
+        if not normalized:
+            return 0
+        import pandas as pd
+        merged = pd.concat(normalized, ignore_index=True)
+        saved = db.save_daily_batch(merged, data_source="tushare_postmarket")
+        logger.info("[Scanner] 盘后 stock_daily 刷新: %d 行", saved)
+        return saved
+    except Exception as e:
+        logger.warning("[Scanner] 盘后 stock_daily 刷新失败: %s", e)
+        return 0
+
+
 def run_intraday_scan(config: DiscoveryConfig, tushare_fetcher=None, akshare_fetcher=None) -> None:
     """一键启动盘中扫描（注册全部盘中因子）。"""
     from src.discovery.factors import (
@@ -1064,12 +1143,14 @@ def ensure_postmarket_scan(
 
     # ---- 数据刷新 ----
     refreshers = [
+        ("stock_daily", lambda: refresh_stock_daily_postmarket(tushare_fetcher)),
         ("limit_pool", lambda: refresh_limit_pool_postmarket(tushare_fetcher)),
         ("money_flow", lambda: refresh_money_flow_postmarket(tushare_fetcher)),
         ("margin_detail", lambda: refresh_margin_detail_postmarket(tushare_fetcher)),
         ("cyq_perf", lambda: refresh_cyq_perf_postmarket(tushare_fetcher)),
         ("insider_buy", lambda: refresh_insider_buy_postmarket()),
         ("hm_detail", lambda: refresh_hm_detail_postmarket(tushare_fetcher)),
+        ("popularity", lambda: refresh_popularity_postmarket(tushare_fetcher)),
     ]
     for name, fn in refreshers:
         try:

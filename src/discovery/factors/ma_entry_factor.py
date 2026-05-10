@@ -29,6 +29,7 @@ class MaEntryFactor(BaseFactor):
     available_intraday = True
     available_postmarket = False
     weight = 35.0
+    _LABEL_THRESHOLD = 5.0
 
     def fetch_data(self, trade_date: str, **kwargs) -> Optional[pd.DataFrame]:
         from src.storage import DatabaseManager
@@ -294,68 +295,103 @@ class MaEntryFactor(BaseFactor):
 
         return pd.DataFrame.from_dict(results, orient="index")
 
-    def score(self, df: pd.DataFrame, **context) -> pd.Series:
-        scores = pd.Series(0.0, index=df.index, name=self.name)
+    # ------------------------------------------------------------------
+    # 共享信号提取
+    # ------------------------------------------------------------------
 
-        if df.empty:
-            return scores
+    def _compute_signals(self, df: pd.DataFrame) -> Dict[str, pd.Series]:
+        """提取均线买点信号，返回信号名 → boolean Series 的映射。"""
+        idx = df.index
+        false_s = pd.Series(False, index=idx)
+        signals: Dict[str, pd.Series] = {}
 
-        price = df.get("close", pd.Series(1.0, index=df.index))
-        boll_mid = df.get("boll_mid", pd.Series(price, index=df.index))
+        price = df.get("close", pd.Series(1.0, index=idx))
+        boll_mid = df.get("boll_mid", pd.Series(price, index=idx))
+        kdj_j = df.get("kdj_j", pd.Series(50.0, index=idx))
+        today_vol = df.get("est_vol", df.get("vol", pd.Series(0, index=idx)))
+        avg_vol = df.get("avg_vol", pd.Series(0, index=idx))
+
+        signals["kdj_j"] = kdj_j
+        signals["kdj_oversold"] = kdj_j < 20
 
         has_ma = "ma5" in df.columns
+        if not has_ma:
+            for k in ("ma_valid", "bull_align", "ma_sticky", "near_ma5",
+                       "near_ma10", "bear_align", "high_bias",
+                       "vol_shrink_near_ma", "boll_support"):
+                signals[k] = false_s
+            return signals
 
-        # --- 均线多头排列 (+20) ---
-        if has_ma:
-            ma5 = df["ma5"]
-            ma10 = df["ma10"]
-            ma20 = df["ma20"]
-            ma_valid = ma5.notna() & ma10.notna() & ma20.notna()
+        ma5 = df["ma5"]
+        ma10 = df["ma10"]
+        ma20 = df["ma20"]
+        ma_valid = ma5.notna() & ma10.notna() & ma20.notna()
+        signals["ma_valid"] = ma_valid
 
-            # 多头排列
-            bull_align = ma_valid & (ma5 > ma10) & (ma10 > ma20)
-            scores.loc[bull_align] += 20.0
+        # 多头排列
+        bull_align = ma_valid & (ma5 > ma10) & (ma10 > ma20)
+        signals["bull_align"] = bull_align
 
-            # 均线粘合: spread < 2% (+15)
-            ma_max = pd.concat([ma5, ma10, ma20], axis=1).max(axis=1)
-            ma_min = pd.concat([ma5, ma10, ma20], axis=1).min(axis=1)
-            mid = (ma_max + ma_min) / 2
-            spread = (ma_max - ma_min) / mid.replace(0, 1)
-            scores.loc[ma_valid & (spread < 0.02)] += 15.0
+        # 空头排列
+        bear_align = ma_valid & (ma5 < ma10) & (ma10 < ma20)
+        signals["bear_align"] = bear_align
 
-            # 回踩 MA5: 现价距 MA5 < 2% (+25)
-            bias_5 = (price - ma5).abs() / ma5.replace(0, 1)
-            scores.loc[ma_valid & (bias_5 < 0.02)] += 25.0
+        # 乖离率 > 8%
+        bias = (price - ma5) / ma5.replace(0, 1)
+        signals["high_bias"] = ma_valid & (bias > 0.08)
 
-            # 回踩 MA10: 现价距 MA10 < 3% (+20)
-            bias_10 = (price - ma10).abs() / ma10.replace(0, 1)
-            scores.loc[ma_valid & (bias_10 < 0.03)] += 20.0
+        # 均线粘合: spread < 2%
+        ma_max = pd.concat([ma5, ma10, ma20], axis=1).max(axis=1)
+        ma_min = pd.concat([ma5, ma10, ma20], axis=1).min(axis=1)
+        mid = (ma_max + ma_min) / 2
+        spread = (ma_max - ma_min) / mid.replace(0, 1)
+        signals["ma_sticky"] = ma_valid & (spread < 0.02)
 
-            # 空头排列排除
-            bear_align = ma_valid & (ma5 < ma10) & (ma10 < ma20)
-            scores.loc[bear_align] = 0.0
+        # 回踩 MA5: 现价距 MA5 < 2%
+        bias_5 = (price - ma5).abs() / ma5.replace(0, 1)
+        signals["near_ma5"] = ma_valid & (bias_5 < 0.02)
 
-            # 乖离率 > 8% 排除
-            bias = (price - ma5) / ma5.replace(0, 1)
-            scores.loc[ma_valid & (bias > 0.08)] = 0.0
+        # 回踩 MA10: 现价距 MA10 < 3%
+        bias_10 = (price - ma10).abs() / ma10.replace(0, 1)
+        signals["near_ma10"] = ma_valid & (bias_10 < 0.03)
 
-            # 缩量回踩 (+15): 预估全天量 < 5 日均量 × 0.8
-            today_vol = df.get("est_vol", df.get("vol", pd.Series(0, index=df.index)))
-            avg_vol = df.get("avg_vol", pd.Series(0, index=df.index))
-            has_avg = avg_vol > 0
-            vol_shrink = has_avg & (today_vol < avg_vol * 0.8)
-            near_ma = ((price - ma5).abs() / ma5.replace(0, 1)) < 0.03
-            scores.loc[ma_valid & vol_shrink & near_ma] += 15.0
+        # 缩量回踩: 预估全天量 < 5日均量 × 0.8，且距 MA5 < 3%
+        has_avg = avg_vol > 0
+        vol_shrink = has_avg & (today_vol < avg_vol * 0.8)
+        near_ma = ((price - ma5).abs() / ma5.replace(0, 1)) < 0.03
+        signals["vol_shrink_near_ma"] = ma_valid & vol_shrink & near_ma
 
-            # --- BOLL 中轨支撑 (+5): 价在中轨上方 2% 内，且 MA5 > MA10 ---
-            above_mid = price > boll_mid
-            near_mid = (price - boll_mid).abs() / boll_mid.replace(0, 1) < 0.02
-            mini_bull = ma_valid & (ma5 > ma10)
-            scores.loc[mini_bull & above_mid & near_mid] += 5.0
+        # BOLL 中轨支撑: 价在中轨上方 2% 内，且 MA5 > MA10
+        above_mid = price > boll_mid
+        near_mid = (price - boll_mid).abs() / boll_mid.replace(0, 1) < 0.02
+        mini_bull = ma_valid & (ma5 > ma10)
+        signals["boll_support"] = mini_bull & above_mid & near_mid
 
-        # --- KDJ J 线超卖 (+10): J < 20 ---
-        kdj_j = df.get("kdj_j", pd.Series(50.0, index=df.index))
-        scores.loc[kdj_j < 20] += 10.0
+        return signals
+
+    # ------------------------------------------------------------------
+    # score / describe
+    # ------------------------------------------------------------------
+
+    def score(self, df: pd.DataFrame, **context) -> pd.Series:
+        if df.empty:
+            return pd.Series(dtype=float, name=self.name)
+
+        signals = self._compute_signals(df)
+        scores = pd.Series(0.0, index=df.index, name=self.name)
+
+        # 正向信号
+        scores.loc[signals["bull_align"]] += 20.0
+        scores.loc[signals["ma_sticky"]] += 15.0
+        scores.loc[signals["near_ma5"]] += 25.0
+        scores.loc[signals["near_ma10"]] += 20.0
+        scores.loc[signals["vol_shrink_near_ma"]] += 15.0
+        scores.loc[signals["boll_support"]] += 5.0
+        scores.loc[signals["kdj_oversold"]] += 10.0
+
+        # 排除条件在最后归零（覆盖已加分）
+        scores.loc[signals["bear_align"]] = 0.0
+        scores.loc[signals["high_bias"]] = 0.0
 
         return scores.clip(0, 100)
 
@@ -363,44 +399,30 @@ class MaEntryFactor(BaseFactor):
         reasons: Dict[str, List[str]] = {}
         if df.empty:
             return reasons
-        price = df.get("close", pd.Series(1.0, index=df.index))
-        kdj_j = df.get("kdj_j", pd.Series(50.0, index=df.index))
-        boll_mid = df.get("boll_mid", pd.Series(price, index=df.index))
-        has_ma = "ma5" in df.columns
+
+        signals = self._compute_signals(df)
 
         for ts_code in scores.index:
-            if scores[ts_code] <= 0:
+            if scores[ts_code] < self._LABEL_THRESHOLD:
                 continue
             r = []
 
-            if has_ma and ts_code in df.index:
-                _ma5 = df.loc[ts_code, "ma5"]
-                _ma10 = df.loc[ts_code, "ma10"]
-                _ma20 = df.loc[ts_code, "ma20"]
-                if pd.notna(_ma5) and pd.notna(_ma10) and pd.notna(_ma20):
-                    if _ma5 > _ma10 > _ma20:
-                        r.append("均线多头排列")
-                    _p = price.get(ts_code, 0)
-                    if _ma5 > 0 and abs(_p - _ma5) / _ma5 < 0.02:
-                        r.append("回踩MA5均线")
-                    elif _ma10 > 0 and abs(_p - _ma10) / _ma10 < 0.03:
-                        r.append("回踩MA10均线")
+            if signals["bull_align"].get(ts_code, False):
+                r.append("均线多头排列")
+            if signals["ma_sticky"].get(ts_code, False):
+                r.append("均线粘合")
+            if signals["near_ma5"].get(ts_code, False):
+                r.append("回踩MA5均线")
+            elif signals["near_ma10"].get(ts_code, False):
+                r.append("回踩MA10均线")
+            if signals["boll_support"].get(ts_code, False):
+                r.append("BOLL中轨支撑")
+            if signals["vol_shrink_near_ma"].get(ts_code, False):
+                r.append("缩量回踩")
+            j_val = signals["kdj_j"].get(ts_code, 50)
+            if signals["kdj_oversold"].get(ts_code, False):
+                r.append(f"KDJ超卖(J{j_val:.0f})")
 
-                    # BOLL 中轨支撑 + MA5 > MA10
-                    _bm = boll_mid.get(ts_code, 0)
-                    if _ma5 > _ma10 and 0 <= (_p - _bm) / _bm < 0.02:
-                        r.append("BOLL中轨支撑")
-
-            # 缩量回踩信号
-            if has_ma and ts_code in df.index and "avg_vol" in df.columns:
-                _avg = df.loc[ts_code, "avg_vol"]
-                _vol = df.loc[ts_code, "vol"]
-                if pd.notna(_avg) and _avg > 0 and _vol < _avg * 0.8:
-                    r.append("缩量回踩")
-
-            _kdj_j = kdj_j.get(ts_code, 50)
-            if _kdj_j < 20:
-                r.append(f"KDJ超卖(J{_kdj_j:.0f})")
             if r:
                 reasons[ts_code] = r
         return reasons
