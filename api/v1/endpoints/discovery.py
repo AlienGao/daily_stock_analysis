@@ -4,6 +4,7 @@
 提供盘中扫描 Top N 榜单和盘后发现结果查询。
 """
 
+import asyncio
 import json
 import logging
 import os
@@ -14,7 +15,9 @@ from typing import Dict, List, Optional
 
 import pandas as pd
 
+import fastapi
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -342,6 +345,59 @@ def get_intraday_top10():
 
 
 # ---------------------------------------------------------------------------
+# Intraday SSE stream — pushes update events when scanner writes new data
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/intraday/stream",
+    responses={
+        200: {"description": "SSE 事件流", "content": {"text/event-stream": {}}},
+    },
+    summary="盘中扫描实时推送",
+    description="通过 Server-Sent Events 推送盘中扫描更新事件，前端收到后拉取最新数据",
+)
+async def intraday_stream():
+    """SSE 端点：监听 /tmp/discovery_top10.json 的 mtime 变化，推送 update 事件。"""
+
+    async def event_generator():
+        last_mtime = None
+        ticks_since_last_event = 0
+        try:
+            while True:
+                try:
+                    await asyncio.sleep(2)
+                    ticks_since_last_event += 1
+
+                    try:
+                        current_mtime = os.path.getmtime(_SCAN_OUTPUT)
+                    except OSError:
+                        current_mtime = None
+
+                    if current_mtime is not None and current_mtime != last_mtime:
+                        last_mtime = current_mtime
+                        ticks_since_last_event = 0
+                        yield f"event: update\ndata: {{}}\n\n"
+                    elif ticks_since_last_event >= 15:
+                        ticks_since_last_event = 0
+                        yield f"event: heartbeat\ndata: {{}}\n\n"
+                except asyncio.CancelledError:
+                    raise
+        except asyncio.CancelledError:
+            logger.debug("SSE client disconnected from intraday stream")
+            raise
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
 # Scan mode (per-mode: intraday / postmarket)
 # ---------------------------------------------------------------------------
 
@@ -622,7 +678,10 @@ def run_postmarket_discovery():
             # 保存报告 + 结构化数据到 discovery_reports
             # 交易日 → 直接保存（供回测使用）；非交易日 → non_trading/ 子目录（仅展示，不回测）
             from src.discovery.engine import is_trading_day
-            date_str = date.today().strftime('%Y%m%d')
+            date_str = (
+                tushare_fetcher.get_trade_time(early_time="00:00", late_time="18:00")
+                or date.today().strftime('%Y%m%d')
+            )
             base_dir = Path(__file__).resolve().parent.parent.parent.parent / "discovery_reports"
             if is_trading_day(engine):
                 reports_dir = base_dir
@@ -954,3 +1013,110 @@ def get_stock_score(
             ))
 
     return StockScoreResponse(items=items)
+
+
+# ------------------------------------------------------------------
+# Factor Top-3  (per-factor intraday / postmarket)
+# ------------------------------------------------------------------
+
+_FACTOR_LABEL_MAP = {
+    "money_flow": "资金流向", "margin": "融资融券", "chip": "筹码分布",
+    "technical": "技术形态", "limit": "涨跌停", "fundamental": "基本面",
+    "northbound": "北向资金", "institution_hold": "机构持股",
+    "profit_forecast": "盈利预测", "buyback": "回购", "insider_buy": "高管增持",
+    "broker_recommend": "券商推荐", "popularity": "人气", "hot_money": "游资",
+    "performance": "业绩", "momentum": "动量", "rebound": "反弹",
+    "sector": "板块", "ma_entry": "均线",
+}
+
+
+def _factor_label(name: str) -> str:
+    return _FACTOR_LABEL_MAP.get(name, name)
+
+
+class FactorTopStock(BaseModel):
+    stock_code: str
+    stock_name: str
+    factor_score: float        # 该因子得分
+    total_score: float         # 综合得分
+    sector: str = ""
+
+
+class FactorTopEntry(BaseModel):
+    factor_name: str           # e.g. "momentum"
+    factor_label: str          # e.g. "动量"
+    stocks: List[FactorTopStock]  # Top 3
+
+
+class FactorTopsResponse(BaseModel):
+    mode: str
+    scan_date: str
+    factors: List[FactorTopEntry]
+
+
+@router.get(
+    "/{mode}/factor-tops",
+    response_model=FactorTopsResponse,
+    summary="获取各因子 Top 3 股票",
+)
+def get_factor_tops(mode: str = fastapi.Path(..., description="扫描模式: intraday 或 postmarket")):
+    """返回最新一次扫描中各因子评分最高的 3 只股票（基于 DB 全量评分记录）。"""
+    if mode not in ("intraday", "postmarket"):
+        raise HTTPException(status_code=400, detail="mode 须为 intraday 或 postmarket")
+
+    from src.storage import DatabaseManager, ScanResultIntraday, ScanResultPostmarket
+    from sqlalchemy import desc
+    from datetime import date as dt_date
+
+    db = DatabaseManager()
+    Model = ScanResultIntraday if mode == "intraday" else ScanResultPostmarket
+
+    with db.get_session() as session:
+        latest = (
+            session.query(Model.scan_date)
+            .order_by(desc(Model.scan_date))
+            .limit(1)
+            .first()
+        )
+        if not latest:
+            return FactorTopsResponse(mode=mode, scan_date="", factors=[])
+
+        scan_date = latest[0]
+        # 仅返回当天扫描结果，避免盘中显示旧交易日的盘后数据
+        today_str = dt_date.today().strftime("%Y%m%d")
+        if scan_date != today_str:
+            return FactorTopsResponse(mode=mode, scan_date=scan_date, factors=[])
+        rows = session.query(Model).filter(Model.scan_date == scan_date).all()
+
+    if not rows:
+        return FactorTopsResponse(mode=mode, scan_date=scan_date, factors=[])
+
+    factor_scores_map: Dict[str, list] = {}
+    for row in rows:
+        scores = json.loads(row.factor_scores_json or "{}")
+        for fname, fscore in scores.items():
+            if fscore <= 0:
+                continue
+            factor_scores_map.setdefault(fname, []).append({
+                "stock_code": row.stock_code,
+                "stock_name": row.stock_name,
+                "factor_score": round(float(fscore), 2),
+                "total_score": round(float(row.total_score or 0), 2),
+                "sector": row.sector or "",
+            })
+
+    factors: List[FactorTopEntry] = []
+    for fname, candidates in factor_scores_map.items():
+        candidates.sort(key=lambda x: x["factor_score"], reverse=True)
+        top3 = candidates[:3]
+        factors.append(FactorTopEntry(
+            factor_name=fname,
+            factor_label=_factor_label(fname),
+            stocks=[FactorTopStock(**s) for s in top3],
+        ))
+
+    # 按因子权重降序排列
+    weights = _get_factor_weights(mode)
+    factors.sort(key=lambda f: weights.get(f.factor_name, 0), reverse=True)
+
+    return FactorTopsResponse(mode=mode, scan_date=scan_date, factors=factors)

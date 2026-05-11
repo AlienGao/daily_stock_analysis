@@ -1085,7 +1085,7 @@ class TushareFetcher(BaseFetcher):
             return None
 
         if not use_today:
-            logger.info(f"[Tushare] 当前时间 {china_clock} 可能无法获取当天筹码分布，尝试获取前一个交易日的数据 {start_date}")
+            logger.info(f"[Tushare] 当前时间 {china_clock} 不在数据就绪窗口，使用前一交易日 {start_date}")
 
         return start_date
 

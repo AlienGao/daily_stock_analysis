@@ -187,6 +187,11 @@ def _persist_to_db(df: pd.DataFrame) -> None:
         if c in df.columns:
             out[c] = pd.to_numeric(df[c], errors="coerce")
 
+    # 过滤 trade_date 非法行
+    out = out[out["trade_date"].notna() & (out["trade_date"].astype(str).str.match(r"^\d{8}$"))]
+    if out.empty:
+        return
+
     db = DatabaseManager()
     saved = db.upsert_money_flow(out, source="tushare")
     logger.info("[MoneyFlow] 自动落库 %d 条", saved)

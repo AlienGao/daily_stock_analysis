@@ -1,5 +1,5 @@
 {
-  "intraday_scan_universe": "whitelist",
+  "intraday_scan_universe": "full_market",
   "postmarket_scan_universe": "full_market",
   "discover_whitelist": [
     "000063",

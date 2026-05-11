@@ -358,13 +358,19 @@ class SectorFactor(BaseFactor):
             }
             df.rename(columns={k: v for k, v in col_map.items() if k in df.columns}, inplace=True)
 
-            # 统一为申万行业（stock_basic 缓存，零 API 成本）
-            if tushare_fetcher is not None:
+            # 板块分类：优先保留 akshare 同花顺行业，缺失时用 DB 同花顺映射填充
+            if "sector" not in df.columns:
+                df["sector"] = ""
+            needs_sector = df["sector"].isna() | (
+                df["sector"].astype(str).str.strip().isin(["", "nan"])
+            )
+            if needs_sector.any():
                 try:
-                    stock_list = tushare_fetcher.get_stock_list()
-                    if stock_list is not None and not stock_list.empty:
-                        code_to_sw = dict(zip(stock_list["code"], stock_list["industry"]))
-                        df["sector"] = df["code"].map(code_to_sw).fillna(df.get("sector", ""))
+                    from src.storage import DatabaseManager
+                    ths_map = DatabaseManager().get_ths_industry_map()
+                    if ths_map:
+                        sw = df["code"].map(ths_map)
+                        df.loc[needs_sector, "sector"] = sw[needs_sector].fillna("")
                 except Exception:
                     pass
 

@@ -232,7 +232,7 @@ class IntradayScanner:
         """拉取最新涨停数据落库（每 60s 刷新，偶 30s slot）。
 
         3-tier fallback: akshare stock_zt_pool_em → realtime_spot DB → Tushare
-        盘中 delete-then-insert（炸板退池自动清除）。
+        盘中 upsert（name 为空不覆盖旧值），差集清理退池股票。
         """
         try:
             import time as _time
@@ -256,22 +256,35 @@ class IntradayScanner:
             if df is None or df.empty:
                 return False
 
-            # ── 统一板块分类：申万行业（stock_basic 缓存，零 API 成本）──
-            try:
-                stock_list = self.engine.tushare_fetcher.get_stock_list()
-                if stock_list is not None and not stock_list.empty:
-                    code_to_sw = dict(zip(stock_list["code"], stock_list["industry"]))
-                    df["sector"] = df["code"].map(code_to_sw).fillna(
-                        df.get("sector", pd.Series("", index=df.index))
-                    )
-            except Exception:
-                pass  # Tushare 不可用时保留原 sector
+            # ── 板块分类：优先保留 akshare 同花顺行业，缺失时用申万填充 ──
+            if "sector" not in df.columns:
+                df["sector"] = pd.Series("", index=df.index)
+            needs_sector = df["sector"].isna() | (
+                df["sector"].astype(str).str.strip().isin(["", "nan"])
+            )
+            if needs_sector.any():
+                try:
+                    ths_map = db.get_ths_industry_map()
+                    if ths_map:
+                        sw = df["code"].map(ths_map)
+                        df.loc[needs_sector, "sector"] = sw[needs_sector].fillna("")
+                except Exception:
+                    pass
 
-            # ── 炸板检测（clear 之前完成新旧比对） ──
+            # ── 炸板检测（upsert 之前完成新旧比对） ──
             self._detect_limit_breaks(db, df, today, source)
 
-            db.clear_limit_pool_date(today)
-            saved = db.insert_limit_pool_bulk(df, source=source, slot=slot)
+            # upsert：新记录写入，已有记录更新；name 为空时保留旧值
+            saved = db.upsert_limit_pool(df, source=source, slot=slot)
+
+            # ── 清理退池股票（DB 中有但新数据中无的 code） ──
+            new_codes = set(df["code"].astype(str).str.strip().str.zfill(6))
+            old_pool = db.get_limit_pool(trade_date=today)
+            if old_pool is not None and not old_pool.empty:
+                stale_codes = set(old_pool["code"].astype(str).str.strip().str.zfill(6)) - new_codes
+                if stale_codes:
+                    db.delete_limit_pool_by_codes(today, list(stale_codes))
+
             self._last_limit_slot = slot
             logger.info("[Scanner] limit_pool 刷新: %d 条 (source=%s)", saved, source)
             return True
@@ -638,8 +651,12 @@ class IntradayScanner:
         try:
             os.makedirs(os.path.dirname(_OUTPUT_PATH), exist_ok=True)
             active = [e for e in annotated if e["rank"] > 0]
+            now_utc = datetime.now(timezone.utc)
+            now_local = (now_utc + timedelta(hours=8)).strftime("%H:%M:%S")
+            for e in active:
+                e["discovered_at"] = now_local
             payload = {
-                "updated": datetime.now(timezone.utc).isoformat(),
+                "updated": now_utc.isoformat(),
                 "round": self._round,
                 "top_n": active,
                 "dropped": [e for e in annotated if e["rank"] < 0],
@@ -768,19 +785,19 @@ def refresh_limit_pool_postmarket(tushare_fetcher) -> int:
 
         db = DatabaseManager()
 
-        # 从 Tushare stock_basic 缓存补申万行业分类（只补空，不覆盖盘中东财板块）
-        stock_list = tushare_fetcher.get_stock_list()
-        if stock_list is not None and not stock_list.empty:
-            code_to_industry = dict(zip(stock_list["code"], stock_list["industry"]))
-            # 读取当前 DB 中已有板块的代码
+        # 从同花顺行业映射 DB 补板块分类（只补空，不覆盖盘中已写入板块）
+        try:
+            ths_map = db.get_ths_industry_map()
+        except Exception:
+            ths_map = {}
+        if ths_map:
             existing_sec = db.get_existing_sectors(out["trade_date"].iloc[0])
             codes_missing_sec = [
                 c for c in out["code"].tolist()
                 if c not in existing_sec or not existing_sec[c]
             ]
             if codes_missing_sec:
-                fill_map = {c: code_to_industry.get(c, "") for c in codes_missing_sec}
-                # 只对缺板块的行补填
+                fill_map = {c: ths_map.get(c, "") for c in codes_missing_sec}
                 mask = out["code"].isin(codes_missing_sec)
                 out.loc[mask, "sector"] = out.loc[mask, "code"].map(fill_map)
 
@@ -829,6 +846,12 @@ def refresh_money_flow_postmarket(tushare_fetcher) -> int:
                    "buy_sm_amount", "sell_sm_amount", "net_mf_amount"):
             if c in df.columns:
                 out[c] = pd.to_numeric(df[c], errors="coerce")
+
+        # 过滤 trade_date 非法行（Tushare 个别返回 NaN）
+        out = out[out["trade_date"].notna() & (out["trade_date"].astype(str).str.match(r"^\d{8}$"))]
+        if out.empty:
+            logger.warning("[Scanner] 盘后 money_flow 刷新: trade_date 全部非法，跳过")
+            return 0
 
         db = DatabaseManager()
         saved = db.upsert_money_flow(out, source="tushare")
@@ -1305,6 +1328,74 @@ def refresh_stock_daily_postmarket(tushare_fetcher) -> int:
         return 0
 
 
+def refresh_ths_industry_map_postmarket(tushare_fetcher) -> int:
+    """盘后维护同花顺行业映射，每隔 7 天全量刷新一次。
+
+    Returns:
+        入库条数，跳过或失败返回 0
+    """
+    try:
+        from src.storage import DatabaseManager
+
+        db = DatabaseManager()
+        age_hours = db.get_ths_industry_map_age_hours()
+        if age_hours is not None and age_hours < 168:  # 7 天内不重复刷
+            logger.debug("[Scanner] ths_industry_map 仍新鲜 (%.0fh)，跳过", age_hours)
+            return 0
+
+        if age_hours is None:
+            logger.info("[Scanner] ths_industry_map 为空，开始构建...")
+        else:
+            logger.info("[Scanner] ths_industry_map 已过期 (%.0fh)，重新构建...", age_hours)
+
+        # 获取行业列表
+        import akshare as ak
+        import pandas as pd
+        import time as _time
+
+        industry_df = ak.stock_board_industry_name_ths()
+        industry_df["ths_code"] = industry_df["code"].astype(str).str.strip()
+        industry_df["industry_name"] = industry_df["name"].astype(str).str.strip()
+
+        tf = tushare_fetcher
+        if tf is None or tf._api is None:
+            logger.warning("[Scanner] Tushare API 不可用，跳过 ths_industry_map 刷新")
+            return 0
+
+        code_to_industry: dict = {}
+        for _, row in industry_df.iterrows():
+            ths_code = row["ths_code"]
+            name = row["industry_name"]
+            ts_code_full = f"{ths_code}.TI"
+            try:
+                raw = tf._api.ths_member(ts_code=ts_code_full, fields="ts_code,con_code")
+                if raw is not None and not raw.empty and "con_code" in raw.columns:
+                    codes = raw["con_code"].astype(str).str.strip()
+                    for c in codes:
+                        if "." in c:
+                            code = c.split(".")[0].zfill(6)
+                            if code not in code_to_industry:
+                                code_to_industry[code] = name
+            except Exception:
+                continue
+            _time.sleep(0.8)
+
+        if not code_to_industry:
+            logger.warning("[Scanner] ths_industry_map 构建结果为空")
+            return 0
+
+        out = pd.DataFrame([
+            {"stock_code": k, "industry_name": v}
+            for k, v in code_to_industry.items()
+        ])
+        saved = db.upsert_ths_industry_map(out, source="tushare")
+        logger.info("[Scanner] ths_industry_map 刷新完成: %d 条", saved)
+        return saved
+    except Exception as e:
+        logger.warning("[Scanner] ths_industry_map 刷新失败: %s", e)
+        return 0
+
+
 def run_intraday_scan(config: DiscoveryConfig, tushare_fetcher=None, akshare_fetcher=None) -> None:
     """一键启动盘中扫描（注册全部盘中因子）。"""
     from src.discovery.factors import (
@@ -1357,7 +1448,10 @@ def ensure_postmarket_scan(
     )
     from src.storage import DatabaseManager
 
-    today = dt_date.today().strftime("%Y%m%d")
+    today = (
+        tushare_fetcher.get_trade_time(early_time="18:01", late_time="04:59")
+        or dt_date.today().strftime("%Y%m%d")
+    )
     db = DatabaseManager()
 
     if not force and db.has_postmarket_scan_today(today):
@@ -1370,6 +1464,7 @@ def ensure_postmarket_scan(
 
     # ---- 数据刷新 ----
     refreshers = [
+        ("ths_industry_map", lambda: refresh_ths_industry_map_postmarket(tushare_fetcher)),
         ("stock_daily", lambda: refresh_stock_daily_postmarket(tushare_fetcher)),
         ("limit_pool", lambda: refresh_limit_pool_postmarket(tushare_fetcher)),
         ("money_flow", lambda: refresh_money_flow_postmarket(tushare_fetcher)),

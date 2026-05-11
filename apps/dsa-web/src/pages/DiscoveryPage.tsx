@@ -7,16 +7,15 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { AutoComplete, DatePicker, Table } from 'antd';
+import { AutoComplete, DatePicker, Table, Segmented } from 'antd';
 import dayjs from 'dayjs';
 import { AppPage, Button, EmptyState } from '../components/common';
-import { discoveryApi, type DiscoveryItem, type BacktestResponse, type ScanModeResponse, type StockScoreResponse } from '../api/discovery';
+import { discoveryApi, type DiscoveryItem, type BacktestResponse, type ScanModeResponse, type StockScoreResponse, type FactorTopsResponse } from '../api/discovery';
 import { useStockIndex } from '../hooks/useStockIndex';
 import { searchStocks } from '../utils/searchStocks';
 
 type TabKey = 'intraday' | 'postmarket';
 
-const AUTO_REFRESH_MS = 60_000;
 const MIN_INTRADAY_FETCH_GAP_MS = 60_000;
 const BACKTEST_REFRESH_MS = 300_000;
 
@@ -267,26 +266,26 @@ const StockCard: React.FC<{
         {px && (
           <div className="space-y-2">
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <div className="rounded-xl border border-cyan/15 bg-cyan/[0.06] px-3 py-2">
-                <div className="mb-1 flex items-center gap-1 text-[10px] text-cyan/80">
+              <div className="rounded-xl border border-cyan/15 bg-cyan/[0.06] px-3 py-2 flex flex-col items-center justify-center min-h-[52px]">
+                <div className="flex items-center gap-1 text-[10px] text-cyan/80">
                   <Target className="h-3 w-3" />
                   买入区间
                 </div>
-                <div className="text-sm font-semibold tabular-nums text-cyan">{buyRange}</div>
+                <div className="text-lg sm:text-xl font-semibold tabular-nums text-cyan text-center">{buyRange}</div>
               </div>
-              <div className="rounded-xl border border-red-400/15 bg-red-400/[0.06] px-3 py-2">
-                <div className="mb-1 flex items-center gap-1 text-[10px] text-red-400/80">
+              <div className="rounded-xl border border-red-400/15 bg-red-400/[0.06] px-3 py-2 flex flex-col items-center justify-center min-h-[52px]">
+                <div className="flex items-center gap-1 text-[10px] text-red-400/80">
                   <Zap className="h-3 w-3" />
                   止盈 1
                 </div>
-                <div className="text-sm font-semibold tabular-nums text-red-400">{fmtPx(item.take_profit_1)}</div>
+                <div className="text-lg sm:text-xl font-semibold tabular-nums text-red-400 text-center">{fmtPx(item.take_profit_1)}</div>
               </div>
-              <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.06] px-3 py-2">
-                <div className="mb-1 flex items-center gap-1 text-[10px] text-emerald-400/80">
+              <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.06] px-3 py-2 flex flex-col items-center justify-center min-h-[52px]">
+                <div className="flex items-center gap-1 text-[10px] text-emerald-400/80">
                   <Shield className="h-3 w-3" />
                   止损
                 </div>
-                <div className="text-sm font-semibold tabular-nums text-emerald-400">{fmtPx(item.stop_loss)}</div>
+                <div className="text-lg sm:text-xl font-semibold tabular-nums text-emerald-400 text-center">{fmtPx(item.stop_loss)}</div>
               </div>
             </div>
 
@@ -367,7 +366,9 @@ const StockCard: React.FC<{
                   <div className="space-y-2.5">
                     <div className="text-[11px] font-medium text-tertiary-text tracking-wide">因子得分</div>
                     {(() => {
-                      const entries = Object.entries(item.factor_scores).filter(([, v]) => v > 0);
+                      const entries = Object.entries(item.factor_scores)
+                        .filter(([, v]) => v > 0)
+                        .sort(([a], [b]) => (item.factor_weights?.[b] ?? 0) - (item.factor_weights?.[a] ?? 0));
                       return entries.map(([k, v]) => (
                         <FactorBar key={k} label={factorLabel(k)} value={v} pctShare={item.factor_weights?.[k] ?? 0} />
                       ));
@@ -458,13 +459,18 @@ const PortfolioCandleChart: React.FC<{
   // X-axis labels: at candle positions, every Nth candle to avoid overlap
   const xLabelInterval = Math.max(Math.ceil(50 / candleStep), 1);
   const xLabels: Array<{ x: number; label: string }> = [];
+  const fmtXLabel = (d: string) => {
+    const datePart = d.split(' ')[0]; // "20260508" or "2026-05-08"
+    if (datePart.includes('-')) return datePart.slice(5).replace('-', '/');
+    return datePart.slice(4, 6) + '/' + datePart.slice(6, 8);
+  };
   for (let i = 0; i < count; i += xLabelInterval) {
-    xLabels.push({ x: dayToX(i), label: ohlcData[i].date.slice(5).replace('-', '/') });
+    xLabels.push({ x: dayToX(i), label: fmtXLabel(ohlcData[i].date) });
   }
   // Always include last
   const lastIdx = count - 1;
-  if (xLabels.length === 0 || ohlcData[lastIdx].date.slice(5).replace('-', '/') !== xLabels[xLabels.length - 1].label) {
-    xLabels.push({ x: dayToX(lastIdx), label: ohlcData[lastIdx].date.slice(5).replace('-', '/') });
+  if (xLabels.length === 0 || fmtXLabel(ohlcData[lastIdx].date) !== xLabels[xLabels.length - 1].label) {
+    xLabels.push({ x: dayToX(lastIdx), label: fmtXLabel(ohlcData[lastIdx].date) });
   }
 
   return (
@@ -576,6 +582,71 @@ const PortfolioCandleChart: React.FC<{
           </div>
         );
       })()}
+    </div>
+  );
+};
+
+const FactorTopsCard: React.FC<{
+  data: FactorTopsResponse | null;
+  loading: boolean;
+}> = ({ data, loading }) => {
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 rounded-xl border border-border/20 bg-card/40 px-4 py-6 text-[12px] text-tertiary-text">
+        <Loader2 className="h-3 w-3 animate-spin" />加载因子数据...
+      </div>
+    );
+  }
+  if (!data || !data.factors.length) {
+    return (
+      <div className="rounded-xl border border-border/20 bg-card/40 px-4 py-6 text-[12px] text-tertiary-text">
+        暂无因子评分数据
+      </div>
+    );
+  }
+
+  const rankCls = [
+    'bg-amber-400/15 text-amber-400',
+    'bg-slate-300/20 text-slate-400',
+    'bg-orange-400/15 text-orange-400',
+  ];
+
+  return (
+    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+      {data.factors.map((f) => (
+        <div
+          key={f.factor_name}
+          className="rounded-xl border border-border/20 bg-card/40 overflow-hidden"
+        >
+          {/* header */}
+          <div className="flex items-center gap-2 border-b border-border/10 px-3.5 py-2 bg-muted/15">
+            <span className="text-[13px] font-medium text-foreground">{f.factor_label}</span>
+          </div>
+          {/* stocks */}
+          <div className="divide-y divide-border/5">
+            {f.stocks.map((s, i) => (
+              <div
+                key={s.stock_code}
+                className="flex items-center gap-2.5 px-3.5 py-2 text-[12px] hover:bg-muted/10 transition-colors"
+              >
+                <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded text-[10px] font-bold ${rankCls[i]}`}>
+                  {i + 1}
+                </span>
+                <span className="font-mono font-medium text-foreground w-[68px]">{s.stock_code}</span>
+                <span className="text-secondary-text truncate max-w-[56px]">{s.stock_name}</span>
+                {s.sector && (
+                  <span className="shrink-0 text-[10px] text-tertiary-text/70 border border-border/20 rounded px-1 py-px truncate max-w-[72px]">
+                    {s.sector}
+                  </span>
+                )}
+                <span className="ml-auto font-mono tabular-nums text-cyan font-semibold text-[13px]">
+                  {s.factor_score.toFixed(1)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 };
@@ -810,6 +881,9 @@ const DiscoveryPage: React.FC = () => {
   const intradayLastFetchAtRef = useRef(0);
   const [intradayScanMode, setIntradayScanMode] = useState<ScanModeResponse>({ scan_universe: 'full_market', has_whitelist: false });
   const [postmarketScanMode, setPostmarketScanMode] = useState<ScanModeResponse>({ scan_universe: 'full_market', has_whitelist: false });
+  const [resultSubTab, setResultSubTab] = useState<string>('composite');
+  const [factorTops, setFactorTops] = useState<FactorTopsResponse | null>(null);
+  const [factorTopsLoading, setFactorTopsLoading] = useState(false);
   const [lookupInput, setLookupInput] = useState('');
   const [lookupResult, setLookupResult] = useState<StockScoreResponse | null>(null);
   const [lookupLoading, setLookupLoading] = useState(false);
@@ -934,18 +1008,44 @@ const DiscoveryPage: React.FC = () => {
     }).catch(() => {});
   }, []);
 
+  const fetchFactorTops = useCallback(async (mode: 'intraday' | 'postmarket') => {
+    setFactorTopsLoading(true);
+    try {
+      const data = await discoveryApi.getFactorTops(mode);
+      setFactorTops(data);
+    } catch { /* silent */ }
+    finally { setFactorTopsLoading(false); }
+  }, []);
+
   useEffect(() => {
+    setResultSubTab('composite'); // 切换顶层 Tab 时重置子 Tab
     if (tab === 'intraday') { fetchIntraday(); fetchBacktest('intraday'); fetchScanMode('intraday'); }
     else { fetchReport(); fetchBacktest('postmarket'); fetchScanMode('postmarket'); }
   }, [tab, fetchIntraday, fetchReport, fetchBacktest, fetchScanMode]);
+
+  useEffect(() => {
+    if (resultSubTab === 'factor-tops') fetchFactorTops(tab);
+  }, [resultSubTab, tab, fetchFactorTops]);
   useEffect(() => {
     if (lookupInput.trim()) void handleLookup();
   }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (tab !== 'intraday') return;
-    const id = setInterval(fetchIntraday, AUTO_REFRESH_MS);
-    return () => clearInterval(id);
+
+    const streamUrl = `${import.meta.env.VITE_API_BASE_URL ?? ''}/api/v1/discovery/intraday/stream`;
+    const es = new EventSource(streamUrl);
+
+    es.addEventListener('update', () => {
+      fetchIntraday(true);
+    });
+
+    es.onerror = () => {
+      es.close();
+    };
+
+    return () => es.close();
   }, [tab, fetchIntraday]);
+
   useEffect(() => {
     const id = setInterval(() => fetchBacktest(tab), BACKTEST_REFRESH_MS);
     return () => clearInterval(id);
@@ -1086,6 +1186,7 @@ const DiscoveryPage: React.FC = () => {
                   <div className="space-y-1 py-1">
                     {Object.entries(scoreItem.factor_scores)
                       .filter(([, score]) => score > 0)
+                      .sort(([a], [b]) => (scoreItem.factor_weights?.[b] ?? 0) - (scoreItem.factor_weights?.[a] ?? 0))
                       .map(([name, score]) => {
                       const pct = scoreItem.factor_weights?.[name] ?? 0;
                       return (
@@ -1138,7 +1239,7 @@ const DiscoveryPage: React.FC = () => {
             {intraday?.updated && (
               <span className="inline-flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                更新 {new Date(intraday.updated).toLocaleTimeString('zh-CN')}
+                更新 {new Date(intraday.updated).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
               </span>
             )}
             {intraday?.round ? <span>· 第 {intraday.round} 轮</span> : null}
@@ -1187,13 +1288,29 @@ const DiscoveryPage: React.FC = () => {
             onRefresh={() => fetchBacktest('intraday')}
           />
 
-          {!hasCards ? (
-            <EmptyState
-              title="暂无盘中扫描结果"
-              description={intraday === null ? '加载中...' : '扫描器未运行或非盘中交易时段（9:30-15:00）'}
-              icon={<TrendingUp className="h-8 w-8 text-tertiary-text" />}
+          <div className="mb-5">
+            <Segmented
+              value={resultSubTab}
+              onChange={(v) => setResultSubTab(v as string)}
+              options={[
+                { label: '综合排名', value: 'composite' },
+                { label: '因子Top3', value: 'factor-tops' },
+              ]}
+              block
             />
-          ) : cardGrid}
+          </div>
+
+          {resultSubTab === 'composite' ? (
+            !hasCards ? (
+              <EmptyState
+                title="暂无盘中扫描结果"
+                description={intraday === null ? '加载中...' : '扫描器未运行或非盘中交易时段（9:30-15:00）'}
+                icon={<TrendingUp className="h-8 w-8 text-tertiary-text" />}
+              />
+            ) : cardGrid
+          ) : (
+            <FactorTopsCard data={factorTops} loading={factorTopsLoading} />
+          )}
 
         </div>
       )}
@@ -1259,20 +1376,34 @@ const DiscoveryPage: React.FC = () => {
             onRefresh={() => fetchBacktest('postmarket')}
           />
 
-          {loading ? (
-            <div className="flex items-center gap-2 py-16 text-secondary-text justify-center">
-              <Loader2 className="h-4 w-4 animate-spin" /> 加载中...
-            </div>
-          ) : !report ? (
-            <EmptyState
-              title="暂无盘后发现报告"
-              description="点击上方按钮运行多因子深度发现，自动生成 Top 10 推荐及买卖点位"
-              icon={<Compass className="h-8 w-8 text-tertiary-text" />}
+          <div className="mb-5">
+            <Segmented
+              value={resultSubTab}
+              onChange={(v) => setResultSubTab(v as string)}
+              options={[
+                { label: '综合排名', value: 'composite' },
+                { label: '因子Top3', value: 'factor-tops' },
+              ]}
+              block
             />
+          </div>
+
+          {resultSubTab === 'composite' ? (
+            loading ? (
+              <div className="flex items-center gap-2 py-16 text-secondary-text justify-center">
+                <Loader2 className="h-4 w-4 animate-spin" /> 加载中...
+              </div>
+            ) : !report ? (
+              <EmptyState
+                title="暂无盘后发现报告"
+                description="点击上方按钮运行多因子深度发现，自动生成 Top 10 推荐及买卖点位"
+                icon={<Compass className="h-8 w-8 text-tertiary-text" />}
+              />
+            ) : (
+              <>{hasCards && cardGrid}</>
+            )
           ) : (
-            <>
-              {hasCards && cardGrid}
-            </>
+            <FactorTopsCard data={factorTops} loading={factorTopsLoading} />
           )}
         </div>
       )}

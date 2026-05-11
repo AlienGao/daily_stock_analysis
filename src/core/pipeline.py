@@ -2164,7 +2164,10 @@ class StockAnalysisPipeline:
                             report = engine.format_report(discovered, mode="postmarket")
                             reports_dir = Path(__file__).resolve().parent.parent.parent / "discovery_reports"
                             reports_dir.mkdir(parents=True, exist_ok=True)
-                            date_str = date.today().strftime('%Y%m%d')
+                            date_str = (
+                                tushare_fetcher.get_trade_time(early_time="00:00", late_time="18:00")
+                                or date.today().strftime('%Y%m%d')
+                            )
 
                             # 数据指纹：若与已有文件相同则跳过报告写入（数据未变，不覆盖更好的新发现）
                             json_file = reports_dir / f"postmarket_{date_str}_topn.json"

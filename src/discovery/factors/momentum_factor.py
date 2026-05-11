@@ -433,30 +433,33 @@ class MomentumFactor(BaseFactor):
         if avg_vol is None or avg_vol.empty:
             return df
 
-        # 两边均归一化为裸 6 位代码，避免 index 格式不一致导致 merge 静默失败
+        # 两边均归一化为裸 6 位代码，避免 index 格式不一致
         def _bare(x):
             return str(x).split(".")[0].strip().zfill(6)
 
-        df["_code"] = [_bare(x) for x in df.index]
+        codes = pd.Series([_bare(x) for x in df.index], index=df.index, name="_code")
 
+        # spot → today_vol 映射（去重取 first）
         spot_vol = spot[["volume"]].copy()
         spot_vol["_code"] = [_bare(x) for x in spot_vol.index]
-        spot_vol = spot_vol.rename(columns={"volume": "today_vol"})
+        today_map = spot_vol.groupby("_code")["volume"].first()
 
-        merged = df.merge(spot_vol[["_code", "today_vol"]], on="_code", how="left")
-
+        # avg_vol 映射（去重取 first）
         avg_vol_df = avg_vol.reset_index()
         avg_vol_df.columns = ["raw_code", "avg_vol"]
         avg_vol_df["_code"] = [_bare(x) for x in avg_vol_df["raw_code"]]
-        merged = merged.merge(avg_vol_df[["_code", "avg_vol"]], on="_code", how="left")
+        avg_map = avg_vol_df.groupby("_code")["avg_vol"].first()
 
-        has_data = merged["today_vol"].notna() & (merged["avg_vol"] > 0)
-        est_vol = merged["today_vol"] * (240.0 / elapsed)
-        merged.loc[has_data, "volume_ratio"] = (
-            est_vol[has_data] / merged.loc[has_data, "avg_vol"]
+        df["today_vol"] = codes.map(today_map)
+        df["avg_vol_5d"] = codes.map(avg_map)
+
+        has_data = df["today_vol"].notna() & (df["avg_vol_5d"] > 0)
+        est_vol = df["today_vol"] * (240.0 / elapsed)
+        df.loc[has_data, "volume_ratio"] = (
+            est_vol[has_data] / df.loc[has_data, "avg_vol_5d"]
         ).clip(lower=0)
 
-        result = merged.drop(columns=["_code", "today_vol", "avg_vol"], errors="ignore")
+        result = df.drop(columns=["today_vol", "avg_vol_5d"], errors="ignore")
         logger.debug(
             "[MomentumFactor] 量比自算完成: %d/%d 只有效",
             has_data.sum(), len(result),

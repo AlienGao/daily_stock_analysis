@@ -40,7 +40,7 @@ setup_env()
 if os.getenv("GITHUB_ACTIONS") != "true" and os.getenv("USE_PROXY", "false").lower() == "true":
     # 本地开发环境，启用代理（可在 .env 中配置 PROXY_HOST 和 PROXY_PORT）
     proxy_host = os.getenv("PROXY_HOST", "127.0.0.1")
-    proxy_port = os.getenv("PROXY_PORT", "10809")
+    proxy_port = os.getenv("PROXY_PORT", "42484")
     proxy_url = f"http://{proxy_host}:{proxy_port}"
     os.environ["http_proxy"] = proxy_url
     os.environ["https_proxy"] = proxy_url
@@ -116,7 +116,7 @@ def _bootstrap_environment() -> None:
 
     if os.getenv("GITHUB_ACTIONS") != "true" and os.getenv("USE_PROXY", "false").lower() == "true":
         proxy_host = os.getenv("PROXY_HOST", "127.0.0.1")
-        proxy_port = os.getenv("PROXY_PORT", "10809")
+        proxy_port = os.getenv("PROXY_PORT", "42484")
         proxy_url = f"http://{proxy_host}:{proxy_port}"
         os.environ["http_proxy"] = proxy_url
         os.environ["https_proxy"] = proxy_url
@@ -1064,7 +1064,7 @@ def start_bot_stream_clients(config: Config) -> None:
             logger.error(f"[Main] Failed to start Feishu Stream client: {exc}")
 
 
-def _save_discovery_report(report: str, results=None) -> Optional[Path]:
+def _save_discovery_report(report: str, results=None, date_str: str = None) -> Optional[Path]:
     """Save discovery report to discovery_reports/postmarket_YYYYMMDD.md + _topn.json.
     非交易日 → discovery_reports/non_trading/ 子目录（仅展示，不回测）。
     """
@@ -1077,7 +1077,8 @@ def _save_discovery_report(report: str, results=None) -> Optional[Path]:
         else:
             reports_dir = base_dir / "non_trading"
         reports_dir.mkdir(parents=True, exist_ok=True)
-        date_str = date.today().strftime('%Y%m%d')
+        if date_str is None:
+            date_str = date.today().strftime('%Y%m%d')
         filepath = reports_dir / f"postmarket_{date_str}.md"
         filepath.write_text(report, encoding="utf-8")
         logger.info("发现报告已保存: %s", filepath)
@@ -1435,7 +1436,10 @@ def main() -> int:
                     report = engine.format_report(results, mode="postmarket")
                     logger.info("\n%s", report)
                     print(report)
-                    _save_discovery_report(report, results)
+                    _save_discovery_report(
+                        report, results,
+                        date_str=tushare_fetcher.get_trade_time(early_time="00:00", late_time="18:00"),
+                    )
                     _sync_discovery_to_stock_list(results)
                 else:
                     logger.info("未发现符合条件的股票")

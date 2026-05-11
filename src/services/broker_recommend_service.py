@@ -517,7 +517,7 @@ class BrokerRecommendService:
                             continue
 
                         row = df.iloc[-1]
-                        winner_rate = float(row.get("获利比例", 0) or 0)
+                        winner_rate = float(row.get("获利比例", 0) or 0) / 100.0
                         cost_avg = float(row.get("平均成本", 0) or 0)
                         concentration = float(row.get("90集中度", 0) or 0)
                         cost_low_90 = float(row.get("90成本-低", 0) or 0)

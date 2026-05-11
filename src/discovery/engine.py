@@ -58,6 +58,20 @@ def is_trading_day(engine=None) -> bool:
     return date.today().weekday() < 5
 
 
+def _bare_to_ts_code(code: str) -> str:
+    """6 位裸代码 → ts_code 格式 (e.g. '002902' → '002902.SZ')."""
+    code_str = str(code).strip().zfill(6)
+    if len(code_str) != 6:
+        return ""
+    if code_str.startswith(("60", "68")):
+        return f"{code_str}.SH"
+    elif code_str.startswith(("00", "30")):
+        return f"{code_str}.SZ"
+    elif code_str.startswith(("43", "83", "87", "92")):
+        return f"{code_str}.BJ"
+    return ""
+
+
 def _calc_price_levels(prices: Dict[str, float], factor_score: float = 50.0) -> tuple:
     """根据技术面价格数据和因子综合分计算买卖点位。
 
@@ -216,26 +230,12 @@ class StockDiscoveryEngine:
     # ------------------------------------------------------------------
 
     def _get_industry_map(self, ts_codes: List[str]) -> Dict[str, str]:
-        """从 Tushare 获取股票行业映射，用于行业中性化。"""
-        if self.tushare_fetcher is None:
-            return {}
+        """获取同花顺行业映射，用于行业中性化。从 DB ths_industry_map 读取。"""
         try:
-            df = self.tushare_fetcher.get_stock_list()
-            if df is None or df.empty:
-                return {}
-            industry_col = next((c for c in df.columns if c == "industry"), None)
-            code_col = next((c for c in df.columns if c == "code"), None)
-            if industry_col is None or code_col is None:
-                return {}
-            result = {}
-            for _, row in df.iterrows():
-                code = str(row.get(code_col, "")).strip()
-                industry = str(row.get(industry_col, "")).strip()
-                if code and industry and industry not in ("", "nan", "None"):
-                    result[code] = industry
-            return result
+            from src.storage import DatabaseManager
+            return DatabaseManager().get_ths_industry_map()
         except Exception as e:
-            logger.debug(f"[Discovery] 获取行业映射失败: {e}")
+            logger.debug("[Discovery] 获取行业映射失败: %s", e)
             return {}
 
     # ------------------------------------------------------------------
@@ -517,8 +517,10 @@ class StockDiscoveryEngine:
         start_time = time.time()
 
         if trade_date is None and self.tushare_fetcher:
+            # 盘中/盘后扫描都应使用当天交易日期，而非前一日
+            # early_time="18:01" / late_time="04:59" 使窗口永远不命中，use_today 恒为 True
             trade_date = self.tushare_fetcher.get_trade_time(
-                early_time="00:00", late_time="18:00"
+                early_time="18:01", late_time="04:59"
             )
         if not trade_date:
             logger.warning("[Discovery] 无法解析交易日期，取消发现")
@@ -627,6 +629,11 @@ class StockDiscoveryEngine:
                     if raw.index.has_duplicates:
                         raw = raw.groupby(raw.index).mean()
                     raw.index = raw.index.map(str)
+                    # 归一化为裸 6 位代码，避免不同因子的 ts_code/bare 格式不一致
+                    # 导致 pd.DataFrame(score_columns) 合并时拆成多行
+                    raw.index = raw.index.map(
+                        lambda x: x.split(".")[0] if "." in str(x) else str(x)
+                    )
                     raw_scores[factor.name] = raw
                     score_columns[factor.name] = raw  # 暂存原始分，标准化后再加权
                     logger.debug(
@@ -702,11 +709,16 @@ class StockDiscoveryEngine:
             for col in ["close", "boll_mid", "boll_lower"]:
                 if col not in tech_df.columns:
                     continue
-                for ts_code, val in tech_df[col].items():
+                for idx_code, val in tech_df[col].items():
                     try:
                         fval = float(val)
                         if fval > 0:
-                            price_map.setdefault(ts_code, {})[col] = fval
+                            price_map.setdefault(idx_code, {})[col] = fval
+                            # 同时注册 ts_code 格式 key（兼容不同因子的索引格式差异）
+                            if "." not in idx_code:
+                                ts_key = _bare_to_ts_code(idx_code)
+                                if ts_key:
+                                    price_map.setdefault(ts_key, {})[col] = fval
                     except (ValueError, TypeError):
                         pass
 
@@ -804,6 +816,8 @@ class StockDiscoveryEngine:
                 factor_breakdown[name] = row[name]
 
             prices = price_map.get(ts_code, {})
+            if not prices and "." in ts_code:
+                prices = price_map.get(ts_code.split(".")[0], {})
             buy_low, buy_high, stop, tp1, tp2 = _calc_price_levels(prices, factor_score=raw_score)
 
             # 过滤超买股 & 低盈亏比股（盘中用实时价，盘后用收盘价）
@@ -867,18 +881,19 @@ class StockDiscoveryEngine:
         # Phase 5.5: 拥挤度惩罚
         results = self._apply_crowding_penalty(results, trade_date)
 
-        # Phase 5.6: IC 追踪（后台线程，不阻塞）
-        try:
-            from concurrent.futures import ThreadPoolExecutor
-            from src.discovery.ic_tracker import ICTracker
-            def _run_ic():
-                tracker = ICTracker(eval_days=5)
-                ic_results = tracker.evaluate(raw_scores, trade_date)
-                if ic_results:
-                    logger.info(f"[IC] {trade_date}: " + ", ".join(f"{k}={v:.3f}" for k, v in ic_results.items()))
-            ThreadPoolExecutor(max_workers=1).submit(_run_ic)
-        except Exception as e:
-            logger.debug(f"[IC] IC评估失败: {e}")
+        # Phase 5.6: IC 追踪（仅盘后，Tushare 日线 T+1 更新，盘中无今日 K 线）
+        if mode != "intraday":
+            try:
+                from concurrent.futures import ThreadPoolExecutor
+                from src.discovery.ic_tracker import ICTracker
+                def _run_ic():
+                    tracker = ICTracker(eval_days=5)
+                    ic_results = tracker.evaluate(raw_scores, trade_date)
+                    if ic_results:
+                        logger.info(f"[IC] {trade_date}: " + ", ".join(f"{k}={v:.3f}" for k, v in ic_results.items()))
+                ThreadPoolExecutor(max_workers=1).submit(_run_ic)
+            except Exception as e:
+                logger.debug(f"[IC] IC评估失败: {e}")
 
         elapsed = time.time() - start_time
         top_info = f"{results[0].stock_name} ({results[0].score:.1f})" if results else "N/A (0)"

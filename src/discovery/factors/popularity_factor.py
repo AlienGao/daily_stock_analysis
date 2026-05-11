@@ -121,7 +121,7 @@ class PopularityFactor(BaseFactor):
             marks = []
             for item in rank_data:
                 sc = item["sc"]
-                code = sc[2:] if len(sc) >= 3 else sc
+                code = sc[2:].zfill(6) if len(sc) >= 3 else str(sc).zfill(6)
                 if "BJ" in sc or "SZ" in sc:
                     marks.append("0." + code)
                 else:
@@ -144,7 +144,7 @@ class PopularityFactor(BaseFactor):
             for item in rank_data:
                 try:
                     sc = item["sc"]
-                    bare = sc[2:] if len(sc) >= 3 else sc
+                    bare = sc[2:].zfill(6) if len(sc) >= 3 else str(sc).zfill(6)
                     pinfo = price_data.get(bare, {})
                     rows.append({
                         "ts_code": bare,

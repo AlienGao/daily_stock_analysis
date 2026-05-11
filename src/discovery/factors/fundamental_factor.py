@@ -78,13 +78,15 @@ class FundamentalFactor(BaseFactor):
         if df_basic is None or df_basic.empty:
             return None
 
-        # 合并行业分类
-        df_list = tushare_fetcher.get_stock_list()
-        if df_list is not None and not df_list.empty:
-            bare_list = df_list["code"].astype(str).str.replace(r"\..*", "", regex=True)
-            industry_map = dict(zip(bare_list, df_list["industry"]))
+        # 合并同花顺行业分类
+        try:
+            from src.storage import DatabaseManager
+            ths_map = DatabaseManager().get_ths_industry_map()
+        except Exception:
+            ths_map = {}
+        if ths_map:
             bare = df_basic.index.astype(str).str.replace(r"\..*", "", regex=True)
-            df_basic["industry"] = bare.map(industry_map).fillna("其他")
+            df_basic["industry"] = bare.map(ths_map).fillna("其他")
         else:
             df_basic["industry"] = "其他"
 

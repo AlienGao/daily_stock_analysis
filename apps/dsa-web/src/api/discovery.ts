@@ -124,6 +124,26 @@ export type ScanModeResponse = {
   has_whitelist: boolean;
 };
 
+export type FactorTopStock = {
+  stock_code: string;
+  stock_name: string;
+  factor_score: number;
+  total_score: number;
+  sector: string;
+};
+
+export type FactorTopEntry = {
+  factor_name: string;
+  factor_label: string;
+  stocks: FactorTopStock[];
+};
+
+export type FactorTopsResponse = {
+  mode: string;
+  scan_date: string;
+  factors: FactorTopEntry[];
+};
+
 const INTRADAY_MIN_REQUEST_GAP_MS = 60_000;
 let intradayInFlight: Promise<IntradayTopResponse> | null = null;
 let intradayLastFetchedAt = 0;
@@ -211,5 +231,10 @@ export const discoveryApi = {
       params: { codes, mode },
     });
     return resp.data as StockScoreResponse;
+  },
+
+  async getFactorTops(mode: 'intraday' | 'postmarket'): Promise<FactorTopsResponse> {
+    const resp = await apiClient.get(`/api/v1/discovery/${mode}/factor-tops`);
+    return resp.data as FactorTopsResponse;
   },
 };

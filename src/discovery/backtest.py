@@ -18,7 +18,7 @@ from typing import Dict, List, Optional
 
 import pandas as pd
 
-from src.discovery.engine import is_trading_day
+
 
 logger = logging.getLogger(__name__)
 
@@ -110,9 +110,9 @@ class DiscoveryBacktest:
             try:
                 ed = date(int(end_date[:4]), int(end_date[4:6]), int(end_date[6:8]))
             except (ValueError, IndexError):
-                ed = date.today()
+                ed = self._resolve_backtest_date()
         else:
-            ed = date.today()
+            ed = self._resolve_backtest_date()
 
         if start_date:
             try:
@@ -172,7 +172,7 @@ class DiscoveryBacktest:
             summary = self._compute_postmarket(picks_by_date, trading_days, initial_capital)
 
         if summary:
-            self._save_backtest_summary(summary)
+            self._save_backtest_summary(summary, ed.strftime("%Y%m%d"))
 
         return summary
 
@@ -205,6 +205,7 @@ class DiscoveryBacktest:
                 continue
 
             is_open = td_next == today_str  # 当天盘中，用实时价展示
+            sell_time = datetime.now().strftime("%H:%M:%S") if is_open else "15:00:00"
 
             picks = picks_by_date[td]
             n = len(picks)
@@ -239,7 +240,6 @@ class DiscoveryBacktest:
                     if ret > 0:
                         wins += 1
 
-                    sell_time = datetime.now().strftime("%H:%M:%S") if is_open else "15:00:00"
                     trade_records.append(TradeRecord(
                         stock_code=code,
                         stock_name=name,
@@ -281,7 +281,12 @@ class DiscoveryBacktest:
                 win_count=wins,
                 total_count=len(values),
             ))
-            curve_point: Dict = {"date": td_next, "capital": round(capital, 2)}
+            # 交易日 + 结算时间（盘中用当前时间，盘后用 15:00）
+            settlement_time = sell_time if sell_time else "15:00:00"
+            curve_point: Dict = {
+                "date": f"{td_next} {settlement_time}",
+                "capital": round(capital, 2),
+            }
             if has_ohlc:
                 # open=买入成本（不含隔夜跳空），body 直接反映交易完整盈亏
                 curve_point["open"] = round(prev_capital, 2)
@@ -419,7 +424,8 @@ class DiscoveryBacktest:
                 total_count=len(values),
             ))
 
-            curve_point: Dict = {"date": td_buy, "capital": round(capital, 2)}
+            settle_time = datetime.now().strftime("%H:%M:%S") if td_buy == today_str else "15:00:00"
+            curve_point: Dict = {"date": f"{td_buy} {settle_time}", "capital": round(capital, 2)}
             if has_ohlc:
                 curve_point["open"] = round(prev_capital, 2)
                 ph = prev_capital + w_high
@@ -659,8 +665,29 @@ class DiscoveryBacktest:
     def _get_summary_file(mode: str) -> Path:
         return _REPORTS_DIR / f"{mode}_backtest_summary.json"
 
-    def _save_backtest_summary(self, summary: BacktestSummary) -> None:
+    def _resolve_backtest_date(self) -> date:
+        """Resolve backtest reference date: use trading date when fetcher available."""
+        if self._fetcher:
+            trade_date_str = self._fetcher.get_trade_time(
+                early_time="00:00", late_time="18:00"
+            )
+            if trade_date_str:
+                try:
+                    return date(
+                        int(trade_date_str[:4]),
+                        int(trade_date_str[4:6]),
+                        int(trade_date_str[6:8]),
+                    )
+                except (ValueError, IndexError):
+                    pass
+        return date.today()
+
+    def _save_backtest_summary(
+        self, summary: BacktestSummary, entry_date: str = None
+    ) -> None:
         """追加回测结果到汇总文件（仅交易日）。"""
+        from src.discovery.engine import is_trading_day
+
         if not is_trading_day(self):
             return
         _REPORTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -675,8 +702,10 @@ class DiscoveryBacktest:
             except Exception:
                 history = []
 
+        if entry_date is None:
+            entry_date = date.today().strftime("%Y%m%d")
         entry = {
-            "date": date.today().strftime("%Y%m%d"),
+            "date": entry_date,
             "mode": summary.mode,
             "cumulative_return": summary.cumulative_return,
             "win_rate": summary.win_rate,

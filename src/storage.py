@@ -1398,6 +1398,24 @@ class PerformanceReport(Base):
     )
 
 
+class ThsIndustryMap(Base):
+    """同花顺行业映射 (stock_code → 同花顺 industry name).
+
+    按 stock_code 唯一，由 scripts/build_ths_industry_map.py 定期全量刷新。
+    """
+
+    __tablename__ = 'ths_industry_map'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    stock_code = Column(String(10), nullable=False, unique=True, index=True)
+    industry_name = Column(String(100), nullable=False)
+    source = Column(String(20), default="tushare")
+    updated_at = Column(DateTime, default=datetime.now)
+
+    def __repr__(self) -> str:
+        return f"<ThsIndustryMap(code={self.stock_code}, industry={self.industry_name})>"
+
+
 class DatabaseManager:
     """
     数据库管理器 - 单例模式
@@ -1478,6 +1496,7 @@ class DatabaseManager:
         self._ensure_cyq_perf_table()
         self._ensure_insider_buy_table()
         self._ensure_performance_report_table()
+        self._ensure_ths_industry_map_table()
         self._ensure_stock_daily_date_index()
 
         self._initialized = True
@@ -1719,6 +1738,26 @@ class DatabaseManager:
             logger.info("已创建表 performance_report")
         except Exception as exc:
             logger.warning("创建 performance_report 失败: %s", exc)
+
+    def _ensure_ths_industry_map_table(self) -> None:
+        """SQLite: create ths_industry_map if missing."""
+        if not self._is_sqlite_engine:
+            return
+        try:
+            with self._engine.connect() as conn:
+                rows = conn.execute(
+                    text("SELECT name FROM sqlite_master WHERE type='table' AND name='ths_industry_map'")
+                ).fetchall()
+            if rows:
+                return
+        except Exception as exc:
+            logger.warning("检查 ths_industry_map 表存在性失败: %s", exc)
+            return
+        try:
+            ThsIndustryMap.__table__.create(self._engine)
+            logger.info("已创建表 ths_industry_map")
+        except Exception as exc:
+            logger.warning("创建 ths_industry_map 失败: %s", exc)
 
     def _ensure_limit_up_history_table(self) -> None:
         """SQLite: create limit_up_history if missing."""
@@ -3028,6 +3067,26 @@ class DatabaseManager:
             logger.error("[DB] clear_limit_pool_date 失败: %s", e)
             raise
 
+    def delete_limit_pool_by_codes(self, trade_date: str, codes: List[str]) -> int:
+        """按 code 列表删除指定交易日的涨跌停记录（退池清理）。"""
+        if not codes:
+            return 0
+        try:
+            def _del(session: Session) -> int:
+                result = session.execute(
+                    delete(LimitPool).where(
+                        and_(LimitPool.trade_date == trade_date, LimitPool.code.in_(codes))
+                    )
+                )
+                return result.rowcount
+            count = self._run_write_transaction("delete_limit_pool_by_codes", _del)
+            if count:
+                logger.debug("[DB] delete_limit_pool_by_codes(%s): %d 条", trade_date, count)
+            return count
+        except Exception as e:
+            logger.error("[DB] delete_limit_pool_by_codes 失败: %s", e)
+            raise
+
     def insert_limit_pool_bulk(
         self, df: pd.DataFrame, source: str, slot: int
     ) -> int:
@@ -3087,7 +3146,7 @@ class DatabaseManager:
     def upsert_limit_pool(
         self, df: pd.DataFrame, source: str, slot: int
     ) -> int:
-        """upsert 涨跌停记录 by (code, trade_date)（盘后用 Tushare 数据覆盖）。"""
+        """upsert 涨跌停记录 by (code, trade_date)。name 为空时不覆盖旧值。"""
         if df is None or df.empty:
             return 0
 
@@ -3126,61 +3185,38 @@ class DatabaseManager:
         if not records:
             return 0
 
+        _UPDATE_KEYS = (
+            "name", "limit_type", "pct_chg", "price",
+            "limit_times", "open_times", "up_stat",
+            "first_seal_time", "last_seal_time",
+            "break_count", "limit_stats", "sector",
+            "source", "slot",
+        )
+
         def _write(session: Session) -> int:
-            if self._is_sqlite_engine:
-                _CHUNK = 100
-                for i in range(0, len(records), _CHUNK):
-                    chunk = records[i : i + _CHUNK]
-                    stmt = sqlite_insert(LimitPool).values(chunk)
-                    excluded = stmt.excluded
-                    session.execute(
-                        stmt.on_conflict_do_update(
-                            index_elements=["code", "trade_date"],
-                            set_={
-                                "name": excluded.name,
-                                "limit_type": excluded.limit_type,
-                                "pct_chg": excluded.pct_chg,
-                                "price": excluded.price,
-                                "limit_times": excluded.limit_times,
-                                "open_times": excluded.open_times,
-                                "up_stat": excluded.up_stat,
-                                "first_seal_time": excluded.first_seal_time,
-                                "last_seal_time": excluded.last_seal_time,
-                                "break_count": excluded.break_count,
-                                "limit_stats": excluded.limit_stats,
-                                "sector": excluded.sector,
-                                "source": excluded.source,
-                                "slot": excluded.slot,
-                                "updated_at": excluded.updated_at,
-                            },
-                        )
-                    )
-                return len(records)
-            else:
-                codes = [r["code"] for r in records]
-                dates = [r["trade_date"] for r in records]
-                existing = {}
-                for row in session.execute(
-                    select(LimitPool).where(
-                        and_(LimitPool.code.in_(codes), LimitPool.trade_date.in_(dates))
-                    )
-                ).scalars().all():
-                    existing[(row.code, row.trade_date)] = row
-                new_count = 0
-                for rec in records:
-                    ent = existing.get((rec["code"], rec["trade_date"]))
-                    if ent is None:
-                        session.add(LimitPool(**rec))
-                        new_count += 1
-                    else:
-                        for key in ("name", "limit_type", "pct_chg", "price",
-                                     "limit_times", "open_times", "up_stat",
-                                     "first_seal_time", "last_seal_time",
-                                     "break_count", "limit_stats", "sector",
-                                     "source", "slot"):
-                            setattr(ent, key, rec[key])
-                        ent.updated_at = now
-                return new_count
+            codes = [r["code"] for r in records]
+            dates = [r["trade_date"] for r in records]
+            existing = {}
+            for row in session.execute(
+                select(LimitPool).where(
+                    and_(LimitPool.code.in_(codes), LimitPool.trade_date.in_(dates))
+                )
+            ).scalars().all():
+                existing[(row.code, row.trade_date)] = row
+            new_count = 0
+            for rec in records:
+                ent = existing.get((rec["code"], rec["trade_date"]))
+                if ent is None:
+                    session.add(LimitPool(**rec))
+                    new_count += 1
+                else:
+                    for key in _UPDATE_KEYS:
+                        val = rec[key]
+                        if key == "name" and not val:
+                            continue
+                        setattr(ent, key, val)
+                    ent.updated_at = now
+            return new_count
 
         try:
             saved = self._run_write_transaction("upsert_limit_pool", _write)
@@ -3858,6 +3894,68 @@ class DatabaseManager:
         except Exception as e:
             logger.error("[DB] upsert_margin_detail 失败: %s", e)
             raise
+
+    # ------------------------------------------------------------------
+    # 同花顺行业映射
+    # ------------------------------------------------------------------
+
+    def upsert_ths_industry_map(self, df: pd.DataFrame, source: str = "tushare") -> int:
+        """全量刷入同花顺行业映射。先清空，再批量 insert。"""
+        records = []
+        for _, row in df.iterrows():
+            code = str(row.get("stock_code", "")).strip().zfill(6)
+            industry = str(row.get("industry_name", "")).strip()
+            if not code or not industry:
+                continue
+            records.append({
+                "stock_code": code,
+                "industry_name": industry,
+                "source": source,
+                "updated_at": datetime.now(),
+            })
+
+        def _write(session: Session) -> int:
+            session.execute(text("DELETE FROM ths_industry_map"))
+            if self._is_sqlite_engine:
+                _CHUNK = 200
+                for i in range(0, len(records), _CHUNK):
+                    chunk = records[i : i + _CHUNK]
+                    stmt = sqlite_insert(ThsIndustryMap).values(chunk)
+                    session.execute(stmt)
+            else:
+                for rec in records:
+                    session.add(ThsIndustryMap(**rec))
+            return len(records)
+
+        saved = self._run_write_transaction("upsert_ths_industry_map", _write)
+        logger.info("[DB] 同花顺行业映射入库 %d 条", saved)
+        return saved
+
+    def get_ths_industry_map(self) -> Dict[str, str]:
+        """获取全量同花顺行业映射 {stock_code: industry_name}。"""
+        from sqlalchemy import select as _select
+
+        with self.get_session() as session:
+            rows = session.execute(_select(ThsIndustryMap)).scalars().all()
+            result: Dict[str, str] = {}
+            for r in rows:
+                result[r.stock_code] = r.industry_name
+            return result
+
+    def get_ths_industry_map_age_hours(self) -> Optional[float]:
+        """返回 ths_industry_map 最近更新时间距今的小时数，表为空返回 None。"""
+        try:
+            from sqlalchemy import func, select as _select
+            with self.get_session() as session:
+                latest = session.execute(
+                    _select(func.max(ThsIndustryMap.updated_at))
+                ).scalar()
+            if latest is None:
+                return None
+            delta = datetime.now() - latest
+            return delta.total_seconds() / 3600
+        except Exception:
+            return None
 
     def get_margin_detail_range(
         self, codes: Optional[List[str]] = None,
