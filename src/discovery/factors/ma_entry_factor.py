@@ -2,6 +2,7 @@
 """均线买点因子 (MA Entry Factor).
 
 核心盘中因子：在热门板块内找「均线附近、赔率好」的股票。
+轮次间 delta 感知：多头排列刚形成/刚突破MA5/KDJ超卖回升/缩量后放量 → 额外加分。
 数据来源: stock_daily 历史日线 + realtime_spot 实时行情（本地计算 MA/KDJ/BOLL）
 盘中可用，盘后不可用（盘后有技术面因子替代）。
 """
@@ -30,6 +31,12 @@ class MaEntryFactor(BaseFactor):
     available_postmarket = False
     weight = 35.0
     _LABEL_THRESHOLD = 5.0
+
+    def __init__(self):
+        super().__init__()
+        self._prev_ma_states: Dict[str, Dict[str, object]] = {}  # {bare_code: {bull_align, near_ma5, vol_shrink, kdj_j}}
+        self._ma_trade_date: Optional[str] = None
+        self._cached_transitions: Dict[str, Dict[str, bool]] = {}  # {bare: {bull_new, ma5_new, kdj_recovery, vol_breakout}}
 
     def fetch_data(self, trade_date: str, **kwargs) -> Optional[pd.DataFrame]:
         from src.storage import DatabaseManager
@@ -391,6 +398,83 @@ class MaEntryFactor(BaseFactor):
         return signals
 
     # ------------------------------------------------------------------
+    # 轮次间 delta 感知（均线突破/金叉刚发生 → 额外加分）
+    # ------------------------------------------------------------------
+
+    def _compute_transition_bonus(self, df: pd.DataFrame,
+                                   signals: Dict[str, pd.Series],
+                                   trade_date: str) -> pd.Series:
+        """对比上一轮信号状态，捕获「刚发生」的技术突破。
+
+        Returns:
+            per-stock transition bonus Series (0 ~ +16).
+        """
+        idx = df.index
+        bonus = pd.Series(0.0, index=idx)
+
+        # 跨日重置
+        if self._ma_trade_date != trade_date:
+            self._prev_ma_states.clear()
+            self._ma_trade_date = trade_date
+
+        prev_states = self._prev_ma_states
+        new_states: Dict[str, Dict[str, object]] = {}
+        cached_t: Dict[str, Dict[str, bool]] = {}
+
+        for ts_code in idx:
+            bare = str(ts_code).split(".")[0] if "." in str(ts_code) else str(ts_code).strip().zfill(6)
+
+            cur_bull = bool(signals["bull_align"].get(ts_code, False))
+            cur_near_ma5 = bool(signals["near_ma5"].get(ts_code, False))
+            cur_vol_shrink = bool(signals["vol_shrink_near_ma"].get(ts_code, False))
+            cur_kdj_j = float(signals["kdj_j"].get(ts_code, 50))
+
+            new_states[bare] = {
+                "bull_align": cur_bull,
+                "near_ma5": cur_near_ma5,
+                "vol_shrink": cur_vol_shrink,
+                "kdj_j": cur_kdj_j,
+            }
+
+            prev = prev_states.get(bare)
+            t_flags: Dict[str, bool] = {
+                "bull_new": False, "ma5_new": False,
+                "kdj_recovery": False, "vol_breakout": False,
+            }
+
+            if prev is None:
+                cached_t[bare] = t_flags
+                continue  # 首轮不调整
+
+            # 1. 多头排列刚形成: +5
+            if cur_bull and not bool(prev.get("bull_align", False)):
+                bonus.loc[ts_code] += 5.0
+                t_flags["bull_new"] = True
+
+            # 2. 刚突破/回踩 MA5: +3
+            if cur_near_ma5 and not bool(prev.get("near_ma5", False)):
+                bonus.loc[ts_code] += 3.0
+                t_flags["ma5_new"] = True
+
+            # 3. KDJ 超卖回升: +5 (J 从 <20 回升到 >=20 且继续上升)
+            prev_j = float(prev.get("kdj_j", 50))
+            if prev_j < 20 and cur_kdj_j >= 20 and cur_kdj_j > prev_j:
+                bonus.loc[ts_code] += 5.0
+                t_flags["kdj_recovery"] = True
+
+            # 4. 缩量后放量: +3 (vol_shrink 从 True → False，资金开始活跃)
+            if not cur_vol_shrink and bool(prev.get("vol_shrink", False)):
+                bonus.loc[ts_code] += 3.0
+                t_flags["vol_breakout"] = True
+
+            cached_t[bare] = t_flags
+
+        # 更新快照
+        self._prev_ma_states = new_states
+        self._cached_transitions = cached_t
+        return bonus
+
+    # ------------------------------------------------------------------
     # score / describe
     # ------------------------------------------------------------------
 
@@ -398,6 +482,7 @@ class MaEntryFactor(BaseFactor):
         if df.empty:
             return pd.Series(dtype=float, name=self.name)
 
+        trade_date = context.get("trade_date", "")
         signals = self._compute_signals(df)
         scores = pd.Series(0.0, index=df.index, name=self.name)
 
@@ -414,6 +499,10 @@ class MaEntryFactor(BaseFactor):
         scores.loc[signals["bear_align"]] -= 25.0
         scores.loc[signals["high_bias"]] -= 30.0
 
+        # 轮次间突破溢价（刚形成多头排列/刚突破MA5/KDJ回升/缩量后放量）
+        transition_bonus = self._compute_transition_bonus(df, signals, trade_date)
+        scores = scores + transition_bonus
+
         return scores.clip(0, 100)
 
     def describe(self, df: pd.DataFrame, scores: pd.Series, **context) -> Dict[str, List[str]]:
@@ -421,28 +510,37 @@ class MaEntryFactor(BaseFactor):
         if df.empty:
             return reasons
 
+        trade_date = context.get("trade_date", "")
         signals = self._compute_signals(df)
+        transitions = getattr(self, "_cached_transitions", {}) or {}
 
         for ts_code in scores.index:
             if scores[ts_code] < self._LABEL_THRESHOLD:
                 continue
+            bare = str(ts_code).split(".")[0] if "." in str(ts_code) else str(ts_code).strip().zfill(6)
+            t = transitions.get(bare, {})
             r = []
 
+            # 均线信号 + 突破标记
             if signals["bull_align"].get(ts_code, False):
-                r.append("均线多头排列")
+                r.append("多头排列(新形成)" if t.get("bull_new") else "均线多头排列")
             if signals["ma_sticky"].get(ts_code, False):
                 r.append("均线粘合")
             if signals["near_ma5"].get(ts_code, False):
-                r.append("回踩MA5均线")
+                r.append("刚突破MA5" if t.get("ma5_new") else "回踩MA5均线")
             elif signals["near_ma10"].get(ts_code, False):
                 r.append("回踩MA10均线")
             if signals["boll_support"].get(ts_code, False):
                 r.append("BOLL中轨支撑")
             if signals["vol_shrink_near_ma"].get(ts_code, False):
                 r.append("缩量回踩")
+            elif t.get("vol_breakout"):
+                r.append("缩量后放量启动")
             j_val = signals["kdj_j"].get(ts_code, 50)
             if signals["kdj_oversold"].get(ts_code, False):
                 r.append(f"KDJ超卖(J{j_val:.0f})")
+            elif t.get("kdj_recovery"):
+                r.append(f"KDJ超卖回升(J{j_val:.0f})")
 
             if r:
                 reasons[ts_code] = r

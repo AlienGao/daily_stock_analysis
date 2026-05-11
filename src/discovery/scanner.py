@@ -146,6 +146,8 @@ class IntradayScanner:
             try:
                 self._refresh_realtime_spot()
                 self._refresh_limit_pool()
+                # 跨进程同步：API 进程可能已切换扫描模式，重新加载运行时状态
+                _load_runtime_state_into(self.config)
                 results = self.engine.discover(mode="intraday")
                 if results:
                     annotated = self._annotate_changes(results)
@@ -281,7 +283,7 @@ class IntradayScanner:
             new_codes = set(df["code"].astype(str).str.strip().str.zfill(6))
             old_pool = db.get_limit_pool(trade_date=today)
             if old_pool is not None and not old_pool.empty:
-                stale_codes = set(old_pool["code"].astype(str).str.strip().str.zfill(6)) - new_codes
+                stale_codes = set(old_pool.index.astype(str).str.strip().str.zfill(6)) - new_codes
                 if stale_codes:
                     db.delete_limit_pool_by_codes(today, list(stale_codes))
 
@@ -295,8 +297,6 @@ class IntradayScanner:
     @staticmethod
     def _detect_limit_breaks(db, df: pd.DataFrame, today: str, source: str) -> None:
         """差集检测炸板：history - current → limit_break，current - history → limit_up_history。"""
-        from datetime import datetime as _dt
-        now = _dt.now()
 
         if df is None:
             return
@@ -350,13 +350,39 @@ class IntradayScanner:
             break_df["name"] = [str(code_to_name.get(c, "")) for c in missing_codes]
             break_df["trade_date"] = today
             break_df["status"] = "broke"
-            break_df["first_break_at"] = now
             break_df["limit_times"] = [int(code_to_lt.get(c, 0) or 0) for c in missing_codes]
             break_df["open_times"] = [int(code_to_ot.get(c, 0) or 0) for c in missing_codes]
             break_df["sector"] = [str(code_to_sector.get(c, "")) for c in missing_codes]
             break_df["source"] = source
             db.upsert_limit_break(break_df, source=source)
             logger.info("[Scanner] 检测到炸板 %d 只: %s", len(missing_codes), missing_codes)
+
+        # 4) Z-type 炸板检测：limit_type='Z' 仍在地中但已炸板（Tushare 数据才有 limit_type）
+        if "limit_type" in df.columns:
+            z_mask = df["limit_type"] == "Z"
+            if z_mask.any():
+                z_codes_raw = df.loc[z_mask, "code"].astype(str).str.strip().str.zfill(6)
+                z_codes = set(z_codes_raw)
+                z_new = z_codes - broke_codes  # 排除已记录的
+                if z_new:
+                    z_rows = df[df["code"].astype(str).str.strip().str.zfill(6).isin(z_new)]
+                    z_break_df = pd.DataFrame()
+                    z_break_df["code"] = list(z_new)
+                    z_break_df["name"] = z_rows.get("name", pd.Series(dtype=str))
+                    z_break_df["trade_date"] = today
+                    z_break_df["status"] = "broke"
+                    if "limit_times" in z_rows.columns:
+                        z_break_df["limit_times"] = z_rows["limit_times"].values
+                    else:
+                        z_break_df["limit_times"] = 0
+                    if "open_times" in z_rows.columns:
+                        z_break_df["open_times"] = z_rows["open_times"].values
+                    else:
+                        z_break_df["open_times"] = 0
+                    z_break_df["sector"] = z_rows.get("sector", pd.Series(dtype=str))
+                    z_break_df["source"] = source
+                    db.upsert_limit_break(z_break_df, source=source)
+                    logger.info("[Scanner] Z型炸板检测 %d 只: %s", len(z_new), z_new)
 
     @staticmethod
     def _fetch_limit_pool_akshare(trade_date: str):
@@ -372,6 +398,7 @@ class IntradayScanner:
                 "最新价": "price", "连板数": "limit_times", "所属行业": "sector",
                 "首次封板时间": "first_seal_time", "最后封板时间": "last_seal_time",
                 "炸板次数": "break_count", "涨停统计": "limit_stats",
+                "流通市值": "float_market_cap", "封板资金": "seal_amount",
             }
             df.rename(columns={k: v for k, v in col_map.items() if k in df.columns}, inplace=True)
             df["code"] = df["code"].astype(str).str.strip().str.zfill(6)
@@ -697,6 +724,8 @@ class IntradayScanner:
                     "stop_loss": getattr(r, "stop_loss", None),
                     "take_profit_1": getattr(r, "take_profit_1", None),
                     "take_profit_2": getattr(r, "take_profit_2", None),
+                    "discovered_at": getattr(r, "discovered_at", ""),
+                    "price_at_discovery": getattr(r, "price_at_discovery", None),
                 })
             json_file = save_dir / f"intraday_{date_str}_topn.json"
             json_file.write_text(json.dumps(topn, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -748,7 +777,10 @@ class IntradayScanner:
 
 
 def refresh_limit_pool_postmarket(tushare_fetcher) -> int:
-    """盘后用 Tushare limit_list_d 全量刷新 limit_pool（U/D/Z 三类全部）。
+    """盘后用 Tushare limit_list_ths 全量刷新 limit_pool（U/D/Z 三类全部）。
+
+    相比 limit_list_d，limit_list_ths 额外提供 name/price/seal_amount(float_market_cap 等字段，
+    可补齐盘中 akshare 未覆盖的炸板股数据。
 
     Returns:
         落库条数，失败返回 0
@@ -761,27 +793,36 @@ def refresh_limit_pool_postmarket(tushare_fetcher) -> int:
 
         today = date.today().strftime("%Y%m%d")
 
-        # 拉取全部涨跌停（U/D/Z）
-        df = tushare_fetcher.get_limit_list(today)
+        # 拉取全部涨跌停（U/D/Z），字段更丰富
+        df = tushare_fetcher.get_limit_list_ths(today)
         if df is None or df.empty:
-            logger.warning("[Scanner] 盘后 limit_pool 刷新: Tushare 无数据")
+            logger.warning("[Scanner] 盘后 limit_pool 刷新: Tushare limit_list_ths 无数据")
             return 0
 
         df = df.reset_index()
         out = pd.DataFrame()
         out["code"] = df["ts_code"].astype(str).str.split(".").str[0].str.zfill(6)
-        out["name"] = df.get("name", pd.Series("", index=df.index)).values if "name" in df.columns else ""
+        out["name"] = df.get("name", pd.Series("", index=df.index)).fillna("").values
         out["trade_date"] = today
-        out["limit_type"] = df.get("limit", df.get("limit_type", ""))
-        for c in ("pct_chg", "limit_times", "open_times", "up_stat"):
+        out["limit_type"] = df.get("limit_type", "")
+
+        for c in ("pct_chg", "price", "open_times", "turnover_rate",
+                  "seal_amount", "float_market_cap", "up_stat"):
             if c in df.columns:
-                out[c] = pd.to_numeric(df[c], errors="coerce") if c in ("pct_chg",) else df[c].values
-        if "limit" in df.columns:
-            out["limit_stats"] = df["limit"].values
-        if "limit_times" in df.columns:
-            out["limit_times"] = pd.to_numeric(out.get("limit_times", 0), errors="coerce").fillna(0).astype(int)
-        if "open_times" in df.columns:
-            out["open_times"] = pd.to_numeric(out.get("open_times", 0), errors="coerce").fillna(0).astype(int)
+                out[c] = df[c].values
+
+        # limit_stats: 优先 lu_desc（连板描述），否则用 limit_type
+        if "lu_desc" in df.columns:
+            out["limit_stats"] = df["lu_desc"].fillna("").values
+        else:
+            out["limit_stats"] = out["limit_type"]
+
+        for c in ("open_times",):
+            if c in out.columns:
+                out[c] = pd.to_numeric(out[c], errors="coerce").fillna(0).astype(int)
+        for c in ("pct_chg", "price", "seal_amount", "float_market_cap", "turnover_rate"):
+            if c in out.columns:
+                out[c] = pd.to_numeric(out[c], errors="coerce")
 
         db = DatabaseManager()
 
@@ -801,7 +842,7 @@ def refresh_limit_pool_postmarket(tushare_fetcher) -> int:
                 mask = out["code"].isin(codes_missing_sec)
                 out.loc[mask, "sector"] = out.loc[mask, "code"].map(fill_map)
 
-        # 保留盘中 akshare 写入的封板时间（Tushare 不提供此字段）
+        # 保留盘中 akshare 写入的封板时间（limit_list_ths 不提供此字段）
         existing_seal = db.get_limit_pool_seal_times(today)
         if existing_seal:
             out["first_seal_time"] = out["code"].map(
@@ -813,7 +854,7 @@ def refresh_limit_pool_postmarket(tushare_fetcher) -> int:
 
         slot = int(_time.time() // 30)
         saved = db.upsert_limit_pool(out, source="tushare", slot=slot)
-        logger.info("[Scanner] 盘后 limit_pool 全量刷新: %d 条 (U/D/Z)", saved)
+        logger.info("[Scanner] 盘后 limit_pool 全量刷新: %d 条 (limit_list_ths)", saved)
         return saved
     except Exception as e:
         logger.warning("[Scanner] 盘后 limit_pool 刷新失败: %s", e)
@@ -1432,7 +1473,10 @@ def ensure_postmarket_scan(
         force: 强制重新扫描，忽略已有缓存
 
     Returns:
-        {stock_code: {score, factor_scores, reasons, ...}} 因子信号缓存
+        (cache, results, engine) 三元组:
+        - cache: {stock_code: {score, factor_scores, reasons, ...}} 因子信号缓存
+        - results: engine.discover() 返回的 DiscoveredResult 列表
+        - engine: 已注册因子并执行过 discover 的 StockDiscoveryEngine（可复用 format_report）
     """
     from datetime import date as dt_date
 
@@ -1458,7 +1502,7 @@ def ensure_postmarket_scan(
         cached = db.load_factor_signals_for_date(today)
         if cached:
             logger.info("[Scanner] 今日已扫描，加载 %d 条缓存", len(cached))
-            return cached
+            return cached, None, None
 
     logger.info("[Scanner] 开始完整盘后扫描 (date=%s)...", today)
 
@@ -1484,6 +1528,17 @@ def ensure_postmarket_scan(
             fn()
         except Exception:
             logger.warning("[Scanner] %s 刷新失败，继续", name, exc_info=True)
+
+    # 盘后 Tushare 全量刷新 limit_pool 后，用正确数据重跑炸板检测，
+    # 纠正盘中基于过期 AkShare 数据产生的误判。
+    try:
+        fresh_pool = db.get_limit_pool(trade_date=today)
+        if fresh_pool is not None and not fresh_pool.empty:
+            fresh_pool = fresh_pool.reset_index()  # get_limit_pool 以 code 为 index，需还原为列
+            IntradayScanner._detect_limit_breaks(db, fresh_pool, today, "tushare")
+            logger.info("[Scanner] 盘后炸板检测已用 Tushare 数据重新校正")
+    except Exception:
+        logger.warning("[Scanner] 盘后炸板重检测失败", exc_info=True)
 
     # 游资质量更新（hm_detail 有新数据才重算）
     try:
@@ -1530,4 +1585,4 @@ def ensure_postmarket_scan(
             }
 
     logger.info("[Scanner] 盘后扫描完成: %d 只候选股, %d 条缓存", len(results or []), len(cache))
-    return cache
+    return cache, results, engine

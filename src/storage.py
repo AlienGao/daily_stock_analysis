@@ -287,6 +287,8 @@ class LimitPool(Base):
     break_count = Column(Integer, default=0)    # 炸板次数
     limit_stats = Column(String(50))            # 涨停统计
     sector = Column(String(100))                # 所属行业
+    float_market_cap = Column(Float)             # 流通市值（元）
+    seal_amount = Column(Float)                  # 封板资金（元）
     source = Column(String(20))                 # akshare / tushare / realtime_spot
     slot = Column(Integer)
     updated_at = Column(DateTime, default=datetime.now)
@@ -342,8 +344,6 @@ class LimitBreak(Base):
     name = Column(String(50))
     trade_date = Column(String(8))
     status = Column(String(10), default="broke")   # broke / recovered
-    first_break_at = Column(DateTime)
-    recovered_at = Column(DateTime)
     last_pct_chg = Column(Float)
     last_price = Column(Float)
     open_times = Column(Integer, default=0)
@@ -922,11 +922,10 @@ class LLMUsage(Base):
 
 
 class StockTechIndicator(Base):
-    """Tushare stk_factor 技术指标缓存。
+    """Tushare stk_factor_pro 技术指标缓存。
 
-    缓存 Tushare 预计算的前复权技术指标（MACD/RSI/KDJ/BOLL/CCI），
+    缓存 Tushare 预计算的前复权技术指标（MACD/RSI/KDJ/BOLL/CCI/ATR/MA），
     避免重复调用 Tushare API，节省积分和请求配额。
-    注意：stk_factor 不提供 MA 均线值，MA 继续由本地 StockTrendAnalyzer 计算。
     """
 
     __tablename__ = 'stock_tech_indicator'
@@ -935,7 +934,7 @@ class StockTechIndicator(Base):
     code = Column(String(10), nullable=False, index=True)
     date = Column(Date, nullable=False, index=True)
 
-    # Tushare stk_factor 字段（前复权口径）
+    # Tushare stk_factor_pro 字段（前复权口径）
     close_qfq = Column(Float)
     macd_dif = Column(Float)
     macd_dea = Column(Float)
@@ -950,6 +949,11 @@ class StockTechIndicator(Base):
     boll_mid = Column(Float)
     boll_lower = Column(Float)
     cci = Column(Float)
+    atr = Column(Float)
+    ma5 = Column(Float)
+    ma10 = Column(Float)
+    ma20 = Column(Float)
+    ma60 = Column(Float)
 
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
@@ -977,6 +981,11 @@ class StockTechIndicator(Base):
             'boll_mid': self.boll_mid,
             'boll_lower': self.boll_lower,
             'cci': self.cci,
+            'atr': self.atr,
+            'ma5': self.ma5,
+            'ma10': self.ma10,
+            'ma20': self.ma20,
+            'ma60': self.ma60,
         }
 
 
@@ -3177,6 +3186,8 @@ class DatabaseManager:
                 "break_count": int(row.get("break_count", 0) or 0),
                 "limit_stats": _s(row.get("limit_stats"), 50) or None,
                 "sector": _s(row.get("sector"), 100) or None,
+                "float_market_cap": self._normalize_sql_value(row.get("float_market_cap")),
+                "seal_amount": self._normalize_sql_value(row.get("seal_amount")),
                 "source": source,
                 "slot": slot,
                 "updated_at": now,
@@ -3190,6 +3201,7 @@ class DatabaseManager:
             "limit_times", "open_times", "up_stat",
             "first_seal_time", "last_seal_time",
             "break_count", "limit_stats", "sector",
+            "float_market_cap", "seal_amount",
             "source", "slot",
         )
 
@@ -3203,16 +3215,23 @@ class DatabaseManager:
                 )
             ).scalars().all():
                 existing[(row.code, row.trade_date)] = row
+            _EMPTY_GUARD_KEYS = ("name", "first_seal_time", "last_seal_time",
+                                 "float_market_cap", "seal_amount")
             new_count = 0
             for rec in records:
                 ent = existing.get((rec["code"], rec["trade_date"]))
                 if ent is None:
-                    session.add(LimitPool(**rec))
+                    # 新记录也不写入空值字段，留给后续 akshare 补充
+                    clean = {k: v for k, v in rec.items()
+                             if k not in _EMPTY_GUARD_KEYS or v}
+                    session.add(LimitPool(**clean))
                     new_count += 1
                 else:
                     for key in _UPDATE_KEYS:
                         val = rec[key]
-                        if key == "name" and not val:
+                        # Tushare 不提供这些字段，空值不覆盖 akshare 已写入的数据
+                        if key in ("name", "first_seal_time", "last_seal_time",
+                                    "float_market_cap", "seal_amount") and not val:
                             continue
                         setattr(ent, key, val)
                     ent.updated_at = now
@@ -3252,7 +3271,10 @@ class DatabaseManager:
                 "first_seal_time": r.first_seal_time,
                 "last_seal_time": r.last_seal_time,
                 "break_count": r.break_count, "limit_stats": r.limit_stats,
-                "sector": r.sector, "source": r.source, "slot": r.slot,
+                "sector": r.sector,
+                "float_market_cap": r.float_market_cap,
+                "seal_amount": r.seal_amount,
+                "source": r.source, "slot": r.slot,
             } for r in rows])
             return df.set_index("code")
 
@@ -3293,7 +3315,10 @@ class DatabaseManager:
                 "first_seal_time": r.first_seal_time,
                 "last_seal_time": r.last_seal_time,
                 "break_count": r.break_count, "limit_stats": r.limit_stats,
-                "sector": r.sector, "source": r.source, "slot": r.slot,
+                "sector": r.sector,
+                "float_market_cap": r.float_market_cap,
+                "seal_amount": r.seal_amount,
+                "source": r.source, "slot": r.slot,
             } for r in rows])
             return df.set_index("code")
 
@@ -3459,8 +3484,7 @@ class DatabaseManager:
                 return pd.DataFrame()
             df = pd.DataFrame([{
                 "code": r.code, "name": r.name, "trade_date": r.trade_date,
-                "status": r.status, "first_break_at": r.first_break_at,
-                "recovered_at": r.recovered_at, "last_pct_chg": r.last_pct_chg,
+                "status": r.status, "last_pct_chg": r.last_pct_chg,
                 "last_price": r.last_price, "open_times": r.open_times,
                 "limit_times": r.limit_times,
                 "sector": r.sector, "source": r.source,
@@ -3497,8 +3521,6 @@ class DatabaseManager:
                 "name": str(row.get("name", ""))[:50] if pd.notna(row.get("name")) else "",
                 "trade_date": trade_date,
                 "status": str(row.get("status", "broke"))[:10],
-                "first_break_at": row.get("first_break_at", now),
-                "recovered_at": row.get("recovered_at"),
                 "last_pct_chg": self._normalize_sql_value(row.get("last_pct_chg")),
                 "last_price": self._normalize_sql_value(row.get("last_price")),
                 "open_times": int(row.get("open_times", 0) or 0),
@@ -3524,8 +3546,6 @@ class DatabaseManager:
                             set_={
                                 "name": excluded.name,
                                 "status": excluded.status,
-                                "first_break_at": excluded.first_break_at,
-                                "recovered_at": excluded.recovered_at,
                                 "last_pct_chg": excluded.last_pct_chg,
                                 "last_price": excluded.last_price,
                                 "open_times": excluded.open_times,
@@ -3549,8 +3569,8 @@ class DatabaseManager:
                     if ent is None:
                         session.add(LimitBreak(**rec))
                     else:
-                        for key in ("name", "status", "first_break_at",
-                                    "recovered_at", "last_pct_chg", "last_price",
+                        for key in ("name", "status",
+                                    "last_pct_chg", "last_price",
                                     "open_times", "limit_times", "sector", "source"):
                             setattr(ent, key, rec[key])
                         ent.updated_at = now
@@ -3566,7 +3586,7 @@ class DatabaseManager:
             raise
 
     def recover_limit_breaks(self, codes: List[str], trade_date: str) -> int:
-        """标记指定股票为已回封（status='recovered'），保留 first_break_at。"""
+        """标记指定股票为已回封（status='recovered'）。"""
         if not codes:
             return 0
         now = datetime.now()
@@ -3576,7 +3596,7 @@ class DatabaseManager:
                     LimitBreak.code.in_(codes),
                     LimitBreak.trade_date == trade_date,
                     LimitBreak.status == "broke",
-                ).values(status="recovered", recovered_at=now, updated_at=now)
+                ).values(status="recovered", updated_at=now)
             )
             return result.rowcount
         try:
@@ -3941,6 +3961,33 @@ class DatabaseManager:
             for r in rows:
                 result[r.stock_code] = r.industry_name
             return result
+
+    def upsert_ths_industry_single(self, stock_code: str, industry_name: str,
+                                   source: str = "akshare") -> bool:
+        """插入或更新单条同花顺行业映射。"""
+        code = str(stock_code).strip().zfill(6)
+        industry = str(industry_name).strip()
+        if not code or not industry:
+            return False
+
+        def _write(session: Session) -> bool:
+            existing = session.query(ThsIndustryMap).filter(
+                ThsIndustryMap.stock_code == code
+            ).first()
+            if existing:
+                existing.industry_name = industry
+                existing.source = source
+                existing.updated_at = datetime.now()
+            else:
+                session.add(ThsIndustryMap(
+                    stock_code=code,
+                    industry_name=industry,
+                    source=source,
+                    updated_at=datetime.now(),
+                ))
+            return True
+
+        return self._run_write_transaction("upsert_ths_industry_single", _write)
 
     def get_ths_industry_map_age_hours(self) -> Optional[float]:
         """返回 ths_industry_map 最近更新时间距今的小时数，表为空返回 None。"""
@@ -5828,6 +5875,29 @@ class DatabaseManager:
                     "take_profit_2": None,
                 }
             return cache
+
+    def get_top_scan_results(
+        self, scan_date: str, mode: str = "postmarket", limit: int = 5
+    ) -> List[str]:
+        """获取指定日期扫描结果的 Top N stock_code 列表。
+
+        Args:
+            scan_date: YYYYMMDD
+            mode: "intraday" 或 "postmarket"
+            limit: 返回条数
+
+        Returns:
+            stock_code 列表（按 rank ASC 排序）
+        """
+        model = ScanResultIntraday if mode == "intraday" else ScanResultPostmarket
+        with self.get_session() as session:
+            rows = session.execute(
+                select(model.stock_code)
+                .where(model.scan_date == scan_date)
+                .order_by(model.rank.asc())
+                .limit(limit)
+            ).scalars().all()
+            return [str(r).strip().zfill(6) for r in rows if r]
 
     def save_scan_results_postmarket(
         self, records: List[Dict[str, Any]], scan_date: str

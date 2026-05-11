@@ -202,14 +202,15 @@ class BrokerRecommendFactor(BaseFactor):
         if df.empty:
             return pd.Series(dtype=float, name=self.name)
 
-        ts_code_col = next((c for c in df.columns if 'ts_code' in c), 'ts_code')
-
         signals = self._compute_signals(df)
         stock_scores = sum(signals.values()).clip(0, 100)
 
-        scores = df[ts_code_col].map(stock_scores).fillna(0)
-        scores.name = self.name
-        return scores
+        # 索引归一化为裸代码（与 engine 中其他因子对齐）
+        stock_scores.index = stock_scores.index.map(
+            lambda x: x.split(".")[0] if "." in str(x) else str(x)
+        )
+        stock_scores.name = self.name
+        return stock_scores
 
     def describe(self, df: pd.DataFrame, scores: pd.Series, **context) -> Dict[str, List[str]]:
         reasons: Dict[str, List[str]] = {}
@@ -242,7 +243,9 @@ class BrokerRecommendFactor(BaseFactor):
         stock_scores = scores.groupby(df[ts_code_col]).first()
 
         for ts, brokers in broker_by_stock.items():
-            score_val = stock_scores.get(ts, 0)
+            # ts 是 ts_code 格式，lookup 同时尝试裸代码（兼容 score() 的 bare code 索引）
+            bare = ts.split(".")[0] if "." in str(ts) else str(ts)
+            score_val = stock_scores.get(ts, 0) or scores.get(bare, 0)
             if score_val <= 0:
                 continue
 
@@ -266,6 +269,6 @@ class BrokerRecommendFactor(BaseFactor):
                     labels.append(f"连续推荐(上月{prev_n}家→本月{curr_n}家)")
 
             if labels:
-                reasons[ts] = labels
+                reasons[bare] = labels
 
         return reasons

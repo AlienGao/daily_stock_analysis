@@ -1,50 +1,16 @@
 [
   {
     "rank": 1,
-    "stock_code": "603986",
-    "stock_name": "兆易创新",
-    "score": 59.9,
-    "sector": "半导体",
-    "factor_scores": {
-      "sector": 17.256835499775885,
-      "ma_entry": 16.409829730518382,
-      "momentum": 14.99995677245887,
-      "rebound": 11.264822134387352,
-      "popularity": 0.0
-    },
-    "factor_weights": {
-      "sector": 25.0,
-      "ma_entry": 35.0,
-      "momentum": 25.0,
-      "rebound": 15.0,
-      "popularity": 15.0
-    },
-    "reasons": [
-      "均线多头排列",
-      "跌幅承接(跌幅9.0%)",
-      "放量承接(量比1.7)",
-      "换手活跃(7.1%)",
-      "首板炸板",
-      "所属板块: 半导体"
-    ],
-    "buy_price_low": 345.9,
-    "buy_price_high": 375.0,
-    "stop_loss": 335.0,
-    "take_profit_1": 382.3,
-    "take_profit_2": 400.5
-  },
-  {
-    "rank": 2,
     "stock_code": "002567",
     "stock_name": "唐人神",
-    "score": 56.0,
+    "score": 56.1,
     "sector": "农产品加工",
     "factor_scores": {
       "sector": 0.0,
-      "ma_entry": 23.500973982444656,
-      "momentum": 21.263627482341548,
+      "ma_entry": 24.53883705707458,
+      "momentum": 21.36267564110705,
       "rebound": 0.0,
-      "popularity": 11.282608695652174
+      "popularity": 10.17391304347826
     },
     "factor_weights": {
       "sector": 25.0,
@@ -56,7 +22,8 @@
     "reasons": [
       "均线粘合",
       "回踩MA5均线",
-      "人气股上涨(+3.1%)"
+      "BOLL中轨支撑",
+      "人气股上涨(+2.9%)"
     ],
     "buy_price_low": 4.0,
     "buy_price_high": 4.4,
@@ -65,48 +32,16 @@
     "take_profit_2": 4.7
   },
   {
-    "rank": 3,
-    "stock_code": "300804",
-    "stock_name": "广康生化",
-    "score": 52.5,
-    "sector": "农化制品",
+    "rank": 2,
+    "stock_code": "603986",
+    "stock_name": "兆易创新",
+    "score": 51.7,
+    "sector": "半导体",
     "factor_scores": {
-      "sector": 0.0,
-      "ma_entry": 21.615706748475933,
-      "momentum": 20.41636767617384,
-      "rebound": 0.0,
-      "popularity": 10.434782608695652
-    },
-    "factor_weights": {
-      "sector": 25.0,
-      "ma_entry": 35.0,
-      "momentum": 25.0,
-      "rebound": 15.0,
-      "popularity": 15.0
-    },
-    "reasons": [
-      "均线粘合",
-      "回踩MA5均线",
-      "人气飙升(+2551位)",
-      "人气股上涨(+5.3%)"
-    ],
-    "buy_price_low": 47.4,
-    "buy_price_high": 51.4,
-    "stop_loss": 45.9,
-    "take_profit_1": 52.4,
-    "take_profit_2": 54.9
-  },
-  {
-    "rank": 4,
-    "stock_code": "600562",
-    "stock_name": "国睿科技",
-    "score": 50.9,
-    "sector": "军工电子",
-    "factor_scores": {
-      "sector": 0.0,
-      "ma_entry": 30.142193550422324,
-      "momentum": 20.753542496995685,
-      "rebound": 0.0,
+      "sector": 8.732813080639167,
+      "ma_entry": 16.249733830708447,
+      "momentum": 14.731628552508639,
+      "rebound": 11.956521739130434,
       "popularity": 0.0
     },
     "factor_weights": {
@@ -118,26 +53,28 @@
     },
     "reasons": [
       "均线多头排列",
-      "均线粘合",
-      "回踩MA5均线",
-      "BOLL中轨支撑"
+      "跌幅承接(跌幅8.5%)",
+      "放量承接(量比1.2)",
+      "换手活跃(8.2%)",
+      "首板炸板",
+      "所属板块: 半导体"
     ],
-    "buy_price_low": 27.0,
-    "buy_price_high": 29.2,
-    "stop_loss": 26.1,
-    "take_profit_1": 29.8,
-    "take_profit_2": 31.2
+    "buy_price_low": 344.3,
+    "buy_price_high": 373.3,
+    "stop_loss": 333.5,
+    "take_profit_1": 380.6,
+    "take_profit_2": 398.7
   },
   {
-    "rank": 5,
-    "stock_code": "300725",
-    "stock_name": "药石科技",
-    "score": 50.8,
-    "sector": "医疗服务",
+    "rank": 3,
+    "stock_code": "300235",
+    "stock_name": "方直科技",
+    "score": 51.2,
+    "sector": "软件开发",
     "factor_scores": {
       "sector": 0.0,
-      "ma_entry": 30.142193550422324,
-      "momentum": 20.69734669352538,
+      "ma_entry": 29.819241476667802,
+      "momentum": 21.36267564110705,
       "rebound": 0.0,
       "popularity": 0.0
     },
@@ -153,10 +90,74 @@
       "均线粘合",
       "回踩MA5均线"
     ],
-    "buy_price_low": 37.7,
-    "buy_price_high": 40.9,
-    "stop_loss": 36.5,
-    "take_profit_1": 41.7,
-    "take_profit_2": 43.7
+    "buy_price_low": 13.5,
+    "buy_price_high": 14.7,
+    "stop_loss": 13.1,
+    "take_profit_1": 15.0,
+    "take_profit_2": 15.7
+  },
+  {
+    "rank": 4,
+    "stock_code": "000069",
+    "stock_name": "华侨城Ａ",
+    "score": 50.6,
+    "sector": "旅游及酒店",
+    "factor_scores": {
+      "sector": 0.0,
+      "ma_entry": 29.28374829454491,
+      "momentum": 21.36267564110705,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "sector": 25.0,
+      "ma_entry": 35.0,
+      "momentum": 25.0,
+      "rebound": 15.0,
+      "popularity": 15.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线"
+    ],
+    "buy_price_low": 2.2,
+    "buy_price_high": 2.3,
+    "stop_loss": 2.1,
+    "take_profit_1": 2.4,
+    "take_profit_2": 2.5
+  },
+  {
+    "rank": 5,
+    "stock_code": "002940",
+    "stock_name": "昂利康",
+    "score": 50.2,
+    "sector": "化学制药",
+    "factor_scores": {
+      "sector": 20.810107766629507,
+      "ma_entry": 15.452014605793423,
+      "momentum": 7.4655974745779625,
+      "rebound": 6.521739130434782,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "sector": 25.0,
+      "ma_entry": 35.0,
+      "momentum": 25.0,
+      "rebound": 15.0,
+      "popularity": 15.0
+    },
+    "reasons": [
+      "回踩MA10均线",
+      "KDJ超卖(J0)",
+      "跌幅承接(跌幅6.6%)",
+      "放量承接(量比2.5)",
+      "首板炸板",
+      "所属板块: 化学制药"
+    ],
+    "buy_price_low": 32.4,
+    "buy_price_high": 35.1,
+    "stop_loss": 31.4,
+    "take_profit_1": 35.8,
+    "take_profit_2": 37.5
   }
 ]

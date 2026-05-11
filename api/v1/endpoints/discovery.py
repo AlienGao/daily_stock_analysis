@@ -1108,11 +1108,11 @@ def get_factor_tops(mode: str = fastapi.Path(..., description="扫描模式: int
     factors: List[FactorTopEntry] = []
     for fname, candidates in factor_scores_map.items():
         candidates.sort(key=lambda x: x["factor_score"], reverse=True)
-        top3 = candidates[:3]
+        top5 = candidates[:5]
         factors.append(FactorTopEntry(
             factor_name=fname,
             factor_label=_factor_label(fname),
-            stocks=[FactorTopStock(**s) for s in top3],
+            stocks=[FactorTopStock(**s) for s in top5],
         ))
 
     # 按因子权重降序排列

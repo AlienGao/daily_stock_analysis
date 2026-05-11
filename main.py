@@ -1422,27 +1422,19 @@ def main() -> int:
                 logger.error("Tushare 不可用，无法运行股票发现")
                 return 1
 
-            cache = ensure_postmarket_scan(
+            cache, results, engine = ensure_postmarket_scan(
                 tushare_fetcher, AkshareFetcher(), force=True
             )
 
-            if cache:
-                # 格式化并输出报告
-                from src.discovery.engine import StockDiscoveryEngine
-                from src.discovery.config import get_discovery_config
-                engine = StockDiscoveryEngine(get_discovery_config(), tushare_fetcher, AkshareFetcher())
-                results = engine.discover(mode="postmarket")
-                if results:
-                    report = engine.format_report(results, mode="postmarket")
-                    logger.info("\n%s", report)
-                    print(report)
-                    _save_discovery_report(
-                        report, results,
-                        date_str=tushare_fetcher.get_trade_time(early_time="00:00", late_time="18:00"),
-                    )
-                    _sync_discovery_to_stock_list(results)
-                else:
-                    logger.info("未发现符合条件的股票")
+            if results:
+                report = engine.format_report(results, mode="postmarket")
+                logger.info("\n%s", report)
+                print(report)
+                _save_discovery_report(
+                    report, results,
+                    date_str=tushare_fetcher.get_trade_time(early_time="00:00", late_time="18:00"),
+                )
+                _sync_discovery_to_stock_list(results)
             else:
                 logger.info("未发现符合条件的股票")
             raise _ModeExit(0)

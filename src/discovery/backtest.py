@@ -562,10 +562,57 @@ class DiscoveryBacktest:
         except Exception as e:
             logger.debug("[Backtest] Tushare 批量取价失败: %s", e)
 
-        # 实时行情补充：通过 Sina API 补齐今日盘中价格
+        # 实时行情补充：realtime_spot DB + Sina API 补齐今日盘中价格
         today_str = date.today().strftime("%Y%m%d")
         if today_str in trading_days:
+            self._prefetch_realtime_spot(codes, today_str)
             self._prefetch_sina_realtime(codes, today_str)
+
+    def _prefetch_realtime_spot(self, codes: List[str], date_str: str) -> None:
+        """从 realtime_spot DB 补齐当日盘中 OHLC。
+
+        realtime_spot 每 30s 由 Scanner 刷新，含 open_price/high/low/price，
+        可直接映射为当日 K 线的 O/H/L/C。
+        """
+        try:
+            from src.storage import DatabaseManager
+            db = DatabaseManager()
+            spot_df = db.get_realtime_spot()
+            if spot_df is None or spot_df.empty:
+                return
+
+            from datetime import datetime as _dt, timezone, timedelta
+            now_cn = _dt.now(timezone(timedelta(hours=8)))
+            is_market_open = (
+                now_cn.weekday() < 5
+                and now_cn.time() >= _dt.strptime("09:25", "%H:%M").time()
+            )
+
+            spot_index = spot_df.index.astype(str).str.strip().str.zfill(6)
+            for code in codes:
+                bare = str(code).strip().zfill(6)
+                matches = spot_df[spot_index == bare]
+                if matches.empty:
+                    continue
+                row = matches.iloc[0]
+                cache_entry = self._price_cache.setdefault(date_str, {}).setdefault(code, {})
+
+                # price → close（始终填充）
+                price = row.get("price")
+                if pd.notna(price) and float(price) > 0:
+                    cache_entry["close"] = float(price)
+
+                # open/high/low 仅在开盘后写入（盘前用昨日数据覆盖风险）
+                if not is_market_open:
+                    continue
+                if pd.notna(row.get("open_price")):
+                    cache_entry.setdefault("open", float(row["open_price"]))
+                if pd.notna(row.get("high")):
+                    cache_entry.setdefault("high", float(row["high"]))
+                if pd.notna(row.get("low")):
+                    cache_entry.setdefault("low", float(row["low"]))
+        except Exception as e:
+            logger.debug("[Backtest] realtime_spot 取价失败: %s", e)
 
     def _prefetch_sina_realtime(self, codes: List[str], date_str: str) -> None:
         """通过 Sina 实时行情补齐当日 OHLC（盘中可用）。
@@ -601,7 +648,7 @@ class DiscoveryBacktest:
         now_cn = dt.now(timezone(timedelta(hours=8)))
         is_market_open = (
             now_cn.weekday() < 5
-            and dt.strptime("09:25", "%H:%M").time() <= now_cn.time() <= dt.strptime("15:05", "%H:%M").time()
+            and now_cn.time() >= dt.strptime("09:25", "%H:%M").time()
         )
 
         for sc in sina_codes:
@@ -623,7 +670,7 @@ class DiscoveryBacktest:
                     continue
 
                 cache_entry = self._price_cache.setdefault(date_str, {}).setdefault(code, {})
-                # 非盘中时段，Sina 返回的是旧数据，open/high/low 不可信
+                # 盘前时段 Sina 返回旧数据，open/high/low 不可信
                 if is_market_open:
                     if open_p is not None:
                         cache_entry["open"] = open_p

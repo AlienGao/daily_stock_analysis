@@ -68,44 +68,38 @@ def _bare_to_ts_code(code: str) -> str:
 
 
 def sync_all_daily(fetcher, trade_date: str, lookback_calendar_days: int = 75) -> List[pd.DataFrame]:
-    """全市场日线同步 — 独立实现（绕过 TushareFetcher 的结构问题）。"""
-    stock_df = fetcher.get_stock_list()
-    if stock_df is None or stock_df.empty:
-        logger.warning("无股票列表")
-        return []
+    """全市场日线同步 — 按交易日批量拉取，不逐只股票调用。
 
-    code_col = next((c for c in ["ts_code", "code"] if c in stock_df.columns), None)
-    if not code_col:
-        return []
-
-    codes = stock_df[code_col].dropna().astype(str).tolist()
-    if not codes:
-        return []
-
+    Tushare daily 接口不传 ts_code 仅传 trade_date 即可一次拉取全市场日线。
+    每个交易日 1 次 API 调用，而非每只股票 1 次。
+    """
     end_dt = dt.strptime(trade_date, "%Y%m%d")
     start_dt = end_dt - timedelta(days=lookback_calendar_days)
     ts_start = start_dt.strftime("%Y%m%d")
     ts_end = end_dt.strftime("%Y%m%d")
 
-    logger.info("开始同步 %d 只股票, 日期范围 %s ~ %s", len(codes), ts_start, ts_end)
+    # 获取交易日列表
+    try:
+        cal_df = fetcher._api.trade_cal(exchange='SSE', start_date=ts_start, end_date=ts_end, is_open='1')
+        trade_dates = sorted(cal_df['cal_date'].astype(str).tolist()) if cal_df is not None and not cal_df.empty else []
+    except Exception:
+        trade_dates = []
+    if not trade_dates:
+        trade_dates = [(start_dt + timedelta(days=i)).strftime("%Y%m%d") for i in range(lookback_calendar_days + 1)]
+
+    logger.info("开始同步全市场日线: %d 个交易日 (%s ~ %s)", len(trade_dates), trade_dates[0], trade_dates[-1])
 
     results: List[pd.DataFrame] = []
     errors = 0
-    minute_start = time.time()
     call_count = 0
+    minute_start = time.time()
 
-    for i, raw_code in enumerate(codes):
-        ts_code = _bare_to_ts_code(raw_code)
+    for td in trade_dates:
         try:
-            df = fetcher._api.daily(
-                ts_code=ts_code,
-                start_date=ts_start,
-                end_date=ts_end,
-            )
+            df = fetcher._api.daily(trade_date=td)
             call_count += 1
 
-            # Rate limit: ~500 calls/min
-            if call_count >= 480:
+            if call_count >= 150:
                 elapsed = time.time() - minute_start
                 if elapsed < 60:
                     sleep_sec = 60 - elapsed + 1
@@ -118,14 +112,10 @@ def sync_all_daily(fetcher, trade_date: str, lookback_calendar_days: int = 75) -
                 results.append(df)
         except Exception as e:
             errors += 1
-            if errors <= 5:
-                logger.warning("%s 失败: %s", ts_code, e)
+            if errors <= 3:
+                logger.warning("trade_date=%s 失败: %s", td, e)
 
-        if (i + 1) % 500 == 0:
-            logger.info("进度 %d/%d (%.0f%%), errors=%d",
-                        i + 1, len(codes), (i + 1) / len(codes) * 100, errors)
-
-    logger.info("完成: %d 只成功, %d 失败", len(results), errors)
+    logger.info("完成: %d 个交易日成功, %d 失败, %d 条日线", len(results), errors, sum(len(r) for r in results))
     return results
 
 

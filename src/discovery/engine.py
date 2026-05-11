@@ -72,49 +72,81 @@ def _bare_to_ts_code(code: str) -> str:
     return ""
 
 
-def _calc_price_levels(prices: Dict[str, float], factor_score: float = 50.0) -> tuple:
+def _calc_price_levels(
+    prices: Dict[str, float],
+    factor_score: float = 50.0,
+    tech: Optional[Dict[str, float]] = None,
+) -> tuple:
     """根据技术面价格数据和因子综合分计算买卖点位。
 
     Args:
         prices: 可能包含 close, boll_mid, boll_lower 的字典
         factor_score: 因子综合评分 (0-100)，影响止损宽度
+        tech: 可选，预缓存的 ATR/MA 指标 {"atr": ..., "ma20": ..., "ma60": ...}
     """
     close = prices.get("close", 0)
     boll_mid = prices.get("boll_mid", 0)
     boll_lower = prices.get("boll_lower", 0)
+    atr = tech.get("atr") if tech else None
 
+    # --- buy_low / buy_high 保持基于 Bollinger ---
     if boll_lower > 0 and boll_mid > 0:
         if factor_score >= 35:
-            # 强信号（top ~3%）：止损更宽，给更多缓冲
             buy_low = round(boll_lower * 0.97, 1)
             buy_high = round(boll_mid * 1.01, 1)
-            stop_loss = round(boll_lower * 0.94, 1)
         elif factor_score >= 25:
             buy_low = round(boll_lower * 0.98, 1)
             buy_high = round(boll_mid, 1)
-            stop_loss = round(boll_lower * 0.95, 1)
         else:
             buy_low = round(boll_lower * 0.99, 1)
             buy_high = round(boll_mid * 0.99, 1)
-            stop_loss = round(boll_lower * 0.96, 1)
     elif close > 0:
         if factor_score >= 35:
             buy_low = round(close * 0.95, 1)
             buy_high = round(close * 1.03, 1)
-            stop_loss = round(close * 0.92, 1)
         elif factor_score >= 25:
             buy_low = round(close * 0.97, 1)
             buy_high = round(close * 1.02, 1)
-            stop_loss = round(close * 0.94, 1)
         else:
             buy_low = round(close * 0.98, 1)
             buy_high = round(close * 1.01, 1)
-            stop_loss = round(close * 0.95, 1)
     else:
         return (None, None, None, None, None)
 
-    take_profit_1 = round(close * 1.05, 1) if close > 0 else None
-    take_profit_2 = round(close * 1.10, 1) if close > 0 else None
+    # --- stop_loss / take_profit：优先 ATR，降级固定百分比 ---
+    if atr and atr > 0 and close > 0:
+        ma20 = tech.get("ma20", 0) if tech else 0
+        ma60 = tech.get("ma60", 0) if tech else 0
+        # 高波 → 宽止损 3x ATR；低波上升 → 追踪止损 2x ATR；适中 → 默认 2x
+        if atr / close > 0.04:        # ATR > 4% close → 高波
+            stop_loss = round(close - 3.0 * atr, 1)
+        elif ma20 > 0 and close > ma20:
+            stop_loss = round(close - 2.0 * atr, 1)
+        elif ma60 > 0:
+            stop_loss = round(max(ma60 * 0.99, close - 2.5 * atr), 1)
+        else:
+            stop_loss = round(close - 2.0 * atr, 1)
+        # ATR 止盈
+        take_profit_1 = round(max(close * 1.03, close + 1.5 * atr), 1)
+        take_profit_2 = round(max(close * 1.07, close + 3.0 * atr), 1)
+    else:
+        # 降级：固定百分比
+        if boll_lower > 0 and boll_mid > 0:
+            if factor_score >= 35:
+                stop_loss = round(boll_lower * 0.94, 1)
+            elif factor_score >= 25:
+                stop_loss = round(boll_lower * 0.95, 1)
+            else:
+                stop_loss = round(boll_lower * 0.96, 1)
+        elif close > 0:
+            if factor_score >= 35:
+                stop_loss = round(close * 0.92, 1)
+            elif factor_score >= 25:
+                stop_loss = round(close * 0.94, 1)
+            else:
+                stop_loss = round(close * 0.95, 1)
+        take_profit_1 = round(close * 1.05, 1) if close > 0 else None
+        take_profit_2 = round(close * 1.10, 1) if close > 0 else None
 
     return (buy_low, buy_high, stop_loss, take_profit_1, take_profit_2)
 
@@ -230,12 +262,74 @@ class StockDiscoveryEngine:
     # ------------------------------------------------------------------
 
     def _get_industry_map(self, ts_codes: List[str]) -> Dict[str, str]:
-        """获取同花顺行业映射，用于行业中性化。从 DB ths_industry_map 读取。"""
+        """获取同花顺行业映射，用于行业中性化。
+
+        DB ths_industry_map 为主（盘后定时全量刷新），不逐个补缺以避免因
+        网络抖动或大量非 A 股代码导致串行 akshare 调用卡死。
+        """
         try:
             from src.storage import DatabaseManager
-            return DatabaseManager().get_ths_industry_map()
+            db = DatabaseManager()
+            result = db.get_ths_industry_map()
         except Exception as e:
             logger.debug("[Discovery] 获取行业映射失败: %s", e)
+            return {}
+
+        return result
+
+    @staticmethod
+    def _compute_industry_heat() -> Dict[str, float]:
+        """基于 realtime_spot 快照计算各行业景气热度 (0-1)。
+
+        综合 4 维：均价涨幅、上涨广度、换手率、成交额占比。
+        盘中/盘后均可用——盘后快照即当日收盘截面。
+        返回 {industry_name: heat_score (0~1)}，越高越景气。
+        """
+        try:
+            from src.storage import DatabaseManager
+
+            db = DatabaseManager()
+            spot = db.get_realtime_spot()
+            if spot is None or spot.empty:
+                return {}
+
+            ths_map = db.get_ths_industry_map()
+            if not ths_map:
+                return {}
+
+            spot = spot.copy()
+            spot["industry"] = spot.index.map(ths_map)
+            spot = spot[spot["industry"].notna() & (spot["industry"] != "")]
+            if spot.empty:
+                return {}
+
+            pct = spot["pct_chg"].fillna(0)
+            turnover = spot["turnover_rate"].fillna(0)
+            amount = spot["amount"].fillna(0)
+
+            agg = spot.groupby("industry").agg(
+                avg_pct=("pct_chg", lambda x: x.fillna(0).mean()),
+                up_ratio=("pct_chg", lambda x: (x > 0).sum() / max(x.count(), 1)),
+                avg_turnover=("turnover_rate", lambda x: x.fillna(0).mean()),
+                total_amount=("amount", "sum"),
+            )
+
+            # avg_pct [-2, 8] → 0~1
+            score_pct = (agg["avg_pct"].clip(-2, 8) + 2) / 10
+            # up_ratio already 0~1
+            score_up = agg["up_ratio"]
+            # avg_turnover [0, 10] → 0~1
+            score_turn = agg["avg_turnover"].clip(0, 10) / 10
+            # total_amount rank → 0~1
+            score_amount = agg["total_amount"].rank(pct=True)
+
+            heat = score_pct * 0.35 + score_up * 0.25 + score_turn * 0.15 + score_amount * 0.25
+            heat = heat.clip(0, 1)
+
+            return heat.to_dict()
+
+        except Exception as e:
+            logger.warning("[Discovery] 计算行业热度失败: %s", e)
             return {}
 
     # ------------------------------------------------------------------
@@ -406,20 +500,20 @@ class StockDiscoveryEngine:
 
     def _resolve_stock_names(self, ts_codes: List[str]) -> Dict[str, str]:
         unresolved = [c for c in ts_codes if c not in self._stock_names]
-        if unresolved and self.tushare_fetcher:
-            # 批量拉取全量 A 股名称（一次 API 调用），写入 self._stock_names
+        if unresolved and not self._stock_names:
+            # 从 DB realtime_spot 批量加载全量名称，避免 Tushare API 调用
             try:
-                api = getattr(self.tushare_fetcher, '_api', None)
-                if api:
-                    df = api.stock_basic(exchange='', list_status='L', fields='ts_code,name')
-                    if df is not None and not df.empty:
-                        for _, row in df.iterrows():
-                            ts = row['ts_code']
-                            code = ts.split('.')[0] if '.' in ts else ts
-                            name = row['name']
+                from src.storage import DatabaseManager
+                spot = DatabaseManager().get_realtime_spot()
+                if spot is not None and not spot.empty and 'name' in spot.columns:
+                    for idx, row in spot.iterrows():
+                        ts = str(idx).strip()
+                        code = ts.split('.')[0] if '.' in ts else ts
+                        name = str(row['name']).strip()
+                        if name:
                             self._stock_names[ts] = name
                             self._stock_names[code] = name
-                        logger.info("[Discovery] 预加载 %d 只股票名称", len(df))
+                    logger.info("[Discovery] 预加载 %d 只股票名称", len(self._stock_names))
             except Exception as e:
                 logger.debug("[Discovery] 批量预加载名称失败: %s", e)
         return {c: self._stock_names.get(c, c) for c in ts_codes}
@@ -539,12 +633,12 @@ class StockDiscoveryEngine:
         )
 
         # Phase 1: 拉取因子数据（优先复用 session 缓存）
-        # 实时因子（如 sector）每轮重新拉取，不缓存
+        # 盘中所有因子都依赖 realtime_spot，不做缓存；盘后可复用
         _REALTIME_FACTORS = {"sector", "momentum"}
 
         factor_data: Dict[str, pd.DataFrame] = {}
-        if self._factor_data_cache and self._cache_trade_date == trade_date:
-            # 复用非实时缓存
+        if mode != "intraday" and self._factor_data_cache and self._cache_trade_date == trade_date:
+            # 复用非实时缓存（仅盘后）
             factor_data = {
                 k: v for k, v in self._factor_data_cache.items()
                 if k not in _REALTIME_FACTORS
@@ -679,6 +773,24 @@ class StockDiscoveryEngine:
         # Phase 4: 合并评分 → 综合评分
         combined = pd.DataFrame(score_columns).fillna(0)
         combined["_total"] = combined.sum(axis=1)  # 权重已归一化，sum 即为加权总分 (0-100)
+
+        # Phase 4.1: 行业景气度加权（景气度高 → 系数 > 1.0）
+        industry_heat = self._compute_industry_heat()
+        if industry_heat:
+            industry_map = self._get_industry_map([])
+            if industry_map:
+                heat_by_stock = pd.Series(0.5, index=combined.index)
+                for code in combined.index:
+                    ind = industry_map.get(code, "")
+                    if ind:
+                        heat_by_stock[code] = industry_heat.get(ind, 0.5)
+                combined["_total"] = combined["_total"] * (0.85 + 0.30 * heat_by_stock)
+                top_heat = sorted(industry_heat.items(), key=lambda x: -x[1])[:5]
+                logger.info(
+                    "[Discovery] 行业热度 Top5: %s",
+                    ", ".join(f"{ind}={h:.2f}" for ind, h in top_heat),
+                )
+
         combined = combined.sort_values("_total", ascending=False)
 
         # Phase 4.5: 收集推荐理由
@@ -714,8 +826,11 @@ class StockDiscoveryEngine:
                         fval = float(val)
                         if fval > 0:
                             price_map.setdefault(idx_code, {})[col] = fval
-                            # 同时注册 ts_code 格式 key（兼容不同因子的索引格式差异）
-                            if "." not in idx_code:
+                            # 同时注册互补格式 key（兼容不同因子的索引格式差异）
+                            if "." in idx_code:
+                                bare_key = idx_code.split(".")[0]
+                                price_map.setdefault(bare_key, {})[col] = fval
+                            else:
                                 ts_key = _bare_to_ts_code(idx_code)
                                 if ts_key:
                                     price_map.setdefault(ts_key, {})[col] = fval
@@ -788,6 +903,23 @@ class StockDiscoveryEngine:
         self._last_scan_time = time.strftime("%H:%M:%S")
         self._last_scan_mode = mode
 
+        # Phase 4.9b: 批量预取技术指标（ATR/MA），供止盈止损计算
+        tech_cache: Dict[str, Dict[str, float]] = {}
+        candidate_bare_codes = [
+            c.split(".")[0] if "." in c else c for c in candidate_codes
+        ]
+        try:
+            from src.storage import DatabaseManager
+            # get_trade_time 返回 YYYYMMDD，DB 存 YYYY-MM-DD
+            trade_date_str = str(trade_date)
+            if len(trade_date_str) == 8:
+                trade_date_str = f"{trade_date_str[:4]}-{trade_date_str[4:6]}-{trade_date_str[6:]}"
+            tech_cache = DatabaseManager().get_tech_indicators_batch(
+                candidate_bare_codes, trade_date_str
+            )
+        except Exception:
+            logger.debug("[Discovery] 批量获取技术指标失败，降级固定百分比", exc_info=True)
+
         results = []
         st_skipped = 0
         overbought_skipped = 0
@@ -818,10 +950,17 @@ class StockDiscoveryEngine:
             prices = price_map.get(ts_code, {})
             if not prices and "." in ts_code:
                 prices = price_map.get(ts_code.split(".")[0], {})
-            buy_low, buy_high, stop, tp1, tp2 = _calc_price_levels(prices, factor_score=raw_score)
+            buy_low, buy_high, stop, tp1, tp2 = _calc_price_levels(
+                prices, factor_score=raw_score,
+                tech=tech_cache.get(stock_code),
+            )
 
-            # 过滤超买股 & 低盈亏比股（盘中用实时价，盘后用收盘价）
-            discovery_price = live_prices.get(ts_code) or prices.get("close")
+            # 过滤超买股 & 低盈亏比股
+            # 盘后用收盘价作为发现价，盘中用实时价
+            if mode == "postmarket":
+                discovery_price = prices.get("close")
+            else:
+                discovery_price = live_prices.get(ts_code) or prices.get("close")
             if discovery_price and tp1 and discovery_price >= tp1:
                 overbought_skipped += 1
                 continue
@@ -865,7 +1004,7 @@ class StockDiscoveryEngine:
                     take_profit_1=tp1,
                     take_profit_2=tp2,
                     discovered_at=time.strftime("%H:%M:%S"),
-                    price_at_discovery=live_prices.get(ts_code) or prices.get("close"),
+                    price_at_discovery=discovery_price,
                 )
             )
 

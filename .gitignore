@@ -91,5 +91,6 @@ static/
 /apps/dsa-web/data/
 /apps/dsa-web/logs/
 
+.playwright-mcp
 .codex
 .gitnexus

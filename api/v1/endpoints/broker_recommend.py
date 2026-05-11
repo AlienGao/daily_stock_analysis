@@ -28,6 +28,7 @@ class StockEnrichment(BaseModel):
     nineturn: Optional[NineTurnSignal] = None
     forecast: Optional[ForecastSummary] = None
     cyq_perf: Optional[CyqPerfSummary] = None
+    sector: Optional[str] = None
 
 
 class EnrichmentResponse(BaseModel):
@@ -332,6 +333,7 @@ def get_monthly_enrichment(month: str) -> EnrichmentResponse:
             nineturn=NineTurnSignal(**enrich["nineturn"]) if enrich.get("nineturn") else None,
             forecast=ForecastSummary(**enrich["forecast"]) if enrich.get("forecast") else None,
             cyq_perf=CyqPerfSummary(**enrich["cyq_perf"]) if enrich.get("cyq_perf") else None,
+            sector=enrich.get("sector"),
         )
 
     return EnrichmentResponse(month=month, query_date=query_date, data=data)

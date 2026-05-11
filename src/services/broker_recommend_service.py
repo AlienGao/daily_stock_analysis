@@ -264,6 +264,20 @@ class BrokerRecommendService:
                 return (today - timedelta(days=1)).strftime("%Y%m%d")
         return month_end
 
+    def _attach_sectors(self, enrichment: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+        """附加同花顺行业信息并返回 enrichment。"""
+        try:
+            industry_map = self.db.get_ths_industry_map()
+            if industry_map:
+                for tc in enrichment:
+                    code = tc.split(".")[0] if "." in tc else tc
+                    sector = industry_map.get(code) or industry_map.get(code.zfill(6))
+                    if sector:
+                        enrichment[tc]["sector"] = sector
+        except Exception:
+            pass
+        return enrichment
+
     def get_monthly_enrichment(self, month: str) -> Dict[str, Dict[str, Any]]:
         """获取指定月份所有推荐股票的增强数据（九转、盈利预测、筹码胜率）。
 
@@ -308,7 +322,7 @@ class BrokerRecommendService:
         l1_hits = sum(1 for v in enrichment.values() for _ in v)
         if l1_hits == total_fields:
             logger.info(f"[BrokerRecommend] enrichment L1 全部命中 {month} ({len(ts_codes)} stocks)")
-            return enrichment
+            return self._attach_sectors(enrichment)
 
         # L2: SQLite 持久化缓存
         still_need_nineturn: List[str] = []
@@ -345,7 +359,7 @@ class BrokerRecommendService:
         l2_hits = sum(1 for v in enrichment.values() for _ in v)
         if l2_hits == total_fields:
             logger.info(f"[BrokerRecommend] enrichment L1+L2 全部命中 {month} ({len(ts_codes)} stocks)")
-            return enrichment
+            return self._attach_sectors(enrichment)
 
         logger.info(f"[BrokerRecommend] enrichment {month}: L1+L2 命中 {l2_hits}/{total_fields}, "
                     f"待 fetch nineturn={len(still_need_nineturn)} forecast={len(still_need_forecast)} cyq={len(still_need_cyq)}")
@@ -355,7 +369,7 @@ class BrokerRecommendService:
         tf = TushareFetcher.get_instance()
         if not tf.is_available():
             logger.warning("[BrokerRecommend] Tushare 不可用，仅返回缓存数据")
-            return enrichment
+            return self._attach_sectors(enrichment)
 
         fetched_nineturn: Dict[str, Dict[str, Any]] = {}
         fetched_forecast: Dict[str, Dict[str, Any]] = {}
@@ -471,7 +485,7 @@ class BrokerRecommendService:
         logger.info(f"[BrokerRecommend] enrichment 完成 {month}: nineturn={sum(1 for v in enrichment.values() if 'nineturn' in v)}, "
                     f"forecast={sum(1 for v in enrichment.values() if 'forecast' in v)}, "
                     f"cyq={sum(1 for v in enrichment.values() if 'cyq_perf' in v)}")
-        return enrichment
+        return self._attach_sectors(enrichment)
 
     @staticmethod
     def _fetch_cyq_akshare(ts_codes: List[str]) -> Optional[Dict[str, Dict[str, Any]]]:

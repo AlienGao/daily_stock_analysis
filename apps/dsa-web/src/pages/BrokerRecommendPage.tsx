@@ -291,6 +291,7 @@ type StockRow = {
     concentration?: number | null;
     scr90?: number | null;
   } | null;
+  sector?: string | null;
   isTopPick?: boolean;
 };
 
@@ -484,6 +485,7 @@ const BrokerRecommendPage: React.FC = () => {
         nineturn: enrichmentData?.data[item.ts_code]?.nineturn ?? null,
         forecast: enrichmentData?.data[item.ts_code]?.forecast ?? null,
         cyq_perf: enrichmentData?.data[item.ts_code]?.cyq_perf ?? null,
+        sector: enrichmentData?.data[item.ts_code]?.sector ?? null,
       };
     });
 
@@ -644,6 +646,14 @@ const BrokerRecommendPage: React.FC = () => {
         <span className={`text-xs font-medium ${row.cumRet != null ? (row.cumRet >= 0 ? 'text-red-400' : 'text-emerald-400') : 'text-tertiary-text'}`}>
           {fmtPct(row.cumRet)}
         </span>
+      ),
+    },
+    {
+      title: '所属行业', key: 'sector',
+      sorter: (a, b) => (a.sector || '').localeCompare(b.sector || ''),
+      sortOrder: tableSort.columnKey === 'sector' ? tableSort.order : undefined,
+      render: (_: any, row: StockRow) => (
+        <span className="text-xs text-secondary-text whitespace-nowrap">{row.sector || '--'}</span>
       ),
     },
     {
@@ -948,6 +958,7 @@ const BrokerRecommendPage: React.FC = () => {
                       nineturn: enrichmentData?.data[item.ts_code]?.nineturn ?? null,
                       forecast: enrichmentData?.data[item.ts_code]?.forecast ?? null,
                       cyq_perf: enrichmentData?.data[item.ts_code]?.cyq_perf ?? null,
+                      sector: enrichmentData?.data[item.ts_code]?.sector ?? null,
                     };
                   });
 

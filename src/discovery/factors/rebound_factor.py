@@ -3,12 +3,14 @@
 
 盘中实时检测涨停打开（炸板）后的买点机会。
 数据来源: limit_break 表（scanner 差集检测） + realtime_spot（行情） + money_flow（资金流）。
+轮次间回封进度感知：追踪炸板股的涨幅回升速度，捕获「正在回封」的进程。
 盘中可用，盘后不可用。
 """
 
 import logging
 from typing import Dict, List, Optional
 
+import numpy as np
 import pandas as pd
 
 from src.discovery.factors.base import BaseFactor
@@ -36,6 +38,7 @@ class ReboundFactor(BaseFactor):
 
     检测涨停打开后跌幅收窄、有大单回补的短线买点。
     数据由 scanner._detect_limit_breaks() 实时写入 limit_break 表。
+    专用回封进度钩子：追踪炸板股涨幅回升速度，捕获「正在回封」进程。
     """
 
     name = "rebound"
@@ -44,6 +47,12 @@ class ReboundFactor(BaseFactor):
     weight = 15.0
 
     _LABEL_THRESHOLD_RATIO = 0.5
+
+    def __init__(self):
+        super().__init__()
+        self._prev_pct_chg: Dict[str, float] = {}          # {bare_code: pct_chg} 上一轮快照
+        self._rebound_trade_date: Optional[str] = None     # 跨日重置
+        self._cached_seal: Dict[str, Dict[str, float]] = {}  # {bare: {speed, distance, score}}
 
     def fetch_data(self, trade_date: str, **kwargs) -> Optional[pd.DataFrame]:
         """从 limit_break 读取炸板中股票，合并 realtime_spot + money_flow。"""
@@ -172,6 +181,89 @@ class ReboundFactor(BaseFactor):
         return signals
 
     # ------------------------------------------------------------------
+    # 专用回封进度钩子（非通用 delta）
+    # ------------------------------------------------------------------
+
+    def _compute_seal_progress(self, df: pd.DataFrame,
+                               trade_date: str) -> pd.Series:
+        """追踪炸板股的回封进展：涨幅回升速度 + 距涨停距离。
+
+        不套通用 delta 框架，针对回封场景定制：
+        - 回封速度（seal_speed）：pct_chg 轮次间变化，正=在回封
+        - 回封距离（seal_distance）：10% - pct_chg，越近越好
+        - 综合评分：速度分 × 距离衰减，快速逼近涨停 = 最高分
+
+        Returns per-stock seal_progress bonus (0 ~ +15).
+        """
+        idx = df.index
+        bonus = pd.Series(0.0, index=idx)
+
+        # 跨日重置
+        if self._rebound_trade_date != trade_date:
+            self._prev_pct_chg.clear()
+            self._rebound_trade_date = trade_date
+
+        pct_chg = df.get("pct_chg", pd.Series(0.0, index=idx))
+        prev_map = self._prev_pct_chg
+        new_map: Dict[str, float] = {}
+        cached: Dict[str, Dict[str, float]] = {}
+
+        for ts_code in idx:
+            bare = str(ts_code).split(".")[0] if "." in str(ts_code) else str(ts_code).strip().zfill(6)
+            cur = float(pct_chg.get(ts_code, 0))
+            new_map[bare] = cur
+
+            prev_val = prev_map.get(bare)
+            if prev_val is None:
+                cached[bare] = {"speed": 0.0, "distance": 0.0, "score": 0.0}
+                continue
+
+            # 回封速度：涨幅回升幅度
+            speed = cur - prev_val  # 正=在回封，负=继续走弱
+
+            # 回封距离：距涨停板剩余空间（0=已封板, 10=刚开盘价）
+            distance = max(0.0, 10.0 - cur)
+
+            # 速度分 (0-8)：快速回升 > 缓慢回升 > 走弱
+            if speed > 1.5:
+                speed_score = 8.0
+            elif speed > 0.5:
+                speed_score = 5.0 + (speed - 0.5) * 3.0  # 5~8
+            elif speed > 0:
+                speed_score = speed * 10.0  # 0~5
+            elif speed > -1.0:
+                speed_score = speed * 3.0   # -3~0（轻微走弱）
+            else:
+                speed_score = -3.0          # 明显走弱
+
+            # 距离分 (0-7)：越接近涨停越好
+            if distance < 1.0:
+                dist_score = 7.0
+            elif distance < 2.0:
+                dist_score = 5.0 + (2.0 - distance) * 2.0  # 5~7
+            elif distance < 3.0:
+                dist_score = 3.0 + (3.0 - distance) * 2.0  # 3~5
+            elif distance < 5.0:
+                dist_score = 1.0 + (5.0 - distance) * 1.0  # 1~3
+            else:
+                dist_score = 0.0  # 距离太远，回封希望渺茫
+
+            # 综合评分 (0-15)：速度 × 距离因子
+            composite = speed_score + dist_score
+            composite = max(-3.0, min(15.0, composite))
+
+            bonus.loc[ts_code] = composite
+            cached[bare] = {
+                "speed": round(speed, 2),
+                "distance": round(distance, 2),
+                "score": round(composite, 2),
+            }
+
+        self._prev_pct_chg = new_map
+        self._cached_seal = cached
+        return bonus
+
+    # ------------------------------------------------------------------
     # Score / Describe
     # ------------------------------------------------------------------
 
@@ -179,8 +271,13 @@ class ReboundFactor(BaseFactor):
         if df.empty:
             return pd.Series(dtype=float, name=self.name)
 
+        trade_date = context.get("trade_date", "")
         signals = self._compute_signals(df)
         total = sum(signals.values())
+
+        # 回封进度溢价（0-15，轮次间涨幅回升 + 距涨停距离）
+        seal_progress = self._compute_seal_progress(df, trade_date)
+        total = total + seal_progress
 
         pct_chg = df.get("pct_chg")
         turnover_rate = df.get("turnover_rate")
@@ -198,6 +295,7 @@ class ReboundFactor(BaseFactor):
             return {}
 
         signals = self._compute_signals(df)
+        seal_cache = getattr(self, "_cached_seal", {}) or {}
 
         signal_meta = [
             ("pct_chg", "跌幅承接"),
@@ -224,6 +322,7 @@ class ReboundFactor(BaseFactor):
         for ts_code in scores.index:
             if scores[ts_code] <= 0:
                 continue
+            bare = str(ts_code).split(".")[0] if "." in str(ts_code) else str(ts_code).strip().zfill(6)
             labels = []
             for key, label in signal_meta:
                 val = signals[key].get(ts_code, 0.0)
@@ -247,6 +346,16 @@ class ReboundFactor(BaseFactor):
                 elif key == "limit_times":
                     lt = int(lt_r.get(ts_code, 0))
                     labels.append(f"{'首板' if lt <= 1 else f'{lt}板'}炸板")
+
+            # 回封进度标签（速度阈值防抖：有实际涨跌变化才打标）
+            seal = seal_cache.get(bare, {})
+            seal_speed = seal.get("speed", 0.0)
+            seal_score = seal.get("score", 0.0)
+            if seal_score >= 3.0 and seal_speed > 0.1:
+                labels.append(f"回封进行中(↑+{seal_speed:.1f}%)")
+            elif seal_speed < -0.5:
+                labels.append(f"回封受阻(↓{seal_speed:.1f}%)")
+
             if labels:
                 reasons[ts_code] = labels
         return reasons

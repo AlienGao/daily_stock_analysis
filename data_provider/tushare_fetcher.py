@@ -1663,10 +1663,9 @@ class TushareFetcher(BaseFetcher):
 
     def get_technical_factors(self, stock_code: str, trade_date: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """
-        获取技术面因子数据 (Tushare stk_factor, doc_id=328)
+        获取技术面因子数据 (Tushare stk_factor_pro, doc_id=328)
 
-        返回 MACD/RSI/KDJ/BOLL/CCI 全套预计算指标（前复权口径）。
-        注意：stk_factor 不提供 MA 均线值和 BIAS 乖离率，这些继续由本地 StockTrendAnalyzer 计算。
+        返回 MACD/RSI/KDJ/BOLL/CCI/ATR/MA 全套预计算指标（前复权口径）。
         """
         if self._api is None:
             return None
@@ -1681,7 +1680,7 @@ class TushareFetcher(BaseFetcher):
 
             ts_code = self._convert_stock_code(stock_code)
             df = self._call_api_with_rate_limit(
-                "stk_factor", ts_code=ts_code, trade_date=trade_date,
+                "stk_factor_pro", ts_code=ts_code, trade_date=trade_date,
             )
             if df is not None and not df.empty:
                 row = df.iloc[0].to_dict()
@@ -1689,19 +1688,24 @@ class TushareFetcher(BaseFetcher):
                     'ts_code': ts_code,
                     'trade_date': row.get('trade_date', trade_date),
                     'close_qfq': safe_float(row.get('close_qfq')),
-                    'macd_dif': safe_float(row.get('macd_dif')),
-                    'macd_dea': safe_float(row.get('macd_dea')),
-                    'macd': safe_float(row.get('macd')),
-                    'rsi_6': safe_float(row.get('rsi_6')),
-                    'rsi_12': safe_float(row.get('rsi_12')),
-                    'rsi_24': safe_float(row.get('rsi_24')),
-                    'kdj_k': safe_float(row.get('kdj_k')),
-                    'kdj_d': safe_float(row.get('kdj_d')),
-                    'kdj_j': safe_float(row.get('kdj_j')),
-                    'boll_upper': safe_float(row.get('boll_upper')),
-                    'boll_mid': safe_float(row.get('boll_mid')),
-                    'boll_lower': safe_float(row.get('boll_lower')),
-                    'cci': safe_float(row.get('cci')),
+                    'macd_dif': safe_float(row.get('macd_dif_qfq')),
+                    'macd_dea': safe_float(row.get('macd_dea_qfq')),
+                    'macd': safe_float(row.get('macd_qfq')),
+                    'rsi_6': safe_float(row.get('rsi_qfq_6')),
+                    'rsi_12': safe_float(row.get('rsi_qfq_12')),
+                    'rsi_24': safe_float(row.get('rsi_qfq_24')),
+                    'kdj_k': safe_float(row.get('kdj_k_qfq')),
+                    'kdj_d': safe_float(row.get('kdj_d_qfq')),
+                    'kdj_j': safe_float(row.get('kdj_j_qfq')),
+                    'boll_upper': safe_float(row.get('boll_upper_qfq')),
+                    'boll_mid': safe_float(row.get('boll_mid_qfq')),
+                    'boll_lower': safe_float(row.get('boll_lower_qfq')),
+                    'cci': safe_float(row.get('cci_qfq')),
+                    'atr': safe_float(row.get('atr_qfq')),
+                    'ma5': safe_float(row.get('ma_qfq_5')),
+                    'ma10': safe_float(row.get('ma_qfq_10')),
+                    'ma20': safe_float(row.get('ma_qfq_20')),
+                    'ma60': safe_float(row.get('ma_qfq_60')),
                 }
                 logger.info(f"[技术面因子] {stock_code} RSI12={result['rsi_12']}, "
                            f"KDJ_K={result['kdj_k']}, BOLL_MID={result['boll_mid']}")
@@ -1942,6 +1946,68 @@ class TushareFetcher(BaseFetcher):
 
         except Exception as e:
             logger.warning(f"[Tushare] 获取涨跌停列表失败: {e}")
+            return None
+
+    def get_limit_list_ths(
+        self, trade_date: Optional[str] = None
+    ) -> Optional[pd.DataFrame]:
+        """获取涨跌停列表 (Tushare limit_list_ths, 同花顺龙头挖掘)。
+
+        比 limit_list_d 多: name/price/limit_amount/free_float/turnover_rate/tag 等。
+        覆盖涨停池+炸板池+跌停池（limit_type 为中文标签）。
+
+        Returns:
+            DataFrame indexed by ts_code，字段已标准化为英文。
+        """
+        if self._api is None:
+            return None
+
+        try:
+            if trade_date is None:
+                trade_date = self.get_trade_time(early_time="00:00", late_time="15:30")
+            if not trade_date:
+                return None
+
+            df = self._call_api_with_rate_limit(
+                "limit_list_ths", trade_date=trade_date,
+            )
+            if df is None or df.empty:
+                return None
+
+            df = df.set_index("ts_code")
+
+            # 标准化字段名
+            _RENAME = {
+                "open_num": "open_times",
+                "limit_amount": "seal_amount",   # 万元
+                "free_float": "float_market_cap",
+                "tag": "up_stat",
+                "turnover": "volume",
+            }
+            df.rename(columns={k: v for k, v in _RENAME.items() if k in df.columns}, inplace=True)
+
+            # seal_amount 万元→元，与 akshare 对齐
+            if "seal_amount" in df.columns:
+                df["seal_amount"] = pd.to_numeric(df["seal_amount"], errors="coerce") * 10000
+
+            # limit_type 中文→英文
+            if "limit_type" in df.columns:
+                _TYPE_MAP = {"涨停池": "U", "炸板池": "Z", "跌停池": "D"}
+                df["limit_type"] = df["limit_type"].map(_TYPE_MAP).fillna(df["limit_type"])
+
+            for col in ["open_times"]:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0).astype(int)
+            for col in ["pct_chg", "price", "seal_amount", "float_market_cap",
+                        "turnover_rate", "limit_order", "limit_up_suc_rate"]:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors="coerce")
+
+            logger.info("[Tushare] limit_list_ths: trade_date=%s, %d 条", trade_date, len(df))
+            return df
+
+        except Exception as e:
+            logger.warning(f"[Tushare] limit_list_ths 失败: {e}")
             return None
 
     def get_daily_basic_all(self, trade_date: Optional[str] = None) -> Optional[pd.DataFrame]:
@@ -2216,13 +2282,9 @@ class TushareFetcher(BaseFetcher):
             return None
 
     def get_bulk_stk_factor(self, trade_date: Optional[str] = None) -> Optional[pd.DataFrame]:
-        """获取全市场技术面因子 (Tushare stk_factor, doc_id=328)。
+        """获取全市场技术面因子 (Tushare stk_factor_pro, doc_id=328)。
 
-        返回 MACD/RSI/KDJ/BOLL/CCI 全套预计算指标（前复权口径）。
-        注意：stk_factor 不含 MA 均线，MA 由本地 StockTrendAnalyzer 计算。
-
-        Returns:
-            DataFrame indexed by ts_code
+        返回 MACD/RSI/KDJ/BOLL/CCI/ATR/MA 全套预计算指标（前复权口径）。
         """
         if self._api is None:
             return None
@@ -2234,20 +2296,25 @@ class TushareFetcher(BaseFetcher):
                 return None
 
             fields = (
-                "ts_code,trade_date,close,macd_dif,macd_dea,macd,"
-                "rsi_6,rsi_12,rsi_24,kdj_k,kdj_d,kdj_j,"
-                "boll_upper,boll_mid,boll_lower,cci,vol"
+                "ts_code,trade_date,"
+                "close_qfq,macd_dif_qfq,macd_dea_qfq,macd_qfq,"
+                "rsi_qfq_6,rsi_qfq_12,rsi_qfq_24,"
+                "kdj_k_qfq,kdj_d_qfq,kdj_j_qfq,"
+                "boll_upper_qfq,boll_mid_qfq,boll_lower_qfq,cci_qfq,vol,"
+                "atr_qfq,ma_qfq_5,ma_qfq_10,ma_qfq_20,ma_qfq_60"
             )
             df = self._call_api_with_rate_limit(
-                "stk_factor", trade_date=trade_date, fields=fields,
+                "stk_factor_pro", trade_date=trade_date, fields=fields,
             )
             if df is not None and not df.empty:
                 df = df.set_index("ts_code")
                 numeric_cols = [
-                    "close", "macd_dif", "macd_dea", "macd",
-                    "rsi_6", "rsi_12", "rsi_24",
-                    "kdj_k", "kdj_d", "kdj_j",
-                    "boll_upper", "boll_mid", "boll_lower", "cci", "vol",
+                    "close_qfq", "macd_dif_qfq", "macd_dea_qfq", "macd_qfq",
+                    "rsi_qfq_6", "rsi_qfq_12", "rsi_qfq_24",
+                    "kdj_k_qfq", "kdj_d_qfq", "kdj_j_qfq",
+                    "boll_upper_qfq", "boll_mid_qfq", "boll_lower_qfq",
+                    "cci_qfq", "vol",
+                    "atr_qfq", "ma_qfq_5", "ma_qfq_10", "ma_qfq_20", "ma_qfq_60",
                 ]
                 for col in numeric_cols:
                     if col in df.columns:
@@ -2268,7 +2335,7 @@ class TushareFetcher(BaseFetcher):
             return None
 
     def _cache_bulk_stk_factor(self, df: pd.DataFrame, trade_date: str) -> None:
-        """将全量 stk_factor 写入 DB 缓存。"""
+        """将全量 stk_factor_pro 写入 DB 缓存。"""
         try:
             from datetime import datetime as _dt
             from src.storage import DatabaseManager, StockTechIndicator
@@ -2282,20 +2349,25 @@ class TushareFetcher(BaseFetcher):
                 records.append({
                     'code': bare_code,
                     'date': trade_dt,
-                    'close_qfq': safe_float(row.get('close')),
-                    'macd_dif': safe_float(row.get('macd_dif')),
-                    'macd_dea': safe_float(row.get('macd_dea')),
-                    'macd': safe_float(row.get('macd')),
-                    'rsi_6': safe_float(row.get('rsi_6')),
-                    'rsi_12': safe_float(row.get('rsi_12')),
-                    'rsi_24': safe_float(row.get('rsi_24')),
-                    'kdj_k': safe_float(row.get('kdj_k')),
-                    'kdj_d': safe_float(row.get('kdj_d')),
-                    'kdj_j': safe_float(row.get('kdj_j')),
-                    'boll_upper': safe_float(row.get('boll_upper')),
-                    'boll_mid': safe_float(row.get('boll_mid')),
-                    'boll_lower': safe_float(row.get('boll_lower')),
-                    'cci': safe_float(row.get('cci')),
+                    'close_qfq': safe_float(row.get('close_qfq')),
+                    'macd_dif': safe_float(row.get('macd_dif_qfq')),
+                    'macd_dea': safe_float(row.get('macd_dea_qfq')),
+                    'macd': safe_float(row.get('macd_qfq')),
+                    'rsi_6': safe_float(row.get('rsi_qfq_6')),
+                    'rsi_12': safe_float(row.get('rsi_qfq_12')),
+                    'rsi_24': safe_float(row.get('rsi_qfq_24')),
+                    'kdj_k': safe_float(row.get('kdj_k_qfq')),
+                    'kdj_d': safe_float(row.get('kdj_d_qfq')),
+                    'kdj_j': safe_float(row.get('kdj_j_qfq')),
+                    'boll_upper': safe_float(row.get('boll_upper_qfq')),
+                    'boll_mid': safe_float(row.get('boll_mid_qfq')),
+                    'boll_lower': safe_float(row.get('boll_lower_qfq')),
+                    'cci': safe_float(row.get('cci_qfq')),
+                    'atr': safe_float(row.get('atr_qfq')),
+                    'ma5': safe_float(row.get('ma_qfq_5')),
+                    'ma10': safe_float(row.get('ma_qfq_10')),
+                    'ma20': safe_float(row.get('ma_qfq_20')),
+                    'ma60': safe_float(row.get('ma_qfq_60')),
                     'created_at': now,
                     'updated_at': now,
                 })
@@ -2325,6 +2397,11 @@ class TushareFetcher(BaseFetcher):
                                 'boll_mid': excluded.boll_mid,
                                 'boll_lower': excluded.boll_lower,
                                 'cci': excluded.cci,
+                                'atr': excluded.atr,
+                                'ma5': excluded.ma5,
+                                'ma10': excluded.ma10,
+                                'ma20': excluded.ma20,
+                                'ma60': excluded.ma60,
                                 'updated_at': excluded.updated_at,
                             },
                         )
@@ -2655,73 +2732,56 @@ if __name__ == "__main__":
         trade_date: str,
         lookback_calendar_days: int = 75,
     ) -> List[pd.DataFrame]:
-        """全市场日线数据同步。
+        """全市场日线数据同步 — 按交易日批量拉取。
 
-        遍历全 A 股，逐只拉取近 N 个自然日的日线数据。
-
-        Args:
-            trade_date: 目标交易日期 (YYYYMMDD)
-            lookback_calendar_days: 向前推的自然日数，默认 75（覆盖 ~60 个交易日）
-
-        Returns:
-            raw DataFrame 列表，每条为一只股票的 daily() 返回
+        Tushare daily 接口不传 ts_code 仅传 trade_date 即可一次获取全市场日线。
+        每个交易日 1 次 API 调用，而非每只股票 1 次。
         """
-        stock_df = self.get_stock_list()
-        if stock_df is None or stock_df.empty:
-            logger.warning("[sync_all_daily] 无股票列表")
-            return []
-
-        code_col = next(
-            (c for c in ["ts_code", "code"] if c in stock_df.columns), None
-        )
-        if not code_col:
-            return []
-
-        codes = stock_df[code_col].dropna().astype(str).tolist()
-        if not codes:
-            return []
-
         from datetime import datetime as dt, timedelta
         end_dt = dt.strptime(trade_date, "%Y%m%d")
         start_dt = end_dt - timedelta(days=lookback_calendar_days)
         ts_start = start_dt.strftime("%Y%m%d")
         ts_end = end_dt.strftime("%Y%m%d")
 
-        logger.info(
-            "[sync_all_daily] 开始同步 %d 只股票, 日期范围 %s ~ %s",
-            len(codes), ts_start, ts_end,
-        )
+        try:
+            cal_df = self._api.trade_cal(exchange='SSE', start_date=ts_start, end_date=ts_end, is_open='1')
+            trade_dates = sorted(cal_df['cal_date'].astype(str).tolist()) if cal_df is not None and not cal_df.empty else []
+        except Exception:
+            trade_dates = []
+        if not trade_dates:
+            trade_dates = [(start_dt + timedelta(days=i)).strftime("%Y%m%d") for i in range(lookback_calendar_days + 1)]
+
+        logger.info("[sync_all_daily] 开始同步全市场日线: %d 个交易日 (%s ~ %s)", len(trade_dates), trade_dates[0], trade_dates[-1])
 
         results: List[pd.DataFrame] = []
         errors = 0
-        for i, ts_code in enumerate(codes):
+        call_count = 0
+        minute_start = time.time()
+
+        for td in trade_dates:
             try:
-                code_clean = ts_code.strip()
-                df = self._api.daily(
-                    ts_code=code_clean,
-                    start_date=ts_start,
-                    end_date=ts_end,
-                )
+                df = self._api.daily(trade_date=td)
+                call_count += 1
                 self._call_count += 1
-                self._minute_start = self._minute_start or time.time()
+                self._minute_start = self._minute_start or minute_start
                 self._check_rate_limit()
+
+                if call_count >= 150:
+                    elapsed = time.time() - minute_start
+                    if elapsed < 60:
+                        time.sleep(60 - elapsed + 1)
+                    minute_start = time.time()
+                    call_count = 0
+
                 if df is not None and not df.empty:
                     results.append(df)
             except Exception as e:
                 errors += 1
-                if errors <= 5:
-                    logger.debug("[sync_all_daily] %s 失败: %s", ts_code, e)
+                if errors <= 3:
+                    logger.debug("[sync_all_daily] trade_date=%s 失败: %s", td, e)
 
-            if (i + 1) % 500 == 0:
-                logger.info(
-                    "[sync_all_daily] 进度 %d/%d (%.0f%%), errors=%d",
-                    i + 1, len(codes), (i + 1) / len(codes) * 100, errors,
-                )
-
-        logger.info(
-            "[sync_all_daily] 完成: %d 只成功, %d 失败",
-            len(results), errors,
-        )
+        logger.info("[sync_all_daily] 完成: %d 个交易日成功, %d 失败, %d 条日线",
+                    len(results), errors, sum(len(r) for r in results))
         return results
     try:
         chip = fetcher.get_chip_distribution('600519')  # 茅台

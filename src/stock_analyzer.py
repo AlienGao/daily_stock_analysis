@@ -247,7 +247,7 @@ class StockTrendAnalyzer:
         # 确保数据按日期排序
         df = df.sort_values('date').reset_index(drop=True)
 
-        # 计算均线（MA 始终本地计算，Tushare stk_factor 不提供）
+        # 计算均线（本地计算作为 Tushare 数据源降级）
         df = self._calculate_mas(df)
 
         # 计算 MACD 和 RSI（若提供 Tushare 数据则跳过本地计算以节省时间，但仍计算用于 fallback）
@@ -611,10 +611,9 @@ class StockTrendAnalyzer:
     def _apply_tech_indicators(
         self, result: TrendAnalysisResult, ti: Dict[str, Any]
     ) -> None:
-        """用 Tushare stk_factor 预计算指标覆盖本地计算结果。
+        """用 Tushare stk_factor_pro 预计算指标覆盖本地计算结果。
 
-        Tushare 使用前复权(qfq)价格计算，通常比本地原始收盘价计算更准确。
-        MA 不在此覆盖（Tushare stk_factor 不提供 MA 值）。
+        Tushare 使用前复权(qfq)价格计算，比本地原始收盘价计算更准确。
         """
         applied = False
 

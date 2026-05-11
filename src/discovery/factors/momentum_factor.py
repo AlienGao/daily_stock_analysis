@@ -3,6 +3,7 @@
 
 在均线买点基础上叠加强势信号：资金流入、放量启动。
 盘中 3 级数据源降级：东财 push2（实时全粒度）→ 同花顺（实时粗粒度）→ Tushare 资金流 + realtime_spot 实时指标（盘后兜底）。
+轮次间动能加速感知：检测资金加速流入、量比放大、涨势增强的变化。
 盘中可用，盘后不可用（盘后有独立的技术面因子）。
 """
 
@@ -41,6 +42,12 @@ class MomentumFactor(BaseFactor):
     weight = 25.0
 
     _LABEL_THRESHOLD_RATIO = 0.5
+
+    def __init__(self):
+        super().__init__()
+        self._prev_momentum: Dict[str, Dict[str, float]] = {}  # {bare: {inflow_rate, volume_ratio, pct_chg}}
+        self._momentum_trade_date: Optional[str] = None
+        self._cached_mbuilding: Dict[str, Dict[str, float]] = {}  # {bare: {inflow_delta, vol_delta, pct_delta, score}}
 
     def fetch_data(self, trade_date: str, **kwargs) -> Optional[pd.DataFrame]:
         """3 级降级拉取数据：东财 push2 → 同花顺 → Tushare。"""
@@ -135,6 +142,106 @@ class MomentumFactor(BaseFactor):
         return signals
 
     # ------------------------------------------------------------------
+    # 动能加速感知钩子（非通用 delta）
+    # ------------------------------------------------------------------
+
+    def _compute_momentum_building(self, df: pd.DataFrame,
+                                   trade_date: str) -> pd.Series:
+        """检测轮次间动能加速：资金流入加速、量比放大、涨势增强。
+
+        不套通用 delta 框架，针对强势启动场景定制：
+        - 资金加速 (0-10)：inflow_rate 轮次间变化
+        - 量能扩张 (0-5)：volume_ratio 轮次间变化
+        - 涨势增强 (0-5)：pct_chg 轮次间变化（温和区间内）
+
+        Returns per-stock momentum_building bonus (0 ~ +20).
+        """
+        idx = df.index
+        bonus = pd.Series(0.0, index=idx)
+
+        # 跨日重置
+        if self._momentum_trade_date != trade_date:
+            self._prev_momentum.clear()
+            self._momentum_trade_date = trade_date
+
+        inflow_rate = df.get("inflow_rate", pd.Series(0.0, index=idx))
+        volume_ratio = df.get("volume_ratio", pd.Series(1.0, index=idx))
+        pct_chg = df.get("pct_chg", pd.Series(0.0, index=idx))
+
+        prev_map = self._prev_momentum
+        new_map: Dict[str, Dict[str, float]] = {}
+        cached: Dict[str, Dict[str, float]] = {}
+
+        for ts_code in idx:
+            bare = str(ts_code).split(".")[0] if "." in str(ts_code) else str(ts_code).strip().zfill(6)
+
+            cur_ir = float(inflow_rate.get(ts_code, 0))
+            cur_vr = float(volume_ratio.get(ts_code, 1.0))
+            cur_pct = float(pct_chg.get(ts_code, 0))
+
+            new_map[bare] = {"inflow_rate": cur_ir, "volume_ratio": cur_vr, "pct_chg": cur_pct}
+
+            prev = prev_map.get(bare)
+            if prev is None:
+                cached[bare] = {"inflow_delta": 0.0, "vol_delta": 0.0, "pct_delta": 0.0, "score": 0.0}
+                continue
+
+            # 1. 资金加速 (0-10)
+            ir_delta = cur_ir - prev["inflow_rate"]
+            if ir_delta > 0.03:
+                ir_score = 10.0
+            elif ir_delta > 0.01:
+                ir_score = 5.0 + (ir_delta - 0.01) * 250.0  # 5~10
+            elif ir_delta > 0:
+                ir_score = ir_delta * 500.0  # 0~5
+            elif ir_delta > -0.02:
+                ir_score = ir_delta * 100.0  # -2~0
+            else:
+                ir_score = -2.0
+
+            # 2. 量能扩张 (0-5)
+            vr_delta = cur_vr - prev["volume_ratio"]
+            if vr_delta > 0.5:
+                vr_score = 5.0
+            elif vr_delta > 0.2:
+                vr_score = 2.0 + (vr_delta - 0.2) * 10.0  # 2~5
+            elif vr_delta > 0:
+                vr_score = vr_delta * 10.0  # 0~2
+            elif vr_delta > -0.3:
+                vr_score = vr_delta * 3.0   # -1~0
+            else:
+                vr_score = -1.0
+
+            # 3. 涨势增强 (0-5)：只在温和区间(0-7%)内
+            pct_delta = cur_pct - prev["pct_chg"]
+            if 0 < cur_pct <= 7:
+                if pct_delta > 1.0:
+                    pct_score = 5.0
+                elif pct_delta > 0.3:
+                    pct_score = 2.0 + (pct_delta - 0.3) * 4.0  # 2~5
+                elif pct_delta > 0:
+                    pct_score = pct_delta * 6.0  # 0~2
+                else:
+                    pct_score = 0.0
+            else:
+                pct_score = 0.0  # 不在温和区间不追踪涨势
+
+            composite = ir_score + vr_score + pct_score
+            composite = max(-3.0, min(20.0, composite))
+
+            bonus.loc[ts_code] = composite
+            cached[bare] = {
+                "inflow_delta": round(ir_delta, 3),
+                "vol_delta": round(vr_delta, 2),
+                "pct_delta": round(pct_delta, 2),
+                "score": round(composite, 2),
+            }
+
+        self._prev_momentum = new_map
+        self._cached_mbuilding = cached
+        return bonus
+
+    # ------------------------------------------------------------------
     # Score / Describe
     # ------------------------------------------------------------------
 
@@ -142,8 +249,13 @@ class MomentumFactor(BaseFactor):
         if df.empty:
             return pd.Series(dtype=float, name=self.name)
 
+        trade_date = context.get("trade_date", "")
         signals = self._compute_signals(df)
         total = sum(signals.values())
+
+        # 动能加速溢价（0-20，资金加速+量能扩张+涨势增强）
+        mbuilding = self._compute_momentum_building(df, trade_date)
+        total = total + mbuilding
 
         # 净流出惩罚
         inflow_rate = df.get("inflow_rate", pd.Series(0, index=df.index))
@@ -164,6 +276,7 @@ class MomentumFactor(BaseFactor):
             return {}
 
         signals = self._compute_signals(df)
+        mb_cache = getattr(self, "_cached_mbuilding", {}) or {}
 
         signal_meta = [
             ("inflow", "资金流入"),
@@ -183,6 +296,7 @@ class MomentumFactor(BaseFactor):
         for ts_code in scores.index:
             if scores[ts_code] <= 0:
                 continue
+            bare = str(ts_code).split(".")[0] if "." in str(ts_code) else str(ts_code).strip().zfill(6)
             labels = []
             for key, label in signal_meta:
                 val = signals[key].get(ts_code, 0.0)
@@ -200,6 +314,22 @@ class MomentumFactor(BaseFactor):
                 elif key == "pct_chg":
                     pct = pct_r.get(ts_code, 0)
                     labels.append(f"{label}(涨幅{pct:.1f}%)")
+
+            # 动能加速标签
+            mb = mb_cache.get(bare, {})
+            if mb.get("score", 0) >= 5.0:
+                parts = []
+                if mb.get("inflow_delta", 0) > 0.01:
+                    parts.append(f"资金加速↑")
+                if mb.get("vol_delta", 0) > 0.2:
+                    parts.append(f"量能放大↑")
+                if mb.get("pct_delta", 0) > 0.3:
+                    parts.append(f"涨势增强↑")
+                if parts:
+                    labels.append("+".join(parts))
+            elif mb.get("score", 0) <= -2.0:
+                labels.append("动能衰减↓")
+
             if labels:
                 reasons[ts_code] = labels
         return reasons

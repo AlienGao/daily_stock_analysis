@@ -2063,13 +2063,74 @@ class StockAnalysisPipeline:
         """
         from src.discovery.scanner import ensure_postmarket_scan
 
-        self._factor_signals_cache = ensure_postmarket_scan(
+        cache, pm_results, pm_engine = ensure_postmarket_scan(
             tushare_fetcher, akshare_fetcher
         )
+        self._factor_signals_cache = cache
+        self._pm_results = pm_results
+        self._pm_engine = pm_engine
         logger.info(
             "[FactorSignals] 因子信号缓存已加载: %d 只股票",
             len(self._factor_signals_cache),
         )
+
+    def _sync_top_discoveries(
+        self, stock_codes: List[str], tushare_fetcher
+    ) -> List[str]:
+        """从当天盘中/盘后扫描 DB 取 Top5，prepend 到 .env STOCK_LIST 最前面。
+
+        Returns:
+            更新后的 stock_codes 列表（含新发现股）
+        """
+        from datetime import date as _date
+
+        from src.storage import DatabaseManager
+        from src.services.system_config_service import SystemConfigService
+
+        trade_date = (
+            tushare_fetcher.get_trade_time(early_time="18:01", late_time="04:59")
+            or _date.today().strftime("%Y%m%d")
+        )
+        db = DatabaseManager()
+        post_codes = db.get_top_scan_results(trade_date, "postmarket", 5)
+        intra_codes = db.get_top_scan_results(trade_date, "intraday", 5)
+
+        if not post_codes and not intra_codes:
+            logger.debug("[DiscoverySync] 当日无扫描数据，跳过同步")
+            return stock_codes
+
+        # 盘后优先，盘中补充去重
+        merged = post_codes + [c for c in intra_codes if c not in post_codes]
+        if not merged:
+            return stock_codes
+
+        # 读取当前 STOCK_LIST，去重已有的
+        self.config.refresh_stock_list()
+        existing = set(c.upper() for c in self.config.stock_list)
+        new_codes = [c for c in merged if c.upper() not in existing]
+        if not new_codes:
+            logger.debug("[DiscoverySync] 发现股已在 STOCK_LIST 中，跳过")
+            return stock_codes
+
+        # 写入 .env：prepend 到现有 STOCK_LIST 前面
+        current = self.config.stock_list  # already refreshed above
+        full_list = new_codes + [c for c in current if c.upper() not in set(c.upper() for c in new_codes)]
+        try:
+            SystemConfigService().apply_simple_updates(
+                [("STOCK_LIST", ",".join(full_list))]
+            )
+            logger.info(
+                "[DiscoverySync] 已同步 %d 只发现股到 STOCK_LIST: %s",
+                len(new_codes), ",".join(new_codes),
+            )
+        except Exception as e:
+            logger.warning("[DiscoverySync] 写入 .env 失败: %s", e)
+            # 即使写入失败，仍追加到本次分析列表
+            pass
+
+        # 追加到当次分析的股票列表
+        updated = new_codes + stock_codes
+        return updated
 
     def _run_impl(
         self,
@@ -2104,47 +2165,61 @@ class StockAnalysisPipeline:
                 except Exception as e:
                     logger.warning("[FactorSignals] 因子信号缓存构建失败（不阻断主流程）: %s", e)
 
+        # Sync discovery Top5: 从当天盘中+盘后扫描结果中取 Top5，prepend 到 STOCK_LIST
+        if not dry_run:
+            _tf = self.fetcher_manager._get_tushare_fetcher()
+            if _tf and _tf.is_available():
+                try:
+                    stock_codes = self._sync_top_discoveries(stock_codes, _tf)
+                except Exception as e:
+                    logger.warning("[DiscoverySync] 同步发现 Top5 失败: %s", e)
+
         # Auto-discovery: 盘后深度扫描，自动发现高潜力股票并入分析列表
         if getattr(self.config, 'auto_discover', False) and not dry_run:
             tushare_fetcher = self.fetcher_manager._get_tushare_fetcher()
             akshare_fetcher = self.fetcher_manager._get_akshare_fetcher()
             if tushare_fetcher and tushare_fetcher.is_available():
                 try:
+                    # 复用 _prepare_factor_signals_cache 的结果，避免重复跑盘后扫描
                     from src.discovery.config import get_discovery_config
-                    from src.discovery.engine import StockDiscoveryEngine
-                    from src.discovery.factors import (
-                        MoneyFlowFactor, MarginFactor, ChipFactor,
-                        TechnicalFactor, LimitFactor,
-                        FundamentalFactor, PopularityFactor, HotMoneyFactor,
-                        InstitutionHoldFactor, ProfitForecastFactor,
-                        PerformanceFactor, BuybackFactor, InsiderBuyFactor,
-                        BrokerRecommendFactor,
-                    )
-
                     discovery_config = get_discovery_config()
-                    engine = StockDiscoveryEngine(
-                        discovery_config,
-                        tushare_fetcher,
-                        akshare_fetcher,
-                    )
-                    engine.register_factors([
-                        MoneyFlowFactor(),
-                        MarginFactor(),
-                        ChipFactor(),
-                        TechnicalFactor(),
-                        LimitFactor(),
-                        FundamentalFactor(),
-                        PopularityFactor(),
-                        HotMoneyFactor(),
-                        InstitutionHoldFactor(),
-                        ProfitForecastFactor(),
-                        PerformanceFactor(),
-                        BuybackFactor(),
-                        InsiderBuyFactor(),
-                        BrokerRecommendFactor(),
-                    ])
 
-                    discovered = engine.discover(mode="postmarket")
+                    if getattr(self, '_pm_results', None) and getattr(self, '_pm_engine', None):
+                        discovered = self._pm_results
+                        engine = self._pm_engine
+                        logger.info("[Discovery] 复用因子信号缓存中的盘后结果: %d 只候选股", len(discovered or []))
+                    else:
+                        from src.discovery.engine import StockDiscoveryEngine
+                        from src.discovery.factors import (
+                            MoneyFlowFactor, MarginFactor, ChipFactor,
+                            TechnicalFactor, LimitFactor,
+                            FundamentalFactor, PopularityFactor, HotMoneyFactor,
+                            InstitutionHoldFactor, ProfitForecastFactor,
+                            PerformanceFactor, BuybackFactor, InsiderBuyFactor,
+                            BrokerRecommendFactor,
+                        )
+                        engine = StockDiscoveryEngine(
+                            discovery_config,
+                            tushare_fetcher,
+                            akshare_fetcher,
+                        )
+                        engine.register_factors([
+                            MoneyFlowFactor(),
+                            MarginFactor(),
+                            ChipFactor(),
+                            TechnicalFactor(),
+                            LimitFactor(),
+                            FundamentalFactor(),
+                            PopularityFactor(),
+                            HotMoneyFactor(),
+                            InstitutionHoldFactor(),
+                            ProfitForecastFactor(),
+                            PerformanceFactor(),
+                            BuybackFactor(),
+                            InsiderBuyFactor(),
+                            BrokerRecommendFactor(),
+                        ])
+                        discovered = engine.discover(mode="postmarket")
                     if discovered:
                         discovered_codes = [
                             r.stock_code for r in discovered[:discovery_config.auto_discover_count]

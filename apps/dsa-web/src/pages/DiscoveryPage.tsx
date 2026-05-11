@@ -123,6 +123,15 @@ const FACTOR_LABELS: Record<string, string> = {
 
 const factorLabel = (key: string) => FACTOR_LABELS[key] || key;
 
+const colorizeArrows = (text: string): React.ReactNode => {
+  const parts = text.split(/([↑↓])/g);
+  return parts.map((part, i) => {
+    if (part === '↑') return <span key={i} style={{color: '#ef4444', fontWeight: 700}}>↑</span>;
+    if (part === '↓') return <span key={i} style={{color: '#22c55e', fontWeight: 700}}>↓</span>;
+    return part;
+  });
+};
+
 const FactorBar: React.FC<{ label: string; value: number; pctShare: number }> = ({ label, value, pctShare }) => {
   const pct = Math.min(100, Math.max(0, value));
   const hue = pct >= 70 ? '193 100% 43%' : pct >= 40 ? '37 92% 50%' : '224 12% 42%';
@@ -333,7 +342,7 @@ const StockCard: React.FC<{
                     {keyReasons.map((r, i) => (
                       <div key={i} className="rounded-lg border border-border/20 bg-foreground/[0.02] px-2.5 py-2 text-xs leading-5 text-secondary-text">
                         <span className="mr-1.5 text-cyan/80">#{i + 1}</span>
-                        {r}
+                        {colorizeArrows(r)}
                       </div>
                     ))}
                   </div>
@@ -609,6 +618,8 @@ const FactorTopsCard: React.FC<{
     'bg-amber-400/15 text-amber-400',
     'bg-slate-300/20 text-slate-400',
     'bg-orange-400/15 text-orange-400',
+    'bg-emerald-400/15 text-emerald-400',
+    'bg-violet-400/15 text-violet-400',
   ];
 
   return (
@@ -632,10 +643,10 @@ const FactorTopsCard: React.FC<{
                 <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded text-[10px] font-bold ${rankCls[i]}`}>
                   {i + 1}
                 </span>
-                <span className="font-mono font-medium text-foreground w-[68px]">{s.stock_code}</span>
-                <span className="text-secondary-text truncate max-w-[56px]">{s.stock_name}</span>
+                <span className="font-mono font-medium text-foreground shrink-0">{s.stock_code}</span>
+                <span className="text-secondary-text shrink-0">{s.stock_name}</span>
                 {s.sector && (
-                  <span className="shrink-0 text-[10px] text-tertiary-text/70 border border-border/20 rounded px-1 py-px truncate max-w-[72px]">
+                  <span className="shrink-0 text-[10px] text-tertiary-text/70 border border-border/20 rounded px-1 py-px">
                     {s.sector}
                   </span>
                 )}
@@ -1017,11 +1028,16 @@ const DiscoveryPage: React.FC = () => {
     finally { setFactorTopsLoading(false); }
   }, []);
 
+  // 切换顶层 Tab 时重置子 Tab
   useEffect(() => {
-    setResultSubTab('composite'); // 切换顶层 Tab 时重置子 Tab
+    setResultSubTab('composite');
+  }, [tab]);
+
+  useEffect(() => {
     if (tab === 'intraday') { fetchIntraday(); fetchBacktest('intraday'); fetchScanMode('intraday'); }
     else { fetchReport(); fetchBacktest('postmarket'); fetchScanMode('postmarket'); }
-  }, [tab, fetchIntraday, fetchReport, fetchBacktest, fetchScanMode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
 
   useEffect(() => {
     if (resultSubTab === 'factor-tops') fetchFactorTops(tab);
@@ -1037,6 +1053,7 @@ const DiscoveryPage: React.FC = () => {
 
     es.addEventListener('update', () => {
       fetchIntraday(true);
+      fetchBacktest('intraday');
     });
 
     es.onerror = () => {
@@ -1044,7 +1061,7 @@ const DiscoveryPage: React.FC = () => {
     };
 
     return () => es.close();
-  }, [tab, fetchIntraday]);
+  }, [tab, fetchIntraday, fetchBacktest]);
 
   useEffect(() => {
     const id = setInterval(() => fetchBacktest(tab), BACKTEST_REFRESH_MS);
@@ -1294,7 +1311,7 @@ const DiscoveryPage: React.FC = () => {
               onChange={(v) => setResultSubTab(v as string)}
               options={[
                 { label: '综合排名', value: 'composite' },
-                { label: '因子Top3', value: 'factor-tops' },
+                { label: '因子Top5', value: 'factor-tops' },
               ]}
               block
             />
@@ -1382,7 +1399,7 @@ const DiscoveryPage: React.FC = () => {
               onChange={(v) => setResultSubTab(v as string)}
               options={[
                 { label: '综合排名', value: 'composite' },
-                { label: '因子Top3', value: 'factor-tops' },
+                { label: '因子Top5', value: 'factor-tops' },
               ]}
               block
             />

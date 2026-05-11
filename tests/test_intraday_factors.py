@@ -574,57 +574,57 @@ class TestSectorFactor:
         return SectorFactor()
 
     def test_limit_times_scoring(self, factor):
-        """连板梯度映射 + 默认 sector_heat=15 + seal_time=0."""
+        """连板梯度映射: 1→10, 2→20, 3→27, 4→32, 5→35; +sector_heat=10(无板块列)."""
         df = _make_factor_df(["A.SH", "B.SZ", "C.BJ", "D.SH", "E.SZ"],
                              limit_times=[1, 2, 3, 4, 5])
         scores = factor.score(df)
-        # chain: 1→15, 2→28, 3→38, 4→45, 5→50; +sector_heat 15 +seal 0
-        assert scores["A.SH"] == 30.0   # 15+15+0
-        assert scores["B.SZ"] == 43.0   # 28+15+0
-        assert scores["C.BJ"] == 53.0   # 38+15+0
-        assert scores["D.SH"] == 60.0   # 45+15+0
-        assert scores["E.SZ"] == 65.0   # 50+15+0
+        # chain: 1→10, 2→20, 3→27, 4→32, 5→35; +sector_heat 10 +seal 0 +momentum 0
+        assert scores["A.SH"] == 20.0   # 10+10
+        assert scores["B.SZ"] == 30.0   # 20+10
+        assert scores["C.BJ"] == 37.0   # 27+10
+        assert scores["D.SH"] == 42.0   # 32+10
+        assert scores["E.SZ"] == 45.0   # 35+10
 
     def test_limit_times_capped(self, factor):
-        """limit_times ≥5 统一给满 50 + 默认 sector_heat 15."""
+        """limit_times ≥5 统一给满 35 + sector_heat=10."""
         df = _make_factor_df(["A.SH"], limit_times=[10])
         scores = factor.score(df)
-        assert scores["A.SH"] == 65.0
+        assert scores["A.SH"] == 45.0
 
     def test_limit_times_nan(self, factor):
-        """NaN → chain=0，但 sector_heat 默认 15."""
+        """NaN → chain=0，sector_heat=10."""
         df = _make_factor_df(["A.SH"], limit_times=[np.nan])
         scores = factor.score(df)
-        assert scores["A.SH"] == 15.0
+        assert scores["A.SH"] == 10.0
 
     def test_pct_chg_fallback(self, factor):
-        """无 limit_times 时降级为 pct_chg×5 + 默认 sector_heat 15."""
+        """无 limit_times 时降级为 pct_chg×3.5 + sector_heat=10."""
         df = _make_factor_df(["A.SH", "B.SZ"], pct_chg=[9.5, 12.0])
         scores = factor.score(df)
-        assert scores["A.SH"] == 62.5   # 47.5+15+0
-        assert scores["B.SZ"] == 65.0   # 50(capped)+15+0
+        assert scores["A.SH"] == 43.25  # 33.25+10
+        assert scores["B.SZ"] == 45.0   # 35(capped)+10
 
     def test_pct_chg_negative_clamped(self, factor):
-        """负涨幅 chain=0，但 sector_heat 默认 15."""
+        """负涨幅 chain=0，sector_heat=10."""
         df = _make_factor_df(["A.SH"], pct_chg=[-3.0])
         scores = factor.score(df)
-        assert scores["A.SH"] == 15.0
+        assert scores["A.SH"] == 10.0
 
     def test_describe_limit_times(self, factor):
-        """3 连板 + 封板时间触发标签（无 sector 列时板块联动默认触发）."""
+        """lt=4/5 触发连板标签 (threshold=60*0.5=30); lt=1 仅封板时间标签."""
         df = _make_factor_df(["A.SH", "B.SZ", "C.BJ"],
-                             limit_times=[3, 1, 2],
+                             limit_times=[4, 1, 5],
                              首次封板时间=["09:35", "09:40", "10:00"],
                              炸板次数=[0, 1, 0])
-        scores = pd.Series([60.0, 20.0, 40.0], index=["A.SH", "B.SZ", "C.BJ"])
+        scores = pd.Series([60.0, 20.0, 60.0], index=["A.SH", "B.SZ", "C.BJ"])
         reasons = factor.describe(df, scores)
-        # A: lt=3 → "3连板", 封板09:35
-        assert any("3连板" in r for r in reasons["A.SH"])
+        # A: lt=4 → "4连板" + 封板09:35
+        assert any("4连板" in r for r in reasons["A.SH"])
         assert any("09:35" in r for r in reasons["A.SH"])
-        # B: lt=1 chain=15 < 25 threshold, no chain label; 封板09:40
+        # B: lt=1 chain=10 < 30, no chain label; 封板09:40
         assert any("09:40" in r for r in reasons["B.SZ"])
-        # C: lt=2 → "2连板", 封板10:00
-        assert any("2连板" in r for r in reasons["C.BJ"])
+        # C: lt=5 → "连板龙头(5连板)" + 封板10:00
+        assert any("5连板" in r or "连板龙头" in r for r in reasons["C.BJ"])
         assert any("10:00" in r for r in reasons["C.BJ"])
 
     def test_empty_df(self, factor):

@@ -30,6 +30,7 @@ export type StockEnrichment = {
     concentration?: number | null;
     scr90?: number | null;
   } | null;
+  sector?: string | null;
 };
 
 export type EnrichmentResponse = {

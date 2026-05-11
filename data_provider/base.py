@@ -1970,6 +1970,27 @@ class DataFetcherManager:
                 logger.info(f"[股票名称] 从实时行情获取: {stock_code} -> {name}")
                 return name
 
+        # 2.5. 尝试从数据库 realtime_spot 获取（盘中有全量名称，避免 API 调用）
+        if not hasattr(self, '_db_name_cache'):
+            self._db_name_cache: Dict[str, str] = {}
+            try:
+                from src.storage import DatabaseManager
+                spot = DatabaseManager().get_realtime_spot()
+                if spot is not None and not spot.empty and 'name' in spot.columns:
+                    for idx, name in spot['name'].items():
+                        bare = str(idx).replace('.SH', '').replace('.SZ', '').replace('.BJ', '')
+                        bare = bare.replace('.SHMQ', '').replace('.SZMQ', '').replace('.BJMQ', '').strip().zfill(6)
+                        if isinstance(name, str) and name.strip() and bare not in self._db_name_cache:
+                            self._db_name_cache[bare] = name.strip()
+                    logger.info("[股票名称] DB 缓存初始化完成: %d 条", len(self._db_name_cache))
+            except Exception as e:
+                logger.debug("[股票名称] DB 缓存初始化失败: %s", e)
+
+        if stock_code in self._db_name_cache:
+            name = self._db_name_cache[stock_code]
+            if is_meaningful_stock_name(name, stock_code):
+                return self._cache_stock_name(stock_code, name) or name
+
         # 3. 依次尝试各个数据源
         from .akshare_fetcher import _is_us_code
         is_us = _is_us_code(stock_code)
