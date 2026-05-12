@@ -108,6 +108,15 @@ class FundamentalFactor(BaseFactor):
             df_basic = tushare_fetcher.get_daily_basic_all(trade_date)
             if df_basic is None or df_basic.empty:
                 return None
+            # 落库缓存，下次命中 DB
+            try:
+                from src.storage import DatabaseManager
+                df_save = df_basic.reset_index()
+                df_save["code"] = df_save["ts_code"].astype(str).str.replace(r"\..*", "", regex=True)
+                DatabaseManager().upsert_daily_basic(df_save, source="tushare")
+                logger.info("[FundamentalFactor] 落库 %d 条 daily_basic", len(df_save))
+            except Exception as e:
+                logger.debug("[FundamentalFactor] 落库 daily_basic 失败: %s", e)
 
         # 合并同花顺行业分类
         try:
