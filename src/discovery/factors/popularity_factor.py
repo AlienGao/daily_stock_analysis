@@ -48,26 +48,33 @@ class PopularityFactor(BaseFactor):
     def fetch_data(self, trade_date: str, **kwargs) -> Optional[pd.DataFrame]:
         """获取人气排行数据。
 
-        优先级：东财 API > Tushare dc_hot > DB 缓存。
+        优先级：DB 当日 > 东财 API > Tushare dc_hot > DB 历史（降权）。
+        盘后 refresh 已写入当日数据，DB 当日命中可省去重复 API 调用。
         """
         tushare_fetcher = kwargs.get("tushare_fetcher")
+        self._cache_data_date = None  # 仅 DB 历史路径设置
 
-        df = None
-        # ── 1. 东财 API（盘中主路径） ──
+        # ── 1. DB 当日优先（盘后 refresh 已写入）──
+        df = self._fetch_from_db_today(trade_date)
+        if df is not None and not df.empty:
+            self._trade_date = trade_date
+            return df
+
+        # ── 2. 东财 API（盘中主路径） ──
         df = self._fetch_eastmoney()
         if df is not None and not df.empty:
             self._trade_date = trade_date
             self._cache_to_db(df, trade_date)
             return df
 
-        # ── 2. Tushare dc_hot 降级 ──
+        # ── 3. Tushare dc_hot 降级 ──
         if tushare_fetcher:
             df = self._fetch_tushare(tushare_fetcher, trade_date)
             if df is not None and not df.empty:
                 self._trade_date = trade_date
                 return df
 
-        # ── 3. DB 缓存 ──
+        # ── 4. DB 历史降级（带降权）──
         df = self._fetch_from_db(trade_date)
         if df is not None and not df.empty:
             df = df[~df.index.duplicated(keep='first')]
@@ -75,6 +82,29 @@ class PopularityFactor(BaseFactor):
             return df
 
         return None
+
+    @staticmethod
+    def _fetch_from_db_today(trade_date: str) -> Optional[pd.DataFrame]:
+        """仅查询 popularity_rank 当日数据，不回溯历史。"""
+        try:
+            from src.storage import DatabaseManager
+
+            db = DatabaseManager()
+            df = db.get_popularity_rank_range(start_date=trade_date, end_date=trade_date)
+            if df is None or df.empty:
+                return None
+
+            out = pd.DataFrame(index=df.index)
+            out["name"] = df.get("name", "")
+            out["pct_chg"] = pd.to_numeric(df.get("pct_change", 0), errors="coerce").fillna(0)
+            out["rank"] = pd.to_numeric(df.get("rank", 9999), errors="coerce").fillna(9999).astype(int)
+            out["rank_change"] = 0
+
+            logger.info("[PopularityFactor] DB 当日读取: %d 条", len(out))
+            return out
+        except Exception as e:
+            logger.warning("[PopularityFactor] DB 当日读取失败: %s", e)
+            return None
 
     @staticmethod
     def _cache_to_db(df: pd.DataFrame, trade_date: str, source: str = "eastmoney") -> None:
@@ -217,8 +247,7 @@ class PopularityFactor(BaseFactor):
             logger.warning("[PopularityFactor] Tushare dc_hot 降级失败: %s", e)
             return None
 
-    @staticmethod
-    def _fetch_from_db(trade_date: str) -> Optional[pd.DataFrame]:
+    def _fetch_from_db(self, trade_date: str) -> Optional[pd.DataFrame]:
         """从 popularity_rank 表读取人气数据，优先当日，无数据时回退最近 5 日。"""
         try:
             from datetime import datetime as _dt2, timedelta as _td2
@@ -233,7 +262,12 @@ class PopularityFactor(BaseFactor):
                 start = (td - _td2(days=5)).strftime("%Y%m%d")
                 df = db.get_popularity_rank_range(start_date=start, end_date=trade_date)
             if df is None or df.empty:
+                self._cache_data_date = None
                 return None
+
+            # 记录实际数据的最新日期，用于 score() 降权
+            raw_dates = pd.to_datetime(df["trade_date"].astype(str), format="%Y%m%d", errors="coerce")
+            self._cache_data_date = raw_dates.max().strftime("%Y%m%d") if not raw_dates.isna().all() else trade_date
 
             out = pd.DataFrame(index=df.index)
             out["name"] = df.get("name", "")
@@ -245,6 +279,7 @@ class PopularityFactor(BaseFactor):
             return out
         except Exception as e:
             logger.warning("[PopularityFactor] DB 读取失败: %s", e)
+            self._cache_data_date = None
             return None
 
     # ------------------------------------------------------------------
@@ -353,6 +388,28 @@ class PopularityFactor(BaseFactor):
         df = df[~df.index.duplicated(keep='first')]
         signals = self._compute_signals(df)
         total = sum(signals.values()).clip(0, 100)
+
+        # DB 缓存降权：数据日期与目标日期差 N 天，每天减半，3 天归零
+        cache_date = getattr(self, "_cache_data_date", None)
+        trade_date = getattr(self, "_trade_date", "")
+        if cache_date and trade_date:
+            try:
+                from datetime import datetime as _dt
+                d_cache = _dt.strptime(str(cache_date)[:8], "%Y%m%d")
+                d_target = _dt.strptime(str(trade_date).replace("-", "")[:8], "%Y%m%d")
+                lag = (d_target - d_cache).days
+                if lag >= 3:
+                    total = total * 0.0
+                elif lag == 2:
+                    total = total * 0.25
+                elif lag == 1:
+                    total = total * 0.5
+                if lag > 0:
+                    logger.debug("[PopularityFactor] DB 缓存降权: lag=%d天, multiplier=%.2f", lag,
+                                  1.0 if lag >= 3 else (0.5 if lag == 1 else 0.25))
+            except Exception:
+                pass
+
         total.name = self.name
         return total
 

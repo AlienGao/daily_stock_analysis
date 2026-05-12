@@ -10,6 +10,7 @@
 import logging
 from typing import Dict, Optional
 
+import numpy as np
 import pandas as pd
 from sqlalchemy import select
 
@@ -37,9 +38,12 @@ class HmTracker:
     # ------------------------------------------------------------------
 
     def compute_performance(
-        self, start_date: str = "20220801", end_date: Optional[str] = None
+        self, start_date: str = "20220801", end_date: Optional[str] = None,
+        half_life_days: int = 183,
     ) -> pd.DataFrame:
         """计算各游资的历史胜率与质量评分。
+
+        指数衰减加权：近期交易权重更高，半年半衰期。
 
         Returns:
             DataFrame index=hm_name, columns=[win_rate, avg_return, total_trades, quality_score]
@@ -121,11 +125,29 @@ class HmTracker:
             return pd.DataFrame()
 
         df_perf = pd.DataFrame(records)
+
+        # 时间衰减权重（半年半衰期）
+        if end_date is None:
+            end_date = pd.Timestamp.now().strftime("%Y%m%d")
+        ref_date = pd.to_datetime(str(end_date)[:8], format="%Y%m%d")
+        df_perf["days_ago"] = (
+            ref_date - pd.to_datetime(df_perf["trade_date"].astype(str).str[:8], format="%Y%m%d")
+        ).dt.days
+        decay = np.log(2) / half_life_days
+        df_perf["weight"] = np.exp(-decay * df_perf["days_ago"].clip(lower=0))
+
+        df_perf["_wins"] = (df_perf["return"] > 0).astype(float) * df_perf["weight"]
+        df_perf["_wret"] = df_perf["return"] * df_perf["weight"]
+
         perf = df_perf.groupby("hm_name").agg(
-            win_rate=("return", lambda x: (x > 0).mean()),
-            avg_return=("return", "mean"),
+            _wins=("_wins", "sum"),
+            _wret=("_wret", "sum"),
+            _tw=("weight", "sum"),
             total_trades=("return", "count"),
         )
+        perf["win_rate"] = perf["_wins"] / perf["_tw"].replace(0, 1)
+        perf["avg_return"] = perf["_wret"] / perf["_tw"].replace(0, 1)
+        perf = perf.drop(columns=["_wins", "_wret", "_tw"])
 
         win_pct = perf["win_rate"].rank(pct=True, na_option="bottom")
         ret_pct = perf["avg_return"].rank(pct=True, na_option="bottom")

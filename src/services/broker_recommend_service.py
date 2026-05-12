@@ -631,7 +631,26 @@ class BrokerRecommendService:
             trade_date = tf.get_trade_time(early_time="00:00", late_time="19:00")
             if trade_date:
                 try:
-                    df_basic = tf.get_daily_basic_all(trade_date)
+                    # DB first
+                    df_basic = None
+                    try:
+                        db = DatabaseManager.get_instance()
+                        df_basic = db.get_daily_basic(trade_date)
+                        if not df_basic.empty and "total_mv" in df_basic.columns:
+                            df_basic = df_basic.reset_index().rename(columns={"code": "ts_code_raw"})
+                            codes = df_basic["ts_code_raw"].astype(str).str.zfill(6)
+                            pre2 = codes.str[:2]
+                            suffix_map = {
+                                "60": ".SH", "68": ".SH", "00": ".SZ", "30": ".SZ",
+                                "43": ".BJ", "83": ".BJ", "87": ".BJ", "92": ".BJ",
+                            }
+                            df_basic["ts_code"] = codes + pre2.map(suffix_map).fillna("")
+                            df_basic = df_basic.set_index("ts_code").drop(columns=["ts_code_raw"], errors="ignore")
+                    except Exception:
+                        pass
+                    # Fallback to Tushare API
+                    if df_basic is None or df_basic.empty:
+                        df_basic = tf.get_daily_basic_all(trade_date)
                     if df_basic is not None and not df_basic.empty:
                         for tc in missing:
                             if tc not in df_basic.index:

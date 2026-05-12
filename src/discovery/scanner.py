@@ -908,8 +908,74 @@ def refresh_money_flow_postmarket(tushare_fetcher) -> int:
 def refresh_margin_detail_postmarket(tushare_fetcher) -> int:
     """盘后用 Tushare margin_detail 全量刷新 margin_detail 表。
 
-    拉取最近 2 个交易日，覆盖边缘日期（如当天数据尚未完整发布时，
-    次日再跑可补齐前一日的剩余股票）。
+    检查最近 7 个交易日，跳过 DB 已完整的日期，补齐仍不完整的。
+    Tushare 数据分批发布，只拉 2 天可能错过延迟补齐的窗口。
+
+    Returns:
+        落库条数，失败返回 0
+    """
+    try:
+        from src.storage import DatabaseManager
+        from sqlalchemy import text as _text
+
+        trade_dates = tushare_fetcher._get_trade_dates()
+        if not trade_dates:
+            logger.warning("[Scanner] 盘后 margin_detail 刷新: 无交易日")
+            return 0
+
+        # 最近 7 个交易日
+        target_dates = trade_dates[-7:] if len(trade_dates) >= 7 else trade_dates
+
+        db = DatabaseManager()
+        total_saved = 0
+        with db.get_session() as sess:
+            for td in target_dates:
+                cnt = sess.execute(
+                    _text("SELECT COUNT(*) FROM margin_detail WHERE trade_date = :dt"),
+                    {"dt": td},
+                ).scalar() or 0
+                if cnt >= 4000:
+                    logger.debug(f"[Scanner] 盘后 margin_detail 刷新: {td} 已完整({cnt}), 跳过")
+                    continue
+
+                df = tushare_fetcher.get_bulk_margin_detail(trade_date=td)
+                if df is None or df.empty:
+                    logger.warning(f"[Scanner] 盘后 margin_detail 刷新: {td} 无数据")
+                    continue
+
+                df = df.reset_index()
+                out = pd.DataFrame()
+                out["code"] = df["ts_code"].astype(str).str.split(".").str[0].str.zfill(6)
+                out["name"] = df.get("name", pd.Series("", index=df.index)).values if "name" in df.columns else ""
+                out["trade_date"] = df.get("trade_date", td)
+                for c in ("rzye", "rzmre", "rzche", "rqye", "rqmcl", "rqchl", "rqyl"):
+                    if c in df.columns:
+                        out[c] = pd.to_numeric(df[c], errors="coerce")
+
+                saved = db.upsert_margin_detail(out, source="tushare")
+                total_saved += saved
+                logger.info(f"[Scanner] 盘后 margin_detail 刷新 {td}: DB已有{cnt}, 补{saved} 条")
+
+        # 清理超 10 年数据
+        cutoff = str(int(trade_dates[-1][:4]) - 10) + trade_dates[-1][4:]
+        with db.get_session() as sess:
+            deleted = sess.execute(
+                _text("DELETE FROM margin_detail WHERE trade_date < :cutoff"),
+                {"cutoff": cutoff},
+            ).rowcount
+            sess.commit()
+        if deleted:
+            logger.info("[Scanner] margin_detail 清理超 10 年数据: %d 条 (早于 %s)", deleted, cutoff)
+
+        logger.info("[Scanner] 盘后 margin_detail 全量刷新: 合计 %d 条", total_saved)
+        return total_saved
+    except Exception as e:
+        logger.warning("[Scanner] 盘后 margin_detail 刷新失败: %s", e)
+        return 0
+
+
+def refresh_daily_basic_postmarket(tushare_fetcher) -> int:
+    """盘后用 Tushare daily_basic 全量刷新 daily_basic 表。
 
     Returns:
         落库条数，失败返回 0
@@ -919,37 +985,35 @@ def refresh_margin_detail_postmarket(tushare_fetcher) -> int:
 
         trade_dates = tushare_fetcher._get_trade_dates()
         if not trade_dates:
-            logger.warning("[Scanner] 盘后 margin_detail 刷新: 无交易日")
+            logger.warning("[Scanner] 盘后 daily_basic 刷新: 无交易日")
             return 0
 
-        # 最近 2 个交易日，覆盖边缘日期的不完整数据
-        target_dates = trade_dates[-2:] if len(trade_dates) >= 2 else trade_dates
+        td = trade_dates[-1]
+        df = tushare_fetcher.get_daily_basic_all(trade_date=td)
+        if df is None or df.empty:
+            logger.warning(f"[Scanner] 盘后 daily_basic 刷新: {td} 无数据")
+            return 0
+
+        df = df.reset_index()
+        out = pd.DataFrame()
+        out["code"] = df["ts_code"].astype(str).str.split(".").str[0].str.zfill(6)
+        out["trade_date"] = df.get("trade_date", td)
+        for c in ("turnover_rate", "volume_ratio", "pe", "pb", "total_mv"):
+            if c in df.columns:
+                out[c] = pd.to_numeric(df[c], errors="coerce")
 
         db = DatabaseManager()
-        total_saved = 0
-        for td in target_dates:
-            df = tushare_fetcher.get_bulk_margin_detail(trade_date=td)
-            if df is None or df.empty:
-                logger.warning(f"[Scanner] 盘后 margin_detail 刷新: {td} 无数据")
-                continue
+        saved = db.upsert_daily_basic(out, source="tushare")
+        logger.info(f"[Scanner] 盘后 daily_basic 刷新 {td}: {saved} 条")
 
-            df = df.reset_index()
-            out = pd.DataFrame()
-            out["code"] = df["ts_code"].astype(str).str.split(".").str[0].str.zfill(6)
-            out["name"] = df.get("name", pd.Series("", index=df.index)).values if "name" in df.columns else ""
-            out["trade_date"] = df.get("trade_date", td)
-            for c in ("rzye", "rzmre", "rzche", "rqye", "rqmcl", "rqchl", "rqyl"):
-                if c in df.columns:
-                    out[c] = pd.to_numeric(df[c], errors="coerce")
+        # 自动清理超 10 年数据
+        from datetime import datetime, timedelta
+        cutoff = (datetime.now() - timedelta(days=365 * 10)).strftime("%Y%m%d")
+        db.delete_daily_basic_before(cutoff)
 
-            saved = db.upsert_margin_detail(out, source="tushare")
-            total_saved += saved
-            logger.info(f"[Scanner] 盘后 margin_detail 刷新 {td}: {saved} 条")
-
-        logger.info("[Scanner] 盘后 margin_detail 全量刷新: 合计 %d 条", total_saved)
-        return total_saved
+        return saved
     except Exception as e:
-        logger.warning("[Scanner] 盘后 margin_detail 刷新失败: %s", e)
+        logger.warning("[Scanner] 盘后 daily_basic 刷新失败: %s", e)
         return 0
 
 
@@ -960,6 +1024,7 @@ def refresh_hm_detail_postmarket(tushare_fetcher, start: Optional[str] = None) -
     """
     try:
         from src.storage import DatabaseManager
+        from sqlalchemy import text as _text
 
         trade_dates = tushare_fetcher._get_trade_dates()
         if not trade_dates:
@@ -998,6 +1063,18 @@ def refresh_hm_detail_postmarket(tushare_fetcher, start: Optional[str] = None) -
             logger.info("[Scanner] 盘后 hm_detail 刷新 %s: %d 条", td, saved)
 
         logger.info("[Scanner] 盘后 hm_detail 刷新完成: %d 天, 合计 %d 条", len(target_dates), total_saved)
+
+        # 清理超 10 年数据
+        cutoff = str(int(trade_dates[-1][:4]) - 10) + trade_dates[-1][4:]
+        with db.get_session() as sess:
+            deleted = sess.execute(
+                _text("DELETE FROM hm_detail WHERE trade_date < :cutoff"),
+                {"cutoff": cutoff},
+            ).rowcount
+            sess.commit()
+        if deleted:
+            logger.info("[Scanner] hm_detail 清理超 10 年数据: %d 条 (早于 %s)", deleted, cutoff)
+
         return total_saved
     except Exception as e:
         logger.warning("[Scanner] hm_detail 刷新失败: %s", e)
@@ -1017,43 +1094,64 @@ def refresh_tech_indicator_postmarket(tushare_fetcher) -> int:
 def refresh_cyq_perf_postmarket(tushare_fetcher) -> int:
     """盘后用 Tushare cyq_perf 全量刷新筹码胜率表。
 
-    拉取最近 2 个交易日，覆盖边缘日期的不完整数据。
+    检查最近 7 个交易日，跳过 DB 已完整的日期，补齐仍不完整的。
 
     Returns:
         落库条数，失败返回 0
     """
     try:
         from src.storage import DatabaseManager
+        from sqlalchemy import text as _text
 
         trade_dates = tushare_fetcher._get_trade_dates()
         if not trade_dates:
             logger.warning("[Scanner] 盘后 cyq_perf 刷新: 无交易日")
             return 0
 
-        # 最近 2 个交易日
-        target_dates = trade_dates[-2:] if len(trade_dates) >= 2 else trade_dates
+        # 最近 7 个交易日
+        target_dates = trade_dates[-7:] if len(trade_dates) >= 7 else trade_dates
 
         db = DatabaseManager()
         total_saved = 0
-        for td in target_dates:
-            df = tushare_fetcher.get_bulk_cyq_perf(trade_date=td)
-            if df is None or df.empty:
-                logger.warning(f"[Scanner] 盘后 cyq_perf 刷新: {td} 无数据")
-                continue
+        with db.get_session() as sess:
+            for td in target_dates:
+                cnt = sess.execute(
+                    _text("SELECT COUNT(*) FROM broker_enrichment_cyq_perf WHERE trade_date = :dt"),
+                    {"dt": td},
+                ).scalar() or 0
+                if cnt >= 5000:
+                    logger.debug(f"[Scanner] 盘后 cyq_perf 刷新: {td} 已完整({cnt}), 跳过")
+                    continue
 
-            df = df.reset_index()
-            df["trade_date"] = df.get("trade_date", td)
-            numeric_cols = [
-                "winner_rate", "cost_5pct", "cost_15pct", "cost_50pct",
-                "cost_85pct", "cost_95pct", "weight_avg", "his_low", "his_high",
-            ]
-            for col in numeric_cols:
-                if col in df.columns:
-                    df[col] = pd.to_numeric(df[col], errors="coerce")
+                df = tushare_fetcher.get_bulk_cyq_perf(trade_date=td)
+                if df is None or df.empty:
+                    logger.warning(f"[Scanner] 盘后 cyq_perf 刷新: {td} 无数据")
+                    continue
 
-            saved = db.upsert_cyq_perf(df, source="tushare")
-            total_saved += saved
-            logger.info(f"[Scanner] 盘后 cyq_perf 刷新 {td}: {saved} 条")
+                df = df.reset_index()
+                df["trade_date"] = df.get("trade_date", td)
+                numeric_cols = [
+                    "winner_rate", "cost_5pct", "cost_15pct", "cost_50pct",
+                    "cost_85pct", "cost_95pct", "weight_avg", "his_low", "his_high",
+                ]
+                for col in numeric_cols:
+                    if col in df.columns:
+                        df[col] = pd.to_numeric(df[col], errors="coerce")
+
+                saved = db.upsert_cyq_perf(df, source="tushare")
+                total_saved += saved
+                logger.info(f"[Scanner] 盘后 cyq_perf 刷新 {td}: DB已有{cnt}, 补{saved} 条")
+
+        # 清理超 10 年数据
+        cutoff = str(int(trade_dates[-1][:4]) - 10) + trade_dates[-1][4:]
+        with db.get_session() as sess:
+            deleted = sess.execute(
+                _text("DELETE FROM broker_enrichment_cyq_perf WHERE trade_date < :cutoff"),
+                {"cutoff": cutoff},
+            ).rowcount
+            sess.commit()
+        if deleted:
+            logger.info("[Scanner] 盘后 cyq_perf 清理超 10 年数据: %d 条 (早于 %s)", deleted, cutoff)
 
         logger.info("[Scanner] 盘后 cyq_perf 全量刷新: 合计 %d 条", total_saved)
         return total_saved
@@ -1329,6 +1427,21 @@ def refresh_popularity_postmarket(tushare_fetcher) -> int:
         db = DatabaseManager()
         saved = db.upsert_popularity_rank(out, source="tushare")
         logger.info("[Scanner] 盘后 popularity_rank 全量刷新: %d 条", saved)
+
+        # 清理超 10 年数据
+        from sqlalchemy import text as _text
+        latest_td = str(out["trade_date"].max())[:8] if not out.empty else ""
+        if latest_td:
+            cutoff = str(int(latest_td[:4]) - 10) + latest_td[4:]
+            with db.get_session() as sess:
+                deleted = sess.execute(
+                    _text("DELETE FROM popularity_rank WHERE trade_date < :cutoff"),
+                    {"cutoff": cutoff},
+                ).rowcount
+                sess.commit()
+            if deleted:
+                logger.info("[Scanner] popularity_rank 清理超 10 年数据: %d 条 (早于 %s)", deleted, cutoff)
+
         return saved
     except Exception as e:
         logger.warning("[Scanner] 盘后 popularity_rank 刷新失败: %s", e)
@@ -1512,6 +1625,7 @@ def ensure_postmarket_scan(
         ("stock_daily", lambda: refresh_stock_daily_postmarket(tushare_fetcher)),
         ("limit_pool", lambda: refresh_limit_pool_postmarket(tushare_fetcher)),
         ("money_flow", lambda: refresh_money_flow_postmarket(tushare_fetcher)),
+        ("daily_basic", lambda: refresh_daily_basic_postmarket(tushare_fetcher)),
         ("margin_detail", lambda: refresh_margin_detail_postmarket(tushare_fetcher)),
         ("cyq_perf", lambda: refresh_cyq_perf_postmarket(tushare_fetcher)),
         ("insider_buy", lambda: refresh_insider_buy_postmarket()),

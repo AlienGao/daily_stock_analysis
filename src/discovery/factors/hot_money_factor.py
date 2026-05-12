@@ -30,25 +30,69 @@ class HotMoneyFactor(BaseFactor):
     name = "hot_money"
     available_intraday = False
     available_postmarket = True
-    weight = 20.0
+    weight = 12.0
 
     _LABEL_THRESHOLD_RATIO = 0.5
 
     def fetch_data(self, trade_date: str, **kwargs) -> Optional[pd.DataFrame]:
         """优先读 DB 缓存，降级到 Tushare API。"""
+        self._limit_down_set = None  # 每次拉取重置
+
+        df = None
         try:
             from src.storage import DatabaseManager
             df = DatabaseManager().get_hm_detail_by_date(trade_date)
             if df is not None and not df.empty:
                 logger.info("[HotMoneyFactor] DB 命中: %d 条", len(df))
-                return df
         except Exception as e:
             logger.debug("[HotMoneyFactor] DB 读取失败: %s", e)
 
-        tushare_fetcher = kwargs.get("tushare_fetcher")
-        if tushare_fetcher is None:
-            return None
-        return tushare_fetcher.get_bulk_hm_detail(trade_date)
+        if df is None or df.empty:
+            tushare_fetcher = kwargs.get("tushare_fetcher")
+            if tushare_fetcher is None:
+                return None
+            df = tushare_fetcher.get_bulk_hm_detail(trade_date)
+
+        if df is not None and not df.empty:
+            self._cache_limit_down(trade_date)
+            self._prev_hm_pairs = self._load_prev_pairs(trade_date)
+
+        return df
+
+    def _load_prev_pairs(self, trade_date: str) -> set:
+        """加载上一交易日 (bare_code, hm_name) 集合，用于连续买入信号。"""
+        try:
+            from datetime import datetime as _dt, timedelta
+            from src.storage import DatabaseManager
+            td = _dt.strptime(str(trade_date)[:8], "%Y%m%d")
+            prev_date = (td - timedelta(days=1)).strftime("%Y%m%d")
+            df_prev = DatabaseManager().get_hm_detail_by_date(prev_date)
+            if df_prev is None or df_prev.empty:
+                return set()
+            pairs = set()
+            for idx, row in df_prev.iterrows():
+                code = str(idx)[:6]
+                hm = str(row.get("hm_name", ""))
+                if code and hm:
+                    pairs.add((code, hm))
+            logger.debug("[HotMoneyFactor] 昨日游资配对: %d 组", len(pairs))
+            return pairs
+        except Exception as e:
+            logger.debug("[HotMoneyFactor] 加载昨日游资数据失败: %s", e)
+            return set()
+
+    def _cache_limit_down(self, trade_date: str) -> None:
+        """预加载当日跌停股集合，供 _zero_limit_down 复用，避免重复查 DB。"""
+        try:
+            from src.storage import DatabaseManager
+            lp = DatabaseManager().get_limit_pool(trade_date=trade_date)
+            if lp is not None and not lp.empty:
+                self._limit_down_set = set(lp[lp["limit_type"] == "D"].index)
+            else:
+                self._limit_down_set = set()
+        except Exception as e:
+            logger.debug("[HotMoneyFactor] limit_pool 查询失败: %s", e)
+            self._limit_down_set = set()
 
     # ------------------------------------------------------------------
     # 聚合 + 共享信号
@@ -56,7 +100,7 @@ class HotMoneyFactor(BaseFactor):
 
     def _aggregate(self, df: pd.DataFrame) -> pd.DataFrame:
         """按 ts_code 聚合游资明细。"""
-        return df.groupby("ts_code").agg(
+        return df.groupby(level=0).agg(
             total_net=("net_amount", "sum"),
             hm_count=("hm_name", "nunique"),
             total_buy=("buy_amount", "sum"),
@@ -84,7 +128,7 @@ class HotMoneyFactor(BaseFactor):
         quality_map = HmTracker.load_quality()
         avg_quality = []
         for names in per_stock["hm_names"]:
-            scores_list = [quality_map.get(n, 0.5) for n in names.split("|")]
+            scores_list = [quality_map.get(n, 0.25) for n in names.split("|")]
             avg_quality.append(sum(scores_list) / max(len(scores_list), 1))
         self._avg_quality = pd.Series(avg_quality, index=idx)
         quality_score = pd.Series(_pct(self._avg_quality) * 0.30, index=idx)
@@ -116,34 +160,65 @@ class HotMoneyFactor(BaseFactor):
         total = total * pd.Series(penalty, index=per_stock.index)
 
         # 跌停股归零：游资在跌停日的参与不构成正面信号
-        total = self._zero_limit_down(df, total)
+        total = self._zero_limit_down(total)
+
+        # 连续买入加成（质量加权）：同一游资连续两天买入 = 看好信号
+        total = self._apply_consecutive_bonus(total, per_stock)
 
         total = total.clip(0, 100)
         total.name = self.name
         return total
 
-    def _zero_limit_down(self, df: pd.DataFrame, total: pd.Series) -> pd.Series:
-        """通过 limit_pool 查询当日跌停股，将其得分归零。"""
-        trade_date = None
-        if "trade_date" in df.columns:
-            raw = df["trade_date"].iloc[0]
-            trade_date = pd.Timestamp(str(raw)).strftime("%Y%m%d")
-        if trade_date is None:
+    def _zero_limit_down(self, total: pd.Series) -> pd.Series:
+        """将当日跌停股得分归零（集合由 fetch_data 预加载）。"""
+        down_set = getattr(self, "_limit_down_set", None)
+        if not down_set:
             return total
-        try:
-            from src.storage import DatabaseManager
-            lp = DatabaseManager().get_limit_pool(trade_date=trade_date)
-            if lp is None or lp.empty:
-                return total
-            down_bare = set(lp[lp["limit_type"] == "D"].index)
-            if not down_bare:
-                return total
-            # ts_code 前 6 位为裸代码，匹配后归零
-            down_mask = total.index.str[:6].isin(down_bare)
-            total[down_mask] = 0.0
-        except Exception as e:
-            logger.debug("[HotMoneyFactor] 跌停过滤失败，继续: %s", e)
+        down_mask = total.index.str[:6].isin(down_set)
+        total[down_mask] = 0.0
         return total
+
+    def _apply_consecutive_bonus(
+        self, total: pd.Series, per_stock: pd.DataFrame,
+    ) -> pd.Series:
+        """连续买入加成：游资昨日也在同一股票出现，质量加权。
+
+        - 跳过「单体在多家中偶发重复」(repeat<2 且 total≥3)
+        - bonus = min(Σ quality × 0.15, 0.20)
+        """
+        prev_pairs = getattr(self, "_prev_hm_pairs", None)
+        if not prev_pairs:
+            return total
+
+        from src.discovery.hm_tracker import HmTracker
+        quality_map = HmTracker.load_quality()
+
+        bonus = pd.Series(0.0, index=total.index)
+        for ts_code in total.index:
+            row = per_stock.loc[ts_code]
+            names_str = row.get("hm_names", "")
+            if not names_str:
+                continue
+            names = names_str.split("|")
+            total_count = len(names)
+            code = str(ts_code)[:6]
+            repeat_names = [n for n in names if (code, n) in prev_pairs]
+            repeat_count = len(repeat_names)
+
+            if repeat_count == 0:
+                continue
+            # 单体在多家中偶发重复 → 跳过
+            if repeat_count < 2 and total_count >= 3:
+                continue
+
+            quality_sum = sum(quality_map.get(n, 0.25) for n in repeat_names)
+            bonus[ts_code] = min(quality_sum * 0.15, 0.20)
+
+        if bonus.sum() > 0:
+            logger.debug("[HotMoneyFactor] 连续买入加成: %d 只, max %.1f%%",
+                         int((bonus > 0).sum()), bonus.max() * 100)
+
+        return total * (1 + bonus)
 
     def describe(self, df: pd.DataFrame, scores: pd.Series, **context) -> Dict[str, List[str]]:
         reasons: Dict[str, List[str]] = {}

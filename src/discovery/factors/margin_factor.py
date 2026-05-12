@@ -81,12 +81,28 @@ class MarginFactor(BaseFactor):
                 logger.warning(f"[MarginFactor] {start_date}~{end_date} 无数据")
                 return None
 
-        # 3. 拿市值做归一化
-        daily_basic = tushare_fetcher.get_daily_basic_all(trade_date)
-        if daily_basic is not None and not daily_basic.empty:
-            mv_series = daily_basic.get("total_mv")
-        else:
-            mv_series = None
+        # 3. 拿市值做归一化（DB 优先）
+        mv_series = None
+        try:
+            from src.storage import DatabaseManager
+            db_basic = DatabaseManager().get_daily_basic(trade_date)
+            if not db_basic.empty and "total_mv" in db_basic.columns:
+                # DB 以 bare code 为 index，转 ts_code 格式
+                mv = db_basic["total_mv"].copy()
+                bare_codes = mv.index.astype(str).str.zfill(6)
+                pre2 = bare_codes.str[:2]
+                suffix_map = {
+                    "60": ".SH", "68": ".SH", "00": ".SZ", "30": ".SZ",
+                    "43": ".BJ", "83": ".BJ", "87": ".BJ", "92": ".BJ",
+                }
+                mv.index = bare_codes + pre2.map(suffix_map).fillna("")
+                mv_series = mv
+        except Exception:
+            pass
+        if mv_series is None:
+            daily_basic = tushare_fetcher.get_daily_basic_all(trade_date)
+            if daily_basic is not None and not daily_basic.empty:
+                mv_series = daily_basic.get("total_mv")
 
         # 4. 组装宽表：每日期一行 → 每日一列
         margin_df = margin_df.reset_index()

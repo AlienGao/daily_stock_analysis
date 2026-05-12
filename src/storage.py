@@ -1025,6 +1025,32 @@ class StockTechIndicator(Base):
         }
 
 
+class DailyBasic(Base):
+    """每日基本面指标缓存 (Tushare daily_basic)。
+
+    存储 PE/PB/换手率/量比/总市值等日频估值指标，
+    供 FundamentalFactor、MarginFactor 等盘后因子复用。
+    """
+
+    __tablename__ = 'daily_basic'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(10), nullable=False, index=True)
+    trade_date = Column(String(8))
+    turnover_rate = Column(Float)  # 换手率（%）
+    volume_ratio = Column(Float)   # 量比
+    pe = Column(Float)             # 市盈率
+    pb = Column(Float)             # 市净率
+    total_mv = Column(Float)       # 总市值（元）
+    source = Column(String(20))
+    updated_at = Column(DateTime, default=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('code', 'trade_date', name='uix_daily_basic_code_date'),
+        Index('ix_daily_basic_trade_date', 'trade_date'),
+    )
+
+
 class BrokerRecommendMonthly(Base):
     """券商月度金股推荐快照。
 
@@ -1531,6 +1557,7 @@ class DatabaseManager:
         self._ensure_analysis_history_query_source_column()
         self._ensure_backtest_results_trigger_source_column()
         self._ensure_stock_tech_indicator_table()
+        self._ensure_daily_basic_table()
         self._ensure_scan_result_intraday_table()
         self._ensure_scan_result_postmarket_table()
         self._ensure_limit_pool_table()
@@ -1715,6 +1742,26 @@ class DatabaseManager:
             logger.info("已添加 margin_detail.rqmcl/rqchl 列")
         except Exception:
             pass  # 列已存在
+
+    def _ensure_daily_basic_table(self) -> None:
+        """SQLite: create daily_basic if missing (pre-create_all catch-up)."""
+        if not self._is_sqlite_engine:
+            return
+        try:
+            with self._engine.connect() as conn:
+                rows = conn.execute(
+                    text("SELECT name FROM sqlite_master WHERE type='table' AND name='daily_basic'")
+                ).fetchall()
+            if rows:
+                return
+        except Exception as exc:
+            logger.warning("检查 daily_basic 表存在性失败: %s", exc)
+            return
+        try:
+            DailyBasic.__table__.create(self._engine)
+            logger.info("已创建表 daily_basic")
+        except Exception as exc:
+            logger.warning("创建 daily_basic 失败: %s", exc)
 
     def _ensure_popularity_rank_table(self) -> None:
         """SQLite: create popularity_rank if missing (pre-create_all catch-up)."""
@@ -4148,6 +4195,139 @@ class DatabaseManager:
         except Exception as e:
             logger.error("[DB] upsert_margin_detail 失败: %s", e)
             raise
+
+    # ------------------------------------------------------------------
+    # 每日基本面指标
+    # ------------------------------------------------------------------
+
+    def upsert_daily_basic(self, df: pd.DataFrame, source: str = "tushare") -> int:
+        """全量 upsert 每日基本面指标 (daily_basic)。
+
+        df 需包含列: code, trade_date, turnover_rate, volume_ratio, pe, pb, total_mv。
+        按 (code, trade_date) 去重 upsert。
+        """
+        if df is None or df.empty:
+            return 0
+
+        now = datetime.now()
+        records = []
+        for _, row in df.iterrows():
+            records.append({
+                "code": str(row.get("code", "")).strip().zfill(6),
+                "trade_date": str(row.get("trade_date", "")),
+                "turnover_rate": self._normalize_sql_value(row.get("turnover_rate")),
+                "volume_ratio": self._normalize_sql_value(row.get("volume_ratio")),
+                "pe": self._normalize_sql_value(row.get("pe")),
+                "pb": self._normalize_sql_value(row.get("pb")),
+                "total_mv": self._normalize_sql_value(row.get("total_mv")),
+                "source": source,
+                "updated_at": now,
+            })
+
+        if not records:
+            return 0
+
+        def _write(session: Session) -> int:
+            if self._is_sqlite_engine:
+                _CHUNK = 500
+                for i in range(0, len(records), _CHUNK):
+                    chunk = records[i : i + _CHUNK]
+                    stmt = sqlite_insert(DailyBasic).values(chunk)
+                    excluded = stmt.excluded
+                    session.execute(
+                        stmt.on_conflict_do_update(
+                            index_elements=["code", "trade_date"],
+                            set_={
+                                "turnover_rate": excluded.turnover_rate,
+                                "volume_ratio": excluded.volume_ratio,
+                                "pe": excluded.pe,
+                                "pb": excluded.pb,
+                                "total_mv": excluded.total_mv,
+                                "source": excluded.source,
+                                "updated_at": excluded.updated_at,
+                            },
+                        )
+                    )
+                return len(records)
+            else:
+                codes = [r["code"] for r in records]
+                dates = [r["trade_date"] for r in records]
+                existing = {}
+                for row in session.execute(
+                    select(DailyBasic).where(
+                        and_(DailyBasic.code.in_(codes), DailyBasic.trade_date.in_(dates))
+                    )
+                ).scalars().all():
+                    existing[(row.code, row.trade_date)] = row
+                new_count = 0
+                for rec in records:
+                    ent = existing.get((rec["code"], rec["trade_date"]))
+                    if ent is None:
+                        session.add(DailyBasic(**rec))
+                        new_count += 1
+                    else:
+                        for key in ("turnover_rate", "volume_ratio", "pe",
+                                     "pb", "total_mv", "source"):
+                            setattr(ent, key, rec[key])
+                        ent.updated_at = now
+                return new_count
+
+        try:
+            saved = self._run_write_transaction("upsert_daily_basic", _write)
+            logger.debug("[DB] upsert_daily_basic: %d 条 (source=%s)", saved, source)
+            return saved
+        except Exception as e:
+            logger.error("[DB] upsert_daily_basic 失败: %s", e)
+            raise
+
+    def get_daily_basic(self, trade_date: str,
+                        codes: Optional[List[str]] = None) -> pd.DataFrame:
+        """读取指定交易日的基本面指标。
+
+        Returns:
+            DataFrame indexed by code
+        """
+        try:
+            with self._SessionLocal() as session:
+                stmt = select(DailyBasic).where(DailyBasic.trade_date == trade_date)
+                if codes:
+                    stmt = stmt.where(DailyBasic.code.in_(codes))
+                rows = session.execute(stmt).scalars().all()
+                if not rows:
+                    return pd.DataFrame()
+                df = pd.DataFrame([{
+                    "code": r.code, "trade_date": r.trade_date,
+                    "turnover_rate": r.turnover_rate, "volume_ratio": r.volume_ratio,
+                    "pe": r.pe, "pb": r.pb, "total_mv": r.total_mv,
+                    "source": r.source,
+                } for r in rows])
+                return df.set_index("code")
+        except Exception as e:
+            logger.error("[DB] get_daily_basic 失败: %s", e)
+            return pd.DataFrame()
+
+    def delete_daily_basic_before(self, cutoff_date: str) -> int:
+        """删除指定日期之前的 daily_basic 数据。
+
+        Args:
+            cutoff_date: 截止日期 (YYYYMMDD)，早于此日期的数据会被删除。
+
+        Returns:
+            删除行数
+        """
+        try:
+            with self._SessionLocal() as session:
+                result = session.execute(
+                    delete(DailyBasic).where(DailyBasic.trade_date < cutoff_date)
+                )
+                session.commit()
+                deleted = result.rowcount
+                if deleted > 0:
+                    logger.info("[DB] 清理 daily_basic < %s: %d 条", cutoff_date, deleted)
+                return deleted
+        except Exception as e:
+            logger.error("[DB] 清理 daily_basic 失败: %s", e)
+            return 0
 
     # ------------------------------------------------------------------
     # 同花顺行业映射

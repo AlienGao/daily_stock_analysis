@@ -30,36 +30,40 @@ def _linear_map(series: pd.Series, x0: float, y0: float,
     return (y0 + slope * (series - x0)).clip(clip_low, clip_high)
 
 
-def _industry_pct_rank(values: pd.Series, industries: pd.Series,
-                       max_points: float) -> pd.Series:
-    """行业内百分位排名 → 0~max_points。
+def _group_pct_rank(values: pd.Series, groups: pd.Series,
+                    max_points: float) -> pd.Series:
+    """任意分组内百分位排名 → 0~max_points。
 
-    行业只有 1-2 只股票时退化为全市场百分位。
+    组只有 1-2 只股票时退化为全市场百分位。
     """
     result = pd.Series(0.0, index=values.index)
-    industry_counts = industries.value_counts()
-    small_groups = industry_counts[industry_counts <= 2].index
+    group_counts = groups.value_counts()
+    small_groups = group_counts[group_counts <= 2].index
 
-    # 大行业：组内百分位
-    for ind in industry_counts[industry_counts > 2].index:
-        mask = (industries == ind) & values.notna()
+    for grp in group_counts[group_counts > 2].index:
+        mask = (groups == grp) & values.notna()
         if mask.sum() <= 1:
             continue
-        group_vals = values[mask]
-        result[mask] = _pct_rank(group_vals) * max_points
+        result[mask] = _pct_rank(values[mask]) * max_points
 
-    # 小行业：全市场百分位
-    small_mask = industries.isin(small_groups) & values.notna()
+    small_mask = groups.isin(small_groups) & values.notna()
     if small_mask.any():
         result[small_mask] = _pct_rank(values[small_mask]) * max_points
 
     return result
 
 
+def _industry_pct_rank(values: pd.Series, industries: pd.Series,
+                       max_points: float) -> pd.Series:
+    """行业内百分位排名 → 0~max_points。"""
+    return _group_pct_rank(values, industries, max_points)
+
+
+
 class FundamentalFactor(BaseFactor):
     """基本面因子。
 
-    行业内的 PE/PB 百分位排名 + 换手率/量比/市值分段打分。
+    行业内的 PE/PB 百分位排名 + 市值组内换手率排名 + 量比/市值分段打分。
     """
 
     name = "fundamental"
@@ -70,13 +74,40 @@ class FundamentalFactor(BaseFactor):
     _LABEL_THRESHOLD_RATIO = 0.5
 
     def fetch_data(self, trade_date: str, **kwargs) -> Optional[pd.DataFrame]:
+        """DB 优先，无数据时 fallback 到 Tushare API。"""
         tushare_fetcher = kwargs.get("tushare_fetcher")
-        if tushare_fetcher is None:
-            return None
+        df_basic: Optional[pd.DataFrame] = None
 
-        df_basic = tushare_fetcher.get_daily_basic_all(trade_date)
+        # 1. 尝试从 DB 读
+        try:
+            from src.storage import DatabaseManager
+            db = DatabaseManager()
+            df_basic = db.get_daily_basic(trade_date)
+            if not df_basic.empty:
+                # DB 返回 index=code，转回 ts_code 格式
+                df_basic = df_basic.reset_index().rename(columns={"code": "ts_code_raw"})
+                codes = df_basic["ts_code_raw"].astype(str).str.zfill(6)
+                pre2 = codes.str[:2]
+                suffix_map = {
+                    "60": ".SH", "68": ".SH", "00": ".SZ", "30": ".SZ",
+                    "43": ".BJ", "83": ".BJ", "87": ".BJ", "92": ".BJ",
+                }
+                suffix = pre2.map(suffix_map).fillna("")
+                df_basic["ts_code"] = codes + suffix
+                df_basic = df_basic.set_index("ts_code").drop(columns=["ts_code_raw"], errors="ignore")
+                logger.info(
+                    f"[FundamentalFactor] DB 命中: {trade_date}, {len(df_basic)} 条"
+                )
+        except Exception as e:
+            logger.debug(f"[FundamentalFactor] DB 查询失败: {e}")
+
+        # 2. DB 无数据，fallback 到 Tushare API
         if df_basic is None or df_basic.empty:
-            return None
+            if tushare_fetcher is None:
+                return None
+            df_basic = tushare_fetcher.get_daily_basic_all(trade_date)
+            if df_basic is None or df_basic.empty:
+                return None
 
         # 合并同花顺行业分类
         try:
@@ -132,15 +163,14 @@ class FundamentalFactor(BaseFactor):
                 )
         signals["pb"] = s_pb
 
-        # 3. 换手率活跃度 (0-20)：分段线性
+        # 3. 换手率活跃度 (0-25)：市值组内百分位排名
         s_turnover = zeros.copy()
-        s_turnover = s_turnover.mask(turnover >= 5, 20.0)
-        s_turnover = s_turnover.mask((turnover >= 3) & (turnover < 5),
-                                     _linear_map(turnover, 3, 15, 5, 20))
-        s_turnover = s_turnover.mask((turnover >= 1) & (turnover < 3),
-                                     _linear_map(turnover, 1, 5, 3, 15))
-        s_turnover = s_turnover.mask((turnover >= 0.5) & (turnover < 1),
-                                     _linear_map(turnover, 0.5, 0, 1, 5))
+        if (total_mv > 0).any():
+            mv_valid = total_mv[total_mv > 0]
+            mv_terciles = pd.qcut(mv_valid, 3, labels=["小市值", "中市值", "大市值"], duplicates="drop")
+            s_turnover.loc[mv_terciles.index] = _group_pct_rank(
+                turnover.loc[mv_terciles.index], mv_terciles, 25.0,
+            )
         signals["turnover"] = s_turnover
 
         # 4. 量比异动 (0-15)：分段线性
@@ -154,14 +184,14 @@ class FundamentalFactor(BaseFactor):
                          _linear_map(vol_ratio, 0.8, 0, 1.0, 5))
         signals["volume_ratio"] = s_vr
 
-        # 5. 中小市值弹性 (0-15)：分段线性，单位万元 → 亿
+        # 5. 中小市值弹性 (0-10)：分段线性，单位万元 → 亿
         mv_b = total_mv / 1e8
         s_mv = zeros.copy()
-        s_mv = s_mv.mask((mv_b >= 10) & (mv_b <= 100), 15.0)
+        s_mv = s_mv.mask((mv_b >= 10) & (mv_b <= 100), 10.0)
         s_mv = s_mv.mask((mv_b > 100) & (mv_b <= 200),
-                         _linear_map(mv_b, 100, 15, 200, 8))
+                         _linear_map(mv_b, 100, 10, 200, 5))
         s_mv = s_mv.mask((mv_b > 200) & (mv_b <= 500),
-                         _linear_map(mv_b, 200, 8, 500, 0))
+                         _linear_map(mv_b, 200, 5, 500, 0))
         signals["market_cap"] = s_mv
 
         return signals
@@ -193,8 +223,8 @@ class FundamentalFactor(BaseFactor):
             ("market_cap", "中小市值"),
         ]
         max_map = {
-            "pe": 30, "pb": 20, "turnover": 20,
-            "volume_ratio": 15, "market_cap": 15,
+            "pe": 30, "pb": 20, "turnover": 25,
+            "volume_ratio": 15, "market_cap": 10,
         }
         threshold = self._LABEL_THRESHOLD_RATIO
 

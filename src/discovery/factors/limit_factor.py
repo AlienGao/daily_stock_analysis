@@ -4,7 +4,7 @@
 盘后因子：基于涨跌停数据识别强势股。
 3 个子信号：
 - 封板质量 (0-35)：开板次数梯度，一字板满分
-- 连板强度 (0-35)：连续涨停天数，递增递减
+- 连板强度 (0-38)：连续涨停天数，递增递减，8+封顶
 - 涨幅强度 (0-30)：pct_chg 百分位排名
 
 数据来源: Tushare limit_list_d + 本地 limit_pool
@@ -94,25 +94,18 @@ class LimitFactor(BaseFactor):
         )
         signals["seal"] = s_seal
 
-        # --- 2. 连板强度 (0-35)：limit_times 递增递减 ---
+        # --- 2. 连板强度 (0-38)：limit_times 递增递减，8+封顶 ---
         def _map_chain(n: int) -> float:
             if pd.isna(n) or n <= 0:
                 return 0.0
-            if n == 1:
-                return 15.0
-            if n == 2:
-                return 23.0
-            if n == 3:
-                return 29.0
-            if n == 4:
-                return 33.0
-            return 35.0
+            return {1: 15, 2: 23, 3: 29, 4: 33, 5: 35,
+                    6: 36.5, 7: 37.5}.get(n, 38.0)
 
         s_chain = zeros.copy()
-        s_chain.loc[is_up] = limit_times[is_up].apply(_map_chain).clip(0, 35)
+        s_chain.loc[is_up] = limit_times[is_up].apply(_map_chain).clip(0, 38)
         # 炸板保留部分连板分
         s_chain.loc[is_break] = (
-            limit_times[is_break].apply(lambda n: _map_chain(n) * 0.4).clip(0, 35)
+            limit_times[is_break].apply(lambda n: _map_chain(n) * 0.4).clip(0, 38)
         )
         signals["chain"] = s_chain
 
@@ -169,7 +162,7 @@ class LimitFactor(BaseFactor):
 
         signal_meta = [
             ("seal", "封板质量", 35),
-            ("chain", "连板强度", 35),
+            ("chain", "连板强度", 38),
             ("pct_chg", "涨幅强度", 30),
         ]
         threshold = self._LABEL_THRESHOLD_RATIO
