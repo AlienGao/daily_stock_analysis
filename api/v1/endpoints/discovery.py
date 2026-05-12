@@ -597,12 +597,11 @@ def run_postmarket_discovery():
             from src.discovery.config import get_active_config, set_active_config, get_discovery_config
             from src.discovery.engine import StockDiscoveryEngine
             from src.discovery.factors import (
-                MoneyFlowFactor, MarginFactor, ChipFactor,
-                TechnicalFactor, LimitFactor,
-                FundamentalFactor, PopularityFactor, HotMoneyFactor,
-                InstitutionHoldFactor, ProfitForecastFactor,
-                PerformanceFactor, BuybackFactor, InsiderBuyFactor,
-                BrokerRecommendFactor,
+                MoneyFlowFactor, TechnicalFactor,
+                BrokerRecommendFactor, FundamentalFactor, HotMoneyFactor, MarginFactor,
+                ChipFactor, InsiderBuyFactor, InstitutionHoldFactor, LimitFactor,
+                PerformanceFactor, PopularityFactor,
+                BuybackFactor, ProfitForecastFactor,
             )
             from data_provider.tushare_fetcher import TushareFetcher
             from data_provider.akshare_fetcher import AkshareFetcher
@@ -628,19 +627,19 @@ def run_postmarket_discovery():
             engine = StockDiscoveryEngine(discovery_config, tushare_fetcher, akshare_fetcher)
             engine.register_factors([
                 MoneyFlowFactor(),
+                TechnicalFactor(),
+                BrokerRecommendFactor(),
+                FundamentalFactor(),
+                HotMoneyFactor(),
                 MarginFactor(),
                 ChipFactor(),
-                TechnicalFactor(),
-                LimitFactor(),
-                FundamentalFactor(),
-                PopularityFactor(),
-                HotMoneyFactor(),
-                InstitutionHoldFactor(),
-                ProfitForecastFactor(),
-                PerformanceFactor(),
-                BuybackFactor(),
                 InsiderBuyFactor(),
-                BrokerRecommendFactor(),
+                InstitutionHoldFactor(),
+                LimitFactor(),
+                PerformanceFactor(),
+                PopularityFactor(),
+                BuybackFactor(),
+                ProfitForecastFactor(),
             ])
 
             results = engine.discover(mode="postmarket")
@@ -780,6 +779,7 @@ class BacktestResponse(BaseModel):
     cumulative_return: float
     total_pnl: float
     win_rate: float
+    max_drawdown: float = 0.0
     total_days: int
     total_trades: int
     daily_results: List[BacktestDailyItem] = []
@@ -871,6 +871,7 @@ def get_backtest(
         cumulative_return=round(summary.cumulative_return, 6),
         total_pnl=summary.total_pnl,
         win_rate=round(summary.win_rate, 4),
+        max_drawdown=summary.max_drawdown,
         total_days=summary.total_days,
         total_trades=summary.total_trades,
         daily_results=daily,
@@ -943,22 +944,22 @@ def _get_factor_weights(mode: str) -> Dict[str, float]:
     from src.discovery.config import get_discovery_config
     from src.discovery.engine import StockDiscoveryEngine
     from src.discovery.factors import (
-        SectorFactor, MaEntryFactor, MomentumFactor, ReboundFactor,
-        MoneyFlowFactor, MarginFactor, ChipFactor, TechnicalFactor,
-        LimitFactor, FundamentalFactor, PopularityFactor, HotMoneyFactor,
-        InstitutionHoldFactor, ProfitForecastFactor,
-        PerformanceFactor, BuybackFactor, InsiderBuyFactor,
-        BrokerRecommendFactor,
+        MaEntryFactor,
+        MomentumFactor, MoneyFlowFactor, SectorFactor, TechnicalFactor,
+        BrokerRecommendFactor, FundamentalFactor, HotMoneyFactor, MarginFactor,
+        ChipFactor, InsiderBuyFactor, InstitutionHoldFactor, LimitFactor,
+        PerformanceFactor, PopularityFactor, RankingMomentumFactor, ReboundFactor,
+        BuybackFactor, ProfitForecastFactor,
     )
     config = get_discovery_config()
     engine = StockDiscoveryEngine(config)
     engine.register_factors([
-        SectorFactor(), MaEntryFactor(), MomentumFactor(), ReboundFactor(),
-        MoneyFlowFactor(), MarginFactor(), ChipFactor(), TechnicalFactor(),
-        LimitFactor(), FundamentalFactor(), PopularityFactor(), HotMoneyFactor(),
-        InstitutionHoldFactor(), ProfitForecastFactor(),
-        PerformanceFactor(), BuybackFactor(), InsiderBuyFactor(),
-        BrokerRecommendFactor(),
+        MaEntryFactor(),
+        MomentumFactor(), MoneyFlowFactor(), SectorFactor(), TechnicalFactor(),
+        BrokerRecommendFactor(), FundamentalFactor(), HotMoneyFactor(), MarginFactor(),
+        ChipFactor(), InsiderBuyFactor(), InstitutionHoldFactor(), LimitFactor(),
+        PerformanceFactor(), PopularityFactor(), RankingMomentumFactor(), ReboundFactor(),
+        BuybackFactor(), ProfitForecastFactor(),
     ])
     return {
         name: factor.weight

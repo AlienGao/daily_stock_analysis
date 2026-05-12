@@ -1440,17 +1440,16 @@ def refresh_ths_industry_map_postmarket(tushare_fetcher) -> int:
 def run_intraday_scan(config: DiscoveryConfig, tushare_fetcher=None, akshare_fetcher=None) -> None:
     """一键启动盘中扫描（注册全部盘中因子）。"""
     from src.discovery.factors import (
-        SectorFactor, MaEntryFactor, MomentumFactor, ReboundFactor,
-        PopularityFactor,
+        MaEntryFactor,
+        SectorFactor, MomentumFactor,
+        RankingMomentumFactor, ReboundFactor, PopularityFactor,
     )
 
     engine = StockDiscoveryEngine(config, tushare_fetcher, akshare_fetcher)
     engine.register_factors([
-        SectorFactor(),
         MaEntryFactor(),
-        MomentumFactor(),
-        ReboundFactor(),
-        PopularityFactor(),
+        SectorFactor(), MomentumFactor(),
+        RankingMomentumFactor(), ReboundFactor(), PopularityFactor(),
     ])
 
     set_active_config(config)
@@ -1483,12 +1482,11 @@ def ensure_postmarket_scan(
     from src.discovery.config import get_discovery_config
     from src.discovery.engine import StockDiscoveryEngine
     from src.discovery.factors import (
-        MoneyFlowFactor, MarginFactor, ChipFactor,
-        TechnicalFactor, LimitFactor,
-        FundamentalFactor, PopularityFactor, HotMoneyFactor,
-        InstitutionHoldFactor, ProfitForecastFactor,
-        PerformanceFactor, BuybackFactor, InsiderBuyFactor,
-        BrokerRecommendFactor,
+        MoneyFlowFactor, TechnicalFactor,
+        BrokerRecommendFactor, FundamentalFactor, HotMoneyFactor, MarginFactor,
+        ChipFactor, InsiderBuyFactor, InstitutionHoldFactor, LimitFactor,
+        PerformanceFactor, PopularityFactor,
+        BuybackFactor, ProfitForecastFactor,
     )
     from src.storage import DatabaseManager
 
@@ -1551,12 +1549,11 @@ def ensure_postmarket_scan(
     discovery_config = get_discovery_config()
     engine = StockDiscoveryEngine(discovery_config, tushare_fetcher, akshare_fetcher)
     engine.register_factors([
-        MoneyFlowFactor(), MarginFactor(), ChipFactor(),
-        TechnicalFactor(), LimitFactor(),
-        FundamentalFactor(), PopularityFactor(), HotMoneyFactor(),
-        InstitutionHoldFactor(), ProfitForecastFactor(),
-        PerformanceFactor(), BuybackFactor(), InsiderBuyFactor(),
-        BrokerRecommendFactor(),
+        MoneyFlowFactor(), TechnicalFactor(),
+        BrokerRecommendFactor(), FundamentalFactor(), HotMoneyFactor(), MarginFactor(),
+        ChipFactor(), InsiderBuyFactor(), InstitutionHoldFactor(), LimitFactor(),
+        PerformanceFactor(), PopularityFactor(),
+        BuybackFactor(), ProfitForecastFactor(),
     ])
 
     results = engine.discover(mode="postmarket")

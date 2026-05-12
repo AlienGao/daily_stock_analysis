@@ -57,6 +57,7 @@ class PopularityFactor(BaseFactor):
         df = self._fetch_eastmoney()
         if df is not None and not df.empty:
             self._trade_date = trade_date
+            self._cache_to_db(df, trade_date)
             return df
 
         # ── 2. Tushare dc_hot 降级 ──
@@ -74,6 +75,28 @@ class PopularityFactor(BaseFactor):
             return df
 
         return None
+
+    @staticmethod
+    def _cache_to_db(df: pd.DataFrame, trade_date: str) -> None:
+        """将东财人气数据写入 popularity_rank 表，供后续轮次超时降级使用。"""
+        try:
+            from src.storage import DatabaseManager
+
+            cache = pd.DataFrame(index=df.index)
+            cache["code"] = [str(c).zfill(6) for c in df.index]
+            cache["name"] = df.get("name", "")
+            cache["trade_date"] = str(trade_date)[:8]
+            cache["rank"] = pd.to_numeric(df.get("rank", 0), errors="coerce").fillna(0).astype(int)
+            cache["pct_change"] = pd.to_numeric(df.get("pct_chg", 0), errors="coerce").fillna(0)
+            cache["hot"] = None
+            cache["concept"] = ""
+            cache["source"] = "eastmoney"
+
+            db = DatabaseManager()
+            n = db.upsert_popularity_rank(cache, source="eastmoney")
+            logger.debug("[PopularityFactor] DB 缓存写入 %d 条", n)
+        except Exception as e:
+            logger.debug("[PopularityFactor] DB 缓存写入失败: %s", e)
 
     # ------------------------------------------------------------------
     # fetch helpers

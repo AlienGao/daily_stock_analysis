@@ -62,11 +62,16 @@ class StopLossResult:
     # 核心指标
     atr_14: Optional[float] = None
     atr_percentile: Optional[float] = None
+    boll_lower: Optional[float] = None
     swing_low_20: Optional[float] = None
     swing_high_20: Optional[float] = None
     ma20: Optional[float] = None
     ma60: Optional[float] = None
     max_drawdown_20: Optional[float] = None
+
+    # 买入区间
+    buy_low: Optional[float] = None
+    buy_high: Optional[float] = None
 
     # 止损
     stop_loss: Optional[float] = None
@@ -93,11 +98,14 @@ class StopLossResult:
             "current_price": self.current_price,
             "atr_14": self.atr_14,
             "atr_percentile": self.atr_percentile,
+            "boll_lower": self.boll_lower,
             "swing_low_20": self.swing_low_20,
             "swing_high_20": self.swing_high_20,
             "ma20": self.ma20,
             "ma60": self.ma60,
             "max_drawdown_20": self.max_drawdown_20,
+            "buy_low": self.buy_low,
+            "buy_high": self.buy_high,
             "stop_loss": self.stop_loss,
             "stop_loss_tight": self.stop_loss_tight,
             "stop_loss_wide": self.stop_loss_wide,
@@ -124,6 +132,7 @@ def compute_from_arrays(
     ma20: Optional[float] = None,
     ma60: Optional[float] = None,
     atr: Optional[float] = None,
+    factor_score: float = 25.0,
 ) -> StopLossResult:
     """从 OHLCV 数组计算止盈止损（纯计算，零项目依赖）。
 
@@ -136,6 +145,7 @@ def compute_from_arrays(
         ma20: 预计算的 MA20（可选，传入则跳过本地计算）
         ma60: 预计算的 MA60（可选）
         atr: 预计算的 ATR(14)（可选）
+        factor_score: 因子综合评分 0-100，高分→更宽止损/买入区间
 
     Returns:
         StopLossResult
@@ -184,6 +194,12 @@ def compute_from_arrays(
 
     max_dd = _compute_max_drawdown(closes, MAX_DRAWDOWN_LOOKBACK)
 
+    # --- Bollinger 下轨（自算，盘中使用实时数据） ---
+    if n >= 20 and ma20_f is not None:
+        boll_lower = round(ma20_f - 2 * float(np.std(closes[-20:])), 3)
+    else:
+        boll_lower = None
+
     # --- 止损方法选择 ---
     stop_method, reasoning, stop_loss = _select_stop_method(
         current_price=current_price,
@@ -193,6 +209,8 @@ def compute_from_arrays(
         ma60=ma60_f,
         swing_low_20=swing_low_20,
         swing_high_20=swing_high_20,
+        boll_lower=boll_lower,
+        factor_score=factor_score,
     )
 
     # --- 复合止损 ---
@@ -208,6 +226,9 @@ def compute_from_arrays(
         stop_loss_wide = round(float(max(ma60_f, swing_low_20)), 2)
     else:
         stop_loss_wide = round(swing_low_20, 2)
+
+    # --- 买入区间 ---
+    buy_low, buy_high = _compute_buy_range(current_price, boll_lower, ma20_f, factor_score)
 
     # --- 止盈 ---
     take_profit_1, take_profit_2 = _build_take_profits(
@@ -228,11 +249,14 @@ def compute_from_arrays(
         current_price=current_price,
         atr_14=atr_14,
         atr_percentile=atr_percentile,
+        boll_lower=boll_lower,
         swing_low_20=swing_low_20,
         swing_high_20=swing_high_20,
         ma20=ma20_f,
         ma60=ma60_f,
         max_drawdown_20=max_dd,
+        buy_low=buy_low,
+        buy_high=buy_high,
         stop_loss=stop_loss,
         stop_loss_tight=stop_loss_tight,
         stop_loss_wide=stop_loss_wide,
@@ -352,6 +376,54 @@ def _compute_max_drawdown(
 
 # ---- 止损方法决策树 ----
 
+def _compute_buy_range(
+    current_price: float,
+    boll_lower: Optional[float],
+    ma20: Optional[float],
+    factor_score: float = 25.0,
+) -> Tuple[Optional[float], Optional[float]]:
+    """计算买入区间。
+
+    buy_low  — Bollinger 下轨锚定，因子分越高越宽松
+    buy_high — MA20 锚定，因子分越高可略微超越 MA20，但不追高
+    """
+    if current_price <= 0:
+        return None, None
+
+    # 因子分分档 multiplier
+    if factor_score >= 35:
+        bl_mult, bh_mult = 0.97, 1.01
+    elif factor_score >= 25:
+        bl_mult, bh_mult = 0.98, 1.00
+    else:
+        bl_mult, bh_mult = 0.99, 0.99
+
+    # buy_low: Bollinger 下轨锚定，不低于当前价 95%
+    if boll_lower is not None and boll_lower > 0:
+        anchor_low = max(boll_lower, current_price * 0.95)
+        buy_low = round(anchor_low * bl_mult, 1)
+    elif current_price > 0:
+        if factor_score >= 35:
+            buy_low = round(current_price * 0.95, 1)
+        elif factor_score >= 25:
+            buy_low = round(current_price * 0.97, 1)
+        else:
+            buy_low = round(current_price * 0.98, 1)
+    else:
+        return None, None
+
+    # buy_high: MA20 * bh_mult，但不超当前价 +2%
+    if ma20 is not None and ma20 > 0:
+        buy_high = round(min(ma20 * bh_mult, current_price * 1.02), 1)
+    else:
+        buy_high = round(current_price * 1.02, 1)
+
+    if buy_low >= buy_high:
+        buy_low = round(buy_high * 0.99, 1)
+
+    return buy_low, buy_high
+
+
 def _select_stop_method(
     current_price: float,
     atr_14: Optional[float],
@@ -360,10 +432,29 @@ def _select_stop_method(
     ma60: Optional[float],
     swing_low_20: float,
     swing_high_20: float,
+    boll_lower: Optional[float] = None,
+    factor_score: float = 25.0,
 ) -> Tuple[Optional[str], Optional[str], Optional[float]]:
     """止损方法决策树。返回 (method, reasoning, stop_loss_price)。"""
 
     if atr_14 is None or atr_14 <= 0:
+        # 无 ATR 降级：优先 Bollinger 下轨 + 因子分分档（与内联一致）
+        if boll_lower is not None and boll_lower > 0:
+            if factor_score >= 35:
+                sl = round(boll_lower * 0.94, 2)
+            elif factor_score >= 25:
+                sl = round(boll_lower * 0.95, 2)
+            else:
+                sl = round(boll_lower * 0.96, 2)
+            return ("bollinger", f"ATR 不可用，Bollinger 下轨止损 (fs={factor_score:.0f})", sl)
+        if current_price > 0:
+            if factor_score >= 35:
+                sl = round(current_price * 0.92, 2)
+            elif factor_score >= 25:
+                sl = round(current_price * 0.94, 2)
+            else:
+                sl = round(current_price * 0.95, 2)
+            return ("close_pct", f"ATR 不可用，收盘价百分比止损 (fs={factor_score:.0f})", sl)
         sl = round(swing_low_20 * 0.99, 2)
         return ("swing_low", "ATR 不可用，回退 20 日低点止损", sl)
 
@@ -445,7 +536,8 @@ class StopLossCalculator:
       - trade_date == today（盘中）→ StockDaily 历史 OHLCV + RealtimeSpot 实时行情
     """
 
-    def compute(self, code: str, trade_date: Optional[date] = None) -> StopLossResult:
+    def compute(self, code: str, trade_date: Optional[date] = None,
+                factor_score: float = 25.0) -> StopLossResult:
         if trade_date is None:
             trade_date = date.today()
 
@@ -500,6 +592,7 @@ class StopLossCalculator:
             ma20=ma20_db,
             ma60=ma60_db,
             atr=atr,
+            factor_score=factor_score,
         )
 
     @staticmethod

@@ -2802,7 +2802,39 @@ class DatabaseManager:
             ).scalars().all()
             
             return list(results)
-    
+
+    def get_data_range_batch(
+        self,
+        codes: List[str],
+        start_date: date,
+        end_date: date,
+    ) -> Dict[str, List[StockDaily]]:
+        """批量获取多只股票的 OHLCV 数据。
+
+        Returns:
+            {code: [StockDaily]} 字典，按日期升序排列
+        """
+        if not codes:
+            return {}
+
+        with self.get_session() as session:
+            rows = session.execute(
+                select(StockDaily)
+                .where(
+                    and_(
+                        StockDaily.code.in_(codes),
+                        StockDaily.date >= start_date,
+                        StockDaily.date <= end_date,
+                    )
+                )
+                .order_by(StockDaily.code, StockDaily.date)
+            ).scalars().all()
+
+        result: Dict[str, List[StockDaily]] = {}
+        for r in rows:
+            result.setdefault(r.code, []).append(r)
+        return result
+
     # ------------------------------------------------------------------
     # Realtime spot (intraday snapshot)
     # ------------------------------------------------------------------

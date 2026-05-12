@@ -63,6 +63,7 @@ class BacktestSummary:
     cumulative_return: float = 0.0
     total_pnl: float = 0.0
     win_rate: float = 0.0
+    max_drawdown: float = 0.0
     total_days: int = 0
     total_trades: int = 0
     daily_results: List[DailyBacktestResult] = field(default_factory=list)
@@ -297,6 +298,17 @@ class DiscoveryBacktest:
                 curve_point["close"] = round(capital, 2)
             capital_curve.append(curve_point)
 
+        # max drawdown from capital curve
+        max_dd = 0.0
+        peak = initial_capital
+        for pt in capital_curve:
+            cap = pt.get("capital", peak)
+            if cap > peak:
+                peak = cap
+            dd = (peak - cap) / peak if peak > 0 else 0.0
+            if dd > max_dd:
+                max_dd = dd
+
         return BacktestSummary(
             mode="intraday",
             initial_capital=initial_capital,
@@ -304,6 +316,7 @@ class DiscoveryBacktest:
             cumulative_return=cum,
             total_pnl=round(capital - initial_capital, 2),
             win_rate=total_wins / total_trades if total_trades > 0 else 0,
+            max_drawdown=round(max_dd, 4),
             total_days=len(daily_results),
             total_trades=total_trades,
             daily_results=daily_results,
@@ -330,6 +343,7 @@ class DiscoveryBacktest:
         total_wins = 0
 
         today_str = date.today().strftime("%Y%m%d")
+        now = datetime.now()
 
         for i, td in enumerate(trading_days[:-2]):
             if td not in picks_by_date:
@@ -341,7 +355,12 @@ class DiscoveryBacktest:
             if td_buy > today_str:
                 continue
 
-            is_open = td_sell >= today_str  # 未平仓（卖点未到或当天未收盘，用实时价展示）
+            # 卖出日 == 今天且已过 9:30 → 已平仓，用实际开盘价结算
+            settled_today = (
+                td_sell == today_str
+                and now.time() >= datetime.strptime("09:30", "%H:%M").time()
+            )
+            is_open = td_sell > today_str or (td_sell == today_str and not settled_today)
 
             picks = picks_by_date[td]
             n = len(picks)
@@ -436,6 +455,17 @@ class DiscoveryBacktest:
                 curve_point["close"] = round(pc, 2)
             capital_curve.append(curve_point)
 
+        # max drawdown from capital curve
+        max_dd = 0.0
+        peak = initial_capital
+        for pt in capital_curve:
+            cap = pt.get("capital", peak)
+            if cap > peak:
+                peak = cap
+            dd = (peak - cap) / peak if peak > 0 else 0.0
+            if dd > max_dd:
+                max_dd = dd
+
         return BacktestSummary(
             mode="postmarket",
             initial_capital=initial_capital,
@@ -443,6 +473,7 @@ class DiscoveryBacktest:
             cumulative_return=cum,
             total_pnl=round(capital - initial_capital, 2),
             win_rate=total_wins / total_trades if total_trades > 0 else 0,
+            max_drawdown=round(max_dd, 4),
             total_days=len(daily_results),
             total_trades=total_trades,
             daily_results=daily_results,

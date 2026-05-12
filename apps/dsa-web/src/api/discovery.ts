@@ -92,6 +92,7 @@ export type BacktestResponse = {
   cumulative_return: number;
   total_pnl: number;
   win_rate: number;
+  max_drawdown: number;
   total_days: number;
   total_trades: number;
   daily_results: BacktestDailyItem[];

@@ -2191,12 +2191,11 @@ class StockAnalysisPipeline:
                     else:
                         from src.discovery.engine import StockDiscoveryEngine
                         from src.discovery.factors import (
-                            MoneyFlowFactor, MarginFactor, ChipFactor,
-                            TechnicalFactor, LimitFactor,
-                            FundamentalFactor, PopularityFactor, HotMoneyFactor,
-                            InstitutionHoldFactor, ProfitForecastFactor,
-                            PerformanceFactor, BuybackFactor, InsiderBuyFactor,
-                            BrokerRecommendFactor,
+                            MoneyFlowFactor, TechnicalFactor,
+                            BrokerRecommendFactor, FundamentalFactor, HotMoneyFactor, MarginFactor,
+                            ChipFactor, InsiderBuyFactor, InstitutionHoldFactor, LimitFactor,
+                            PerformanceFactor, PopularityFactor,
+                            BuybackFactor, ProfitForecastFactor,
                         )
                         engine = StockDiscoveryEngine(
                             discovery_config,
@@ -2205,19 +2204,19 @@ class StockAnalysisPipeline:
                         )
                         engine.register_factors([
                             MoneyFlowFactor(),
+                            TechnicalFactor(),
+                            BrokerRecommendFactor(),
+                            FundamentalFactor(),
+                            HotMoneyFactor(),
                             MarginFactor(),
                             ChipFactor(),
-                            TechnicalFactor(),
-                            LimitFactor(),
-                            FundamentalFactor(),
-                            PopularityFactor(),
-                            HotMoneyFactor(),
-                            InstitutionHoldFactor(),
-                            ProfitForecastFactor(),
-                            PerformanceFactor(),
-                            BuybackFactor(),
                             InsiderBuyFactor(),
-                            BrokerRecommendFactor(),
+                            InstitutionHoldFactor(),
+                            LimitFactor(),
+                            PerformanceFactor(),
+                            PopularityFactor(),
+                            BuybackFactor(),
+                            ProfitForecastFactor(),
                         ])
                         discovered = engine.discover(mode="postmarket")
                     if discovered:

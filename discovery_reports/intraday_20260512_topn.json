@@ -1,0 +1,153 @@
+[
+  {
+    "rank": 1,
+    "stock_code": "600930",
+    "stock_name": "华电新能",
+    "score": 53.2,
+    "sector": "电力",
+    "factor_scores": {
+      "sector": 0.0,
+      "ma_entry": 27.539891205802356,
+      "momentum": 23.75,
+      "rebound": 0.0
+    },
+    "factor_weights": {
+      "sector": 25.0,
+      "ma_entry": 35.0,
+      "momentum": 25.0,
+      "rebound": 15.0
+    },
+    "reasons": [
+      "均线多头排列",
+      "回踩MA5均线"
+    ],
+    "buy_price_low": 6.1,
+    "buy_price_high": 6.6,
+    "stop_loss": 5.9,
+    "take_profit_1": 6.8,
+    "take_profit_2": 7.1,
+    "discovered_at": "11:57:35",
+    "price_at_discovery": 6.45
+  },
+  {
+    "rank": 2,
+    "stock_code": "603501",
+    "stock_name": "豪威集团",
+    "score": 48.0,
+    "sector": "半导体",
+    "factor_scores": {
+      "sector": 0.0,
+      "ma_entry": 33.15004533091568,
+      "momentum": 15.5,
+      "rebound": 0.0
+    },
+    "factor_weights": {
+      "sector": 25.0,
+      "ma_entry": 35.0,
+      "momentum": 25.0,
+      "rebound": 15.0
+    },
+    "reasons": [
+      "均线多头排列",
+      "回踩MA5均线"
+    ],
+    "buy_price_low": 97.4,
+    "buy_price_high": 105.6,
+    "stop_loss": 94.3,
+    "take_profit_1": 107.7,
+    "take_profit_2": 112.8,
+    "discovered_at": "11:57:35",
+    "price_at_discovery": 102.55
+  },
+  {
+    "rank": 3,
+    "stock_code": "002309",
+    "stock_name": "中利集团",
+    "score": 47.8,
+    "sector": "电网设备",
+    "factor_scores": {
+      "sector": 0.0,
+      "ma_entry": 22.564369900271984,
+      "momentum": 24.25,
+      "rebound": 0.0
+    },
+    "factor_weights": {
+      "sector": 25.0,
+      "ma_entry": 35.0,
+      "momentum": 25.0,
+      "rebound": 15.0
+    },
+    "reasons": [
+      "均线多头排列",
+      "回踩MA5均线"
+    ],
+    "buy_price_low": 4.4,
+    "buy_price_high": 4.8,
+    "stop_loss": 4.3,
+    "take_profit_1": 4.9,
+    "take_profit_2": 5.1,
+    "discovered_at": "11:57:35",
+    "price_at_discovery": 4.66
+  },
+  {
+    "rank": 4,
+    "stock_code": "300782",
+    "stock_name": "卓胜微",
+    "score": 47.7,
+    "sector": "半导体",
+    "factor_scores": {
+      "sector": 0.0,
+      "ma_entry": 33.15004533091568,
+      "momentum": 15.25,
+      "rebound": 0.0
+    },
+    "factor_weights": {
+      "sector": 25.0,
+      "ma_entry": 35.0,
+      "momentum": 25.0,
+      "rebound": 15.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线",
+      "BOLL中轨支撑"
+    ],
+    "buy_price_low": 101.5,
+    "buy_price_high": 110.0,
+    "stop_loss": 98.3,
+    "take_profit_1": 112.2,
+    "take_profit_2": 117.5,
+    "discovered_at": "11:57:35",
+    "price_at_discovery": 106.83
+  },
+  {
+    "rank": 5,
+    "stock_code": "688012",
+    "stock_name": "中微公司",
+    "score": 41.6,
+    "sector": "半导体",
+    "factor_scores": {
+      "sector": 0.0,
+      "ma_entry": 33.15004533091568,
+      "momentum": 9.0,
+      "rebound": 0.0
+    },
+    "factor_weights": {
+      "sector": 25.0,
+      "ma_entry": 35.0,
+      "momentum": 25.0,
+      "rebound": 15.0
+    },
+    "reasons": [
+      "均线多头排列",
+      "回踩MA5均线"
+    ],
+    "buy_price_low": 366.3,
+    "buy_price_high": 397.2,
+    "stop_loss": 354.8,
+    "take_profit_1": 404.9,
+    "take_profit_2": 424.2,
+    "discovered_at": "11:57:35",
+    "price_at_discovery": 385.6
+  }
+]

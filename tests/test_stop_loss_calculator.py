@@ -138,9 +138,11 @@ def test_select_stop_no_atr():
     method, reason, sl = _select_stop_method(
         current_price=100, atr_14=None, atr_percentile=None,
         ma20=None, ma60=None, swing_low_20=95, swing_high_20=105,
+        boll_lower=None, factor_score=25.0,
     )
-    assert method == "swing_low"
-    assert sl == pytest.approx(95 * 0.99)
+    # 无 ATR 无 Bollinger → close 百分比降级 (factor_score>=25: 0.94)
+    assert method == "close_pct"
+    assert sl == pytest.approx(100 * 0.94)
 
 
 def test_select_stop_high_vol():

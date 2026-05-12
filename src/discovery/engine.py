@@ -12,11 +12,13 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional
 
+import numpy as np
 import pandas as pd
 import requests
 
 from src.discovery.config import DiscoveryConfig
 from src.discovery.factors.base import BaseFactor, DiscoveryResult
+from src.services.stop_loss_calculator import compute_from_arrays
 from data_provider.base import is_st_stock
 
 logger = logging.getLogger(__name__)
@@ -56,99 +58,6 @@ def is_trading_day(engine=None) -> bool:
         return fetcher.is_trading_day()
     from datetime import date
     return date.today().weekday() < 5
-
-
-def _bare_to_ts_code(code: str) -> str:
-    """6 位裸代码 → ts_code 格式 (e.g. '002902' → '002902.SZ')."""
-    code_str = str(code).strip().zfill(6)
-    if len(code_str) != 6:
-        return ""
-    if code_str.startswith(("60", "68")):
-        return f"{code_str}.SH"
-    elif code_str.startswith(("00", "30")):
-        return f"{code_str}.SZ"
-    elif code_str.startswith(("43", "83", "87", "92")):
-        return f"{code_str}.BJ"
-    return ""
-
-
-def _calc_price_levels(
-    prices: Dict[str, float],
-    factor_score: float = 50.0,
-    tech: Optional[Dict[str, float]] = None,
-) -> tuple:
-    """根据技术面价格数据和因子综合分计算买卖点位。
-
-    Args:
-        prices: 可能包含 close, boll_mid, boll_lower 的字典
-        factor_score: 因子综合评分 (0-100)，影响止损宽度
-        tech: 可选，预缓存的 ATR/MA 指标 {"atr": ..., "ma20": ..., "ma60": ...}
-    """
-    close = prices.get("close", 0)
-    boll_mid = prices.get("boll_mid", 0)
-    boll_lower = prices.get("boll_lower", 0)
-    atr = tech.get("atr") if tech else None
-
-    # --- buy_low / buy_high 保持基于 Bollinger ---
-    if boll_lower > 0 and boll_mid > 0:
-        if factor_score >= 35:
-            buy_low = round(boll_lower * 0.97, 1)
-            buy_high = round(boll_mid * 1.01, 1)
-        elif factor_score >= 25:
-            buy_low = round(boll_lower * 0.98, 1)
-            buy_high = round(boll_mid, 1)
-        else:
-            buy_low = round(boll_lower * 0.99, 1)
-            buy_high = round(boll_mid * 0.99, 1)
-    elif close > 0:
-        if factor_score >= 35:
-            buy_low = round(close * 0.95, 1)
-            buy_high = round(close * 1.03, 1)
-        elif factor_score >= 25:
-            buy_low = round(close * 0.97, 1)
-            buy_high = round(close * 1.02, 1)
-        else:
-            buy_low = round(close * 0.98, 1)
-            buy_high = round(close * 1.01, 1)
-    else:
-        return (None, None, None, None, None)
-
-    # --- stop_loss / take_profit：优先 ATR，降级固定百分比 ---
-    if atr and atr > 0 and close > 0:
-        ma20 = tech.get("ma20", 0) if tech else 0
-        ma60 = tech.get("ma60", 0) if tech else 0
-        # 高波 → 宽止损 3x ATR；低波上升 → 追踪止损 2x ATR；适中 → 默认 2x
-        if atr / close > 0.04:        # ATR > 4% close → 高波
-            stop_loss = round(close - 3.0 * atr, 1)
-        elif ma20 > 0 and close > ma20:
-            stop_loss = round(close - 2.0 * atr, 1)
-        elif ma60 > 0:
-            stop_loss = round(max(ma60 * 0.99, close - 2.5 * atr), 1)
-        else:
-            stop_loss = round(close - 2.0 * atr, 1)
-        # ATR 止盈
-        take_profit_1 = round(max(close * 1.03, close + 1.5 * atr), 1)
-        take_profit_2 = round(max(close * 1.07, close + 3.0 * atr), 1)
-    else:
-        # 降级：固定百分比
-        if boll_lower > 0 and boll_mid > 0:
-            if factor_score >= 35:
-                stop_loss = round(boll_lower * 0.94, 1)
-            elif factor_score >= 25:
-                stop_loss = round(boll_lower * 0.95, 1)
-            else:
-                stop_loss = round(boll_lower * 0.96, 1)
-        elif close > 0:
-            if factor_score >= 35:
-                stop_loss = round(close * 0.92, 1)
-            elif factor_score >= 25:
-                stop_loss = round(close * 0.94, 1)
-            else:
-                stop_loss = round(close * 0.95, 1)
-        take_profit_1 = round(close * 1.05, 1) if close > 0 else None
-        take_profit_2 = round(close * 1.10, 1) if close > 0 else None
-
-    return (buy_low, buy_high, stop_loss, take_profit_1, take_profit_2)
 
 
 class StockDiscoveryEngine:
@@ -812,31 +721,6 @@ class StockDiscoveryEngine:
             except Exception as e:
                 logger.debug(f"[Discovery] {factor.name} describe() 失败: {e}")
 
-        # Phase 4.6: 提取价格数据
-        price_map: Dict[str, Dict[str, float]] = {}
-        tech_df = factor_data.get("technical")
-        if tech_df is None:
-            tech_df = factor_data.get("ma_entry")
-        if tech_df is not None and not tech_df.empty:
-            for col in ["close", "boll_mid", "boll_lower"]:
-                if col not in tech_df.columns:
-                    continue
-                for idx_code, val in tech_df[col].items():
-                    try:
-                        fval = float(val)
-                        if fval > 0:
-                            price_map.setdefault(idx_code, {})[col] = fval
-                            # 同时注册互补格式 key（兼容不同因子的索引格式差异）
-                            if "." in idx_code:
-                                bare_key = idx_code.split(".")[0]
-                                price_map.setdefault(bare_key, {})[col] = fval
-                            else:
-                                ts_key = _bare_to_ts_code(idx_code)
-                                if ts_key:
-                                    price_map.setdefault(ts_key, {})[col] = fval
-                    except (ValueError, TypeError):
-                        pass
-
         # Phase 5: 解析名称 → 剔除 ST → 构建结果
         top_n = self.config.auto_discover_count
         if mode == "intraday":
@@ -920,6 +804,17 @@ class StockDiscoveryEngine:
         except Exception:
             logger.debug("[Discovery] 批量获取技术指标失败，降级固定百分比", exc_info=True)
 
+        # Phase 4.9c: 批量预取 OHLCV，供 stop_loss_calculator 计算
+        ohlcv_map: Dict[str, List] = {}
+        try:
+            from datetime import timedelta as _td
+            ohlcv_start = trade_date - _td(days=180) if isinstance(trade_date, date) else date.today() - _td(days=180)
+            ohlcv_map = DatabaseManager().get_data_range_batch(
+                candidate_bare_codes, ohlcv_start, trade_date,
+            )
+        except Exception:
+            logger.debug("[Discovery] 批量获取 OHLCV 失败", exc_info=True)
+
         results = []
         st_skipped = 0
         overbought_skipped = 0
@@ -947,20 +842,35 @@ class StockDiscoveryEngine:
                     continue
                 factor_breakdown[name] = row[name]
 
-            prices = price_map.get(ts_code, {})
-            if not prices and "." in ts_code:
-                prices = price_map.get(ts_code.split(".")[0], {})
-            buy_low, buy_high, stop, tp1, tp2 = _calc_price_levels(
-                prices, factor_score=raw_score,
-                tech=tech_cache.get(stock_code),
-            )
+            # --- 止盈止损计算（StopLossCalculator，盘中实时数据自算） ---
+            ohlcv_rows = ohlcv_map.get(stock_code, [])
+            if ohlcv_rows:
+                highs = np.array([d.high for d in ohlcv_rows], dtype=float)
+                lows = np.array([d.low for d in ohlcv_rows], dtype=float)
+                closes = np.array([d.close for d in ohlcv_rows], dtype=float)
+                if mode == "intraday":
+                    rt_p = live_prices.get(ts_code) or live_prices.get(stock_code)
+                    if rt_p and rt_p > 0:
+                        highs = np.append(highs, rt_p)
+                        lows = np.append(lows, rt_p)
+                        closes = np.append(closes, rt_p)
+                sl_result = compute_from_arrays(
+                    highs, lows, closes, code=stock_code,
+                    ma20=tech_cache.get(stock_code, {}).get("ma20"),
+                    ma60=tech_cache.get(stock_code, {}).get("ma60"),
+                    atr=tech_cache.get(stock_code, {}).get("atr"),
+                    factor_score=raw_score,
+                )
+                buy_low, buy_high = sl_result.buy_low, sl_result.buy_high
+                stop, tp1, tp2 = sl_result.stop_loss, sl_result.take_profit_1, sl_result.take_profit_2
+            else:
+                buy_low = buy_high = stop = tp1 = tp2 = None
 
             # 过滤超买股 & 低盈亏比股
-            # 盘后用收盘价作为发现价，盘中用实时价
             if mode == "postmarket":
-                discovery_price = prices.get("close")
+                discovery_price = float(closes[-1]) if ohlcv_rows else None
             else:
-                discovery_price = live_prices.get(ts_code) or prices.get("close")
+                discovery_price = live_prices.get(ts_code) or live_prices.get(stock_code) or (float(closes[-1]) if ohlcv_rows else None)
             if discovery_price and tp1 and discovery_price >= tp1:
                 overbought_skipped += 1
                 continue

@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 from src.discovery.factors.sector_factor import SectorFactor
 from src.discovery.factors.ma_entry_factor import MaEntryFactor
 from src.discovery.factors.momentum_factor import MomentumFactor
+from src.discovery.factors.ranking_momentum_factor import RankingMomentumFactor
 from src.discovery.factors.rebound_factor import ReboundFactor
 from src.discovery.factors.money_flow_factor import MoneyFlowFactor
 from src.discovery.factors.margin_factor import MarginFactor
@@ -45,6 +46,7 @@ __all__ = [
     "SectorFactor",
     "MaEntryFactor",
     "MomentumFactor",
+    "RankingMomentumFactor",
     "ReboundFactor",
     "MoneyFlowFactor",
     "MarginFactor",

@@ -119,6 +119,7 @@ const FACTOR_LABELS: Record<string, string> = {
   rebound: '反弹',
   sector: '板块',
   ma_entry: '均线',
+  ranking_momentum: '排名动量',
 };
 
 const factorLabel = (key: string) => FACTOR_LABELS[key] || key;
@@ -672,6 +673,7 @@ const BacktestCard: React.FC<{
   onRefresh: () => void;
 }> = ({ data, loading, startDate, endDate, onStartDate, onEndDate, onRefresh }) => {
   const [section, setSection] = useState<'chart' | 'trades'>('chart');
+  const [collapsed, setCollapsed] = useState(true);
 
   if (loading) {
     return (
@@ -692,6 +694,7 @@ const BacktestCard: React.FC<{
   const isPositive = data.cumulative_return >= 0;
   const pct = data.total_days > 0 ? (data.cumulative_return * 100).toFixed(2) : '--';
   const wrPct = data.total_days > 0 ? (data.win_rate * 100).toFixed(0) : '--';
+  const maxDdPct = data.total_days > 0 ? (data.max_drawdown * 100).toFixed(1) : '--';
   const pnlSign = data.total_pnl >= 0 ? '+' : '';
   const initCapital = data.initial_capital || 5_000_000;
   const initialLine = initCapital;
@@ -706,7 +709,10 @@ const BacktestCard: React.FC<{
   return (
     <div className="rounded-xl border border-border/20 bg-card/40">
       {/* ── Summary bar ── */}
-      <div className="px-4 py-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[12px] border-b border-border/15">
+      <button
+        onClick={() => setCollapsed(v => !v)}
+        className="w-full px-4 py-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[12px] border-b border-border/15 hover:bg-foreground/[0.02] transition-colors"
+      >
         <span className="text-tertiary-text text-[11px] font-medium tracking-wide">回测</span>
 
         <div className="flex items-center gap-3">
@@ -715,6 +721,9 @@ const BacktestCard: React.FC<{
           </span>
           <span className="text-tertiary-text">
             胜率 <span className="text-foreground font-medium">{wrPct}%</span>
+          </span>
+          <span className="text-tertiary-text">
+            最大回撤 <span className="text-foreground font-medium">{maxDdPct}%</span>
           </span>
           <span className="text-tertiary-text">
             {data.total_days}天 · {data.total_trades}笔
@@ -734,8 +743,8 @@ const BacktestCard: React.FC<{
           )}
         </div>
 
-        {/* Date filter */}
-        <div className="ml-auto flex items-center gap-1.5">
+        {/* Date filter — stop propagation to prevent collapse toggle */}
+        <div className="ml-auto flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
           <DatePicker
             value={startDate ? dayjs(fmtDate(startDate)) : null}
             onChange={d => onStartDate(d ? d.format('YYYYMMDD') : '')}
@@ -766,103 +775,109 @@ const BacktestCard: React.FC<{
             查询
           </button>
         </div>
-      </div>
 
-      {/* ── Tab switcher ── */}
-      <div className="flex border-b border-border/10">
-        <button
-          onClick={() => setSection('chart')}
-          className={`px-4 py-1.5 text-[11px] font-medium transition-colors ${section === 'chart' ? 'text-cyan border-b border-cyan' : 'text-tertiary-text hover:text-secondary-text'}`}
-        >
-          收益曲线
-        </button>
-        <button
-          onClick={() => setSection('trades')}
-          className={`px-4 py-1.5 text-[11px] font-medium transition-colors ${section === 'trades' ? 'text-cyan border-b border-cyan' : 'text-tertiary-text hover:text-secondary-text'}`}
-        >
-          交易记录
-        </button>
-      </div>
+        <ChevronDown className={`h-4 w-4 text-tertiary-text transition-transform duration-200 ${collapsed ? '' : 'rotate-180'}`} />
+      </button>
 
-      {/* ── Chart ── */}
-      {section === 'chart' && (
-        <div className="px-2 py-3">
-          {chartData.filter(d => d.open != null && d.high != null && d.low != null && d.close != null).length >= 1 ? (
-            <PortfolioCandleChart data={chartData} initCapital={initCapital} height={200} />
-          ) : (
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={chartData} margin={{ left: 12 }}>
-                <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} stroke="hsl(var(--border))" tickFormatter={v => String(v).slice(5).replace('-', '/')} />
-                <YAxis
-                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                  stroke="hsl(var(--border))"
-                  tickFormatter={v => `${(v / 10000).toFixed(0)}w`}
-                  domain={['auto', 'auto']}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
-                    fontSize: '12px',
-                  }}
-                  formatter={(val: unknown) => {
-                    const n = Number(val);
-                    return isNaN(n) ? ['-', '资金'] : [`¥${n.toLocaleString()}`, '资金'];
-                  }}
-                />
-                <ReferenceLine y={initialLine} stroke="hsl(var(--border))" strokeDasharray="4 4" />
-                <Line
-                  type="monotone"
-                  dataKey="capital"
-                  stroke={isPositive ? '#f87171' : '#34d399'}
-                  strokeWidth={2}
-                  dot={false}
-                  activeDot={{ r: 4 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+      {!collapsed && (
+        <>
+          {/* ── Tab switcher ── */}
+          <div className="flex border-b border-border/10">
+            <button
+              onClick={() => setSection('chart')}
+              className={`px-4 py-1.5 text-[11px] font-medium transition-colors ${section === 'chart' ? 'text-cyan border-b border-cyan' : 'text-tertiary-text hover:text-secondary-text'}`}
+            >
+              收益曲线
+            </button>
+            <button
+              onClick={() => setSection('trades')}
+              className={`px-4 py-1.5 text-[11px] font-medium transition-colors ${section === 'trades' ? 'text-cyan border-b border-cyan' : 'text-tertiary-text hover:text-secondary-text'}`}
+            >
+              交易记录
+            </button>
+          </div>
+
+          {/* ── Chart ── */}
+          {section === 'chart' && (
+            <div className="px-2 py-3">
+              {chartData.filter(d => d.open != null && d.high != null && d.low != null && d.close != null).length >= 1 ? (
+                <PortfolioCandleChart data={chartData} initCapital={initCapital} height={200} />
+              ) : (
+                <ResponsiveContainer width="100%" height={200}>
+                  <LineChart data={chartData} margin={{ left: 12 }}>
+                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} stroke="hsl(var(--border))" tickFormatter={v => String(v).slice(5).replace('-', '/')} />
+                    <YAxis
+                      tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                      stroke="hsl(var(--border))"
+                      tickFormatter={v => `${(v / 10000).toFixed(0)}w`}
+                      domain={['auto', 'auto']}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        background: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                      }}
+                      formatter={(val: unknown) => {
+                        const n = Number(val);
+                        return isNaN(n) ? ['-', '资金'] : [`¥${n.toLocaleString()}`, '资金'];
+                      }}
+                    />
+                    <ReferenceLine y={initialLine} stroke="hsl(var(--border))" strokeDasharray="4 4" />
+                    <Line
+                      type="monotone"
+                      dataKey="capital"
+                      stroke={isPositive ? '#f87171' : '#34d399'}
+                      strokeWidth={2}
+                      dot={false}
+                      activeDot={{ r: 4 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </div>
           )}
-        </div>
-      )}
 
-      {/* ── Trade records ── */}
-      {section === 'trades' && (
-        <div className="max-h-64 overflow-y-auto">
-          <table className="w-full text-[11px]">
-            <thead className="sticky top-0 bg-card/90 text-tertiary-text">
-              <tr>
-                <th className="px-3 py-2 text-left font-medium">股票</th>
-                <th className="px-2 py-2 text-right font-medium">买入日</th>
-                <th className="px-2 py-2 text-right font-medium">买入价</th>
-                <th className="px-2 py-2 text-right font-medium">卖出日</th>
-                <th className="px-2 py-2 text-right font-medium">卖出价</th>
-                <th className="px-2 py-2 text-right font-medium">收益%</th>
-                <th className="px-2 py-2 text-right font-medium">盈亏</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...data.trade_records].reverse().map((t, i) => (
-                <tr key={`${t.stock_code}-${t.buy_date}-${i}`} className="border-t border-border/10 hover:bg-foreground/[0.02]">
-                  <td className="px-3 py-1.5">
-                    <span className="font-medium text-foreground">{t.stock_code}</span>
-                    <span className="text-tertiary-text ml-1">{t.stock_name}</span>
-                  </td>
-                  <td className="px-2 py-1.5 text-right text-tertiary-text">{fmtDate(t.buy_date)}</td>
-                  <td className="px-2 py-1.5 text-right tabular-nums">{t.buy_price.toFixed(2)}</td>
-                  <td className="px-2 py-1.5 text-right text-tertiary-text">{fmtDate(t.sell_date)}</td>
-                  <td className="px-2 py-1.5 text-right tabular-nums">{t.sell_price.toFixed(2)}</td>
-                  <td className={`px-2 py-1.5 text-right font-medium tabular-nums ${t.return_pct >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                    {t.return_pct >= 0 ? '+' : ''}{(t.return_pct * 100).toFixed(2)}%
-                  </td>
-                  <td className={`px-2 py-1.5 text-right font-medium tabular-nums ${t.pnl >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                    {t.pnl >= 0 ? '+' : ''}{t.pnl.toFixed(0)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+          {/* ── Trade records ── */}
+          {section === 'trades' && (
+            <div className="max-h-64 overflow-y-auto">
+              <table className="w-full text-[11px]">
+                <thead className="sticky top-0 bg-card/90 text-tertiary-text">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium">股票</th>
+                    <th className="px-2 py-2 text-right font-medium">买入日</th>
+                    <th className="px-2 py-2 text-right font-medium">买入价</th>
+                    <th className="px-2 py-2 text-right font-medium">卖出日</th>
+                    <th className="px-2 py-2 text-right font-medium">卖出价</th>
+                    <th className="px-2 py-2 text-right font-medium">收益%</th>
+                    <th className="px-2 py-2 text-right font-medium">盈亏</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...data.trade_records].reverse().map((t, i) => (
+                    <tr key={`${t.stock_code}-${t.buy_date}-${i}`} className="border-t border-border/10 hover:bg-foreground/[0.02]">
+                      <td className="px-3 py-1.5">
+                        <span className="font-medium text-foreground">{t.stock_code}</span>
+                        <span className="text-tertiary-text ml-1">{t.stock_name}</span>
+                      </td>
+                      <td className="px-2 py-1.5 text-right text-tertiary-text">{fmtDate(t.buy_date)}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">{t.buy_price.toFixed(2)}</td>
+                      <td className="px-2 py-1.5 text-right text-tertiary-text">{fmtDate(t.sell_date)}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">{t.sell_price.toFixed(2)}</td>
+                      <td className={`px-2 py-1.5 text-right font-medium tabular-nums ${t.return_pct >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                        {t.return_pct >= 0 ? '+' : ''}{(t.return_pct * 100).toFixed(2)}%
+                      </td>
+                      <td className={`px-2 py-1.5 text-right font-medium tabular-nums ${t.pnl >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                        {t.pnl >= 0 ? '+' : ''}{t.pnl.toFixed(0)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
