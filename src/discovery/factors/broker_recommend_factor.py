@@ -144,9 +144,15 @@ class BrokerRecommendFactor(BaseFactor):
                 continue
             wr = stats['wins'] / stats['total']
             avg_ret = stats['ret_sum'] / stats['total']
-            # sigmoid: 0%→0.5, 2%→0.73, 5%→0.92, 10%→0.99
-            ret_score = 1.0 / (1.0 + np.exp(-avg_ret * 50))
-            quality[name] = round(wr * 0.7 + ret_score * 0.3, 4)
+            n = stats['total']
+
+            # 贝叶斯收缩：小样本向先验均值回归 (wr→0.5, ret→0)
+            confidence = n / (n + 5)  # 1→0.17, 5→0.5, 10→0.67, 50→0.91
+            wr_shrunk = wr * confidence + 0.5 * (1 - confidence)
+            avg_ret_shrunk = avg_ret * confidence
+
+            ret_score = 1.0 / (1.0 + np.exp(-avg_ret_shrunk * 25))
+            quality[name] = round(wr_shrunk * 0.7 + ret_score * 0.3, 4)
 
         return quality
 
@@ -204,11 +210,6 @@ class BrokerRecommendFactor(BaseFactor):
 
         signals = self._compute_signals(df)
         stock_scores = sum(signals.values()).clip(0, 100)
-
-        # 索引归一化为裸代码（与 engine 中其他因子对齐）
-        stock_scores.index = stock_scores.index.map(
-            lambda x: x.split(".")[0] if "." in str(x) else str(x)
-        )
         stock_scores.name = self.name
         return stock_scores
 
@@ -240,12 +241,10 @@ class BrokerRecommendFactor(BaseFactor):
         ]
         threshold = self._LABEL_THRESHOLD_RATIO
 
-        stock_scores = scores.groupby(df[ts_code_col]).first()
-
+        # scores 索引可能是裸代码（engine 归一化后）或 ts_code（直接调用），统一按 ts_code 查找
         for ts, brokers in broker_by_stock.items():
-            # ts 是 ts_code 格式，lookup 同时尝试裸代码（兼容 score() 的 bare code 索引）
             bare = ts.split(".")[0] if "." in str(ts) else str(ts)
-            score_val = stock_scores.get(ts, 0) or scores.get(bare, 0)
+            score_val = scores.get(ts, 0) or scores.get(bare, 0)
             if score_val <= 0:
                 continue
 

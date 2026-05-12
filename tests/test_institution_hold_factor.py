@@ -78,7 +78,7 @@ class TestInstitutionHoldFactor:
         )
         signals = factor._compute_signals(df)
         assert signals["inst_count"]["A"] < signals["inst_count"]["C"]
-        assert signals["inst_count"]["C"] == pytest.approx(25.0)
+        assert signals["inst_count"]["C"] == pytest.approx(20.0)
 
     def test_inst_count_all_zero(self, factor):
         df = _make_df(
@@ -103,7 +103,7 @@ class TestInstitutionHoldFactor:
         )
         signals = factor._compute_signals(df)
         assert signals["inst_count_change"]["C"] > signals["inst_count_change"]["B"]
-        assert signals["inst_count_change"]["C"] == pytest.approx(30.0)
+        assert signals["inst_count_change"]["C"] == pytest.approx(25.0)
 
     def test_inst_count_change_negative_and_zero_get_zero(self, factor):
         df = _make_df(
@@ -116,7 +116,7 @@ class TestInstitutionHoldFactor:
         signals = factor._compute_signals(df)
         assert signals["inst_count_change"]["A"] == 0.0
         assert signals["inst_count_change"]["B"] == 0.0
-        assert signals["inst_count_change"]["C"] == 30.0
+        assert signals["inst_count_change"]["C"] == 25.0
 
     # -- 持股比例信号 --
 
@@ -130,7 +130,7 @@ class TestInstitutionHoldFactor:
         )
         signals = factor._compute_signals(df)
         assert signals["hold_ratio"]["A"] < signals["hold_ratio"]["C"]
-        assert signals["hold_ratio"]["C"] == pytest.approx(20.0)
+        assert signals["hold_ratio"]["C"] == pytest.approx(18.0)
 
     def test_hold_ratio_all_zero(self, factor):
         df = _make_df(
@@ -155,7 +155,7 @@ class TestInstitutionHoldFactor:
         )
         signals = factor._compute_signals(df)
         assert signals["hold_ratio_change"]["C"] > signals["hold_ratio_change"]["B"]
-        assert signals["hold_ratio_change"]["C"] == pytest.approx(25.0)
+        assert signals["hold_ratio_change"]["C"] == pytest.approx(22.0)
 
     # -- 总分 --
 

@@ -88,16 +88,21 @@ class ProfitForecastFactor(BaseFactor):
 
     @staticmethod
     def _eps_cols(df: pd.DataFrame):
-        """返回 (older_year_col, newer_year_col)，取数值最小的两个年份列."""
+        """返回 (earlier_col, later_col)，取最大的两个预测年份列（最近两期对比）."""
         import re
+        from datetime import datetime
 
+        current_year = datetime.now().year
         cols = [c for c in df.columns if "预测每股收益" in c]
-        # 从列名中提取四位年份，按年份数值排序取最小的两个（最临近的预测期）
+
         parsed = []
         for c in cols:
             m = re.search(r"(\d{4})", c)
             if m:
-                parsed.append((int(m.group(1)), c))
+                year = int(m.group(1))
+                # 只接受合理年份范围（去年 ~ 未来 5 年），过滤误匹配的非年份数字
+                if current_year - 1 <= year <= current_year + 5:
+                    parsed.append((year, c))
         parsed.sort(key=lambda x: x[0])
         if len(parsed) >= 2:
             return parsed[-2][1], parsed[-1][1]
@@ -138,7 +143,7 @@ class ProfitForecastFactor(BaseFactor):
         else:
             signals['rating_quality'] = pd.Series(20.0, index=stock_idx)
 
-        # --- 3. EPS 增长 (0-30)：2026 vs 2025 预测增长率百分位 ---
+        # --- 3. EPS 增长 (0-30)：最近两期预测增长率百分位 ---
         eps_older_col, eps_newer_col = self._eps_cols(df)
         if eps_older_col is not None and eps_newer_col is not None:
             eps_old = pd.to_numeric(df[eps_older_col], errors="coerce")
@@ -151,6 +156,7 @@ class ProfitForecastFactor(BaseFactor):
             growth = growth.where(has_old, 0.0)
             signals['eps_growth'] = (growth.rank(pct=True) * 30).clip(0, 30)
         else:
+            logger.warning("[ProfitForecast] 未找到 EPS 预测年份列，降级使用默认值 15.0")
             signals['eps_growth'] = pd.Series(15.0, index=stock_idx)
 
         return signals

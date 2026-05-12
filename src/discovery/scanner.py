@@ -1323,6 +1323,13 @@ def refresh_performance_report_postmarket(akshare_fetcher=None) -> int:
             logger.info("[Scanner] performance_report %s: %d 条", period, saved)
             total_saved += saved
 
+        # 清理超过 10 年的数据
+        from datetime import date as _date, timedelta
+        cutoff = (_date.today() - timedelta(days=3652)).strftime("%Y%m%d")
+        deleted = db.delete_performance_report_before(cutoff)
+        if deleted > 0:
+            logger.info("[Scanner] 清理 performance_report < %s: %d 条", cutoff, deleted)
+
         return total_saved
     except Exception as e:
         logger.warning("[Scanner] 盘后 performance_report 刷新失败: %s", e)
@@ -1332,7 +1339,7 @@ def refresh_performance_report_postmarket(akshare_fetcher=None) -> int:
 def refresh_repurchase_postmarket(tushare_fetcher=None) -> int:
     """盘后用 Tushare repurchase 刷新 repurchase 表。
 
-    拉取近 180 天的回购公告数据并 upsert 入库。
+    拉取近 180 天的回购公告数据并 upsert 入库，同时清理超出 10 年的旧数据。
     与 institution_hold 不同，回购数据可能每日有新公告，每次都拉取更新。
 
     Returns:
@@ -1357,6 +1364,19 @@ def refresh_repurchase_postmarket(tushare_fetcher=None) -> int:
         db = DatabaseManager()
         saved = db.upsert_repurchase(df, source="tushare")
         logger.info("[Scanner] 盘后 repurchase 刷新: %d 条", saved)
+
+        # 超出 10 年自动删除
+        from sqlalchemy import text as _text
+        cutoff = str(int(today.strftime("%Y%m%d")[:4]) - 10) + today.strftime("%m%d")
+        with db.get_session() as sess:
+            deleted = sess.execute(
+                _text("DELETE FROM repurchase WHERE ann_date < :cutoff"),
+                {"cutoff": cutoff},
+            ).rowcount
+            sess.commit()
+        if deleted:
+            logger.info("[Scanner] repurchase 清理: 删除 %d 条 (>10年)", deleted)
+
         return saved
     except Exception as e:
         logger.warning("[Scanner] 盘后 repurchase 刷新失败: %s", e)

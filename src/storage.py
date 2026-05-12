@@ -4329,6 +4329,34 @@ class DatabaseManager:
             logger.error("[DB] 清理 daily_basic 失败: %s", e)
             return 0
 
+    def delete_performance_report_before(self, cutoff_period: str) -> int:
+        """删除指定报告期之前的 performance_report 数据。
+
+        Args:
+            cutoff_period: 截止报告期 (YYYYMMDD)，早于此报告期的数据会被删除。
+
+        Returns:
+            删除行数
+        """
+        try:
+            with self._SessionLocal() as session:
+                result = session.execute(
+                    delete(PerformanceReport).where(
+                        PerformanceReport.report_period < cutoff_period
+                    )
+                )
+                session.commit()
+                deleted = result.rowcount
+                if deleted > 0:
+                    logger.info(
+                        "[DB] 清理 performance_report < %s: %d 条",
+                        cutoff_period, deleted,
+                    )
+                return deleted
+        except Exception as e:
+            logger.error("[DB] 清理 performance_report 失败: %s", e)
+            return 0
+
     # ------------------------------------------------------------------
     # 同花顺行业映射
     # ------------------------------------------------------------------

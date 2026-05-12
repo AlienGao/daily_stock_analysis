@@ -77,7 +77,7 @@ class TestBuybackFactor:
         )
         signals = factor._compute_signals(df)
         assert signals["amount"]["A.SH"] < signals["amount"]["C.SH"]
-        assert signals["amount"]["C.SH"] == pytest.approx(40.0)
+        assert signals["amount"]["C.SH"] == pytest.approx(25.0)
 
     def test_amount_all_zero(self, factor):
         df = _make_df(
@@ -100,7 +100,7 @@ class TestBuybackFactor:
         )
         signals = factor._compute_signals(df)
         assert signals["vol"]["A.SH"] < signals["vol"]["C.SH"]
-        assert signals["vol"]["C.SH"] == pytest.approx(30.0)
+        assert signals["vol"]["C.SH"] == pytest.approx(15.0)
 
     def test_vol_all_zero(self, factor):
         df = _make_df(
@@ -124,7 +124,7 @@ class TestBuybackFactor:
         signals = factor._compute_signals(df)
         assert signals["proc"]["A.SH"] == 30.0
 
-    def test_proc_completed_gets_15(self, factor):
+    def test_proc_completed_gets_10(self, factor):
         df = _make_df(
             ["A.SH"],
             amount=[0],
@@ -132,7 +132,7 @@ class TestBuybackFactor:
             proc=["完成"],
         )
         signals = factor._compute_signals(df)
-        assert signals["proc"]["A.SH"] == 15.0
+        assert signals["proc"]["A.SH"] == 10.0
 
     def test_proc_empty_gets_0(self, factor):
         df = _make_df(
@@ -154,8 +154,23 @@ class TestBuybackFactor:
         scores = factor.score(df)
         assert scores["A.SH"] == 0.0
 
-    def test_score_max_is_100(self, factor):
-        """三个子信号满分 40+30+30=100，不超上限。"""
+    def test_score_max_with_price_range(self, factor):
+        """25+15+30+30=100，含价格区间信号需提供 current_prices。"""
+        factor._trade_date = "20260512"
+        df = _make_df(
+            ["A.SH"],
+            amount=[1e6],
+            vol=[1e6],
+            proc=["实施中"],
+            high_limit=[100.0],
+        )
+        prices = pd.Series([10.0], index=["A.SH"])
+        signals = factor._compute_signals(df, current_prices=prices)
+        total = sum(signals.values()).clip(0, 100)
+        assert total["A.SH"] == 100.0
+
+    def test_score_max_no_price_range_is_70(self, factor):
+        """无股价时 25+15+30=70 上限。"""
         df = _make_df(
             ["A.SH"],
             amount=[1e6],
@@ -163,7 +178,7 @@ class TestBuybackFactor:
             proc=["实施中"],
         )
         scores = factor.score(df)
-        assert scores["A.SH"] == 100.0
+        assert scores["A.SH"] == 70.0
 
     def test_score_clamped_0_100(self, factor):
         df = _make_df(

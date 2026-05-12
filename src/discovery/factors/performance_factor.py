@@ -193,11 +193,18 @@ class PerformanceFactor(BaseFactor):
 
         net_d0 = pd.to_numeric(df.get("d0_net_profit_yoy", pd.Series(index=idx)), errors="coerce")
         net_d1 = pd.to_numeric(df.get("d1_net_profit_yoy", pd.Series(index=idx)), errors="coerce")
+        net_d2 = pd.to_numeric(df.get("d2_net_profit_yoy", pd.Series(index=idx)), errors="coerce")
+        net_d3 = pd.to_numeric(df.get("d3_net_profit_yoy", pd.Series(index=idx)), errors="coerce")
         rev_d0 = pd.to_numeric(df.get("d0_revenue_yoy", pd.Series(index=idx)), errors="coerce")
         rev_d1 = pd.to_numeric(df.get("d1_revenue_yoy", pd.Series(index=idx)), errors="coerce")
+        rev_d2 = pd.to_numeric(df.get("d2_revenue_yoy", pd.Series(index=idx)), errors="coerce")
+        rev_d3 = pd.to_numeric(df.get("d3_revenue_yoy", pd.Series(index=idx)), errors="coerce")
 
-        net_trend = (net_d0 - net_d1).fillna(0)
-        rev_trend = (rev_d0 - rev_d1).fillna(0)
+        net_baseline = pd.concat([net_d1, net_d2, net_d3], axis=1).mean(axis=1)
+        rev_baseline = pd.concat([rev_d1, rev_d2, rev_d3], axis=1).mean(axis=1)
+
+        net_trend = (net_d0 - net_baseline).fillna(0)
+        rev_trend = (rev_d0 - rev_baseline).fillna(0)
 
         signals["net_profit_trend"] = net_trend
         signals["net_profit_trend_pct"] = _pct_rank(net_trend, idx)
@@ -219,34 +226,26 @@ class PerformanceFactor(BaseFactor):
         signals = self._compute_signals(df)
         idx = df.index
 
-        # Net profit YoY growth: max +37
+        # Core signals: squared-above-median — convex reward for right-tail
         npp = signals.get("net_profit_yoy_pct", pd.Series(50.0, index=idx))
-        scores.loc[npp >= 80] += 37.0
-        scores.loc[(npp >= 60) & (npp < 80)] += 23.0
-
-        # Revenue YoY growth: max +20
         rvp = signals.get("revenue_yoy_pct", pd.Series(50.0, index=idx))
-        scores.loc[rvp >= 80] += 20.0
-        scores.loc[(rvp >= 60) & (rvp < 80)] += 10.0
-
-        # ROE: max +20
         roe_p = signals.get("roe_pct", pd.Series(50.0, index=idx))
-        scores.loc[roe_p >= 80] += 20.0
-        scores.loc[(roe_p >= 60) & (roe_p < 80)] += 10.0
-
-        # Gross margin: max +15
         gm_p = signals.get("gross_margin_pct", pd.Series(50.0, index=idx))
-        scores.loc[gm_p >= 80] += 15.0
-        scores.loc[(gm_p >= 60) & (gm_p < 80)] += 7.0
 
-        # Net profit accelerating: +5 / decelerating: -5
+        scores += ((npp - 50).clip(0) / 50).pow(2) * 37.0
+        scores += ((rvp - 50).clip(0) / 50).pow(2) * 20.0
+        scores += ((roe_p - 50).clip(0) / 50).pow(2) * 20.0
+        scores += ((gm_p - 50).clip(0) / 50).pow(2) * 15.0
+
+        # Net profit trend: ±5, squared convex
         nt_p = signals.get("net_profit_trend_pct", pd.Series(50.0, index=idx))
-        scores.loc[nt_p >= 80] += 5.0
-        scores.loc[nt_p < 20] -= 5.0
+        nt_x = (nt_p - 50) / 50  # -1 ~ +1
+        scores += nt_x.pow(2) * np.sign(nt_x) * 5.0
 
-        # Revenue accelerating: +3
+        # Revenue trend: 0~+3, squared convex
         rt_p = signals.get("revenue_trend_pct", pd.Series(50.0, index=idx))
-        scores.loc[rt_p >= 80] += 3.0
+        rt_x = (rt_p - 50).clip(0) / 50
+        scores += rt_x.pow(2) * 3.0
 
         return scores.clip(0, 100)
 

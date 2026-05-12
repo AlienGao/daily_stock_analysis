@@ -29,7 +29,7 @@ def _make_df(index_codes, brokers, broker_count, **extra):
 def _score_of(factor, df, ts_code):
     """获取指定 ts_code 的得分."""
     scores = factor.score(df)
-    return float(scores[df['ts_code'] == ts_code].iloc[0])
+    return float(scores[ts_code])
 
 
 class TestBrokerRecommendFactor:
@@ -219,8 +219,8 @@ class TestBrokerRecommendFactor:
         df.attrs['consecutive_stocks'] = {}
         scores = factor.score(df)
         reasons = factor.describe(df, scores)
-        assert 'A.SH' in reasons
-        assert any('券商金股' in lab for lab in reasons['A.SH'])
+        assert 'A' in reasons
+        assert any('券商金股' in lab for lab in reasons['A'])
 
     def test_describe_quality_label(self, factor):
         df = _make_df(
@@ -232,8 +232,8 @@ class TestBrokerRecommendFactor:
         df.attrs['consecutive_stocks'] = {}
         scores = factor.score(df)
         reasons = factor.describe(df, scores)
-        assert 'A.SH' in reasons
-        assert any('券商质量' in lab for lab in reasons['A.SH'])
+        assert 'A' in reasons
+        assert any('券商质量' in lab for lab in reasons['A'])
 
     def test_describe_consecutive_label(self, factor):
         df = _make_df(
@@ -247,8 +247,8 @@ class TestBrokerRecommendFactor:
         }
         scores = factor.score(df)
         reasons = factor.describe(df, scores)
-        assert 'A.SH' in reasons
-        assert any('连续推荐' in lab for lab in reasons['A.SH'])
+        assert 'A' in reasons
+        assert any('连续推荐' in lab for lab in reasons['A'])
 
     def test_describe_below_threshold_skipped(self, factor):
         df = _make_df(
@@ -260,8 +260,8 @@ class TestBrokerRecommendFactor:
         df.attrs['consecutive_stocks'] = {}
         scores = factor.score(df)
         reasons = factor.describe(df, scores)
-        if 'A.SH' in reasons:
-            labels = reasons['A.SH']
+        if 'A' in reasons:
+            labels = reasons['A']
             assert not any('券商质量' in lab for lab in labels)
             assert not any('连续推荐' in lab for lab in labels)
 
@@ -273,9 +273,9 @@ class TestBrokerRecommendFactor:
         )
         df.attrs['broker_quality'] = {}
         df.attrs['consecutive_stocks'] = {}
-        scores = pd.Series(0.0, index=['A.SH'], name='broker_recommend')
+        scores = pd.Series(0.0, index=['A'], name='broker_recommend')
         reasons = factor.describe(df, scores)
-        assert 'A.SH' not in reasons
+        assert 'A' not in reasons
 
 
 class TestBrokerRecommendFactorIntegration:
@@ -306,7 +306,7 @@ class TestBrokerRecommendFactorIntegration:
     def test_score_with_real_data(self, factor):
         df = factor.fetch_data('20260501')
         scores = factor.score(df)
-        assert len(scores) == len(df)
+        assert len(scores) == df['ts_code'].nunique()
         assert scores.min() >= 0
         assert scores.max() <= 100
         assert scores.max() - scores.min() > 10

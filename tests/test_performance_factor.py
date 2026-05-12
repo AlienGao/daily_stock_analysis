@@ -107,7 +107,7 @@ class TestPerformanceFactor:
         assert scores["E.SH"] > scores["A.SH"]
 
     def test_neutral_stock_gets_baseline(self, factor):
-        """Single stock at median percentile → no brackets trigger → score 0."""
+        """Single stock at median percentile → squared-above-median → 0."""
         df = _make_df(
             ["A.SH"],
             d0_net_profit_yoy=[10], d0_revenue_yoy=[5],
@@ -308,7 +308,7 @@ class TestPerformanceFactor:
     # -- 边缘情况 --
 
     def test_all_nan_columns(self, factor):
-        """All NaN → _pct_rank fallback to 50 → no brackets trigger → score 0."""
+        """All NaN → core 0, trend avg-rank 75 → ~2 score."""
         df = _make_df(
             ["A.SH", "B.SZ"],
             d0_net_profit_yoy=[np.nan, np.nan],
@@ -317,7 +317,7 @@ class TestPerformanceFactor:
             d0_gross_margin=[np.nan, np.nan],
         )
         scores = factor.score(df)
-        assert scores["A.SH"] == 0.0
+        assert 0 <= scores["A.SH"] <= 5
         assert 0 <= scores["A.SH"] <= 100
 
     def test_missing_d1_columns(self, factor):

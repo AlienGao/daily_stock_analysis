@@ -135,9 +135,67 @@ class TestInsiderBuyFactor:
         assert factor.name == "insider_buy"
         assert factor.available_intraday is False
         assert factor.available_postmarket is True
-        assert factor.weight == 15.0
+        assert factor.weight == 8.0
 
     def test_score_series_name(self, factor):
         df = _make_df(["A.SH"], add_ratio=[2.0])
         scores = factor.score(df)
         assert scores.name == "insider_buy"
+
+    # -- buyer type classification --
+
+    def test_classify_insurance(self, factor):
+        label, bonus = factor._classify_buyer("信泰人寿保险股份有限公司")
+        assert label == "险资/社保"
+        assert bonus == 8
+
+    def test_classify_financial(self, factor):
+        label, bonus = factor._classify_buyer("中信证券股份有限公司")
+        assert label == "金融机构"
+        assert bonus == 6
+
+    def test_classify_corporate(self, factor):
+        label, bonus = factor._classify_buyer("华润集团有限公司")
+        assert label == "产业资本"
+        assert bonus == 3
+
+    def test_classify_pe(self, factor):
+        label, bonus = factor._classify_buyer("某某投资咨询合伙企业")
+        assert label == "私募/PE"
+        assert bonus == 2
+
+    def test_classify_individual(self, factor):
+        label, bonus = factor._classify_buyer("谢恺")
+        assert label == "其他"
+        assert bonus == 0
+
+    def test_classify_empty(self, factor):
+        label, bonus = factor._classify_buyer("")
+        assert label == "其他"
+        assert bonus == 0
+
+    def test_insurance_priority_over_corporate(self, factor):
+        """保险/人寿优先匹配，不被有限/股份误判为产业资本."""
+        label, bonus = factor._classify_buyer("中国人寿保险股份有限公司")
+        assert label == "险资/社保"
+        assert bonus == 8
+
+    def test_buyer_type_boosts_score(self, factor):
+        """险资举牌比个人举牌得分更高."""
+        from datetime import datetime
+        today = datetime.now().strftime("%Y%m%d")
+        recent = datetime.now().strftime("%Y-%m-%d")
+        # 相同的增持数据，但举牌方不同
+        df_insurance = _make_df(
+            ["A.SH"],
+            add_ratio=[2.0], buyer=["中国人寿保险股份有限公司"],
+            announce_date=[recent],
+        )
+        df_person = _make_df(
+            ["B.SZ"],
+            add_ratio=[2.0], buyer=["谢恺"],
+            announce_date=[recent],
+        )
+        s_ins = factor.score(df_insurance, trade_date=today)
+        s_per = factor.score(df_person, trade_date=today)
+        assert s_ins["A.SH"] > s_per["B.SZ"]

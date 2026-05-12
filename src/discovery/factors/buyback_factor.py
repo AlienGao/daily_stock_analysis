@@ -26,9 +26,10 @@ class BuybackFactor(BaseFactor):
     """回购因子。
 
     基于上市公司回购公告数据，百分位归一化打分：
-    - 回购金额百分位 (0-40)
-    - 回购数量百分位 (0-30)
-    - 进度加分 (0-30)：实施中/完成
+    - 回购金额百分位 (0-25)
+    - 回购数量百分位 (0-15)
+    - 进度分 (0-30)：实施>股东大会通过>预案>完成>提议
+    - 价格区间 (0-30)：当前价 vs 回购上限的上行空间
 
     fetch_data 优先读 DB 缓存，无缓存时降级为 Tushare 实时请求。
     """
@@ -39,9 +40,11 @@ class BuybackFactor(BaseFactor):
     weight = 10.0
 
     _LABEL_THRESHOLD = 0.6
+    _PROC_SCORE = {"实施": 30, "股东大会通过": 20, "预案": 15, "完成": 10, "提议": 5}
 
     def fetch_data(self, trade_date: str, **kwargs) -> Optional[pd.DataFrame]:
         """优先读 DB 近期回购数据，降级为 Tushare 实时请求。"""
+        self._trade_date = trade_date
         # 计算 180 天前的日期作为过滤起点
         from datetime import datetime as _dt, timedelta
         try:
@@ -66,11 +69,47 @@ class BuybackFactor(BaseFactor):
         return tushare_fetcher.get_repurchase(start_date=cutoff)
 
     # ------------------------------------------------------------------
+    # 股价获取
+    # ------------------------------------------------------------------
+
+    def _get_current_prices(self, index: pd.Index, trade_date: str) -> pd.Series:
+        """批量获取最新收盘价。"""
+        from datetime import datetime
+        from src.storage import DatabaseManager, StockDaily
+        from sqlalchemy import select
+
+        bare_codes = list(set(str(c)[:6] for c in index))
+        try:
+            db = DatabaseManager()
+            td = datetime.strptime(trade_date[:8], "%Y%m%d").date()
+
+            with db.get_session() as session:
+                rows = session.execute(
+                    select(StockDaily.code, StockDaily.close)
+                    .where(StockDaily.code.in_(bare_codes), StockDaily.date <= td)
+                    .order_by(StockDaily.code, StockDaily.date.desc())
+                ).all()
+
+            price_map = {}
+            for code, close in rows:
+                if code not in price_map:
+                    price_map[code] = close
+
+            return pd.Series(
+                [price_map.get(str(c)[:6], float("nan")) for c in index],
+                index=index,
+            )
+        except Exception as e:
+            logger.warning("[BuybackFactor] 获取股价失败: %s", e)
+            return pd.Series(index=index, dtype=float)
+
+    # ------------------------------------------------------------------
     # 信号提取
     # ------------------------------------------------------------------
 
-    def _compute_signals(self, df: pd.DataFrame) -> Dict[str, pd.Series]:
-        """提取 3 个子信号，各自用百分位归一化到满分区间。"""
+    def _compute_signals(
+        self, df: pd.DataFrame, current_prices: pd.Series = None,
+    ) -> Dict[str, pd.Series]:
         idx = df.index
         zeros = pd.Series(0.0, index=idx)
 
@@ -80,31 +119,46 @@ class BuybackFactor(BaseFactor):
         vol = pd.to_numeric(
             df.get("vol", zeros), errors="coerce"
         ).fillna(0)
+        high_limit = pd.to_numeric(
+            df.get("high_limit", zeros), errors="coerce"
+        ).fillna(0)
         proc = df.get("proc", pd.Series("", index=idx)).fillna("").astype(str)
 
         signals: Dict[str, pd.Series] = {}
 
-        # 1. 回购金额百分位 (0-40)
+        # 1. 回购金额百分位 (0-25)
         valid_a = amount > 0
         s_amount = zeros.copy()
         if valid_a.any():
-            s_amount[valid_a] = _pct_rank(amount[valid_a]) * 40.0
+            s_amount[valid_a] = _pct_rank(amount[valid_a]) * 25.0
         signals["amount"] = s_amount
 
-        # 2. 回购数量百分位 (0-30)
+        # 2. 回购数量百分位 (0-15)
         valid_v = vol > 0
         s_vol = zeros.copy()
         if valid_v.any():
-            s_vol[valid_v] = _pct_rank(vol[valid_v]) * 30.0
+            s_vol[valid_v] = _pct_rank(vol[valid_v]) * 15.0
         signals["vol"] = s_vol
 
-        # 3. 进度固定加分 (0-30)
+        # 3. 进度分 (0-30)：按阶段递进，越靠后越确定
         s_proc = zeros.copy()
-        s_proc[proc.str.contains("实施", na=False)] = 30.0
-        # "完成" 仅在无"实施"时才加分，避免覆盖"实施完成"的 30 分
-        s_proc[(proc.str.contains("完成", na=False))
-               & ~(proc.str.contains("实施", na=False))] = 15.0
+        for stage, score in self._PROC_SCORE.items():
+            s_proc[proc.str.contains(stage, na=False)] = score
         signals["proc"] = s_proc
+
+        # 4. 价格区间信号 (0-30)：当前价低于回购上限的上行空间
+        s_price = zeros.copy()
+        if current_prices is not None and current_prices.notna().any():
+            active = proc.str.contains("实施|股东大会通过|预案", na=False)
+            valid_p = (
+                active & (high_limit > 0) & current_prices.notna() & (current_prices > 0)
+            )
+            if valid_p.any():
+                upside = (high_limit - current_prices) / current_prices
+                pos = valid_p & (upside > 0)
+                if pos.any():
+                    s_price[pos] = _pct_rank(upside[pos]) * 30.0
+        signals["price_range"] = s_price
 
         return signals
 
@@ -116,7 +170,9 @@ class BuybackFactor(BaseFactor):
         if df.empty:
             return pd.Series(dtype=float, name=self.name)
 
-        signals = self._compute_signals(df)
+        trade_date = getattr(self, "_trade_date", "")
+        prices = self._get_current_prices(df.index, trade_date) if trade_date else None
+        signals = self._compute_signals(df, current_prices=prices)
         total = sum(signals.values()).clip(0, 100)
         total.name = self.name
         return total
@@ -127,11 +183,14 @@ class BuybackFactor(BaseFactor):
         if df.empty:
             return reasons
 
-        signals = self._compute_signals(df)
+        trade_date = getattr(self, "_trade_date", "")
+        prices = self._get_current_prices(df.index, trade_date) if trade_date else None
+        signals = self._compute_signals(df, current_prices=prices)
         thresholds = {
-            "amount": 40.0 * self._LABEL_THRESHOLD,
-            "vol": 30.0 * self._LABEL_THRESHOLD,
+            "amount": 25.0 * self._LABEL_THRESHOLD,
+            "vol": 15.0 * self._LABEL_THRESHOLD,
             "proc": 30.0 * self._LABEL_THRESHOLD,
+            "price_range": 30.0 * self._LABEL_THRESHOLD,
         }
 
         amount = pd.to_numeric(
@@ -141,6 +200,9 @@ class BuybackFactor(BaseFactor):
             df.get("vol", pd.Series(0, index=df.index)), errors="coerce"
         ).fillna(0)
         proc = df.get("proc", pd.Series("", index=df.index)).fillna("").astype(str)
+        high_limit = pd.to_numeric(
+            df.get("high_limit", pd.Series(0, index=df.index)), errors="coerce"
+        ).fillna(0)
 
         for i in range(len(scores)):
             if scores.iat[i] <= 0:
@@ -156,7 +218,6 @@ class BuybackFactor(BaseFactor):
             if signals["amount"].iat[i] >= thresholds["amount"]:
                 amt = amount.iat[i]
                 if amt > 0:
-                    # amount 已归一化为万元
                     if amt >= 1e4:
                         labels.append(f"回购{amt/1e4:.1f}亿元")
                     else:
@@ -165,8 +226,14 @@ class BuybackFactor(BaseFactor):
             if signals["vol"].iat[i] >= thresholds["vol"]:
                 v = vol.iat[i]
                 if v > 0:
-                    # vol 已归一化为万股
                     labels.append(f"回购{v:.0f}万股")
+
+            if signals["price_range"].iat[i] >= thresholds["price_range"]:
+                hl = high_limit.iat[i]
+                px = prices.iat[i] if prices is not None else float("nan")
+                if hl > 0 and not pd.isna(px) and px > 0:
+                    pct = (hl - px) / px * 100
+                    labels.append(f"回购上限+{pct:.0f}%")
 
             if labels:
                 reasons[ts_code] = labels
