@@ -84,26 +84,18 @@ class ReboundFactor(BaseFactor):
             logger.warning("[ReboundFactor] realtime_spot 合并失败: %s", e)
 
         try:
-            mf = db.get_money_flow(trade_date=today)
+            from src.discovery.money_flow_source import fetch_intraday_money_flow
+            mf = fetch_intraday_money_flow(trade_date, kwargs.get("tushare_fetcher"))
             if mf is not None and not mf.empty:
                 df_bare = _to_bare_codes(df.index)
                 mf_bare = _to_bare_codes(mf.index)
-                for col in ["buy_elg_amount", "sell_elg_amount",
-                            "buy_lg_amount", "sell_lg_amount"]:
-                    if col in mf.columns:
-                        s = mf[col].copy()
-                        s.index = mf_bare
-                        df[col] = df_bare.map(s)
+                inflow = mf.get("inflow_rate", pd.Series(0.0, index=mf.index))
+                inflow.index = mf_bare
+                df["inflow_rate"] = df_bare.map(inflow).fillna(0)
+            else:
+                df["inflow_rate"] = 0
         except Exception as e:
-            logger.warning("[ReboundFactor] money_flow 合并失败: %s", e)
-
-        if all(c in df.columns for c in ["buy_elg_amount", "sell_elg_amount",
-                                          "buy_lg_amount", "sell_lg_amount"]):
-            buy = df["buy_elg_amount"].fillna(0) + df["buy_lg_amount"].fillna(0)
-            sell = df["sell_elg_amount"].fillna(0) + df["sell_lg_amount"].fillna(0)
-            total = buy + sell
-            df["inflow_rate"] = ((buy - sell) / total.replace(0, float("nan"))).fillna(0)
-        else:
+            logger.warning("[ReboundFactor] money_flow 获取失败: %s", e)
             df["inflow_rate"] = 0
 
         return df

@@ -452,6 +452,39 @@ class PopularityRank(Base):
         return f"<PopularityRank(code={self.code}, date={self.trade_date}, rank={self.rank})>"
 
 
+class MomentumSnapshot(Base):
+    """盘中资金流快照 (intraday money flow snapshot)。
+
+    按 (code, trade_date) 唯一，盘中每轮扫描 upsert 覆盖当日最新数据。
+    字段对齐 MomentumFactor._normalize_eastmoney() 的 7 列输出。
+    """
+
+    __tablename__ = 'momentum_snapshot'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(10), nullable=False, index=True)
+    name = Column(String(50))
+    trade_date = Column(String(8))
+    major_net = Column(Float)
+    lg_net = Column(Float)
+    inflow_rate = Column(Float)
+    pct_chg = Column(Float)
+    turnover_rate = Column(Float)
+    volume_ratio = Column(Float)
+    data_source = Column(String(30))
+    source = Column(String(20))
+    fetch_time = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('code', 'trade_date', name='uix_momentum_snapshot_code_date'),
+        Index('ix_momentum_snapshot_trade_date', 'trade_date'),
+    )
+
+    def __repr__(self) -> str:
+        return f"<MomentumSnapshot(code={self.code}, date={self.trade_date})>"
+
+
 class HmDetail(Base):
     """个股游资交易明细（盘后 Tushare hm_detail 落库）。
 
@@ -1502,6 +1535,7 @@ class DatabaseManager:
         self._ensure_limit_break_table()
         self._ensure_margin_detail_table()
         self._ensure_popularity_rank_table()
+        self._ensure_momentum_snapshot_table()
         self._ensure_cyq_perf_table()
         self._ensure_insider_buy_table()
         self._ensure_performance_report_table()
@@ -1687,6 +1721,26 @@ class DatabaseManager:
             logger.info("已创建表 popularity_rank")
         except Exception as exc:
             logger.warning("创建 popularity_rank 失败: %s", exc)
+
+    def _ensure_momentum_snapshot_table(self) -> None:
+        """SQLite: create momentum_snapshot if missing (pre-create_all catch-up)."""
+        if not self._is_sqlite_engine:
+            return
+        try:
+            with self._engine.connect() as conn:
+                rows = conn.execute(
+                    text("SELECT name FROM sqlite_master WHERE type='table' AND name='momentum_snapshot'")
+                ).fetchall()
+            if rows:
+                return
+        except Exception as exc:
+            logger.warning("检查 momentum_snapshot 表存在性失败: %s", exc)
+            return
+        try:
+            MomentumSnapshot.__table__.create(self._engine)
+            logger.info("已创建表 momentum_snapshot")
+        except Exception as exc:
+            logger.warning("创建 momentum_snapshot 失败: %s", exc)
 
     def _ensure_cyq_perf_table(self) -> None:
         """SQLite: create broker_enrichment_cyq_perf if missing."""
@@ -3833,6 +3887,137 @@ class DatabaseManager:
         except Exception as e:
             logger.error("[DB] upsert_popularity_rank 失败: %s", e)
             raise
+
+    def upsert_momentum_snapshot(self, df: pd.DataFrame, source: str = "eastmoney") -> int:
+        """upsert 盘中资金流快照 by (code, trade_date)。"""
+        if df is None or df.empty:
+            return 0
+
+        now = datetime.now()
+        records: List[Dict[str, Any]] = []
+        for _, row in df.iterrows():
+            code = str(row.get("code", "")).strip()
+            if not code:
+                continue
+            trade_date = str(row.get("trade_date", ""))[:8]
+            if not trade_date:
+                continue
+
+            records.append({
+                "code": code,
+                "name": str(row.get("name", ""))[:50] if row.get("name") else "",
+                "trade_date": trade_date,
+                "major_net": self._normalize_sql_value(row.get("major_net")),
+                "lg_net": self._normalize_sql_value(row.get("lg_net")),
+                "inflow_rate": self._normalize_sql_value(row.get("inflow_rate")),
+                "pct_chg": self._normalize_sql_value(row.get("pct_chg")),
+                "turnover_rate": self._normalize_sql_value(row.get("turnover_rate")),
+                "volume_ratio": self._normalize_sql_value(row.get("volume_ratio")),
+                "data_source": str(row.get("data_source", ""))[:30],
+                "source": source,
+                "fetch_time": now,
+                "updated_at": now,
+            })
+
+        if not records:
+            return 0
+
+        def _write(session: Session) -> int:
+            if self._is_sqlite_engine:
+                _CHUNK = 200
+                for i in range(0, len(records), _CHUNK):
+                    chunk = records[i : i + _CHUNK]
+                    stmt = sqlite_insert(MomentumSnapshot).values(chunk)
+                    excluded = stmt.excluded
+                    session.execute(
+                        stmt.on_conflict_do_update(
+                            index_elements=["code", "trade_date"],
+                            set_={
+                                "name": excluded.name,
+                                "major_net": excluded.major_net,
+                                "lg_net": excluded.lg_net,
+                                "inflow_rate": excluded.inflow_rate,
+                                "pct_chg": excluded.pct_chg,
+                                "turnover_rate": excluded.turnover_rate,
+                                "volume_ratio": excluded.volume_ratio,
+                                "data_source": excluded.data_source,
+                                "source": excluded.source,
+                                "fetch_time": excluded.fetch_time,
+                                "updated_at": excluded.updated_at,
+                            },
+                        )
+                    )
+                return len(records)
+            else:
+                codes = [r["code"] for r in records]
+                dates = [r["trade_date"] for r in records]
+                existing = {}
+                for row in session.execute(
+                    select(MomentumSnapshot).where(
+                        and_(MomentumSnapshot.code.in_(codes),
+                             MomentumSnapshot.trade_date.in_(dates))
+                    )
+                ).scalars().all():
+                    existing[(row.code, row.trade_date)] = row
+                new_count = 0
+                for rec in records:
+                    ent = existing.get((rec["code"], rec["trade_date"]))
+                    if ent is None:
+                        session.add(MomentumSnapshot(**rec))
+                        new_count += 1
+                    else:
+                        for key in ("name", "major_net", "lg_net", "inflow_rate",
+                                    "pct_chg", "turnover_rate", "volume_ratio",
+                                    "data_source", "source"):
+                            setattr(ent, key, rec[key])
+                        ent.fetch_time = now
+                        ent.updated_at = now
+                return new_count
+
+        try:
+            saved = self._run_write_transaction("upsert_momentum_snapshot", _write)
+            logger.debug("[DB] upsert_momentum_snapshot: %d 条 (source=%s)", saved, source)
+            return saved
+        except Exception as e:
+            logger.error("[DB] upsert_momentum_snapshot 失败: %s", e)
+            raise
+
+    def get_momentum_snapshot(
+        self, trade_date: Optional[str] = None,
+        codes: Optional[List[str]] = None,
+    ) -> pd.DataFrame:
+        """读取盘中资金流快照。"""
+        try:
+            with self.get_session() as session:
+                filters = []
+                if trade_date:
+                    filters.append(MomentumSnapshot.trade_date == str(trade_date)[:8])
+                if codes:
+                    filters.append(MomentumSnapshot.code.in_(codes))
+                query = select(MomentumSnapshot)
+                if filters:
+                    query = query.where(and_(*filters))
+                rows = session.execute(query).scalars().all()
+            if not rows:
+                return pd.DataFrame()
+            df = pd.DataFrame([{
+                "code": r.code,
+                "name": r.name,
+                "trade_date": r.trade_date,
+                "major_net": r.major_net,
+                "lg_net": r.lg_net,
+                "inflow_rate": r.inflow_rate,
+                "pct_chg": r.pct_chg,
+                "turnover_rate": r.turnover_rate,
+                "volume_ratio": r.volume_ratio,
+                "data_source": r.data_source,
+                "source": r.source,
+            } for r in rows])
+            df.index = df["code"]
+            return df
+        except Exception as e:
+            logger.warning("[DB] get_momentum_snapshot 失败: %s", e)
+            return pd.DataFrame()
 
     def get_money_flow(
         self, trade_date: Optional[str] = None,

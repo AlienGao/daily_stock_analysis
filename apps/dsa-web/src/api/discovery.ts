@@ -18,6 +18,7 @@ export type DiscoveryItem = {
   discovered_at?: string;
   price_at_discovery?: number | null;
   live_price?: number | null;
+  pct_chg?: number | null;
   factor_weights?: Record<string, number>;
 };
 

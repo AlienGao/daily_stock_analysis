@@ -637,6 +637,8 @@ class StockDiscoveryEngine:
                     raw.index = raw.index.map(
                         lambda x: x.split(".")[0] if "." in str(x) else str(x)
                     )
+                    if raw.index.has_duplicates:
+                        raw = raw.groupby(raw.index).mean()
                     raw_scores[factor.name] = raw
                     score_columns[factor.name] = raw  # 暂存原始分，标准化后再加权
                     logger.debug(
@@ -754,6 +756,7 @@ class StockDiscoveryEngine:
         sector_labels = self._get_sector_labels(candidate_codes)
         industry_map = self._get_industry_map(candidate_codes)  # 行业映射作为 fallback
         live_prices: Dict[str, float] = {}
+        live_pct_chg: Dict[str, float] = {}
         if mode in ("intraday", "postmarket"):
             try:
                 from src.storage import DatabaseManager
@@ -766,6 +769,9 @@ class StockDiscoveryEngine:
                             val = spot_df.at[code, "price"]
                             if pd.notna(val):
                                 live_prices[ts_code] = float(val)
+                            pct = spot_df.at[code, "pct_chg"]
+                            if pd.notna(pct):
+                                live_pct_chg[ts_code] = float(pct)
                         except (KeyError, ValueError, TypeError):
                             pass
             except Exception:
@@ -807,10 +813,11 @@ class StockDiscoveryEngine:
         # Phase 4.9c: 批量预取 OHLCV，供 stop_loss_calculator 计算
         ohlcv_map: Dict[str, List] = {}
         try:
-            from datetime import timedelta as _td
-            ohlcv_start = trade_date - _td(days=180) if isinstance(trade_date, date) else date.today() - _td(days=180)
+            from datetime import datetime as _dt2, timedelta as _td
+            td_obj = _dt2.strptime(str(trade_date)[:8], "%Y%m%d").date()
+            ohlcv_start = td_obj - _td(days=180)
             ohlcv_map = DatabaseManager().get_data_range_batch(
-                candidate_bare_codes, ohlcv_start, trade_date,
+                candidate_bare_codes, ohlcv_start, td_obj,
             )
         except Exception:
             logger.debug("[Discovery] 批量获取 OHLCV 失败", exc_info=True)
@@ -915,6 +922,7 @@ class StockDiscoveryEngine:
                     take_profit_2=tp2,
                     discovered_at=time.strftime("%H:%M:%S"),
                     price_at_discovery=discovery_price,
+                    change_pct=live_pct_chg.get(ts_code, live_pct_chg.get(stock_code, 0.0)),
                 )
             )
 

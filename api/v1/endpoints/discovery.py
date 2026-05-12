@@ -189,6 +189,7 @@ class DiscoveryItem(BaseModel):
     discovered_at: str = ""
     price_at_discovery: Optional[float] = None
     live_price: Optional[float] = None
+    pct_chg: Optional[float] = None
     factor_weights: dict = {}
 
 
@@ -245,6 +246,7 @@ def _build_discovery_items(raw_items: list, mode: str = "") -> List[DiscoveryIte
             take_profit_2=entry.get("take_profit_2"),
             discovered_at=entry.get("discovered_at", ""),
             price_at_discovery=entry.get("price_at_discovery"),
+            pct_chg=entry.get("pct_chg"),
         ))
     return items
 
@@ -315,6 +317,7 @@ def get_intraday_top10():
                 discovered_at=entry.get("discovered_at", ""),
                 price_at_discovery=entry.get("price_at_discovery"),
                 live_price=live_prices.get(ts_code) if live_prices.get(ts_code) != entry.get("price_at_discovery") else None,
+                pct_chg=entry.get("pct_chg"),
                 factor_weights=entry.get("factor_weights") or _get_factor_weights("intraday"),
             ))
         # Re-rank after filtering
@@ -329,6 +332,7 @@ def get_intraday_top10():
                 stock_name=entry.get("stock_name", ""),
                 score=0,
                 change="out",
+                pct_chg=entry.get("pct_chg"),
                 factor_weights={},
             ))
 
@@ -562,6 +566,7 @@ def get_postmarket_report(
                 take_profit_2=entry.get("take_profit_2"),
                 discovered_at=entry.get("discovered_at", ""),
                 price_at_discovery=entry.get("price_at_discovery"),
+                pct_chg=entry.get("pct_chg"),
                 factor_weights=entry.get("factor_weights") or _get_factor_weights("postmarket"),
             ))
 
@@ -1028,6 +1033,7 @@ _FACTOR_LABEL_MAP = {
     "broker_recommend": "券商推荐", "popularity": "人气", "hot_money": "游资",
     "performance": "业绩", "momentum": "动量", "rebound": "反弹",
     "sector": "板块", "ma_entry": "均线",
+    "ranking_momentum": "排名动量",
 }
 
 

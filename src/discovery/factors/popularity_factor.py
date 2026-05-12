@@ -77,8 +77,8 @@ class PopularityFactor(BaseFactor):
         return None
 
     @staticmethod
-    def _cache_to_db(df: pd.DataFrame, trade_date: str) -> None:
-        """将东财人气数据写入 popularity_rank 表，供后续轮次超时降级使用。"""
+    def _cache_to_db(df: pd.DataFrame, trade_date: str, source: str = "eastmoney") -> None:
+        """将人气数据写入 popularity_rank 表，供后续轮次超时降级使用。"""
         try:
             from src.storage import DatabaseManager
 
@@ -88,13 +88,13 @@ class PopularityFactor(BaseFactor):
             cache["trade_date"] = str(trade_date)[:8]
             cache["rank"] = pd.to_numeric(df.get("rank", 0), errors="coerce").fillna(0).astype(int)
             cache["pct_change"] = pd.to_numeric(df.get("pct_chg", 0), errors="coerce").fillna(0)
-            cache["hot"] = None
-            cache["concept"] = ""
-            cache["source"] = "eastmoney"
+            cache["hot"] = df.get("hot", None)
+            cache["concept"] = df.get("concept", "")
+            cache["source"] = source
 
             db = DatabaseManager()
-            n = db.upsert_popularity_rank(cache, source="eastmoney")
-            logger.debug("[PopularityFactor] DB 缓存写入 %d 条", n)
+            n = db.upsert_popularity_rank(cache, source=source)
+            logger.debug("[PopularityFactor] DB 缓存写入 %d 条 (source=%s)", n, source)
         except Exception as e:
             logger.debug("[PopularityFactor] DB 缓存写入失败: %s", e)
 
@@ -203,12 +203,15 @@ class PopularityFactor(BaseFactor):
             out["pct_chg"] = pd.to_numeric(df.get("pct_change", 0), errors="coerce").fillna(0)
             out["rank"] = pd.to_numeric(df.get("rank", 9999), errors="coerce").fillna(9999).astype(int)
             out["rank_change"] = 0
+            out["hot"] = pd.to_numeric(df.get("hot", 0), errors="coerce") if "hot" in df.columns else None
+            out["concept"] = df.get("concept", "") if "concept" in df.columns else ""
 
             codes = df["ts_code"].astype(str).str.split(".").str[0].str.zfill(6)
             out.index = codes
             out.index.name = "ts_code"
 
             logger.info("[PopularityFactor] Tushare dc_hot 降级: %d 条", len(out))
+            PopularityFactor._cache_to_db(out, trade_date, source="tushare")
             return out
         except Exception as e:
             logger.warning("[PopularityFactor] Tushare dc_hot 降级失败: %s", e)
@@ -216,12 +219,19 @@ class PopularityFactor(BaseFactor):
 
     @staticmethod
     def _fetch_from_db(trade_date: str) -> Optional[pd.DataFrame]:
-        """从 popularity_rank 表读取当日人气数据。"""
+        """从 popularity_rank 表读取人气数据，优先当日，无数据时回退最近 5 日。"""
         try:
+            from datetime import datetime as _dt2, timedelta as _td2
             from src.storage import DatabaseManager
 
             db = DatabaseManager()
+            # 尝试当日
             df = db.get_popularity_rank_range(start_date=trade_date, end_date=trade_date)
+            # 当日无数据时回退最近 5 个自然日
+            if df is None or df.empty:
+                td = _dt2.strptime(str(trade_date).replace("-", "")[:8], "%Y%m%d")
+                start = (td - _td2(days=5)).strftime("%Y%m%d")
+                df = db.get_popularity_rank_range(start_date=start, end_date=trade_date)
             if df is None or df.empty:
                 return None
 

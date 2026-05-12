@@ -252,6 +252,11 @@ const StockCard: React.FC<{
               {item.price_at_discovery != null && (
                 <span className="text-[15px] font-semibold text-foreground">· ¥{item.price_at_discovery.toFixed(2)}</span>
               )}
+              {item.pct_chg != null && (
+                <span className={`text-[13px] font-medium tabular-nums ml-0.5 ${item.pct_chg >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                  {item.pct_chg >= 0 ? '+' : ''}{item.pct_chg.toFixed(2)}%
+                </span>
+              )}
               {item.live_price != null && item.price_at_discovery != null && (
                 <span className={`text-[15px] font-semibold tabular-nums ${item.live_price >= item.price_at_discovery ? 'text-red-400' : 'text-emerald-400'}`}>
                   → ¥{item.live_price.toFixed(2)}
@@ -624,34 +629,34 @@ const FactorTopsCard: React.FC<{
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
       {data.factors.map((f) => (
         <div
           key={f.factor_name}
           className="rounded-xl border border-border/20 bg-card/40 overflow-hidden"
         >
           {/* header */}
-          <div className="flex items-center gap-2 border-b border-border/10 px-3.5 py-2 bg-muted/15">
-            <span className="text-[13px] font-medium text-foreground">{f.factor_label}</span>
+          <div className="flex items-center gap-2 border-b border-border/10 px-3 py-1.5 bg-muted/15">
+            <span className="text-sm font-medium text-foreground">{f.factor_label}</span>
           </div>
           {/* stocks */}
           <div className="divide-y divide-border/5">
             {f.stocks.map((s, i) => (
               <div
                 key={s.stock_code}
-                className="flex items-center gap-2.5 px-3.5 py-2 text-[12px] hover:bg-muted/10 transition-colors"
+                className="flex items-center gap-2.5 px-3 py-1.5 text-[13px] hover:bg-muted/10 transition-colors"
               >
-                <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded text-[10px] font-bold ${rankCls[i]}`}>
+                <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded text-[11px] font-bold ${rankCls[i]}`}>
                   {i + 1}
                 </span>
-                <span className="font-mono font-medium text-foreground shrink-0">{s.stock_code}</span>
+                <span className="font-mono font-semibold text-foreground shrink-0">{s.stock_code}</span>
                 <span className="text-secondary-text shrink-0">{s.stock_name}</span>
                 {s.sector && (
-                  <span className="shrink-0 text-[10px] text-tertiary-text/70 border border-border/20 rounded px-1 py-px">
+                  <span className="shrink-0 text-[11px] text-tertiary-text/70 border border-border/20 rounded px-1 py-px">
                     {s.sector}
                   </span>
                 )}
-                <span className="ml-auto font-mono tabular-nums text-cyan font-semibold text-[13px]">
+                <span className="ml-auto font-mono tabular-nums text-cyan font-semibold text-sm">
                   {s.factor_score.toFixed(1)}
                 </span>
               </div>

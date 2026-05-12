@@ -618,6 +618,7 @@ class IntradayScanner:
                 "take_profit_2": r.take_profit_2,
                 "discovered_at": r.discovered_at,
                 "price_at_discovery": r.price_at_discovery,
+                "pct_chg": getattr(r, "change_pct", 0.0),
                 "change": "",
             }
 
@@ -726,6 +727,7 @@ class IntradayScanner:
                     "take_profit_2": getattr(r, "take_profit_2", None),
                     "discovered_at": getattr(r, "discovered_at", ""),
                     "price_at_discovery": getattr(r, "price_at_discovery", None),
+                    "pct_chg": getattr(r, "change_pct", 0.0),
                 })
             json_file = save_dir / f"intraday_{date_str}_topn.json"
             json_file.write_text(json.dumps(topn, ensure_ascii=False, indent=2), encoding="utf-8")

@@ -1,153 +1,189 @@
 [
   {
     "rank": 1,
-    "stock_code": "600930",
-    "stock_name": "华电新能",
-    "score": 53.2,
-    "sector": "电力",
+    "stock_code": "002309",
+    "stock_name": "中利集团",
+    "score": 41.1,
+    "sector": "电网设备",
     "factor_scores": {
+      "ma_entry": 16.21730943580445,
       "sector": 0.0,
-      "ma_entry": 27.539891205802356,
-      "momentum": 23.75,
-      "rebound": 0.0
+      "momentum": 18.653846153846153,
+      "ranking_momentum": 5.315589034191145,
+      "rebound": 0.0,
+      "popularity": 0.0
     },
     "factor_weights": {
-      "sector": 25.0,
       "ma_entry": 35.0,
+      "sector": 25.0,
       "momentum": 25.0,
-      "rebound": 15.0
+      "ranking_momentum": 15.0,
+      "rebound": 15.0,
+      "popularity": 15.0
     },
     "reasons": [
       "均线多头排列",
-      "回踩MA5均线"
+      "回踩MA5均线",
+      "今日强于91%个股"
     ],
-    "buy_price_low": 6.1,
-    "buy_price_high": 6.6,
-    "stop_loss": 5.9,
-    "take_profit_1": 6.8,
-    "take_profit_2": 7.1,
-    "discovered_at": "11:57:35",
-    "price_at_discovery": 6.45
+    "buy_price_low": 4.3,
+    "buy_price_high": 4.4,
+    "stop_loss": 3.92,
+    "take_profit_1": 5.09,
+    "take_profit_2": 5.4,
+    "discovered_at": "14:33:02",
+    "price_at_discovery": 4.66,
+    "pct_chg": 2.19
   },
   {
     "rank": 2,
-    "stock_code": "603501",
-    "stock_name": "豪威集团",
-    "score": 48.0,
-    "sector": "半导体",
+    "stock_code": "300335",
+    "stock_name": "迪森股份",
+    "score": 40.2,
+    "sector": "电力",
     "factor_scores": {
+      "ma_entry": 20.13494664899923,
       "sector": 0.0,
-      "ma_entry": 33.15004533091568,
-      "momentum": 15.5,
-      "rebound": 0.0
+      "momentum": 0.0,
+      "ranking_momentum": 8.835512867183782,
+      "rebound": 0.0,
+      "popularity": 10.26923076923077
     },
     "factor_weights": {
-      "sector": 25.0,
       "ma_entry": 35.0,
-      "momentum": 25.0,
-      "rebound": 15.0
-    },
-    "reasons": [
-      "均线多头排列",
-      "回踩MA5均线"
-    ],
-    "buy_price_low": 97.4,
-    "buy_price_high": 105.6,
-    "stop_loss": 94.3,
-    "take_profit_1": 107.7,
-    "take_profit_2": 112.8,
-    "discovered_at": "11:57:35",
-    "price_at_discovery": 102.55
-  },
-  {
-    "rank": 3,
-    "stock_code": "002309",
-    "stock_name": "中利集团",
-    "score": 47.8,
-    "sector": "电网设备",
-    "factor_scores": {
-      "sector": 0.0,
-      "ma_entry": 22.564369900271984,
-      "momentum": 24.25,
-      "rebound": 0.0
-    },
-    "factor_weights": {
       "sector": 25.0,
-      "ma_entry": 35.0,
       "momentum": 25.0,
-      "rebound": 15.0
-    },
-    "reasons": [
-      "均线多头排列",
-      "回踩MA5均线"
-    ],
-    "buy_price_low": 4.4,
-    "buy_price_high": 4.8,
-    "stop_loss": 4.3,
-    "take_profit_1": 4.9,
-    "take_profit_2": 5.1,
-    "discovered_at": "11:57:35",
-    "price_at_discovery": 4.66
-  },
-  {
-    "rank": 4,
-    "stock_code": "300782",
-    "stock_name": "卓胜微",
-    "score": 47.7,
-    "sector": "半导体",
-    "factor_scores": {
-      "sector": 0.0,
-      "ma_entry": 33.15004533091568,
-      "momentum": 15.25,
-      "rebound": 0.0
-    },
-    "factor_weights": {
-      "sector": 25.0,
-      "ma_entry": 35.0,
-      "momentum": 25.0,
-      "rebound": 15.0
+      "ranking_momentum": 15.0,
+      "rebound": 15.0,
+      "popularity": 15.0
     },
     "reasons": [
       "均线粘合",
       "回踩MA5均线",
-      "BOLL中轨支撑"
+      "BOLL中轨支撑",
+      "趋势加速↑(10.4%/天)",
+      "人气飙升(+2496位)",
+      "人气核心圈(排名1137)"
     ],
-    "buy_price_low": 101.5,
-    "buy_price_high": 110.0,
-    "stop_loss": 98.3,
-    "take_profit_1": 112.2,
-    "take_profit_2": 117.5,
-    "discovered_at": "11:57:35",
-    "price_at_discovery": 106.83
+    "buy_price_low": 6.4,
+    "buy_price_high": 6.9,
+    "stop_loss": 6.75,
+    "take_profit_1": 7.4,
+    "take_profit_2": 8.0,
+    "discovered_at": "14:33:02",
+    "price_at_discovery": 6.91,
+    "pct_chg": 2.07
   },
   {
-    "rank": 5,
-    "stock_code": "688012",
-    "stock_name": "中微公司",
-    "score": 41.6,
+    "rank": 3,
+    "stock_code": "300613",
+    "stock_name": "富瀚微",
+    "score": 38.3,
     "sector": "半导体",
     "factor_scores": {
+      "ma_entry": 26.808354836460005,
       "sector": 0.0,
-      "ma_entry": 33.15004533091568,
-      "momentum": 9.0,
-      "rebound": 0.0
+      "momentum": 0.0,
+      "ranking_momentum": 11.25178516423511,
+      "rebound": 0.0,
+      "popularity": 0.0
     },
     "factor_weights": {
-      "sector": 25.0,
       "ma_entry": 35.0,
+      "sector": 25.0,
       "momentum": 25.0,
-      "rebound": 15.0
+      "ranking_momentum": 15.0,
+      "rebound": 15.0,
+      "popularity": 15.0
     },
     "reasons": [
       "均线多头排列",
-      "回踩MA5均线"
+      "回踩MA5均线",
+      "缩量回踩",
+      "趋势加速↑(10.7%/天)",
+      "所属板块: 半导体"
     ],
-    "buy_price_low": 366.3,
-    "buy_price_high": 397.2,
-    "stop_loss": 354.8,
-    "take_profit_1": 404.9,
-    "take_profit_2": 424.2,
-    "discovered_at": "11:57:35",
-    "price_at_discovery": 385.6
+    "buy_price_low": 52.6,
+    "buy_price_high": 53.1,
+    "stop_loss": 53.16,
+    "take_profit_1": 64.44,
+    "take_profit_2": 71.66,
+    "discovered_at": "14:33:02",
+    "price_at_discovery": 60.68,
+    "pct_chg": -2.29
+  },
+  {
+    "rank": 4,
+    "stock_code": "601179",
+    "stock_name": "中国西电",
+    "score": 38.0,
+    "sector": "电网设备",
+    "factor_scores": {
+      "ma_entry": 9.053281260896854,
+      "sector": 0.0,
+      "momentum": 19.03846153846154,
+      "ranking_momentum": 9.121139144801322,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 35.0,
+      "sector": 25.0,
+      "momentum": 25.0,
+      "ranking_momentum": 15.0,
+      "rebound": 15.0,
+      "popularity": 15.0
+    },
+    "reasons": [
+      "均线多头排列",
+      "排名连续上升(2天)",
+      "今日强于96%个股",
+      "所属板块: 电网设备"
+    ],
+    "buy_price_low": 17.3,
+    "buy_price_high": 17.5,
+    "stop_loss": 17.43,
+    "take_profit_1": 20.21,
+    "take_profit_2": 20.61,
+    "discovered_at": "14:33:02",
+    "price_at_discovery": 19.02,
+    "pct_chg": 5.08
+  },
+  {
+    "rank": 5,
+    "stock_code": "603501",
+    "stock_name": "豪威集团",
+    "score": 37.9,
+    "sector": "半导体",
+    "factor_scores": {
+      "ma_entry": 25.150986819164515,
+      "sector": 0.0,
+      "momentum": 7.307692307692308,
+      "ranking_momentum": 5.229481112262329,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 35.0,
+      "sector": 25.0,
+      "momentum": 25.0,
+      "ranking_momentum": 15.0,
+      "rebound": 15.0,
+      "popularity": 15.0
+    },
+    "reasons": [
+      "均线多头排列",
+      "回踩MA5均线",
+      "今日强于77%个股",
+      "所属板块: 半导体"
+    ],
+    "buy_price_low": 94.3,
+    "buy_price_high": 98.2,
+    "stop_loss": 92.9,
+    "take_profit_1": 107.04,
+    "take_profit_2": 113.24,
+    "discovered_at": "14:33:02",
+    "price_at_discovery": 102.33,
+    "pct_chg": 0.94
   }
 ]
