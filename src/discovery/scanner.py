@@ -1615,14 +1615,7 @@ def ensure_postmarket_scan(
     from datetime import date as dt_date
 
     from src.discovery.config import get_discovery_config
-    from src.discovery.engine import StockDiscoveryEngine
-    from src.discovery.factors import (
-        MoneyFlowFactor, TechnicalFactor,
-        BrokerRecommendFactor, FundamentalFactor, HotMoneyFactor, MarginFactor,
-        ChipFactor, InsiderBuyFactor, InstitutionHoldFactor, LimitFactor,
-        PerformanceFactor, PopularityFactor,
-        BuybackFactor, ProfitForecastFactor,
-    )
+    from src.discovery.engine import create_discovery_engine
     from src.storage import DatabaseManager
 
     today = (
@@ -1683,14 +1676,7 @@ def ensure_postmarket_scan(
 
     # ---- 因子评分 ----
     discovery_config = get_discovery_config()
-    engine = StockDiscoveryEngine(discovery_config, tushare_fetcher, akshare_fetcher)
-    engine.register_factors([
-        MoneyFlowFactor(), TechnicalFactor(),
-        BrokerRecommendFactor(), FundamentalFactor(), HotMoneyFactor(), MarginFactor(),
-        ChipFactor(), InsiderBuyFactor(), InstitutionHoldFactor(), LimitFactor(),
-        PerformanceFactor(), PopularityFactor(),
-        BuybackFactor(), ProfitForecastFactor(),
-    ])
+    engine = create_discovery_engine(discovery_config, tushare_fetcher, akshare_fetcher)
 
     results = engine.discover(mode="postmarket")
 

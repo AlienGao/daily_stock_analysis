@@ -46,6 +46,7 @@ def safe_ratio(series: pd.Series, mv: pd.Series) -> pd.Series:
     """计算 值/市值 比率, 市值缺失或为 0 时返回 NaN."""
     mv_safe = mv.replace(0, np.nan)
     return series / mv_safe
+@dataclass
 class DiscoveryResult:
     """单只股票的发现结果。
 

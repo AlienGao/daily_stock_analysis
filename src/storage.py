@@ -19,6 +19,7 @@ import logging
 import re
 import time
 from datetime import datetime, date, time as dt_time, timedelta
+from pathlib import Path
 from zoneinfo import ZoneInfo
 from typing import Optional, List, Dict, Any, TYPE_CHECKING, Tuple, Callable, TypeVar
 
@@ -6326,6 +6327,9 @@ class DatabaseManager:
     ) -> List[str]:
         """获取指定日期扫描结果的 Top N stock_code 列表。
 
+        优先读取 discovery_reports/{mode}_{date}_topn.json（已过滤超买/ST/低盈亏比），
+        文件不存在或日期不一致时降级读 DB。
+
         Args:
             scan_date: YYYYMMDD
             mode: "intraday" 或 "postmarket"
@@ -6334,6 +6338,29 @@ class DatabaseManager:
         Returns:
             stock_code 列表（按 rank ASC 排序）
         """
+        # 优先读 JSON（过滤后的准确结果）
+        try:
+            reports_dir = Path(__file__).resolve().parent.parent / "discovery_reports"
+            json_file = reports_dir / f"{mode}_{scan_date}_topn.json"
+            if json_file.exists():
+                data = json.loads(json_file.read_text(encoding="utf-8"))
+                if isinstance(data, list) and data:
+                    # 验证第一个元素的日期一致性（rank/stock_code 必须有值）
+                    codes = [
+                        str(item.get("stock_code", "")).strip().zfill(6)
+                        for item in data[:limit]
+                        if item.get("stock_code")
+                    ]
+                    if codes:
+                        logger.debug(
+                            "[get_top_scan_results] 读取 JSON: %s, 返回 %d 个代码",
+                            json_file.name, len(codes),
+                        )
+                        return codes
+        except Exception as e:
+            logger.debug("[get_top_scan_results] JSON 读取失败，降级 DB: %s", e)
+
+        # 降级读 DB
         model = ScanResultIntraday if mode == "intraday" else ScanResultPostmarket
         with self.get_session() as session:
             rows = session.execute(

@@ -34,9 +34,11 @@ _OPERATION_ADVICE_CANONICAL_MAP = {
     "accumulate": "buy",
     "add position": "buy",
     "持有": "hold",
+    "持有观察": "hold",
     "洗盘观察": "hold",
     "观察": "hold",
     "hold": "hold",
+    "震荡观望": "watch",
     "观望": "watch",
     "watch": "watch",
     "wait": "watch",
@@ -636,7 +638,7 @@ def get_signal_level(advice: Any, score: Any, language: Optional[str]) -> tuple[
     normalized_language = normalize_report_language(language)
     canonical = _canonicalize_lookup_value(advice, _OPERATION_ADVICE_CANONICAL_MAP)
     if canonical == "strong_buy":
-        return (_OPERATION_ADVICE_TRANSLATIONS["strong_buy"][normalized_language], "💚", "strong_buy")
+        return (_OPERATION_ADVICE_TRANSLATIONS["strong_buy"][normalized_language], "🟢", "strong_buy")
     if canonical == "buy":
         return (_OPERATION_ADVICE_TRANSLATIONS["buy"][normalized_language], "🟢", "buy")
     if canonical == "hold":
@@ -654,7 +656,7 @@ def get_signal_level(advice: Any, score: Any, language: Optional[str]) -> tuple[
         numeric_score = 50
 
     if numeric_score >= 80:
-        return (_OPERATION_ADVICE_TRANSLATIONS["strong_buy"][normalized_language], "💚", "strong_buy")
+        return (_OPERATION_ADVICE_TRANSLATIONS["strong_buy"][normalized_language], "🟢", "strong_buy")
     if numeric_score >= 65:
         return (_OPERATION_ADVICE_TRANSLATIONS["buy"][normalized_language], "🟢", "buy")
     if numeric_score >= 55:

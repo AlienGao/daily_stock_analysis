@@ -60,6 +60,48 @@ def is_trading_day(engine=None) -> bool:
     return date.today().weekday() < 5
 
 
+def _default_factors():
+    """返回所有内置因子实例列表（盘前+盘中+盘后）。"""
+    from src.discovery.factors import (
+        MaEntryFactor,
+        MomentumFactor, MoneyFlowFactor, SectorFactor, TechnicalFactor,
+        BrokerRecommendFactor, FundamentalFactor, HotMoneyFactor, MarginFactor,
+        ChipFactor, InsiderBuyFactor, InstitutionHoldFactor, LimitFactor,
+        PerformanceFactor, PopularityFactor, RankingMomentumFactor, ReboundFactor,
+        BuybackFactor, ProfitForecastFactor,
+    )
+    return [
+        MaEntryFactor(),
+        MomentumFactor(), MoneyFlowFactor(), SectorFactor(), TechnicalFactor(),
+        BrokerRecommendFactor(), FundamentalFactor(), HotMoneyFactor(), MarginFactor(),
+        ChipFactor(), InsiderBuyFactor(), InstitutionHoldFactor(), LimitFactor(),
+        PerformanceFactor(), PopularityFactor(), RankingMomentumFactor(), ReboundFactor(),
+        BuybackFactor(), ProfitForecastFactor(),
+    ]
+
+
+def create_discovery_engine(config=None, tushare_fetcher=None, akshare_fetcher=None):
+    """创建已注册默认因子的 StockDiscoveryEngine。
+
+    config 为 None 时自动加载 DiscoveryConfig()。
+    """
+    if config is None:
+        from src.discovery.config import DiscoveryConfig
+        config = DiscoveryConfig()
+    engine = StockDiscoveryEngine(config, tushare_fetcher, akshare_fetcher)
+    engine.register_factors(_default_factors())
+    return engine
+
+
+def get_factor_weights(mode: str) -> Dict[str, float]:
+    """获取指定模式下所有活跃因子的权重映射（无需创建 engine 实例）。"""
+    weights: Dict[str, float] = {}
+    for f in _default_factors():
+        if f.is_available(mode):
+            weights[f.name] = f.weight
+    return weights
+
+
 class StockDiscoveryEngine:
     """股票自动发现引擎。"""
 

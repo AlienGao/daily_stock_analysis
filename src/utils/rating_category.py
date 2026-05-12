@@ -1,53 +1,62 @@
 # -*- coding: utf-8 -*-
-"""Map operation_advice text (emoji only) to BUY/HOLD/LOOK/SELL."""
+"""Map operation_advice text to BUY/HOLD/LOOK/SELL.
 
-from typing import Dict, Optional, Set
+Canonical tag mapping (strong_buy/buy/hold/watch/reduce/sell → BUY/HOLD/LOOK/SELL)
+is unified with report_language.py's get_signal_level, so report display and .env
+categorization always agree without maintaining two separate text-match maps.
+"""
 
-# 与 main.run_full_analysis 中 category_stocks 的 rating_map 一致
-RATING_MAP: Dict[str, str] = {
-    "强烈买入": "BUY",
-    "买入": "BUY",
-    "加仓": "BUY",
-    "建仓": "BUY",
-    "增持": "BUY",
-    "持有": "HOLD",
-    "谨慎买入": "HOLD",
-    "持有观望": "HOLD",
-    "观望": "LOOK",
-    "等待": "LOOK",
-    "watch": "LOOK",
-    "减持": "SELL",
-    "减仓": "SELL",
-    "清仓": "SELL",
-    "卖出": "SELL",
-    "强烈卖出": "SELL",
-}
+from typing import Optional, Set
 
-# 优先按 emoji 分类（适配报告摘要和富文本建议）
-EMOJI_CATEGORY_MAP: Dict[str, str] = {
+# 优先按 emoji 分类（报告摘要已包含 emoji，最快路径）
+EMOJI_CATEGORY_MAP = {
     "🟢": "BUY",
+    "💚": "BUY",
     "🟡": "HOLD",
     "⚪": "LOOK",
     "🟠": "SELL",
     "🔴": "SELL",
 }
 
+# canonical tag → category（与 report_language.py get_signal_level 的输出对齐）
+TAG_CATEGORY_MAP = {
+    "strong_buy": "BUY",
+    "buy": "BUY",
+    "hold": "HOLD",
+    "watch": "LOOK",
+    "reduce": "SELL",
+    "sell": "SELL",
+    "strong_sell": "SELL",
+}
+
 
 def operation_advice_to_category(operation_advice: str, unmapped: Optional[Set[str]] = None) -> str:
     """Return one of BUY/HOLD/LOOK/SELL.
 
-    Matching priority:
-    1) Emoji marker: 🟢/🟡/⚪/🟠/🔴
-    2) Text match: RATING_MAP key in advice text
-    3) Fallback to LOOK (optionally collecting unmapped raw text)
+    Priority:
+    1) Emoji marker (fast path for already-formatted text)
+    2) Canonical tag via get_signal_level (same canonical map as report display)
+    3) Fallback to LOOK
     """
     advice = (operation_advice or "").strip()
+    if not advice:
+        return "LOOK"
+
+    # 1) Emoji match
     for emoji, category in EMOJI_CATEGORY_MAP.items():
         if emoji in advice:
             return category
-    for text, category in RATING_MAP.items():
-        if text in advice:
-            return category
+
+    # 2) Canonical tag via get_signal_level — unified with report display mapping
+    try:
+        from src.report_language import get_signal_level
+        _, _, tag = get_signal_level(advice, None, None)
+        if tag in TAG_CATEGORY_MAP:
+            return TAG_CATEGORY_MAP[tag]
+    except Exception:
+        pass
+
+    # 3) Fallback
     if advice and unmapped is not None:
         unmapped.add(advice)
     return "LOOK"

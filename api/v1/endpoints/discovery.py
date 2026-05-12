@@ -600,14 +600,7 @@ def run_postmarket_discovery():
     def _run():
         try:
             from src.discovery.config import get_active_config, set_active_config, get_discovery_config
-            from src.discovery.engine import StockDiscoveryEngine
-            from src.discovery.factors import (
-                MoneyFlowFactor, TechnicalFactor,
-                BrokerRecommendFactor, FundamentalFactor, HotMoneyFactor, MarginFactor,
-                ChipFactor, InsiderBuyFactor, InstitutionHoldFactor, LimitFactor,
-                PerformanceFactor, PopularityFactor,
-                BuybackFactor, ProfitForecastFactor,
-            )
+            from src.discovery.engine import create_discovery_engine
             from data_provider.tushare_fetcher import TushareFetcher
             from data_provider.akshare_fetcher import AkshareFetcher
 
@@ -619,33 +612,76 @@ def run_postmarket_discovery():
                 _postmarket_tasks[task_id] = {"status": "failed", "error": "数据源 Tushare 不可用"}
                 return
 
-            # 盘前刷新 DB 基础数据，供各因子 fetch_data 直接命中
+            # 盘后刷新全部数据源，供各因子 fetch_data 直接命中
+            from datetime import date as dt_date
             from src.discovery.scanner import (
+                refresh_ths_industry_map_postmarket,
+                refresh_stock_daily_postmarket,
                 refresh_limit_pool_postmarket,
                 refresh_money_flow_postmarket,
+                refresh_daily_basic_postmarket,
                 refresh_margin_detail_postmarket,
+                refresh_cyq_perf_postmarket,
+                refresh_insider_buy_postmarket,
+                refresh_institution_hold_postmarket,
+                refresh_repurchase_postmarket,
+                refresh_profit_forecast_postmarket,
+                refresh_performance_report_postmarket,
+                refresh_hm_detail_postmarket,
+                refresh_popularity_postmarket,
+                refresh_tech_indicator_postmarket,
+                IntradayScanner,
             )
-            refresh_limit_pool_postmarket(tushare_fetcher)
-            refresh_money_flow_postmarket(tushare_fetcher)
-            refresh_margin_detail_postmarket(tushare_fetcher)
 
-            engine = StockDiscoveryEngine(discovery_config, tushare_fetcher, akshare_fetcher)
-            engine.register_factors([
-                MoneyFlowFactor(),
-                TechnicalFactor(),
-                BrokerRecommendFactor(),
-                FundamentalFactor(),
-                HotMoneyFactor(),
-                MarginFactor(),
-                ChipFactor(),
-                InsiderBuyFactor(),
-                InstitutionHoldFactor(),
-                LimitFactor(),
-                PerformanceFactor(),
-                PopularityFactor(),
-                BuybackFactor(),
-                ProfitForecastFactor(),
-            ])
+            today = (
+                tushare_fetcher.get_trade_time(early_time="00:00", late_time="18:00")
+                or dt_date.today().strftime("%Y%m%d")
+            )
+            from src.storage import DatabaseManager as _DB
+
+            refreshers = [
+                ("ths_industry_map", lambda: refresh_ths_industry_map_postmarket(tushare_fetcher)),
+                ("stock_daily", lambda: refresh_stock_daily_postmarket(tushare_fetcher)),
+                ("limit_pool", lambda: refresh_limit_pool_postmarket(tushare_fetcher)),
+                ("money_flow", lambda: refresh_money_flow_postmarket(tushare_fetcher)),
+                ("daily_basic", lambda: refresh_daily_basic_postmarket(tushare_fetcher)),
+                ("margin_detail", lambda: refresh_margin_detail_postmarket(tushare_fetcher)),
+                ("cyq_perf", lambda: refresh_cyq_perf_postmarket(tushare_fetcher)),
+                ("insider_buy", lambda: refresh_insider_buy_postmarket()),
+                ("institution_hold", lambda: refresh_institution_hold_postmarket()),
+                ("repurchase", lambda: refresh_repurchase_postmarket(tushare_fetcher)),
+                ("profit_forecast", lambda: refresh_profit_forecast_postmarket(today, akshare_fetcher)),
+                ("performance_report", lambda: refresh_performance_report_postmarket(akshare_fetcher)),
+                ("hm_detail", lambda: refresh_hm_detail_postmarket(tushare_fetcher)),
+                ("popularity", lambda: refresh_popularity_postmarket(tushare_fetcher)),
+                ("tech_indicator", lambda: refresh_tech_indicator_postmarket(tushare_fetcher)),
+            ]
+            for name, fn in refreshers:
+                try:
+                    fn()
+                except Exception:
+                    logger.warning("[Postmarket] %s 刷新失败，继续", name, exc_info=True)
+
+            # 盘后 Tushare 全量刷新 limit_pool 后，用正确数据重跑炸板检测
+            try:
+                db = _DB()
+                fresh_pool = db.get_limit_pool(trade_date=today)
+                if fresh_pool is not None and not fresh_pool.empty:
+                    fresh_pool = fresh_pool.reset_index()
+                    IntradayScanner._detect_limit_breaks(db, fresh_pool, today, "tushare")
+            except Exception:
+                logger.warning("[Postmarket] 盘后炸板重检测失败", exc_info=True)
+
+            # 游资质量更新（hm_detail 有新数据才重算）
+            try:
+                from src.discovery.hm_tracker import HmTracker
+                HmTracker(db).refresh_and_update()
+            except Exception:
+                logger.warning("[Postmarket] hm_quality 更新失败", exc_info=True)
+
+            engine = create_discovery_engine(
+                discovery_config, tushare_fetcher, akshare_fetcher,
+            )
 
             results = engine.discover(mode="postmarket")
             if not results:
@@ -677,6 +713,7 @@ def run_postmarket_discovery():
                     "take_profit_2": r.take_profit_2,
                     "discovered_at": r.discovered_at,
                     "price_at_discovery": r.price_at_discovery,
+                    "pct_chg": getattr(r, "change_pct", 0.0),
                 })
 
             # 保存报告 + 结构化数据到 discovery_reports
@@ -946,31 +983,8 @@ def _row_to_item(row, factor_weights: Dict[str, float] = None) -> Optional[Stock
 
 def _get_factor_weights(mode: str) -> Dict[str, float]:
     """获取指定模式下所有活跃因子的权重映射。"""
-    from src.discovery.config import get_discovery_config
-    from src.discovery.engine import StockDiscoveryEngine
-    from src.discovery.factors import (
-        MaEntryFactor,
-        MomentumFactor, MoneyFlowFactor, SectorFactor, TechnicalFactor,
-        BrokerRecommendFactor, FundamentalFactor, HotMoneyFactor, MarginFactor,
-        ChipFactor, InsiderBuyFactor, InstitutionHoldFactor, LimitFactor,
-        PerformanceFactor, PopularityFactor, RankingMomentumFactor, ReboundFactor,
-        BuybackFactor, ProfitForecastFactor,
-    )
-    config = get_discovery_config()
-    engine = StockDiscoveryEngine(config)
-    engine.register_factors([
-        MaEntryFactor(),
-        MomentumFactor(), MoneyFlowFactor(), SectorFactor(), TechnicalFactor(),
-        BrokerRecommendFactor(), FundamentalFactor(), HotMoneyFactor(), MarginFactor(),
-        ChipFactor(), InsiderBuyFactor(), InstitutionHoldFactor(), LimitFactor(),
-        PerformanceFactor(), PopularityFactor(), RankingMomentumFactor(), ReboundFactor(),
-        BuybackFactor(), ProfitForecastFactor(),
-    ])
-    return {
-        name: factor.weight
-        for name, factor in engine._factors.items()
-        if factor.is_available(mode)
-    }
+    from src.discovery.engine import get_factor_weights
+    return get_factor_weights(mode)
 
 
 @router.get(

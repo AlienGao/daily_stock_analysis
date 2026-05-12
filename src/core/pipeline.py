@@ -2054,34 +2054,13 @@ class StockAnalysisPipeline:
                 defer_aggregate_report=defer_aggregate_report,
             )
 
-    def _prepare_factor_signals_cache(
-        self, stock_codes: List[str], tushare_fetcher, akshare_fetcher=None
-    ) -> None:
-        """Ensure postmarket scan is done, load per-stock factor scores from DB.
-
-        If already scanned today → loads from DB (no API calls).
-        If not → runs full refresh + discover + persist.
-        """
-        from src.discovery.scanner import ensure_postmarket_scan
-
-        cache, pm_results, pm_engine = ensure_postmarket_scan(
-            tushare_fetcher, akshare_fetcher
-        )
-        self._factor_signals_cache = cache
-        self._pm_results = pm_results
-        self._pm_engine = pm_engine
-        logger.info(
-            "[FactorSignals] 因子信号缓存已加载: %d 只股票",
-            len(self._factor_signals_cache),
-        )
-
     def _sync_top_discoveries(
         self, stock_codes: List[str], tushare_fetcher
     ) -> List[str]:
-        """从当天盘中/盘后扫描 DB 取 Top5，prepend 到 .env STOCK_LIST 最前面。
+        """从当天盘中/盘后扫描结果取 Top5，直接覆盖 .env STOCK_LIST。
 
         Returns:
-            更新后的 stock_codes 列表（含新发现股）
+            发现股列表（盘后优先，盘中补充），替换当次分析的 stock_codes
         """
         from datetime import date as _date
 
@@ -2105,33 +2084,19 @@ class StockAnalysisPipeline:
         if not merged:
             return stock_codes
 
-        # 读取当前 STOCK_LIST，去重已有的
-        self.config.refresh_stock_list()
-        existing = set(c.upper() for c in self.config.stock_list)
-        new_codes = [c for c in merged if c.upper() not in existing]
-        if not new_codes:
-            logger.debug("[DiscoverySync] 发现股已在 STOCK_LIST 中，跳过")
-            return stock_codes
-
-        # 写入 .env：prepend 到现有 STOCK_LIST 前面
-        current = self.config.stock_list  # already refreshed above
-        full_list = new_codes + [c for c in current if c.upper() not in set(c.upper() for c in new_codes)]
+        # 直接覆盖写入 .env
         try:
             SystemConfigService().apply_simple_updates(
-                [("STOCK_LIST", ",".join(full_list))]
+                [("STOCK_LIST", ",".join(merged))]
             )
             logger.info(
-                "[DiscoverySync] 已同步 %d 只发现股到 STOCK_LIST: %s",
-                len(new_codes), ",".join(new_codes),
+                "[DiscoverySync] 已覆盖 STOCK_LIST: %d 只发现股: %s",
+                len(merged), ",".join(merged),
             )
         except Exception as e:
             logger.warning("[DiscoverySync] 写入 .env 失败: %s", e)
-            # 即使写入失败，仍追加到本次分析列表
-            pass
 
-        # 追加到当次分析的股票列表
-        updated = new_codes + stock_codes
-        return updated
+        return merged
 
     def _run_impl(
         self,
@@ -2152,19 +2117,8 @@ class StockAnalysisPipeline:
             self.config.refresh_stock_list()
             stock_codes = self.config.stock_list
 
-        # Factor signals: batch-level discovery run to inject per-stock factor scores into analysis
+        # Factor signals: 由 auto_discover 填充（若开启），否则保持空字典
         self._factor_signals_cache = {}
-        if (
-            not dry_run
-            and os.getenv("DISCOVERY_FACTOR_SIGNALS_ENABLED", "true").strip().lower() in ("true", "1", "yes", "on")
-        ):
-            tushare_fetcher = self.fetcher_manager._get_tushare_fetcher()
-            akshare_fetcher = self.fetcher_manager._get_akshare_fetcher()
-            if tushare_fetcher and tushare_fetcher.is_available():
-                try:
-                    self._prepare_factor_signals_cache(stock_codes, tushare_fetcher, akshare_fetcher)
-                except Exception as e:
-                    logger.warning("[FactorSignals] 因子信号缓存构建失败（不阻断主流程）: %s", e)
 
         # Sync discovery Top5: 从当天盘中+盘后扫描结果中取 Top5，prepend 到 STOCK_LIST
         if not dry_run:
@@ -2175,132 +2129,130 @@ class StockAnalysisPipeline:
                 except Exception as e:
                     logger.warning("[DiscoverySync] 同步发现 Top5 失败: %s", e)
 
-        # Auto-discovery: 盘后深度扫描，自动发现高潜力股票并入分析列表
+        # Auto-discovery: 盘后深度扫描 + 因子信号缓存 + 报告/回测/扩展列表
         if getattr(self.config, 'auto_discover', False) and not dry_run:
             tushare_fetcher = self.fetcher_manager._get_tushare_fetcher()
             akshare_fetcher = self.fetcher_manager._get_akshare_fetcher()
             if tushare_fetcher and tushare_fetcher.is_available():
                 try:
-                    # 复用 _prepare_factor_signals_cache 的结果，避免重复跑盘后扫描
                     from src.discovery.config import get_discovery_config
+                    from src.discovery.scanner import ensure_postmarket_scan
                     discovery_config = get_discovery_config()
 
-                    if getattr(self, '_pm_results', None) and getattr(self, '_pm_engine', None):
-                        discovered = self._pm_results
-                        engine = self._pm_engine
-                        logger.info("[Discovery] 复用因子信号缓存中的盘后结果: %d 只候选股", len(discovered or []))
-                    else:
-                        from src.discovery.engine import StockDiscoveryEngine
-                        from src.discovery.factors import (
-                            MoneyFlowFactor, TechnicalFactor,
-                            BrokerRecommendFactor, FundamentalFactor, HotMoneyFactor, MarginFactor,
-                            ChipFactor, InsiderBuyFactor, InstitutionHoldFactor, LimitFactor,
-                            PerformanceFactor, PopularityFactor,
-                            BuybackFactor, ProfitForecastFactor,
-                        )
-                        engine = StockDiscoveryEngine(
-                            discovery_config,
-                            tushare_fetcher,
-                            akshare_fetcher,
-                        )
-                        engine.register_factors([
-                            MoneyFlowFactor(),
-                            TechnicalFactor(),
-                            BrokerRecommendFactor(),
-                            FundamentalFactor(),
-                            HotMoneyFactor(),
-                            MarginFactor(),
-                            ChipFactor(),
-                            InsiderBuyFactor(),
-                            InstitutionHoldFactor(),
-                            LimitFactor(),
-                            PerformanceFactor(),
-                            PopularityFactor(),
-                            BuybackFactor(),
-                            ProfitForecastFactor(),
-                        ])
-                        discovered = engine.discover(mode="postmarket")
+                    # 统一扫描入口：ensure_postmarket_scan 内部处理 DB 缓存检查
+                    # 已扫描 → 直接读 DB（无 API 调用）；未扫描 → 全量刷新+扫描+落库
+                    cache, pm_results, pm_engine = ensure_postmarket_scan(
+                        tushare_fetcher, akshare_fetcher
+                    )
+                    self._factor_signals_cache = cache
+                    logger.info(
+                        "[Discovery] 因子信号缓存已加载: %d 只股票",
+                        len(self._factor_signals_cache),
+                    )
+
+                    # 获取 Top N 候选股
+                    discovered = pm_results
+                    engine = pm_engine
+                    discovered_codes: List[str] = []
+
                     if discovered:
                         discovered_codes = [
                             r.stock_code for r in discovered[:discovery_config.auto_discover_count]
                         ]
+                        logger.info("[Discovery] 本次新扫描: %d 只候选股", len(discovered))
+                    else:
+                        # DB 缓存命中 → 从 ScanResultPostmarket 取 Top N
+                        trade_date = (
+                            tushare_fetcher.get_trade_time(early_time="18:01", late_time="04:59")
+                            or date.today().strftime('%Y%m%d')
+                        )
+                        discovered_codes = DatabaseManager().get_top_scan_results(
+                            trade_date, "postmarket", discovery_config.auto_discover_count
+                        )
+                        logger.info(
+                            "[Discovery] 复用 DB 缓存的盘后 Top %d: %s",
+                            len(discovered_codes), ", ".join(discovered_codes),
+                        )
+
+                    if discovered_codes:
                         logger.info(
                             "[Discovery] 盘后发现 %d 只候选股: %s",
                             len(discovered_codes),
                             ", ".join(discovered_codes),
                         )
-                        # 生成唯一发现轮次 ID（关联 Pipeline 分析与回测结果）
-                        discovery_run_id = str(uuid.uuid4())[:8]
-                        # 落盘发现报告到 discovery_reports/
-                        try:
-                            import json
-                            from datetime import date
-                            from pathlib import Path
-                            report = engine.format_report(discovered, mode="postmarket")
-                            reports_dir = Path(__file__).resolve().parent.parent.parent / "discovery_reports"
-                            reports_dir.mkdir(parents=True, exist_ok=True)
-                            date_str = (
-                                tushare_fetcher.get_trade_time(early_time="00:00", late_time="18:00")
-                                or date.today().strftime('%Y%m%d')
-                            )
-
-                            # 数据指纹：若与已有文件相同则跳过报告写入（数据未变，不覆盖更好的新发现）
-                            json_file = reports_dir / f"postmarket_{date_str}_topn.json"
-                            new_hash = engine._calc_factor_data_hash(
-                                getattr(engine, '_factor_data_cache', {})
-                            ) if hasattr(engine, '_calc_factor_data_hash') else ""
-                            existing_hash = ""
-                            if json_file.exists():
-                                try:
-                                    existing = json.loads(json_file.read_text(encoding="utf-8"))
-                                    existing_hash = existing[0].get("data_hash", "") if existing else ""
-                                except Exception:
-                                    pass
-
-                            filepath = reports_dir / f"postmarket_{date_str}.md"
-                            if existing_hash != new_hash:
-                                filepath.write_text(report, encoding="utf-8")
-                                logger.info("[Discovery] 发现报告已保存: %s", filepath)
-                            else:
-                                logger.info("[Discovery] 数据未变化，跳过报告写入（hash=%s）", new_hash)
-
-                            # 同时保存完整结构化 JSON（包含 discovery_run_id，保留所有候选股用于回测复盘）
-                            topn = []
-                            for i, r in enumerate(discovered, 1):
-                                topn.append({
-                                    "rank": i,
-                                    "discovery_run_id": discovery_run_id,
-                                    "data_hash": new_hash,
-                                    "stock_code": r.stock_code,
-                                    "stock_name": r.stock_name,
-                                    "score": r.score,
-                                    "sector": getattr(r, "sector", ""),
-                                    "factor_scores": getattr(r, "factor_scores", {}),
-                                    "reasons": getattr(r, "reasons", []),
-                                    "buy_price_low": getattr(r, "buy_price_low", None),
-                                    "buy_price_high": getattr(r, "buy_price_high", None),
-                                    "stop_loss": getattr(r, "stop_loss", None),
-                                    "take_profit_1": getattr(r, "take_profit_1", None),
-                                    "take_profit_2": getattr(r, "take_profit_2", None),
-                                })
-                            json_file.write_text(json.dumps(topn, ensure_ascii=False, indent=2), encoding="utf-8")
-                            logger.info("[Discovery] TopN JSON 已保存: %s", json_file)
-
-                            # 回测闭环：发现完成后自动触发回测，追加结果到报告
-                            # 不传 start_date/end_date，让 backtest 用默认 lookback_days=30 找有历史数据的日期
+                        # 仅当本次新扫描时保存报告（需要 engine + discovered）
+                        if discovered and engine:
+                            discovery_run_id = str(uuid.uuid4())[:8]
                             try:
-                                from src.discovery.backtest import DiscoveryBacktest
-                                bt = DiscoveryBacktest(tushare_fetcher)
-                                summary = bt.compute(mode="postmarket")
-                                if summary and summary.trade_records:
-                                    bt_md = self._format_backtest_summary_md(summary, date_str)
-                                    bt_file = reports_dir / f"postmarket_{date_str}_backtest.md"
-                                    bt_file.write_text(bt_md, encoding="utf-8")
-                                    logger.info("[Discovery] 回测报告已保存: %s", bt_file)
+                                import json
+                                from datetime import date
+                                from pathlib import Path
+                                report = engine.format_report(discovered, mode="postmarket")
+                                reports_dir = Path(__file__).resolve().parent.parent.parent / "discovery_reports"
+                                reports_dir.mkdir(parents=True, exist_ok=True)
+                                date_str = (
+                                    tushare_fetcher.get_trade_time(early_time="00:00", late_time="18:00")
+                                    or date.today().strftime('%Y%m%d')
+                                )
+
+                                # 数据指纹：若与已有文件相同则跳过报告写入
+                                json_file = reports_dir / f"postmarket_{date_str}_topn.json"
+                                new_hash = engine._calc_factor_data_hash(
+                                    getattr(engine, '_factor_data_cache', {})
+                                ) if hasattr(engine, '_calc_factor_data_hash') else ""
+                                existing_hash = ""
+                                if json_file.exists():
+                                    try:
+                                        existing = json.loads(json_file.read_text(encoding="utf-8"))
+                                        existing_hash = existing[0].get("data_hash", "") if existing else ""
+                                    except Exception:
+                                        pass
+
+                                filepath = reports_dir / f"postmarket_{date_str}.md"
+                                if existing_hash != new_hash:
+                                    filepath.write_text(report, encoding="utf-8")
+                                    logger.info("[Discovery] 发现报告已保存: %s", filepath)
+                                else:
+                                    logger.info("[Discovery] 数据未变化，跳过报告写入（hash=%s）", new_hash)
+
+                                # 保存完整结构化 JSON（含 discovery_run_id，用于回测复盘）
+                                topn = []
+                                for i, r in enumerate(discovered, 1):
+                                    topn.append({
+                                        "rank": i,
+                                        "discovery_run_id": discovery_run_id,
+                                        "data_hash": new_hash,
+                                        "stock_code": r.stock_code,
+                                        "stock_name": r.stock_name,
+                                        "score": r.score,
+                                        "pct_chg": getattr(r, "change_pct", 0.0),
+                                        "sector": getattr(r, "sector", ""),
+                                        "factor_scores": getattr(r, "factor_scores", {}),
+                                        "reasons": getattr(r, "reasons", []),
+                                        "buy_price_low": getattr(r, "buy_price_low", None),
+                                        "buy_price_high": getattr(r, "buy_price_high", None),
+                                        "stop_loss": getattr(r, "stop_loss", None),
+                                        "take_profit_1": getattr(r, "take_profit_1", None),
+                                        "take_profit_2": getattr(r, "take_profit_2", None),
+                                    })
+                                json_file.write_text(json.dumps(topn, ensure_ascii=False, indent=2), encoding="utf-8")
+                                logger.info("[Discovery] TopN JSON 已保存: %s", json_file)
+
+                                # 回测闭环
+                                try:
+                                    from src.discovery.backtest import DiscoveryBacktest
+                                    bt = DiscoveryBacktest(tushare_fetcher)
+                                    summary = bt.compute(mode="postmarket")
+                                    if summary and summary.trade_records:
+                                        bt_md = self._format_backtest_summary_md(summary, date_str)
+                                        bt_file = reports_dir / f"postmarket_{date_str}_backtest.md"
+                                        bt_file.write_text(bt_md, encoding="utf-8")
+                                        logger.info("[Discovery] 回测报告已保存: %s", bt_file)
+                                except Exception as e:
+                                    logger.debug("[Discovery] 回测执行失败: %s", e)
                             except Exception as e:
-                                logger.debug("[Discovery] 回测执行失败: %s", e)
-                        except Exception as e:
-                            logger.debug("[Discovery] 保存报告失败: %s", e)
+                                logger.debug("[Discovery] 保存报告失败: %s", e)
+                        # 扩展当次分析的股票列表
                         existing = set(stock_codes or [])
                         new_codes = [c for c in discovered_codes if c not in existing]
                         if new_codes:
@@ -2312,8 +2264,6 @@ class StockAnalysisPipeline:
                             )
                         else:
                             logger.info("[Discovery] 发现的股票均已在自选列表中")
-                        # 盘后发现不再自动回写 .env STOCK_LIST，避免覆盖手动维护的自选股
-                        logger.info("[Discovery] 发现 %d 只股票（未写入 .env STOCK_LIST）", len(stock_codes if stock_codes else []))
                     else:
                         logger.info("[Discovery] 未发现符合条件的股票，继续分析现有自选股")
                 except Exception as e:
