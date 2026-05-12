@@ -410,7 +410,8 @@ class MarginDetail(Base):
     rzmre = Column(Float)     # 融资买入额
     rzche = Column(Float)     # 融资偿还额
     rqye = Column(Float)      # 融券余额
-    rqmre = Column(Float)     # 融券卖出额
+    rqmcl = Column(Float)     # 融券卖出量
+    rqchl = Column(Float)     # 融券偿还量
     rqyl = Column(Float)      # 融券余量
     source = Column(String(20))
     updated_at = Column(DateTime, default=datetime.now)
@@ -982,6 +983,7 @@ class StockTechIndicator(Base):
     boll_mid = Column(Float)
     boll_lower = Column(Float)
     cci = Column(Float)
+    vol = Column(Float)
     atr = Column(Float)
     ma5 = Column(Float)
     ma10 = Column(Float)
@@ -1014,6 +1016,7 @@ class StockTechIndicator(Base):
             'boll_mid': self.boll_mid,
             'boll_lower': self.boll_lower,
             'cci': self.cci,
+            'vol': self.vol,
             'atr': self.atr,
             'ma5': self.ma5,
             'ma10': self.ma10,
@@ -1701,6 +1704,17 @@ class DatabaseManager:
             logger.info("已创建表 margin_detail")
         except Exception as exc:
             logger.warning("创建 margin_detail 失败: %s", exc)
+        # 迁移：旧表有 rqmre 列，新列 rqmcl/rqchl
+        try:
+            with self._engine.connect() as conn:
+                for col, typ in [("rqmcl", "FLOAT"), ("rqchl", "FLOAT")]:
+                    conn.execute(text(
+                        f"ALTER TABLE margin_detail ADD COLUMN {col} {typ}"
+                    ))
+                    conn.commit()
+            logger.info("已添加 margin_detail.rqmcl/rqchl 列")
+        except Exception:
+            pass  # 列已存在
 
     def _ensure_popularity_rank_table(self) -> None:
         """SQLite: create popularity_rank if missing (pre-create_all catch-up)."""
@@ -2063,7 +2077,8 @@ class DatabaseManager:
             "close", "macd_dif", "macd_dea", "macd",
             "rsi_6", "rsi_12", "rsi_24",
             "kdj_k", "kdj_d", "kdj_j",
-            "boll_upper", "boll_mid", "boll_lower", "cci",
+            "boll_upper", "boll_mid", "boll_lower", "cci", "vol",
+            "ma5", "ma10", "ma20",
         ]
         return df[[c for c in keep if c in df.columns]]
 
@@ -4068,8 +4083,9 @@ class DatabaseManager:
                 "rzmre": self._normalize_sql_value(row.get("rzmre")),
                 "rzche": self._normalize_sql_value(row.get("rzche")),
                 "rqye": self._normalize_sql_value(row.get("rqye")),
-                "rqmre": self._normalize_sql_value(row.get("rqmre")),
                 "rqyl": self._normalize_sql_value(row.get("rqyl")),
+                "rqmcl": self._normalize_sql_value(row.get("rqmcl")),
+                "rqchl": self._normalize_sql_value(row.get("rqchl")),
                 "source": source,
                 "updated_at": now,
             })
@@ -4093,8 +4109,9 @@ class DatabaseManager:
                                 "rzmre": excluded.rzmre,
                                 "rzche": excluded.rzche,
                                 "rqye": excluded.rqye,
-                                "rqmre": excluded.rqmre,
                                 "rqyl": excluded.rqyl,
+                                "rqmcl": excluded.rqmcl,
+                                "rqchl": excluded.rqchl,
                                 "source": excluded.source,
                                 "updated_at": excluded.updated_at,
                             },
@@ -4119,7 +4136,7 @@ class DatabaseManager:
                         new_count += 1
                     else:
                         for key in ("name", "rzye", "rzmre", "rzche",
-                                     "rqye", "rqmre", "rqyl", "source"):
+                                     "rqye", "rqyl", "rqmcl", "rqchl", "source"):
                             setattr(ent, key, rec[key])
                         ent.updated_at = now
                 return new_count
@@ -4246,7 +4263,8 @@ class DatabaseManager:
             df = pd.DataFrame([{
                 "code": r.code, "name": r.name, "trade_date": r.trade_date,
                 "rzye": r.rzye, "rzmre": r.rzmre, "rzche": r.rzche,
-                "rqye": r.rqye, "rqmre": r.rqmre, "rqyl": r.rqyl,
+                "rqye": r.rqye, "rqyl": r.rqyl,
+                "rqmcl": r.rqmcl, "rqchl": r.rqchl,
                 "source": r.source,
             } for r in rows])
             return df.set_index("code")
@@ -4498,8 +4516,10 @@ class DatabaseManager:
 
         now = datetime.now()
         records: List[Dict[str, Any]] = []
-        for _, row in df.iterrows():
+        for idx_val, row in df.iterrows():
             ts_code = str(row.get("ts_code", "")).strip()
+            if not ts_code:
+                ts_code = str(idx_val).strip()  # ts_code 可能在 index 上
             if not ts_code:
                 continue
             trade_date = str(row.get("trade_date", ""))[:8]

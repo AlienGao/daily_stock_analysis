@@ -100,7 +100,7 @@ def main():
             out = pd.DataFrame()
             out["code"] = df["ts_code"].astype(str).str.split(".").str[0].str.zfill(6)
             out["trade_date"] = df.get("trade_date", trade_date)
-            for c in ("rzye", "rzmre", "rzche", "rqye", "rqmre", "rqyl"):
+            for c in ("rzye", "rzmre", "rzche", "rqye", "rqmcl", "rqchl", "rqyl"):
                 if c in df.columns:
                     out[c] = pd.to_numeric(df[c], errors="coerce")
             saved = db.upsert_margin_detail(out, source="tushare_backfill")

@@ -309,7 +309,7 @@ class TushareFetcher(BaseFetcher):
         """返回上海时区当前时间，方便测试覆盖跨日刷新逻辑。"""
         return datetime.now(ZoneInfo("Asia/Shanghai"))
 
-    def _get_trade_dates(self, end_date: Optional[str] = None) -> List[str]:
+    def _get_trade_dates(self, end_date: Optional[str] = None, start_date: Optional[str] = None) -> List[str]:
         """按自然日刷新交易日历缓存，避免服务跨日后继续复用旧日历。"""
         if self._api is None:
             return []
@@ -320,7 +320,7 @@ class TushareFetcher(BaseFetcher):
         if self.date_list is not None and self._date_list_end == requested_end_date:
             return self.date_list
 
-        start_date = (china_now - timedelta(days=20)).strftime("%Y%m%d")
+        start_date = start_date or (china_now - timedelta(days=20)).strftime("%Y%m%d")
         df_cal = self._call_api_with_rate_limit(
             "trade_cal",
             exchange="SSE",
@@ -1587,7 +1587,7 @@ class TushareFetcher(BaseFetcher):
                 return None
 
             ts_code = self._convert_stock_code(stock_code)
-            fields = "ts_code,trade_date,rzye,rzmre,rzyeb,rqye,rqmre,rqyl"
+            fields = "ts_code,trade_date,rzye,rzmre,rzyeb,rqye,rqmcl,rqchl,rqyl"
             df = self._call_api_with_rate_limit(
                 "margin_detail", ts_code=ts_code, trade_date=trade_date, fields=fields,
             )
@@ -1600,8 +1600,9 @@ class TushareFetcher(BaseFetcher):
                     'rzmre': safe_float(row.get('rzmre'), 0),
                     'rzyeb': safe_float(row.get('rzyeb'), 0),
                     'rqye': safe_float(row.get('rqye'), 0),
-                    'rqmre': safe_float(row.get('rqmre'), 0),
                     'rqyl': safe_float(row.get('rqyl'), 0),
+                    'rqmcl': safe_float(row.get('rqmcl'), 0),
+                    'rqchl': safe_float(row.get('rqchl'), 0),
                 }
                 logger.info(f"[融资融券] {stock_code} 融资余额={result['rzye']/1e8:.2f}亿")
                 return result
@@ -1706,6 +1707,7 @@ class TushareFetcher(BaseFetcher):
                     'ma10': safe_float(row.get('ma_qfq_10')),
                     'ma20': safe_float(row.get('ma_qfq_20')),
                     'ma60': safe_float(row.get('ma_qfq_60')),
+                    'vol': safe_float(row.get('vol')),
                 }
                 logger.info(f"[技术面因子] {stock_code} RSI12={result['rsi_12']}, "
                            f"KDJ_K={result['kdj_k']}, BOLL_MID={result['boll_mid']}")
@@ -2182,13 +2184,13 @@ class TushareFetcher(BaseFetcher):
             if not trade_date:
                 return None
 
-            fields = "ts_code,trade_date,rzye,rzmre,rzche,rqye,rqmre,rqyl"
+            fields = "ts_code,trade_date,rzye,rzmre,rzche,rqye,rqmcl,rqchl,rqyl"
             df = self._call_api_with_rate_limit(
                 "margin_detail", trade_date=trade_date, fields=fields,
             )
             if df is not None and not df.empty:
                 df = df.set_index("ts_code")
-                for col in ["rzye", "rzmre", "rzche", "rqye", "rqmre", "rqyl"]:
+                for col in ["rzye", "rzmre", "rzche", "rqye", "rqmcl", "rqchl", "rqyl"]:
                     if col in df.columns:
                         df[col] = pd.to_numeric(df[col], errors="coerce")
                 logger.info(f"[全量融资融券] trade_date={trade_date}, {len(df)} 条")
@@ -2210,7 +2212,7 @@ class TushareFetcher(BaseFetcher):
         if self._api is None:
             return None
 
-        trade_dates = self._get_trade_dates()
+        trade_dates = self._get_trade_dates(end_date=end_date, start_date=start_date)
         if not trade_dates:
             return None
 
@@ -2220,7 +2222,7 @@ class TushareFetcher(BaseFetcher):
             logger.warning(f"[融资融券] 日期范围 {start_date}~{end_date} 无交易日")
             return None
 
-        fields = "ts_code,trade_date,rzye,rzmre,rzche,rqye,rqmre,rqyl"
+        fields = "ts_code,trade_date,rzye,rzmre,rzche,rqye,rqmcl,rqchl,rqyl"
         frames = []
         for td in target_dates:
             try:
@@ -2237,7 +2239,7 @@ class TushareFetcher(BaseFetcher):
 
         result = pd.concat(frames, ignore_index=True)
         result = result.set_index("ts_code")
-        for col in ["rzye", "rzmre", "rzche", "rqye", "rqmre", "rqyl"]:
+        for col in ["rzye", "rzmre", "rzche", "rqye", "rqmcl", "rqchl", "rqyl"]:
             if col in result.columns:
                 result[col] = pd.to_numeric(result[col], errors="coerce")
         logger.info(
@@ -2368,6 +2370,7 @@ class TushareFetcher(BaseFetcher):
                     'ma10': safe_float(row.get('ma_qfq_10')),
                     'ma20': safe_float(row.get('ma_qfq_20')),
                     'ma60': safe_float(row.get('ma_qfq_60')),
+                    'vol': safe_float(row.get('vol')),
                     'created_at': now,
                     'updated_at': now,
                 })
@@ -2402,6 +2405,7 @@ class TushareFetcher(BaseFetcher):
                                 'ma10': excluded.ma10,
                                 'ma20': excluded.ma20,
                                 'ma60': excluded.ma60,
+                                'vol': excluded.vol,
                                 'updated_at': excluded.updated_at,
                             },
                         )

@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 def _pct_rank(series: pd.Series) -> pd.Series:
     """返回 0-1 的百分位排名，处理全 NaN/全零边界。"""
     ranked = series.rank(pct=True)
-    ranked = ranked.fillna(0.0)
+    ranked = ranked.fillna(0.5)
     return ranked
 
 
@@ -45,22 +45,67 @@ class TechnicalFactor(BaseFactor):
 
     _LABEL_THRESHOLD_RATIO = 0.5
 
+    def __init__(self):
+        super().__init__()
+        self._hist_data: Dict[str, pd.DataFrame] = {}
+
     def fetch_data(self, trade_date: str, **kwargs) -> Optional[pd.DataFrame]:
         # 1. 优先读 DB 缓存
         try:
             from src.storage import DatabaseManager
-            df = DatabaseManager().get_tech_indicators_all(trade_date)
+            db = DatabaseManager()
+            df = db.get_tech_indicators_all(trade_date)
             if df is not None and not df.empty:
                 logger.info("[TechnicalFactor] DB 命中: %d 条", len(df))
-                return df
+            else:
+                df = None
         except Exception as e:
             logger.debug("[TechnicalFactor] DB 读取失败: %s", e)
+            df = None
 
         # 2. DB 无数据，fallback Tushare
-        tushare_fetcher = kwargs.get("tushare_fetcher")
-        if tushare_fetcher is None:
-            return None
-        return tushare_fetcher.get_bulk_stk_factor(trade_date)
+        if df is None:
+            tushare_fetcher = kwargs.get("tushare_fetcher")
+            if tushare_fetcher is None:
+                return None
+            df = tushare_fetcher.get_bulk_stk_factor(trade_date)
+            if df is None or df.empty:
+                return None
+
+        # 3. 拉历史 close + macd_dif（60 日，用于背离检测）
+        self._hist_data.clear()
+        try:
+            from datetime import datetime as _dt, timedelta as _td
+            from src.storage import DatabaseManager as _DB
+            from sqlalchemy import text as _text
+
+            target_dt = _dt.strptime(trade_date, "%Y%m%d").date()
+            hist_start = (target_dt - _td(days=90)).strftime("%Y-%m-%d")
+            hist_end = target_dt.strftime("%Y-%m-%d")
+
+            with _DB().get_session() as sess:
+                rows = sess.execute(
+                    _text(
+                        "SELECT code, date, close_qfq, macd_dif FROM stock_tech_indicator "
+                        "WHERE date >= :start AND date <= :end ORDER BY code, date"
+                    ),
+                    {"start": hist_start, "end": hist_end},
+                ).fetchall()
+            if rows:
+                hist_df = pd.DataFrame(
+                    rows, columns=["code", "date", "close", "dif"]
+                )
+                hist_df["code"] = hist_df["code"].astype(str).str.zfill(6)
+                for code, grp in hist_df.groupby("code"):
+                    self._hist_data[code] = grp.set_index("date").sort_index()
+                logger.info(
+                    "[TechnicalFactor] 历史数据: %d 只, %d 条",
+                    len(self._hist_data), len(rows),
+                )
+        except Exception as e:
+            logger.debug("[TechnicalFactor] 历史数据查询失败: %s", e)
+
+        return df
 
     # ------------------------------------------------------------------
     # 共享信号提取（score 和 describe 共用）
@@ -89,12 +134,27 @@ class TechnicalFactor(BaseFactor):
 
         signals: Dict[str, pd.Series] = {}
 
+        # 追踪各维度原始数据是否缺失（用于中性化）
+        close_ok = close.notna() & (close > 0)
+        macd_ok = macd_dif.notna() & macd_dea.notna()
+        macd_hist_ok = macd_hist.notna()
+        rsi_ok = rsi.notna()
+        kdj_ok = kdj_k.notna() & kdj_d.notna()
+        ma5 = df.get("ma5", pd.Series(np.nan, index=idx))
+        ma10 = df.get("ma10", pd.Series(np.nan, index=idx))
+        ma20 = df.get("ma20", pd.Series(np.nan, index=idx))
+        ma_ok = ma5.notna() & ma10.notna() & ma20.notna()
+        boll_ok = boll_u.notna() & boll_m.notna() & boll_l.notna()
+        vol_ok = vol.notna() & (vol > 0)
+        cci_ok = cci.notna()
+
         # 1. MACD 金叉强度 (0-12)
         dif_dea_gap = (macd_dif - macd_dea) / macd_dea.abs().replace(0, 1.0)
         golden = dif_dea_gap > 0
         s_macd_cross = zeros.copy()
         if golden.any():
             s_macd_cross[golden] = _pct_rank(dif_dea_gap[golden]) * 12.0
+        s_macd_cross[~macd_ok] = 6.0
         signals["macd_cross"] = s_macd_cross
 
         # 2. MACD 动能柱 (0-8)
@@ -102,50 +162,132 @@ class TechnicalFactor(BaseFactor):
         s_macd_hist = zeros.copy()
         if hist_pos.any():
             s_macd_hist[hist_pos] = _pct_rank(macd_hist[hist_pos]) * 8.0
+        s_macd_hist[~macd_hist_ok] = 4.0
         signals["macd_hist"] = s_macd_hist
 
-        # 3. RSI 健康度 (0-12)：梯形，25-40 爬坡/40-55 满/55-75 衰减
-        s_rsi = zeros.copy()
-        s_rsi = s_rsi.mask((rsi >= 25) & (rsi < 40),
-                           _linear_map(rsi, 25, 4, 40, 12))
-        s_rsi = s_rsi.mask((rsi >= 40) & (rsi < 55), 12.0)
-        s_rsi = s_rsi.mask((rsi >= 55) & (rsi < 75),
-                           _linear_map(rsi, 55, 12, 75, 0))
+        # 2b. MACD 背离 (底背离 +8 / 顶背离 -8)
+        s_div_bull, s_div_bear = self._detect_divergence(idx, close, macd_dif, macd_dea)
+        s_div_bull[~(close_ok & macd_ok)] = 4.0
+        s_div_bear[~(close_ok & macd_ok)] = -4.0
+        signals["macd_divergence_bull"] = s_div_bull
+        signals["macd_divergence_bear"] = s_div_bear
+
+        # 3. RSI 健康度 (0-12)：以 50 为中心的尖峰，越极端分越低
+        rsi_dev = (rsi - 50).abs()
+        s_rsi = (12.0 - rsi_dev / 25.0 * 12.0).clip(0, 12)
+        s_rsi[~rsi_ok] = 6.0
         signals["rsi"] = s_rsi
 
-        # 4. KDJ 超卖+金叉 (0-15)
-        s_kdj_os = _linear_map(kdj_k, 20, 10, 45, 0).clip(0, 10)
-        kdj_cross = ((kdj_k > kdj_d) & (kdj_k < 50)).astype(float) * 5.0
-        signals["kdj"] = s_kdj_os + kdj_cross
+        # 4. KDJ 超卖+金叉 (0-10)
+        s_kdj_os = _linear_map(kdj_k, 20, 7, 45, 0).clip(0, 7)
+        kdj_gap = kdj_k - kdj_d
+        cross = (kdj_gap > 0) & (kdj_k < 50)
+        s_kdj_cross = zeros.copy()
+        if cross.any():
+            s_kdj_cross[cross] = _pct_rank(kdj_gap[cross]) * 3.0
+        s_kdj = s_kdj_os + s_kdj_cross
+        s_kdj[~kdj_ok] = 5.0
+        signals["kdj"] = s_kdj
 
-        # 5. BOLL 收窄 (0-10)
+        # 5. 均线多头排列 (0-10)
+        s_ma = zeros.copy()
+        full_bull = ma5 > ma10
+        partial_bull = ma10 > ma20
+        s_ma[full_bull & partial_bull] = 10.0
+        s_ma[full_bull & ~partial_bull] = 5.0
+        s_ma[~ma_ok] = 5.0
+        signals["ma"] = s_ma
+
+        # 6. BOLL 收窄 (0-10)：全市场百分位，带宽越窄分越高
         boll_width = (boll_u - boll_l) / boll_m.abs().replace(0, 1.0)
-        signals["boll_squeeze"] = _linear_map(boll_width, 0.3, 0, 0, 10).clip(0, 10)
+        s_boll_sqz = _pct_rank(-boll_width) * 10.0
+        s_boll_sqz[~boll_ok] = 5.0
+        signals["boll_squeeze"] = s_boll_sqz
 
-        # 6. BOLL 下轨支撑 (0-10)：价在下轨内方有效，破位得 0
+        # 7. BOLL 下轨支撑 (0-10)：价在下轨内方有效，破位得 0
         boll_range = (boll_u - boll_l).abs().replace(0, 1.0)
         boll_pos = ((close - boll_l) / boll_range).clip(0, 1)
-        signals["boll_support"] = _linear_map(boll_pos, 1, 0, 0, 10).clip(0, 10)
+        s_boll_sup = _linear_map(boll_pos, 1, 0, 0, 10).clip(0, 10)
+        s_boll_sup[~(close_ok & boll_ok)] = 5.0
+        signals["boll_support"] = s_boll_sup
 
-        # 7. 成交量活跃度 (0-10)：横截面百分位
+        # 8. 成交量活跃度 (0-10)：横截面百分位
         s_vol = zeros.copy()
         vol_pos = vol > 0
         if vol_pos.any():
             s_vol[vol_pos] = _pct_rank(vol[vol_pos]) * 10.0
+        s_vol[~vol_ok] = 5.0
         signals["volume"] = s_vol
 
-        # 8. 放量+BOLL 下轨共振加成 (0-6)
-        # 两者同时强势时几何加成，单边弱则压回
-        # s_vol_norm 对齐到全量 index，避免停牌股（vol=0）产生 NaN
+        # 9. 放量+BOLL 下轨共振加成 (0-6)
         s_vol_norm = _pct_rank(vol[vol_pos]).reindex(idx, fill_value=0) if vol_pos.any() else zeros
         boll_sup_norm = (_linear_map(boll_pos, 1, 0, 0, 1).clip(0, 1)
                          if vol_pos.any() else zeros)
-        signals["vol_boll_bonus"] = (s_vol_norm * boll_sup_norm * 6.0).fillna(0).clip(0, 6)
+        s_bonus = (s_vol_norm * boll_sup_norm * 6.0).fillna(0).clip(0, 6)
+        s_bonus[~(vol_ok & close_ok & boll_ok)] = 3.0
+        signals["vol_boll_bonus"] = s_bonus
 
-        # 9. CCI 超卖 (0-15)
-        signals["cci"] = _linear_map(cci.clip(upper=-100), -200, 15, -100, 0).clip(0, 15)
+        # 10. CCI 超卖 (0-10)
+        s_cci = _linear_map(cci.clip(upper=-100), -200, 10, -100, 0).clip(0, 10)
+        s_cci[~cci_ok] = 5.0
+        signals["cci"] = s_cci
 
         return signals
+
+    def _detect_divergence(self, idx: pd.Index, close: pd.Series,
+                           macd_dif: pd.Series, macd_dea: pd.Series) -> tuple:
+        """MACD 底背离 & 顶背离检测。
+
+        底背离：价接近/跌破 20 日前低，DIF 高于前低
+        - 背离 + 金叉确认（DIF>DEA）→ +8
+        - 仅背离无确认 → +4
+        顶背离：价接近/突破 20 日前高，DIF 低于前高
+        - 背离 + 死叉确认（DIF<DEA）→ -8
+        - 仅背离无确认 → -4
+        """
+        s_bull = pd.Series(0.0, index=idx)
+        s_bear = pd.Series(0.0, index=idx)
+
+        if not self._hist_data:
+            return s_bull, s_bear
+
+        for ts_code in idx:
+            bare = ts_code.split(".")[0] if "." in str(ts_code) else str(ts_code)
+            hist = self._hist_data.get(bare)
+            if hist is None or len(hist) < 20:
+                continue
+
+            today_close = close.get(ts_code, np.nan)
+            today_dif = macd_dif.get(ts_code, np.nan)
+            today_dea = macd_dea.get(ts_code, np.nan)
+            if pd.isna(today_close) or pd.isna(today_dif) or today_close <= 0:
+                continue
+
+            recent = hist.tail(20)
+            if recent.empty:
+                continue
+
+            low_dt = recent["close"].idxmin()
+            high_dt = recent["close"].idxmax()
+            low_c = recent.loc[low_dt, "close"]
+            low_d = recent.loc[low_dt, "dif"]
+            high_c = recent.loc[high_dt, "close"]
+            high_d = recent.loc[high_dt, "dif"]
+
+            if pd.isna(low_d) or pd.isna(high_d):
+                continue
+
+            # 底背离
+            if today_close <= low_c * 1.02 and today_dif > low_d:
+                is_golden = not pd.isna(today_dea) and today_dif > today_dea
+                s_bull.loc[ts_code] = 8.0 if is_golden else 4.0
+
+            # 顶背离
+            if today_close >= high_c * 0.98 and today_dif < high_d:
+                is_dead = not pd.isna(today_dea) and today_dif < today_dea
+                s_bear.loc[ts_code] = -8.0 if is_dead else -4.0
+
+        return s_bull, s_bear
 
     # ------------------------------------------------------------------
     # score / describe
@@ -169,8 +311,11 @@ class TechnicalFactor(BaseFactor):
         signal_meta = [
             ("macd_cross", "MACD金叉"),
             ("macd_hist", "MACD红柱"),
+            ("macd_divergence_bull", "MACD底背离"),
+            ("macd_divergence_bear", "MACD顶背离"),
             ("rsi", "RSI健康"),
             ("kdj", "KDJ超卖"),
+            ("ma", "均线多头"),
             ("boll_squeeze", "BOLL收窄"),
             ("boll_support", "BOLL下轨支撑"),
             ("volume", "放量"),
@@ -179,9 +324,11 @@ class TechnicalFactor(BaseFactor):
         ]
 
         max_map = {
-            "macd_cross": 12, "macd_hist": 8, "rsi": 12, "kdj": 15,
+            "macd_cross": 12, "macd_hist": 8,
+            "macd_divergence_bull": 8, "macd_divergence_bear": 8,
+            "rsi": 12, "kdj": 10, "ma": 10,
             "boll_squeeze": 10, "boll_support": 10, "volume": 10,
-            "vol_boll_bonus": 6, "cci": 15,
+            "vol_boll_bonus": 6, "cci": 10,
         }
         threshold = self._LABEL_THRESHOLD_RATIO
 
@@ -192,9 +339,13 @@ class TechnicalFactor(BaseFactor):
             labels = []
             for key, label in signal_meta:
                 val = signals[key].get(ts_code, 0.0)
-                if val < max_map[key] * threshold:
+                if abs(val) < max_map[key] * threshold:
                     continue
-                if key == "rsi":
+                if key == "macd_divergence_bull":
+                    labels.append("MACD底背离，看涨反转")
+                elif key == "macd_divergence_bear":
+                    labels.append("MACD顶背离，注意回调")
+                elif key == "rsi":
                     rsi_v = df.get("rsi_12", pd.Series(50, index=df.index)).get(ts_code, 50)
                     labels.append(f"{label}({rsi_v:.0f})")
                 elif key == "kdj":

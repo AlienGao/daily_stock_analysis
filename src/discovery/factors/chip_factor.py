@@ -11,7 +11,7 @@ from typing import Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-from src.discovery.factors.base import BaseFactor
+from src.discovery.factors.base import BaseFactor, safe_pct_change, pct_rank
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ class ChipFactor(BaseFactor):
     name = "chip"
     available_intraday = False
     available_postmarket = True
-    weight = 15.0
+    weight = 25.0
 
     _LOOKBACK_DAYS = 5
     _LABEL_THRESHOLD = 5.0
@@ -127,64 +127,52 @@ class ChipFactor(BaseFactor):
                 if col in latest_day.columns:
                     result[col] = latest_day[col]
 
-        # 4. 查当日收盘价（用于计算距历史高低点的真实距离）
+        # 4. 一次查询 stock_daily：当日收盘价 + 90 日波动率
         try:
-            from datetime import datetime as _dt
-            from src.storage import DatabaseManager
-            from sqlalchemy import text
-            db2 = DatabaseManager()
-            date_fmt = _dt.strptime(end_date, "%Y%m%d").strftime("%Y-%m-%d")
-            with db2.get_session() as sess:
-                rows = sess.execute(
-                    text(
-                        "SELECT code, close FROM stock_daily "
-                        "WHERE date = :dt"
-                    ),
-                    {"dt": date_fmt},
-                ).fetchall()
-            if rows:
-                close_map = {str(r[0]): float(r[1]) for r in rows if r[1] is not None}
-                result["close"] = result.index.map(
-                    lambda tc: close_map.get(
-                        tc.split(".")[0] if "." in str(tc) else str(tc), np.nan
-                    )
-                )
-                logger.info(
-                    f"[ChipFactor] 收盘价匹配: {result['close'].notna().sum()} 只"
-                )
-        except Exception as e:
-            logger.debug(f"[ChipFactor] 收盘价查询失败: {e}")
-
-        # 5. 查 60 日 daily 数据，计算每只股票自身日均振幅（用于波动率归一化）
-        try:
-            from datetime import timedelta as _td
+            from datetime import datetime as _dt, timedelta as _td
             from src.storage import DatabaseManager
             from sqlalchemy import text
 
             target_dt = _dt.strptime(end_date, "%Y%m%d")
+            date_fmt = target_dt.strftime("%Y-%m-%d")
             vol_start = (target_dt - _td(days=90)).strftime("%Y-%m-%d")
-            vol_end = target_dt.strftime("%Y-%m-%d")
 
-            db3 = DatabaseManager()
-            with db3.get_session() as sess:
-                vol_rows = sess.execute(
+            db2 = DatabaseManager()
+            with db2.get_session() as sess:
+                rows = sess.execute(
                     text(
-                        "SELECT code, high, low, close FROM stock_daily "
+                        "SELECT code, date, high, low, close FROM stock_daily "
                         "WHERE date >= :start AND date <= :end"
                     ),
-                    {"start": vol_start, "end": vol_end},
+                    {"start": vol_start, "end": date_fmt},
                 ).fetchall()
 
-            if vol_rows:
-                vol_df = pd.DataFrame(
-                    vol_rows, columns=["code", "high", "low", "close"]
+            if rows:
+                sd_df = pd.DataFrame(
+                    rows, columns=["code", "date", "high", "low", "close"]
                 )
-                vol_df["daily_range"] = (
-                    (vol_df["high"] - vol_df["low"]) / vol_df["close"].replace(0, np.nan)
+                sd_df["code"] = sd_df["code"].astype(str)
+
+                # 4a. 提取当日收盘价
+                today = sd_df[pd.to_datetime(sd_df["date"]).dt.strftime("%Y-%m-%d") == date_fmt]
+                if not today.empty:
+                    close_map = dict(zip(today["code"], today["close"]))
+                    result["close"] = result.index.map(
+                        lambda tc: close_map.get(
+                            tc.split(".")[0] if "." in str(tc) else str(tc), np.nan
+                        )
+                    )
+                else:
+                    result["close"] = np.nan
+                logger.info(
+                    f"[ChipFactor] 收盘价匹配: {result['close'].notna().sum()} 只"
+                )
+
+                # 4b. 计算每只股票日均振幅
+                sd_df["daily_range"] = (
+                    (sd_df["high"] - sd_df["low"]) / sd_df["close"].replace(0, np.nan)
                 ).abs()
-                vol_df["code"] = vol_df["code"].astype(str)
-                avg_range = vol_df.groupby("code")["daily_range"].mean()
-                # 映射到 result index（ts_code 格式如 600519.SH）
+                avg_range = sd_df.groupby("code")["daily_range"].mean()
                 result["avg_range"] = result.index.map(
                     lambda tc: avg_range.get(
                         tc.split(".")[0] if "." in str(tc) else str(tc), np.nan
@@ -196,9 +184,11 @@ class ChipFactor(BaseFactor):
                     f"avg_range 中位数 {result['avg_range'].median():.4f}"
                 )
             else:
+                result["close"] = np.nan
                 result["avg_range"] = np.nan
         except Exception as e:
-            logger.warning(f"[ChipFactor] 波动率查询失败: {e}")
+            logger.warning(f"[ChipFactor] stock_daily 查询失败: {e}")
+            result["close"] = np.nan
             result["avg_range"] = np.nan
 
         logger.info(
@@ -277,7 +267,7 @@ class ChipFactor(BaseFactor):
         # 筹码集中度（已是百分位，保持不变）
         cost_range = (cost_95 - cost_5).abs()
         concentration = cost_range / weight_avg.replace(0, np.nan)
-        conc_pct = _pct_rank(-concentration, idx)
+        conc_pct = pct_rank(-concentration, idx)
         signals["conc_pct"] = conc_pct
 
         # ================================================================
@@ -285,10 +275,10 @@ class ChipFactor(BaseFactor):
         # ================================================================
 
         # 5 日 winner_rate 变化（用自身 wr 波动率归一化）
-        wr_change = _safe_pct_change(wr_last, wr_first)
+        wr_change = safe_pct_change(wr_last, wr_first)
         signals["wr_change"] = wr_change
         wr_change_norm = wr_change / wr_vol  # 多少个"wr 标准差"
-        signals["wr_change_pct"] = _pct_rank(-wr_change_norm, idx)
+        signals["wr_change_pct"] = pct_rank(-wr_change_norm, idx)
 
         # 距历史低点距离：原始 % → 归一化为"多少个日均振幅"
         low_valid = his_low.notna() & his_low.gt(0) & close.notna() & close.gt(0)
@@ -299,9 +289,9 @@ class ChipFactor(BaseFactor):
         signals["dist_to_low"] = dist_to_low
         # 归一化：原始距离 / (日均振幅 * 100)，avg_range 如 0.03 → 放大系数 3
         range_pct = avg_range * 100  # 转为百分比
-        range_pct = range_pct.clip(lower=0.5)  # 最低 0.5%，防除零
+        range_pct = range_pct.fillna(2.0).clip(lower=0.5)  # 默认 2% 振幅，防 NaN + 防除零
         dist_low_norm = dist_to_low / range_pct
-        signals["dist_low_pct"] = _pct_rank(-dist_low_norm, idx)
+        signals["dist_low_pct"] = pct_rank(-dist_low_norm, idx)
 
         # 距历史高点距离：同样用 avg_range 归一化
         high_valid = his_high.notna() & his_high.gt(0) & close.notna() & close.gt(0)
@@ -311,12 +301,12 @@ class ChipFactor(BaseFactor):
         )
         signals["dist_to_high"] = dist_to_high
         dist_high_norm = dist_to_high / range_pct
-        signals["dist_high_pct"] = _pct_rank(dist_high_norm, idx)
+        signals["dist_high_pct"] = pct_rank(dist_high_norm, idx)
 
         # 5 日成本中轴趋势（上移越多分位越高）
-        cost50_trend = _safe_pct_change(cost_50, cost_50_first)
+        cost50_trend = safe_pct_change(cost_50, cost_50_first)
         signals["cost50_trend"] = cost50_trend
-        signals["cost50_pct"] = _pct_rank(cost50_trend, idx)
+        signals["cost50_pct"] = pct_rank(cost50_trend, idx)
 
         # 筹码结构不对称性（上方越松散分位越高）
         upper_range = (cost_85 - cost_50).abs()
@@ -325,7 +315,7 @@ class ChipFactor(BaseFactor):
         chip_skew = upper_range / lower_safe
         chip_skew = chip_skew.fillna(1.0).clip(0, 10)
         signals["chip_skew"] = chip_skew
-        signals["skew_pct"] = _pct_rank(chip_skew, idx)
+        signals["skew_pct"] = pct_rank(chip_skew, idx)
 
         return signals
 
@@ -368,7 +358,7 @@ class ChipFactor(BaseFactor):
 
         cost_range = (cost_95 - cost_5).abs()
         concentration = cost_range / weight_avg.replace(0, np.nan)
-        signals["conc_pct"] = _pct_rank(-concentration, idx)
+        signals["conc_pct"] = pct_rank(-concentration, idx)
 
         # 距历史高低点（有 avg_range 时归一化，无时 fallback 原始距离）
         range_pct = avg_range * 100
@@ -381,7 +371,7 @@ class ChipFactor(BaseFactor):
         )
         signals["dist_to_low"] = dist_to_low
         dist_low_norm = dist_to_low / range_pct
-        signals["dist_low_pct"] = _pct_rank(-dist_low_norm, idx)
+        signals["dist_low_pct"] = pct_rank(-dist_low_norm, idx)
 
         high_valid = his_high.notna() & his_high.gt(0) & close.notna() & close.gt(0)
         dist_to_high = pd.Series(np.nan, index=idx)
@@ -390,7 +380,7 @@ class ChipFactor(BaseFactor):
         )
         signals["dist_to_high"] = dist_to_high
         dist_high_norm = dist_to_high / range_pct
-        signals["dist_high_pct"] = _pct_rank(dist_high_norm, idx)
+        signals["dist_high_pct"] = pct_rank(dist_high_norm, idx)
 
         # 单日无趋势，百分位信号给中位值
         signals["wr_change"] = pd.Series(0.0, index=idx)
@@ -403,7 +393,7 @@ class ChipFactor(BaseFactor):
         lower_safe = lower_range.replace(0, np.nan)
         chip_skew = upper_range / lower_safe
         signals["chip_skew"] = chip_skew.fillna(1.0).clip(0, 10)
-        signals["skew_pct"] = _pct_rank(chip_skew, idx)
+        signals["skew_pct"] = pct_rank(chip_skew, idx)
 
         return signals
 
@@ -583,20 +573,3 @@ class ChipFactor(BaseFactor):
 
             if r:
                 reasons[ts_code] = r
-        return reasons
-
-
-def _safe_pct_change(last_val: pd.Series, first_val: pd.Series) -> pd.Series:
-    """安全计算增幅 (last - first) / |first| * 100，first 为 0 时返回 0。"""
-    first_safe = first_val.replace(0, np.nan)
-    result = (last_val - first_val) / first_safe.abs() * 100
-    return result.fillna(0)
-
-
-def _pct_rank(series: pd.Series, index) -> pd.Series:
-    """全市场百分位排名 (0-100)，缺失值补 50（中位数）。"""
-    valid = series.dropna()
-    if len(valid) < 2:
-        return pd.Series(50.0, index=index)
-    ranks = valid.rank(pct=True) * 100
-    return ranks.reindex(index).fillna(50.0)

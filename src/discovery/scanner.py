@@ -938,7 +938,7 @@ def refresh_margin_detail_postmarket(tushare_fetcher) -> int:
             out["code"] = df["ts_code"].astype(str).str.split(".").str[0].str.zfill(6)
             out["name"] = df.get("name", pd.Series("", index=df.index)).values if "name" in df.columns else ""
             out["trade_date"] = df.get("trade_date", td)
-            for c in ("rzye", "rzmre", "rzche", "rqye", "rqmre", "rqyl"):
+            for c in ("rzye", "rzmre", "rzche", "rqye", "rqmcl", "rqchl", "rqyl"):
                 if c in df.columns:
                     out[c] = pd.to_numeric(df[c], errors="coerce")
 

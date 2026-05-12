@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 from sqlalchemy import text
 
-from src.discovery.factors.base import BaseFactor
+from src.discovery.factors.base import BaseFactor, bare_to_ts_code
 
 logger = logging.getLogger(__name__)
 
@@ -122,18 +122,7 @@ class RankingMomentumFactor(BaseFactor):
         day_cols = [c for c in df.columns if c.startswith("d")]
         df = df[df[day_cols].notna().sum(axis=1) >= self._MIN_TRADING_DAYS]
 
-        # 6位裸码 → ts_code
-        def _bare_to_ts(c):
-            c = str(c).strip().zfill(6)
-            if c.startswith(("60", "68")):
-                return f"{c}.SH"
-            elif c.startswith(("00", "30")):
-                return f"{c}.SZ"
-            elif c.startswith(("43", "83", "87", "92")):
-                return f"{c}.BJ"
-            return c
-
-        df.index = [_bare_to_ts(c) for c in df.index]
+        df.index = [bare_to_ts_code(c) for c in df.index]
         df.index.name = "ts_code"
 
         logger.info(
@@ -186,7 +175,8 @@ class RankingMomentumFactor(BaseFactor):
             current_pct = ranks[0] if ranks else 50.0
 
             # --- 1. 趋势斜率 (0-40) ---
-            recent = ranks[:3]  # d0, d1, d2
+            # ranks 是 d0→dN（最新在前），逆序使时间从左到右递增
+            recent = list(reversed(ranks[:3]))
             if len(recent) >= 3:
                 x = np.arange(len(recent))
                 slope = np.polyfit(x, recent, 1)[0]  # %/day

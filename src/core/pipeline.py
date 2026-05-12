@@ -929,7 +929,8 @@ class StockAnalysisPipeline:
                 'rzmre': margin_data.get('rzmre'),
                 'rzyeb': margin_data.get('rzyeb'),
                 'rqye': margin_data.get('rqye'),
-                'rqmre': margin_data.get('rqmre'),
+                'rqmcl': margin_data.get('rqmcl'),
+                'rqchl': margin_data.get('rqchl'),
                 'trade_date': margin_data.get('trade_date'),
             }
 

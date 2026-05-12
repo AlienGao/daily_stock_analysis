@@ -8,11 +8,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.discovery.factors.chip_factor import (
-    ChipFactor,
-    _safe_pct_change,
-    _pct_rank,
-)
+from src.discovery.factors.chip_factor import ChipFactor
+from src.discovery.factors.base import safe_pct_change, pct_rank
 
 
 def _make_df(index_codes, **cols):
@@ -30,33 +27,33 @@ class TestHelpers:
     def test_safe_pct_change_positive(self):
         last = pd.Series([200, 100], index=["A", "B"])
         first = pd.Series([100, 50], index=["A", "B"])
-        result = _safe_pct_change(last, first)
+        result = safe_pct_change(last, first)
         assert result["A"] == 100.0
         assert result["B"] == 100.0
 
     def test_safe_pct_change_negative(self):
         last = pd.Series([50, 80], index=["A", "B"])
         first = pd.Series([100, 100], index=["A", "B"])
-        result = _safe_pct_change(last, first)
+        result = safe_pct_change(last, first)
         assert result["A"] == -50.0
         assert result["B"] == -20.0
 
     def test_safe_pct_change_zero_first(self):
         last = pd.Series([100], index=["A"])
         first = pd.Series([0], index=["A"])
-        result = _safe_pct_change(last, first)
+        result = safe_pct_change(last, first)
         assert result["A"] == 0.0
 
     def test_pct_rank(self):
         series = pd.Series([10, 20, 30, 40, 50], index=["A", "B", "C", "D", "E"])
-        result = _pct_rank(series, series.index)
+        result = pct_rank(series, series.index)
         assert result["A"] < result["B"] < result["E"]
         assert result["A"] > 0.0
         assert result["E"] == 100.0
 
     def test_pct_rank_single_value(self):
         series = pd.Series([42], index=["A"])
-        result = _pct_rank(series, series.index)
+        result = pct_rank(series, series.index)
         assert result["A"] == 50.0
 
 

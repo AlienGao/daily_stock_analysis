@@ -10,19 +10,9 @@ from typing import Dict, List, Optional
 
 import pandas as pd
 
-from src.discovery.factors.base import BaseFactor
+from src.discovery.factors.base import BaseFactor, bare_to_ts_code
 
 logger = logging.getLogger(__name__)
-
-
-def _bare_to_ts_code(codes: pd.Index) -> pd.Index:
-    """将 6 位代码转为 ts_code 格式 (000001 → 000001.SZ)。"""
-    codes = codes.astype(str).str.zfill(6)
-    pre2 = codes.str[:2]
-    suffixes = pd.Series("SZ", index=codes.index)
-    suffixes[pre2.isin(["60", "68"])] = "SH"
-    suffixes[pre2.isin(["43", "83", "87", "92"])] = "BJ"
-    return codes + "." + suffixes
 
 
 class MoneyFlowFactor(BaseFactor):
@@ -50,7 +40,7 @@ class MoneyFlowFactor(BaseFactor):
 
             df = DatabaseManager().get_money_flow(trade_date)
             if df is not None and not df.empty:
-                df.index = _bare_to_ts_code(df.index)
+                df.index = df.index.map(bare_to_ts_code)
                 return df
         except Exception as e:
             logger.debug("[MoneyFlow] DB 读取失败，回退 API: %s", e)
@@ -103,12 +93,12 @@ class MoneyFlowFactor(BaseFactor):
         return {
             "elg_net": elg_net, "lg_net": lg_net, "sm_net": sm_net,
             "major_rate": major_rate,
-            "elg_rate": elg_rate, "lg_rate": lg_rate,
+            "elg_rate": elg_rate, "lg_rate": lg_rate, "sm_rate": sm_rate,
             "major_rate_pct": _to_pct(major_rate),
             "elg_rate_pct": _to_pct(elg_rate),
             "lg_rate_pct": _to_pct(lg_rate),
             "sm_rate_pct": _to_pct(sm_rate),
-            "retail_trap": (elg_net < 0) & (sm_net > 0),
+            "retail_trap": (elg_net < 0) & (lg_net < 0) & (sm_net > 0),
         }
 
     # ------------------------------------------------------------------
@@ -127,9 +117,9 @@ class MoneyFlowFactor(BaseFactor):
             + signals["lg_rate_pct"] * 0.20
         ) / 0.90
 
-        # 散户接盘惩罚：小单净流入百分位越高、且特大单流出 → 惩罚越重
-        sm_pct = signals["sm_rate_pct"] / 100
-        penalty = 1.0 - 0.6 * sm_pct * signals["retail_trap"].astype(float)
+        # 散户接盘惩罚：小单净流入绝对占比越高、且主力流出 → 惩罚越重
+        sm_abs = signals["sm_rate"].abs().clip(0, 0.1) / 0.1
+        penalty = 1.0 - 0.6 * sm_abs * signals["retail_trap"].astype(float)
         scores = scores * penalty
 
         scores.name = self.name

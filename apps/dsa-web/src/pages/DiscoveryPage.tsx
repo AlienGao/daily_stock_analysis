@@ -669,7 +669,7 @@ const FactorTopsCard: React.FC<{
 };
 
 const BacktestCard: React.FC<{
-  data: BacktestResponse;
+  data: BacktestResponse | null;
   loading: boolean;
   startDate: string;
   endDate: string;
@@ -680,9 +680,10 @@ const BacktestCard: React.FC<{
   const [section, setSection] = useState<'chart' | 'trades'>('chart');
   const [collapsed, setCollapsed] = useState(true);
 
-  if (loading) {
+  // Only show full loading skeleton when there's no data yet — prevent height collapse on refresh
+  if (!data && loading) {
     return (
-      <div className="rounded-xl border border-border/20 bg-card/40 px-4 py-3 text-[12px] text-tertiary-text">
+      <div className="rounded-xl border border-border/20 bg-card/40 px-4 py-3 text-[12px] text-tertiary-text min-h-[48px]">
         <Loader2 className="inline h-3 w-3 animate-spin mr-1.5" />加载回测数据...
       </div>
     );
@@ -690,8 +691,8 @@ const BacktestCard: React.FC<{
 
   if (!data) {
     return (
-      <div className="rounded-xl border border-border/20 bg-card/40 px-4 py-3 text-[12px] text-tertiary-text">
-        <Loader2 className="inline h-3 w-3 animate-spin mr-1.5" />加载回测数据...
+      <div className="rounded-xl border border-border/20 bg-card/40 px-4 py-3 text-[12px] text-tertiary-text min-h-[48px]">
+        暂无回测数据
       </div>
     );
   }
@@ -719,6 +720,7 @@ const BacktestCard: React.FC<{
         className="w-full px-4 py-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[12px] border-b border-border/15 hover:bg-foreground/[0.02] transition-colors"
       >
         <span className="text-tertiary-text text-[11px] font-medium tracking-wide">回测</span>
+        {loading && <Loader2 className="h-3 w-3 animate-spin text-cyan/60" />}
 
         <div className="flex items-center gap-3">
           <span className={`font-bold text-sm tabular-nums ${isPositive ? 'text-red-400' : 'text-emerald-400'}`}>
@@ -1316,7 +1318,7 @@ const DiscoveryPage: React.FC = () => {
           </div>
 
           <BacktestCard
-            data={backtest!}
+            data={backtest}
             loading={backtestLoading}
             startDate={btStartDate}
             endDate={btEndDate}
@@ -1404,7 +1406,7 @@ const DiscoveryPage: React.FC = () => {
           </div>
 
           <BacktestCard
-            data={backtest!}
+            data={backtest}
             loading={backtestLoading}
             startDate={btStartDate}
             endDate={btEndDate}

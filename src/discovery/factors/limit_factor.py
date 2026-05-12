@@ -16,7 +16,7 @@ from typing import Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-from src.discovery.factors.base import BaseFactor
+from src.discovery.factors.base import BaseFactor, bare_to_ts_code
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ class LimitFactor(BaseFactor):
             df = db.get_limit_pool(trade_date=trade_date)
             if df is not None and not df.empty:
                 df = df.reset_index().copy()
-                df.index = [self._bare_to_ts_code(c) for c in df["code"]]
+                df.index = [bare_to_ts_code(c) for c in df["code"]]
                 # DB 列名与 Tushare 不同：limit_type 为空，U/D/Z 在 limit_stats
                 if "limit" not in df.columns:
                     if "limit_stats" in df.columns:
@@ -220,14 +220,3 @@ class LimitFactor(BaseFactor):
 
         return reasons
 
-    @staticmethod
-    def _bare_to_ts_code(code: str) -> str:
-        """裸代码 → ts_code 格式 (e.g. '600519' → '600519.SH')。"""
-        c = str(code).strip().zfill(6)
-        if c.startswith(("60", "68")):
-            return f"{c}.SH"
-        elif c.startswith(("00", "30")):
-            return f"{c}.SZ"
-        elif c.startswith(("43", "83", "87", "92")):
-            return f"{c}.BJ"
-        return c

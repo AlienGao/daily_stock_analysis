@@ -83,7 +83,7 @@ _AVAILABLE_DATA_SOURCES = """
   列: turnover_rate(换手率), volume_ratio(量比), pe, pb, total_mv
 - `tushare_fetcher.get_bulk_margin_detail(trade_date)` → 融资融券明细
   列: rzye(融资余额), rzmre(融资买入额), rzche(融资偿还额),
-       rqye(融券余额), rqmre(融券卖出量), rqyl(融券余量)
+       rqye(融券余额), rqmcl(融券卖出量), rqchl(融券偿还量), rqyl(融券余量)
 - `tushare_fetcher.get_bulk_stk_factor(trade_date)` → 技术指标(预计算)
   列: close, macd_dif, macd_dea, macd, kdj_k, kdj_d, kdj_j,
        rsi_6, rsi_12, rsi_24, boll_upper, boll_mid, boll_lower, cci, vol

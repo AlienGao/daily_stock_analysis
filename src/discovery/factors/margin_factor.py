@@ -11,7 +11,7 @@ from typing import Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-from src.discovery.factors.base import BaseFactor
+from src.discovery.factors.base import BaseFactor, safe_pct_change, pct_rank, safe_ratio
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +111,7 @@ class MarginFactor(BaseFactor):
                 continue
             prefix = f"d{i}"
             day = day.set_index("ts_code")
-            for col in ["rzye", "rzmre", "rzche", "rqye", "rqmre", "rqyl"]:
+            for col in ["rzye", "rzmre", "rzche", "rqye", "rqmcl", "rqchl", "rqyl"]:
                 if col in day.columns:
                     day = day.rename(columns={col: f"{prefix}_{col}"})
             keep = [c for c in day.columns if c.startswith("d")]
@@ -141,9 +141,14 @@ class MarginFactor(BaseFactor):
                 lambda c: mv_series.get(c, np.nan) if hasattr(mv_series, 'get') else np.nan
             )
 
+        # 过滤 ETF（5 开头 + 15/16 开头），仅保留 A 股
+        bare_codes = result.index.astype(str).str.split(".").str[0].str.zfill(6)
+        is_stock = bare_codes.str.match(r"^(60|68|00|30|43|83|87|92)")
+        result = result[is_stock]
+
         logger.info(
             f"[MarginFactor] 组装完成: {len(target_dates)} 日, "
-            f"{len(result)} 只股票"
+            f"{len(result)} 只股票 (过滤 ETF 后)"
         )
         return result
 
@@ -174,29 +179,31 @@ class MarginFactor(BaseFactor):
         rzche_last = df.get(f"d{last}_rzche", zeros)
         rzche_first = df.get(f"d{first}_rzche", zeros)
         rqye_last = df.get(f"d{last}_rqye", zeros)
-        rqmre_last = df.get(f"d{last}_rqmre", zeros)
+        rqmcl_last = df.get(f"d{last}_rqmcl", zeros)
+        rqmcl_first = df.get(f"d{first}_rqmcl", zeros)
 
         # 5 日增幅
-        rzmre_growth = _safe_pct_change(rzmre_last, rzmre_first)
-        rzche_growth = _safe_pct_change(rzche_last, rzche_first)
+        rzmre_growth = safe_pct_change(rzmre_last, rzmre_first)
+        rzche_growth = safe_pct_change(rzche_last, rzche_first)
+        rqmcl_growth = safe_pct_change(rqmcl_last, rqmcl_first)
 
         # 融资买入活跃度
         rzye_safe = rzye_last.replace(0, np.nan)
         margin_ratio = (rzmre_last / rzye_safe) * 100
         margin_ratio_first = (rzmre_first / rzye_first.replace(0, np.nan)) * 100
-        margin_ratio_trend = _safe_pct_change(
+        margin_ratio_trend = safe_pct_change(
             margin_ratio.fillna(0), margin_ratio_first.fillna(0)
         )
 
-        # 市值归一化
+        # 市值归一化（无市值时用绝对值排名作为代理）
         if has_mv:
-            rzye_ratio_pct = _pct_rank(_safe_ratio(rzye_last, total_mv) * 100, idx)
-            rzmre_ratio_pct = _pct_rank(_safe_ratio(rzmre_last, total_mv) * 100, idx)
-            rqye_ratio_pct = _pct_rank(_safe_ratio(rqye_last, total_mv) * 100, idx)
+            rzye_ratio_pct = pct_rank(safe_ratio(rzye_last, total_mv) * 100, idx)
+            rzmre_ratio_pct = pct_rank(safe_ratio(rzmre_last, total_mv) * 100, idx)
+            rqye_ratio_pct = pct_rank(safe_ratio(rqye_last, total_mv) * 100, idx)
         else:
-            rzye_ratio_pct = pd.Series(50.0, index=idx)
-            rzmre_ratio_pct = pd.Series(50.0, index=idx)
-            rqye_ratio_pct = pd.Series(50.0, index=idx)
+            rzye_ratio_pct = pct_rank(rzye_last, idx)
+            rzmre_ratio_pct = pct_rank(rzmre_last, idx)
+            rqye_ratio_pct = pct_rank(rqye_last, idx)
 
         signals: Dict[str, pd.Series] = {}
 
@@ -232,7 +239,7 @@ class MarginFactor(BaseFactor):
 
         # 6. 融券卖出 (-10-0): 有→-10
         s = zeros.copy()
-        s.loc[rqmre_last > 0] = -10.0
+        s.loc[rqmcl_last > 0] = -10.0
         signals["short_selling"] = s
 
         # 7. 融券占比偏高 (-15-0): 分位 50→0, 100→-15（rqye=0 不触发）
@@ -241,7 +248,13 @@ class MarginFactor(BaseFactor):
         s.loc[hi] = -((rqye_ratio_pct[hi] - 50) / 50 * 15).clip(0, 15)
         signals["short_ratio"] = s
 
-        # 8. 买入占比快速萎缩 (-20-0): -5%→0, -100%→-20
+        # 8. 融券卖出量下降→空头平仓 (0-10): -20%→+2, -100%→+10
+        s = zeros.copy()
+        covering = (rqmcl_growth < -20) & (rqmcl_first > 0)
+        s.loc[covering] = ((-rqmcl_growth[covering]).clip(0, 100) / 100 * 10).clip(0, 10)
+        signals["short_covering"] = s
+
+        # 9. 买入占比快速萎缩 (-20-0): -5%→0, -100%→-20
         s = zeros.copy()
         crash = margin_ratio_trend < -5
         s.loc[crash] = -(margin_ratio_trend[crash].abs().clip(0, 100) / 100 * 20)
@@ -250,55 +263,81 @@ class MarginFactor(BaseFactor):
         return signals
 
     def _compute_signals_single_day(self, df: pd.DataFrame) -> Dict[str, pd.Series]:
-        """单日退化版信号。"""
+        """单日退化版信号，用绝对值代理趋势信号（上限折半以反映不确定性）。"""
         idx = df.index
         zeros = pd.Series(0.0, index=idx)
 
         total_mv = df.get("total_mv")
         has_mv = total_mv is not None and total_mv.notna().any()
 
-        rzmre = df.get("d0_rzmre") if "d0_rzmre" in df.columns else df.get("rzmre", zeros)
-        rqmre = df.get("d0_rqmre") if "d0_rqmre" in df.columns else df.get("rqmre", zeros)
-        rqye = df.get("d0_rqye") if "d0_rqye" in df.columns else df.get("rqye", zeros)
-        rzye = df.get("d0_rzye") if "d0_rzye" in df.columns else df.get("rzye", zeros)
+        rzmre = df.get("d0_rzmre", zeros)
+        rzche = df.get("d0_rzche", zeros)
+        rqmcl = df.get("d0_rqmcl", zeros)
+        rqye = df.get("d0_rqye", zeros)
+        rzye = df.get("d0_rzye", zeros)
 
         if has_mv:
-            rzye_ratio_pct = _pct_rank(_safe_ratio(rzye, total_mv) * 100, idx)
-            rzmre_ratio_pct = _pct_rank(_safe_ratio(rzmre, total_mv) * 100, idx)
-            rqye_ratio_pct = _pct_rank(_safe_ratio(rqye, total_mv) * 100, idx)
+            rzye_ratio_pct = pct_rank(safe_ratio(rzye, total_mv) * 100, idx)
+            rzmre_ratio_pct = pct_rank(safe_ratio(rzmre, total_mv) * 100, idx)
+            rqye_ratio_pct = pct_rank(safe_ratio(rqye, total_mv) * 100, idx)
         else:
-            rzye_ratio_pct = pd.Series(50.0, index=idx)
-            rzmre_ratio_pct = pd.Series(50.0, index=idx)
-            rqye_ratio_pct = pd.Series(50.0, index=idx)
+            rzye_ratio_pct = pct_rank(rzye, idx)
+            rzmre_ratio_pct = pct_rank(rzmre, idx)
+            rqye_ratio_pct = pct_rank(rqye, idx)
 
         signals: Dict[str, pd.Series] = {}
 
-        # margin_buy_active (0-20)（rzmre=0 不触发）
+        # 1. margin_buy_growth (0-20): 绝对值在全市场百分位 → 代理买入增长 (0-10)
+        s = zeros.copy()
+        hi = rzmre_ratio_pct > 50
+        s.loc[hi] = ((rzmre_ratio_pct[hi] - 50) / 50 * 10).clip(0, 10)
+        signals["margin_buy_growth"] = s
+
+        # 2. margin_buy_active (0-20)（rzmre=0 不触发）
         s = zeros.copy()
         hi = (rzmre_ratio_pct > 50) & (rzmre > 0)
         s.loc[hi] = ((rzmre_ratio_pct[hi] - 50) / 50 * 20).clip(0, 20)
         signals["margin_buy_active"] = s
 
-        # balance_ratio (0-25)（rzye=0 不触发）
+        # 3. repay_decline (0-15): 当日净买入 (rzmre - rzche) / (rzmre + rzche) → 代理偿还下降 (0-8)
+        s = zeros.copy()
+        total_margin = rzmre + rzche
+        net = (rzmre - rzche) / total_margin.replace(0, np.nan)
+        pos = net.fillna(0) > 0
+        s.loc[pos] = (net[pos].clip(0, 1) * 8).clip(0, 8)
+        signals["repay_decline"] = s
+
+        # 4. ratio_trend (0-20): 当前买入/余额比在全市场百分位 → 代理趋势 (0-10)
+        s = zeros.copy()
+        rzye_safe = rzye.replace(0, np.nan)
+        margin_ratio = (rzmre / rzye_safe * 100).fillna(0)
+        ratio_pct = pct_rank(margin_ratio, idx)
+        hi = ratio_pct > 50
+        s.loc[hi] = ((ratio_pct[hi] - 50) / 50 * 10).clip(0, 10)
+        signals["ratio_trend"] = s
+
+        # 5. balance_ratio (0-25)（rzye=0 不触发）
         s = zeros.copy()
         hi = (rzye_ratio_pct > 50) & (rzye > 0)
         s.loc[hi] = ((rzye_ratio_pct[hi] - 50) / 50 * 25).clip(0, 25)
         signals["balance_ratio"] = s
 
-        # short_selling (-10-0)
+        # 6. short_selling (-10-0)
         s = zeros.copy()
-        s.loc[rqmre > 0] = -10.0
+        s.loc[rqmcl > 0] = -10.0
         signals["short_selling"] = s
 
-        # short_ratio (-15-0)（rqye=0 不触发）
+        # 7. short_ratio (-15-0)（rqye=0 不触发）
         s = zeros.copy()
         hi = (rqye_ratio_pct > 50) & (rqye > 0)
         s.loc[hi] = -((rqye_ratio_pct[hi] - 50) / 50 * 15).clip(0, 15)
         signals["short_ratio"] = s
 
-        # 多日特有的信号给 0
-        for key in ("margin_buy_growth", "repay_decline", "ratio_trend", "ratio_crash"):
-            signals[key] = zeros.copy()
+        # 8. short_covering (0-10): 单日无法检测趋势
+        signals["short_covering"] = zeros.copy()
+
+        # 9. ratio_crash (-20-0): 单日无法检测趋势崩溃，保持 0
+        signals["ratio_crash"] = zeros.copy()
 
         return signals
 
@@ -330,6 +369,7 @@ class MarginFactor(BaseFactor):
             ("balance_ratio", "融资余额市值比高"),
             ("short_selling", "融券卖出"),
             ("short_ratio", "融券占比偏高"),
+            ("short_covering", "融券卖出下降(空头平仓)"),
             ("ratio_crash", "买入占比快速萎缩"),
         ]
         threshold = self._LABEL_THRESHOLD_RATIO
@@ -345,9 +385,9 @@ class MarginFactor(BaseFactor):
                 abs_max = {
                     "margin_buy_growth": 20, "margin_buy_active": 20,
                     "repay_decline": 15, "ratio_trend": 20, "balance_ratio": 25,
-                    "short_selling": 10, "short_ratio": 15, "ratio_crash": 20,
+                    "short_selling": 10, "short_ratio": 15, "short_covering": 10, "ratio_crash": 20,
                 }[key]
-                if key.startswith("short") or key == "ratio_crash":
+                if key in ("short_selling", "short_ratio") or key == "ratio_crash":
                     if abs(val) < abs_max * threshold:
                         continue
                 else:
@@ -362,7 +402,7 @@ class MarginFactor(BaseFactor):
                     total_mv = df.get("total_mv")
                     if total_mv is not None and total_mv.notna().any():
                         rzye_last = df.get(f"d{last}_rzye", pd.Series(0.0, index=df.index))
-                        pct = _pct_rank(_safe_ratio(rzye_last, total_mv) * 100, df.index)
+                        pct = pct_rank(safe_ratio(rzye_last, total_mv) * 100, df.index)
                         pct_val = pct.get(ts_code, 50)
                         labels.append(f"{label}({pct_val:.0f}分位)")
                     else:
@@ -372,27 +412,3 @@ class MarginFactor(BaseFactor):
 
             if labels:
                 reasons[ts_code] = labels
-
-        return reasons
-
-
-def _safe_pct_change(last_val: pd.Series, first_val: pd.Series) -> pd.Series:
-    """安全计算增幅 (last - first) / |first| * 100，first 为 0 时返回 0。"""
-    first_safe = first_val.replace(0, np.nan)
-    result = (last_val - first_val) / first_safe.abs() * 100
-    return result.fillna(0)
-
-
-def _safe_ratio(series: pd.Series, mv: pd.Series) -> pd.Series:
-    """计算 值/市值 比率，市值缺失或为 0 时返回 NaN。"""
-    mv_safe = mv.replace(0, np.nan)
-    return series / mv_safe
-
-
-def _pct_rank(series: pd.Series, index) -> pd.Series:
-    """全市场百分位排名 (0-100)，缺失值补 50（中位数）。"""
-    valid = series.dropna()
-    if len(valid) < 2:
-        return pd.Series(50.0, index=index)
-    ranks = valid.rank(pct=True) * 100
-    return ranks.reindex(index).fillna(50.0)

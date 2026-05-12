@@ -6,12 +6,46 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
+import numpy as np
 import pandas as pd
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass
+def bare_to_ts_code(code: str) -> str:
+    """裸代码 → ts_code 格式 (e.g. '600519' → '600519.SH')。"""
+    c = str(code).strip().zfill(6)
+    if c.startswith(("60", "68")):
+        return f"{c}.SH"
+    elif c.startswith(("00", "30")):
+        return f"{c}.SZ"
+    elif c.startswith(("43", "83", "87", "92")):
+        return f"{c}.BJ"
+    return c
+
+
+def safe_pct_change(last_val: pd.Series, first_val: pd.Series) -> pd.Series:
+    """安全计算增幅 (last - first) / |first| * 100, first 为 0 时返回 0."""
+    last = pd.to_numeric(last_val, errors="coerce").fillna(0)
+    first = pd.to_numeric(first_val, errors="coerce").fillna(0)
+    first_safe = first.replace(0, np.nan)
+    result = (last - first) / first_safe.abs() * 100
+    return result.fillna(0)
+
+
+def pct_rank(series: pd.Series, index: pd.Index) -> pd.Series:
+    """全市场百分位排名 (0-100), 缺失值补 50 (中位数)."""
+    valid = series.dropna()
+    if len(valid) < 2:
+        return pd.Series(50.0, index=index)
+    ranks = valid.rank(pct=True) * 100
+    return ranks.reindex(index).fillna(50.0)
+
+
+def safe_ratio(series: pd.Series, mv: pd.Series) -> pd.Series:
+    """计算 值/市值 比率, 市值缺失或为 0 时返回 NaN."""
+    mv_safe = mv.replace(0, np.nan)
+    return series / mv_safe
 class DiscoveryResult:
     """单只股票的发现结果。
 

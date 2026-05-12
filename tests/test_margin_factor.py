@@ -8,12 +8,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.discovery.factors.margin_factor import (
-    MarginFactor,
-    _safe_pct_change,
-    _safe_ratio,
-    _pct_rank,
-)
+from src.discovery.factors.margin_factor import MarginFactor
+from src.discovery.factors.base import safe_pct_change, safe_ratio, pct_rank
 
 
 def _make_df(index_codes, **cols):
@@ -31,34 +27,34 @@ class TestHelpers:
     def test_safe_pct_change_positive(self):
         last = pd.Series([200, 100], index=["A", "B"])
         first = pd.Series([100, 50], index=["A", "B"])
-        result = _safe_pct_change(last, first)
+        result = safe_pct_change(last, first)
         assert result["A"] == 100.0
         assert result["B"] == 100.0
 
     def test_safe_pct_change_negative(self):
         last = pd.Series([50, 80], index=["A", "B"])
         first = pd.Series([100, 100], index=["A", "B"])
-        result = _safe_pct_change(last, first)
+        result = safe_pct_change(last, first)
         assert result["A"] == -50.0
         assert result["B"] == -20.0
 
     def test_safe_pct_change_zero_first(self):
         last = pd.Series([100], index=["A"])
         first = pd.Series([0], index=["A"])
-        result = _safe_pct_change(last, first)
+        result = safe_pct_change(last, first)
         assert result["A"] == 0.0
 
     def test_safe_ratio(self):
         val = pd.Series([100, 200, 50], index=["A", "B", "C"])
         mv = pd.Series([1000, 1000, 0], index=["A", "B", "C"])
-        result = _safe_ratio(val, mv)
+        result = safe_ratio(val, mv)
         assert result["A"] == 0.1
         assert result["B"] == 0.2
         assert np.isnan(result["C"])
 
     def test_pct_rank(self):
         series = pd.Series([10, 20, 30, 40, 50], index=["A", "B", "C", "D", "E"])
-        result = _pct_rank(series, series.index)
+        result = pct_rank(series, series.index)
         # rank(pct=True) uses average method: [20, 40, 50, 80, 100]
         assert result["A"] < result["B"] < result["E"]
         assert result["A"] > 0.0
@@ -66,7 +62,7 @@ class TestHelpers:
 
     def test_pct_rank_single_value(self):
         series = pd.Series([42], index=["A"])
-        result = _pct_rank(series, series.index)
+        result = pct_rank(series, series.index)
         assert result["A"] == 50.0
 
 
@@ -95,7 +91,7 @@ class TestMarginFactor:
             d0_rzye=[500, 800], d1_rzye=[500, 800],
             d0_rzche=[0, 0], d1_rzche=[0, 0],
             d0_rqye=[0, 0], d1_rqye=[0, 0],
-            d0_rqmre=[0, 0], d1_rqmre=[0, 0],
+            d0_rqmcl=[0, 0], d1_rqmcl=[0, 0],
             total_mv=[1e9, 1e9],
         )
         scores = factor.score(df)
@@ -109,7 +105,7 @@ class TestMarginFactor:
             d0_rzye=[500], d1_rzye=[500],
             d0_rzche=[100], d1_rzche=[80],  # 100->80 decline
             d0_rqye=[0], d1_rqye=[0],
-            d0_rqmre=[0], d1_rqmre=[0],
+            d0_rqmcl=[0], d1_rqmcl=[0],
             total_mv=[1e9],
         )
         scores = factor.score(df)
@@ -123,7 +119,7 @@ class TestMarginFactor:
             d0_rzye=[500], d1_rzye=[500],
             d0_rzche=[0], d1_rzche=[0],
             d0_rqye=[0], d1_rqye=[0],
-            d0_rqmre=[0], d1_rqmre=[0],
+            d0_rqmcl=[0], d1_rqmcl=[0],
             total_mv=[1e9],
         )
         scores = factor.score(df)
@@ -139,7 +135,7 @@ class TestMarginFactor:
             d0_rzye=[500, 500, 500], d1_rzye=[500, 500, 500],
             d0_rzche=[0, 0, 0], d1_rzche=[0, 0, 0],
             d0_rqye=[0, 0, 0], d1_rqye=[0, 0, 0],
-            d0_rqmre=[0, 0, 0], d1_rqmre=[0, 0, 0],
+            d0_rqmcl=[0, 0, 0], d1_rqmcl=[0, 0, 0],
             total_mv=[1e9, 1e10, 1e11],
         )
         scores = factor.score(df)
@@ -147,21 +143,21 @@ class TestMarginFactor:
 
     # -- 负向信号 --
 
-    def test_rqmre_penalty(self, factor):
-        """有融券卖出 → -10"""
+    def test_rqmcl_penalty(self, factor):
+        """有融券卖出（未下降） → -10"""
         df = _make_df(
             ["A.SH"],
             d0_rzmre=[0], d1_rzmre=[0],
             d0_rzye=[0], d1_rzye=[0],
             d0_rzche=[0], d1_rzche=[0],
             d0_rqye=[0], d1_rqye=[0],
-            d0_rqmre=[50], d1_rqmre=[0],
+            d0_rqmcl=[50], d1_rqmcl=[50],  # 持平，不触发 short_covering
             total_mv=[1e9],
         )
         scores = factor.score(df)
         assert scores["A.SH"] <= 0
 
-    def test_no_penalty_without_rqmre(self, factor):
+    def test_no_penalty_without_rqmcl(self, factor):
         """无融券卖出 → 不扣分"""
         df = _make_df(
             ["A.SH"],
@@ -169,11 +165,41 @@ class TestMarginFactor:
             d0_rzye=[500], d1_rzye=[500],
             d0_rzche=[0], d1_rzche=[0],
             d0_rqye=[0], d1_rqye=[0],
-            d0_rqmre=[0], d1_rqmre=[0],
+            d0_rqmcl=[0], d1_rqmcl=[0],
             total_mv=[1e9],
         )
         scores = factor.score(df)
         assert scores["A.SH"] >= 0
+
+    def test_short_covering_adds_score(self, factor):
+        """融券卖出大幅下降 → 空头平仓加分."""
+        df = _make_df(
+            ["A.SH"],
+            d0_rzmre=[200], d1_rzmre=[200],
+            d0_rzye=[500], d1_rzye=[500],
+            d0_rzche=[100], d1_rzche=[0],   # 偿还下降 +15
+            d0_rqye=[0], d1_rqye=[0],
+            d0_rqmcl=[200], d1_rqmcl=[20],  # -90% rqmcl → short_covering +9
+            total_mv=[1e9],
+        )
+        scores = factor.score(df)
+        # repay_decline +15 + short_covering +9 - short_selling -10 = 14
+        assert scores["A.SH"] == pytest.approx(14.0, abs=1.0)
+
+    def test_short_covering_no_trigger_below_threshold(self, factor):
+        """融券卖出下降 < 20% → 不触发 short_covering."""
+        df = _make_df(
+            ["A.SH"],
+            d0_rzmre=[0], d1_rzmre=[0],
+            d0_rzye=[0], d1_rzye=[0],
+            d0_rzche=[0], d1_rzche=[0],
+            d0_rqye=[0], d1_rqye=[0],
+            d0_rqmcl=[100], d1_rqmcl=[90],  # -10% only
+            total_mv=[1e9],
+        )
+        scores = factor.score(df)
+        # Only short_selling penalty (-10), no covering bonus
+        assert scores["A.SH"] <= 0
 
     # -- 边界 --
 
@@ -185,7 +211,7 @@ class TestMarginFactor:
             d0_rzye=[1e8], d1_rzye=[1e7],
             d0_rzche=[1e5], d1_rzche=[1e9],
             d0_rqye=[0], d1_rqye=[0],
-            d0_rqmre=[0], d1_rqmre=[0],
+            d0_rqmcl=[0], d1_rqmcl=[0],
             total_mv=[1e9],
         )
         scores = factor.score(df)
@@ -198,7 +224,7 @@ class TestMarginFactor:
             d0_rzye=[0], d1_rzye=[0],
             d0_rzche=[0], d1_rzche=[0],
             d0_rqye=[0], d1_rqye=[0],
-            d0_rqmre=[0], d1_rqmre=[0],
+            d0_rqmcl=[0], d1_rqmcl=[0],
             total_mv=[1e9],
         )
         scores = factor.score(df)
@@ -214,7 +240,7 @@ class TestMarginFactor:
             d0_rzye=[1000], d1_rzye=[1000],
             d0_rzche=[100], d1_rzche=[50],    # 偿还额下降
             d0_rqye=[0], d1_rqye=[0],
-            d0_rqmre=[0], d1_rqmre=[0],
+            d0_rqmcl=[0], d1_rqmcl=[0],
             total_mv=[1e8],  # 小市值 → 高市值比
         )
         scores = factor.score(df)
@@ -229,7 +255,7 @@ class TestMarginFactor:
             d0_rzye=[0], d1_rzye=[0],
             d0_rzche=[0], d1_rzche=[0],
             d0_rqye=[0], d1_rqye=[0],
-            d0_rqmre=[0], d1_rqmre=[0],
+            d0_rqmcl=[0], d1_rqmcl=[0],
             total_mv=[1e9],
         )
         scores = pd.Series(0.0, index=["A.SH"], name="margin")
@@ -243,7 +269,7 @@ class TestMarginFactor:
         df = _make_df(
             ["A.SH"],
             d0_rzmre=[100], d0_rzye=[500],
-            d0_rzche=[0], d0_rqye=[0], d0_rqmre=[0],
+            d0_rzche=[0], d0_rqye=[0], d0_rqmcl=[0],
             total_mv=[1e9],
         )
         scores = factor.score(df)
@@ -264,7 +290,7 @@ class TestMarginFactor:
             d0_rzye=[500], d1_rzye=[500],
             d0_rzche=[0], d1_rzche=[0],
             d0_rqye=[0], d1_rqye=[0],
-            d0_rqmre=[0], d1_rqmre=[0],
+            d0_rqmcl=[0], d1_rqmcl=[0],
             total_mv=[1e9],
         )
         scores = factor.score(df)
