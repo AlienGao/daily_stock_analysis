@@ -619,6 +619,13 @@ class IntradayScanner:
                 "discovered_at": r.discovered_at,
                 "price_at_discovery": r.price_at_discovery,
                 "pct_chg": getattr(r, "change_pct", 0.0),
+                "tech_score": getattr(r, "tech_score", 0.0),
+                "rr_score": getattr(r, "rr_score", 0.0),
+                "market_score": getattr(r, "market_score", 0.0),
+                "sector_score": getattr(r, "sector_score", 0.0),
+                "volume_score": getattr(r, "volume_score", 0.0),
+                "position_score": getattr(r, "position_score", 0.0),
+                "formation_score": getattr(r, "formation_score", 0.0),
                 "change": "",
             }
 
@@ -728,6 +735,13 @@ class IntradayScanner:
                     "discovered_at": getattr(r, "discovered_at", ""),
                     "price_at_discovery": getattr(r, "price_at_discovery", None),
                     "pct_chg": getattr(r, "change_pct", 0.0),
+                    "tech_score": getattr(r, "tech_score", 0.0),
+                    "rr_score": getattr(r, "rr_score", 0.0),
+                    "market_score": getattr(r, "market_score", 0.0),
+                    "sector_score": getattr(r, "sector_score", 0.0),
+                    "volume_score": getattr(r, "volume_score", 0.0),
+                    "position_score": getattr(r, "position_score", 0.0),
+                    "formation_score": getattr(r, "formation_score", 0.0),
                 })
             json_file = save_dir / f"intraday_{date_str}_topn.json"
             json_file.write_text(json.dumps(topn, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -1593,6 +1607,127 @@ def run_intraday_scan(config: DiscoveryConfig, tushare_fetcher=None, akshare_fet
     scanner.start()
 
 
+def _build_sector_index_mapping() -> Dict[str, str]:
+    """构建 THS 行业名称 → 同花顺指数代码的映射，优先选择 881xxx.TI 标准行业指数。"""
+    import tushare as ts
+
+    pro = ts.pro_api()
+    all_indices = pro.ths_index()
+    if all_indices is None or all_indices.empty:
+        logger.warning("[Scanner] ths_index 返回为空，无法构建行业映射")
+        return {}
+
+    mapping: Dict[str, str] = {}
+    for _, row in all_indices.iterrows():
+        name = str(row["name"]).strip()
+        code = str(row["ts_code"]).strip()
+        idx_type = str(row.get("type", ""))
+        if name not in mapping:
+            mapping[name] = code
+        else:
+            # 优先 881xxx.TI（标准行业指数），其次 I 类
+            existing = mapping[name]
+            if code.startswith("881") and idx_type == "I":
+                mapping[name] = code
+            elif code.startswith("881") and not existing.startswith("881"):
+                mapping[name] = code
+            elif idx_type == "I" and not existing.startswith("881"):
+                mapping[name] = code
+
+    return mapping
+
+
+def refresh_sector_daily_postmarket() -> int:
+    """盘后用 Tushare ths_daily 拉取近 60 日板块日线。
+
+    通过 ths_index 建立行业名称→指数代码映射，逐指数获取日线 OHLCV，
+    upsert 到 sector_daily 表，供 StockScorer 板块状态判定使用。
+    """
+    try:
+        import time as _time
+        import tushare as ts
+        from datetime import date as dt_date, datetime as dt_datetime, timedelta
+        from src.storage import DatabaseManager
+
+        db = DatabaseManager()
+        ths_map = db.get_ths_industry_map()
+        if not ths_map:
+            logger.warning("[Scanner] ths_industry_map 为空，跳过板块日线刷新")
+            return 0
+
+        sectors = sorted(set(ths_map.values()))
+        index_mapping = _build_sector_index_mapping()
+        if not index_mapping:
+            logger.warning("[Scanner] 行业指数映射为空，跳过板块日线刷新")
+            return 0
+
+        # 统计匹配情况
+        unmatched = [s for s in sectors if s != "-" and s not in index_mapping]
+        if unmatched:
+            logger.info("[Scanner] %d 个行业未匹配到指数代码: %s", len(unmatched), unmatched)
+
+        end_date = dt_date.today().strftime("%Y%m%d")
+        start_date = (dt_date.today() - timedelta(days=60)).strftime("%Y%m%d")
+
+        pro = ts.pro_api()
+        total_saved = 0
+        fetched = 0
+
+        for i, sector in enumerate(sectors):
+            if sector == "-":
+                continue
+            ts_code = index_mapping.get(sector)
+            if not ts_code:
+                continue
+
+            try:
+                df = pro.ths_daily(
+                    ts_code=ts_code,
+                    start_date=start_date,
+                    end_date=end_date,
+                )
+                if df is None or df.empty:
+                    continue
+
+                fetched += 1
+                records = []
+                for _, row in df.iterrows():
+                    trade_date_str = str(row.get("trade_date", ""))
+                    if not trade_date_str:
+                        continue
+                    try:
+                        trade_date = dt_datetime.strptime(trade_date_str, "%Y%m%d").date()
+                    except ValueError:
+                        continue
+                    try:
+                        records.append({
+                            "sector_name": sector,
+                            "trade_date": trade_date,
+                            "close": float(row.get("close", 0)),
+                            "high": float(row.get("high", 0)),
+                            "low": float(row.get("low", 0)),
+                            "open": float(row.get("open", 0)),
+                            "pct_chg": float(row.get("pct_change", 0)) if row.get("pct_change") is not None else 0.0,
+                        })
+                    except (ValueError, TypeError):
+                        continue
+
+                if records:
+                    saved = db.upsert_sector_daily(records)
+                    total_saved += saved
+
+                _time.sleep(0.3)
+            except Exception:
+                logger.debug("[Scanner] 板块 %s (%s) 日线获取失败，跳过", sector, ts_code)
+
+        logger.info("[Scanner] 板块日线刷新完成: %d/%d 个行业, %d 条新增",
+                     fetched, len(sectors) - 1, total_saved)
+        return total_saved
+    except Exception as e:
+        logger.warning("[Scanner] 板块日线刷新失败: %s", e)
+        return 0
+
+
 def ensure_postmarket_scan(
     tushare_fetcher, akshare_fetcher=None, force: bool = False
 ) -> Dict[str, Dict[str, Any]]:
@@ -1635,6 +1770,7 @@ def ensure_postmarket_scan(
     # ---- 数据刷新 ----
     refreshers = [
         ("ths_industry_map", lambda: refresh_ths_industry_map_postmarket(tushare_fetcher)),
+        ("sector_daily", lambda: refresh_sector_daily_postmarket()),
         ("stock_daily", lambda: refresh_stock_daily_postmarket(tushare_fetcher)),
         ("limit_pool", lambda: refresh_limit_pool_postmarket(tushare_fetcher)),
         ("money_flow", lambda: refresh_money_flow_postmarket(tushare_fetcher)),

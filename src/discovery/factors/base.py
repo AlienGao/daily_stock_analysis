@@ -69,6 +69,14 @@ class DiscoveryResult:
     discovered_at: str = ""
     price_at_discovery: Optional[float] = None
     factor_weights: Dict[str, float] = field(default_factory=dict)
+    # StockScorer 多维评分（Phase 4.7）
+    tech_score: float = 0.0
+    rr_score: float = 0.0
+    market_score: float = 0.0
+    sector_score: float = 0.0
+    volume_score: float = 0.0
+    position_score: float = 0.0
+    formation_score: float = 0.0
 
 
 class BaseFactor(ABC):

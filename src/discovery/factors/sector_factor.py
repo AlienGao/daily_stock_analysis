@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """板块热度因子 (Sector Heat Factor).
 
-盘中因子：基于涨停池数据识别涨停强度 + 板块集中度 + 封板质量 + 实时板块动量。
-5 个子信号：
-- 连板强度 (0-60)：limit_times 梯度映射 + 板块龙头溢价 + 流通市值分级加权
-  （小盘<30亿 ×0.8，中盘30-100亿 ×1.0，大盘100-500亿 ×1.2，超大>500亿 ×1.4）
-- 板块集中度 (0-20)：同板块涨停数 vs 历史均值 z-score
+盘中因子：基于涨停池数据识别涨停强度 + 涨幅强度 + 板块集中度 + 封板质量 + 实时板块动量。
+6 个子信号：
+- 连板强度 (0-20)：limit_times 梯度映射 + 板块龙头溢价
+- 涨幅强度 (0-20)：当日涨幅映射，全员可得（非涨停强势股的主要得分来源）
+- 板块集中度 (0-25)：同板块涨停数 vs 历史均值 z-score
 - 封板时间 (0-15)：越早越强
-- 封板质量 (0-10)：炸板率(0-5) + 封板持续性(0~-3) + 封板资金比(0-5)
-- 盘中热度 (0-30)：realtime_spot 行业聚合 + 板限逼近度 + 龙头带动 + 3轮SMA动量 + 跨板块共振
+- 封板质量 (0-5)：炸板率(0-5) + 封板持续性(0~-3) + 封板资金比(0-5)，上限 5
+- 盘中热度 (0-35)：realtime_spot 行业聚合 + 板限逼近度 + 龙头带动 + 3轮SMA动量 + 跨板块共振
 
 数据来源: akshare stock_zt_pool_em → limit_pool DB → Tushare limit_list_d
           + realtime_spot DB + ths_industry_map DB (盘中热度/资金流向)
@@ -59,53 +59,56 @@ class SectorFactor(BaseFactor):
         self._cached_leader_pull: Dict[str, float] = {}      # {industry: leader_pull_score} describe() 复用
 
     def fetch_data(self, trade_date: str, **kwargs) -> Optional[pd.DataFrame]:
-        """获取涨停候选数据，每次调用重建 sector_map 与 sector_history。"""
+        """获取涨停候选 + 板块内涨幅前 20% 非涨停强势股。"""
         self.sector_map.clear()
         self._sector_history = self._load_sector_history(trade_date)
         tushare_fetcher = kwargs.get("tushare_fetcher")
 
         slot = int(time.time() // 30)
+        df: Optional[pd.DataFrame] = None
 
         # ── 偶数槽：查询 DB（新数据由 Scanner 60s 刷新落库）──
         if slot % 2 == 0 and slot != self._last_zt_slot:
             df = self._read_from_limit_pool(trade_date)
-            if df is not None and not df.empty:
-                return df
-            logger.info("[SectorFactor] limit_pool DB 无数据，降级到 akshare")
-            df = self._fetch_zt_pool_fallback(trade_date, tushare_fetcher)
-            if df is not None and not df.empty:
-                return df
+            if df is None or df.empty:
+                logger.info("[SectorFactor] limit_pool DB 无数据，降级到 akshare")
+                df = self._fetch_zt_pool_fallback(trade_date, tushare_fetcher)
 
         # ── 奇数槽：复用缓存（仅当日有效）──
-        if (self._zt_pool_cache is not None and not self._zt_pool_cache.empty
-                and self._zt_cache_trade_date == trade_date):
+        if (df is None or df.empty) and (
+            self._zt_pool_cache is not None and not self._zt_pool_cache.empty
+            and self._zt_cache_trade_date == trade_date
+        ):
             logger.debug("[SectorFactor] 复用涨停池缓存 (slot=%d)", slot)
-            return self._zt_pool_cache
+            df = self._zt_pool_cache
 
         # ── 无缓存：读 DB ──
-        df = self._read_from_limit_pool(trade_date)
-        if df is not None and not df.empty:
-            return df
+        if df is None or df.empty:
+            df = self._read_from_limit_pool(trade_date)
 
         # ── 降级 1：akshare ──
-        df = self._fetch_zt_pool_fallback(trade_date, tushare_fetcher)
-        if df is not None and not df.empty:
-            return df
+        if df is None or df.empty:
+            df = self._fetch_zt_pool_fallback(trade_date, tushare_fetcher)
 
         # ── 降级 2：Tushare ──
-        if tushare_fetcher is None:
-            return None
-        df = tushare_fetcher.get_limit_list(trade_date, limit_type="U")
-        if df is not None and not df.empty:
-            df = df.copy()
-            if "limit_times" in df.columns:
-                df["is_leader"] = df["limit_times"] >= 3
-                df["is_2board"] = df["limit_times"] == 2
-                df["is_first"] = df["limit_times"] == 1
-            self._zt_pool_cache = df
-            self._zt_cache_trade_date = trade_date
-            self._last_zt_slot = int(time.time() // 30)
-        return df
+        if (df is None or df.empty) and tushare_fetcher is not None:
+            df = tushare_fetcher.get_limit_list(trade_date, limit_type="U")
+            if df is not None and not df.empty:
+                df = df.copy()
+                if "limit_times" in df.columns:
+                    df["is_leader"] = df["limit_times"] >= 3
+                    df["is_2board"] = df["limit_times"] == 2
+                    df["is_first"] = df["limit_times"] == 1
+                self._zt_pool_cache = df
+                self._zt_cache_trade_date = trade_date
+                self._last_zt_slot = int(time.time() // 30)
+
+        if df is None or df.empty:
+            return df
+
+        # ── 扩展：板块内涨幅前 20% 非涨停强势股 ──
+        expanded = self._expand_with_sector_leaders(trade_date, df)
+        return expanded if expanded is not None and not expanded.empty else df
 
     # ------------------------------------------------------------------
     # 共享信号提取
@@ -132,6 +135,9 @@ class SectorFactor(BaseFactor):
                     parts = s.split(":")
                 elif len(s) >= 4:
                     parts = [s[:2], s[2:4]]
+                elif s.isdigit():
+                    s = s.zfill(4)  # "930" → "0930"
+                    parts = [s[:2], s[2:4]]
                 else:
                     return 0
                 return int(parts[0]) * 60 + int(parts[1])
@@ -142,7 +148,7 @@ class SectorFactor(BaseFactor):
 
     def _compute_signals(self, df: pd.DataFrame,
                           momentum_series: Optional[pd.Series] = None) -> Dict[str, pd.Series]:
-        """提取 4 个子信号：连板强度(+龙头溢价) / 板块集中度 / 封板时间 / 盘中热度。"""
+        """提取 6 个子信号：连板强度 / 涨幅强度 / 板块集中度 / 封板时间 / 封板质量 / 盘中热度。"""
         idx = df.index
         zeros = pd.Series(0.0, index=idx)
 
@@ -188,20 +194,26 @@ class SectorFactor(BaseFactor):
                 bonus = 8 if len(group_mask) >= 5 else 5
                 s_chain.loc[leader_idx] = s_chain.loc[leader_idx] + bonus
 
-        # 流通市值分级加权：大盘封板信号更强，小盘封板容易信号弱
+        # 流通市值列（chain 不再加权，但 seal_quality 仍需）
         cap_col = self._resolve_col(df, "float_market_cap")
-        if cap_col:
-            cap_yi = df[cap_col].fillna(0) / 1e8  # 转为亿
-            cap_mult = pd.Series(1.0, index=idx)
-            cap_mult = cap_mult.mask(cap_yi < 30, 0.8)
-            cap_mult = cap_mult.mask((cap_yi >= 100) & (cap_yi < 500), 1.2)
-            cap_mult = cap_mult.mask(cap_yi >= 500, 1.4)
-            s_chain = s_chain * cap_mult
 
-        s_chain = s_chain.clip(0, 60)  # 43 基础 × 1.4 大盘加权上限
+        s_chain = s_chain.clip(0, 20)
         signals["chain"] = s_chain
 
-        # --- 2. 板块集中度 (0-20)：历史 z-score，无历史时降级为当日百分位 ---
+        # --- 1b. 涨幅强度 (0-20)：仅非涨停股可得（需有 limit_times 区分 ZT），chain 已覆盖 ZT 股 ---
+        s_pct = zeros.copy()
+        if pct_chg_col and limit_times_col:
+            pct = df[pct_chg_col].fillna(0)
+            is_zt = lt > 0
+            s_pct = pd.Series(0.0, index=idx)
+            s_pct = s_pct.mask(~is_zt & (pct >= 9.5), 20)
+            s_pct = s_pct.mask(~is_zt & (pct >= 7) & (pct < 9.5), 16)
+            s_pct = s_pct.mask(~is_zt & (pct >= 5) & (pct < 7), 11)
+            s_pct = s_pct.mask(~is_zt & (pct >= 3) & (pct < 5), 6)
+            s_pct = s_pct.mask(~is_zt & (pct >= 1) & (pct < 3), 3)
+        signals["pct_chg_strength"] = s_pct
+
+        # --- 2. 板块集中度 (0-25)：历史 z-score，无历史时降级为当日百分位 ---
         if sector_col and self._sector_history:
             sec = df[sector_col].fillna("").astype(str)
             sec = sec.mask(sec.str.strip() == "")
@@ -209,10 +221,15 @@ class SectorFactor(BaseFactor):
             mean_map = pd.Series({k: v[0] for k, v in self._sector_history.items()})
             std_map = pd.Series({k: v[1] for k, v in self._sector_history.items()})
             sector_mean = sec.map(mean_map)
-            sector_std = sec.map(std_map).clip(lower=0.01)
-            z = (today_cnts - sector_mean) / sector_std
-            # z ∈ [-1, 2] → [0, 20] 线性映射
-            s_sector = ((z + 1) / 3 * 20).clip(0, 20)
+            sector_std = sec.map(std_map)
+            # z-score，std=0 时直接映射到边界：高于均值→+2 低于→-1 等于→0
+            z = (today_cnts - sector_mean) / sector_std.where(sector_std > 0, 1.0)
+            z = z.mask(sector_std <= 0,
+                       pd.Series(0.0, index=z.index)
+                       .mask(today_cnts > sector_mean, 2.0)
+                       .mask(today_cnts < sector_mean, -1.0))
+            # z ∈ [-1, 2] → [0, 25] 线性映射
+            s_sector = ((z + 1) / 3 * 25).clip(0, 25)
             s_sector = s_sector.where(sec.isin(mean_map.index), 10.0)
         elif sector_col:
             sec = df[sector_col].fillna("").astype(str)
@@ -236,6 +253,9 @@ class SectorFactor(BaseFactor):
                         parts = s.split(":")
                     elif len(s) >= 4:
                         # HHMMSS or HHMM format from akshare
+                        parts = [s[:2], s[2:4]]
+                    elif s.isdigit():
+                        s = s.zfill(4)  # "930" → "0930"
                         parts = [s[:2], s[2:4]]
                     else:
                         return 0
@@ -292,10 +312,10 @@ class SectorFactor(BaseFactor):
                             score += 1
                 elif sa > 0:
                     score += 1  # 有封板资金但无市值数据，给最低加分
-            s_quality.loc[i] = max(0.0, min(10.0, score))
+            s_quality.loc[i] = max(0.0, min(5.0, score))
         signals["seal_quality"] = s_quality
 
-        # --- 4. 盘中热度 (0-30)：realtime_spot 行业聚合 + 轮次 delta ---
+        # --- 4. 盘中热度 (0-35)：realtime_spot 行业聚合 + 轮次 delta ---
         if momentum_series is not None and not momentum_series.empty:
             # 将裸代码索引的 momentum 映射到 df 的 ts_code 索引
             # momentum 的 index 是裸 code (6 位数字字符串)
@@ -310,7 +330,7 @@ class SectorFactor(BaseFactor):
             s_momentum = pd.Series(
                 [bare_map.get(c, 0.0) for c in bare_from_ts],
                 index=idx,
-            ).fillna(0).clip(0, 30)
+            ).fillna(0).clip(0, 35)
         else:
             s_momentum = zeros.copy()
         signals["intraday_momentum"] = s_momentum
@@ -479,7 +499,7 @@ class SectorFactor(BaseFactor):
                 resonance_mult = 1.0
 
             momentum_by_industry = (base_series + delta_series) * resonance_mult
-            momentum_by_industry = momentum_by_industry.clip(0, 30)
+            momentum_by_industry = momentum_by_industry.clip(0, 40)
 
             # 更新快照 (P1: deque maxlen=3)
             for industry, cur in base_series.items():
@@ -536,17 +556,19 @@ class SectorFactor(BaseFactor):
         momentum = self._cached_momentum if self._cached_momentum is not None else pd.Series(dtype=float)
 
         limit_times_col = self._resolve_col(df, "limit_times")
+        pct_chg_col = self._resolve_col(df, "pct_chg")
         sector_col = self._resolve_col(df, "sector", "所属行业")
         seal_col = self._resolve_col(df, "first_seal_time", "首次封板时间")
 
         signals = self._compute_signals(df, momentum_series=momentum)
 
         signal_meta = [
-            ("chain", "连板强度", 60),
-            ("sector_heat", "板块集中度", 20),
+            ("chain", "连板强度", 20),
+            ("pct_chg_strength", "涨幅强度", 20),
+            ("sector_heat", "板块集中度", 25),
             ("seal_time", "封板时间", 15),
-            ("seal_quality", "封板质量", 10),
-            ("intraday_momentum", "盘中热度", 30),
+            ("seal_quality", "封板质量", 5),
+            ("intraday_momentum", "盘中热度", 35),
         ]
         threshold = self._LABEL_THRESHOLD_RATIO
 
@@ -589,6 +611,16 @@ class SectorFactor(BaseFactor):
                         labels.append(f"{lt}连板")
                     elif lt == 1:
                         labels.append("首板涨停")
+                elif key == "pct_chg_strength":
+                    pct = float(df[pct_chg_col].get(ts_code, 0)) if pct_chg_col else 0
+                    if pct >= 9.5:
+                        labels.append("涨停")
+                    elif pct >= 7:
+                        labels.append(f"大涨+{pct:.1f}%")
+                    elif pct >= 5:
+                        labels.append(f"强势+{pct:.1f}%")
+                    elif pct >= 3:
+                        labels.append(f"稳步上涨+{pct:.1f}%")
                 elif key == "sector_heat":
                     sec = str(df[sector_col].get(ts_code, "")) if sector_col else ""
                     same = (df[sector_col] == sec).sum() if sector_col else 0
@@ -791,6 +823,89 @@ class SectorFactor(BaseFactor):
         except Exception as e:
             logger.warning("[SectorFactor] akshare stock_zt_pool_em 异常: %s", e)
             return None
+
+    def _expand_with_sector_leaders(self, trade_date: str, zt_df: pd.DataFrame) -> pd.DataFrame:
+        """将板块内涨幅前 20% 的非涨停强势股纳入候选，让 intraday_momentum 结果被有效利用。"""
+        try:
+            from src.storage import DatabaseManager
+
+            db = DatabaseManager()
+
+            spot = db.get_realtime_spot()
+            if spot is None or spot.empty:
+                return zt_df
+
+            ths_map = db.get_ths_industry_map()
+            if not ths_map:
+                return zt_df
+
+            sector_col = self._resolve_col(zt_df, "sector", "所属行业")
+            if not sector_col:
+                return zt_df
+            zt_sectors = set(zt_df[sector_col].fillna("").astype(str).str.strip())
+            zt_sectors.discard("")
+            zt_sectors.discard("nan")
+            if not zt_sectors:
+                return zt_df
+
+            spot = spot.copy()
+            spot["industry"] = spot.index.astype(str).str.zfill(6).map(ths_map)
+            spot = spot[spot["industry"].notna() & (spot["industry"] != "")]
+            spot = spot[spot["industry"].isin(zt_sectors)]
+
+            zt_bare = set(
+                zt_df.index.astype(str).str.replace(r"\.(SH|SZ|BJ)$", "", regex=True).str.zfill(6)
+            )
+            spot["bare"] = spot.index.astype(str).str.zfill(6)
+            spot = spot[~spot["bare"].isin(zt_bare)]
+
+            if spot.empty:
+                return zt_df
+
+            spot["pct_rank"] = spot.groupby("industry")["pct_chg"].rank(pct=True, ascending=False)
+            top_spot = spot[spot["pct_rank"] <= 0.2]
+
+            if top_spot.empty:
+                return zt_df
+
+            new_rows = []
+            for code in top_spot.index:
+                row_data = top_spot.loc[code]
+                bare = str(code).strip().zfill(6)
+                new_rows.append({
+                    "code": bare,
+                    "name": str(row_data.get("name", "")),
+                    "trade_date": trade_date,
+                    "limit_type": "",
+                    "pct_chg": float(row_data.get("pct_chg", 0)),
+                    "price": float(row_data.get("price", 0)),
+                    "limit_times": 0,
+                    "open_times": 0,
+                    "up_stat": "",
+                    "first_seal_time": "",
+                    "last_seal_time": "",
+                    "break_count": 0,
+                    "limit_stats": "",
+                    "sector": str(row_data.get("industry", "")),
+                    "float_market_cap": None,
+                    "seal_amount": 0,
+                    "source": "realtime_spot",
+                    "slot": 0,
+                })
+                self.sector_map[bare] = str(row_data.get("industry", ""))
+
+            new_df = pd.DataFrame(new_rows).set_index("code")
+            new_df = self._with_ts_code_index(new_df)
+
+            combined = pd.concat([zt_df, new_df])
+            logger.info(
+                "[SectorFactor] 扩展非涨停板块强势股: +%d 只 (来自 %d 个板块), 合并后 %d 只",
+                len(new_df), len(zt_sectors), len(combined),
+            )
+            return combined
+        except Exception as e:
+            logger.warning("[SectorFactor] 扩展非涨停股失败: %s", e)
+            return zt_df
 
     @staticmethod
     def _with_ts_code_index(df: pd.DataFrame) -> pd.DataFrame:

@@ -65,17 +65,14 @@ class MaEntryFactor(BaseFactor):
         else:
             result["est_vol"] = result["vol"]
 
-        # ── MA + 近 5 日均量（stock_daily） ──
+        # ── 近 5 日均量（stock_daily） ──
         close_matrix = db_mgr.get_recent_close_matrix(trade_date, 60)
         if close_matrix is not None and not close_matrix.empty:
-            mas = self._compute_mas(close_matrix)
-            result = result.merge(mas, left_index=True, right_index=True, how="left")
-
             avg_vol = self._get_avg_volume(db_mgr, trade_date)
             if avg_vol is not None and not avg_vol.empty:
                 result["avg_vol"] = avg_vol
         else:
-            logger.warning("[MaEntryFactor] close_matrix 不可用，跳过 MA/均量计算")
+            logger.warning("[MaEntryFactor] close_matrix 不可用，跳过均量计算")
 
         # ── 本地 KDJ + BOLL（stock_daily + 实时行情覆盖） ──
         ohlc_matrix = db_mgr.get_recent_ohlc_matrix(trade_date, 30)
@@ -179,7 +176,12 @@ class MaEntryFactor(BaseFactor):
         if ohlc_matrix is None or ohlc_matrix.empty:
             return pd.DataFrame()
 
-        # 归一化 spot.index 为裸码，兼容 ts_code / bare code 两种格式
+        codes = ohlc_matrix.index.tolist()
+        n_stocks = len(codes)
+        if n_stocks == 0:
+            return pd.DataFrame()
+
+        # 归一化 spot.index 为裸码
         spot = spot.copy()
         spot.index = spot.index.astype(str).str.replace(
             r"\.(SH|SZ|BJ)$", "", regex=True
@@ -190,63 +192,67 @@ class MaEntryFactor(BaseFactor):
         low_df = ohlc_matrix.xs("low", axis=1, level=0)
         close_df = ohlc_matrix.xs("close", axis=1, level=0)
 
-        results = []
-        for code in ohlc_matrix.index:
-            try:
-                h_hist = high_df.loc[code].dropna().values
-                l_hist = low_df.loc[code].dropna().values
-                c_hist = close_df.loc[code].dropna().values
-            except (KeyError, ValueError):
-                results.append({"kdj_k": np.nan, "kdj_d": np.nan, "kdj_j": np.nan})
+        all_dates = high_df.columns.sort_values()
+        n_hist = len(all_dates)
+
+        # 向量化：reindex 对齐所有 stock × date，缺失补 NaN → (n_hist, n_stocks) 数组
+        high_arr = high_df.reindex(index=codes, columns=all_dates).to_numpy(dtype=float).T
+        low_arr = low_df.reindex(index=codes, columns=all_dates).to_numpy(dtype=float).T
+        close_arr = close_df.reindex(index=codes, columns=all_dates).to_numpy(dtype=float).T
+
+        # 向量化：realtime 数据对齐（无 spot 的 stock 自动填 NaN）
+        spot_align = spot.reindex(codes)
+        rt_c = spot_align["price"].to_numpy(dtype=float, na_value=np.nan) if "price" in spot_align else np.full(n_stocks, np.nan)
+        rt_h_raw = spot_align["high"].to_numpy(dtype=float, na_value=np.nan) if "high" in spot_align else rt_c.copy()
+        rt_l_raw = spot_align["low"].to_numpy(dtype=float, na_value=np.nan) if "low" in spot_align else rt_c.copy()
+        rt_h = np.where(np.isnan(rt_h_raw), rt_c, rt_h_raw)
+        rt_l = np.where(np.isnan(rt_l_raw), rt_c, rt_l_raw)
+
+        # 堆叠：历史行在前（旧→新），realtime 追加在最后一行 → (n_hist+1, n_stocks)
+        h_all = np.vstack([high_arr, rt_h.reshape(1, -1)])
+        l_all = np.vstack([low_arr, rt_l.reshape(1, -1)])
+        c_all = np.vstack([close_arr, rt_c.reshape(1, -1)])
+
+        # 滚动 H9/L9（向量化，min_periods=1 允许窗口内仅有部分数据）
+        h9_all = pd.DataFrame(h_all).rolling(window=period, min_periods=1).max().to_numpy(dtype=float)
+        l9_all = pd.DataFrame(l_all).rolling(window=period, min_periods=1).min().to_numpy(dtype=float)
+
+        # RSV = (C - L9) / (H9 - L9) * 100
+        denom = h9_all - l9_all
+        rsv_mat = np.zeros_like(h9_all)
+        valid = denom > 0
+        rsv_mat[valid] = (c_all[valid] - l9_all[valid]) / denom[valid] * 100.0
+
+        # 每只股票的首个有效行（历史数据不足的 stock 跳过前置 NaN 期，防止 K/D 衰减）
+        valid_mask = ~np.isnan(c_all)
+        first_valid = np.argmax(valid_mask, axis=0)
+        all_nan = ~np.any(valid_mask, axis=0)
+        first_valid[all_nan] = n_hist + 1  # 无任何有效数据的 stock 永不激活
+
+        # K/D 迭代：仅在首条有效数据之后更新，保持 50 初始化
+        k = np.full(n_stocks, 50.0)
+        d = np.full(n_stocks, 50.0)
+        n_total = n_hist + 1
+        for t in range(n_total):
+            active = t >= first_valid
+            if not active.any():
                 continue
+            k_new = 2.0 / 3.0 * k + 1.0 / 3.0 * rsv_mat[t]
+            d_new = 2.0 / 3.0 * d + 1.0 / 3.0 * k_new
+            k = np.where(active, k_new, k)
+            d = np.where(active, d_new, d)
+        j = 3.0 * k - 2.0 * d
 
-            if len(c_hist) < 2:
-                results.append({"kdj_k": np.nan, "kdj_d": np.nan, "kdj_j": np.nan})
-                continue
+        # NaN 掩码：无实时价格或价格无效或无任何历史数据 → 全部 NaN
+        no_data = np.isnan(rt_c) | (rt_c <= 0) | np.all(np.isnan(close_arr), axis=0)
+        k[no_data] = np.nan
+        d[no_data] = np.nan
+        j[no_data] = np.nan
 
-            # 当日实时数据
-            if code not in spot.index:
-                results.append({"kdj_k": np.nan, "kdj_d": np.nan, "kdj_j": np.nan})
-                continue
-            rt_c = float(spot.at[code, "price"]) if "price" in spot.columns else np.nan
-            rt_h = float(spot.at[code, "high"]) if "high" in spot.columns and pd.notna(spot.at[code, "high"]) else rt_c
-            rt_l = float(spot.at[code, "low"]) if "low" in spot.columns and pd.notna(spot.at[code, "low"]) else rt_c
-
-            if pd.isna(rt_c) or rt_c <= 0:
-                results.append({"kdj_k": np.nan, "kdj_d": np.nan, "kdj_j": np.nan})
-                continue
-
-            # 拼接历史 + 当日
-            h_all = np.append(h_hist, rt_h if rt_h > 0 else rt_c)
-            l_all = np.append(l_hist, rt_l if rt_l > 0 else rt_c)
-            c_all = np.append(c_hist, rt_c)
-            n = len(c_all)
-
-            # 滚动 H9 / L9
-            _h = pd.Series(h_all)
-            _l = pd.Series(l_all)
-            h9 = _h.rolling(window=period, min_periods=1).max().values
-            l9 = _l.rolling(window=period, min_periods=1).min().values
-
-            denom = h9 - l9
-            rsv = np.zeros(n)
-            valid = denom > 0
-            rsv[valid] = (c_all[valid] - l9[valid]) / denom[valid] * 100
-
-            # 迭代 K / D（从 K=50, D=50 收敛）
-            k_val, d_val = 50.0, 50.0
-            for i in range(n):
-                k_val = 2.0 / 3.0 * k_val + 1.0 / 3.0 * rsv[i]
-                d_val = 2.0 / 3.0 * d_val + 1.0 / 3.0 * k_val
-            j_val = 3.0 * k_val - 2.0 * d_val
-
-            results.append({
-                "kdj_k": round(float(k_val), 2),
-                "kdj_d": round(float(d_val), 2),
-                "kdj_j": round(float(j_val), 2),
-            })
-
-        return pd.DataFrame(results, index=ohlc_matrix.index)
+        return pd.DataFrame(
+            {"kdj_k": np.round(k, 2), "kdj_d": np.round(d, 2), "kdj_j": np.round(j, 2)},
+            index=codes,
+        )
 
     @staticmethod
     def _compute_boll_mid(close_matrix: pd.DataFrame, spot: pd.DataFrame, period: int = 20) -> "pd.Series":
@@ -489,10 +495,10 @@ class MaEntryFactor(BaseFactor):
         # 正向信号
         scores.loc[signals["bull_align"]] += 20.0
         scores.loc[signals["ma_sticky"]] += 15.0
-        scores.loc[signals["near_ma5"]] += 25.0
+        scores.loc[signals["near_ma5"]] += 20.0
         scores.loc[signals["near_ma10"]] += 20.0
         scores.loc[signals["vol_shrink_near_ma"]] += 15.0
-        scores.loc[signals["boll_support"]] += 5.0
+        scores.loc[signals["boll_support"]] += 10.0
         scores.loc[signals["kdj_oversold"]] += 10.0
 
         # 排除条件：减分惩罚而非归零，避免掩藏「均线粘合」等有效子信号

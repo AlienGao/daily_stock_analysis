@@ -191,6 +191,14 @@ class DiscoveryItem(BaseModel):
     live_price: Optional[float] = None
     pct_chg: Optional[float] = None
     factor_weights: dict = {}
+    # StockScorer 多维技术评分
+    tech_score: float = 0.0
+    rr_score: float = 0.0
+    market_score: float = 0.0
+    sector_score: float = 0.0
+    volume_score: float = 0.0
+    position_score: float = 0.0
+    formation_score: float = 0.0
 
 
 class IntradayTopResponse(BaseModel):
@@ -247,6 +255,13 @@ def _build_discovery_items(raw_items: list, mode: str = "") -> List[DiscoveryIte
             discovered_at=entry.get("discovered_at", ""),
             price_at_discovery=entry.get("price_at_discovery"),
             pct_chg=entry.get("pct_chg"),
+            tech_score=entry.get("tech_score", 0.0),
+            rr_score=entry.get("rr_score", 0.0),
+            market_score=entry.get("market_score", 0.0),
+            sector_score=entry.get("sector_score", 0.0),
+            volume_score=entry.get("volume_score", 0.0),
+            position_score=entry.get("position_score", 0.0),
+            formation_score=entry.get("formation_score", 0.0),
         ))
     return items
 
@@ -319,6 +334,13 @@ def get_intraday_top10():
                 live_price=live_prices.get(ts_code) if live_prices.get(ts_code) != entry.get("price_at_discovery") else None,
                 pct_chg=entry.get("pct_chg"),
                 factor_weights=entry.get("factor_weights") or _get_factor_weights("intraday"),
+                tech_score=entry.get("tech_score", 0.0),
+                rr_score=entry.get("rr_score", 0.0),
+                market_score=entry.get("market_score", 0.0),
+                sector_score=entry.get("sector_score", 0.0),
+                volume_score=entry.get("volume_score", 0.0),
+                position_score=entry.get("position_score", 0.0),
+                formation_score=entry.get("formation_score", 0.0),
             ))
         # Re-rank after filtering
         for i, item in enumerate(top_n):
@@ -568,6 +590,13 @@ def get_postmarket_report(
                 price_at_discovery=entry.get("price_at_discovery"),
                 pct_chg=entry.get("pct_chg"),
                 factor_weights=entry.get("factor_weights") or _get_factor_weights("postmarket"),
+                tech_score=entry.get("tech_score", 0.0),
+                rr_score=entry.get("rr_score", 0.0),
+                market_score=entry.get("market_score", 0.0),
+                sector_score=entry.get("sector_score", 0.0),
+                volume_score=entry.get("volume_score", 0.0),
+                position_score=entry.get("position_score", 0.0),
+                formation_score=entry.get("formation_score", 0.0),
             ))
 
         return PostmarketReportResponse(
@@ -616,6 +645,7 @@ def run_postmarket_discovery():
             from datetime import date as dt_date
             from src.discovery.scanner import (
                 refresh_ths_industry_map_postmarket,
+                refresh_sector_daily_postmarket,
                 refresh_stock_daily_postmarket,
                 refresh_limit_pool_postmarket,
                 refresh_money_flow_postmarket,
@@ -641,6 +671,7 @@ def run_postmarket_discovery():
 
             refreshers = [
                 ("ths_industry_map", lambda: refresh_ths_industry_map_postmarket(tushare_fetcher)),
+                ("sector_daily", lambda: refresh_sector_daily_postmarket()),
                 ("stock_daily", lambda: refresh_stock_daily_postmarket(tushare_fetcher)),
                 ("limit_pool", lambda: refresh_limit_pool_postmarket(tushare_fetcher)),
                 ("money_flow", lambda: refresh_money_flow_postmarket(tushare_fetcher)),
@@ -714,6 +745,13 @@ def run_postmarket_discovery():
                     "discovered_at": r.discovered_at,
                     "price_at_discovery": r.price_at_discovery,
                     "pct_chg": getattr(r, "change_pct", 0.0),
+                    "tech_score": getattr(r, "tech_score", 0.0),
+                    "rr_score": getattr(r, "rr_score", 0.0),
+                    "market_score": getattr(r, "market_score", 0.0),
+                    "sector_score": getattr(r, "sector_score", 0.0),
+                    "volume_score": getattr(r, "volume_score", 0.0),
+                    "position_score": getattr(r, "position_score", 0.0),
+                    "formation_score": getattr(r, "formation_score", 0.0),
                 })
 
             # 保存报告 + 结构化数据到 discovery_reports

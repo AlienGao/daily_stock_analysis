@@ -15,7 +15,7 @@ from src.core.backtest_engine import OVERALL_SENTINEL_CODE, BacktestEngine, Eval
 from src.repositories.backtest_repo import BacktestRepository
 from src.repositories.stock_repo import StockRepository
 from src.storage import AnalysisHistory, BacktestResult, BacktestSummary, DatabaseManager, StockDaily
-from src.utils.rating_category import RATING_MAP
+from src.utils.rating_category import OPERATION_ADVICE_BY_CATEGORY
 
 logger = logging.getLogger(__name__)
 
@@ -366,7 +366,7 @@ class BacktestService:
         }
         if not normalized_categories:
             return None
-        allowed = [advice for advice, category in RATING_MAP.items() if category in normalized_categories]
+        allowed = [advice for advice, category in OPERATION_ADVICE_BY_CATEGORY.items() if category in normalized_categories]
         # Keep stable ordering for deterministic tests/logging.
         return sorted(set(allowed))
 

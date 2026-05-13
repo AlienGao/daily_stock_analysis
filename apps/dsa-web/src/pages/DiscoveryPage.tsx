@@ -268,8 +268,8 @@ const StockCard: React.FC<{
             </div>
           </div>
 
-          {/* Score */}
-          <ScoreRing score={item.score} />
+          {/* Score — tech_score when StockScorer enabled, else factor composite */}
+          <ScoreRing score={item.tech_score && item.tech_score > 0 ? item.tech_score : item.score} />
 
           {/* Chevron */}
           <div className={`shrink-0 text-tertiary-text/50 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>
@@ -388,6 +388,22 @@ const StockCard: React.FC<{
                         <FactorBar key={k} label={factorLabel(k)} value={v} pctShare={item.factor_weights?.[k] ?? 0} />
                       ));
                     })()}
+                  </div>
+                )}
+
+                {item.tech_score && item.tech_score > 0 && (
+                  <div className="space-y-2.5">
+                    <div className="text-[11px] font-medium text-tertiary-text tracking-wide">技术评分</div>
+                    {([
+                      ['RR分（赔率）', item.rr_score ?? 0],
+                      ['大盘环境', item.market_score ?? 0],
+                      ['板块强弱', item.sector_score ?? 0],
+                      ['量能质量', item.volume_score ?? 0],
+                      ['相对位置', item.position_score ?? 0],
+                      ['形态确认', item.formation_score ?? 0],
+                    ] as const).map(([label, val]) => (
+                      <FactorBar key={label} label={label} value={val} pctShare={0} />
+                    ))}
                   </div>
                 )}
               </div>

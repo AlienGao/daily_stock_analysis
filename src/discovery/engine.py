@@ -977,6 +977,89 @@ class StockDiscoveryEngine:
         if whitelist_skipped > 0:
             logger.info("[Discovery] 已剔除 %d 只非白名单股", whitelist_skipped)
 
+        # Phase 4.7: 多维技术评分 (StockScorer)
+        if getattr(self.config, 'enable_stock_scorer', False) and results:
+            try:
+                from src.services.stock_scorer import StockScorer
+
+                scorer = StockScorer()
+                if hasattr(self, '_index_ohlcv_cache') and self._index_ohlcv_cache is not None:
+                    scorer.preload_index_ohlcv(self._index_ohlcv_cache)
+
+                # 预加载板块涨跌幅
+                spot_df = None
+                try:
+                    spot_df = DatabaseManager().get_realtime_spot()
+                    if spot_df is not None and not spot_df.empty:
+                        ths_map = DatabaseManager().get_ths_industry_map()
+                        if ths_map:
+                            spot_c = spot_df.copy()
+                            spot_c["sector_name"] = spot_c.index.map(ths_map)
+                            sector_pct = spot_c.groupby("sector_name")["pct_chg"].mean().dropna()
+                            scorer.preload_sector_pct(sector_pct.to_dict())
+                except Exception:
+                    logger.debug("[Discovery] 预加载板块涨跌幅失败", exc_info=True)
+
+                for r in results:
+                    try:
+                        ohlcv_rows = ohlcv_map.get(r.stock_code, [])
+                        if not ohlcv_rows:
+                            continue
+                        highs = np.array([d.high for d in ohlcv_rows], dtype=float)
+                        lows = np.array([d.low for d in ohlcv_rows], dtype=float)
+                        closes = np.array([d.close for d in ohlcv_rows], dtype=float)
+
+                        pre_close = float(closes[-2]) if len(closes) > 1 else (
+                            float(closes[-1]) if len(closes) > 0 else 0.0
+                        )
+
+                        vol_ratio = 1.0
+                        # 盘中优先用 realtime_spot 的量比
+                        if spot_df is not None and "volume_ratio" in spot_df.columns:
+                            try:
+                                spot_vr = spot_df.at[r.stock_code, "volume_ratio"]
+                                if spot_vr is not None and float(spot_vr) > 0:
+                                    vol_ratio = float(spot_vr)
+                            except (KeyError, ValueError, TypeError):
+                                pass
+                        if vol_ratio <= 0 and hasattr(ohlcv_rows[-1], 'vol') and len(ohlcv_rows) >= 6:
+                            vols = np.array([d.vol for d in ohlcv_rows[-6:]], dtype=float)
+                            mean_vol = np.mean(vols[:-1])
+                            if mean_vol > 0:
+                                vol_ratio = float(vols[-1] / mean_vol)
+
+                        tech = scorer.score(
+                            stock_code=r.stock_code,
+                            sector=r.sector or "",
+                            price=r.price_at_discovery or 0,
+                            pre_close=pre_close,
+                            tp1=r.take_profit_1 or 0,
+                            tp2=r.take_profit_2 or 0,
+                            stop_loss=r.stop_loss or 0,
+                            reasons=r.reasons or [],
+                            ohlcv=(highs, lows, closes),
+                            volume_ratio=vol_ratio,
+                        )
+                        r.tech_score = tech.composite
+                        r.rr_score = tech.rr_score
+                        r.market_score = tech.market_score
+                        r.sector_score = tech.sector_score
+                        r.volume_score = tech.volume_score
+                        r.position_score = tech.position_score
+                        r.formation_score = tech.formation_score
+                    except Exception:
+                        logger.debug(
+                            "[Discovery] StockScorer 单股评分失败: %s", r.stock_code, exc_info=True
+                        )
+
+                results.sort(key=lambda r: r.tech_score, reverse=True)
+                logger.info(
+                    "[Discovery] StockScorer 评分完成, Top 3: %s",
+                    ", ".join(f"{r.stock_name}(tech={r.tech_score})" for r in results[:3]),
+                )
+            except Exception as e:
+                logger.warning("[Discovery] StockScorer 初始化失败: %s", e)
+
         # Phase 5.5: 拥挤度惩罚
         results = self._apply_crowding_penalty(results, trade_date)
 

@@ -20,6 +20,13 @@ export type DiscoveryItem = {
   live_price?: number | null;
   pct_chg?: number | null;
   factor_weights?: Record<string, number>;
+  tech_score?: number;
+  rr_score?: number;
+  market_score?: number;
+  sector_score?: number;
+  volume_score?: number;
+  position_score?: number;
+  formation_score?: number;
 };
 
 export type IntradayTopResponse = {

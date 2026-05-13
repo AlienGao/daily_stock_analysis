@@ -1488,6 +1488,31 @@ class ThsIndustryMap(Base):
         return f"<ThsIndustryMap(code={self.stock_code}, industry={self.industry_name})>"
 
 
+class SectorDaily(Base):
+    """板块日线历史行情（用于 StockScorer 板块状态判定）。
+
+    数据来源：akshare stock_board_industry_hist_em，盘后全量刷新近60日。
+    按 (sector_name, trade_date) 唯一。
+    """
+
+    __tablename__ = 'sector_daily'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    sector_name = Column(String(100), nullable=False, index=True)
+    trade_date = Column(Date, nullable=False, index=True)
+    close = Column(Float, nullable=False)
+    high = Column(Float)
+    low = Column(Float)
+    open = Column(Float)
+    pct_chg = Column(Float)  # 涨跌幅 %
+    updated_at = Column(DateTime, default=datetime.now)
+
+    __table_args__ = (UniqueConstraint('sector_name', 'trade_date', name='uq_sector_date'),)
+
+    def __repr__(self) -> str:
+        return f"<SectorDaily(sector={self.sector_name}, date={self.trade_date}, close={self.close})>"
+
+
 class DatabaseManager:
     """
     数据库管理器 - 单例模式
@@ -3392,6 +3417,49 @@ class DatabaseManager:
             return saved
         except Exception as e:
             logger.error("[DB] upsert_limit_pool 失败: %s", e)
+            raise
+
+    def upsert_sector_daily(self, records: List[Dict[str, Any]]) -> int:
+        """upsert 板块日线数据 by (sector_name, trade_date)。"""
+        if not records:
+            return 0
+
+        now = datetime.now()
+
+        def _write(session: Session) -> int:
+            names = list({r["sector_name"] for r in records})
+            dates = list({r["trade_date"] for r in records})
+            existing = {}
+            for row in session.execute(
+                select(SectorDaily).where(
+                    and_(
+                        SectorDaily.sector_name.in_(names),
+                        SectorDaily.trade_date.in_(dates),
+                    )
+                )
+            ).scalars().all():
+                existing[(row.sector_name, row.trade_date)] = row
+
+            new_count = 0
+            for rec in records:
+                key = (rec["sector_name"], rec["trade_date"])
+                ent = existing.get(key)
+                if ent is None:
+                    session.add(SectorDaily(**rec))
+                    new_count += 1
+                else:
+                    for col in ("close", "high", "low", "open", "pct_chg"):
+                        if rec.get(col) is not None:
+                            setattr(ent, col, rec[col])
+                    ent.updated_at = now
+            return new_count
+
+        try:
+            saved = self._run_write_transaction("upsert_sector_daily", _write)
+            logger.info("[DB] upsert_sector_daily: %d 条新增", saved)
+            return saved
+        except Exception as e:
+            logger.error("[DB] upsert_sector_daily 失败: %s", e)
             raise
 
     def get_limit_pool(

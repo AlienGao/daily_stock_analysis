@@ -127,6 +127,11 @@ class DiscoveryConfig:
         default_factory=lambda: os.getenv("DISCOVERY_SCAN_UNIVERSE", "full_market").strip()
     )
 
+    # --- StockScorer 多维技术评分 ---
+    enable_stock_scorer: bool = field(
+        default_factory=lambda: _env_bool("ENABLE_STOCK_SCORER", False)
+    )
+
     @staticmethod
     def env_config_keys() -> List[str]:
         """返回所有环境变量键名，用于 .env.example 同步和 WebUI 配置。"""
@@ -148,6 +153,7 @@ class DiscoveryConfig:
             "DISCOVERY_STOCK_WHITELIST",
             "DISCOVERY_USE_WHITELIST",
             "DISCOVERY_SCAN_UNIVERSE",
+            "ENABLE_STOCK_SCORER",
         ]
 
 
