@@ -32,7 +32,7 @@ class ProfitForecastFactor(BaseFactor):
     name = "profit_forecast"
     available_intraday = False
     available_postmarket = True
-    weight = 10.0
+    weight = 20.0
 
     _LABEL_THRESHOLD_RATIO = 0.5
 

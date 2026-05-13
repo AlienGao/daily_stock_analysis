@@ -77,7 +77,7 @@ class PerformanceFactor(BaseFactor):
     name = "performance"
     available_intraday = False
     available_postmarket = True
-    weight = 15.0
+    weight = 10.0
 
     # ------------------------------------------------------------------
     # Data fetching

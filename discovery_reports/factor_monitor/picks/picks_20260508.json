@@ -1,0 +1,1156 @@
+{
+  "trade_date": "20260508",
+  "top_n": 20,
+  "eval_days": 5,
+  "factors": {
+    "money_flow": [
+      {
+        "ts_code": "000010.SZ",
+        "score": 10.2
+      },
+      {
+        "ts_code": "000011.SZ",
+        "score": 10.2
+      },
+      {
+        "ts_code": "000016.SZ",
+        "score": 10.2
+      },
+      {
+        "ts_code": "000026.SZ",
+        "score": 10.2
+      },
+      {
+        "ts_code": "000030.SZ",
+        "score": 10.2
+      },
+      {
+        "ts_code": "000036.SZ",
+        "score": 10.2
+      },
+      {
+        "ts_code": "000042.SZ",
+        "score": 10.2
+      },
+      {
+        "ts_code": "000059.SZ",
+        "score": 10.2
+      },
+      {
+        "ts_code": "000090.SZ",
+        "score": 10.2
+      },
+      {
+        "ts_code": "000401.SZ",
+        "score": 10.2
+      },
+      {
+        "ts_code": "000419.SZ",
+        "score": 10.2
+      },
+      {
+        "ts_code": "000421.SZ",
+        "score": 10.2
+      },
+      {
+        "ts_code": "000426.SZ",
+        "score": 10.2
+      },
+      {
+        "ts_code": "000428.SZ",
+        "score": 10.2
+      },
+      {
+        "ts_code": "000429.SZ",
+        "score": 10.2
+      },
+      {
+        "ts_code": "000430.SZ",
+        "score": 10.2
+      },
+      {
+        "ts_code": "000498.SZ",
+        "score": 10.2
+      },
+      {
+        "ts_code": "000503.SZ",
+        "score": 10.2
+      },
+      {
+        "ts_code": "000519.SZ",
+        "score": 10.2
+      },
+      {
+        "ts_code": "000520.SZ",
+        "score": 10.2
+      }
+    ],
+    "margin": [
+      {
+        "ts_code": "510150",
+        "score": 8.0
+      },
+      {
+        "ts_code": "513580",
+        "score": 8.0
+      },
+      {
+        "ts_code": "513910",
+        "score": 8.0
+      },
+      {
+        "ts_code": "516920",
+        "score": 8.0
+      },
+      {
+        "ts_code": "560210",
+        "score": 8.0
+      },
+      {
+        "ts_code": "560530",
+        "score": 8.0
+      },
+      {
+        "ts_code": "562960",
+        "score": 8.0
+      },
+      {
+        "ts_code": "563390",
+        "score": 8.0
+      },
+      {
+        "ts_code": "563580",
+        "score": 8.0
+      },
+      {
+        "ts_code": "600026.SH",
+        "score": 8.0
+      },
+      {
+        "ts_code": "600088.SH",
+        "score": 8.0
+      },
+      {
+        "ts_code": "600100.SH",
+        "score": 8.0
+      },
+      {
+        "ts_code": "600113.SH",
+        "score": 8.0
+      },
+      {
+        "ts_code": "600114.SH",
+        "score": 8.0
+      },
+      {
+        "ts_code": "600118.SH",
+        "score": 8.0
+      },
+      {
+        "ts_code": "600143.SH",
+        "score": 8.0
+      },
+      {
+        "ts_code": "600151.SH",
+        "score": 8.0
+      },
+      {
+        "ts_code": "600158.SH",
+        "score": 8.0
+      },
+      {
+        "ts_code": "600167.SH",
+        "score": 8.0
+      },
+      {
+        "ts_code": "600172.SH",
+        "score": 8.0
+      }
+    ],
+    "chip": [
+      {
+        "ts_code": "000010.SZ",
+        "score": 6.1
+      },
+      {
+        "ts_code": "000016.SZ",
+        "score": 6.1
+      },
+      {
+        "ts_code": "000020.SZ",
+        "score": 6.1
+      },
+      {
+        "ts_code": "000407.SZ",
+        "score": 6.1
+      },
+      {
+        "ts_code": "000552.SZ",
+        "score": 6.1
+      },
+      {
+        "ts_code": "000554.SZ",
+        "score": 6.1
+      },
+      {
+        "ts_code": "000619.SZ",
+        "score": 6.1
+      },
+      {
+        "ts_code": "000633.SZ",
+        "score": 6.1
+      },
+      {
+        "ts_code": "000639.SZ",
+        "score": 6.1
+      },
+      {
+        "ts_code": "000681.SZ",
+        "score": 6.1
+      },
+      {
+        "ts_code": "000721.SZ",
+        "score": 6.1
+      },
+      {
+        "ts_code": "000731.SZ",
+        "score": 6.1
+      },
+      {
+        "ts_code": "000757.SZ",
+        "score": 6.1
+      },
+      {
+        "ts_code": "000816.SZ",
+        "score": 6.1
+      },
+      {
+        "ts_code": "000953.SZ",
+        "score": 6.1
+      },
+      {
+        "ts_code": "000965.SZ",
+        "score": 6.1
+      },
+      {
+        "ts_code": "001201.SZ",
+        "score": 6.1
+      },
+      {
+        "ts_code": "001209.SZ",
+        "score": 6.1
+      },
+      {
+        "ts_code": "001283.SZ",
+        "score": 6.1
+      },
+      {
+        "ts_code": "001380.SZ",
+        "score": 6.1
+      }
+    ],
+    "technical": [
+      {
+        "ts_code": "001312.SZ",
+        "score": 10.4
+      },
+      {
+        "ts_code": "301513.SZ",
+        "score": 10.4
+      },
+      {
+        "ts_code": "301599.SZ",
+        "score": 10.4
+      },
+      {
+        "ts_code": "301666.SZ",
+        "score": 10.4
+      },
+      {
+        "ts_code": "301696.SZ",
+        "score": 10.4
+      },
+      {
+        "ts_code": "603293.SH",
+        "score": 10.4
+      },
+      {
+        "ts_code": "688808.SH",
+        "score": 10.4
+      },
+      {
+        "ts_code": "688811.SH",
+        "score": 10.4
+      },
+      {
+        "ts_code": "688820.SH",
+        "score": 10.4
+      },
+      {
+        "ts_code": "920012.BJ",
+        "score": 10.4
+      },
+      {
+        "ts_code": "920125.BJ",
+        "score": 10.4
+      },
+      {
+        "ts_code": "920156.BJ",
+        "score": 10.4
+      },
+      {
+        "ts_code": "920177.BJ",
+        "score": 10.4
+      },
+      {
+        "ts_code": "920181.BJ",
+        "score": 10.4
+      },
+      {
+        "ts_code": "920186.BJ",
+        "score": 10.4
+      },
+      {
+        "ts_code": "920191.BJ",
+        "score": 10.4
+      },
+      {
+        "ts_code": "920200.BJ",
+        "score": 10.4
+      },
+      {
+        "ts_code": "000009.SZ",
+        "score": 10.3
+      },
+      {
+        "ts_code": "000100.SZ",
+        "score": 10.3
+      },
+      {
+        "ts_code": "000568.SZ",
+        "score": 10.3
+      }
+    ],
+    "limit": [
+      {
+        "ts_code": "603278.SH",
+        "score": 6.2
+      },
+      {
+        "ts_code": "600130.SH",
+        "score": 6.2
+      },
+      {
+        "ts_code": "301028.SZ",
+        "score": 6.1
+      },
+      {
+        "ts_code": "603045.SH",
+        "score": 6.1
+      },
+      {
+        "ts_code": "300283.SZ",
+        "score": 6.0
+      },
+      {
+        "ts_code": "301183.SZ",
+        "score": 6.0
+      },
+      {
+        "ts_code": "300258.SZ",
+        "score": 5.9
+      },
+      {
+        "ts_code": "000839.SZ",
+        "score": 5.9
+      },
+      {
+        "ts_code": "600076.SH",
+        "score": 5.8
+      },
+      {
+        "ts_code": "002642.SZ",
+        "score": 5.7
+      },
+      {
+        "ts_code": "603028.SH",
+        "score": 5.7
+      },
+      {
+        "ts_code": "002930.SZ",
+        "score": 5.7
+      },
+      {
+        "ts_code": "600480.SH",
+        "score": 5.6
+      },
+      {
+        "ts_code": "600984.SH",
+        "score": 5.6
+      },
+      {
+        "ts_code": "002798.SZ",
+        "score": 5.4
+      },
+      {
+        "ts_code": "600748.SH",
+        "score": 5.4
+      },
+      {
+        "ts_code": "603878.SH",
+        "score": 5.4
+      },
+      {
+        "ts_code": "605169.SH",
+        "score": 5.4
+      },
+      {
+        "ts_code": "920270.BJ",
+        "score": 5.3
+      },
+      {
+        "ts_code": "300488.SZ",
+        "score": 5.2
+      }
+    ],
+    "fundamental": [
+      {
+        "ts_code": "000060.SZ",
+        "score": 8.2
+      },
+      {
+        "ts_code": "000063.SZ",
+        "score": 8.2
+      },
+      {
+        "ts_code": "000100.SZ",
+        "score": 8.2
+      },
+      {
+        "ts_code": "000400.SZ",
+        "score": 8.2
+      },
+      {
+        "ts_code": "000738.SZ",
+        "score": 8.2
+      },
+      {
+        "ts_code": "000768.SZ",
+        "score": 8.2
+      },
+      {
+        "ts_code": "000791.SZ",
+        "score": 8.2
+      },
+      {
+        "ts_code": "000823.SZ",
+        "score": 8.2
+      },
+      {
+        "ts_code": "000997.SZ",
+        "score": 8.2
+      },
+      {
+        "ts_code": "001333.SZ",
+        "score": 8.2
+      },
+      {
+        "ts_code": "002011.SZ",
+        "score": 8.2
+      },
+      {
+        "ts_code": "002026.SZ",
+        "score": 8.2
+      },
+      {
+        "ts_code": "002034.SZ",
+        "score": 8.2
+      },
+      {
+        "ts_code": "002039.SZ",
+        "score": 8.2
+      },
+      {
+        "ts_code": "002065.SZ",
+        "score": 8.2
+      },
+      {
+        "ts_code": "002081.SZ",
+        "score": 8.2
+      },
+      {
+        "ts_code": "002091.SZ",
+        "score": 8.2
+      },
+      {
+        "ts_code": "002102.SZ",
+        "score": 8.2
+      },
+      {
+        "ts_code": "002140.SZ",
+        "score": 8.2
+      },
+      {
+        "ts_code": "002164.SZ",
+        "score": 8.2
+      }
+    ],
+    "popularity": [
+      {
+        "ts_code": "002031",
+        "score": 6.2
+      },
+      {
+        "ts_code": "301666",
+        "score": 6.2
+      },
+      {
+        "ts_code": "600589",
+        "score": 6.2
+      },
+      {
+        "ts_code": "603012",
+        "score": 6.2
+      },
+      {
+        "ts_code": "000547",
+        "score": 6.1
+      },
+      {
+        "ts_code": "000659",
+        "score": 6.1
+      },
+      {
+        "ts_code": "600530",
+        "score": 6.1
+      },
+      {
+        "ts_code": "002428",
+        "score": 6.0
+      },
+      {
+        "ts_code": "002580",
+        "score": 6.0
+      },
+      {
+        "ts_code": "920270",
+        "score": 6.0
+      },
+      {
+        "ts_code": "002281",
+        "score": 5.9
+      },
+      {
+        "ts_code": "002342",
+        "score": 5.9
+      },
+      {
+        "ts_code": "603758",
+        "score": 5.9
+      },
+      {
+        "ts_code": "605358",
+        "score": 5.8
+      },
+      {
+        "ts_code": "600498",
+        "score": 5.8
+      },
+      {
+        "ts_code": "600522",
+        "score": 5.8
+      },
+      {
+        "ts_code": "603636",
+        "score": 5.8
+      },
+      {
+        "ts_code": "001333",
+        "score": 5.7
+      },
+      {
+        "ts_code": "600118",
+        "score": 5.7
+      },
+      {
+        "ts_code": "002050",
+        "score": 5.7
+      }
+    ],
+    "hot_money": [
+      {
+        "ts_code": "000547.SZ",
+        "score": 8.3
+      },
+      {
+        "ts_code": "000697.SZ",
+        "score": 8.3
+      },
+      {
+        "ts_code": "000720.SZ",
+        "score": 8.3
+      },
+      {
+        "ts_code": "000833.SZ",
+        "score": 8.3
+      },
+      {
+        "ts_code": "000889.SZ",
+        "score": 8.3
+      },
+      {
+        "ts_code": "001267.SZ",
+        "score": 8.3
+      },
+      {
+        "ts_code": "002031.SZ",
+        "score": 8.3
+      },
+      {
+        "ts_code": "002342.SZ",
+        "score": 8.3
+      },
+      {
+        "ts_code": "002491.SZ",
+        "score": 8.3
+      },
+      {
+        "ts_code": "002552.SZ",
+        "score": 8.3
+      },
+      {
+        "ts_code": "002655.SZ",
+        "score": 8.3
+      },
+      {
+        "ts_code": "002757.SZ",
+        "score": 8.3
+      },
+      {
+        "ts_code": "002865.SZ",
+        "score": 8.3
+      },
+      {
+        "ts_code": "002903.SZ",
+        "score": 8.3
+      },
+      {
+        "ts_code": "003026.SZ",
+        "score": 8.3
+      },
+      {
+        "ts_code": "200020.SZ",
+        "score": 8.3
+      },
+      {
+        "ts_code": "300052.SZ",
+        "score": 8.3
+      },
+      {
+        "ts_code": "300258.SZ",
+        "score": 8.3
+      },
+      {
+        "ts_code": "300283.SZ",
+        "score": 8.3
+      },
+      {
+        "ts_code": "300430.SZ",
+        "score": 8.3
+      }
+    ],
+    "institution_hold": [
+      {
+        "ts_code": "000662",
+        "score": 6.2
+      },
+      {
+        "ts_code": "000875",
+        "score": 6.2
+      },
+      {
+        "ts_code": "000932",
+        "score": 6.2
+      },
+      {
+        "ts_code": "002025",
+        "score": 6.2
+      },
+      {
+        "ts_code": "002039",
+        "score": 6.2
+      },
+      {
+        "ts_code": "600058",
+        "score": 6.2
+      },
+      {
+        "ts_code": "600098",
+        "score": 6.2
+      },
+      {
+        "ts_code": "600196",
+        "score": 6.2
+      },
+      {
+        "ts_code": "600330",
+        "score": 6.2
+      },
+      {
+        "ts_code": "600406",
+        "score": 6.2
+      },
+      {
+        "ts_code": "600533",
+        "score": 6.2
+      },
+      {
+        "ts_code": "600549",
+        "score": 6.2
+      },
+      {
+        "ts_code": "600978",
+        "score": 6.2
+      },
+      {
+        "ts_code": "600438",
+        "score": 6.1
+      },
+      {
+        "ts_code": "600399",
+        "score": 6.1
+      },
+      {
+        "ts_code": "600436",
+        "score": 6.1
+      },
+      {
+        "ts_code": "000541",
+        "score": 6.1
+      },
+      {
+        "ts_code": "000061",
+        "score": 6.1
+      },
+      {
+        "ts_code": "002031",
+        "score": 6.1
+      },
+      {
+        "ts_code": "600078",
+        "score": 6.0
+      }
+    ],
+    "profit_forecast": [
+      {
+        "ts_code": "603308",
+        "score": 4.2
+      },
+      {
+        "ts_code": "000415",
+        "score": 4.2
+      },
+      {
+        "ts_code": "002429",
+        "score": 4.2
+      },
+      {
+        "ts_code": "002541",
+        "score": 4.2
+      },
+      {
+        "ts_code": "300308",
+        "score": 4.2
+      },
+      {
+        "ts_code": "600971",
+        "score": 4.2
+      },
+      {
+        "ts_code": "601298",
+        "score": 4.2
+      },
+      {
+        "ts_code": "000039",
+        "score": 4.2
+      },
+      {
+        "ts_code": "000962",
+        "score": 4.2
+      },
+      {
+        "ts_code": "600153",
+        "score": 4.2
+      },
+      {
+        "ts_code": "605060",
+        "score": 4.2
+      },
+      {
+        "ts_code": "688059",
+        "score": 4.2
+      },
+      {
+        "ts_code": "688331",
+        "score": 4.2
+      },
+      {
+        "ts_code": "002126",
+        "score": 4.1
+      },
+      {
+        "ts_code": "002487",
+        "score": 4.1
+      },
+      {
+        "ts_code": "300435",
+        "score": 4.1
+      },
+      {
+        "ts_code": "300502",
+        "score": 4.1
+      },
+      {
+        "ts_code": "601619",
+        "score": 4.1
+      },
+      {
+        "ts_code": "001965",
+        "score": 4.1
+      },
+      {
+        "ts_code": "002203",
+        "score": 4.1
+      }
+    ],
+    "performance": [
+      {
+        "ts_code": "000010",
+        "score": 6.2
+      },
+      {
+        "ts_code": "000036",
+        "score": 6.2
+      },
+      {
+        "ts_code": "000037",
+        "score": 6.2
+      },
+      {
+        "ts_code": "000155",
+        "score": 6.2
+      },
+      {
+        "ts_code": "000408",
+        "score": 6.2
+      },
+      {
+        "ts_code": "000504",
+        "score": 6.2
+      },
+      {
+        "ts_code": "000567",
+        "score": 6.2
+      },
+      {
+        "ts_code": "000595",
+        "score": 6.2
+      },
+      {
+        "ts_code": "000685",
+        "score": 6.2
+      },
+      {
+        "ts_code": "000792",
+        "score": 6.2
+      },
+      {
+        "ts_code": "000810",
+        "score": 6.2
+      },
+      {
+        "ts_code": "000828",
+        "score": 6.2
+      },
+      {
+        "ts_code": "000833",
+        "score": 6.2
+      },
+      {
+        "ts_code": "000858",
+        "score": 6.2
+      },
+      {
+        "ts_code": "000973",
+        "score": 6.2
+      },
+      {
+        "ts_code": "001259",
+        "score": 6.2
+      },
+      {
+        "ts_code": "001286",
+        "score": 6.2
+      },
+      {
+        "ts_code": "001332",
+        "score": 6.2
+      },
+      {
+        "ts_code": "001339",
+        "score": 6.2
+      },
+      {
+        "ts_code": "001389",
+        "score": 6.2
+      }
+    ],
+    "buyback": [
+      {
+        "ts_code": "000050.SZ",
+        "score": 4.1
+      },
+      {
+        "ts_code": "000703.SZ",
+        "score": 4.1
+      },
+      {
+        "ts_code": "000959.SZ",
+        "score": 4.1
+      },
+      {
+        "ts_code": "002102.SZ",
+        "score": 4.1
+      },
+      {
+        "ts_code": "002352.SZ",
+        "score": 4.1
+      },
+      {
+        "ts_code": "002475.SZ",
+        "score": 4.1
+      },
+      {
+        "ts_code": "002601.SZ",
+        "score": 4.1
+      },
+      {
+        "ts_code": "600010.SH",
+        "score": 4.1
+      },
+      {
+        "ts_code": "600273.SH",
+        "score": 4.1
+      },
+      {
+        "ts_code": "600276.SH",
+        "score": 4.1
+      },
+      {
+        "ts_code": "600690.SH",
+        "score": 4.1
+      },
+      {
+        "ts_code": "601006.SH",
+        "score": 4.1
+      },
+      {
+        "ts_code": "601236.SH",
+        "score": 4.1
+      },
+      {
+        "ts_code": "601636.SH",
+        "score": 4.1
+      },
+      {
+        "ts_code": "601919.SH",
+        "score": 4.1
+      },
+      {
+        "ts_code": "688599.SH",
+        "score": 4.1
+      },
+      {
+        "ts_code": "600406.SH",
+        "score": 4.1
+      },
+      {
+        "ts_code": "601390.SH",
+        "score": 4.1
+      },
+      {
+        "ts_code": "000012.SZ",
+        "score": 4.1
+      },
+      {
+        "ts_code": "603368.SH",
+        "score": 4.1
+      }
+    ],
+    "insider_buy": [
+      {
+        "ts_code": "600846",
+        "score": 6.2
+      },
+      {
+        "ts_code": "000932",
+        "score": 3.5
+      },
+      {
+        "ts_code": "002825",
+        "score": 3.5
+      },
+      {
+        "ts_code": "300201",
+        "score": 3.5
+      },
+      {
+        "ts_code": "300295",
+        "score": 3.5
+      },
+      {
+        "ts_code": "600009",
+        "score": 3.5
+      },
+      {
+        "ts_code": "603358",
+        "score": 3.5
+      },
+      {
+        "ts_code": "600039",
+        "score": 0.8
+      },
+      {
+        "ts_code": "000001",
+        "score": 0.0
+      },
+      {
+        "ts_code": "000001.SZ",
+        "score": 0.0
+      },
+      {
+        "ts_code": "000002",
+        "score": 0.0
+      },
+      {
+        "ts_code": "000002.SZ",
+        "score": 0.0
+      },
+      {
+        "ts_code": "000004",
+        "score": 0.0
+      },
+      {
+        "ts_code": "000006",
+        "score": 0.0
+      },
+      {
+        "ts_code": "000006.SZ",
+        "score": 0.0
+      },
+      {
+        "ts_code": "000007",
+        "score": 0.0
+      },
+      {
+        "ts_code": "000007.SZ",
+        "score": 0.0
+      },
+      {
+        "ts_code": "000008",
+        "score": 0.0
+      },
+      {
+        "ts_code": "000008.SZ",
+        "score": 0.0
+      },
+      {
+        "ts_code": "000009",
+        "score": 0.0
+      }
+    ],
+    "broker_recommend": [
+      {
+        "ts_code": "000001",
+        "score": 0.0
+      },
+      {
+        "ts_code": "000001.SZ",
+        "score": 0.0
+      },
+      {
+        "ts_code": "000002",
+        "score": 0.0
+      },
+      {
+        "ts_code": "000002.SZ",
+        "score": 0.0
+      },
+      {
+        "ts_code": "000004",
+        "score": 0.0
+      },
+      {
+        "ts_code": "000006",
+        "score": 0.0
+      },
+      {
+        "ts_code": "000006.SZ",
+        "score": 0.0
+      },
+      {
+        "ts_code": "000007",
+        "score": 0.0
+      },
+      {
+        "ts_code": "000007.SZ",
+        "score": 0.0
+      },
+      {
+        "ts_code": "000008",
+        "score": 0.0
+      },
+      {
+        "ts_code": "000008.SZ",
+        "score": 0.0
+      },
+      {
+        "ts_code": "000009",
+        "score": 0.0
+      },
+      {
+        "ts_code": "000009.SZ",
+        "score": 0.0
+      },
+      {
+        "ts_code": "000010",
+        "score": 0.0
+      },
+      {
+        "ts_code": "000010.SZ",
+        "score": 0.0
+      },
+      {
+        "ts_code": "000011",
+        "score": 0.0
+      },
+      {
+        "ts_code": "000011.SZ",
+        "score": 0.0
+      },
+      {
+        "ts_code": "000012",
+        "score": 0.0
+      },
+      {
+        "ts_code": "000012.SZ",
+        "score": 0.0
+      },
+      {
+        "ts_code": "000014",
+        "score": 0.0
+      }
+    ]
+  },
+  "recorded_at": "2026-05-13T21:11:46.343915"
+}

@@ -135,7 +135,7 @@ class TestInsiderBuyFactor:
         assert factor.name == "insider_buy"
         assert factor.available_intraday is False
         assert factor.available_postmarket is True
-        assert factor.weight == 8.0
+        assert factor.weight == 5.0
 
     def test_score_series_name(self, factor):
         df = _make_df(["A.SH"], add_ratio=[2.0])

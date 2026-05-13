@@ -27,7 +27,7 @@ class ChipFactor(BaseFactor):
     name = "chip"
     available_intraday = False
     available_postmarket = True
-    weight = 25.0
+    weight = 15.0
 
     _LOOKBACK_DAYS = 5
     _LABEL_THRESHOLD = 5.0
@@ -573,3 +573,4 @@ class ChipFactor(BaseFactor):
 
             if r:
                 reasons[ts_code] = r
+        return reasons

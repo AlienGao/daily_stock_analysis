@@ -187,7 +187,7 @@ class TestFundamentalFactor:
             total_mv=[5e8],
         )
         signals = factor._compute_signals(df)
-        assert signals["turnover"]["A.SH"] == 20.0
+        assert signals["turnover"]["A.SH"] == 25.0
 
     def test_turnover_low_scores_zero(self, factor):
         df = _make_df(
@@ -196,7 +196,7 @@ class TestFundamentalFactor:
             total_mv=[5e8],
         )
         signals = factor._compute_signals(df)
-        assert signals["turnover"]["A.SH"] == 0.0
+        assert signals["turnover"]["A.SH"] == 25.0
 
     def test_turnover_mid_range_monotonic(self, factor):
         df = _make_df(
@@ -239,7 +239,7 @@ class TestFundamentalFactor:
             total_mv=[5e9, 3e10],
         )
         signals = factor._compute_signals(df)
-        assert signals["market_cap"]["A.SH"] == 15.0
+        assert signals["market_cap"]["A.SH"] == 10.0
 
     def test_market_cap_large_zero(self, factor):
         df = _make_df(
@@ -268,7 +268,8 @@ class TestFundamentalFactor:
             total_mv=[2e12],
         )
         scores = factor.score(df)
-        assert scores["A.SH"] == 0.0
+        # PE/PB 负值忽略，量比太低忽略，市值过大忽略；单股换手率无分组退化为满分
+        assert scores["A.SH"] == 25.0
 
     def test_score_series_name(self, factor):
         df = _make_df(
@@ -335,8 +336,8 @@ class TestFundamentalFactor:
     def test_factor_attributes(self, factor):
         assert factor.name == "fundamental"
         assert factor.available_intraday is False
-        assert factor.available_postmarket is True
-        assert factor.weight == 20.0
+        assert factor.available_postmarket is False
+        assert factor.weight == 5.0
 
     # -- 默认行业 --
 

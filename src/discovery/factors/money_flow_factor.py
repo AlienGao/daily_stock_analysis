@@ -10,7 +10,7 @@ from typing import Dict, List, Optional
 
 import pandas as pd
 
-from src.discovery.factors.base import BaseFactor, bare_to_ts_code
+from src.discovery.factors.base import BaseFactor, bare_to_ts_code, ts_codes_to_bare
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ class MoneyFlowFactor(BaseFactor):
     name = "money_flow"
     available_intraday = False
     available_postmarket = True
-    weight = 25.0
+    weight = 15.0
     _LABEL_THRESHOLD = 25.0
     _STRONG = 0.75   # 百分位阈值：top 25% → 强势标签
     _MODERATE = 0.55  # top 45% → 偏多标签
@@ -85,10 +85,10 @@ class MoneyFlowFactor(BaseFactor):
             ranks = series.rank(pct=True, na_option="bottom")
             return (ranks * 100).clip(0, 100)
 
-        major_rate = (elg_net + lg_net) / total_trade.replace(0, float("nan"))
-        elg_rate = elg_net / total_trade.replace(0, float("nan"))
-        lg_rate = lg_net / total_trade.replace(0, float("nan"))
-        sm_rate = sm_net / total_trade.replace(0, float("nan"))
+        major_rate = ((elg_net + lg_net) / total_trade.replace(0, float("nan"))).fillna(0)
+        elg_rate = (elg_net / total_trade.replace(0, float("nan"))).fillna(0)
+        lg_rate = (lg_net / total_trade.replace(0, float("nan"))).fillna(0)
+        sm_rate = (sm_net / total_trade.replace(0, float("nan"))).fillna(0)
 
         return {
             "elg_net": elg_net, "lg_net": lg_net, "sm_net": sm_net,
@@ -169,7 +169,7 @@ def _persist_to_db(df: pd.DataFrame) -> None:
     from src.storage import DatabaseManager
 
     out = pd.DataFrame()
-    out["code"] = df.index.astype(str).str.split(".").str[0].str.zfill(6)
+    out["code"] = ts_codes_to_bare(df.index)
     out["trade_date"] = df.get("trade_date", "")
     for c in ("buy_elg_amount", "sell_elg_amount", "buy_lg_amount",
               "sell_lg_amount", "buy_md_amount", "sell_md_amount",

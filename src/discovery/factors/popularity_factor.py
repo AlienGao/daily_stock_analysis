@@ -5,8 +5,8 @@
 识别市场关注度高的股票。
 
 4 个子信号：
-- 飙升幅度 (0-45)：rank_change 在改善股中的百分位
-- 排名强度 (0-35)：当前排名逆线性映射
+- 飙升幅度 (0-45)：rank_change 绝对值线性，+50 位满分
+- 排名强度 (0-35)：逆排名线性衰减，分母 max(rank.max(), 100)
 - 涨跌幅 (0-20)：pct_chg 分段线性
 - 排名趋势 (0-15)：5 日排名改善百分位（需 DB 历史数据）
 """
@@ -16,7 +16,7 @@ from typing import Dict, List, Optional
 
 import pandas as pd
 
-from src.discovery.factors.base import BaseFactor
+from src.discovery.factors.base import BaseFactor, ts_codes_to_bare
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ class PopularityFactor(BaseFactor):
     name = "popularity"
     available_intraday = True
     available_postmarket = True
-    weight = 15.0
+    weight = 18.0
 
     _LABEL_THRESHOLD = 5.0
     _LABEL_THRESHOLD_RATIO = 0.5
@@ -98,7 +98,7 @@ class PopularityFactor(BaseFactor):
             out["name"] = df.get("name", "")
             out["pct_chg"] = pd.to_numeric(df.get("pct_change", 0), errors="coerce").fillna(0)
             out["rank"] = pd.to_numeric(df.get("rank", 9999), errors="coerce").fillna(9999).astype(int)
-            out["rank_change"] = 0
+            out["rank_change"] = PopularityFactor._compute_rank_change_from_db(out, trade_date)
 
             logger.info("[PopularityFactor] DB 当日读取: %d 条", len(out))
             return out
@@ -163,7 +163,7 @@ class PopularityFactor(BaseFactor):
                     "pageNo": 1,
                     "pageSize": 100,
                 },
-                timeout=15,
+                timeout=(5, 25),
             )
             r1.raise_for_status()
             rank_data = r1.json().get("data", [])
@@ -188,7 +188,7 @@ class PopularityFactor(BaseFactor):
                     "fields": "f14,f3,f12,f2",
                     "secids": secids,
                 },
-                timeout=15,
+                timeout=(5, 25),
             )
             r2.raise_for_status()
             price_data = {item["f12"]: item for item in r2.json()["data"]["diff"]}
@@ -221,6 +221,47 @@ class PopularityFactor(BaseFactor):
             return None
 
     @staticmethod
+    def _compute_rank_change_from_db(df: pd.DataFrame, trade_date: str) -> pd.Series:
+        """从 popularity_rank 历史计算 rank_change = 前日rank - 当日rank。"""
+        if df.empty or "rank" not in df.columns:
+            return pd.Series(0.0, index=df.index)
+        try:
+            from src.storage import DatabaseManager
+
+            codes = [str(c).zfill(6) for c in df.index]
+            today_rank = pd.to_numeric(df["rank"], errors="coerce")
+
+            db = DatabaseManager()
+            hist = db.get_popularity_rank_range(codes=codes, end_date=str(trade_date)[:8])
+            if hist is None or hist.empty:
+                return pd.Series(0.0, index=df.index)
+
+            hist = hist.reset_index()
+            hist["trade_date"] = hist["trade_date"].astype(str).str.replace("-", "")
+            prev = hist[hist["trade_date"] < str(trade_date)[:8]]
+            if prev.empty:
+                return pd.Series(0.0, index=df.index)
+
+            prev_latest = prev.loc[prev.groupby("code")["trade_date"].idxmax()]
+            prev_rank = prev_latest.set_index("code")["rank"]
+
+            result = pd.Series(0.0, index=df.index)
+            for i, code in enumerate(df.index):
+                c = str(code).zfill(6)
+                if c in prev_rank.index:
+                    pr = prev_rank[c]
+                    tr = today_rank.iloc[i]
+                    if pd.notna(pr) and pd.notna(tr):
+                        result.iloc[i] = float(pr - tr)
+            nz = (result != 0).sum()
+            if nz:
+                logger.info("[PopularityFactor] DB 补齐 rank_change: %d 只", nz)
+            return result.fillna(0)
+        except Exception as e:
+            logger.debug("[PopularityFactor] rank_change DB 补齐失败: %s", e)
+            return pd.Series(0.0, index=df.index)
+
+    @staticmethod
     def _fetch_tushare(tushare_fetcher, trade_date: str) -> Optional[pd.DataFrame]:
         """Tushare dc_hot 降级路径。"""
         try:
@@ -232,11 +273,11 @@ class PopularityFactor(BaseFactor):
             out["name"] = df.get("name", "")
             out["pct_chg"] = pd.to_numeric(df.get("pct_change", 0), errors="coerce").fillna(0)
             out["rank"] = pd.to_numeric(df.get("rank", 9999), errors="coerce").fillna(9999).astype(int)
-            out["rank_change"] = 0
+            out["rank_change"] = PopularityFactor._compute_rank_change_from_db(out, trade_date)
             out["hot"] = pd.to_numeric(df.get("hot", 0), errors="coerce") if "hot" in df.columns else None
             out["concept"] = df.get("concept", "") if "concept" in df.columns else ""
 
-            codes = df["ts_code"].astype(str).str.split(".").str[0].str.zfill(6)
+            codes = ts_codes_to_bare(df["ts_code"])
             out.index = codes
             out.index.name = "ts_code"
 
@@ -297,16 +338,12 @@ class PopularityFactor(BaseFactor):
 
         signals: Dict[str, pd.Series] = {}
 
-        # --- 1. 飙升幅度 (0-45): rank_change 在改善股中的百分位 ---
-        s_surge = zeros.copy()
-        improvers = rank_change > 0
-        if improvers.any():
-            surge_pct = rank_change[improvers].rank(pct=True)
-            s_surge.loc[improvers] = (surge_pct * 45).clip(0, 45)
+        # --- 1. 飙升幅度 (0-45): 绝对值线性，+50 位满分 ---
+        s_surge = (rank_change / 50 * 45).clip(0, 45)
         signals["surge"] = s_surge
 
         # --- 2. 排名强度 (0-35): 逆排名线性衰减 ---
-        max_rank = rank.max()
+        max_rank = max(rank.max(), 100)
         if max_rank > 1:
             s_rank = (35 * (1 - (rank - 1) / (max_rank - 1))).clip(0, 35).fillna(0)
         else:
@@ -351,7 +388,7 @@ class PopularityFactor(BaseFactor):
                 return zeros
 
             hist = hist.reset_index()
-            hist["trade_date"] = hist["trade_date"].astype(str)
+            hist["trade_date"] = hist["trade_date"].astype(str).str.replace("-", "")
 
             today_rank = hist[hist["trade_date"] == end].set_index("code")["rank"]
             avg_rank = hist.groupby("code")["rank"].mean()

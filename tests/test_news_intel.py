@@ -36,7 +36,7 @@ class NewsIntelStorageTestCase(unittest.TestCase):
         # 重置配置与数据库单例，确保使用临时库
         Config._instance = None
         DatabaseManager.reset_instance()
-        self.db = DatabaseManager.get_instance()
+        self.db = DatabaseManager(db_url=f"sqlite:///{self._db_path}")
 
     def tearDown(self) -> None:
         """清理资源"""

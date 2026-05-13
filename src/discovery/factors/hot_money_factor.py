@@ -30,7 +30,7 @@ class HotMoneyFactor(BaseFactor):
     name = "hot_money"
     available_intraday = False
     available_postmarket = True
-    weight = 12.0
+    weight = 8.0
 
     _LABEL_THRESHOLD_RATIO = 0.5
 

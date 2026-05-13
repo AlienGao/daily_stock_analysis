@@ -37,7 +37,7 @@ class BuybackFactor(BaseFactor):
     name = "buyback"
     available_intraday = False
     available_postmarket = True
-    weight = 10.0
+    weight = 5.0
 
     _LABEL_THRESHOLD = 0.6
     _PROC_SCORE = {"实施": 30, "股东大会通过": 20, "预案": 15, "完成": 10, "提议": 5}

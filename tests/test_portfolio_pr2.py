@@ -41,6 +41,8 @@ class PortfolioPr2TestCase(unittest.TestCase):
     """End-to-end style tests for PR2 import, dedup, risk and fx behavior."""
 
     def setUp(self) -> None:
+        # Must be set before api modules are imported (router checks at import time)
+        os.environ["PORTFOLIO_MODULE_ENABLED"] = "true"
         _reset_auth_globals()
         self.temp_dir = tempfile.TemporaryDirectory()
         data_dir = Path(self.temp_dir.name)
@@ -52,6 +54,7 @@ class PortfolioPr2TestCase(unittest.TestCase):
                     "STOCK_LIST=600519",
                     "GEMINI_API_KEY=test",
                     "ADMIN_AUTH_ENABLED=false",
+                    "PORTFOLIO_MODULE_ENABLED=true",
                     "PORTFOLIO_RISK_CONCENTRATION_ALERT_PCT=70.0",
                     "PORTFOLIO_RISK_DRAWDOWN_ALERT_PCT=10.0",
                     "PORTFOLIO_RISK_STOP_LOSS_ALERT_PCT=25.0",
@@ -75,7 +78,12 @@ class PortfolioPr2TestCase(unittest.TestCase):
         self.risk_service = PortfolioRiskService(portfolio_service=self.service)
         self._board_fetch_patcher = patch.object(PortfolioRiskService, "_fetch_belong_boards", return_value=[])
         self._board_fetch_patcher.start()
-        self.client = TestClient(create_app(static_dir=data_dir / "empty-static"))
+        # Purge cached api modules so router re-evaluates with PORTFOLIO_MODULE_ENABLED
+        for key in list(sys.modules):
+            if key.startswith("api"):
+                del sys.modules[key]
+        from api.app import create_app as _create_app
+        self.client = TestClient(_create_app(static_dir=data_dir / "empty-static"))
 
     def tearDown(self) -> None:
         DatabaseManager.reset_instance()

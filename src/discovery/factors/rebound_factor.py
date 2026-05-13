@@ -2,7 +2,7 @@
 """炸板回封因子 (Limit Break Rebound Factor).
 
 盘中实时检测涨停打开（炸板）后的买点机会。
-数据来源: limit_break 表（scanner 差集检测） + realtime_spot（行情） + money_flow（资金流）。
+数据来源: limit_pool + limit_up_history（自算差集） + realtime_spot（行情） + money_flow（资金流）。
 轮次间回封进度感知：追踪炸板股的涨幅回升速度，捕获「正在回封」的进程。
 盘中可用，盘后不可用。
 """
@@ -13,16 +13,14 @@ from typing import Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-from src.discovery.factors.base import BaseFactor
+from src.discovery.factors.base import BaseFactor, ts_code_to_bare, ts_codes_to_bare
 
 logger = logging.getLogger(__name__)
 
 
 def _to_bare_codes(index: pd.Index) -> pd.Index:
     """将 index 转为 6 位裸码，兼容 '600519' 和 '600519.SH' 两种格式。"""
-    codes = index.astype(str).str.strip()
-    codes = codes.str.replace(r"\.(SH|SZ|BJ|SHMQ|SZMQ|BJMQ)$", "", regex=True)
-    return codes.str.zfill(6)
+    return ts_codes_to_bare(index)
 
 
 def _linear_map(series: pd.Series, x0: float, y0: float,
@@ -37,14 +35,14 @@ class ReboundFactor(BaseFactor):
     """炸板回封因子。
 
     检测涨停打开后跌幅收窄、有大单回补的短线买点。
-    数据由 scanner._detect_limit_breaks() 实时写入 limit_break 表。
+    自算炸板差集（limit_up_history - limit_pool），不依赖 limit_break 中间表。
     专用回封进度钩子：追踪炸板股涨幅回升速度，捕获「正在回封」进程。
     """
 
     name = "rebound"
     available_intraday = True
     available_postmarket = False
-    weight = 15.0
+    weight = 20.0
 
     _LABEL_THRESHOLD_RATIO = 0.5
 
@@ -55,50 +53,84 @@ class ReboundFactor(BaseFactor):
         self._cached_seal: Dict[str, Dict[str, float]] = {}  # {bare: {speed, distance, score}}
 
     def fetch_data(self, trade_date: str, **kwargs) -> Optional[pd.DataFrame]:
-        """从 limit_break 读取炸板中股票，合并 realtime_spot + money_flow。"""
+        """自算炸板差集：limit_up_history - limit_pool → 炸板候选，合并行情+资金流。
+
+        不再依赖 limit_break 表（scanner 差集检测的中间产物），直接从两张源表读差集，
+        砍掉中间环节，消除 scanner._detect_limit_breaks() 失败导致的因子数据缺失。
+        """
         from datetime import date
         from src.storage import DatabaseManager
 
         db = DatabaseManager()
         today = date.today().strftime("%Y%m%d") if not trade_date else trade_date
 
-        df = db.get_limit_break(trade_date=today, status="broke")
-        if df is None or df.empty:
+        pool = db.get_limit_pool(trade_date=today)
+        hist = db.get_limit_up_history(trade_date=today)
+
+        if hist is None or hist.empty:
+            logger.debug("[ReboundFactor] limit_up_history 无数据")
+            return None
+        if pool is None or pool.empty:
+            logger.debug("[ReboundFactor] limit_pool 无数据")
+            return None
+
+        hist_codes = set(hist.index.astype(str).str.strip().str.zfill(6))
+        pool_codes = set(pool.index.astype(str).str.strip().str.zfill(6))
+
+        # 差集：曾涨停但当前不在 → 炸板
+        broke_codes = hist_codes - pool_codes
+
+        # Z型补充：仍在池中但 limit_type='Z'（Tushare 数据特有列）
+        if "limit_type" in pool.columns:
+            z_mask = pool["limit_type"] == "Z"
+            if z_mask.any():
+                z_codes = set(pool.loc[z_mask].index.astype(str).str.strip().str.zfill(6))
+                broke_codes |= z_codes
+
+        if not broke_codes:
             logger.debug("[ReboundFactor] 当前无炸板股票")
             return None
 
-        df = df.copy()
-        logger.info("[ReboundFactor] 当前 %d 只炸板股票", len(df))
+        # 从 limit_up_history 带出 metadata（open_times / limit_times / sector / name）
+        hist["_bare"] = hist.index.astype(str).str.strip().str.zfill(6)
+        result = hist[hist["_bare"].isin(broke_codes)].copy()
+        result = result.drop(columns=["_bare"])
+        keep_cols = [c for c in ["name", "open_times", "limit_times", "sector"] if c in result.columns]
+        result = result[keep_cols]
 
+        logger.info("[ReboundFactor] 自算差集检测到 %d 只炸板股票", len(result))
+
+        # 合并 realtime_spot
         try:
             spot = db.get_realtime_spot()
             if spot is not None and not spot.empty:
-                df_bare = _to_bare_codes(df.index)
+                df_bare = _to_bare_codes(result.index)
                 spot_bare = _to_bare_codes(spot.index)
                 for col in ["pct_chg", "volume_ratio", "turnover_rate", "price"]:
                     if col in spot.columns:
                         s = spot[col].copy()
                         s.index = spot_bare
-                        df[col] = df_bare.map(s)
+                        result[col] = df_bare.map(s)
         except Exception as e:
             logger.warning("[ReboundFactor] realtime_spot 合并失败: %s", e)
 
+        # 合并 money_flow
         try:
             from src.discovery.money_flow_source import fetch_intraday_money_flow
             mf = fetch_intraday_money_flow(trade_date, kwargs.get("tushare_fetcher"))
             if mf is not None and not mf.empty:
-                df_bare = _to_bare_codes(df.index)
+                df_bare = _to_bare_codes(result.index)
                 mf_bare = _to_bare_codes(mf.index)
                 inflow = mf.get("inflow_rate", pd.Series(0.0, index=mf.index))
                 inflow.index = mf_bare
-                df["inflow_rate"] = df_bare.map(inflow).fillna(0)
+                result["inflow_rate"] = df_bare.map(inflow).fillna(0)
             else:
-                df["inflow_rate"] = 0
+                result["inflow_rate"] = 0
         except Exception as e:
             logger.warning("[ReboundFactor] money_flow 获取失败: %s", e)
-            df["inflow_rate"] = 0
+            result["inflow_rate"] = 0
 
-        return df
+        return result
 
     # ------------------------------------------------------------------
     # 共享信号提取
@@ -136,6 +168,16 @@ class ReboundFactor(BaseFactor):
                          _linear_map(inflow_rate, 0.03, 20, 0.08, 30))
         s_ir = s_ir.mask((inflow_rate > 0) & (inflow_rate < 0.03),
                          _linear_map(inflow_rate, 0, 5, 0.03, 20))
+
+        # 量价确认：涨+放量+净流入 → 真回封，资金分放大 1.5x
+        if self._prev_pct_chg:
+            bare_from_ts = _to_bare_codes(idx)
+            prev_s = pd.Series(self._prev_pct_chg)
+            prev_aligned = bare_from_ts.map(prev_s)
+            pct_rising = (pct_chg > prev_aligned).fillna(False)
+            vol_confirm = volume_ratio > 1.0
+            s_ir = s_ir.mask(pct_rising & vol_confirm & (inflow_rate > 0), s_ir * 1.5)
+
         signals["inflow"] = s_ir
 
         # 3. 放量承接 (0-15)
@@ -201,7 +243,7 @@ class ReboundFactor(BaseFactor):
         cached: Dict[str, Dict[str, float]] = {}
 
         for ts_code in idx:
-            bare = str(ts_code).split(".")[0] if "." in str(ts_code) else str(ts_code).strip().zfill(6)
+            bare = ts_code_to_bare(str(ts_code))
             cur = float(pct_chg.get(ts_code, 0))
             new_map[bare] = cur
 
@@ -314,7 +356,7 @@ class ReboundFactor(BaseFactor):
         for ts_code in scores.index:
             if scores[ts_code] <= 0:
                 continue
-            bare = str(ts_code).split(".")[0] if "." in str(ts_code) else str(ts_code).strip().zfill(6)
+            bare = ts_code_to_bare(str(ts_code))
             labels = []
             for key, label in signal_meta:
                 val = signals[key].get(ts_code, 0.0)

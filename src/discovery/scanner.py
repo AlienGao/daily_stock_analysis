@@ -937,8 +937,8 @@ def refresh_margin_detail_postmarket(tushare_fetcher) -> int:
             logger.warning("[Scanner] 盘后 margin_detail 刷新: 无交易日")
             return 0
 
-        # 最近 7 个交易日
-        target_dates = trade_dates[-7:] if len(trade_dates) >= 7 else trade_dates
+        # 最近 7 个交易日（_get_trade_dates 降序，[:7] 取最新）
+        target_dates = trade_dates[:7]
 
         db = DatabaseManager()
         total_saved = 0
@@ -1002,7 +1002,7 @@ def refresh_daily_basic_postmarket(tushare_fetcher) -> int:
             logger.warning("[Scanner] 盘后 daily_basic 刷新: 无交易日")
             return 0
 
-        td = trade_dates[-1]
+        td = trade_dates[0]
         df = tushare_fetcher.get_daily_basic_all(trade_date=td)
         if df is None or df.empty:
             logger.warning(f"[Scanner] 盘后 daily_basic 刷新: {td} 无数据")
@@ -1048,7 +1048,7 @@ def refresh_hm_detail_postmarket(tushare_fetcher, start: Optional[str] = None) -
         if start is not None:
             target_dates = sorted(d for d in trade_dates if d >= start)
         else:
-            target_dates = trade_dates[-2:] if len(trade_dates) >= 2 else trade_dates
+            target_dates = trade_dates[:2]
 
         if not target_dates:
             logger.warning("[Scanner] 盘后 hm_detail 刷新: 无目标日期")
@@ -1122,8 +1122,8 @@ def refresh_cyq_perf_postmarket(tushare_fetcher) -> int:
             logger.warning("[Scanner] 盘后 cyq_perf 刷新: 无交易日")
             return 0
 
-        # 最近 7 个交易日
-        target_dates = trade_dates[-7:] if len(trade_dates) >= 7 else trade_dates
+        # 最近 7 个交易日（_get_trade_dates 降序，[:7] 取最新）
+        target_dates = trade_dates[:7]
 
         db = DatabaseManager()
         total_saved = 0
@@ -1586,6 +1586,68 @@ def refresh_ths_industry_map_postmarket(tushare_fetcher) -> int:
         return 0
 
 
+def refresh_ths_concept_map_postmarket(tushare_fetcher) -> int:
+    """盘后维护同花顺概念映射，每隔 7 天全量刷新一次。"""
+    try:
+        from src.storage import DatabaseManager
+
+        db = DatabaseManager()
+        age_hours = db.get_ths_concept_map_age_hours()
+        if age_hours is not None and age_hours < 168:
+            logger.debug("[Scanner] ths_concept_map 仍新鲜 (%.0fh)，跳过", age_hours)
+            return 0
+
+        if age_hours is None:
+            logger.info("[Scanner] ths_concept_map 为空，开始构建...")
+        else:
+            logger.info("[Scanner] ths_concept_map 已过期 (%.0fh)，重新构建...", age_hours)
+
+        import pandas as pd
+        import time as _time
+
+        tf = tushare_fetcher
+        if tf is None or tf._api is None:
+            logger.warning("[Scanner] Tushare API 不可用，跳过 ths_concept_map 刷新")
+            return 0
+
+        all_indices = tf._api.ths_index()
+        concept_indices = all_indices[all_indices["type"] == "N"]
+        logger.info("[Scanner] 获取 %d 个概念板块", len(concept_indices))
+
+        code_to_concepts: dict = {}
+        for i, (_, row) in enumerate(concept_indices.iterrows()):
+            ts_code = str(row["ts_code"]).strip()
+            name = str(row["name"]).strip()
+            try:
+                raw = tf._api.ths_member(ts_code=ts_code, fields="ts_code,con_code")
+                if raw is not None and not raw.empty and "con_code" in raw.columns:
+                    codes = raw["con_code"].astype(str).str.strip()
+                    for c in codes:
+                        if "." in c:
+                            code = c.split(".")[0].zfill(6)
+                            code_to_concepts.setdefault(code, []).append(name)
+            except Exception:
+                continue
+            _time.sleep(0.8)
+
+        if not code_to_concepts:
+            logger.warning("[Scanner] ths_concept_map 构建结果为空")
+            return 0
+
+        rows = []
+        for stock_code, concepts in code_to_concepts.items():
+            for cn in concepts:
+                rows.append({"stock_code": stock_code, "concept_name": cn})
+        out = pd.DataFrame(rows)
+
+        saved = db.upsert_ths_concept_map(out, source="tushare")
+        logger.info("[Scanner] ths_concept_map 刷新完成: %d 条", saved)
+        return saved
+    except Exception as e:
+        logger.warning("[Scanner] ths_concept_map 刷新失败: %s", e)
+        return 0
+
+
 def run_intraday_scan(config: DiscoveryConfig, tushare_fetcher=None, akshare_fetcher=None) -> None:
     """一键启动盘中扫描（注册全部盘中因子）。"""
     from src.discovery.factors import (
@@ -1770,6 +1832,7 @@ def ensure_postmarket_scan(
     # ---- 数据刷新 ----
     refreshers = [
         ("ths_industry_map", lambda: refresh_ths_industry_map_postmarket(tushare_fetcher)),
+        ("ths_concept_map", lambda: refresh_ths_concept_map_postmarket(tushare_fetcher)),
         ("sector_daily", lambda: refresh_sector_daily_postmarket()),
         ("stock_daily", lambda: refresh_stock_daily_postmarket(tushare_fetcher)),
         ("limit_pool", lambda: refresh_limit_pool_postmarket(tushare_fetcher)),

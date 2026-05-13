@@ -366,8 +366,10 @@ class BacktestService:
         }
         if not normalized_categories:
             return None
-        allowed = [advice for advice, category in OPERATION_ADVICE_BY_CATEGORY.items() if category in normalized_categories]
-        # Keep stable ordering for deterministic tests/logging.
+        allowed: List[str] = []
+        for cat, advices in OPERATION_ADVICE_BY_CATEGORY.items():
+            if cat in normalized_categories:
+                allowed.extend(advices)
         return sorted(set(allowed))
 
     def get_recent_evaluations(

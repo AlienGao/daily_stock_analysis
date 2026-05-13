@@ -11,7 +11,7 @@ from typing import Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-from src.discovery.factors.base import BaseFactor, safe_pct_change, pct_rank, safe_ratio
+from src.discovery.factors.base import BaseFactor, safe_pct_change, pct_rank, safe_ratio, ts_codes_to_bare
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ class MarginFactor(BaseFactor):
     name = "margin"
     available_intraday = False
     available_postmarket = True
-    weight = 20.0
+    weight = 10.0
 
     _LOOKBACK_DAYS = 5
     _LABEL_THRESHOLD_RATIO = 0.5
@@ -158,7 +158,7 @@ class MarginFactor(BaseFactor):
             )
 
         # 过滤 ETF（5 开头 + 15/16 开头），仅保留 A 股
-        bare_codes = result.index.astype(str).str.split(".").str[0].str.zfill(6)
+        bare_codes = ts_codes_to_bare(result.index)
         is_stock = bare_codes.str.match(r"^(60|68|00|30|43|83|87|92)")
         result = result[is_stock]
 
@@ -428,3 +428,4 @@ class MarginFactor(BaseFactor):
 
             if labels:
                 reasons[ts_code] = labels
+        return reasons

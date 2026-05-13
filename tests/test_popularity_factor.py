@@ -211,7 +211,7 @@ class TestPopularityFactor:
         assert factor.name == "popularity"
         assert factor.available_intraday is True
         assert factor.available_postmarket is True
-        assert factor.weight == 15.0
+        assert factor.weight == 18.0
 
     def test_score_series_name(self, factor):
         df = _make_df(

@@ -11,7 +11,7 @@ from typing import Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-from src.discovery.factors.base import BaseFactor
+from src.discovery.factors.base import BaseFactor, ts_code_to_bare
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ class TechnicalFactor(BaseFactor):
     name = "technical"
     available_intraday = False
     available_postmarket = True
-    weight = 25.0
+    weight = 15.0
 
     _LABEL_THRESHOLD_RATIO = 0.5
 
@@ -252,7 +252,7 @@ class TechnicalFactor(BaseFactor):
             return s_bull, s_bear
 
         for ts_code in idx:
-            bare = ts_code.split(".")[0] if "." in str(ts_code) else str(ts_code)
+            bare = ts_code_to_bare(str(ts_code))
             hist = self._hist_data.get(bare)
             if hist is None or len(hist) < 20:
                 continue

@@ -17,9 +17,9 @@ from src.config import Config
 
 
 def test_operation_advice_to_category():
-    assert operation_advice_to_category("买入", None) == "BUY"
-    assert operation_advice_to_category("持有", None) == "HOLD"
-    assert operation_advice_to_category("卖出", None) == "SELL"
+    assert operation_advice_to_category("🟢 买入", None) == "BUY"
+    assert operation_advice_to_category("🟡 持有", None) == "HOLD"
+    assert operation_advice_to_category("🔴 卖出", None) == "SELL"
 
 
 def test_select_top_n_by_sentiment():

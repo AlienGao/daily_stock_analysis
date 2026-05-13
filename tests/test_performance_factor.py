@@ -265,7 +265,7 @@ class TestPerformanceFactor:
         assert factor.name == "performance"
         assert factor.available_intraday is False
         assert factor.available_postmarket is True
-        assert factor.weight == 15.0
+        assert factor.weight == 10.0
 
     def test_score_series_name(self, factor):
         df = _make_df(

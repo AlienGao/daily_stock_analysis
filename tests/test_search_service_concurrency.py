@@ -238,6 +238,7 @@ class SearchServiceConcurrencyTestCase(unittest.TestCase):
             news_max_age_days=3,
             news_strategy_profile="short",
             anspire_api_keys=[],
+            enable_akshare_news=False,
         )
 
         created = []

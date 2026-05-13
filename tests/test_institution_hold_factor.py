@@ -255,7 +255,7 @@ class TestInstitutionHoldFactor:
         assert factor.name == "institution_hold"
         assert factor.available_intraday is False
         assert factor.available_postmarket is True
-        assert factor.weight == 15.0
+        assert factor.weight == 8.0
 
     # -- 降级：akshare 原始中文列名 --
 

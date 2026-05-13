@@ -1149,7 +1149,6 @@ class InstitutionHold(Base):
 
     __table_args__ = (
         UniqueConstraint('code', 'quarter', name='uix_institution_hold_code_quarter'),
-        Index('ix_institution_hold_quarter', 'quarter'),
     )
 
     def __repr__(self) -> str:
@@ -1181,7 +1180,6 @@ class Repurchase(Base):
     __table_args__ = (
         UniqueConstraint('ts_code', 'ann_date',
                          name='uix_repurchase_ts_code_ann_date'),
-        Index('ix_repurchase_ann_date', 'ann_date'),
     )
 
     def __repr__(self) -> str:
@@ -1488,6 +1486,27 @@ class ThsIndustryMap(Base):
         return f"<ThsIndustryMap(code={self.stock_code}, industry={self.industry_name})>"
 
 
+class ThsConceptMap(Base):
+    """同花顺概念映射 (stock_code → 同花顺 concept name).
+
+    按 (stock_code, concept_name) 唯一，一只股票可属于多个概念。
+    由 scripts/build_ths_concept_map.py 定期全量刷新。
+    """
+
+    __tablename__ = 'ths_concept_map'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    stock_code = Column(String(10), nullable=False, index=True)
+    concept_name = Column(String(100), nullable=False)
+    source = Column(String(20), default="tushare")
+    updated_at = Column(DateTime, default=datetime.now)
+
+    __table_args__ = (UniqueConstraint('stock_code', 'concept_name', name='uq_code_concept'),)
+
+    def __repr__(self) -> str:
+        return f"<ThsConceptMap(code={self.stock_code}, concept={self.concept_name})>"
+
+
 class SectorDaily(Base):
     """板块日线历史行情（用于 StockScorer 板块状态判定）。
 
@@ -1596,6 +1615,7 @@ class DatabaseManager:
         self._ensure_insider_buy_table()
         self._ensure_performance_report_table()
         self._ensure_ths_industry_map_table()
+        self._ensure_ths_concept_map_table()
         self._ensure_stock_daily_date_index()
 
         self._initialized = True
@@ -1908,6 +1928,26 @@ class DatabaseManager:
             logger.info("已创建表 ths_industry_map")
         except Exception as exc:
             logger.warning("创建 ths_industry_map 失败: %s", exc)
+
+    def _ensure_ths_concept_map_table(self) -> None:
+        """SQLite: create ths_concept_map if missing."""
+        if not self._is_sqlite_engine:
+            return
+        try:
+            with self._engine.connect() as conn:
+                rows = conn.execute(
+                    text("SELECT name FROM sqlite_master WHERE type='table' AND name='ths_concept_map'")
+                ).fetchall()
+            if rows:
+                return
+        except Exception as exc:
+            logger.warning("检查 ths_concept_map 表存在性失败: %s", exc)
+            return
+        try:
+            ThsConceptMap.__table__.create(self._engine)
+            logger.info("已创建表 ths_concept_map")
+        except Exception as exc:
+            logger.warning("创建 ths_concept_map 失败: %s", exc)
 
     def _ensure_limit_up_history_table(self) -> None:
         """SQLite: create limit_up_history if missing."""
@@ -4515,6 +4555,89 @@ class DatabaseManager:
         except Exception:
             return None
 
+    # ------------------------------------------------------------------
+    # 同花顺概念映射
+    # ------------------------------------------------------------------
+
+    def upsert_ths_concept_map(self, df: pd.DataFrame, source: str = "tushare") -> int:
+        """全量刷入同花顺概念映射。先清空，再批量 insert。"""
+        records = []
+        for _, row in df.iterrows():
+            code = str(row.get("stock_code", "")).strip().zfill(6)
+            concept = str(row.get("concept_name", "")).strip()
+            if not code or not concept:
+                continue
+            records.append({
+                "stock_code": code,
+                "concept_name": concept,
+                "source": source,
+                "updated_at": datetime.now(),
+            })
+
+        def _write(session: Session) -> int:
+            session.execute(text("DELETE FROM ths_concept_map"))
+            if self._is_sqlite_engine:
+                _CHUNK = 200
+                for i in range(0, len(records), _CHUNK):
+                    chunk = records[i : i + _CHUNK]
+                    stmt = sqlite_insert(ThsConceptMap).values(chunk)
+                    session.execute(stmt)
+            else:
+                for rec in records:
+                    session.add(ThsConceptMap(**rec))
+            return len(records)
+
+        saved = self._run_write_transaction("upsert_ths_concept_map", _write)
+        logger.info("[DB] 同花顺概念映射入库 %d 条", saved)
+        return saved
+
+    def get_ths_concept_map(self) -> Dict[str, List[str]]:
+        """获取全量同花顺概念映射 {stock_code: [concept_names]}。"""
+        from sqlalchemy import select as _select
+
+        with self.get_session() as session:
+            rows = session.execute(_select(ThsConceptMap)).scalars().all()
+            result: Dict[str, List[str]] = {}
+            for r in rows:
+                result.setdefault(r.stock_code, []).append(r.concept_name)
+            return result
+
+    def get_stocks_by_concepts(self, concept_names: List[str]) -> Dict[str, List[str]]:
+        """按概念名查询成分股 {concept_name: [stock_codes]}。
+
+        Args:
+            concept_names: 概念名称列表，精确匹配。
+        """
+        from sqlalchemy import select as _select
+
+        if not concept_names:
+            return {}
+
+        with self.get_session() as session:
+            stmt = _select(ThsConceptMap).where(
+                ThsConceptMap.concept_name.in_(concept_names)
+            )
+            rows = session.execute(stmt).scalars().all()
+            result: Dict[str, List[str]] = {}
+            for r in rows:
+                result.setdefault(r.concept_name, []).append(r.stock_code)
+            return result
+
+    def get_ths_concept_map_age_hours(self) -> Optional[float]:
+        """返回 ths_concept_map 最近更新时间距今的小时数，表为空返回 None。"""
+        try:
+            from sqlalchemy import func, select as _select
+            with self.get_session() as session:
+                latest = session.execute(
+                    _select(func.max(ThsConceptMap.updated_at))
+                ).scalar()
+            if latest is None:
+                return None
+            delta = datetime.now() - latest
+            return delta.total_seconds() / 3600
+        except Exception:
+            return None
+
     def get_margin_detail_range(
         self, codes: Optional[List[str]] = None,
         start_date: Optional[str] = None, end_date: Optional[str] = None,
@@ -5984,48 +6107,68 @@ class DatabaseManager:
             return pivot
 
     def prune_historical_data(self, retention_years: int = 10) -> dict:
-        """清理超过保留年限的历史数据。
+        """清理超过保留年限的历史数据，覆盖所有日期驱动表。
 
         Args:
             retention_years: 保留多少年的数据，默认 10 年
 
         Returns:
-            dict: {"stock_daily_deleted": int, "tech_indicator_deleted": int, "elapsed_seconds": float}
+            dict: 各表删除行数 + elapsed_seconds
         """
         from datetime import timedelta
         cutoff = datetime.now().date() - timedelta(days=retention_years * 365)
+        cutoff_str = cutoff.strftime("%Y%m%d")
 
-        result = {"stock_daily_deleted": 0, "tech_indicator_deleted": 0, "elapsed_seconds": 0}
+        # (表名, 日期列名, 参数值, param_name)
+        # Date 类型列用 cutoff (Python date)，VARCHAR 类型列用 cutoff_str
+        tables = [
+            # ── Date 类型 ──
+            ("stock_daily", "date", cutoff, "date_cutoff"),
+            ("stock_tech_indicator", "date", cutoff, "date_cutoff"),
+            ("sector_daily", "trade_date", cutoff, "date_cutoff"),
+            # ── VARCHAR(8) 类型 ──
+            ("daily_basic", "trade_date", cutoff_str, "str_cutoff"),
+            ("momentum_snapshot", "trade_date", cutoff_str, "str_cutoff"),
+            ("limit_pool", "trade_date", cutoff_str, "str_cutoff"),
+            ("limit_up_history", "trade_date", cutoff_str, "str_cutoff"),
+            ("limit_break", "trade_date", cutoff_str, "str_cutoff"),
+            ("money_flow", "trade_date", cutoff_str, "str_cutoff"),
+            ("margin_detail", "trade_date", cutoff_str, "str_cutoff"),
+            ("popularity_rank", "trade_date", cutoff_str, "str_cutoff"),
+            ("hm_detail", "trade_date", cutoff_str, "str_cutoff"),
+            ("scan_result_intraday", "scan_date", cutoff_str, "str_cutoff"),
+            ("scan_result_postmarket", "scan_date", cutoff_str, "str_cutoff"),
+        ]
+
+        result: dict = {}
         t0 = time.time()
 
-        try:
-            with self._engine.begin() as conn:
-                r = conn.execute(
-                    text("DELETE FROM stock_daily WHERE date < :cutoff"),
-                    {"cutoff": cutoff},
-                )
-                result["stock_daily_deleted"] = r.rowcount
-        except Exception as exc:
-            logger.warning("清理 stock_daily 历史数据失败: %s", exc)
-
-        try:
-            with self._engine.begin() as conn:
-                r = conn.execute(
-                    text("DELETE FROM stock_tech_indicator WHERE date < :cutoff"),
-                    {"cutoff": cutoff},
-                )
-                result["tech_indicator_deleted"] = r.rowcount
-        except Exception as exc:
-            logger.warning("清理 stock_tech_indicator 历史数据失败: %s", exc)
+        for table_name, date_col, param_val, _param_name in tables:
+            key = f"{table_name}_deleted"
+            result[key] = 0
+            try:
+                with self._engine.begin() as conn:
+                    r = conn.execute(
+                        text(f"DELETE FROM {table_name} WHERE {date_col} < :cutoff"),
+                        {"cutoff": param_val},
+                    )
+                    result[key] = r.rowcount
+            except Exception as exc:
+                logger.warning("清理 %s 历史数据失败: %s", table_name, exc)
 
         result["elapsed_seconds"] = time.time() - t0
-        if result["stock_daily_deleted"] or result["tech_indicator_deleted"]:
+        deleted_any = any(
+            v for k, v in result.items() if k != "elapsed_seconds"
+        )
+        if deleted_any:
+            parts = ", ".join(
+                f"{k.replace('_deleted', '')}={v}"
+                for k, v in result.items()
+                if k != "elapsed_seconds" and v
+            )
             logger.info(
-                "历史数据清理完成: stock_daily=%d 行, tech_indicator=%d 行, 耗时 %.2fs, 保留 %d 年",
-                result["stock_daily_deleted"],
-                result["tech_indicator_deleted"],
-                result["elapsed_seconds"],
-                retention_years,
+                "历史数据清理完成: %s, 耗时 %.2fs, 保留 %d 年",
+                parts, result["elapsed_seconds"], retention_years,
             )
         return result
 

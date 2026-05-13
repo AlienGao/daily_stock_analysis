@@ -41,3 +41,11 @@ def _reset_singletons():
         DatabaseManager.reset_instance()
     except Exception:
         pass
+
+
+def pytest_sessionstart(session):
+    """每次测试会话开始时清理测试数据库，避免累积数据导致 UNIQUE 约束冲突。"""
+    repo_root = Path(__file__).resolve().parent.parent
+    test_db = repo_root / "apps" / "dsa-web" / "data" / "stock_analysis.db"
+    if test_db.exists():
+        test_db.unlink()

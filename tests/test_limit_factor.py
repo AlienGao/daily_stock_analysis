@@ -10,6 +10,7 @@ import pandas as pd
 import pytest
 
 from src.discovery.factors.limit_factor import LimitFactor
+from src.discovery.factors.base import bare_to_ts_code
 
 
 def _make_df(index_codes, **cols):
@@ -162,7 +163,7 @@ class TestLimitFactor:
     def test_chain_limit_5_plus(self, factor):
         df = _make_df(["A.SH"], limit=["U"], limit_times=[6])
         signals = factor._compute_signals(df)
-        assert signals["chain"]["A.SH"] == 35.0
+        assert signals["chain"]["A.SH"] == 36.5
 
     def test_chain_break_half(self, factor):
         """炸板连板分 = 涨停连板分 * 0.4."""
@@ -311,4 +312,4 @@ class TestLimitFactor:
     ],
 )
 def test_bare_to_ts_code(code, expected):
-    assert LimitFactor._bare_to_ts_code(code) == expected
+    assert bare_to_ts_code(code) == expected

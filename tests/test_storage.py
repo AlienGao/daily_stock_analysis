@@ -100,7 +100,8 @@ class TestStorage(unittest.TestCase):
 
         DatabaseManager.reset_instance()
 
-    def test_file_sqlite_enables_wal_and_busy_timeout(self):
+    @patch('src.config.load_dotenv')
+    def test_file_sqlite_enables_wal_and_busy_timeout(self, _mock_dotenv):
         temp_dir = tempfile.TemporaryDirectory()
         db_path = os.path.join(temp_dir.name, "sqlite_pragmas.db")
         original_env = {

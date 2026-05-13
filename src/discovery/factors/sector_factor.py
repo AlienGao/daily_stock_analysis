@@ -22,7 +22,7 @@ from typing import Dict, List, Optional
 import pandas as pd
 
 from data_provider.base import is_bse_code, is_kc_cy_stock, is_st_stock
-from src.discovery.factors.base import BaseFactor
+from src.discovery.factors.base import BaseFactor, ts_code_to_bare, ts_codes_to_bare
 
 logger = logging.getLogger(__name__)
 
@@ -323,10 +323,7 @@ class SectorFactor(BaseFactor):
             bare_map = momentum_series.copy()
             bare_map.index = bare_map.index.astype(str).str.strip().str.zfill(6)
             # 对 df 的每个 ts_code，提取裸代码 → 查 momentum
-            bare_from_ts = pd.Index([
-                str(x).split(".")[0] if "." in str(x) else str(x).strip().zfill(6)
-                for x in idx
-            ])
+            bare_from_ts = ts_codes_to_bare(idx)
             s_momentum = pd.Series(
                 [bare_map.get(c, 0.0) for c in bare_from_ts],
                 index=idx,
@@ -585,7 +582,7 @@ class SectorFactor(BaseFactor):
             if score_val <= 0:
                 continue
 
-            bare = str(ts_code).split(".")[0] if "." in str(ts_code) else str(ts_code).strip().zfill(6)
+            bare = ts_code_to_bare(str(ts_code))
             labels: List[str] = []
 
             for key, label, max_val in signal_meta:

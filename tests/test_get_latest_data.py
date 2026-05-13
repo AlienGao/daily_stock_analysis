@@ -32,7 +32,7 @@ class GetLatestDataTestCase(unittest.TestCase):
 
         Config._instance = None
         DatabaseManager.reset_instance()
-        self.db = DatabaseManager.get_instance()
+        self.db = DatabaseManager(db_url=f"sqlite:///{self._db_path}")
 
     def tearDown(self) -> None:
         """Clean up resources."""

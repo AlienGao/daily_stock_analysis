@@ -17,7 +17,7 @@ from typing import Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-from src.discovery.factors.base import BaseFactor
+from src.discovery.factors.base import BaseFactor, ts_code_to_bare
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ class BrokerRecommendFactor(BaseFactor):
     name = "broker_recommend"
     available_intraday = False
     available_postmarket = True
-    weight = 20.0
+    weight = 22.0
 
     _LABEL_THRESHOLD_RATIO = 0.5
 
@@ -243,7 +243,7 @@ class BrokerRecommendFactor(BaseFactor):
 
         # scores 索引可能是裸代码（engine 归一化后）或 ts_code（直接调用），统一按 ts_code 查找
         for ts, brokers in broker_by_stock.items():
-            bare = ts.split(".")[0] if "." in str(ts) else str(ts)
+            bare = ts_code_to_bare(str(ts))
             score_val = scores.get(ts, 0) or scores.get(bare, 0)
             if score_val <= 0:
                 continue

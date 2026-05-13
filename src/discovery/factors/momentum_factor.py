@@ -14,7 +14,7 @@ from typing import Dict, List, Optional
 
 import pandas as pd
 
-from src.discovery.factors.base import BaseFactor
+from src.discovery.factors.base import BaseFactor, ts_code_to_bare
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ class MomentumFactor(BaseFactor):
     name = "momentum"
     available_intraday = True
     available_postmarket = False
-    weight = 25.0
+    weight = 18.0
 
     _LABEL_THRESHOLD_RATIO = 0.5
 
@@ -144,7 +144,7 @@ class MomentumFactor(BaseFactor):
         cached: Dict[str, Dict[str, float]] = {}
 
         for ts_code in idx:
-            bare = str(ts_code).split(".")[0] if "." in str(ts_code) else str(ts_code).strip().zfill(6)
+            bare = ts_code_to_bare(str(ts_code))
 
             cur_ir = float(inflow_rate.get(ts_code, 0))
             cur_vr = float(volume_ratio.get(ts_code, 1.0))
@@ -265,7 +265,7 @@ class MomentumFactor(BaseFactor):
         for ts_code in scores.index:
             if scores[ts_code] <= 0:
                 continue
-            bare = str(ts_code).split(".")[0] if "." in str(ts_code) else str(ts_code).strip().zfill(6)
+            bare = ts_code_to_bare(str(ts_code))
             labels = []
             for key, label in signal_meta:
                 val = signals[key].get(ts_code, 0.0)

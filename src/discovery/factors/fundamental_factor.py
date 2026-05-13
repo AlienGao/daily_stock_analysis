@@ -59,6 +59,23 @@ def _industry_pct_rank(values: pd.Series, industries: pd.Series,
     return _group_pct_rank(values, industries, max_points)
 
 
+def _safe_qcut3(series: pd.Series) -> pd.Series:
+    """三分市值分箱，数据变化不足时退化为少箱或单箱。"""
+    labels = ["小市值", "中市值", "大市值"]
+    unique_vals = series.nunique()
+    if unique_vals >= 3:
+        try:
+            return pd.qcut(series, 3, labels=labels, duplicates="drop")
+        except ValueError:
+            pass
+    if unique_vals >= 2:
+        try:
+            return pd.qcut(series, 2, labels=labels[:2], duplicates="drop")
+        except ValueError:
+            pass
+    return pd.Series(labels[0], index=series.index)
+
+
 
 class FundamentalFactor(BaseFactor):
     """基本面因子。
@@ -68,8 +85,8 @@ class FundamentalFactor(BaseFactor):
 
     name = "fundamental"
     available_intraday = False
-    available_postmarket = True
-    weight = 20.0
+    available_postmarket = False
+    weight = 5.0
 
     _LABEL_THRESHOLD_RATIO = 0.5
 
@@ -176,7 +193,7 @@ class FundamentalFactor(BaseFactor):
         s_turnover = zeros.copy()
         if (total_mv > 0).any():
             mv_valid = total_mv[total_mv > 0]
-            mv_terciles = pd.qcut(mv_valid, 3, labels=["小市值", "中市值", "大市值"], duplicates="drop")
+            mv_terciles = _safe_qcut3(mv_valid)
             s_turnover.loc[mv_terciles.index] = _group_pct_rank(
                 turnover.loc[mv_terciles.index], mv_terciles, 25.0,
             )

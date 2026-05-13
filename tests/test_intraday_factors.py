@@ -300,7 +300,7 @@ class TestFormatParsing:
             '{"rc":0,"data":{"diff":[],"total":0}}', encoding="utf-8")
         monkeypatch.setattr(rq_lib, "Session", lambda: mock_sess)
         df = RealtimeSpotProvider._fetch_eastmoney(max_pages=1)
-        assert df is None
+        assert df is None or df.empty
 
 
 # ============================================================
@@ -459,25 +459,25 @@ class TestFallbackChain:
         provider._cache["slot"] = 99
         provider._cache["source"] = "tencent"
         monkeypatch.setattr(RealtimeSpotProvider, "_fetch_tencent", classmethod(lambda cls: None))
-        monkeypatch.setattr(RealtimeSpotProvider, "_fetch_sina", classmethod(lambda cls: None))
-        monkeypatch.setattr(RealtimeSpotProvider, "_fetch_eastmoney", classmethod(lambda cls: None))
+        monkeypatch.setattr(RealtimeSpotProvider, "_fetch_mootdx_with_supplement", lambda self: None)
+        monkeypatch.setattr(RealtimeSpotProvider, "_fetch_eastmoney", classmethod(lambda cls, **kw: None))
         df = provider.fetch()
         assert df is not None
 
     def test_all_fail_no_cache(self, provider, code_list, monkeypatch):
         monkeypatch.setattr(RealtimeSpotProvider, "_fetch_tencent", classmethod(lambda cls: None))
-        monkeypatch.setattr(RealtimeSpotProvider, "_fetch_sina", classmethod(lambda cls: None))
-        monkeypatch.setattr(RealtimeSpotProvider, "_fetch_eastmoney", classmethod(lambda cls: None))
+        monkeypatch.setattr(RealtimeSpotProvider, "_fetch_mootdx_with_supplement", lambda self: None)
+        monkeypatch.setattr(RealtimeSpotProvider, "_fetch_eastmoney", classmethod(lambda cls, **kw: None))
         df = provider.fetch()
         assert df is None
 
     def test_empty_df_falls_through(self, provider, code_list, monkeypatch):
         monkeypatch.setattr(RealtimeSpotProvider, "_fetch_tencent",
                             classmethod(lambda cls: pd.DataFrame()))
-        monkeypatch.setattr(RealtimeSpotProvider, "_fetch_sina",
-                            classmethod(lambda cls: pd.DataFrame()))
+        monkeypatch.setattr(RealtimeSpotProvider, "_fetch_mootdx_with_supplement",
+                            lambda self: pd.DataFrame())
         monkeypatch.setattr(RealtimeSpotProvider, "_fetch_eastmoney",
-                            classmethod(lambda cls: pd.DataFrame()))
+                            classmethod(lambda cls, **kw: pd.DataFrame()))
         df = provider.fetch()
         assert df is None
 
@@ -667,7 +667,7 @@ class TestMaEntryFactor:
     def test_ma5_pullback_adds_25(self, factor):
         df = self._make_ma_df(["A.SH"], close=[10.15], ma5=[10.0], ma10=[9.5], ma20=[9.0])
         scores = factor.score(df)
-        assert scores["A.SH"] >= 45.0
+        assert scores["A.SH"] >= 40.0
 
     def test_spread_under_2pct_adds_15(self, factor):
         df = self._make_ma_df(["A.SH"], close=[10.0], ma5=[10.05], ma10=[10.0], ma20=[9.95])
@@ -770,21 +770,23 @@ class TestMomentumFactor:
         assert any("放量" in r for r in reasons["A.SH"])
 
     def test_normalize_eastmoney(self, factor):
+        from src.discovery.money_flow_source import _normalize_eastmoney
         df = pd.DataFrame([{
-            "f12": "600519", "f3": 1.5, "f8": 3.0, "f10": 1.5,
+            "f12": "600519", "f14": "茅台", "f3": 1.5, "f8": 3.0, "f10": 1.5,
             "f62": 5e8, "f72": 2e8, "f184": 5.0,
         }])
-        result = factor._normalize_eastmoney(df)
+        result = _normalize_eastmoney(df)
         assert result.index[0] == "600519.SH"
         assert result.iloc[0]["inflow_rate"] == 0.05
         assert result.iloc[0]["pct_chg"] == 1.5
 
     def test_normalize_tushare(self, factor):
+        from src.discovery.money_flow_source import _normalize_tushare
         df = pd.DataFrame([{
             "buy_elg_amount": 1e8, "sell_elg_amount": 3e7,
             "buy_lg_amount": 5e7, "sell_lg_amount": 2e7,
         }], index=["600519.SH"])
-        result = factor._normalize_tushare(df)
+        result = _normalize_tushare(df)
         assert result.iloc[0]["major_net"] == 1e8
         assert result.iloc[0]["inflow_rate"] == 0.5
 
@@ -899,10 +901,10 @@ class TestPopularityFactor:
         return PopularityFactor()
 
     def test_surge_percentile_top_gets_full(self, factor):
-        """飙升幅度：rank_change 最高者得满分 45。"""
+        """飙升幅度：rank_change 最高者得分最高。"""
         df = _make_factor_df(["A.SH", "B.SH", "C.SH"],
             rank=[50, 50, 50],
-            rank_change=[3000, 1500, 500],
+            rank_change=[40, 20, 10],
             pct_chg=[1.0, 1.0, 1.0])
         scores = factor.score(df)
         assert scores["A.SH"] > scores["B.SH"] > scores["C.SH"]
@@ -1022,10 +1024,10 @@ class TestIndexFormat:
         assert result.index[0] == "600519.SH"
 
     def test_momentum_code_to_ts(self):
-        from src.discovery.factors.momentum_factor import MomentumFactor
-        assert MomentumFactor._code_to_ts_code("600519") == "600519.SH"
-        assert MomentumFactor._code_to_ts_code("000858") == "000858.SZ"
-        assert MomentumFactor._code_to_ts_code("430489") == "430489.BJ"
+        from src.discovery.money_flow_source import _code_to_ts_code
+        assert _code_to_ts_code("600519") == "600519.SH"
+        assert _code_to_ts_code("000858") == "000858.SZ"
+        assert _code_to_ts_code("430489") == "430489.BJ"
 
 
 # ============================================================

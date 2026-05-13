@@ -27,7 +27,7 @@ class BacktestServiceTestCase(unittest.TestCase):
 
         Config._instance = None
         DatabaseManager.reset_instance()
-        self.db = DatabaseManager.get_instance()
+        self.db = DatabaseManager(db_url=f"sqlite:///{self._db_path}")
 
         # Ensure analysis is old enough for default min_age_days=14
         old_created_at = datetime(2024, 1, 1, 0, 0, 0)

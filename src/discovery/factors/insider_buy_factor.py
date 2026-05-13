@@ -29,7 +29,7 @@ class InsiderBuyFactor(BaseFactor):
     name = "insider_buy"
     available_intraday = False
     available_postmarket = True
-    weight = 8.0
+    weight = 5.0
     _LABEL_THRESHOLD = 5.0
 
     def fetch_data(self, trade_date: str, **kwargs) -> Optional[pd.DataFrame]:

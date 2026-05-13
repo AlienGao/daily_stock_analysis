@@ -441,6 +441,9 @@ def _iter_lookup_candidates(value: Any) -> list[str]:
         normalized = part.strip()
         if normalized and normalized not in candidates:
             candidates.append(normalized)
+        stripped = re.sub(r"[（(][^）)]*[）)]", "", normalized).strip()
+        if stripped and stripped not in candidates:
+            candidates.append(stripped)
     return candidates
 
 
@@ -535,13 +538,22 @@ def _translate_from_map(
 
 
 def localize_operation_advice(value: Any, language: Optional[str]) -> str:
-    """Translate operation advice between Chinese and English when recognized."""
-    return _translate_from_map(
+    """Translate operation advice between Chinese and English when recognized.
+
+    The emoji is prepended so downstream categorisation (e.g. .env sync) can
+    use it as the sole reliable signal — emojis are set by get_signal_level,
+    never by the LLM.
+    """
+    _, emoji, _ = get_signal_level(value, None, None)
+    text = _translate_from_map(
         value,
         language,
         canonical_map=_OPERATION_ADVICE_CANONICAL_MAP,
         translations=_OPERATION_ADVICE_TRANSLATIONS,
     )
+    if text and emoji:
+        return f"{emoji} {text}"
+    return text
 
 
 def localize_trend_prediction(value: Any, language: Optional[str]) -> str:

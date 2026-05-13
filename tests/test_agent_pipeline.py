@@ -57,7 +57,8 @@ class TestAgentConfig(unittest.TestCase):
         'AGENT_MAX_STEPS': '15',
         'AGENT_SKILLS': 'dragon_head,shrink_pullback,volume_breakout',
     }, clear=True)
-    def test_agent_config_from_env(self):
+    @patch('src.config.load_dotenv')
+    def test_agent_config_from_env(self, _mock_dotenv):
         """Agent config should be loaded from environment."""
         from src.config import Config
         Config._instance = None
@@ -75,7 +76,8 @@ class TestAgentConfig(unittest.TestCase):
         self.assertFalse(config.agent_mode)
 
     @patch.dict(os.environ, {'AGENT_SKILLS': ''}, clear=True)
-    def test_empty_skills_list(self):
+    @patch('src.config.load_dotenv')
+    def test_empty_skills_list(self, _mock_dotenv):
         """Empty AGENT_SKILLS should produce empty list."""
         from src.config import Config
         Config._instance = None
@@ -83,7 +85,8 @@ class TestAgentConfig(unittest.TestCase):
         self.assertEqual(config.agent_skills, [])
 
     @patch.dict(os.environ, {'AGENT_SKILLS': '  dragon_head , shrink_pullback  '}, clear=True)
-    def test_skills_whitespace_handling(self):
+    @patch('src.config.load_dotenv')
+    def test_skills_whitespace_handling(self, _mock_dotenv):
         """Skills should have whitespace trimmed."""
         from src.config import Config
         Config._instance = None
@@ -513,7 +516,7 @@ class TestAgentResultConversion(unittest.TestCase):
         self.assertTrue(result.success)
         self.assertEqual(result.sentiment_score, 64)
         self.assertEqual(result.trend_prediction, "多头排列")
-        self.assertEqual(result.operation_advice, "买入")
+        self.assertEqual(result.operation_advice, "🟢 买入")
         self.assertEqual(result.decision_type, "buy")
         self.assertIn("trend:fallback", result.data_sources)
 
@@ -553,7 +556,7 @@ class TestAgentResultConversion(unittest.TestCase):
         ok, missing = check_content_integrity(result)
         self.assertTrue(ok, missing)
         self.assertEqual(result.sentiment_score, 68)
-        self.assertEqual(result.analysis_summary, "趋势结论：多头排列；操作建议：买入。")
+        self.assertEqual(result.analysis_summary, "趋势结论：多头排列；操作建议：🟢 买入。")
         self.assertEqual(result.dashboard["sentiment_score"], 68)
         self.assertEqual(result.dashboard["core_conclusion"]["one_sentence"], result.analysis_summary)
         self.assertEqual(result.dashboard["intelligence"]["risk_alerts"], ["跌破 MA20 需止损"])
@@ -588,7 +591,7 @@ class TestAgentResultConversion(unittest.TestCase):
             "q-dict-advice",
         )
 
-        self.assertEqual(result.operation_advice, "买入")
+        self.assertEqual(result.operation_advice, "🟢 买入")
         self.assertEqual(result.decision_type, "buy")
 
     def test_convert_missing_decision_type_preserves_conditional_hold_advice(self):
@@ -800,11 +803,11 @@ class TestAgentResultConversion(unittest.TestCase):
 
         self.assertEqual(result.sentiment_score, 66)
         self.assertEqual(result.trend_prediction, "多头排列")
-        self.assertEqual(result.operation_advice, "买入")
+        self.assertEqual(result.operation_advice, "🟢 买入")
         self.assertEqual(result.decision_type, "buy")
         self.assertEqual(result.dashboard["sentiment_score"], 66)
         self.assertEqual(result.dashboard["trend_prediction"], "多头排列")
-        self.assertEqual(result.dashboard["operation_advice"], "买入")
+        self.assertEqual(result.dashboard["operation_advice"], "🟢 买入")
     def test_convert_empty_dashboard_backfills_localized_trend_fallback_for_en(self):
         """English reports should keep trend/advice fallback values localized."""
         pipeline = self._make_pipeline()
@@ -838,16 +841,16 @@ class TestAgentResultConversion(unittest.TestCase):
 
         self.assertEqual(result.report_language, "en")
         self.assertEqual(result.trend_prediction, "Bullish")
-        self.assertEqual(result.operation_advice, "Buy")
+        self.assertEqual(result.operation_advice, "🟢 Buy")
         self.assertEqual(
             result.analysis_summary,
-            "Trend view: Bullish; action advice: Buy.",
+            "Trend view: Bullish; action advice: 🟢 Buy.",
         )
         self.assertEqual(result.dashboard["trend_prediction"], "Bullish")
-        self.assertEqual(result.dashboard["operation_advice"], "Buy")
+        self.assertEqual(result.dashboard["operation_advice"], "🟢 Buy")
         self.assertEqual(
             result.dashboard["core_conclusion"]["one_sentence"],
-            "Trend view: Bullish; action advice: Buy.",
+            "Trend view: Bullish; action advice: 🟢 Buy.",
         )
 
     def test_convert_non_dict_advice_conflict_keeps_advice_decision(self):
@@ -928,10 +931,10 @@ class TestAgentResultConversion(unittest.TestCase):
 
         self.assertEqual(result.sentiment_score, 66)
         self.assertEqual(result.trend_prediction, "多头排列")
-        self.assertEqual(result.operation_advice, "买入")
+        self.assertEqual(result.operation_advice, "🟢 买入")
         self.assertEqual(result.decision_type, "buy")
         self.assertEqual(result.dashboard["sentiment_score"], 66)
-        self.assertEqual(result.dashboard["operation_advice"], "买入")
+        self.assertEqual(result.dashboard["operation_advice"], "🟢 买入")
         self.assertEqual(result.dashboard["core_conclusion"]["one_sentence"], "AI 已给出的核心结论")
         self.assertEqual(result.dashboard["intelligence"]["risk_alerts"], ["AI 风险"])
         self.assertEqual(result.dashboard["battle_plan"]["sniper_points"]["stop_loss"], 108.5)
@@ -1035,8 +1038,8 @@ class TestAgentResultConversion(unittest.TestCase):
         from src.stock_analyzer import BuySignal, TrendAnalysisResult, TrendStatus
 
         cases = [
-            (BuySignal.STRONG_BUY, "buy", "强烈买入"),
-            (BuySignal.STRONG_SELL, "sell", "强烈卖出"),
+            (BuySignal.STRONG_BUY, "buy", "🟢 强烈买入"),
+            (BuySignal.STRONG_SELL, "sell", "🔴 强烈卖出"),
         ]
 
         for buy_signal, expected_decision, expected_advice in cases:

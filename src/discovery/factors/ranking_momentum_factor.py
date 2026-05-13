@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 from sqlalchemy import text
 
-from src.discovery.factors.base import BaseFactor, bare_to_ts_code
+from src.discovery.factors.base import BaseFactor, bare_to_ts_code, ts_code_to_bare
 
 logger = logging.getLogger(__name__)
 
@@ -73,16 +73,18 @@ class RankingMomentumFactor(BaseFactor):
                 logger.warning("[RankingMomentum] stock_daily 无交易日数据 (target=%s)", target_dt)
                 return None
 
+            placeholders = ",".join(f":d{i}" for i in range(len(trading_dates)))
+            params = {f"d{i}": d for i, d in enumerate(trading_dates)}
             rows = s.execute(
                 text(
-                    "SELECT code, date, pct_chg FROM stock_daily "
-                    "WHERE date IN :dates ORDER BY code, date DESC"
+                    f"SELECT code, date, pct_chg FROM stock_daily "
+                    f"WHERE date IN ({placeholders}) ORDER BY code, date DESC"
                 ),
-                {"dates": tuple(trading_dates)},
+                params,
             ).fetchall()
 
         if not rows:
-            logger.warning("[RankingMomentum] stock_daily 无数据 (%s ~ %s)", cutoff, target_dt)
+            logger.warning("[RankingMomentum] stock_daily 无数据 (%s ~ %s)", trading_dates[-1], target_dt)
             return None
 
         hist = pd.DataFrame(rows, columns=["code", "date", "pct_chg"])
@@ -235,7 +237,7 @@ class RankingMomentumFactor(BaseFactor):
             total = max(0.0, min(100.0, total))
             scores.loc[ts_code] = total
 
-            bare = str(ts_code).split(".")[0] if "." in str(ts_code) else str(ts_code)
+            bare = ts_code_to_bare(str(ts_code))
             self._rank_trend_cache[bare] = {
                 "slope": round(slope, 2),
                 "consecutive": consecutive,
@@ -258,7 +260,7 @@ class RankingMomentumFactor(BaseFactor):
         for ts_code in scores.index:
             if scores[ts_code] <= 0:
                 continue
-            bare = str(ts_code).split(".")[0] if "." in str(ts_code) else str(ts_code)
+            bare = ts_code_to_bare(str(ts_code))
             info = self._rank_trend_cache.get(bare, {})
             if not info:
                 continue

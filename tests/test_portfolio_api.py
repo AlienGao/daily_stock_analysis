@@ -39,6 +39,8 @@ class PortfolioApiTestCase(unittest.TestCase):
     """Portfolio API contract tests for account/events/snapshot."""
 
     def setUp(self) -> None:
+        # Must be set before api modules are imported (router checks at import time)
+        os.environ["PORTFOLIO_MODULE_ENABLED"] = "true"
         _reset_auth_globals()
         self.temp_dir = tempfile.TemporaryDirectory()
         self.data_dir = Path(self.temp_dir.name)
@@ -50,6 +52,7 @@ class PortfolioApiTestCase(unittest.TestCase):
                     "STOCK_LIST=600519",
                     "GEMINI_API_KEY=test",
                     "ADMIN_AUTH_ENABLED=false",
+                    "PORTFOLIO_MODULE_ENABLED=true",
                     f"DATABASE_PATH={self.db_path}",
                 ]
             )
@@ -61,7 +64,14 @@ class PortfolioApiTestCase(unittest.TestCase):
         os.environ["DATABASE_PATH"] = str(self.db_path)
         Config.reset_instance()
         DatabaseManager.reset_instance()
-        app = create_app(static_dir=self.data_dir / "empty-static")
+
+        # Purge cached api modules so router re-evaluates with PORTFOLIO_MODULE_ENABLED
+        for key in list(sys.modules):
+            if key.startswith("api"):
+                del sys.modules[key]
+        from api.app import create_app as _create_app
+
+        app = _create_app(static_dir=self.data_dir / "empty-static")
         self.client = TestClient(app)
         self.db = DatabaseManager.get_instance()
 

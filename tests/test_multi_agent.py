@@ -887,10 +887,13 @@ class TestOrchestratorExecution(unittest.TestCase):
 
         orch = self._make_orchestrator()
         fake_result = OrchestratorResult(success=True, content="assistant reply")
+        fake_session = MagicMock()
+        fake_session.get_history.return_value = []
 
         with patch.object(orch, "_execute_pipeline", return_value=fake_result):
-            with patch("src.agent.conversation.conversation_manager.add_message") as add_message:
-                result = orch.chat("hello", "session-1")
+            with patch("src.agent.conversation.conversation_manager.get_or_create", return_value=fake_session):
+                with patch("src.agent.conversation.conversation_manager.add_message") as add_message:
+                    result = orch.chat("hello", "session-1")
 
         self.assertTrue(result.success)
         self.assertEqual(add_message.call_count, 2)
@@ -902,10 +905,13 @@ class TestOrchestratorExecution(unittest.TestCase):
 
         orch = self._make_orchestrator()
         fake_result = OrchestratorResult(success=False, error="boom")
+        fake_session = MagicMock()
+        fake_session.get_history.return_value = []
 
         with patch.object(orch, "_execute_pipeline", return_value=fake_result):
-            with patch("src.agent.conversation.conversation_manager.add_message") as add_message:
-                result = orch.chat("hello", "session-2")
+            with patch("src.agent.conversation.conversation_manager.get_or_create", return_value=fake_session):
+                with patch("src.agent.conversation.conversation_manager.add_message") as add_message:
+                    result = orch.chat("hello", "session-2")
 
         self.assertFalse(result.success)
         add_message.assert_any_call("session-2", "assistant", "[分析失败] boom")

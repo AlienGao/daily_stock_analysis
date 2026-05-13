@@ -13,7 +13,7 @@ from typing import Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-from src.discovery.factors.base import BaseFactor
+from src.discovery.factors.base import BaseFactor, ts_code_to_bare
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class MaEntryFactor(BaseFactor):
     name = "ma_entry"
     available_intraday = True
     available_postmarket = False
-    weight = 35.0
+    weight = 25.0
     _LABEL_THRESHOLD = 5.0
 
     def __init__(self):
@@ -150,20 +150,6 @@ class MaEntryFactor(BaseFactor):
         if now <= morning_close:
             return int((now - market_open).total_seconds() / 60)
         return 120 + int((now - afternoon_open).total_seconds() / 60)
-
-    @staticmethod
-    def _compute_mas(close_matrix: pd.DataFrame) -> pd.DataFrame:
-        """从收盘价矩阵计算最新 MA5/MA10/MA20。
-
-        close_matrix: index=code, columns=date, values=close
-        对每个 stock 取最后 N 个有效收盘价的均值。
-        """
-        mat_t = close_matrix.T
-        ma5 = mat_t.rolling(window=5, min_periods=1).mean().iloc[-1]
-        ma10 = mat_t.rolling(window=10, min_periods=1).mean().iloc[-1]
-        ma20 = mat_t.rolling(window=20, min_periods=1).mean().iloc[-1]
-        ma5.name, ma10.name, ma20.name = "ma5", "ma10", "ma20"
-        return pd.concat([ma5, ma10, ma20], axis=1)
 
     @staticmethod
     def _compute_kdj(ohlc_matrix: pd.DataFrame, spot: pd.DataFrame, period: int = 9) -> pd.DataFrame:
@@ -428,7 +414,7 @@ class MaEntryFactor(BaseFactor):
         cached_t: Dict[str, Dict[str, bool]] = {}
 
         for ts_code in idx:
-            bare = str(ts_code).split(".")[0] if "." in str(ts_code) else str(ts_code).strip().zfill(6)
+            bare = ts_code_to_bare(str(ts_code))
 
             cur_bull = bool(signals["bull_align"].get(ts_code, False))
             cur_near_ma5 = bool(signals["near_ma5"].get(ts_code, False))
@@ -523,7 +509,7 @@ class MaEntryFactor(BaseFactor):
         for ts_code in scores.index:
             if scores[ts_code] < self._LABEL_THRESHOLD:
                 continue
-            bare = str(ts_code).split(".")[0] if "." in str(ts_code) else str(ts_code).strip().zfill(6)
+            bare = ts_code_to_bare(str(ts_code))
             t = transitions.get(bare, {})
             r = []
 

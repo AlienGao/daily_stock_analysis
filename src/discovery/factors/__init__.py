@@ -39,6 +39,7 @@ from src.discovery.factors.performance_factor import PerformanceFactor
 from src.discovery.factors.buyback_factor import BuybackFactor
 from src.discovery.factors.insider_buy_factor import InsiderBuyFactor
 from src.discovery.factors.broker_recommend_factor import BrokerRecommendFactor
+from src.discovery.factors.concept_heat_factor import ConceptHeatFactor
 
 __all__ = [
     "BaseFactor",
@@ -62,6 +63,7 @@ __all__ = [
     "BuybackFactor",
     "InsiderBuyFactor",
     "BrokerRecommendFactor",
+    "ConceptHeatFactor",
 ]
 
 # ---------------------------------------------------------------------------

@@ -64,30 +64,30 @@ TAG_CATEGORY_MAP = {
 def operation_advice_to_category(operation_advice: str, unmapped: Optional[Set[str]] = None) -> str:
     """Return one of BUY/HOLD/LOOK/SELL.
 
-    Priority:
-    1) Emoji marker (fast path for already-formatted text)
-    2) Canonical tag via get_signal_level (same canonical map as report display)
-    3) Fallback to LOOK
+    Primary path: emoji prepended by localize_operation_advice (set by
+    get_signal_level, never by LLM).  Fallback: canonical tag lookup via
+    get_signal_level for texts from code paths that bypass localisation.
     """
     advice = (operation_advice or "").strip()
     if not advice:
         return "LOOK"
 
-    # 1) Emoji match
     for emoji, category in EMOJI_CATEGORY_MAP.items():
         if emoji in advice:
             return category
 
-    # 2) Canonical tag via get_signal_level — unified with report display mapping
+    # Fallback: some pipeline paths set operation_advice without going through
+    # localize_operation_advice, so the text has no emoji.  Use get_signal_level
+    # to derive the canonical tag deterministically.
     try:
         from src.report_language import get_signal_level
+
         _, _, tag = get_signal_level(advice, None, None)
         if tag in TAG_CATEGORY_MAP:
             return TAG_CATEGORY_MAP[tag]
     except Exception:
         pass
 
-    # 3) Fallback
-    if advice and unmapped is not None:
+    if unmapped is not None:
         unmapped.add(advice)
     return "LOOK"

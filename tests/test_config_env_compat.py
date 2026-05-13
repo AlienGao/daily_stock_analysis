@@ -60,6 +60,7 @@ class ConfigEnvCompatibilityTestCase(unittest.TestCase):
     ) -> None:
         env = {
             "RUN_IMMEDIATELY": "false",
+            "ENV_FILE": "/tmp/nonexistent_test_env.12345",
         }
 
         with patch.dict(os.environ, env, clear=True):
@@ -121,10 +122,12 @@ class ConfigEnvCompatibilityTestCase(unittest.TestCase):
         self.assertFalse(config.schedule_run_immediately)
         self.assertTrue(config.run_immediately)
 
+    @patch("src.config.setup_env")
     @patch.object(Config, "_parse_litellm_yaml", return_value=[])
     def test_schedule_run_immediately_ignores_persisted_alias_when_only_legacy_env_is_explicit(
         self,
         _mock_parse_yaml,
+        _mock_setup_env,
     ) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             env_path = Path(temp_dir) / ".env"
@@ -284,10 +287,12 @@ class ConfigEnvCompatibilityTestCase(unittest.TestCase):
         self.assertFalse(config.run_immediately)
         self.assertTrue(config.schedule_run_immediately)
 
+    @patch("src.config.setup_env")
     @patch.object(Config, "_parse_litellm_yaml", return_value=[])
     def test_runtime_mutable_keys_prefer_process_env_when_values_differ(
         self,
         _mock_parse_yaml,
+        _mock_setup_env,
     ) -> None:
         """When process env explicitly sets a WEBUI-mutable key to a value
         that differs from .env (e.g. via docker-compose ``environment:``),
@@ -380,7 +385,7 @@ class ConfigEnvCompatibilityTestCase(unittest.TestCase):
             config = Config._load_from_env()
 
         self.assertEqual(config.agent_orchestrator_timeout_s, 600)
-        self.assertEqual(config.news_max_age_days, 3)
+        self.assertEqual(config.news_max_age_days, 5)
         self.assertEqual(config.max_workers, 3)
         self.assertEqual(config.webui_port, 8000)
 

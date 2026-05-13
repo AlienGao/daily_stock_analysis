@@ -654,7 +654,7 @@ class AnalysisHistoryTestCase(unittest.TestCase):
 
         self.assertEqual(report.meta.report_language, "en")
         self.assertEqual(report.meta.stock_name, "Unnamed Stock")
-        self.assertEqual(report.summary.operation_advice, "Buy")
+        self.assertEqual(report.summary.operation_advice, "🟢 Buy")
         self.assertEqual(report.summary.trend_prediction, "Bullish")
         self.assertEqual(report.summary.sentiment_label, "Bullish")
 

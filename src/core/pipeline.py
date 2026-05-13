@@ -23,7 +23,7 @@ from typing import List, Dict, Any, Optional, Tuple, Callable
 import pandas as pd
 
 from src.config import get_config, Config
-from src.storage import get_db, INTERACTIVE_ANALYSIS_QUERY_SOURCES
+from src.storage import DatabaseManager, get_db, INTERACTIVE_ANALYSIS_QUERY_SOURCES
 from data_provider import DataFetcherManager
 from data_provider.base import normalize_stock_code
 from data_provider.realtime_types import ChipDistribution
@@ -468,8 +468,11 @@ class StockAnalysisPipeline:
             chip_penalty = 0
             chip_penalty_reason = ""
             if winner_data is not None:
-                conc = winner_data.get("concentration", 1.0)
-                wr = winner_data.get("winner_rate", 0.0)
+                try:
+                    conc = float(winner_data.get("concentration", 1.0))
+                    wr = float(winner_data.get("winner_rate", 0.0))
+                except (TypeError, ValueError):
+                    conc, wr = 1.0, 0.0
                 if conc > 0 and (conc > 0.15 or wr < 70):
                     # 集中度越高扣分越多，胜率越低扣分越多
                     conc_penalty = max(0, (conc - 0.15) * 100) if conc > 0.15 else 0

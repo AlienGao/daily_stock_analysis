@@ -37,7 +37,7 @@ class InstitutionHoldFactor(BaseFactor):
     name = "institution_hold"
     available_intraday = False
     available_postmarket = True
-    weight = 15.0
+    weight = 8.0
 
     _LABEL_THRESHOLD = 0.6
 

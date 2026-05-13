@@ -68,7 +68,7 @@ def _default_factors():
         BrokerRecommendFactor, FundamentalFactor, HotMoneyFactor, MarginFactor,
         ChipFactor, InsiderBuyFactor, InstitutionHoldFactor, LimitFactor,
         PerformanceFactor, PopularityFactor, RankingMomentumFactor, ReboundFactor,
-        BuybackFactor, ProfitForecastFactor,
+        BuybackFactor, ProfitForecastFactor, ConceptHeatFactor,
     )
     return [
         MaEntryFactor(),
@@ -76,7 +76,7 @@ def _default_factors():
         BrokerRecommendFactor(), FundamentalFactor(), HotMoneyFactor(), MarginFactor(),
         ChipFactor(), InsiderBuyFactor(), InstitutionHoldFactor(), LimitFactor(),
         PerformanceFactor(), PopularityFactor(), RankingMomentumFactor(), ReboundFactor(),
-        BuybackFactor(), ProfitForecastFactor(),
+        BuybackFactor(), ProfitForecastFactor(), ConceptHeatFactor(),
     ]
 
 
@@ -489,15 +489,40 @@ class StockDiscoveryEngine:
             existing = [f for f in money_group if f in corr_matrix.columns]
 
             if len(existing) > 1:
-                # 计算组内均值作为主成分代理
                 sub = df_scores[existing]
                 pc = sub.mean(axis=1)
 
                 for f in existing:
                     orig = df_scores[f]
-                    # 与均值的相关性
                     corr_with_mean = corr_matrix.loc[f, existing].mean()
-                    # 正交化：原分 - PC * corr
+                    residual = orig - pc * corr_with_mean
+                    score_columns[f] = residual.clip(0, 100).fillna(0)
+
+            # 动量类因子组（高度相关）
+            momentum_group = ["momentum", "ranking_momentum"]
+            existing = [f for f in momentum_group if f in corr_matrix.columns]
+
+            if len(existing) > 1:
+                sub = df_scores[existing]
+                pc = sub.mean(axis=1)
+
+                for f in existing:
+                    orig = df_scores[f]
+                    corr_with_mean = corr_matrix.loc[f, existing].mean()
+                    residual = orig - pc * corr_with_mean
+                    score_columns[f] = residual.clip(0, 100).fillna(0)
+
+            # 技术类因子组（高度相关）
+            technical_group = ["technical", "chip"]
+            existing = [f for f in technical_group if f in corr_matrix.columns]
+
+            if len(existing) > 1:
+                sub = df_scores[existing]
+                pc = sub.mean(axis=1)
+
+                for f in existing:
+                    orig = df_scores[f]
+                    corr_with_mean = corr_matrix.loc[f, existing].mean()
                     residual = orig - pc * corr_with_mean
                     score_columns[f] = residual.clip(0, 100).fillna(0)
 
@@ -1063,7 +1088,7 @@ class StockDiscoveryEngine:
         # Phase 5.5: 拥挤度惩罚
         results = self._apply_crowding_penalty(results, trade_date)
 
-        # Phase 5.6: IC 追踪（仅盘后，Tushare 日线 T+1 更新，盘中无今日 K 线）
+        # Phase 5.6: IC 追踪 & 因子监控（仅盘后）
         if mode != "intraday":
             try:
                 from concurrent.futures import ThreadPoolExecutor
@@ -1076,6 +1101,14 @@ class StockDiscoveryEngine:
                 ThreadPoolExecutor(max_workers=1).submit(_run_ic)
             except Exception as e:
                 logger.debug(f"[IC] IC评估失败: {e}")
+
+            try:
+                from src.discovery.factor_monitor import FactorMonitor
+                monitor = FactorMonitor(top_n=20, eval_days=5)
+                monitor.record_picks(raw_scores, trade_date)
+                monitor.backfill(trade_date)
+            except Exception as e:
+                logger.warning("[FactorMonitor] 因子监控失败: %s", e)
 
         elapsed = time.time() - start_time
         top_info = f"{results[0].stock_name} ({results[0].score:.1f})" if results else "N/A (0)"

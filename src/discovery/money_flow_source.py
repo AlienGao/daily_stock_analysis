@@ -319,7 +319,7 @@ def _normalize_eastmoney(df: pd.DataFrame) -> pd.DataFrame:
         return pd.to_numeric(df.get(col, default), errors="coerce").fillna(default)
 
     result = pd.DataFrame(index=df.index)
-    result["name"] = df.get("f14", "").fillna("")
+    result["name"] = df.get("f14", pd.Series("", index=df.index)).fillna("")
     result["major_net"] = _num("f62", 0)
     result["lg_net"] = _num("f72", 0)
     result["inflow_rate"] = _num("f184", 0) / 100.0

@@ -24,6 +24,21 @@ def bare_to_ts_code(code: str) -> str:
     return c
 
 
+def ts_code_to_bare(code: str) -> str:
+    """ts_code → 6位裸码 (e.g. '600519.SH' → '600519', '600519' → '600519')."""
+    c = str(code).strip()
+    if "." in c:
+        return c.split(".")[0].zfill(6)
+    return c.zfill(6)
+
+
+def ts_codes_to_bare(index: pd.Index) -> pd.Index:
+    """将 ts_code 格式的 Index 批量转为 6 位裸码，向量化操作。"""
+    codes = index.astype(str).str.strip()
+    codes = codes.str.replace(r"\.(SH|SZ|BJ)$", "", regex=True)
+    return codes.str.zfill(6)
+
+
 def safe_pct_change(last_val: pd.Series, first_val: pd.Series) -> pd.Series:
     """安全计算增幅 (last - first) / |first| * 100, first 为 0 时返回 0."""
     last = pd.to_numeric(last_val, errors="coerce").fillna(0)

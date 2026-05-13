@@ -260,4 +260,4 @@ class TestBuybackFactor:
         assert factor.name == "buyback"
         assert factor.available_intraday is False
         assert factor.available_postmarket is True
-        assert factor.weight == 10.0
+        assert factor.weight == 5.0
