@@ -139,6 +139,9 @@ def _trading_minutes_elapsed() -> int:
     return 120 + int((now - afternoon_open).total_seconds() / 60)
 
 
+_CN_AMOUNT_PARSE_FAILURES: List[str] = []  # 记录前几个解析失败的原始值，用于日志
+
+
 def _parse_cn_amount(val) -> float:
     """解析中文金额字符串：'9937.50万'→99375000, '6.10亿'→610000000."""
     if isinstance(val, (int, float)):
@@ -156,9 +159,12 @@ def _parse_cn_amount(val) -> float:
     elif "万" in s:
         s = s.replace("万", "")
         mul = 1e4
+    s = s.replace(",", "")  # 移除千分位逗号
     try:
         num = float(s) if s else 0.0
     except ValueError:
+        if len(_CN_AMOUNT_PARSE_FAILURES) < 5:
+            _CN_AMOUNT_PARSE_FAILURES.append(str(val))
         return 0.0
     return -num * mul if neg else num * mul
 
@@ -174,8 +180,15 @@ def _parse_cn_pct(val) -> float:
         return 0.0
 
 
+_AVG_VOL_CACHE: Dict[str, "pd.Series"] = {}  # {trade_date: Series[code→avg_vol]}
+
+
 def _get_avg_volume(db, trade_date: str, window: int = 5) -> Optional["pd.Series"]:
-    """获取每只股票过去 window 个交易日的日均成交量（股）。"""
+    """获取每只股票过去 window 个交易日的日均成交量（股），同一天只查一次。"""
+    if trade_date in _AVG_VOL_CACHE:
+        logger.debug("[MoneyFlow] 5日均量命中缓存 (trade_date=%s)", trade_date)
+        return _AVG_VOL_CACHE[trade_date]
+
     from sqlalchemy import text
 
     target = dt.strptime(trade_date, "%Y%m%d").date()
@@ -195,6 +208,8 @@ def _get_avg_volume(db, trade_date: str, window: int = 5) -> Optional["pd.Series
         avg = vdf.groupby("code")["volume"].apply(
             lambda x: x.head(window).mean() if len(x) > 0 else x.mean()
         )
+        logger.debug("[MoneyFlow] 5日均量计算完成: %d 只股票 (trade_date=%s)", len(avg), trade_date)
+        _AVG_VOL_CACHE[trade_date] = avg
         return avg
 
 
@@ -209,9 +224,6 @@ def _compute_volume_ratio(df: pd.DataFrame, trade_date: str) -> pd.DataFrame:
         return df
 
     elapsed = _trading_minutes_elapsed()
-    if elapsed < 15:
-        logger.debug("[MoneyFlow] 开盘不足 15 分钟，跳过量比自算")
-        return df
 
     avg_vol = _get_avg_volume(db, trade_date)
     if avg_vol is None or avg_vol.empty:
@@ -235,10 +247,10 @@ def _compute_volume_ratio(df: pd.DataFrame, trade_date: str) -> pd.DataFrame:
     df["avg_vol_5d"] = codes.map(avg_map)
 
     has_data = df["today_vol"].notna() & (df["avg_vol_5d"] > 0)
-    est_vol = df["today_vol"] * (240.0 / elapsed)
+    est_vol = df["today_vol"] * (240.0 / max(elapsed, 1))
     df.loc[has_data, "volume_ratio"] = (
         est_vol[has_data] / df.loc[has_data, "avg_vol_5d"]
-    ).clip(lower=0)
+    ).clip(0, 5.0)  # 开盘早期外推不稳定，上限 5.0 防止极端值
 
     result = df.drop(columns=["today_vol", "avg_vol_5d"], errors="ignore")
     logger.debug(
@@ -383,6 +395,25 @@ def _normalize_tonghuashun(df: pd.DataFrame) -> pd.DataFrame:
     }, index=[_code_to_ts_code(c) for c in code_series])
 
     result = result[~result.index.duplicated(keep="first")]
+
+    # ── 解析后校验：全量解析失败时抛异常，触发 Tier 3 降级 ──
+    non_zero_major = (result["major_net"].abs() > 0).sum()
+    non_zero_amt = (amount.abs() > 0).sum()
+    logger.info(
+        "[MoneyFlow] 同花顺解析: %d 只股票, major_net 非零 %d, amount 非零 %d",
+        len(result), non_zero_major, non_zero_amt,
+    )
+    if _CN_AMOUNT_PARSE_FAILURES:
+        logger.warning(
+            "[MoneyFlow] 同花顺金额解析失败样本 (前%d个): %s",
+            len(_CN_AMOUNT_PARSE_FAILURES), _CN_AMOUNT_PARSE_FAILURES,
+        )
+        _CN_AMOUNT_PARSE_FAILURES.clear()
+    if len(result) > 100 and non_zero_major == 0:
+        raise ValueError(
+            "同花顺金额解析全部失败 (major_net 均为 0)，akshare 可能变更了字段格式"
+        )
+
     return result
 
 
@@ -392,7 +423,10 @@ def _normalize_tonghuashun(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _fetch_tier3_tushare(trade_date: str, tushare_fetcher=None) -> Optional[pd.DataFrame]:
-    """Tier 3: Tushare 资金流 + realtime_spot 实时指标（盘后兜底）。"""
+    """Tier 3: Tushare 资金流 + realtime_spot 实时指标（盘后兜底）。
+
+    realtime_spot 为空时，回退到 daily_basic (turnover_rate/volume_ratio) + stock_daily (pct_chg)。
+    """
     if tushare_fetcher is None:
         return None
 
@@ -401,17 +435,51 @@ def _fetch_tier3_tushare(trade_date: str, tushare_fetcher=None) -> Optional[pd.D
         return None
 
     result = mf.copy()
+    bare_codes = result.index.str.split(".").str[0].str.zfill(6)
 
+    from src.storage import DatabaseManager
+    db = DatabaseManager()
+
+    enriched = False
     try:
-        from src.storage import DatabaseManager
-        spot = DatabaseManager().get_realtime_spot()
+        spot = db.get_realtime_spot()
         if spot is not None and not spot.empty:
-            bare_codes = result.index.str.split(".").str[0].str.zfill(6)
             for col in ["pct_chg", "turnover_rate", "volume_ratio"]:
                 if col in spot.columns:
                     result[col] = bare_codes.map(spot[col])
+            enriched = True
     except Exception:
         pass
+
+    if not enriched:
+        logger.info("[MoneyFlow] realtime_spot 无数据，回退 daily_basic / stock_daily")
+        try:
+            basic = db.get_daily_basic(trade_date)
+            if basic is not None and not basic.empty:
+                for col in ["turnover_rate", "volume_ratio"]:
+                    if col in basic.columns:
+                        result[col] = bare_codes.map(basic[col])
+        except Exception:
+            pass
+
+        try:
+            from sqlalchemy import select as _select
+            from src.storage import StockDaily
+            from datetime import datetime as _dt
+            trade_dt = _dt.strptime(trade_date, "%Y%m%d").date()
+            with db.get_session() as session:
+                rows = session.execute(
+                    _select(StockDaily).where(StockDaily.date == trade_dt)
+                ).scalars().all()
+            if rows:
+                dl_map = {r.code: (getattr(r, "pct_chg", None), getattr(r, "close", None))
+                          for r in rows}
+                pct_series = bare_codes.map(
+                    lambda c: float(dl_map.get(c, (None, None))[0] or 0)
+                )
+                result["pct_chg"] = pct_series.astype(float)
+        except Exception:
+            pass
 
     return _normalize_tushare(result)
 

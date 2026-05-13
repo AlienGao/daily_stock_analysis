@@ -27,26 +27,39 @@ router = APIRouter()
 _SCAN_OUTPUT = "/tmp/discovery_top10.json"
 
 
-def _get_live_prices(ts_codes: List[str]) -> Dict[str, float]:
-    """获取实时价格，从 realtime_spot DB 读取。"""
+def _get_live_quotes(ts_codes: List[str]) -> "tuple[Dict[str, float], Dict[str, float]]":
+    """获取实时价格和涨跌幅。
+
+    Returns: (prices_dict, pct_chg_dict)，key 为 ts_code。
+    """
     try:
         from src.storage import DatabaseManager
         bare_codes = [c.split(".")[0] if "." in c else c for c in ts_codes]
         spot_df = DatabaseManager().get_current_prices(bare_codes)
         if spot_df is not None and not spot_df.empty:
-            result: Dict[str, float] = {}
+            prices: Dict[str, float] = {}
+            pct_chgs: Dict[str, float] = {}
             for ts_code in ts_codes:
                 code = ts_code.split(".")[0] if "." in ts_code else ts_code
                 try:
-                    val = spot_df.at[code, "price"]
-                    if pd.notna(val):
-                        result[ts_code] = float(val)
+                    p = spot_df.at[code, "price"]
+                    if pd.notna(p):
+                        prices[ts_code] = float(p)
+                    pct = spot_df.at[code, "pct_chg"]
+                    if pd.notna(pct):
+                        pct_chgs[ts_code] = float(pct)
                 except (KeyError, ValueError, TypeError):
                     pass
-            return result
+            return prices, pct_chgs
     except Exception:
         logger.warning("[Discovery API] realtime_spot 读取出错", exc_info=True)
-    return {}
+    return {}, {}
+
+
+def _get_live_prices(ts_codes: List[str]) -> Dict[str, float]:
+    """获取实时价格，从 realtime_spot DB 读取。"""
+    prices, _ = _get_live_quotes(ts_codes)
+    return prices
 
 
 # ---------------------------------------------------------------------------
@@ -214,6 +227,23 @@ class PostmarketReportResponse(BaseModel):
     report: str
     exists: bool
     top_n: List[DiscoveryItem] = []
+
+
+def _enrich_live_quotes(items: List[DiscoveryItem]) -> None:
+    """用 realtime_spot 的实时价格和涨跌幅覆盖列表中的对应字段。"""
+    ts_codes = [item.ts_code for item in items if item.ts_code]
+    if not ts_codes:
+        return
+    live_prices, live_pct_chgs = _get_live_quotes(ts_codes)
+    for item in items:
+        if not item.ts_code:
+            continue
+        lp = live_prices.get(item.ts_code)
+        if lp is not None:
+            item.live_price = lp if lp != item.price_at_discovery else None
+        pct = live_pct_chgs.get(item.ts_code)
+        if pct is not None:
+            item.pct_chg = pct
 
 
 # ---------------------------------------------------------------------------
@@ -548,6 +578,7 @@ def get_postmarket_report(
         recent = _get_latest_completed_task()
         if recent and recent.get("report"):
             top_n = _build_discovery_items(recent.get("top_n", []), mode="postmarket")
+            _enrich_live_quotes(top_n)
             return PostmarketReportResponse(
                 date=recent.get("date_str", report_date),
                 report=recent["report"],
@@ -598,6 +629,7 @@ def get_postmarket_report(
                 position_score=entry.get("position_score", 0.0),
                 formation_score=entry.get("formation_score", 0.0),
             ))
+        _enrich_live_quotes(top_n)
 
         return PostmarketReportResponse(
             date=effective_date, report=report, exists=True, top_n=top_n,

@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 """强势启动因子 (Momentum / Breakout Factor).
 
-在均线买点基础上叠加强势信号：资金流入、放量启动。
+在均线买点基础上叠加强势信号：资金流入（量比方向放大器）、换手率、涨幅。
+逻辑：量比不作为独立正向信号，而是放大资金流向——放量+净流入=吸筹加分，放量+净流出=出货不加分。
 盘中 3 级数据源降级：东财 push2（实时全粒度）→ 同花顺（实时粗粒度）→ Tushare 资金流 + realtime_spot 实时指标（盘后兜底）。
-轮次间动能加速感知：检测资金加速流入、量比放大、涨势增强的变化。
+轮次间动能加速感知：检测资金加速流入、涨势增强的变化（量能扩张仅净流入时正向）。
+量比来源：东财 API 直出，同花顺/Tushare 通过实时成交量外推自算（开盘早期上限于 5.0x）。
 盘中可用，盘后不可用（盘后有独立的技术面因子）。
 """
 
@@ -71,23 +73,22 @@ class MomentumFactor(BaseFactor):
 
         signals: Dict[str, pd.Series] = {}
 
-        # 1. 资金流入强度 (0-35)
+        # 1. 资金流入强度 (0-45)，量比作为方向放大器
         s_inflow = zeros.copy()
-        s_inflow = s_inflow.mask(inflow_rate > 0.10, 35.0)
-        s_inflow = s_inflow.mask((inflow_rate >= 0.03) & (inflow_rate <= 0.10),
-                                 _linear_map(inflow_rate, 0.03, 17, 0.10, 35))
-        s_inflow = s_inflow.mask((inflow_rate > 0) & (inflow_rate < 0.03),
-                                 _linear_map(inflow_rate, 0, 0, 0.03, 17))
-        signals["inflow"] = s_inflow
 
-        # 2. 放量启动 (0-25)
-        s_vol = zeros.copy()
-        s_vol = s_vol.mask(volume_ratio > 2.5, 25.0)
-        s_vol = s_vol.mask((volume_ratio >= 1.2) & (volume_ratio <= 2.5),
-                           _linear_map(volume_ratio, 1.2, 12, 2.5, 25))
-        s_vol = s_vol.mask((volume_ratio >= 0.8) & (volume_ratio < 1.2),
-                           _linear_map(volume_ratio, 0.8, 4, 1.2, 12))
-        signals["volume_ratio"] = s_vol
+        amp_r = df.get("volume_ratio", pd.Series(1.0, index=idx)).fillna(1.0)
+        amp_mult = pd.Series(1.0, index=idx)
+        amp_mult = amp_mult.mask((amp_r >= 2.0) & (inflow_rate > 0), 1.3)
+        amp_mult = amp_mult.mask((amp_r >= 1.5) & (amp_r < 2.0) & (inflow_rate > 0), 1.2)
+        amp_mult = amp_mult.mask((amp_r >= 1.2) & (amp_r < 1.5) & (inflow_rate > 0), 1.1)
+        amp_mult = amp_mult.mask((amp_r < 0.8) & (inflow_rate > 0), 0.75)
+
+        s_inflow = s_inflow.mask(inflow_rate > 0.10, 45.0 * amp_mult)
+        s_inflow = s_inflow.mask((inflow_rate >= 0.03) & (inflow_rate <= 0.10),
+                                 _linear_map(inflow_rate, 0.03, 22, 0.10, 45) * amp_mult)
+        s_inflow = s_inflow.mask((inflow_rate > 0) & (inflow_rate < 0.03),
+                                 _linear_map(inflow_rate, 0, 0, 0.03, 22) * amp_mult)
+        signals["inflow"] = s_inflow
 
         # 3. 换手健康 (0-15)：3-10% 最优，向两侧衰减
         s_tr = zeros.copy()
@@ -156,41 +157,44 @@ class MomentumFactor(BaseFactor):
                 cached[bare] = {"inflow_delta": 0.0, "vol_delta": 0.0, "pct_delta": 0.0, "score": 0.0}
                 continue
 
-            # 1. 资金加速 (0-10)
+            # 1. 资金加速 (0-10)：60s 级 delta，阈值 ~0.3%
             ir_delta = cur_ir - prev["inflow_rate"]
-            if ir_delta > 0.03:
+            if ir_delta > 0.003:
                 ir_score = 10.0
-            elif ir_delta > 0.01:
-                ir_score = 5.0 + (ir_delta - 0.01) * 250.0  # 5~10
+            elif ir_delta > 0.001:
+                ir_score = 5.0 + (ir_delta - 0.001) * 2500.0  # 5~10
             elif ir_delta > 0:
-                ir_score = ir_delta * 500.0  # 0~5
-            elif ir_delta > -0.02:
-                ir_score = ir_delta * 100.0  # -2~0
+                ir_score = ir_delta * 5000.0  # 0~5
+            elif ir_delta > -0.002:
+                ir_score = ir_delta * 1000.0  # -2~0
             else:
                 ir_score = -2.0
 
-            # 2. 量能扩张 (0-5)
+            # 2. 量能扩张 delta (0-5)：净流入时正向，60s 级阈值
             vr_delta = cur_vr - prev["volume_ratio"]
-            if vr_delta > 0.5:
-                vr_score = 5.0
-            elif vr_delta > 0.2:
-                vr_score = 2.0 + (vr_delta - 0.2) * 10.0  # 2~5
-            elif vr_delta > 0:
-                vr_score = vr_delta * 10.0  # 0~2
-            elif vr_delta > -0.3:
-                vr_score = vr_delta * 3.0   # -1~0
+            if cur_ir > 0:
+                if vr_delta > 0.1:
+                    vr_score = 5.0
+                elif vr_delta > 0.05:
+                    vr_score = 2.0 + (vr_delta - 0.05) * 60.0  # 2~5
+                elif vr_delta > 0:
+                    vr_score = vr_delta * 40.0  # 0~2
+                elif vr_delta > -0.05:
+                    vr_score = vr_delta * 10.0   # -0.5~0
+                else:
+                    vr_score = -0.5
             else:
-                vr_score = -1.0
+                vr_score = 0.0  # 净流出时量能扩张不给正向分
 
-            # 3. 涨势增强 (0-5)：只在温和区间(0-7%)内
+            # 3. 涨势增强 (0-5)：温和区间(0-7%)内，60s 级阈值
             pct_delta = cur_pct - prev["pct_chg"]
             if 0 < cur_pct <= 7:
-                if pct_delta > 1.0:
+                if pct_delta > 0.2:
                     pct_score = 5.0
-                elif pct_delta > 0.3:
-                    pct_score = 2.0 + (pct_delta - 0.3) * 4.0  # 2~5
+                elif pct_delta > 0.1:
+                    pct_score = 2.0 + (pct_delta - 0.1) * 30.0  # 2~5
                 elif pct_delta > 0:
-                    pct_score = pct_delta * 6.0  # 0~2
+                    pct_score = pct_delta * 20.0  # 0~2
                 else:
                     pct_score = 0.0
             else:
@@ -223,13 +227,9 @@ class MomentumFactor(BaseFactor):
         signals = self._compute_signals(df)
         total = sum(signals.values())
 
-        # 动能加速溢价（0-20，资金加速+量能扩张+涨势增强）
+        # 动能加速溢价（0-20，资金加速+涨势增强，量能扩张已融入 inflow）
         mbuilding = self._compute_momentum_building(df, trade_date)
         total = total + mbuilding
-
-        # 净流出惩罚
-        inflow_rate = df.get("inflow_rate", pd.Series(0, index=df.index))
-        total.loc[inflow_rate < 0] = (total - 10).clip(0, 100)
 
         # 否决项
         turnover_rate = df.get("turnover_rate", pd.Series(0, index=df.index))
@@ -250,11 +250,10 @@ class MomentumFactor(BaseFactor):
 
         signal_meta = [
             ("inflow", "资金流入"),
-            ("volume_ratio", "放量启动"),
             ("turnover", "换手活跃"),
             ("pct_chg", "温和启动"),
         ]
-        max_map = {"inflow": 35, "volume_ratio": 25, "turnover": 15, "pct_chg": 25}
+        max_map = {"inflow": 45, "turnover": 15, "pct_chg": 25}
         threshold = self._LABEL_THRESHOLD_RATIO
 
         inflow_raw = df.get("inflow_rate", pd.Series(0, index=df.index))
@@ -274,10 +273,17 @@ class MomentumFactor(BaseFactor):
                     continue
                 if key == "inflow":
                     ir = inflow_raw.get(ts_code, 0)
-                    labels.append(f"{label}(流入率{ir*100:.1f}%)")
-                elif key == "volume_ratio":
                     vr = vol_r.get(ts_code, 1)
-                    labels.append(f"{label}(量比{vr:.1f})")
+                    if ir > 0:
+                        tag = f"{label}(流入率{ir*100:.1f}%"
+                        if vr >= 1.5:
+                            tag += f", 放量×{vr:.1f}"
+                        elif vr < 0.8:
+                            tag += f", 缩量"
+                        tag += ")"
+                    else:
+                        tag = f"主力净流出({abs(ir)*100:.1f}%)"
+                    labels.append(tag)
                 elif key == "turnover":
                     tr = tr_r.get(ts_code, 0)
                     labels.append(f"{label}({tr:.1f}%)")

@@ -474,7 +474,7 @@ class StockScorer:
         """趋势强度：近5日日均收益率绝对值。"""
         if hist_closes is None or len(hist_closes) < 6:
             return 0.0
-        daily_returns = np.diff(hist_closes[-5:]) / hist_closes[-6:-1]
+        daily_returns = np.diff(hist_closes[-5:]) / hist_closes[-5:-1]
         return abs(np.mean(daily_returns))
 
     def _get_sector_hist_closes(self, sector: str) -> Optional[np.ndarray]:

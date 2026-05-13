@@ -17,6 +17,7 @@ import { searchStocks } from '../utils/searchStocks';
 type TabKey = 'intraday' | 'postmarket';
 
 const MIN_INTRADAY_FETCH_GAP_MS = 60_000;
+const POSTMARKET_REFRESH_MS = 30_000;
 const BACKTEST_REFRESH_MS = 300_000;
 
 const getDefaultTabByCnMarketTime = (): TabKey => {
@@ -1105,6 +1106,13 @@ const DiscoveryPage: React.FC = () => {
     const id = setInterval(() => fetchBacktest(tab), BACKTEST_REFRESH_MS);
     return () => clearInterval(id);
   }, [tab, fetchBacktest]);
+
+  useEffect(() => {
+    if (tab !== 'postmarket') return;
+    const id = setInterval(() => fetchReport(), POSTMARKET_REFRESH_MS);
+    return () => clearInterval(id);
+  }, [tab, fetchReport]);
+
   useEffect(() => { document.title = '寻股 - DSA'; }, []);
 
   const toggle = (code: string) => setExpanded(prev => {

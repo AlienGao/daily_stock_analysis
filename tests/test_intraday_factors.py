@@ -743,12 +743,13 @@ class TestMomentumFactor:
         scores = factor.score(df)
         assert scores["A.SH"] == 0.0
 
-    def test_negative_inflow_penalty(self, factor):
-        """净流入为负时扣 10 分，但其他信号仍贡献分数。"""
+    def test_negative_inflow_no_vol_boost(self, factor):
+        """净流出+放量=出货：inflow=0(neg)，vol 不给分，仅 turnover+pct 贡献。"""
         df = _make_factor_df(["A.SH"], inflow_rate=[-0.05], volume_ratio=[3.0],
                              turnover_rate=[5.0], pct_chg=[2.0])
         scores = factor.score(df)
-        assert scores["A.SH"] == pytest.approx(55.0)  # 65 - 10 = 55
+        # inflow=0(neg) + turnover(15) + pct_chg(25) = 40，vol 不加成
+        assert scores["A.SH"] == pytest.approx(40.0)
 
     def test_pct_chg_tiers(self, factor):
         df = _make_factor_df(["A", "B", "C"],
@@ -766,7 +767,7 @@ class TestMomentumFactor:
         reasons = factor.describe(df, scores)
         assert "A.SH" in reasons
         assert any("资金流入" in r for r in reasons["A.SH"])
-        assert any("放量启动" in r for r in reasons["A.SH"])
+        assert any("放量" in r for r in reasons["A.SH"])
 
     def test_normalize_eastmoney(self, factor):
         df = pd.DataFrame([{
