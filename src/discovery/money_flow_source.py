@@ -65,6 +65,7 @@ def fetch_intraday_money_flow(
         df = _fetch_tier3_tushare(trade_date, tushare_fetcher)
         if df is not None and not df.empty:
             logger.info("[MoneyFlow] Tier 3 成功: %d 只股票", len(df))
+            _cache_to_db(df, trade_date, source="tushare")
             return df
     except Exception as e:
         logger.warning("[MoneyFlow] Tier 3 (Tushare) 失败: %s", e)
@@ -110,9 +111,9 @@ def _cache_to_db(df: pd.DataFrame, trade_date: str, source: str = "eastmoney") -
 def _code_to_ts_code(code: str) -> str:
     """6 位代码 → ts_code 格式 (e.g. '600519' → '600519.SH')."""
     code_str = str(code).strip().zfill(6)
-    if code_str.startswith(("60", "68")):
+    if code_str.startswith(("60", "68", "900")):
         return f"{code_str}.SH"
-    elif code_str.startswith(("00", "30")):
+    elif code_str.startswith(("00", "30", "200")):
         return f"{code_str}.SZ"
     elif code_str.startswith(("43", "83", "87", "92")):
         return f"{code_str}.BJ"

@@ -9,7 +9,7 @@
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, List, Optional
 
 import numpy as np
@@ -33,8 +33,9 @@ class RankingMomentumFactor(BaseFactor):
     available_postmarket = False
     weight = 15.0
 
-    _LOOKBACK_CALENDAR = 12        # 日历天数（覆盖 ~5-6 个交易日）
+    _LOOKBACK_TRADING_DAYS = 6     # 回看交易日数（天然免疫假期）
     _MIN_TRADING_DAYS = 3          # 最少需要的历史交易日数
+    _RANK_FLAT_TOLERANCE = 2.0     # 排名百分位波动容忍带 (pp)，±2pp 内视为平盘
 
     def __init__(self):
         super().__init__()
@@ -55,17 +56,29 @@ class RankingMomentumFactor(BaseFactor):
 
         db = DatabaseManager()
         target_dt = datetime.strptime(trade_date, "%Y%m%d").date()
-        cutoff = target_dt - timedelta(days=self._LOOKBACK_CALENDAR)
 
         # ── 1. 历史 pct_chg ──
         with db.get_session() as s:
+            # 先取最近 N 个交易日（免疫假期/停牌）
+            trading_dates = [
+                row[0] for row in s.execute(
+                    text(
+                        "SELECT DISTINCT date FROM stock_daily "
+                        "WHERE date < :target ORDER BY date DESC LIMIT :limit"
+                    ),
+                    {"target": target_dt, "limit": self._LOOKBACK_TRADING_DAYS},
+                ).fetchall()
+            ]
+            if not trading_dates:
+                logger.warning("[RankingMomentum] stock_daily 无交易日数据 (target=%s)", target_dt)
+                return None
+
             rows = s.execute(
                 text(
                     "SELECT code, date, pct_chg FROM stock_daily "
-                    "WHERE date >= :cutoff AND date < :target "
-                    "ORDER BY code, date DESC"
+                    "WHERE date IN :dates ORDER BY code, date DESC"
                 ),
-                {"target": target_dt, "cutoff": cutoff},
+                {"dates": tuple(trading_dates)},
             ).fetchall()
 
         if not rows:
@@ -118,9 +131,8 @@ class RankingMomentumFactor(BaseFactor):
         df = pd.DataFrame.from_dict(records, orient="index")
         df.index.name = "code"
 
-        # 过滤：至少要有 MIN_TRADING_DAYS 天数据（含今天）
         day_cols = [c for c in df.columns if c.startswith("d")]
-        df = df[df[day_cols].notna().sum(axis=1) >= self._MIN_TRADING_DAYS]
+        # 数据不足的股票保留但得 0 分（score() 内处理），避免硬过滤导致样本缩水
 
         df.index = [bare_to_ts_code(c) for c in df.index]
         df.index.name = "ts_code"
@@ -175,13 +187,10 @@ class RankingMomentumFactor(BaseFactor):
             current_pct = ranks[0] if ranks else 50.0
 
             # --- 1. 趋势斜率 (0-40) ---
-            # ranks 是 d0→dN（最新在前），逆序使时间从左到右递增
-            recent = list(reversed(ranks[:3]))
-            if len(recent) >= 3:
-                x = np.arange(len(recent))
-                slope = np.polyfit(x, recent, 1)[0]  # %/day
-            else:
-                slope = 0.0
+            # ranks 是 d0→dN（最新在前）
+            # 逐日差分取中位数，抗除权除息等单日毛刺
+            diffs = [ranks[i] - ranks[i + 1] for i in range(len(ranks) - 1)]
+            slope = float(np.median(diffs)) if diffs else 0.0
 
             if slope > 8:
                 slope_score = 40.0
@@ -193,12 +202,16 @@ class RankingMomentumFactor(BaseFactor):
                 slope_score = 0.0
 
             # --- 2. 连续上升天数 (0-30) ---
+            # 容忍带：±2pp 内视为平盘，不打断连涨但不计次，排除 73.2%→73.0% 这类噪声
             consecutive = 0
+            tol = self._RANK_FLAT_TOLERANCE
             for j in range(len(ranks) - 1):
-                if ranks[j] > ranks[j + 1]:
+                delta = ranks[j] - ranks[j + 1]
+                if delta > tol:
                     consecutive += 1
-                else:
-                    break
+                elif delta < -tol:
+                    break  # 真下跌，断连
+                # else: |delta| <= tol，平盘，继续但不计数
 
             if consecutive >= 4:
                 consec_score = 30.0

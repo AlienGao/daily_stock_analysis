@@ -15,9 +15,9 @@ logger = logging.getLogger(__name__)
 def bare_to_ts_code(code: str) -> str:
     """裸代码 → ts_code 格式 (e.g. '600519' → '600519.SH')。"""
     c = str(code).strip().zfill(6)
-    if c.startswith(("60", "68")):
+    if c.startswith(("60", "68", "900")):
         return f"{c}.SH"
-    elif c.startswith(("00", "30")):
+    elif c.startswith(("00", "30", "200")):
         return f"{c}.SZ"
     elif c.startswith(("43", "83", "87", "92")):
         return f"{c}.BJ"
