@@ -51,7 +51,7 @@ class DiscoveryConfig:
         default_factory=lambda: _env_int("AUTO_DISCOVER_COUNT", 10)
     )
 
-    # --- 盘中扫描权重 (4因子，相加=100) ---
+    # --- 盘中扫描权重 (6因子) ---
     weight_sector: float = field(
         default_factory=lambda: _env_float("DISCOVER_WEIGHT_SECTOR", 25.0)
     )
@@ -65,7 +65,7 @@ class DiscoveryConfig:
         default_factory=lambda: _env_float("DISCOVER_WEIGHT_REBOUND", 15.0)
     )
 
-    # --- 盘后深度权重 (5因子，相加=100) ---
+    # --- 盘后深度权重 (16因子) ---
     weight_moneyflow: float = field(
         default_factory=lambda: _env_float("DISCOVER_WEIGHT_MONEYFLOW", 25.0)
     )
@@ -81,6 +81,78 @@ class DiscoveryConfig:
     weight_limit_post: float = field(
         default_factory=lambda: _env_float("DISCOVER_WEIGHT_LIMIT_POST", 15.0)
     )
+    weight_broker_recommend: float = field(
+        default_factory=lambda: _env_float("DISCOVER_WEIGHT_BROKER_RECOMMEND", 22.0)
+    )
+    weight_buyback: float = field(
+        default_factory=lambda: _env_float("DISCOVER_WEIGHT_BUYBACK", 5.0)
+    )
+    weight_concept_heat: float = field(
+        default_factory=lambda: _env_float("DISCOVER_WEIGHT_CONCEPT_HEAT", 16.0)
+    )
+    weight_hot_money: float = field(
+        default_factory=lambda: _env_float("DISCOVER_WEIGHT_HOT_MONEY", 8.0)
+    )
+    weight_popularity_intraday: float = field(
+        default_factory=lambda: _env_float("DISCOVER_WEIGHT_POPULARITY_INTRADAY", 18.0)
+    )
+    weight_popularity_postmarket: float = field(
+        default_factory=lambda: _env_float("DISCOVER_WEIGHT_POPULARITY_POSTMARKET", 15.0)
+    )
+    weight_insider_buy: float = field(
+        default_factory=lambda: _env_float("DISCOVER_WEIGHT_INSIDER_BUY", 5.0)
+    )
+    weight_institution_hold: float = field(
+        default_factory=lambda: _env_float("DISCOVER_WEIGHT_INSTITUTION_HOLD", 8.0)
+    )
+    weight_fundamental: float = field(
+        default_factory=lambda: _env_float("DISCOVER_WEIGHT_FUNDAMENTAL", 5.0)
+    )
+    weight_ranking_momentum: float = field(
+        default_factory=lambda: _env_float("DISCOVER_WEIGHT_RANKING_MOMENTUM", 15.0)
+    )
+    weight_ranking_momentum_postmarket: float = field(
+        default_factory=lambda: _env_float("DISCOVER_WEIGHT_RANKING_MOMENTUM_POSTMARKET", 10.0)
+    )
+    weight_performance: float = field(
+        default_factory=lambda: _env_float("DISCOVER_WEIGHT_PERFORMANCE", 10.0)
+    )
+    weight_profit_forecast: float = field(
+        default_factory=lambda: _env_float("DISCOVER_WEIGHT_PROFIT_FORECAST", 20.0)
+    )
+
+    # --- 综合分混合比例（factor_score × alpha + tech_score × (1-alpha)）---
+    score_blend_alpha: float = field(
+        default_factory=lambda: _env_float("DISCOVER_SCORE_BLEND_ALPHA", 0.3)
+    )
+
+    # --- 因子自动调权（FactorMonitor 反馈闭环）---
+    tune_factor_weights: bool = field(
+        default_factory=lambda: _env_bool("DISCOVER_TUNE_ENABLED", True)
+    )
+    tune_min_days: int = field(
+        default_factory=lambda: _env_int("DISCOVER_TUNE_MIN_DAYS", 5)
+    )
+
+    # --- StockScorer 技术评分权重 ---
+    scorer_weight_rr: float = field(
+        default_factory=lambda: _env_float("DISCOVER_SCORER_WEIGHT_RR", 0.30)
+    )
+    scorer_weight_market: float = field(
+        default_factory=lambda: _env_float("DISCOVER_SCORER_WEIGHT_MARKET", 0.20)
+    )
+    scorer_weight_sector: float = field(
+        default_factory=lambda: _env_float("DISCOVER_SCORER_WEIGHT_SECTOR", 0.15)
+    )
+    scorer_weight_volume: float = field(
+        default_factory=lambda: _env_float("DISCOVER_SCORER_WEIGHT_VOLUME", 0.15)
+    )
+    scorer_weight_position: float = field(
+        default_factory=lambda: _env_float("DISCOVER_SCORER_WEIGHT_POSITION", 0.10)
+    )
+    scorer_weight_formation: float = field(
+        default_factory=lambda: _env_float("DISCOVER_SCORER_WEIGHT_FORMATION", 0.10)
+    )
 
     # --- 盘中扫描器设置 ---
     scan_interval_seconds: int = field(
@@ -90,7 +162,7 @@ class DiscoveryConfig:
         default_factory=lambda: _env_int("DISCOVER_SCAN_MAX_RUNTIME", 240)
     )
     scan_top_n: int = field(
-        default_factory=lambda: _env_int("DISCOVER_SCAN_TOP_N", 10)
+        default_factory=lambda: _env_int("DISCOVER_SCAN_TOP_N", 300)
     )
 
     # --- 通知 ---
@@ -138,21 +210,56 @@ class DiscoveryConfig:
         return [
             "AUTO_DISCOVER",
             "AUTO_DISCOVER_COUNT",
+            # --- 盘中权重 ---
             "DISCOVER_WEIGHT_SECTOR",
             "DISCOVER_WEIGHT_MA_ENTRY",
             "DISCOVER_WEIGHT_MOMENTUM",
             "DISCOVER_WEIGHT_REBOUND",
+            "DISCOVER_WEIGHT_RANKING_MOMENTUM",
+            "DISCOVER_WEIGHT_POPULARITY_INTRADAY",
+            # --- 盘后权重 ---
             "DISCOVER_WEIGHT_MONEYFLOW",
             "DISCOVER_WEIGHT_MARGIN",
             "DISCOVER_WEIGHT_CHIP",
             "DISCOVER_WEIGHT_TECHNICAL",
             "DISCOVER_WEIGHT_LIMIT_POST",
+            "DISCOVER_WEIGHT_BROKER_RECOMMEND",
+            "DISCOVER_WEIGHT_BUYBACK",
+            "DISCOVER_WEIGHT_CONCEPT_HEAT",
+            "DISCOVER_WEIGHT_HOT_MONEY",
+            "DISCOVER_WEIGHT_POPULARITY_POSTMARKET",
+            "DISCOVER_WEIGHT_INSIDER_BUY",
+            "DISCOVER_WEIGHT_INSTITUTION_HOLD",
+            "DISCOVER_WEIGHT_FUNDAMENTAL",
+            "DISCOVER_WEIGHT_RANKING_MOMENTUM_POSTMARKET",
+            "DISCOVER_WEIGHT_PERFORMANCE",
+            "DISCOVER_WEIGHT_PROFIT_FORECAST",
+            # --- 综合分混合 ---
+            "DISCOVER_SCORE_BLEND_ALPHA",
+            # --- 因子自动调权 ---
+            "DISCOVER_TUNE_ENABLED",
+            "DISCOVER_TUNE_MIN_DAYS",
+            # --- StockScorer 技术评分权重 ---
+            "DISCOVER_SCORER_WEIGHT_RR",
+            "DISCOVER_SCORER_WEIGHT_MARKET",
+            "DISCOVER_SCORER_WEIGHT_SECTOR",
+            "DISCOVER_SCORER_WEIGHT_VOLUME",
+            "DISCOVER_SCORER_WEIGHT_POSITION",
+            "DISCOVER_SCORER_WEIGHT_FORMATION",
+            # --- 扫描器设置 ---
             "DISCOVER_SCAN_INTERVAL",
             "DISCOVER_SCAN_MAX_RUNTIME",
             "DISCOVER_SCAN_TOP_N",
+            # --- 通知 ---
+            "FEISHU_WEBHOOK_URL",
+            "FEISHU_WEBHOOK_SECRET",
+            # --- 白名单与扫描范围 ---
             "DISCOVERY_STOCK_WHITELIST",
             "DISCOVERY_USE_WHITELIST",
+            "DISCOVERY_INTRADAY_SCAN_UNIVERSE",
+            "DISCOVERY_POSTMARKET_SCAN_UNIVERSE",
             "DISCOVERY_SCAN_UNIVERSE",
+            # --- 其他 ---
             "ENABLE_STOCK_SCORER",
         ]
 

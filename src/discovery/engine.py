@@ -136,6 +136,26 @@ class StockDiscoveryEngine:
     def get_factor(self, name: str) -> Optional[BaseFactor]:
         return self._factors.get(name)
 
+    def _get_effective_weight(self, factor_name: str, mode: str) -> float:
+        """根据 mode 返回因子的有效权重：config 优先，其次因子类默认值。
+
+        对于盘中共用因子（如 popularity），根据 mode 选用对应后缀的配置。
+        """
+        # 盘中共用因子的 mode 后缀 key
+        if mode == "intraday":
+            cfg_key = f"weight_{factor_name}_intraday"
+        elif mode == "postmarket":
+            cfg_key = f"weight_{factor_name}_postmarket"
+        else:
+            cfg_key = f"weight_{factor_name}"
+
+        cfg_val = getattr(self.config, cfg_key, None)
+        if cfg_val is not None:
+            return cfg_val
+        # 回退到因子类默认值
+        factor = self._factors.get(factor_name)
+        return factor.weight if factor else 0.0
+
     # ------------------------------------------------------------------
     # Selection history (crowding penalty)
     # 格式: {date: [codes]}，保留最近 10 个交易日，按天去重
@@ -416,7 +436,7 @@ class StockDiscoveryEngine:
     # ------------------------------------------------------------------
 
     def _calc_dynamic_weights(self, mode: str) -> Dict[str, float]:
-        """根据近期市场状态动态调整因子权重。"""
+        """根据近期市场状态动态调整因子权重（仅返回当前 mode 可用的因子）。"""
         try:
             if self.tushare_fetcher is None:
                 return {}
@@ -428,19 +448,24 @@ class StockDiscoveryEngine:
             if len(returns) < 5:
                 return {}
 
+            # 当前 mode 可用的因子集合
+            available_names = {f.name for f in self._factors.values() if f.is_available(mode)}
+
             volatility = returns.std()
             trend_strength = abs(returns.mean() / (returns.std() + 1e-9))
 
             if trend_strength > 0.8:
                 # 强趋势市场：增配动量、北向
                 logger.info(f"[Discovery] 市场状态: 强趋势 (trend={trend_strength:.2f})")
-                return {"momentum": 1.3, "rebound": 0.7, "technical": 1.1}
+                raw = {"momentum": 1.3, "rebound": 0.7, "technical": 1.1}
             elif volatility > 1.5:
                 # 高波动震荡：增配反弹、业绩
                 logger.info(f"[Discovery] 市场状态: 高波动 (vol={volatility:.2f})")
-                return {"rebound": 1.4, "performance": 1.2, "profit_forecast": 1.1, "momentum": 0.6}
+                raw = {"rebound": 1.4, "performance": 1.2, "profit_forecast": 1.1, "momentum": 0.6}
             else:
                 return {}
+            # 过滤掉当前 mode 不可用的因子
+            return {k: v for k, v in raw.items() if k in available_names}
         except Exception as e:
             logger.debug(f"[Discovery] 动态权重计算失败: {e}")
             return {}
@@ -583,7 +608,8 @@ class StockDiscoveryEngine:
                 parts.append(f"{name}:{n}:{first_idx}:{last_idx}")
         return hashlib.md5("|".join(parts).encode()).hexdigest()[:12]
 
-    def discover(self, mode: ModeStr, trade_date: Optional[str] = None) -> List[DiscoveryResult]:
+    def discover(self, mode: ModeStr, trade_date: Optional[str] = None,
+                candidate_codes: Optional[List[str]] = None) -> List[DiscoveryResult]:
         start_time = time.time()
 
         if trade_date is None and self.tushare_fetcher:
@@ -610,21 +636,25 @@ class StockDiscoveryEngine:
 
         # Phase 1: 拉取因子数据（优先复用 session 缓存）
         # 盘中所有因子都依赖 realtime_spot，不做缓存；盘后可复用
-        _REALTIME_FACTORS = {"sector", "momentum"}
+        # 盘中模式的因子始终不缓存（由 mode != "intraday" 门控）；
+        # 盘后模式下，标记为 available_intraday 的因子不参与缓存（可能含实时依赖）。
+        _realtime_names = {
+            f.name for f in self._factors.values() if f.available_intraday
+        }
 
         factor_data: Dict[str, pd.DataFrame] = {}
         if mode != "intraday" and self._factor_data_cache and self._cache_trade_date == trade_date:
             # 复用非实时缓存（仅盘后）
             factor_data = {
                 k: v for k, v in self._factor_data_cache.items()
-                if k not in _REALTIME_FACTORS
+                if k not in _realtime_names
             }
             if factor_data:
                 logger.info("[Discovery] 因子数据命中 session 缓存（%s），跳过拉取",
                             ", ".join(factor_data.keys()))
             # 实时因子始终重新拉取
             for factor in available:
-                if factor.name not in _REALTIME_FACTORS:
+                if factor.name not in _realtime_names:
                     continue
                 try:
                     logger.debug(f"[Discovery] 拉取实时因子数据: {factor.name}")
@@ -661,7 +691,7 @@ class StockDiscoveryEngine:
             if factor_data:
                 self._factor_data_cache = {
                     k: v for k, v in factor_data.items()
-                    if k not in _REALTIME_FACTORS
+                    if k not in _realtime_names
                 }
                 self._cache_trade_date = trade_date
 
@@ -678,6 +708,14 @@ class StockDiscoveryEngine:
         if not all_codes:
             logger.warning("[Discovery] 无候选股票")
             return []
+
+        # 限制候选范围（用于盘后跟踪：只对特定股票重新评分）
+        if candidate_codes:
+            all_codes = all_codes & set(candidate_codes)
+            if not all_codes:
+                logger.warning("[Discovery] candidate_codes 过滤后无候选股票")
+                return []
+            logger.info(f"[Discovery] 候选范围受限: {len(all_codes)} 只 (原始因子覆盖 {len(candidate_codes)} 只)")
 
         # Phase 3: 逐因子打分
         score_columns: Dict[str, pd.Series] = {}
@@ -728,28 +766,35 @@ class StockDiscoveryEngine:
         # Phase 3.7: 横截面百分位标准化 + 加权
         # 在行业中性化之后做：每个因子的行业内排名(0-100) → 全市场百分位(0-1) × 权重。
         # 行业中性化已经在行业内做了标准化，这里再做跨因子的量纲统一。
+        # total_weight 使用 config 有效权重（与分子一致），确保归一化正确。
         total_weight = sum(
-            self._factors[n].weight for n in score_columns if n in self._factors
+            self._get_effective_weight(n, mode) for n in score_columns if n in self._factors
         )
         if total_weight <= 0:
             total_weight = 1.0
         for name in list(score_columns.keys()):
             factor = self._factors.get(name)
-            if factor is None or factor.weight <= 0:
+            if factor is None:
+                del score_columns[name]
+                continue
+            eff_w = self._get_effective_weight(name, mode)
+            if eff_w <= 0:
                 del score_columns[name]
                 continue
             col = score_columns[name]
             pct = col.rank(pct=True, na_option="bottom")  # 0-1
             adj = dynamic_adjustments.get(name, 1.0)
-            effective_weight = factor.weight * adj / total_weight
+            effective_weight = eff_w * adj / total_weight
             score_columns[name] = pct * 100 * effective_weight
             logger.debug(
                 f"[Discovery] {name}: pct-std max={score_columns[name].max():.1f}, "
-                f"weight={factor.weight} adj={adj:.2f} eff={effective_weight:.2f}"
+                f"eff_w={eff_w:.1f} adj={adj:.2f} norm={effective_weight:.4f}"
             )
 
         # Phase 4: 合并评分 → 综合评分
         combined = pd.DataFrame(score_columns).fillna(0)
+        # 限制候选范围（candidate_codes 过滤后 all_codes 可能远小于因子覆盖范围）
+        combined = combined.loc[combined.index.isin(all_codes)]
         combined["_total"] = combined.sum(axis=1)  # 权重已归一化，sum 即为加权总分 (0-100)
 
         # Phase 4.1: 行业景气度加权（景气度高 → 系数 > 1.0）
@@ -889,14 +934,19 @@ class StockDiscoveryEngine:
         except Exception:
             logger.debug("[Discovery] 批量获取 OHLCV 失败", exc_info=True)
 
-        results = []
+        # ==============================================================
+        # Phase 5: 两阶段构建 DiscoveryResult
+        #   Pass 1 (轻量): 遍历全市场，只提取名称/ST/白名单/因子分
+        #   全量 tech_score: StockScorer 对 Pass 1 候选评分（精确止盈止损，跳过 reason）
+        #   综合分排序 → 取 top_n
+        #   Pass 2 (重量): 仅 top_n 计算精确止盈止损 + 推荐理由
+        # ==============================================================
+
+        # --- Pass 1: 轻量遍历全市场 ---
+        pass1_candidates = []  # (ts_code, stock_code, stock_name, raw_score, factor_breakdown, sector, factor_weights)
         st_skipped = 0
-        overbought_skipped = 0
-        lowpnl_skipped = 0
         whitelist_skipped = 0
         for ts_code, row in combined.iterrows():
-            if len(results) >= top_n:
-                break
             stock_code = ts_code.split(".")[0] if "." in ts_code else ts_code
             stock_name = names.get(ts_code) or self._stock_names.get(ts_code) or self._stock_names.get(stock_code) or stock_code
 
@@ -908,7 +958,6 @@ class StockDiscoveryEngine:
                 st_skipped += 1
                 continue
 
-            # 还原原始 0-100 评分（中性化后 row[name] 已是 0-100，无需除权重）
             factor_breakdown = {}
             raw_score = row["_total"]
             for name in row.index:
@@ -916,61 +965,222 @@ class StockDiscoveryEngine:
                     continue
                 factor_breakdown[name] = row[name]
 
-            # --- 止盈止损计算（StopLossCalculator，盘中实时数据自算） ---
-            ohlcv_rows = ohlcv_map.get(stock_code, [])
-            if ohlcv_rows:
-                highs = np.array([d.high for d in ohlcv_rows], dtype=float)
-                lows = np.array([d.low for d in ohlcv_rows], dtype=float)
-                closes = np.array([d.close for d in ohlcv_rows], dtype=float)
-                if mode == "intraday":
-                    rt_p = live_prices.get(ts_code) or live_prices.get(stock_code)
-                    if rt_p and rt_p > 0:
-                        highs = np.append(highs, rt_p)
-                        lows = np.append(lows, rt_p)
-                        closes = np.append(closes, rt_p)
-                sl_result = compute_from_arrays(
-                    highs, lows, closes, code=stock_code,
-                    ma20=tech_cache.get(stock_code, {}).get("ma20"),
-                    ma60=tech_cache.get(stock_code, {}).get("ma60"),
-                    atr=tech_cache.get(stock_code, {}).get("atr"),
-                    factor_score=raw_score,
+            labels = sector_labels.get(stock_code, [])
+            sector = labels[0] if labels else industry_map.get(ts_code, "")
+            factor_weights = {
+                name: self._factors[name].weight
+                for name in factor_breakdown
+                if name in self._factors
+            }
+
+            pass1_candidates.append((ts_code, stock_code, stock_name, raw_score, factor_breakdown, sector, factor_weights))
+
+        if st_skipped > 0:
+            logger.info("[Discovery] Pass 1: 已剔除 %d 只 ST 股", st_skipped)
+        if whitelist_skipped > 0:
+            logger.info("[Discovery] Pass 1: 已剔除 %d 只非白名单股", whitelist_skipped)
+        logger.info("[Discovery] Pass 1 完成: %d 只候选", len(pass1_candidates))
+
+        # --- 全量 tech_score（StockScorer，精确止盈止损 + 跳过 reason）---
+        alpha = self.config.score_blend_alpha
+        tech_scores_map: Dict[str, float] = {}  # ts_code → tech_score
+        stop_tp_map: Dict[str, tuple] = {}  # stock_code → (buy_low, buy_high, stop, tp1, tp2)
+
+        if getattr(self.config, 'enable_stock_scorer', False) and pass1_candidates:
+            try:
+                from src.services.stock_scorer import StockScorer, StockScorerConfig
+
+                scorer_config = StockScorerConfig(
+                    weight_rr=self.config.scorer_weight_rr,
+                    weight_market=self.config.scorer_weight_market,
+                    weight_sector=self.config.scorer_weight_sector,
+                    weight_volume=self.config.scorer_weight_volume,
+                    weight_position=self.config.scorer_weight_position,
+                    weight_formation=self.config.scorer_weight_formation,
                 )
-                buy_low, buy_high = sl_result.buy_low, sl_result.buy_high
-                stop, tp1, tp2 = sl_result.stop_loss, sl_result.take_profit_1, sl_result.take_profit_2
+                scorer = StockScorer(scorer_config)
+                if hasattr(self, '_index_ohlcv_cache') and self._index_ohlcv_cache is not None:
+                    scorer.preload_index_ohlcv(self._index_ohlcv_cache)
+
+                # 预加载板块涨跌幅
+                spot_df = None
+                try:
+                    spot_df = DatabaseManager().get_realtime_spot()
+                    if spot_df is not None and not spot_df.empty:
+                        ths_map = DatabaseManager().get_ths_industry_map()
+                        if ths_map:
+                            spot_c = spot_df.copy()
+                            spot_c["sector_name"] = spot_c.index.map(ths_map)
+                            sector_pct = spot_c.groupby("sector_name")["pct_chg"].mean().dropna()
+                            scorer.preload_sector_pct(sector_pct.to_dict())
+                except Exception:
+                    logger.debug("[Discovery] 预加载板块涨跌幅失败", exc_info=True)
+
+                # 存储供 Phase 4.7 复用
+                self._scorer = scorer
+                self._spot_df = spot_df
+
+                for ts_code, stock_code, stock_name, raw_score, _, sector, _ in pass1_candidates:
+                    try:
+                        ohlcv_rows = ohlcv_map.get(stock_code, [])
+                        if not ohlcv_rows:
+                            continue
+                        highs_arr = np.array([d.high for d in ohlcv_rows], dtype=float)
+                        lows_arr = np.array([d.low for d in ohlcv_rows], dtype=float)
+                        closes_arr = np.array([d.close for d in ohlcv_rows], dtype=float)
+
+                        # 盘中追加实时价格
+                        if mode == "intraday":
+                            rt_p = live_prices.get(ts_code) or live_prices.get(stock_code)
+                            if rt_p and rt_p > 0:
+                                highs_arr = np.append(highs_arr, rt_p)
+                                lows_arr = np.append(lows_arr, rt_p)
+                                closes_arr = np.append(closes_arr, rt_p)
+
+                        # 精确止盈止损（纯 numpy，~0.1ms/只）
+                        sl_result = compute_from_arrays(
+                            highs_arr, lows_arr, closes_arr, code=stock_code,
+                            ma20=tech_cache.get(stock_code, {}).get("ma20"),
+                            ma60=tech_cache.get(stock_code, {}).get("ma60"),
+                            atr=tech_cache.get(stock_code, {}).get("atr"),
+                            factor_score=raw_score,
+                        )
+                        est_stop = sl_result.stop_loss or 0
+                        est_tp1 = sl_result.take_profit_1 or 0
+                        est_tp2 = sl_result.take_profit_2 or 0
+                        stop_tp_map[stock_code] = (
+                            sl_result.buy_low, sl_result.buy_high,
+                            sl_result.stop_loss, sl_result.take_profit_1, sl_result.take_profit_2,
+                        )
+
+                        # 价格 & 昨收
+                        if mode == "intraday":
+                            price = live_prices.get(ts_code) or live_prices.get(stock_code) or float(closes_arr[-1])
+                        else:
+                            price = float(closes_arr[-1])
+                        pre_close = float(closes_arr[-2]) if len(closes_arr) > 1 else float(closes_arr[-1])
+
+                        # 量比
+                        vol_ratio = 1.0
+                        if spot_df is not None and "volume_ratio" in spot_df.columns:
+                            try:
+                                spot_vr = spot_df.at[stock_code, "volume_ratio"]
+                                if spot_vr is not None and float(spot_vr) > 0:
+                                    vol_ratio = float(spot_vr)
+                            except (KeyError, ValueError, TypeError):
+                                pass
+                        if vol_ratio <= 0 and hasattr(ohlcv_rows[-1], 'vol') and len(ohlcv_rows) >= 6:
+                            vols = np.array([d.vol for d in ohlcv_rows[-6:]], dtype=float)
+                            mean_vol = np.mean(vols[:-1])
+                            if mean_vol > 0:
+                                vol_ratio = float(vols[-1] / mean_vol)
+
+                        # 轻量 formation reason（从 tech_cache 推导，零额外查询）
+                        tc = tech_cache.get(stock_code, {})
+                        lite_reasons = []
+                        ma5, ma10, ma20_v = tc.get("ma5"), tc.get("ma10"), tc.get("ma20")
+                        if ma5 and ma10 and ma20_v and ma5 > ma10 > ma20_v:
+                            lite_reasons.append("均线多头排列")
+                        if tc.get("macd", 0) > 0:
+                            lite_reasons.append("MACD金叉")
+                        rsi = tc.get("rsi_12")
+                        if rsi is not None and rsi < 45:
+                            lite_reasons.append("RSI低位回升")
+                        bu, bm, bl = tc.get("boll_upper"), tc.get("boll_mid"), tc.get("boll_lower")
+                        if bm and price > bm:
+                            lite_reasons.append("站上BOLL中轨")
+                        if vol_ratio > 1.2:
+                            lite_reasons.append("成交量放大")
+
+                        tech = scorer.score(
+                            stock_code=stock_code,
+                            sector=sector,
+                            price=price,
+                            pre_close=pre_close,
+                            tp1=est_tp1,
+                            tp2=est_tp2,
+                            stop_loss=est_stop,
+                            reasons=lite_reasons,
+                            ohlcv=(highs_arr, lows_arr, closes_arr),
+                            volume_ratio=vol_ratio,
+                        )
+                        tech_scores_map[ts_code] = tech.composite
+                    except Exception:
+                        logger.debug("[Discovery] 全量 tech_score 计算失败: %s", stock_code, exc_info=True)
+
+                logger.info(
+                    "[Discovery] 全量 tech_score 完成: %d/%d 只有评分",
+                    len(tech_scores_map), len(pass1_candidates),
+                )
+            except Exception as e:
+                logger.warning("[Discovery] StockScorer 全量评分初始化失败: %s", e)
+
+        # --- 综合分排序 → 取 top_n ---
+        scored_candidates = []
+        for ts_code, stock_code, stock_name, raw_score, factor_breakdown, sector, factor_weights in pass1_candidates:
+            tech = tech_scores_map.get(ts_code, 0.0)
+            composite = alpha * raw_score + (1 - alpha) * tech
+            scored_candidates.append((composite, ts_code, stock_code, stock_name, raw_score, factor_breakdown, sector, factor_weights, tech))
+
+        scored_candidates.sort(key=lambda x: x[0], reverse=True)
+        top_n_candidates = scored_candidates[:top_n]
+        logger.info(
+            "[Discovery] 综合分排序完成 (alpha=%.2f), 取 top %d, "
+            "Top 3: %s",
+            alpha, top_n,
+            ", ".join(f"{c[3]}(composite={c[0]:.1f}, factor={c[4]:.1f}, tech={c[8]:.1f})" for c in top_n_candidates[:3]),
+        )
+
+        # --- Pass 2: 仅 top_n 构建 DiscoveryResult + 推荐理由 ---
+        results = []
+        overbought_skipped = 0
+        lowpnl_skipped = 0
+        for composite, ts_code, stock_code, stock_name, raw_score, factor_breakdown, sector, factor_weights, tech in top_n_candidates:
+            # 复用全量扫描的精确止盈止损
+            cached = stop_tp_map.get(stock_code)
+            if cached:
+                buy_low, buy_high, stop, tp1, tp2 = cached
             else:
                 buy_low = buy_high = stop = tp1 = tp2 = None
+                # fallback: 从 ohlcv 重新计算
+                ohlcv_rows = ohlcv_map.get(stock_code, [])
+                if ohlcv_rows:
+                    highs = np.array([d.high for d in ohlcv_rows], dtype=float)
+                    lows = np.array([d.low for d in ohlcv_rows], dtype=float)
+                    closes = np.array([d.close for d in ohlcv_rows], dtype=float)
+                    sl_result = compute_from_arrays(
+                        highs, lows, closes, code=stock_code,
+                        ma20=tech_cache.get(stock_code, {}).get("ma20"),
+                        ma60=tech_cache.get(stock_code, {}).get("ma60"),
+                        atr=tech_cache.get(stock_code, {}).get("atr"),
+                        factor_score=raw_score,
+                    )
+                    buy_low, buy_high = sl_result.buy_low, sl_result.buy_high
+                    stop, tp1, tp2 = sl_result.stop_loss, sl_result.take_profit_1, sl_result.take_profit_2
 
             # 过滤超买股 & 低盈亏比股
+            ohlcv_rows_p2 = ohlcv_map.get(stock_code, [])
             if mode == "postmarket":
-                discovery_price = float(closes[-1]) if ohlcv_rows else None
+                discovery_price = float(ohlcv_rows_p2[-1].close) if ohlcv_rows_p2 else None
             else:
-                discovery_price = live_prices.get(ts_code) or live_prices.get(stock_code) or (float(closes[-1]) if ohlcv_rows else None)
+                discovery_price = live_prices.get(ts_code) or live_prices.get(stock_code) or (float(ohlcv_rows_p2[-1].close) if ohlcv_rows_p2 else None)
             if discovery_price and tp1 and discovery_price >= tp1:
                 overbought_skipped += 1
                 continue
             if discovery_price and tp1 and stop:
                 if discovery_price <= stop:
-                    lowpnl_skipped += 1  # 现价已跌破止损线
+                    lowpnl_skipped += 1
                     continue
                 pnl_ratio = (tp1 - discovery_price) / (discovery_price - stop)
                 if pnl_ratio <= 0:
                     lowpnl_skipped += 1
                     continue
 
-            # 追加板块标签到推荐理由
+            # 推荐理由
             reasons = list(all_reasons.get(ts_code, []))
             labels = sector_labels.get(stock_code, [])
             if labels:
                 reasons.append(f"所属板块: {', '.join(labels)}")
-
-            # 板块/行业
-            sector = labels[0] if labels else industry_map.get(ts_code, "")
-
-            factor_weights = {
-                name: self._factors[name].weight
-                for name in factor_breakdown
-                if name in self._factors
-            }
 
             results.append(
                 DiscoveryResult(
@@ -990,125 +1200,118 @@ class StockDiscoveryEngine:
                     discovered_at=time.strftime("%H:%M:%S"),
                     price_at_discovery=discovery_price,
                     change_pct=live_pct_chg.get(ts_code, live_pct_chg.get(stock_code, 0.0)),
+                    tech_score=tech,
                 )
             )
 
-        if st_skipped > 0:
-            logger.info("[Discovery] 已剔除 %d 只 ST 股", st_skipped)
         if overbought_skipped > 0:
-            logger.info("[Discovery] 已剔除 %d 只超买股（发现价 >= 止盈目标）", overbought_skipped)
+            logger.info("[Discovery] Pass 2: 已剔除 %d 只超买股（发现价 >= 止盈目标）", overbought_skipped)
         if lowpnl_skipped > 0:
-            logger.info("[Discovery] 已剔除 %d 只低盈亏比股（盈亏比 <= 0）", lowpnl_skipped)
-        if whitelist_skipped > 0:
-            logger.info("[Discovery] 已剔除 %d 只非白名单股", whitelist_skipped)
+            logger.info("[Discovery] Pass 2: 已剔除 %d 只低盈亏比股（盈亏比 <= 0）", lowpnl_skipped)
 
-        # Phase 4.7: 多维技术评分 (StockScorer)
-        if getattr(self.config, 'enable_stock_scorer', False) and results:
-            try:
-                from src.services.stock_scorer import StockScorer
-
-                scorer = StockScorer()
-                if hasattr(self, '_index_ohlcv_cache') and self._index_ohlcv_cache is not None:
-                    scorer.preload_index_ohlcv(self._index_ohlcv_cache)
-
-                # 预加载板块涨跌幅
-                spot_df = None
+        # Phase 4.7: 用精确止盈止损重算 tech_score（复用全量评分阶段的 scorer）
+        scorer = getattr(self, '_scorer', None)
+        spot_df = getattr(self, '_spot_df', None)
+        if scorer and results:
+            for r in results:
                 try:
-                    spot_df = DatabaseManager().get_realtime_spot()
-                    if spot_df is not None and not spot_df.empty:
-                        ths_map = DatabaseManager().get_ths_industry_map()
-                        if ths_map:
-                            spot_c = spot_df.copy()
-                            spot_c["sector_name"] = spot_c.index.map(ths_map)
-                            sector_pct = spot_c.groupby("sector_name")["pct_chg"].mean().dropna()
-                            scorer.preload_sector_pct(sector_pct.to_dict())
+                    ohlcv_rows = ohlcv_map.get(r.stock_code, [])
+                    if not ohlcv_rows:
+                        continue
+                    highs = np.array([d.high for d in ohlcv_rows], dtype=float)
+                    lows = np.array([d.low for d in ohlcv_rows], dtype=float)
+                    closes = np.array([d.close for d in ohlcv_rows], dtype=float)
+
+                    pre_close = float(closes[-2]) if len(closes) > 1 else (
+                        float(closes[-1]) if len(closes) > 0 else 0.0
+                    )
+
+                    vol_ratio = 1.0
+                    if spot_df is not None and "volume_ratio" in spot_df.columns:
+                        try:
+                            spot_vr = spot_df.at[r.stock_code, "volume_ratio"]
+                            if spot_vr is not None and float(spot_vr) > 0:
+                                vol_ratio = float(spot_vr)
+                        except (KeyError, ValueError, TypeError):
+                            pass
+                    if vol_ratio <= 0 and hasattr(ohlcv_rows[-1], 'vol') and len(ohlcv_rows) >= 6:
+                        vols = np.array([d.vol for d in ohlcv_rows[-6:]], dtype=float)
+                        mean_vol = np.mean(vols[:-1])
+                        if mean_vol > 0:
+                            vol_ratio = float(vols[-1] / mean_vol)
+
+                    tech = scorer.score(
+                        stock_code=r.stock_code,
+                        sector=r.sector or "",
+                        price=r.price_at_discovery or 0,
+                        pre_close=pre_close,
+                        tp1=r.take_profit_1 or 0,
+                        tp2=r.take_profit_2 or 0,
+                        stop_loss=r.stop_loss or 0,
+                        reasons=r.reasons or [],
+                        ohlcv=(highs, lows, closes),
+                        volume_ratio=vol_ratio,
+                    )
+                    r.tech_score = tech.composite
+                    r.rr_score = tech.rr_score
+                    r.market_score = tech.market_score
+                    r.sector_score = tech.sector_score
+                    r.volume_score = tech.volume_score
+                    r.position_score = tech.position_score
+                    r.formation_score = tech.formation_score
                 except Exception:
-                    logger.debug("[Discovery] 预加载板块涨跌幅失败", exc_info=True)
+                    logger.debug(
+                        "[Discovery] StockScorer 精确评分失败: %s", r.stock_code, exc_info=True
+                    )
+            logger.info(
+                "[Discovery] StockScorer 精确评分完成, Top 3: %s",
+                ", ".join(f"{r.stock_name}(tech={r.tech_score})" for r in results[:3]),
+            )
 
-                for r in results:
-                    try:
-                        ohlcv_rows = ohlcv_map.get(r.stock_code, [])
-                        if not ohlcv_rows:
-                            continue
-                        highs = np.array([d.high for d in ohlcv_rows], dtype=float)
-                        lows = np.array([d.low for d in ohlcv_rows], dtype=float)
-                        closes = np.array([d.close for d in ohlcv_rows], dtype=float)
-
-                        pre_close = float(closes[-2]) if len(closes) > 1 else (
-                            float(closes[-1]) if len(closes) > 0 else 0.0
-                        )
-
-                        vol_ratio = 1.0
-                        # 盘中优先用 realtime_spot 的量比
-                        if spot_df is not None and "volume_ratio" in spot_df.columns:
-                            try:
-                                spot_vr = spot_df.at[r.stock_code, "volume_ratio"]
-                                if spot_vr is not None and float(spot_vr) > 0:
-                                    vol_ratio = float(spot_vr)
-                            except (KeyError, ValueError, TypeError):
-                                pass
-                        if vol_ratio <= 0 and hasattr(ohlcv_rows[-1], 'vol') and len(ohlcv_rows) >= 6:
-                            vols = np.array([d.vol for d in ohlcv_rows[-6:]], dtype=float)
-                            mean_vol = np.mean(vols[:-1])
-                            if mean_vol > 0:
-                                vol_ratio = float(vols[-1] / mean_vol)
-
-                        tech = scorer.score(
-                            stock_code=r.stock_code,
-                            sector=r.sector or "",
-                            price=r.price_at_discovery or 0,
-                            pre_close=pre_close,
-                            tp1=r.take_profit_1 or 0,
-                            tp2=r.take_profit_2 or 0,
-                            stop_loss=r.stop_loss or 0,
-                            reasons=r.reasons or [],
-                            ohlcv=(highs, lows, closes),
-                            volume_ratio=vol_ratio,
-                        )
-                        r.tech_score = tech.composite
-                        r.rr_score = tech.rr_score
-                        r.market_score = tech.market_score
-                        r.sector_score = tech.sector_score
-                        r.volume_score = tech.volume_score
-                        r.position_score = tech.position_score
-                        r.formation_score = tech.formation_score
-                    except Exception:
-                        logger.debug(
-                            "[Discovery] StockScorer 单股评分失败: %s", r.stock_code, exc_info=True
-                        )
-
-                results.sort(key=lambda r: r.tech_score, reverse=True)
-                logger.info(
-                    "[Discovery] StockScorer 评分完成, Top 3: %s",
-                    ", ".join(f"{r.stock_name}(tech={r.tech_score})" for r in results[:3]),
-                )
-            except Exception as e:
-                logger.warning("[Discovery] StockScorer 初始化失败: %s", e)
+        # 综合分排序（无论 StockScorer 是否启用）
+        alpha = self.config.score_blend_alpha
+        for r in results:
+            r.composite_score = alpha * r.score + (1 - alpha) * r.tech_score
+        results.sort(key=lambda r: r.composite_score, reverse=True)
+        logger.info(
+            "[Discovery] 综合分排序完成 (alpha=%.2f), Top 3: %s",
+            alpha,
+            ", ".join(f"{r.stock_name}(composite={r.composite_score:.1f}, factor={r.score}, tech={r.tech_score})" for r in results[:3]),
+        )
 
         # Phase 5.5: 拥挤度惩罚
         results = self._apply_crowding_penalty(results, trade_date)
 
-        # Phase 5.6: IC 追踪 & 因子监控（仅盘后）
-        if mode != "intraday":
-            try:
-                from concurrent.futures import ThreadPoolExecutor
-                from src.discovery.ic_tracker import ICTracker
-                def _run_ic():
-                    tracker = ICTracker(eval_days=5)
-                    ic_results = tracker.evaluate(raw_scores, trade_date)
-                    if ic_results:
-                        logger.info(f"[IC] {trade_date}: " + ", ".join(f"{k}={v:.3f}" for k, v in ic_results.items()))
-                ThreadPoolExecutor(max_workers=1).submit(_run_ic)
-            except Exception as e:
-                logger.debug(f"[IC] IC评估失败: {e}")
+        # Phase 5.6: IC 追踪 & 因子监控（盘中+盘后）
+        try:
+            from src.discovery.factor_monitor import FactorMonitor
+            monitor = FactorMonitor(top_n=20, eval_days=5)
 
+            # 检测因子变化，自动重跑历史数据
+            current_factors = list(raw_scores.keys())
+            if monitor.detect_factor_changes(current_factors, mode):
+                logger.info("[FactorMonitor] 因子变化检测通过，开始重跑最近 5 天历史数据")
+                monitor.replay_history(self, mode, days=5)
+
+            monitor.record_picks(raw_scores, trade_date, mode=mode)
+            monitor.backfill(trade_date)
+        except Exception as e:
+            logger.warning("[FactorMonitor] 因子监控失败: %s", e)
+
+        # Phase 5.7: 因子权重自动调优（FactorMonitor 反馈闭环）
+        if getattr(self.config, "tune_factor_weights", False):
             try:
-                from src.discovery.factor_monitor import FactorMonitor
-                monitor = FactorMonitor(top_n=20, eval_days=5)
-                monitor.record_picks(raw_scores, trade_date)
-                monitor.backfill(trade_date)
+                from src.discovery.factor_tuner import FactorTuner
+                from pathlib import Path
+
+                monitor_dir = Path(__file__).resolve().parent.parent.parent / "discovery_reports" / "factor_monitor"
+                perf_file = monitor_dir / "performance.json"
+                env_file = Path(__file__).resolve().parents[3] / ".env"
+                min_days = getattr(self.config, "tune_min_days", 5)
+                tuner = FactorTuner(perf_file, env_file, min_days=min_days)
+                tuner.tune(mode)
             except Exception as e:
-                logger.warning("[FactorMonitor] 因子监控失败: %s", e)
+                logger.warning("[FactorTuner] 权重调优失败: %s", e)
 
         elapsed = time.time() - start_time
         top_info = f"{results[0].stock_name} ({results[0].score:.1f})" if results else "N/A (0)"

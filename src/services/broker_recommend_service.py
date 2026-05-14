@@ -202,7 +202,20 @@ class BrokerRecommendService:
         """从 L2 原始字段补全 computed 字段（cost_avg、concentration、scr90）。
 
         L2 存储的是 Tushare 原始字段，前端需要 cost_avg/concentration/scr90。
+        winner_rate 可能是百分比格式（>1，如 88.0）或小数格式（0-1，如 0.88）；
+        统一转换为小数格式，前端统一乘以 100 后显示为 %。
         """
+        # winner_rate 单位兼容：小数格式（0-1）保持不变，百分比格式（>1）自动转换
+        wr = data.get("winner_rate")
+        if wr is not None:
+            try:
+                wr_float = float(wr)
+                # 超过 1 视为百分比格式（如 88.0），转换为小数（如 0.88）
+                if wr_float > 1.0:
+                    data["winner_rate"] = round(wr_float / 100.0, 4)
+            except (ValueError, TypeError):
+                pass
+
         if "cost_avg" not in data or data["cost_avg"] is None:
             wavg = data.get("weight_avg")
             if wavg is not None:
@@ -425,6 +438,9 @@ class BrokerRecommendService:
                         if cyq_data:
                             for ts_code, cyq in cyq_data.items():
                                 cyq["trade_date"] = query_date
+                                # 统一 winner_rate 单位：百分比格式（>1）转为小数格式
+                                if cyq.get("winner_rate", 0) > 1.0:
+                                    cyq["winner_rate"] = round(cyq["winner_rate"] / 100.0, 4)
                                 BrokerRecommendService._set_cached(ts_code, query_date, "cyq_perf", cyq)
                                 enrichment.setdefault(ts_code, {})["cyq_perf"] = cyq
                                 fetched_cyq[ts_code] = cyq
@@ -579,7 +595,8 @@ class BrokerRecommendService:
                     cost_5 = float(row.get("cost_5pct", 0) or 0)
                     cost_95 = float(row.get("cost_95pct", 0) or 0)
                     weight_avg = float(row.get("weight_avg", 0) or 0)
-                    winner_rate = float(row.get("winner_rate", 0) or 0) / 100.0
+                    # winner_rate 可能是百分比格式（>1）或小数格式（<1）；统一去掉 /100.0，让前端乘以 100 显示
+                    winner_rate = float(row.get("winner_rate", 0) or 0)
                     cost_5 = float(row.get("cost_5pct", 0) or 0)
                     cost_15 = float(row.get("cost_15pct", 0) or 0)
                     cost_50 = float(row.get("cost_50pct", 0) or 0)
@@ -1605,7 +1622,8 @@ class BrokerRecommendService:
                         cost_5 = float(row.get("cost_5pct", 0) or 0)
                         cost_95 = float(row.get("cost_95pct", 0) or 0)
                         weight_avg = float(row.get("weight_avg", 0) or 0)
-                        winner_rate = float(row.get("winner_rate", 0) or 0) / 100.0
+                        # winner_rate 可能是百分比格式（>1）或小数格式（<1）；统一保留原始值，让前端乘以 100 显示
+                        winner_rate = float(row.get("winner_rate", 0) or 0)
                         cyq_data[ts_code] = {
                             "cost_avg": round(weight_avg, 2),
                             "winner_rate": round(winner_rate, 4),

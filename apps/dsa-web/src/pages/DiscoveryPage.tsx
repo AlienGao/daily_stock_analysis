@@ -17,7 +17,6 @@ import { searchStocks } from '../utils/searchStocks';
 type TabKey = 'intraday' | 'postmarket';
 
 const MIN_INTRADAY_FETCH_GAP_MS = 60_000;
-const POSTMARKET_REFRESH_MS = 30_000;
 const BACKTEST_REFRESH_MS = 300_000;
 
 const getDefaultTabByCnMarketTime = (): TabKey => {
@@ -45,6 +44,20 @@ const getDefaultTabByCnMarketTime = (): TabKey => {
   const isIntraday = minuteOfDay >= (9 * 60 + 15) && minuteOfDay < (15 * 60);
 
   return isWeekday && isIntraday ? 'intraday' : 'postmarket';
+};
+
+/** 获取上一个交易日（跳过周末）的 YYYYMMDD 字符串 */
+const getPreviousTradeDate = (): string => {
+  const now = new Date();
+  // 用 Intl 获取中国时区的日期
+  const cnDate = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const dow = cnDate.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const offset = dow === 1 ? 3 : dow === 0 ? 2 : 1; // Mon→Fri, Sun→Fri, else→yesterday
+  cnDate.setDate(cnDate.getDate() - offset);
+  const y = cnDate.getFullYear();
+  const m = String(cnDate.getMonth() + 1).padStart(2, '0');
+  const d = String(cnDate.getDate()).padStart(2, '0');
+  return `${y}${m}${d}`;
 };
 
 /* ──────────────────────────────────────────────
@@ -269,8 +282,8 @@ const StockCard: React.FC<{
             </div>
           </div>
 
-          {/* Score — tech_score when StockScorer enabled, else factor composite */}
-          <ScoreRing score={item.tech_score && item.tech_score > 0 ? item.tech_score : item.score} />
+          {/* Score — composite_score (factor×0.3 + tech×0.7) when available, else fallback */}
+          <ScoreRing score={item.composite_score && item.composite_score > 0 ? item.composite_score : (item.tech_score && item.tech_score > 0 ? item.tech_score : item.score)} />
 
           {/* Chevron */}
           <div className={`shrink-0 text-tertiary-text/50 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>
@@ -396,14 +409,14 @@ const StockCard: React.FC<{
                   <div className="space-y-2.5">
                     <div className="text-[11px] font-medium text-tertiary-text tracking-wide">技术评分</div>
                     {([
-                      ['RR分（赔率）', item.rr_score ?? 0],
-                      ['大盘环境', item.market_score ?? 0],
-                      ['板块强弱', item.sector_score ?? 0],
-                      ['量能质量', item.volume_score ?? 0],
-                      ['相对位置', item.position_score ?? 0],
-                      ['形态确认', item.formation_score ?? 0],
-                    ] as const).map(([label, val]) => (
-                      <FactorBar key={label} label={label} value={val} pctShare={0} />
+                      ['RR分（赔率）', item.rr_score ?? 0, 'rr_score'],
+                      ['大盘环境', item.market_score ?? 0, 'market_score'],
+                      ['板块强弱', item.sector_score ?? 0, 'sector_score'],
+                      ['量能质量', item.volume_score ?? 0, 'volume_score'],
+                      ['相对位置', item.position_score ?? 0, 'position_score'],
+                      ['形态确认', item.formation_score ?? 0, 'formation_score'],
+                    ] as const).map(([label, val, weightKey]) => (
+                      <FactorBar key={label} label={label} value={val} pctShare={item.tech_score_weights?.[weightKey] ?? 0} />
                     ))}
                   </div>
                 )}
@@ -916,9 +929,9 @@ const DiscoveryPage: React.FC = () => {
   const [intraday, setIntraday] = useState<{
     updated?: string; round: number; top_n: DiscoveryItem[]; dropped: DiscoveryItem[];
   } | null>(null);
-  const [report, setReport] = useState<string | null>(null);
   const [postTopN, setPostTopN] = useState<DiscoveryItem[]>([]);
   const [reportDate, setReportDate] = useState<string | null>(null);
+  const [liveRescored, setLiveRescored] = useState(false);
   const [loading, setLoading] = useState(false);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -998,16 +1011,45 @@ const DiscoveryPage: React.FC = () => {
     }
   }, []);
 
-  const fetchReport = useCallback(async () => {
+  const fetchReport = useCallback(async (date?: string) => {
     try {
       setLoading(true);
-      const d = await discoveryApi.getPostmarketReport();
-      setReport(d.exists ? d.report : null);
+      const d = await discoveryApi.getPostmarketReport(date);
       setPostTopN(d.top_n ?? []);
       setReportDate(d.date ?? null);
+      setLiveRescored(false);
       setError(null);
     } catch (e: unknown) { setError(e instanceof Error ? e.message : 'err'); }
     finally { setLoading(false); }
+  }, []);
+
+  const fetchLiveRescore = useCallback(async () => {
+    try {
+      setLoading(true);
+      const d = await discoveryApi.getPostmarketFollowup();
+      if (d.top_n && d.top_n.length > 0) {
+        setPostTopN(d.top_n);
+        setLiveRescored(!!d.live_rescored);
+        setReportDate(d.date ?? null);
+        setError(null);
+      } else {
+        // followup 无数据，fallback 到静态报告
+        const r = await discoveryApi.getPostmarketReport(getPreviousTradeDate());
+        setPostTopN(r.top_n ?? []);
+        setReportDate(r.date ?? null);
+        setLiveRescored(false);
+      }
+    } catch {
+      // fallback: 加载静态数据
+      try {
+        const r = await discoveryApi.getPostmarketReport(getPreviousTradeDate());
+        setPostTopN(r.top_n ?? []);
+        setReportDate(r.date ?? null);
+        setLiveRescored(false);
+      } catch { /* silent */ }
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   const runDiscovery = useCallback(async () => {
@@ -1074,7 +1116,12 @@ const DiscoveryPage: React.FC = () => {
 
   useEffect(() => {
     if (tab === 'intraday') { fetchIntraday(); fetchBacktest('intraday'); fetchScanMode('intraday'); }
-    else { fetchReport(); fetchBacktest('postmarket'); fetchScanMode('postmarket'); }
+    else {
+      // 优先用内存缓存（含盘中最后一次重评），没有再加载静态报告
+      fetchLiveRescore();
+      fetchBacktest('postmarket');
+      fetchScanMode('postmarket');
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
@@ -1109,9 +1156,29 @@ const DiscoveryPage: React.FC = () => {
 
   useEffect(() => {
     if (tab !== 'postmarket') return;
-    const id = setInterval(() => fetchReport(), POSTMARKET_REFRESH_MS);
-    return () => clearInterval(id);
-  }, [tab, fetchReport]);
+
+    const streamUrl = `${import.meta.env.VITE_API_BASE_URL ?? ''}/api/v1/discovery/postmarket/stream`;
+    const es = new EventSource(streamUrl);
+
+    es.addEventListener('update', () => {
+      // 优先用内存缓存（含盘中最后一次重评），没有再加载静态报告
+      fetchLiveRescore();
+    });
+
+    es.addEventListener('rescore', () => {
+      fetchLiveRescore();
+    });
+
+    es.addEventListener('heartbeat', () => {
+      // 非交易时段仅维持心跳，不主动刷新
+    });
+
+    es.onerror = () => {
+      es.close();
+    };
+
+    return () => es.close();
+  }, [tab, fetchReport, fetchLiveRescore]);
 
   useEffect(() => { document.title = '寻股 - DSA'; }, []);
 
@@ -1398,6 +1465,12 @@ const DiscoveryPage: React.FC = () => {
                 报告日期 {reportDate}
               </span>
             )}
+            {liveRescored && (
+              <span className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 text-xs font-medium text-emerald-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                盘中实时评分
+              </span>
+            )}
 
             {/* 全市场 / 白名单 / 金股 切换 */}
             <div className="ml-auto inline-flex rounded-md border border-border/30 overflow-hidden shrink-0">
@@ -1456,14 +1529,14 @@ const DiscoveryPage: React.FC = () => {
               <div className="flex items-center gap-2 py-16 text-secondary-text justify-center">
                 <Loader2 className="h-4 w-4 animate-spin" /> 加载中...
               </div>
-            ) : !report ? (
+            ) : !hasCards ? (
               <EmptyState
                 title="暂无盘后发现报告"
                 description="点击上方按钮运行多因子深度发现，自动生成 Top 10 推荐及买卖点位"
                 icon={<Compass className="h-8 w-8 text-tertiary-text" />}
               />
             ) : (
-              <>{hasCards && cardGrid}</>
+              cardGrid
             )
           ) : (
             <FactorTopsCard data={factorTops} loading={factorTopsLoading} />

@@ -46,13 +46,14 @@ class FactorMonitor:
     # ------------------------------------------------------------------
 
     def record_picks(
-        self, factor_scores: Dict[str, pd.Series], trade_date: str
+        self, factor_scores: Dict[str, pd.Series], trade_date: str, mode: str = "postmarket"
     ) -> Optional[str]:
         """记录每个因子的 Top N 选股。
 
         Args:
             factor_scores: {因子名: pd.Series(ts_code → 原始得分 0-100)}
             trade_date: 交易日期 YYYYMMDD
+            mode: "intraday" 或 "postmarket"，用于区分盘中/盘后同名因子
 
         Returns:
             写入的文件路径，或 None
@@ -78,21 +79,108 @@ class FactorMonitor:
         self.picks_dir.mkdir(parents=True, exist_ok=True)
         out = {
             "trade_date": trade_date,
+            "mode": mode,
             "top_n": self.top_n,
             "eval_days": self.eval_days,
             "factors": picks,
             "recorded_at": datetime.now().isoformat(),
         }
-        filepath = self.picks_dir / f"picks_{trade_date}.json"
+        filepath = self.picks_dir / f"picks_{mode}_{trade_date}.json"
         filepath.write_text(json.dumps(out, ensure_ascii=False, indent=2))
         logger.info(
-            "[FactorMonitor] 已记录 %d 个因子选股 → %s", len(picks), filepath.name
+            "[FactorMonitor] 已记录 %d 个因子选股（%s）→ %s", len(picks), mode, filepath.name
         )
         return str(filepath)
 
     # ------------------------------------------------------------------
     # Backfill
     # ------------------------------------------------------------------
+
+    def detect_factor_changes(self, current_factors: List[str], mode: str) -> bool:
+        """检测因子是否发生变化（新增、改名、删除）。
+
+        Args:
+            current_factors: 当前活跃因子名列表
+            mode: "intraday" 或 "postmarket"
+
+        Returns:
+            True 表示因子有变化，需要重跑
+        """
+        historical_factors: set = set()
+        for fp in self.picks_dir.glob(f"picks_{mode}_*.json"):
+            try:
+                data = json.loads(fp.read_text())
+                historical_factors.update(data.get("factors", {}).keys())
+            except Exception:
+                continue
+
+        if not historical_factors:
+            return False  # 没有历史数据，不需要重跑
+
+        current_set = set(current_factors)
+        added = current_set - historical_factors
+        removed = historical_factors - current_set
+
+        if added or removed:
+            if added:
+                logger.info("[FactorMonitor] 检测到新增因子 (%s): %s", mode, ", ".join(added))
+            if removed:
+                logger.info("[FactorMonitor] 检测到移除因子 (%s): %s", mode, ", ".join(removed))
+            return True
+        return False
+
+    def replay_history(self, engine, mode: str, days: int = 5) -> int:
+        """重跑最近 N 天的发现，替换旧 picks 文件。
+
+        当因子发生变化（新增/改名/删除）时调用，确保 picks 数据与当前因子一致。
+
+        Args:
+            engine: StockDiscoveryEngine 实例
+            mode: "intraday" 或 "postmarket"
+            days: 回放天数（默认 5）
+
+        Returns:
+            成功回放的天数
+        """
+        from src.storage import DatabaseManager
+
+        db = DatabaseManager()
+        # 获取最近 N 个交易日
+        with db.get_session() as s:
+            from sqlalchemy import text
+            rows = s.execute(
+                text("SELECT DISTINCT date FROM stock_daily ORDER BY date DESC LIMIT :limit"),
+                {"limit": days + 2},  # 多取几天，避免节假日不够
+            ).fetchall()
+
+        if not rows:
+            logger.warning("[FactorMonitor] 无交易日数据，跳过回放")
+            return 0
+
+        trade_dates = sorted([str(r[0].strftime("%Y%m%d")) if hasattr(r[0], 'strftime') else str(r[0]).replace("-", "") for r in rows], reverse=True)[:days]
+
+        success = 0
+        for trade_date in trade_dates:
+            try:
+                # 删除旧 picks 文件（如有）
+                old_file = self.picks_dir / f"picks_{mode}_{trade_date}.json"
+                if old_file.exists():
+                    old_file.unlink()
+                    logger.info("[FactorMonitor] 删除旧 picks: %s", old_file.name)
+
+                # 重跑发现
+                results = engine.discover(mode=mode, trade_date=trade_date)
+                if results:
+                    success += 1
+                    logger.info("[FactorMonitor] 回放 %s %s 完成: %d 只股票", mode, trade_date, len(results))
+                else:
+                    logger.warning("[FactorMonitor] 回放 %s %s 无结果", mode, trade_date)
+            except Exception as e:
+                logger.warning("[FactorMonitor] 回放 %s %s 失败: %s", mode, trade_date, e)
+
+        if success:
+            logger.info("[FactorMonitor] 回放完成: %s 模式 %d/%d 天成功", mode, success, len(trade_dates))
+        return success
 
     def backfill(self, trade_date: str) -> Optional[List[dict]]:
         """回填所有未评估的 picks，使用当前 trade_date 作为评估终点。
@@ -107,18 +195,29 @@ class FactorMonitor:
         """
         evaluated = self._evaluated_pick_dates()
 
-        pending: List[Tuple[str, Path]] = []
+        pending: List[Tuple[str, str, Path]] = []
         for fp in sorted(self.picks_dir.glob("picks_*.json")):
-            pick_date = fp.stem.replace("picks_", "")
-            if pick_date in evaluated or pick_date >= trade_date:
+            # picks_{mode}_{trade_date}.json
+            stem = fp.stem  # e.g. picks_postmarket_20260508
+            parts = stem.split("_", 1)  # ['picks', 'postmarket_20260508']
+            if len(parts) < 2:
                 continue
-            pending.append((pick_date, fp))
+            mode_date = parts[1]  # 'postmarket_20260508'
+            mode_parts = mode_date.rsplit("_", 1)
+            if len(mode_parts) < 2:
+                continue
+            mode = mode_parts[0]  # 'postmarket'
+            pick_date = mode_parts[1]  # '20260508'
+            key = f"{mode}_{pick_date}"
+            if key in evaluated or pick_date >= trade_date:
+                continue
+            pending.append((mode, pick_date, fp))
 
         if not pending:
             return None
 
         results: List[dict] = []
-        for pick_date, fp in pending:
+        for mode, pick_date, fp in pending:
             try:
                 picks_data = json.loads(fp.read_text())
             except Exception:
@@ -172,6 +271,7 @@ class FactorMonitor:
 
             entry = {
                 "pick_date": pick_date,
+                "mode": mode,
                 "eval_date": trade_date,
                 "eval_days": actual_eval_days,
                 "factors": perf_factors,
@@ -407,8 +507,9 @@ class FactorMonitor:
 
     def _append_performance(self, entry: dict):
         history = self._load_performance()
+        key = (entry.get("pick_date"), entry.get("mode"))
         for i, existing in enumerate(history):
-            if existing.get("pick_date") == entry.get("pick_date"):
+            if (existing.get("pick_date"), existing.get("mode")) == key:
                 history[i] = entry
                 self._save_performance(history)
                 return
@@ -416,7 +517,7 @@ class FactorMonitor:
         self._save_performance(history)
 
     def _evaluated_pick_dates(self) -> set:
-        return {e.get("pick_date", "") for e in self._load_performance()}
+        return {f"{e.get('mode', '')}_{e.get('pick_date', '')}" for e in self._load_performance()}
 
 
 if __name__ == "__main__":

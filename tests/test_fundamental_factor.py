@@ -336,7 +336,7 @@ class TestFundamentalFactor:
     def test_factor_attributes(self, factor):
         assert factor.name == "fundamental"
         assert factor.available_intraday is False
-        assert factor.available_postmarket is False
+        assert factor.available_postmarket is True
         assert factor.weight == 5.0
 
     # -- 默认行业 --

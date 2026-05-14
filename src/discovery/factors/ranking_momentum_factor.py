@@ -30,7 +30,7 @@ class RankingMomentumFactor(BaseFactor):
 
     name = "ranking_momentum"
     available_intraday = True
-    available_postmarket = False
+    available_postmarket = True
     weight = 15.0
 
     _LOOKBACK_TRADING_DAYS = 6     # 回看交易日数（天然免疫假期）

@@ -27,6 +27,8 @@ export type DiscoveryItem = {
   volume_score?: number;
   position_score?: number;
   formation_score?: number;
+  tech_score_weights?: Record<string, number>;
+  composite_score?: number;
 };
 
 export type IntradayTopResponse = {
@@ -42,6 +44,7 @@ export type PostmarketReportResponse = {
   report: string;
   exists: boolean;
   top_n?: DiscoveryItem[];
+  live_rescored?: boolean;
 };
 
 export type PostmarketRunResponse = {
@@ -188,6 +191,12 @@ export const discoveryApi = {
   async getPostmarketReport(date?: string): Promise<PostmarketReportResponse> {
     const params = date ? { report_date: date } : {};
     const resp = await apiClient.get('/api/v1/discovery/postmarket/report', { params });
+    return resp.data as PostmarketReportResponse;
+  },
+
+  async getPostmarketFollowup(date?: string): Promise<PostmarketReportResponse> {
+    const params = date ? { report_date: date } : {};
+    const resp = await apiClient.post('/api/v1/discovery/postmarket/followup', null, { params });
     return resp.data as PostmarketReportResponse;
   },
 

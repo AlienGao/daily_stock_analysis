@@ -8,12 +8,15 @@ import asyncio
 import json
 import logging
 import os
+import re
 import threading
+import time
 from datetime import date, datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
 import pandas as pd
+import requests
 
 import fastapi
 from fastapi import APIRouter, HTTPException, Query
@@ -25,12 +28,61 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 _SCAN_OUTPUT = "/tmp/discovery_top10.json"
+_INTRADAY_REPORTS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "discovery_reports"
+
+
+def _postmarket_stream_path(date_str: str = "") -> Path:
+    """盘后 TopN JSON 路径（每日一个文件）。"""
+    if not date_str:
+        date_str = date.today().strftime("%Y%m%d")
+    return _INTRADAY_REPORTS_DIR / f"postmarket_{date_str}_topn.json"
+
+
+def _is_trading_hours() -> bool:
+    """当前是否在 A 股交易时段（工作日 9:30-15:00）。"""
+    now = datetime.now()
+    if now.weekday() >= 5:
+        return False
+    minute_of_day = now.hour * 60 + now.minute
+    return (9 * 60 + 30) <= minute_of_day <= (15 * 60)
+
+
+# ---------------------------------------------------------------------------
+# Live rescore cache & engine reuse
+# ---------------------------------------------------------------------------
+
+_live_rescore_cache: Dict[str, dict] = {}  # {date_str: {"ts": float, "items": list}}
+_cached_engine = None
+_cached_engine_ts = 0
+
+
+def _get_or_create_engine():
+    """复用 engine 实例（5 分钟内），避免重复注册因子。"""
+    global _cached_engine, _cached_engine_ts
+    now = time.time()
+    if _cached_engine is not None and now - _cached_engine_ts < 300:
+        return _cached_engine
+    from src.discovery.config import get_active_config, set_active_config, get_discovery_config
+    from src.discovery.engine import create_discovery_engine
+    from data_provider.tushare_fetcher import TushareFetcher
+    from data_provider.akshare_fetcher import AkshareFetcher
+
+    config = get_active_config() or get_discovery_config()
+    set_active_config(config)
+    tushare_fetcher = TushareFetcher.get_instance()
+    akshare_fetcher = AkshareFetcher()
+    _cached_engine = create_discovery_engine(config, tushare_fetcher, akshare_fetcher)
+    _cached_engine_ts = now
+    return _cached_engine
 
 
 def _get_live_quotes(ts_codes: List[str]) -> "tuple[Dict[str, float], Dict[str, float]]":
     """获取实时价格和涨跌幅。
 
-    Returns: (prices_dict, pct_chg_dict)，key 为 ts_code。
+    交易时段优先从 realtime_spot DB 读取（盘中扫描器每 30s 刷新），
+    非交易时段（盘后/非交易日）回退到 Sina 实时行情接口补充。
+
+    Returns: (prices_dict, pct_chg_dict)，key 为裸码（与 DB 一致）。
     """
     try:
         from src.storage import DatabaseManager
@@ -39,27 +91,102 @@ def _get_live_quotes(ts_codes: List[str]) -> "tuple[Dict[str, float], Dict[str, 
         if spot_df is not None and not spot_df.empty:
             prices: Dict[str, float] = {}
             pct_chgs: Dict[str, float] = {}
-            for ts_code in ts_codes:
-                code = ts_code.split(".")[0] if "." in ts_code else ts_code
+            for code in bare_codes:
                 try:
                     p = spot_df.at[code, "price"]
                     if pd.notna(p):
-                        prices[ts_code] = float(p)
+                        prices[code] = float(p)
                     pct = spot_df.at[code, "pct_chg"]
                     if pd.notna(pct):
-                        pct_chgs[ts_code] = float(pct)
+                        pct_chgs[code] = float(pct)
                 except (KeyError, ValueError, TypeError):
                     pass
-            return prices, pct_chgs
+            if prices:
+                return prices, pct_chgs
     except Exception:
         logger.warning("[Discovery API] realtime_spot 读取出错", exc_info=True)
-    return {}, {}
+
+    # 非交易时段：Sina 实时行情兜底
+    prices, pct_chgs = _get_live_quotes_sina(bare_codes)
+    return prices, pct_chgs
 
 
 def _get_live_prices(ts_codes: List[str]) -> Dict[str, float]:
     """获取实时价格，从 realtime_spot DB 读取。"""
     prices, _ = _get_live_quotes(ts_codes)
     return prices
+
+
+def _get_live_quotes_sina(bare_codes: List[str]) -> "tuple[Dict[str, float], Dict[str, float]]":
+    """通过 Sina 实时行情接口获取价格和涨跌幅（非交易时段兜底）。
+
+    Returns: (prices_dict, pct_chg_dict)，key 为 6 位裸码。
+    """
+    if not bare_codes:
+        return {}, {}
+    try:
+        sina_symbols: List[str] = []
+        for c in bare_codes:
+            if not c.isdigit() or len(c) != 6:
+                continue
+            prefix = "sh" if c.startswith(("6", "68")) else "sz" if c.startswith(("0", "3")) else "bj"
+            sina_symbols.append(f"{prefix}{c}")
+
+        url = f"http://hq.sinajs.cn/list={','.join(sina_symbols)}"
+        resp = requests.get(url, headers={"Referer": "http://finance.sina.com.cn"}, timeout=10)
+        resp.encoding = "gbk"
+    except Exception as e:
+        logger.debug("[Discovery API] Sina 实时行情请求失败: %s", e)
+        return {}, {}
+
+    prices: Dict[str, float] = {}
+    pct_chgs: Dict[str, float] = {}
+    for sc in sina_symbols:
+        try:
+            m = re.search(rf'var hq_str_{sc}="([^"]*)"', resp.text)
+            if not m:
+                continue
+            fields = m.group(1).split(",")
+            if len(fields) < 6:
+                continue
+            code = sc[2:]
+            close_p = float(fields[3]) if fields[3] and fields[3] != "0.000" else None
+            if close_p is not None:
+                prices[code] = close_p
+            pre_close = float(fields[2]) if len(fields) > 2 and fields[2] and fields[2] != "0.000" else None
+            if close_p is not None and pre_close is not None and pre_close > 0:
+                pct_chgs[code] = round((close_p - pre_close) / pre_close * 100, 2)
+        except Exception:
+            pass
+    return prices, pct_chgs
+
+
+def _get_tech_score_weights() -> Dict[str, float]:
+    """从 DiscoveryConfig 读取 StockScorer 各维度权重（归一化为百分比）。
+
+    盘中/盘后共用同一套 StockScorerConfig，返回 {维度名: 百分比}。
+    """
+    try:
+        from src.discovery.config import get_active_config, get_discovery_config
+        cfg = get_active_config() or get_discovery_config()
+        weights = {
+            "rr_score": cfg.scorer_weight_rr,
+            "market_score": cfg.scorer_weight_market,
+            "sector_score": cfg.scorer_weight_sector,
+            "volume_score": cfg.scorer_weight_volume,
+            "position_score": cfg.scorer_weight_position,
+            "formation_score": cfg.scorer_weight_formation,
+        }
+        return {k: round(v * 100, 1) for k, v in weights.items()}
+    except Exception:
+        return {
+            "rr_score": 30.0,
+            "market_score": 20.0,
+            "sector_score": 15.0,
+            "volume_score": 15.0,
+            "position_score": 10.0,
+            "formation_score": 10.0,
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -212,6 +339,8 @@ class DiscoveryItem(BaseModel):
     volume_score: float = 0.0
     position_score: float = 0.0
     formation_score: float = 0.0
+    tech_score_weights: dict = {}   # {维度名: 权重}，由 API 动态注入
+    composite_score: float = 0.0
 
 
 class IntradayTopResponse(BaseModel):
@@ -227,21 +356,29 @@ class PostmarketReportResponse(BaseModel):
     report: str
     exists: bool
     top_n: List[DiscoveryItem] = []
+    live_rescored: bool = False
 
 
 def _enrich_live_quotes(items: List[DiscoveryItem]) -> None:
-    """用 realtime_spot 的实时价格和涨跌幅覆盖列表中的对应字段。"""
+    """用 realtime_spot 的实时价格和涨跌幅覆盖列表中的对应字段。
+
+    非交易时段通过 Sina 实时行情兜底，确保盘后页面也能展示实时价格。
+    ts_code 为空时用 stock_code 6位裸码兜底。
+    """
     ts_codes = [item.ts_code for item in items if item.ts_code]
-    if not ts_codes:
+    bare_codes = [item.stock_code for item in items if not item.ts_code and item.stock_code]
+    all_codes = ts_codes + bare_codes
+    if not all_codes:
         return
-    live_prices, live_pct_chgs = _get_live_quotes(ts_codes)
+    live_prices, live_pct_chgs = _get_live_quotes(all_codes)
     for item in items:
-        if not item.ts_code:
+        code = item.ts_code or item.stock_code
+        if not code:
             continue
-        lp = live_prices.get(item.ts_code)
+        lp = live_prices.get(code)
         if lp is not None:
-            item.live_price = lp if lp != item.price_at_discovery else None
-        pct = live_pct_chgs.get(item.ts_code)
+            item.live_price = lp
+        pct = live_pct_chgs.get(code)
         if pct is not None:
             item.pct_chg = pct
 
@@ -292,6 +429,8 @@ def _build_discovery_items(raw_items: list, mode: str = "") -> List[DiscoveryIte
             volume_score=entry.get("volume_score", 0.0),
             position_score=entry.get("position_score", 0.0),
             formation_score=entry.get("formation_score", 0.0),
+            tech_score_weights=_get_tech_score_weights(),
+            composite_score=entry.get("composite_score", 0.0),
         ))
     return items
 
@@ -371,8 +510,12 @@ def get_intraday_top10():
                 volume_score=entry.get("volume_score", 0.0),
                 position_score=entry.get("position_score", 0.0),
                 formation_score=entry.get("formation_score", 0.0),
+                tech_score_weights=_get_tech_score_weights(),
+                composite_score=entry.get("composite_score", 0.0),
             ))
-        # Re-rank after filtering
+        # 按综合分重新排序，只返回前 5
+        top_n.sort(key=lambda x: x.composite_score, reverse=True)
+        top_n = top_n[:5]
         for i, item in enumerate(top_n):
             item.rank = i + 1
 
@@ -440,6 +583,79 @@ async def intraday_stream():
                     raise
         except asyncio.CancelledError:
             logger.debug("SSE client disconnected from intraday stream")
+            raise
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
+# Postmarket SSE stream — 交易时段（9:30-15:00）推送盘后榜单更新
+# 非交易时段 SSE keep-alive，不主动推送（盘后数据不会更新）
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/postmarket/stream",
+    responses={
+        200: {"description": "SSE 事件流", "content": {"text/event-stream": {}}},
+    },
+    summary="盘后扫描实时推送（仅交易时段有效）",
+    description="通过 SSE 推送盘后榜单更新事件；非交易时段仅保持连接，不推送数据",
+)
+async def postmarket_stream():
+    """SSE 端点：监听盘后 TopN JSON 的 mtime 变化推送 update 事件。
+
+    推送时机：
+    - 交易时段（9:30-15:00）：检查文件 mtime 变化，变化时推送
+    - 非交易时段：仅保持连接，每 30s 发 heartbeat
+    """
+
+    async def event_generator():
+        last_mtime: Optional[float] = None
+        ticks_since_last_event = 0
+        ticks_since_last_rescore = 0
+        try:
+            while True:
+                await asyncio.sleep(2)
+                ticks_since_last_event += 1
+                ticks_since_last_rescore += 1
+
+                if _is_trading_hours():
+                    today_str = date.today().strftime("%Y%m%d")
+                    mpath = _postmarket_stream_path(today_str)
+                    try:
+                        current_mtime = os.path.getmtime(mpath)
+                    except OSError:
+                        current_mtime = None
+
+                    if current_mtime is not None and current_mtime != last_mtime:
+                        last_mtime = current_mtime
+                        ticks_since_last_event = 0
+                        yield "event: update\ndata: {}\n\n"
+
+                    # 交易时段每 30s 推送 rescore 事件
+                    if ticks_since_last_rescore >= 15:
+                        ticks_since_last_rescore = 0
+                        yield "event: rescore\ndata: {}\n\n"
+
+                    if ticks_since_last_event >= 15:
+                        ticks_since_last_event = 0
+                        yield "event: heartbeat\ndata: {}\n\n"
+                else:
+                    ticks_since_last_rescore = 0
+                    if ticks_since_last_event >= 15:
+                        ticks_since_last_event = 0
+                        yield "event: heartbeat\ndata: {}\n\n"
+
+        except asyncio.CancelledError:
+            logger.debug("SSE client disconnected from postmarket stream")
             raise
 
     return StreamingResponse(
@@ -628,6 +844,8 @@ def get_postmarket_report(
                 volume_score=entry.get("volume_score", 0.0),
                 position_score=entry.get("position_score", 0.0),
                 formation_score=entry.get("formation_score", 0.0),
+                tech_score_weights=_get_tech_score_weights(),
+                composite_score=entry.get("composite_score", 0.0),
             ))
         _enrich_live_quotes(top_n)
 
@@ -637,6 +855,108 @@ def get_postmarket_report(
     except Exception as e:
         logger.warning("读取盘后报告失败: %s", e)
         return PostmarketReportResponse(date=report_date, report="", exists=False)
+
+
+# ---------------------------------------------------------------------------
+# Postmarket followup — 盘中交易时段对盘后推荐股实时重评
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/postmarket/followup",
+    response_model=PostmarketReportResponse,
+    summary="盘中实时重评盘后推荐股",
+    description="交易时段内，对盘后推荐股票用盘中因子重新评分。非交易时段返回 exists=False。",
+)
+def postmarket_followup(
+    report_date: Optional[str] = Query(None, description="盘后报告日期 YYYYMMDD，默认昨天"),
+):
+    if not _is_trading_hours():
+        return PostmarketReportResponse(date=report_date or "", report="", exists=False)
+
+    # 确定盘后报告日期（默认昨天）
+    if report_date is None:
+        from datetime import timedelta
+        report_date = (date.today() - timedelta(days=1)).strftime("%Y%m%d")
+
+    # 缓存命中（内存，交易时段内一直有效；SSE 每 30 秒会触发重新计算覆盖）
+    cache = _live_rescore_cache.get(report_date)
+    if cache:
+        return PostmarketReportResponse(
+            date=report_date, report="", exists=True,
+            top_n=cache["items"], live_rescored=True,
+        )
+
+    # 读取盘后 topn 获取候选股票代码
+    topn_file = _INTRADAY_REPORTS_DIR / f"postmarket_{report_date}_topn.json"
+    if not topn_file.exists():
+        return PostmarketReportResponse(date=report_date, report="", exists=False)
+
+    try:
+        raw_items = json.loads(topn_file.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return PostmarketReportResponse(date=report_date, report="", exists=False)
+
+    if not raw_items:
+        return PostmarketReportResponse(date=report_date, report="", exists=False)
+
+    candidate_codes = [e.get("stock_code", "") for e in raw_items if e.get("stock_code")]
+    if not candidate_codes:
+        return PostmarketReportResponse(date=report_date, report="", exists=False)
+
+    # 用盘中因子重评
+    try:
+        engine = _get_or_create_engine()
+        results = engine.discover(mode="intraday", candidate_codes=candidate_codes)
+    except Exception as e:
+        logger.warning("[Followup] 盘中重评失败: %s", e, exc_info=True)
+        return PostmarketReportResponse(date=report_date, report="", exists=False)
+
+    if not results:
+        return PostmarketReportResponse(date=report_date, report="", exists=False)
+
+    # 构建 DiscoveryItem 列表
+    items: List[DiscoveryItem] = []
+    fallback_weights = _get_factor_weights("intraday")
+    for i, r in enumerate(results, 1):
+        items.append(DiscoveryItem(
+            rank=i,
+            ts_code=r.ts_code,
+            stock_code=r.stock_code,
+            stock_name=r.stock_name,
+            score=r.score,
+            sector=r.sector,
+            factor_scores=r.factor_scores,
+            factor_weights=r.factor_weights or fallback_weights,
+            reasons=r.reasons,
+            buy_price_low=r.buy_price_low,
+            buy_price_high=r.buy_price_high,
+            stop_loss=r.stop_loss,
+            take_profit_1=r.take_profit_1,
+            take_profit_2=r.take_profit_2,
+            discovered_at=r.discovered_at,
+            price_at_discovery=r.price_at_discovery,
+            pct_chg=getattr(r, "change_pct", 0.0),
+            tech_score=r.tech_score,
+            rr_score=r.rr_score,
+            market_score=r.market_score,
+            sector_score=r.sector_score,
+            volume_score=r.volume_score,
+            position_score=r.position_score,
+            formation_score=r.formation_score,
+            tech_score_weights=_get_tech_score_weights(),
+            composite_score=r.composite_score,
+        ))
+
+    _enrich_live_quotes(items)
+
+    # 更新缓存
+    _live_rescore_cache[report_date] = {"ts": time.time(), "items": items}
+
+    return PostmarketReportResponse(
+        date=report_date, report="", exists=True,
+        top_n=items, live_rescored=True,
+    )
 
 
 # ---------------------------------------------------------------------------

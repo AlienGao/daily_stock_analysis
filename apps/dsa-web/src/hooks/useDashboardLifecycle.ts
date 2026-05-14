@@ -87,6 +87,12 @@ export function useDashboardLifecycle({
       syncTaskFailed(task);
       scheduleTaskRemoval(task.taskId, 5_000);
     },
+    onConnected: () => {
+      // Reconnected after SSE disconnect — refresh both active tasks and history
+      // to recover from any missed task_completed events (e.g. tab was backgrounded
+      // or reconnects after a network blip).
+      void refreshHistory(true);
+    },
     onError: () => {
       console.warn('SSE connection disconnected, reconnecting...');
     },

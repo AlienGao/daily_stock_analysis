@@ -92,6 +92,7 @@ class DiscoveryResult:
     volume_score: float = 0.0
     position_score: float = 0.0
     formation_score: float = 0.0
+    composite_score: float = 0.0
 
 
 class BaseFactor(ABC):

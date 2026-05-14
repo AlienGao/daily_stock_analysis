@@ -1,0 +1,191 @@
+[
+  {
+    "rank": 1,
+    "stock_code": "300496",
+    "stock_name": "中科创达",
+    "score": 32.5,
+    "tech_score": 68.67,
+    "sector": "IT服务",
+    "factor_scores": {
+      "ma_entry": 17.42805122018837,
+      "momentum": 10.109768250376508,
+      "sector": 0.0,
+      "popularity": 0.0,
+      "ranking_momentum": 6.882806470707237,
+      "rebound": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 25.0,
+      "momentum": 18.0,
+      "sector": 25.0,
+      "popularity": 18.0,
+      "ranking_momentum": 15.0,
+      "rebound": 20.0
+    },
+    "reasons": [
+      "均线多头排列",
+      "回踩MA5均线",
+      "今日强于81%个股"
+    ],
+    "buy_price_low": 61.7,
+    "buy_price_high": 64.4,
+    "stop_loss": 64.92,
+    "take_profit_1": 69.33,
+    "take_profit_2": 73.06,
+    "pct_chg": -1.84,
+    "live_price": 66.28,
+    "price_at_discovery": 66.28
+  },
+  {
+    "rank": 2,
+    "stock_code": "000811",
+    "stock_name": "冰轮环境",
+    "score": 34.6,
+    "tech_score": 50.89,
+    "sector": "通用设备",
+    "factor_scores": {
+      "ma_entry": 0.35028434847111184,
+      "momentum": 14.413432936469283,
+      "sector": 19.03581267217631,
+      "popularity": 0.0,
+      "ranking_momentum": 1.6678779886560322,
+      "rebound": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 25.0,
+      "momentum": 18.0,
+      "sector": 25.0,
+      "popularity": 18.0,
+      "ranking_momentum": 15.0,
+      "rebound": 20.0
+    },
+    "reasons": [
+      "今日强于98%个股",
+      "所属板块: 通用设备"
+    ],
+    "buy_price_low": 24.6,
+    "buy_price_high": 24.8,
+    "stop_loss": 29.97,
+    "take_profit_1": 36.51,
+    "take_profit_2": 37.24,
+    "pct_chg": 7.96,
+    "live_price": 34.33,
+    "price_at_discovery": 34.33
+  },
+  {
+    "rank": 3,
+    "stock_code": "002273",
+    "stock_name": "水晶光电",
+    "score": 26.3,
+    "tech_score": 44.88,
+    "sector": "光学光电子",
+    "factor_scores": {
+      "ma_entry": 12.053902579741202,
+      "momentum": 12.863789964259757,
+      "sector": 0.0,
+      "popularity": 0.0,
+      "ranking_momentum": 1.488052868585301,
+      "rebound": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 25.0,
+      "momentum": 18.0,
+      "sector": 25.0,
+      "popularity": 18.0,
+      "ranking_momentum": 15.0,
+      "rebound": 20.0
+    },
+    "reasons": [
+      "均线多头排列",
+      "回踩MA5均线",
+      "今日强于73%个股"
+    ],
+    "buy_price_low": 33.7,
+    "buy_price_high": 34.0,
+    "stop_loss": 34.08,
+    "take_profit_1": 42.03,
+    "take_profit_2": 43.83,
+    "pct_chg": 0.0,
+    "live_price": 39.38,
+    "price_at_discovery": 39.38
+  },
+  {
+    "rank": 4,
+    "stock_code": "603986",
+    "stock_name": "兆易创新",
+    "score": 16.7,
+    "tech_score": 44.76,
+    "sector": "半导体",
+    "factor_scores": {
+      "ma_entry": 14.215550377258115,
+      "momentum": 0.4706922517851389,
+      "sector": 0.0,
+      "popularity": 0.0,
+      "ranking_momentum": 11.461603590508231,
+      "rebound": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 25.0,
+      "momentum": 18.0,
+      "sector": 25.0,
+      "popularity": 18.0,
+      "ranking_momentum": 15.0,
+      "rebound": 20.0
+    },
+    "reasons": [
+      "均线多头排列",
+      "回踩MA5均线",
+      "排名连续上升(2天)",
+      "趋势加速↑(46.2%/天)",
+      "今日强于96%个股",
+      "拥挤惩罚(近5日选中3天-10分)"
+    ],
+    "buy_price_low": 318.3,
+    "buy_price_high": 321.5,
+    "stop_loss": 313.03,
+    "take_profit_1": 387.31,
+    "take_profit_2": 406.51,
+    "pct_chg": -0.67,
+    "live_price": 362.55,
+    "price_at_discovery": 362.55
+  },
+  {
+    "rank": 5,
+    "stock_code": "002353",
+    "stock_name": "杰瑞股份",
+    "score": 26.8,
+    "tech_score": 39.76,
+    "sector": "专用设备",
+    "factor_scores": {
+      "ma_entry": 11.654915594584267,
+      "momentum": 4.4331387725437015,
+      "sector": 0.0,
+      "popularity": 0.0,
+      "ranking_momentum": 11.686384990596645,
+      "rebound": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 25.0,
+      "momentum": 18.0,
+      "sector": 25.0,
+      "popularity": 18.0,
+      "ranking_momentum": 15.0,
+      "rebound": 20.0
+    },
+    "reasons": [
+      "均线多头排列",
+      "回踩MA10均线",
+      "排名连续上升(2天)",
+      "趋势加速↑(22.1%/天)",
+      "今日强于88%个股"
+    ],
+    "buy_price_low": 130.6,
+    "buy_price_high": 132.5,
+    "stop_loss": 117.9,
+    "take_profit_1": 151.52,
+    "take_profit_2": 166.93,
+    "pct_chg": -5.8,
+    "live_price": 140.31,
+    "price_at_discovery": 140.31
+  }
+]

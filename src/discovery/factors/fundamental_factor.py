@@ -85,7 +85,7 @@ class FundamentalFactor(BaseFactor):
 
     name = "fundamental"
     available_intraday = False
-    available_postmarket = False
+    available_postmarket = True
     weight = 5.0
 
     _LABEL_THRESHOLD_RATIO = 0.5

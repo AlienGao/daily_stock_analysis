@@ -626,6 +626,7 @@ class IntradayScanner:
                 "volume_score": getattr(r, "volume_score", 0.0),
                 "position_score": getattr(r, "position_score", 0.0),
                 "formation_score": getattr(r, "formation_score", 0.0),
+                "composite_score": getattr(r, "composite_score", 0.0),
                 "change": "",
             }
 
@@ -742,6 +743,7 @@ class IntradayScanner:
                     "volume_score": getattr(r, "volume_score", 0.0),
                     "position_score": getattr(r, "position_score", 0.0),
                     "formation_score": getattr(r, "formation_score", 0.0),
+                    "composite_score": getattr(r, "composite_score", 0.0),
                 })
             json_file = save_dir / f"intraday_{date_str}_topn.json"
             json_file.write_text(json.dumps(topn, ensure_ascii=False, indent=2), encoding="utf-8")
