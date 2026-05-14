@@ -11,6 +11,7 @@ import { AutoComplete, DatePicker, Table, Segmented } from 'antd';
 import dayjs from 'dayjs';
 import { AppPage, Button, EmptyState } from '../components/common';
 import { discoveryApi, type DiscoveryItem, type BacktestResponse, type ScanModeResponse, type StockScoreResponse, type FactorTopsResponse } from '../api/discovery';
+import { stocksApi, type KLineItem } from '../api/stocks';
 import { useStockIndex } from '../hooks/useStockIndex';
 import { searchStocks } from '../utils/searchStocks';
 
@@ -44,20 +45,6 @@ const getDefaultTabByCnMarketTime = (): TabKey => {
   const isIntraday = minuteOfDay >= (9 * 60 + 15) && minuteOfDay < (15 * 60);
 
   return isWeekday && isIntraday ? 'intraday' : 'postmarket';
-};
-
-/** 获取上一个交易日（跳过周末）的 YYYYMMDD 字符串 */
-const getPreviousTradeDate = (): string => {
-  const now = new Date();
-  // 用 Intl 获取中国时区的日期
-  const cnDate = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
-  const dow = cnDate.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-  const offset = dow === 1 ? 3 : dow === 0 ? 2 : 1; // Mon→Fri, Sun→Fri, else→yesterday
-  cnDate.setDate(cnDate.getDate() - offset);
-  const y = cnDate.getFullYear();
-  const m = String(cnDate.getMonth() + 1).padStart(2, '0');
-  const d = String(cnDate.getDate()).padStart(2, '0');
-  return `${y}${m}${d}`;
 };
 
 /* ──────────────────────────────────────────────
@@ -134,6 +121,7 @@ const FACTOR_LABELS: Record<string, string> = {
   sector: '板块',
   ma_entry: '均线',
   ranking_momentum: '排名动量',
+  concept_heat: '概念热度',
 };
 
 const factorLabel = (key: string) => FACTOR_LABELS[key] || key;
@@ -251,7 +239,7 @@ const StockCard: React.FC<{
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[15px] font-semibold tracking-tight text-foreground">{item.stock_code}</span>
-              <span className="text-[13px] text-secondary-text">{item.stock_name}</span>
+              <span className="text-[13px] font-semibold">{item.stock_name}</span>
               {item.sector && (
                 <span className="rounded-md border border-border/40 bg-muted/30 px-1.5 py-0.5 text-[10px] text-tertiary-text">{item.sector}</span>
               )}
@@ -261,10 +249,10 @@ const StockCard: React.FC<{
                 </span>
               )}
               {item.discovered_at && (
-                <span className="text-[15px] font-semibold text-foreground">{item.discovered_at} 发现</span>
+                <span className="text-[15px] font-medium text-foreground">{item.discovered_at} 发现</span>
               )}
               {item.price_at_discovery != null && (
-                <span className="text-[15px] font-semibold text-foreground">· ¥{item.price_at_discovery.toFixed(2)}</span>
+                <span className="text-[15px] font-medium text-foreground">· ¥{item.price_at_discovery.toFixed(2)}</span>
               )}
               {item.pct_chg != null && (
                 <span className={`text-[13px] font-medium tabular-nums ml-0.5 ${item.pct_chg >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
@@ -272,12 +260,12 @@ const StockCard: React.FC<{
                 </span>
               )}
               {item.live_price != null && item.price_at_discovery != null && (
-                <span className={`text-[15px] font-semibold tabular-nums ${item.live_price >= item.price_at_discovery ? 'text-red-400' : 'text-emerald-400'}`}>
+                <span className={`text-[15px] font-medium tabular-nums ${item.live_price >= item.price_at_discovery ? 'text-red-400' : 'text-emerald-400'}`}>
                   → ¥{item.live_price.toFixed(2)}
                 </span>
               )}
               {item.live_price != null && item.price_at_discovery == null && (
-                <span className="text-[15px] font-semibold text-foreground">→ ¥{item.live_price.toFixed(2)}</span>
+                <span className="text-[15px] font-medium text-foreground">→ ¥{item.live_price.toFixed(2)}</span>
               )}
             </div>
           </div>
@@ -291,51 +279,34 @@ const StockCard: React.FC<{
           </div>
         </div>
 
-        {/* Prices: keep key buy/sell points visible when collapsed */}
+        {/* Prices: compact inline bar — clean minimal look */}
         {px && (
-          <div className="space-y-2">
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <div className="rounded-xl border border-cyan/15 bg-cyan/[0.06] px-3 py-2 flex flex-col items-center justify-center min-h-[52px]">
-                <div className="flex items-center gap-1 text-[10px] text-cyan/80">
-                  <Target className="h-3 w-3" />
-                  买入区间
-                </div>
-                <div className="text-lg sm:text-xl font-semibold tabular-nums text-cyan text-center">{buyRange}</div>
-              </div>
-              <div className="rounded-xl border border-red-400/15 bg-red-400/[0.06] px-3 py-2 flex flex-col items-center justify-center min-h-[52px]">
-                <div className="flex items-center gap-1 text-[10px] text-red-400/80">
-                  <Zap className="h-3 w-3" />
-                  止盈 1
-                </div>
-                <div className="text-lg sm:text-xl font-semibold tabular-nums text-red-400 text-center">{fmtPx(item.take_profit_1)}</div>
-              </div>
-              <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.06] px-3 py-2 flex flex-col items-center justify-center min-h-[52px]">
-                <div className="flex items-center gap-1 text-[10px] text-emerald-400/80">
-                  <Shield className="h-3 w-3" />
-                  止损
-                </div>
-                <div className="text-lg sm:text-xl font-semibold tabular-nums text-emerald-400 text-center">{fmtPx(item.stop_loss)}</div>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              <span className="rounded-lg border border-cyan/20 bg-cyan/[0.1] px-2.5 py-1 font-semibold text-cyan">
-                盈亏比 {pnlRatio != null ? `${pnlRatio.toFixed(2)} : 1` : '--'}
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs border-t border-border/10 pt-2.5">
+            <span className="inline-flex items-center gap-1.5">
+              <Target className="h-3 w-3 text-cyan/60" />
+              <span className="text-tertiary-text">买入</span>
+              <span className="font-semibold tabular-nums text-foreground">{buyRange}</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Zap className="h-3 w-3 text-red-400/60" />
+              <span className="text-tertiary-text">止盈</span>
+              <span className="font-semibold tabular-nums text-red-400">{fmtPx(item.take_profit_1)}</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Shield className="h-3 w-3 text-emerald-400/60" />
+              <span className="text-tertiary-text">止损</span>
+              <span className="font-semibold tabular-nums text-emerald-400">{fmtPx(item.stop_loss)}</span>
+            </span>
+            {pnlRatio != null && (
+              <span className="text-tertiary-text">
+                盈亏比 <span className="font-semibold text-foreground">{pnlRatio.toFixed(2)}:1</span>
               </span>
-              <span className="rounded-lg border border-red-400/20 bg-red-400/[0.08] px-2.5 py-1 font-medium text-red-300">
-                预期盈利 {fmtPct(profitPct)}
+            )}
+            {profitPct != null && (
+              <span className="text-tertiary-text">
+                预期盈利 <span className="font-semibold text-red-400">{fmtPct(profitPct)}</span>
               </span>
-              <span className="rounded-lg border border-emerald-400/20 bg-emerald-400/[0.08] px-2.5 py-1 font-medium text-emerald-300">
-                预期亏损 {fmtPct(lossPct)}
-              </span>
-              {refPrice != null && (
-                <span className="text-[15px] font-semibold text-foreground">
-                  {item.price_at_discovery != null && item.price_at_discovery > 0
-                    ? <>发现价 ¥{item.price_at_discovery.toFixed(2)}{item.live_price != null && <span className={item.live_price >= item.price_at_discovery ? 'text-red-400' : 'text-emerald-400'}> → ¥{item.live_price.toFixed(2)}</span>}</>
-                    : `基准买入价 ${refPrice.toFixed(2)}（区间中位）`}
-                </span>
-              )}
-            </div>
+            )}
           </div>
         )}
       </div>
@@ -369,28 +340,17 @@ const StockCard: React.FC<{
                 </div>
               )}
 
+              {/* Candlestick chart — 4-month daily K-line */}
+              <div className="mt-4">
+                <StockKLineChart
+                  stockCode={item.stock_code}
+                  height={200}
+                  minHeight={200}
+                />
+              </div>
+
               {/* Grid: prices + factors */}
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                {px && (
-                  <div className="grid grid-cols-2 gap-2">
-                    {([
-                      { label: '买入区间', v: item.buy_price_low != null
-                        ? `${fmtPx(item.buy_price_low)}${item.buy_price_high != null && item.buy_price_high !== item.buy_price_low ? ` — ${fmtPx(item.buy_price_high)}` : ''}`
-                        : '--', c: 'border-cyan/10 bg-cyan/[0.03] text-cyan', ic: Target },
-                      { label: '止盈 1', v: fmtPx(item.take_profit_1), c: 'border-red-400/10 bg-red-400/[0.03] text-red-400', ic: Zap },
-                      { label: '止盈 2', v: fmtPx(item.take_profit_2), c: 'border-red-400/10 bg-red-400/[0.03] text-red-400', ic: Zap },
-                      { label: '止损', v: fmtPx(item.stop_loss), c: 'border-emerald-400/10 bg-emerald-400/[0.03] text-emerald-400', ic: Shield },
-                    ] as const).map(({ label, v, c, ic: Ic }) => (
-                      <div key={label} className={`rounded-xl border p-3 text-center ${c}`}>
-                        <div className="text-[10px] text-current/60 mb-1 flex items-center justify-center gap-1">
-                          <Ic className="h-2.5 w-2.5" />{label}
-                        </div>
-                        <div className="text-sm font-bold">{v}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
                 {item.factor_scores && Object.keys(item.factor_scores).length > 0 && (
                   <div className="space-y-2.5">
                     <div className="text-[11px] font-medium text-tertiary-text tracking-wide">因子得分</div>
@@ -408,16 +368,20 @@ const StockCard: React.FC<{
                 {item.tech_score && item.tech_score > 0 && (
                   <div className="space-y-2.5">
                     <div className="text-[11px] font-medium text-tertiary-text tracking-wide">技术评分</div>
-                    {([
-                      ['RR分（赔率）', item.rr_score ?? 0, 'rr_score'],
-                      ['大盘环境', item.market_score ?? 0, 'market_score'],
-                      ['板块强弱', item.sector_score ?? 0, 'sector_score'],
-                      ['量能质量', item.volume_score ?? 0, 'volume_score'],
-                      ['相对位置', item.position_score ?? 0, 'position_score'],
-                      ['形态确认', item.formation_score ?? 0, 'formation_score'],
-                    ] as const).map(([label, val, weightKey]) => (
-                      <FactorBar key={label} label={label} value={val} pctShare={item.tech_score_weights?.[weightKey] ?? 0} />
-                    ))}
+                    {(() => {
+                      const techItems = [
+                        ['赔率', item.rr_score ?? 0, 'rr_score'] as const,
+                        ['大盘环境', item.market_score ?? 0, 'market_score'] as const,
+                        ['板块强弱', item.sector_score ?? 0, 'sector_score'] as const,
+                        ['量能质量', item.volume_score ?? 0, 'volume_score'] as const,
+                        ['相对位置', item.position_score ?? 0, 'position_score'] as const,
+                        ['形态确认', item.formation_score ?? 0, 'formation_score'] as const,
+                      ];
+                      techItems.sort((a, b) => (item.tech_score_weights?.[b[2]] ?? 0) - (item.tech_score_weights?.[a[2]] ?? 0));
+                      return techItems.map(([label, val, weightKey]) => (
+                        <FactorBar key={label} label={label} value={val} pctShare={item.tech_score_weights?.[weightKey] ?? 0} />
+                      ));
+                    })()}
                   </div>
                 )}
               </div>
@@ -430,13 +394,322 @@ const StockCard: React.FC<{
 };
 
 /* ──────────────────────────────────────────────
+   6b. StockKLineChart — SVG candlestick chart with MA / BOLL overlay
+   ────────────────────────────────────────────── */
+
+const fmtDateShort = (s: string) => {
+  const clean = s.replace(/-/g, '');
+  if (clean.length >= 8) return `${clean.slice(0, 4)}-${clean.slice(4, 6)}-${clean.slice(6, 8)}`;
+  return s;
+};
+
+const computeMA = (closes: number[], period: number): (number | null)[] =>
+  closes.map((_, i) => {
+    if (i < period - 1) return null;
+    const slice = closes.slice(i - period + 1, i + 1);
+    return slice.reduce((a, b) => a + b, 0) / period;
+  });
+
+const computeStd = (closes: number[], period: number): (number | null)[] =>
+  closes.map((_, i) => {
+    if (i < period - 1) return null;
+    const slice = closes.slice(i - period + 1, i + 1);
+    const mean = slice.reduce((a, b) => a + b, 0) / period;
+    const variance = slice.reduce((a, b) => a + (b - mean) ** 2, 0) / period;
+    return Math.sqrt(variance);
+  });
+
+type ActiveOverlay = 'ma5' | 'ma10' | 'ma20' | 'boll';
+
+const StockKLineChart: React.FC<{ stockCode: string; height?: number; minHeight?: number }> = ({
+  stockCode,
+  height = 160,
+  minHeight,
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  const [width, setWidth] = useState(400);
+  const [klines, setKlines] = useState<KLineItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [activeOverlays, setActiveOverlays] = useState<Set<ActiveOverlay>>(new Set(['boll']));
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const ro = new ResizeObserver(entries => {
+      for (const e of entries) setWidth(e.contentRect.width);
+    });
+    ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!stockCode) return;
+    setLoading(true);
+    stocksApi
+      .getHistory(stockCode, 120)
+      .then(data => { setKlines(data); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [stockCode]);
+
+  const raw = klines.filter(d => d.open != null && d.high != null && d.low != null && d.close != null);
+
+  // scroll to latest candle after data loads
+  useEffect(() => {
+    if (raw.length < 2 || !containerRef.current) return;
+    requestAnimationFrame(() => {
+      if (containerRef.current) {
+        containerRef.current.scrollLeft = containerRef.current.scrollWidth;
+      }
+    });
+  }, [raw]);
+  if (raw.length < 2) {
+    return (
+      <div className="flex h-32 w-full items-center justify-center text-xs text-tertiary-text">
+        {loading ? '加载中...' : '暂无数据'}
+      </div>
+    );
+  }
+
+  const pads = { t: 8, r: 8, b: 22, l: 48 };
+  const count = raw.length;
+  const candleStep = Math.max(14, Math.min(28, (width - pads.l - pads.r) / count));
+  const candleW = Math.max(3, Math.min(8, candleStep * 0.35));
+  const chartW = pads.l + count * candleStep + pads.r;
+  const chartH = height - pads.t - pads.b;
+  const dayToX = (i: number) => pads.l + i * candleStep + candleStep / 2;
+
+  const closes = raw.map(d => d.close);
+  const allPrices: number[] = [...closes];
+  raw.forEach(d => { allPrices.push(d.high, d.low); });
+  const priceMin = Math.min(...allPrices);
+  const priceMax = Math.max(...allPrices);
+  const margin = (priceMax - priceMin) * 0.08 || 1;
+  const yMin = priceMin - margin;
+  const yMax = priceMax + margin;
+  const yRange = yMax - yMin || 1;
+  const scaleY = (p: number) => pads.t + chartH * (1 - (p - yMin) / yRange);
+
+  const gridLines = 4;
+  const yTicks: number[] = [];
+  for (let i = 1; i < gridLines; i++) yTicks.push(yMax - (yRange * i) / gridLines);
+
+  const xLabelInterval = Math.max(Math.ceil(count / 8), 1);
+  const xLabels: Array<{ x: number; label: string }> = [];
+  for (let i = 0; i < count; i += xLabelInterval) {
+    xLabels.push({ x: dayToX(i), label: fmtDate(raw[i].date).slice(5) });
+  }
+  const lastIdx = count - 1;
+  if (xLabels.length === 0 || fmtDateShort(raw[lastIdx].date) !== xLabels[xLabels.length - 1].label) {
+    xLabels.push({ x: dayToX(lastIdx), label: fmtDateShort(raw[lastIdx].date).slice(5) });
+  }
+
+  // MA / BOLL
+  const ma5 = computeMA(closes, 5);
+  const ma10 = computeMA(closes, 10);
+  const ma20 = computeMA(closes, 20);
+  const std20 = computeStd(closes, 20);
+  const bollUpper = ma20.map((v, i) => (v != null && std20[i] != null ? v + 2 * std20[i] : null));
+  const bollLower = ma20.map((v, i) => (v != null && std20[i] != null ? v - 2 * std20[i] : null));
+
+  const makePolyline = (
+    vals: (number | null)[],
+    color: string,
+    dashed?: boolean,
+  ) => {
+    const pts = vals
+      .map((v, i) => (v != null ? `${dayToX(i)},${scaleY(v)}` : null))
+      .filter(Boolean)
+      .join(' ');
+    return pts ? (
+      <polyline points={pts} fill="none" stroke={color} strokeWidth={1.5}
+        strokeDasharray={dashed ? '5 3' : undefined}
+        strokeLinejoin="round" strokeLinecap="round" />
+    ) : null;
+  };
+
+  const overlayBtns: Array<{ key: 'clear' | ActiveOverlay; label: string; color?: string }> = [
+    { key: 'clear', label: '纯K' },
+    { key: 'ma5', label: 'MA5', color: 'var(--amber-400)' },
+    { key: 'ma10', label: 'MA10', color: 'var(--blue-400)' },
+    { key: 'ma20', label: 'MA20', color: 'var(--purple-400)' },
+    { key: 'boll', label: 'BOLL', color: 'var(--pink-400)' },
+  ];
+
+  return (
+    <div className="mt-4">
+      <div className="mb-1.5 flex items-center justify-between">
+        <div className="flex items-center gap-1.5 text-[11px] font-medium text-tertiary-text tracking-wide">
+          <TrendingUp className="h-3 w-3" /> 近四月行情
+        </div>
+        <div className="flex gap-1">
+          {overlayBtns.map(({ key, label, color }) => {
+            const isActive = key === 'clear' ? activeOverlays.size === 0 : activeOverlays.has(key as ActiveOverlay);
+            return (
+              <button
+                key={key}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (key === 'clear') {
+                    setActiveOverlays(new Set());
+                  } else {
+                    setActiveOverlays(prev => {
+                      const next = new Set(prev);
+                      next.has(key as ActiveOverlay) ? next.delete(key as ActiveOverlay) : next.add(key as ActiveOverlay);
+                      return next;
+                    });
+                  }
+                }}
+                className={`rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
+                  isActive
+                    ? 'bg-primary/20 text-primary ring-1 ring-primary/40'
+                    : 'text-tertiary-text hover:text-primary'
+                }`}
+                style={isActive && color ? { color } : undefined}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div ref={containerRef} className="relative w-full overflow-x-auto rounded-lg border border-border/20 bg-card"
+        style={minHeight ? { minHeight } : undefined}>
+        <svg
+          ref={svgRef}
+          width={chartW} height={height}
+          style={{ display: 'block' }}
+          onMouseMove={(e) => {
+            const rect = svgRef.current?.getBoundingClientRect();
+            if (!rect) return;
+            const mx = e.clientX - rect.left;
+            const idx = Math.round((mx - pads.l - candleStep / 2) / candleStep);
+            if (idx >= 0 && idx < count) setHoverIdx(idx);
+            else setHoverIdx(null);
+          }}
+          onMouseLeave={() => setHoverIdx(null)}
+        >
+          {/* Grid */}
+          {yTicks.map((y, i) => (
+            <line key={i} x1={pads.l} y1={scaleY(y)} x2={chartW - pads.r} y2={scaleY(y)}
+              stroke="var(--border)" strokeWidth={0.5} strokeDasharray="3 3" opacity={0.6} />
+          ))}
+
+          {/* MA / BOLL overlays */}
+          {activeOverlays.has('ma5') && makePolyline(ma5, '#f59e0b', true)}
+          {activeOverlays.has('ma10') && makePolyline(ma10, '#60a5fa', true)}
+          {activeOverlays.has('ma20') && makePolyline(ma20, '#a78bfa', true)}
+          {activeOverlays.has('boll') && makePolyline(ma20, '#a78bfa', true)}
+          {activeOverlays.has('boll') && makePolyline(bollUpper, '#ec4899', true)}
+          {activeOverlays.has('boll') && makePolyline(bollLower, '#ec4899', true)}
+
+          {/* Candles */}
+          {raw.map((d, i) => {
+            const x = dayToX(i);
+            const isUp = d.close >= d.open;
+            const color = isUp ? '#ef4444' : '#10b981';
+            const bodyTop = scaleY(Math.max(d.open, d.close));
+            const bodyBot = scaleY(Math.min(d.open, d.close));
+            const bodyH = Math.max(1, bodyBot - bodyTop);
+            const wickTop = scaleY(d.high);
+            const wickBot = scaleY(d.low);
+            const isHovered = hoverIdx === i;
+            return (
+              <g key={i}>
+                {/* Wick */}
+                <line x1={x} y1={wickTop} x2={x} y2={wickBot} stroke={color} strokeWidth={1} />
+                {/* Body */}
+                <rect
+                  x={x - candleW / 2} y={bodyTop}
+                  width={candleW} height={bodyH}
+                  fill={isHovered ? (isUp ? '#ff6b6b' : '#34d399') : color}
+                  rx={0.5}
+                  style={{ cursor: 'crosshair' }}
+                />
+              </g>
+            );
+          })}
+
+          {/* Y-axis labels */}
+          {yTicks.map((y, i) => (
+            <text key={i} x={pads.l - 4} y={scaleY(y) + 4}
+              textAnchor="end" fill="var(--text-muted-text)" fontSize={10}>
+              {y.toFixed(2)}
+            </text>
+          ))}
+
+          {/* X-axis labels */}
+          {xLabels.map((l, i) => (
+            <text key={i} x={l.x} y={height - 6}
+              textAnchor="middle" fill="var(--text-muted-text)" fontSize={10}>
+              {l.label}
+            </text>
+          ))}
+
+          {/* Crosshair */}
+          {hoverIdx !== null && (
+            <line x1={dayToX(hoverIdx)} y1={pads.t} x2={dayToX(hoverIdx)} y2={pads.t + chartH}
+              stroke="var(--text-muted-text)" strokeWidth={1} strokeDasharray="2 3" opacity={0.45} />
+          )}
+
+          {/* Hover tooltip */}
+          {hoverIdx !== null && (() => {
+            const d = raw[hoverIdx];
+            const x = dayToX(hoverIdx);
+            const changePct = d.change_percent != null
+              ? d.change_percent
+              : ((d.close - d.open) / d.open * 100);
+            const chgSign = changePct >= 0 ? '+' : '';
+            const chgColor = changePct >= 0 ? '#ef4444' : '#10b981';
+            const tw = 150, th = 82, rowH = 13;
+            const tx = Math.max(pads.l + 2, Math.min(chartW - pads.r - tw - 2, x - tw / 2));
+            const ty = pads.t + 4;
+            const lx = tx + 10;
+            const rx = tx + tw - 10;
+            const row = (i: number) => ty + 17 + i * rowH;
+            const rows: Array<[string, string, string | undefined]> = [
+              ['开盘', d.open.toFixed(2), d.open >= (d.close ?? d.open) ? '#10b981' : '#ef4444'],
+              ['最高', d.high.toFixed(2), '#ef4444'],
+              ['最低', d.low.toFixed(2), '#10b981'],
+              ['收盘', d.close.toFixed(2), (d.close ?? 0) >= (d.open ?? 0) ? '#ef4444' : '#10b981'],
+              ['涨跌幅', `${chgSign}${changePct.toFixed(2)}%`, chgColor],
+            ];
+            return (
+              <g>
+                <rect x={tx} y={ty} width={tw} height={th} rx={5}
+                  fill="var(--surface-2)" stroke="var(--border-default)" strokeWidth={0.5} />
+                <text x={tx + tw / 2} y={ty + 14}
+                  textAnchor="middle" fill="var(--text-primary)" fontSize={10.5} fontWeight={600}>
+                  {fmtDateShort(d.date)}
+                </text>
+                {rows.map(([label, value, color], ri) => (
+                  <g key={label}>
+                    <text x={lx} y={row(ri)}
+                      fill="var(--text-secondary-text)" fontSize={10}>{label}</text>
+                    <text x={rx} y={row(ri)}
+                      textAnchor="end" fill={color ?? 'var(--text-secondary-text)'} fontSize={10}
+                      fontFamily="monospace">{value}</text>
+                  </g>
+                ))}
+              </g>
+            );
+          })()}
+        </svg>
+      </div>
+    </div>
+  );
+};
+
+
+/* ──────────────────────────────────────────────
    7. Backtest Card
    ────────────────────────────────────────────── */
 
 const fmtWan = (v: number) => `${(v / 10000).toFixed(1)}万`;
 const fmtDate = (s: string) => {
-  const d = `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
-  return s.length > 8 ? d + s.slice(8) : d;
+  const clean = s.replace(/-/g, '');
+  const d = `${clean.slice(0, 4)}-${clean.slice(4, 6)}-${clean.slice(6, 8)}`;
+  return clean.length > 8 ? d + clean.slice(8) : d;
 };
 
 /** Portfolio candlestick chart — SVG-based, Y-axis shows returns %. */
@@ -1033,16 +1306,16 @@ const DiscoveryPage: React.FC = () => {
         setReportDate(d.date ?? null);
         setError(null);
       } else {
-        // followup 无数据，fallback 到静态报告
-        const r = await discoveryApi.getPostmarketReport(getPreviousTradeDate());
+        // followup 无数据（非交易时段或无盘中数据），fallback 到今天的静态报告
+        const r = await discoveryApi.getPostmarketReport();
         setPostTopN(r.top_n ?? []);
         setReportDate(r.date ?? null);
         setLiveRescored(false);
       }
     } catch {
-      // fallback: 加载静态数据
+      // fallback: 加载今天的静态数据
       try {
-        const r = await discoveryApi.getPostmarketReport(getPreviousTradeDate());
+        const r = await discoveryApi.getPostmarketReport();
         setPostTopN(r.top_n ?? []);
         setReportDate(r.date ?? null);
         setLiveRescored(false);
@@ -1284,6 +1557,11 @@ const DiscoveryPage: React.FC = () => {
       ) : null}
 
       {/* ── Lookup results ── */}
+      {lookupLoading && (
+        <div className="mb-5 flex items-center gap-2 rounded-xl border border-border/30 bg-card/60 px-4 py-6 text-[13px] text-tertiary-text">
+          <Loader2 className="h-4 w-4 animate-spin" />正在计算技术评分，请稍候...
+        </div>
+      )}
       {lookupError && (
         <div className="mb-5 rounded-xl border border-red/25 bg-red/5 px-4 py-3 text-[13px] text-red" role="alert">{lookupError}</div>
       )}
@@ -1312,29 +1590,65 @@ const DiscoveryPage: React.FC = () => {
               expandedRowRender: (entry) => {
                 const scoreItem = entry.intraday || entry.postmarket;
                 if (!scoreItem) return null;
+                const factorEntries = Object.entries(scoreItem.factor_scores)
+                  .filter(([, score]) => score > 0)
+                  .sort(([a], [b]) => (scoreItem.factor_weights?.[b] ?? 0) - (scoreItem.factor_weights?.[a] ?? 0));
+                const techDims = [
+                  { label: '赔率', key: 'rr_score' },
+                  { label: '大盘环境', key: 'market_score' },
+                  { label: '板块强弱', key: 'sector_score' },
+                  { label: '量能质量', key: 'volume_score' },
+                  { label: '相对位置', key: 'position_score' },
+                  { label: '形态确认', key: 'formation_score' },
+                ];
                 return (
-                  <div className="space-y-1 py-1">
-                    {Object.entries(scoreItem.factor_scores)
-                      .filter(([, score]) => score > 0)
-                      .sort(([a], [b]) => (scoreItem.factor_weights?.[b] ?? 0) - (scoreItem.factor_weights?.[a] ?? 0))
-                      .map(([name, score]) => {
-                      const pct = scoreItem.factor_weights?.[name] ?? 0;
-                      return (
-                      <div key={name} className="flex items-center gap-2">
-                        <span className="text-[11px] text-secondary-text w-28 shrink-0 truncate" title={`${FACTOR_LABELS[name] || name} (${pct}%)`}>
-                          {FACTOR_LABELS[name] || name}
-                          <span className="text-tertiary-text/60 ml-0.5">({pct}%)</span>
-                        </span>
-                        <div className="flex-1 h-2 rounded-full bg-border/15 overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-gradient-to-r from-cyan/60 to-blue/60"
-                            style={{ width: `${Math.min(100, score)}%` }}
-                          />
-                        </div>
-                        <span className="text-[11px] font-mono text-tertiary-text w-10 text-right">{score.toFixed(0)}</span>
-                      </div>
-                      );
-                    })}
+                  <div className="grid grid-cols-2 gap-6 py-2">
+                    {/* 左：因子得分 */}
+                    <div className="space-y-2">
+                      <div className="text-[11px] font-medium text-tertiary-text tracking-wide">因子得分</div>
+                      {factorEntries.map(([name, score]) => {
+                        const pct = scoreItem.factor_weights?.[name] ?? 0;
+                        return (
+                          <div key={name} className="flex items-center gap-2">
+                            <span className="text-[11px] text-secondary-text w-28 shrink-0 truncate text-right" title={`${FACTOR_LABELS[name] || name} (${pct}%)`}>
+                              {FACTOR_LABELS[name] || name}
+                              <span className="text-tertiary-text/60 ml-0.5">({pct}%)</span>
+                            </span>
+                            <div className="flex-1 h-2 rounded-full bg-border/15 overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-gradient-to-r from-cyan/60 to-blue/60"
+                                style={{ width: `${Math.min(100, score)}%` }}
+                              />
+                            </div>
+                            <span className="text-[11px] font-mono text-tertiary-text w-10 text-right">{score.toFixed(0)}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {/* 右：技术得分 */}
+                    <div className="space-y-2">
+                      <div className="text-[11px] font-medium text-tertiary-text tracking-wide">技术评分</div>
+                      {(() => {
+                        const entries = (scoreItem.tech_score_breakdown ? Object.entries(scoreItem.tech_score_breakdown) : [])
+                          .map(([key, val]) => ({ key, val, dim: techDims.find(d => d.key === key) }))
+                          .filter(e => e.dim && e.val)
+                          .sort((a, b) => (scoreItem.tech_score_weights?.[b.key] ?? 0) - (scoreItem.tech_score_weights?.[a.key] ?? 0));
+                        return entries.map(({ key, val, dim }) => {
+                          const pct = Math.round((scoreItem.tech_score_weights?.[key] ?? 0) * 100);
+                          return (
+                          <div key={key} className="flex items-center gap-2">
+                            <span className="text-[11px] text-secondary-text w-28 shrink-0 truncate text-right">{dim!.label}<span className="text-tertiary-text/60 ml-0.5">({pct}%)</span></span>
+                            <div className="flex-1 h-1.5 rounded-full bg-border/15 overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-gradient-to-r from-cyan/40 to-blue/40"
+                                style={{ width: `${Math.min(100, val)}%` }}
+                              />
+                            </div>
+                            <span className="text-[11px] font-mono text-tertiary-text w-10 text-right">{Number(val).toFixed(0)}</span>
+                          </div>
+                        );
+                      })})()}
+                    </div>
                   </div>
                 );
               },
@@ -1342,19 +1656,19 @@ const DiscoveryPage: React.FC = () => {
             columns={[
               { title: '代码', dataIndex: 'stock_code', width: 100, render: (v: string) => <span className="font-mono">{v}</span> },
               { title: '名称', dataIndex: 'stock_name', width: 100 },
-              { title: '排名', width: 70, render: (_: any, r) => {
+              { title: '综合分', width: 70, render: (_: any, r) => {
                 const s = r.intraday || r.postmarket;
-                return s ? <span className="font-mono">#{s.rank}</span> : '-';
+                return s ? <span className="font-mono text-cyan">{s.composite_score > 0 ? s.composite_score.toFixed(1) : '-'}</span> : '-';
               }},
-              { title: '得分', width: 70, render: (_: any, r) => {
+              { title: '因子分', width: 70, render: (_: any, r) => {
                 const s = r.intraday || r.postmarket;
-                return s ? <span className="font-mono">{s.total_score.toFixed(1)}</span> : '-';
+                return s ? <span className="font-mono text-secondary-text">{s.total_score.toFixed(1)}</span> : '-';
+              }},
+              { title: '技术分', width: 70, render: (_: any, r) => {
+                const s = r.intraday || r.postmarket;
+                return s ? <span className="font-mono text-tertiary-text">{s.tech_score > 0 ? s.tech_score.toFixed(1) : '-'}</span> : '-';
               }},
               { title: '板块', width: 100, render: (_: any, r) => (r.intraday || r.postmarket)?.sector || '-' },
-              { title: '扫描时间', width: 120, render: (_: any, r) => {
-                const t = (r.intraday || r.postmarket)?.scanned_at;
-                return t ? t.slice(5) : '-';
-              }},
             ]}
           />
         </div>

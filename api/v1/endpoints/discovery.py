@@ -13,7 +13,7 @@ import threading
 import time
 from datetime import date, datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 import requests
@@ -1321,6 +1321,10 @@ class StockScoreItem(BaseModel):
     scanned_at: str               # "2026-05-09 09:35:00"
     rank: int
     total_score: float
+    tech_score: float = 0.0
+    composite_score: float = 0.0
+    tech_score_breakdown: Optional[Dict[str, float]] = None
+    tech_score_weights: Dict[str, float] = {}
     factor_scores: Dict[str, float]
     factor_weights: Dict[str, float] = {}
     sector: str
@@ -1351,8 +1355,120 @@ def _format_scanned_at(scan_date: str, scan_time: str) -> str:
     return d
 
 
-def _row_to_item(row, factor_weights: Dict[str, float] = None) -> Optional[StockScoreItem]:
-    """将 ORM 行转为 StockScoreItem。"""
+def _calc_tech_for_row(row, db: "DatabaseManager") -> Tuple[float, float, Dict, Dict]:
+    """从 DB 行实时计算 tech_score（需要 price、止盈止损、OHLCV、tech_indicators）。"""
+    from src.services.stock_scorer import StockScorer, StockScorerConfig
+    from src.services.stop_loss_calculator import compute_from_arrays
+    import numpy as np
+    from datetime import date, timedelta
+
+    stock_code = row.stock_code
+    trade_date = row.scan_date
+    sector = row.sector or ""
+
+    # 格式化日期
+    if len(trade_date) == 8:
+        trade_date_fmt = f"{trade_date[:4]}-{trade_date[4:6]}-{trade_date[6:]}"
+    else:
+        trade_date_fmt = trade_date
+
+    # tech_indicators
+    tech_cache = db.get_tech_indicators_batch([stock_code], trade_date_fmt).get(stock_code, {})
+
+    # 最新价格（用昨收作为 fallback，因为盘后实时价格可能已清）
+    price_df = db.get_current_prices([stock_code])
+    price = 0.0
+    if not price_df.empty and stock_code in price_df.index:
+        price = float(price_df.at[stock_code, "price"])
+    # fallback: 用 stock_daily 最新收盘价
+    if price <= 0:
+        from src.storage import StockDaily
+        with db.get_session() as s:
+            latest = s.execute(
+                s.query(StockDaily).filter(StockDaily.code == stock_code)
+                .order_by(StockDaily.date.desc())
+            ).scalars().first()
+            if latest:
+                price = float(latest.close)
+    if price <= 0:
+        return 0.0, 0.0, {}, {}
+
+    # 量比（从 daily_basic 补）
+    vol_ratio = max(tech_cache.get("vol_ratio", 1.0), 1.0)
+    if vol_ratio == 1.0:
+        from src.storage import DailyBasic
+        with db.get_session() as s:
+            from sqlalchemy import select
+            vr = s.execute(
+                select(DailyBasic.volume_ratio).filter(
+                    DailyBasic.code == stock_code,
+                    DailyBasic.trade_date == trade_date[:8]
+                )
+            ).scalar_one_or_none()
+            if vr is not None:
+                vol_ratio = max(float(vr), 1.0)
+
+    # OHLCV 180天
+    td_obj = date.today()
+    ohlcv_start = td_obj - timedelta(days=200)
+    ohlcv_map = db.get_data_range_batch([stock_code], ohlcv_start, td_obj)
+    ohlcv_rows = ohlcv_map.get(stock_code, [])
+
+    highs = np.array([d.high for d in ohlcv_rows], dtype=float)
+    lows = np.array([d.low for d in ohlcv_rows], dtype=float)
+    closes = np.array([d.close for d in ohlcv_rows], dtype=float)
+    pre_close = float(closes[-2]) if len(closes) > 1 else price
+
+    # 精确止盈止损
+    sl = compute_from_arrays(
+        highs, lows, closes, code=stock_code,
+        ma20=tech_cache.get("ma20"),
+        ma60=tech_cache.get("ma60"),
+        atr=tech_cache.get("atr"),
+        factor_score=float(row.total_score or 50.0),
+    )
+    est_stop = sl.stop_loss or 0
+    est_tp1 = sl.take_profit_1 or 0
+    est_tp2 = sl.take_profit_2 or 0
+
+    # 轻量 formation reason
+    lite_reasons = []
+    ma5, ma10, ma20_v = tech_cache.get("ma5"), tech_cache.get("ma10"), tech_cache.get("ma20")
+    if ma5 and ma10 and ma20_v and ma5 > ma10 > ma20_v:
+        lite_reasons.append("均线多头排列")
+    if tech_cache.get("macd", 0) > 0:
+        lite_reasons.append("MACD金叉")
+    rsi = tech_cache.get("rsi_12")
+    if rsi is not None and rsi < 45:
+        lite_reasons.append("RSI低位回升")
+    bm = tech_cache.get("boll_mid")
+    if bm and price > bm:
+        lite_reasons.append("站上BOLL中轨")
+    vol_ratio = max(vol_ratio, 1.0)
+
+    scorer = StockScorer(StockScorerConfig())
+    tech = scorer.score(
+        stock_code=stock_code, sector=sector, price=price, pre_close=pre_close,
+        tp1=est_tp1, tp2=est_tp2, stop_loss=est_stop,
+        reasons=lite_reasons, ohlcv=(highs, lows, closes), volume_ratio=vol_ratio,
+    )
+    alpha = 0.3
+    factor_score = float(row.total_score or 0)
+    composite = alpha * factor_score + (1 - alpha) * tech.composite
+    breakdown = {
+        "rr_score": tech.rr_score,
+        "market_score": tech.market_score,
+        "sector_score": tech.sector_score,
+        "volume_score": tech.volume_score,
+        "position_score": tech.position_score,
+        "formation_score": tech.formation_score,
+    }
+    return tech.composite, composite, breakdown, tech.weights
+
+
+def _row_to_item(row, factor_weights: Dict[str, float] = None,
+                 db: "DatabaseManager" = None) -> Optional[StockScoreItem]:
+    """将 ORM 行转为 StockScoreItem，tech_score 实时计算。"""
     if row is None:
         return None
     factor_scores: Dict[str, float] = {}
@@ -1361,13 +1477,36 @@ def _row_to_item(row, factor_weights: Dict[str, float] = None) -> Optional[Stock
         factor_scores = {k: float(v) for k, v in raw.items()}
     except (json.JSONDecodeError, TypeError):
         pass
+
+    # 实时计算 tech_score（DB 里因子分对应的 tech 分）
+    tech_score_val = round(float(getattr(row, 'tech_score', 0) or 0), 2)
+    composite_val = round(float(getattr(row, 'composite_score', 0) or 0), 2)
+    tech_breakdown = None
+    tech_weights: Dict[str, float] = {}
+    if db is not None:
+        try:
+            _tech, _composite, _breakdown, _weights = _calc_tech_for_row(row, db)
+            if _tech > 0:
+                tech_score_val = round(_tech, 2)
+                alpha = 0.3
+                factor_score = float(row.total_score or 0)
+                composite_val = round(alpha * factor_score + (1 - alpha) * _tech, 2)
+                tech_breakdown = _breakdown
+                tech_weights = _weights
+        except Exception:
+            pass
+
     return StockScoreItem(
         scanned_at=_format_scanned_at(row.scan_date, row.scan_time),
         rank=row.rank,
-        total_score=round(float(row.total_score or 0), 2),
+        total_score=round(float(getattr(row, 'total_score', 0) or 0), 2),
+        tech_score=tech_score_val,
+        composite_score=composite_val,
+        tech_score_breakdown=tech_breakdown,
+        tech_score_weights=tech_weights,
         factor_scores=factor_scores,
         factor_weights=factor_weights or {},
-        sector=row.sector or "",
+        sector=getattr(row, 'sector', '') or '',
     )
 
 
@@ -1413,7 +1552,7 @@ def get_stock_score(
             )
 
             stock_name = (row and row.stock_name) or code
-            score_item = _row_to_item(row, factor_weights=factor_weights)
+            score_item = _row_to_item(row, factor_weights=factor_weights, db=db)
 
             items.append(StockScoreEntry(
                 stock_code=code,

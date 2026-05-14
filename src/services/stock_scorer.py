@@ -141,6 +141,11 @@ class TechScoreResult:
     position_score: float # 相对位置评分 0-100
     formation_score: float  # 形态确认度评分 0-100
     composite: float      # 加权总分 0-100
+    weights: Dict[str, float] = None  # type: ignore[assignment]
+
+    def __post_init__(self):
+        if self.weights is None:
+            self.weights = {}
 
     def to_dict(self) -> Dict[str, float]:
         return {
@@ -238,6 +243,7 @@ class StockScorer:
             position_score=pos,
             formation_score=form,
             composite=round(total, 2),
+            weights=weights,
         )
 
     def preload_sector_pct(self, sector_pct_map: Dict[str, float]) -> None:

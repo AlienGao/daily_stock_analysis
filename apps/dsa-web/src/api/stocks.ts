@@ -12,6 +12,17 @@ export type ExtractFromImageResponse = {
   rawText?: string;
 };
 
+export type KLineItem = {
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+  amount?: number;
+  change_percent?: number;
+};
+
 export const stocksApi = {
   async extractFromImage(file: File): Promise<ExtractFromImageResponse> {
     const formData = new FormData();
@@ -50,5 +61,14 @@ export const stocksApi = {
       return { codes: data.codes ?? [], items: data.items };
     }
     throw new Error('请提供文件或粘贴文本');
+  },
+
+  async getHistory(stockCode: string, days = 90): Promise<KLineItem[]> {
+    const response = await apiClient.get(`/api/v1/stocks/${stockCode}/history`, {
+      params: { period: 'daily', days },
+      timeout: 10000,
+    });
+    const data = response.data as { data?: KLineItem[]; klines?: KLineItem[] };
+    return data.data ?? data.klines ?? [];
   },
 };

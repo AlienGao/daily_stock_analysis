@@ -97,7 +97,7 @@ export const HistoryListItem: React.FC<HistoryListItemProps> = ({
                     backgroundColor: `${sentimentColor}10`,
                   }}
                 >
-                  {getOperationBadgeLabel(item.operationAdvice)} {item.sentimentScore}
+                  {getOperationBadgeLabel(item.operationAdvice)} {item.sentimentScore?.toFixed(0)}
                 </Badge>
               )}
             </div>

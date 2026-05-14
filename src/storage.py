@@ -1205,6 +1205,8 @@ class ScanResultIntraday(Base):
     stock_name = Column(String(50))
     rank = Column(Integer, nullable=False)
     total_score = Column(Float)
+    tech_score = Column(Float, nullable=True)
+    composite_score = Column(Float, nullable=True)
     factor_scores_json = Column(Text)
     sector = Column(String(100), default="")
     created_at = Column(DateTime, default=datetime.now)
@@ -1247,6 +1249,8 @@ class ScanResultPostmarket(Base):
     stock_name = Column(String(50))
     rank = Column(Integer, nullable=False)
     total_score = Column(Float)
+    tech_score = Column(Float, nullable=True)
+    composite_score = Column(Float, nullable=True)
     factor_scores_json = Column(Text)
     sector = Column(String(100), default="")
     created_at = Column(DateTime, default=datetime.now)
@@ -1267,6 +1271,8 @@ class ScanResultPostmarket(Base):
             'stock_name': self.stock_name,
             'rank': self.rank,
             'total_score': self.total_score,
+            'tech_score': self.tech_score,
+            'composite_score': self.composite_score,
             'factor_scores': json.loads(self.factor_scores_json or "{}"),
             'sector': self.sector,
         }
@@ -6615,6 +6621,8 @@ class DatabaseManager:
                         stock_name=r.get("stock_name", ""),
                         rank=r.get("rank", 0),
                         total_score=self._normalize_sql_value(r.get("total_score")),
+                        tech_score=self._normalize_sql_value(r.get("tech_score")),
+                        composite_score=self._normalize_sql_value(r.get("composite_score")),
                         factor_scores_json=factor_json,
                         sector=r.get("sector", ""),
                     )

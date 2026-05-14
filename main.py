@@ -1118,14 +1118,26 @@ def _save_topn_json(reports_dir: Path, date_str: str, results) -> None:
             "stock_code": r.stock_code,
             "stock_name": r.stock_name,
             "score": r.score,
+            "tech_score": getattr(r, "tech_score", 0.0),
+            "composite_score": getattr(r, "composite_score", r.score),
+            "rr_score": getattr(r, "rr_score", 0.0),
+            "market_score": getattr(r, "market_score", 0.0),
+            "sector_score": getattr(r, "sector_score", 0.0),
+            "volume_score": getattr(r, "volume_score", 0.0),
+            "position_score": getattr(r, "position_score", 0.0),
+            "formation_score": getattr(r, "formation_score", 0.0),
             "sector": getattr(r, "sector", ""),
             "factor_scores": getattr(r, "factor_scores", {}),
+            "factor_weights": getattr(r, "factor_weights", {}),
             "reasons": getattr(r, "reasons", []),
             "buy_price_low": getattr(r, "buy_price_low", None),
             "buy_price_high": getattr(r, "buy_price_high", None),
             "stop_loss": getattr(r, "stop_loss", None),
             "take_profit_1": getattr(r, "take_profit_1", None),
             "take_profit_2": getattr(r, "take_profit_2", None),
+            "discovered_at": getattr(r, "discovered_at", ""),
+            "price_at_discovery": getattr(r, "price_at_discovery", None),
+            "pct_chg": getattr(r, "change_pct", 0.0),
         })
     json_file = reports_dir / f"postmarket_{date_str}_topn.json"
     json_file.write_text(json.dumps(topn, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -1567,6 +1579,22 @@ def main() -> int:
                 try:
                     from src.storage import DatabaseManager
                     DatabaseManager().prune_historical_data(retention_years=10)
+                except Exception:
+                    pass
+
+                # 每日维护：清理超过 7 个交易日的运行日志
+                try:
+                    import sys
+                    sys.path.insert(0, 'scripts')
+                    from clean_logs import clean_debug_logs, clean_replay_logs, get_trading_days_ago
+                    cutoff = get_trading_days_ago(7)
+                    debug_removed, debug_size = clean_debug_logs(cutoff, dry_run=False)
+                    replay_removed = clean_replay_logs(dry_run=False)
+                    logger.info('[维护] 日志清理完成，删除 %d 文件，释放 %.1fMB，保留 %d 个交易日（截止 %s）',
+                        len(debug_removed) + len(replay_removed),
+                        (debug_size) / 1024 / 1024,
+                        7,
+                        cutoff.strftime('%Y-%m-%d'))
                 except Exception:
                     pass
 

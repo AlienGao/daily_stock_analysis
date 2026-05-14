@@ -111,10 +111,23 @@ export type BacktestResponse = {
   capital_curve: CapitalCurvePoint[];
 };
 
+export type TechScoreBreakdown = {
+  rr_score: number;
+  market_score: number;
+  sector_score: number;
+  volume_score: number;
+  position_score: number;
+  formation_score: number;
+};
+
 export type StockScoreItem = {
   scanned_at: string;
   rank: number;
   total_score: number;
+  tech_score: number;
+  composite_score: number;
+  tech_score_breakdown?: TechScoreBreakdown;
+  tech_score_weights: Record<string, number>;
   factor_scores: Record<string, number>;
   factor_weights: Record<string, number>;
   sector: string;

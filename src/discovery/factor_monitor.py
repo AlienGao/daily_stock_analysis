@@ -168,8 +168,8 @@ class FactorMonitor:
                     old_file.unlink()
                     logger.info("[FactorMonitor] 删除旧 picks: %s", old_file.name)
 
-                # 重跑发现
-                results = engine.discover(mode=mode, trade_date=trade_date)
+                # 重跑发现（skip_monitor 避免递归触发 replay_history）
+                results = engine.discover(mode=mode, trade_date=trade_date, skip_monitor=True)
                 if results:
                     success += 1
                     logger.info("[FactorMonitor] 回放 %s %s 完成: %d 只股票", mode, trade_date, len(results))

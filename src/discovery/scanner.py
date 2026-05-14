@@ -1884,6 +1884,19 @@ def ensure_postmarket_scan(
     # ---- 结果落库 ----
     records = engine.get_last_full_scan_records()
     if records:
+        # 合并 tech_score / composite_score 到落库记录
+        score_map: Dict[str, Dict[str, float]] = {}
+        for r in results:
+            code = r.stock_code
+            score_map[code] = {
+                "tech_score": r.tech_score,
+                "composite_score": r.composite_score,
+            }
+        for rec in records:
+            sm = score_map.get(rec.get("stock_code", ""))
+            if sm:
+                rec["tech_score"] = sm["tech_score"]
+                rec["composite_score"] = sm["composite_score"]
         try:
             db.save_scan_results_postmarket(records, today)
         except Exception:

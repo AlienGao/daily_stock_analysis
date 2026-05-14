@@ -43,6 +43,8 @@ _FACTOR_DISPLAY: Dict[str, str] = {
     "performance": "业绩",
     "buyback": "回购",
     "insider_buy": "险资举牌",
+    "concept_heat": "概念热度",
+    "ranking_momentum": "排名动量",
 }
 
 _REPORTS_DIR = Path(__file__).resolve().parent.parent.parent / "discovery_reports"
@@ -609,7 +611,8 @@ class StockDiscoveryEngine:
         return hashlib.md5("|".join(parts).encode()).hexdigest()[:12]
 
     def discover(self, mode: ModeStr, trade_date: Optional[str] = None,
-                candidate_codes: Optional[List[str]] = None) -> List[DiscoveryResult]:
+                candidate_codes: Optional[List[str]] = None,
+                skip_monitor: bool = False) -> List[DiscoveryResult]:
         start_time = time.time()
 
         if trade_date is None and self.tushare_fetcher:
@@ -1283,23 +1286,24 @@ class StockDiscoveryEngine:
         results = self._apply_crowding_penalty(results, trade_date)
 
         # Phase 5.6: IC 追踪 & 因子监控（盘中+盘后）
-        try:
-            from src.discovery.factor_monitor import FactorMonitor
-            monitor = FactorMonitor(top_n=20, eval_days=5)
+        if not skip_monitor:
+            try:
+                from src.discovery.factor_monitor import FactorMonitor
+                monitor = FactorMonitor(top_n=20, eval_days=5)
 
-            # 检测因子变化，自动重跑历史数据
-            current_factors = list(raw_scores.keys())
-            if monitor.detect_factor_changes(current_factors, mode):
-                logger.info("[FactorMonitor] 因子变化检测通过，开始重跑最近 5 天历史数据")
-                monitor.replay_history(self, mode, days=5)
+                # 检测因子变化，自动重跑历史数据
+                current_factors = list(raw_scores.keys())
+                if monitor.detect_factor_changes(current_factors, mode):
+                    logger.info("[FactorMonitor] 因子变化检测通过，开始重跑最近 5 天历史数据")
+                    monitor.replay_history(self, mode, days=5)
 
-            monitor.record_picks(raw_scores, trade_date, mode=mode)
-            monitor.backfill(trade_date)
-        except Exception as e:
-            logger.warning("[FactorMonitor] 因子监控失败: %s", e)
+                monitor.record_picks(raw_scores, trade_date, mode=mode)
+                monitor.backfill(trade_date)
+            except Exception as e:
+                logger.warning("[FactorMonitor] 因子监控失败: %s", e)
 
         # Phase 5.7: 因子权重自动调优（FactorMonitor 反馈闭环）
-        if getattr(self.config, "tune_factor_weights", False):
+        if not skip_monitor and getattr(self.config, "tune_factor_weights", False):
             try:
                 from src.discovery.factor_tuner import FactorTuner
                 from pathlib import Path
@@ -1380,6 +1384,8 @@ class StockDiscoveryEngine:
                 "total_score": float(row.get("_total", 0)),
                 "factor_scores": factor_scores,
                 "sector": sector,
+                "tech_score": 0.0,
+                "composite_score": 0.0,
             })
 
         return records
