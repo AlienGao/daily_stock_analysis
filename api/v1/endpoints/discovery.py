@@ -15,6 +15,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+import numpy as np
 import pandas as pd
 import requests
 
@@ -39,12 +40,14 @@ def _postmarket_stream_path(date_str: str = "") -> Path:
 
 
 def _is_trading_hours() -> bool:
-    """当前是否在 A 股交易时段（工作日 9:30-15:00）。"""
+    """当前是否在 A 股交易时段（工作日 9:30-11:30, 13:00-15:00）。"""
     now = datetime.now()
     if now.weekday() >= 5:
         return False
     minute_of_day = now.hour * 60 + now.minute
-    return (9 * 60 + 30) <= minute_of_day <= (15 * 60)
+    if minute_of_day < 9 * 60 + 30 or minute_of_day > 15 * 60:
+        return False
+    return not (11 * 60 + 30 <= minute_of_day < 13 * 60)
 
 
 # ---------------------------------------------------------------------------
@@ -72,6 +75,15 @@ def _get_or_create_engine():
     _cached_engine = create_discovery_engine(config, tushare_fetcher, akshare_fetcher)
     _cached_engine_ts = now
     return _cached_engine
+
+
+# ---------------------------------------------------------------------------
+# Followup cache — 防止 rescore SSE 高频触发导致 discover() 并发堆积
+# ---------------------------------------------------------------------------
+_followup_cache: Optional["PostmarketReportResponse"] = None
+_followup_cache_ts: float = 0.0
+_followup_lock = threading.Lock()
+_FOLLOWUP_TTL = 60
 
 
 def _get_live_quotes(ts_codes: List[str]) -> "tuple[Dict[str, float], Dict[str, float]]":
@@ -344,6 +356,7 @@ class DiscoveryItem(BaseModel):
     formation_score: float = 0.0
     tech_score_weights: dict = {}   # {维度名: 权重}，由 API 动态注入
     composite_score: float = 0.0
+    recent_count: int = 0            # 近5个交易日出现次数
 
 
 class IntradayTopResponse(BaseModel):
@@ -360,6 +373,31 @@ class PostmarketReportResponse(BaseModel):
     exists: bool
     top_n: List[DiscoveryItem] = []
     live_rescored: bool = False
+
+
+_SELECTION_HISTORY_PATH = _INTRADAY_REPORTS_DIR / "selection_history.json"
+
+
+def _get_recent_appearance_counts(days: int = 5) -> Dict[str, int]:
+    """从 selection_history.json 统计近 N 个交易日的出现次数。
+
+    返回 {bare_code: count}，代码统一归一化为 6 位裸码。
+    """
+    if not _SELECTION_HISTORY_PATH.exists():
+        return {}
+    try:
+        all_history = json.loads(_SELECTION_HISTORY_PATH.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+    sorted_dates = sorted(all_history.keys(), reverse=True)[:days]
+    counts: Dict[str, int] = {}
+    for d in sorted_dates:
+        for code in all_history.get(d, []):
+            code_str = str(code).strip()
+            bare = code_str.split(".")[0].zfill(6) if "." in code_str else code_str.zfill(6)
+            counts[bare] = counts.get(bare, 0) + 1
+    return counts
 
 
 def _enrich_live_quotes(items: List[DiscoveryItem]) -> None:
@@ -384,6 +422,16 @@ def _enrich_live_quotes(items: List[DiscoveryItem]) -> None:
         pct = live_pct_chgs.get(code)
         if pct is not None:
             item.pct_chg = pct
+
+
+def _enrich_recent_counts(items: List[DiscoveryItem]) -> None:
+    """给每个 item 设置近 N 个交易日的出现次数。"""
+    counts = _get_recent_appearance_counts(days=5)
+    if not counts:
+        return
+    for item in items:
+        bare = (item.ts_code or item.stock_code).split(".")[0].zfill(6)
+        item.recent_count = counts.get(bare, 0)
 
 
 # ---------------------------------------------------------------------------
@@ -534,6 +582,8 @@ def get_intraday_top10():
                 factor_weights={},
             ))
 
+        _enrich_recent_counts(top_n)
+        _enrich_recent_counts(dropped)
         return IntradayTopResponse(
             updated=data.get("updated"),
             round=data.get("round", 0),
@@ -798,6 +848,7 @@ def get_postmarket_report(
         if recent and recent.get("report"):
             top_n = _build_discovery_items(recent.get("top_n", []), mode="postmarket")
             _enrich_live_quotes(top_n)
+            _enrich_recent_counts(top_n)
             return PostmarketReportResponse(
                 date=recent.get("date_str", report_date),
                 report=recent["report"],
@@ -851,6 +902,7 @@ def get_postmarket_report(
                 composite_score=entry.get("composite_score", 0.0),
             ))
         _enrich_live_quotes(top_n)
+        _enrich_recent_counts(top_n)
 
         return PostmarketReportResponse(
             date=effective_date, report=report, exists=True, top_n=top_n,
@@ -874,8 +926,30 @@ def get_postmarket_report(
 def postmarket_followup(
     report_date: Optional[str] = Query(None, description="盘后报告日期 YYYYMMDD，默认昨天"),
 ):
+    global _followup_cache, _followup_cache_ts
+
     if not _is_trading_hours():
         return PostmarketReportResponse(date=report_date or "", report="", exists=False)
+
+    # TTL 内直接返回缓存
+    now = time.time()
+    if _followup_cache is not None and now - _followup_cache_ts < _FOLLOWUP_TTL:
+        return _followup_cache
+
+    # 另一个线程正在跑 discover()，返回上一次缓存
+    if not _followup_lock.acquire(blocking=False):
+        if _followup_cache is not None:
+            return _followup_cache
+        return PostmarketReportResponse(date=report_date or "", report="", exists=False)
+
+    try:
+        return _postmarket_followup_locked(report_date)
+    finally:
+        _followup_lock.release()
+
+
+def _postmarket_followup_locked(report_date: Optional[str]):
+    global _followup_cache, _followup_cache_ts
 
     # 确定盘后报告日期（默认昨天）
     if report_date is None:
@@ -902,7 +976,7 @@ def postmarket_followup(
     # 用盘中因子重评
     try:
         engine = _get_or_create_engine()
-        results = engine.discover(mode="intraday", candidate_codes=candidate_codes)
+        results = engine.discover(mode="intraday", candidate_codes=candidate_codes, skip_monitor=True)
     except Exception as e:
         logger.warning("[Followup] 盘中重评失败: %s", e, exc_info=True)
         return PostmarketReportResponse(date=report_date, report="", exists=False)
@@ -944,11 +1018,15 @@ def postmarket_followup(
         ))
 
     _enrich_live_quotes(items)
+    _enrich_recent_counts(items)
 
-    return PostmarketReportResponse(
+    resp = PostmarketReportResponse(
         date=report_date, report="", exists=True,
         top_n=items, live_rescored=True,
     )
+    _followup_cache = resp
+    _followup_cache_ts = time.time()
+    return resp
 
 
 # ---------------------------------------------------------------------------
@@ -1388,6 +1466,70 @@ def _append_today_ohlcv(ohlcv_rows: list, stock_code: str, td_obj, db: "Database
         pass
 
 
+# 大盘指数 OHLCV 缓存（供 StockScorer 市场环境评分使用）
+_index_ohlcv_cache: Optional[np.ndarray] = None
+_index_ohlcv_ts: float = 0
+
+
+def _get_index_ohlcv() -> Optional[np.ndarray]:
+    """获取上证指数 OHLCV，5 分钟缓存。失败返回 None。"""
+    global _index_ohlcv_cache, _index_ohlcv_ts
+    import numpy as np
+    from datetime import timedelta
+    now = time.time()
+    if _index_ohlcv_cache is not None and (now - _index_ohlcv_ts) < 300:
+        return _index_ohlcv_cache
+
+    try:
+        from data_provider.tushare_fetcher import TushareFetcher
+        fetcher = TushareFetcher()
+        if not fetcher.is_available():
+            return None
+
+        today = datetime.now().strftime("%Y%m%d")
+        start = (datetime.now() - timedelta(days=120)).strftime("%Y%m%d")
+        api = getattr(fetcher, '_api', None)
+        if api is None:
+            return None
+
+        df = api.index_daily(ts_code='000001.SH', start_date=start, end_date=today)
+        if df is None or df.empty:
+            return None
+
+        df = df.sort_values('trade_date')
+        arr = df[['open', 'high', 'low', 'close']].values.astype(np.float64)
+
+        # 补齐当日指数 K 线（Sina 实时）
+        try:
+            import requests
+            r = requests.get(
+                "http://hq.sinajs.cn/list=s_sh000001",
+                headers={"Referer": "https://finance.sina.com.cn"},
+                timeout=10,
+            )
+            r.encoding = "gbk"
+            content = r.text.split('"')[1] if '"' in r.text else ""
+            parts = content.split(",")
+            if len(parts) >= 5:
+                idx_open = float(parts[1]) if parts[1] else 0
+                idx_high = float(parts[4]) if parts[4] else 0
+                idx_low = float(parts[5]) if parts[5] else 0
+                idx_close = float(parts[3]) if parts[3] else 0
+                if idx_close > 0:
+                    today_row = np.array([[idx_open, idx_high, idx_low, idx_close]], dtype=np.float64)
+                    arr = np.vstack([arr, today_row])
+        except Exception:
+            pass
+
+        _index_ohlcv_cache = arr
+        _index_ohlcv_ts = now
+        logger.info("[StockScore] 已加载 %d 条上证指数 OHLCV", len(arr))
+        return arr
+    except Exception:
+        logger.warning("[StockScore] 获取 index OHLCV 失败", exc_info=True)
+        return None
+
+
 def _calc_tech_for_row(row, db: "DatabaseManager") -> Tuple[float, float, Dict, Dict, float, Optional[float], Optional[float], Optional[float], Optional[float]]:  # noqa: E501
     """从 DB 行实时计算 tech_score + 价格点位（price, buy_low, buy_high, stop_loss, tp1）。"""
     from src.services.stock_scorer import StockScorer, StockScorerConfig
@@ -1484,6 +1626,9 @@ def _calc_tech_for_row(row, db: "DatabaseManager") -> Tuple[float, float, Dict, 
     vol_ratio = max(vol_ratio, 1.0)
 
     scorer = StockScorer(StockScorerConfig())
+    idx_ohlcv = _get_index_ohlcv()
+    if idx_ohlcv is not None:
+        scorer.preload_index_ohlcv(idx_ohlcv)
     tech = scorer.score(
         stock_code=stock_code, sector=sector, price=price, pre_close=pre_close,
         tp1=est_tp1, tp2=est_tp2, stop_loss=est_stop,

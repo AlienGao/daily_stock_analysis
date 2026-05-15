@@ -6,114 +6,102 @@
   "factors": {
     "ma_entry": [
       {
-        "ts_code": "000008",
-        "score": 85.0
-      },
-      {
-        "ts_code": "000045",
-        "score": 85.0
-      },
-      {
-        "ts_code": "000519",
-        "score": 85.0
-      },
-      {
-        "ts_code": "000520",
-        "score": 85.0
-      },
-      {
-        "ts_code": "000530",
-        "score": 85.0
-      },
-      {
-        "ts_code": "000725",
-        "score": 85.0
-      },
-      {
         "ts_code": "000828",
-        "score": 85.0
+        "score": 100.0
       },
       {
         "ts_code": "001260",
-        "score": 85.0
+        "score": 100.0
       },
       {
-        "ts_code": "001286",
-        "score": 85.0
+        "ts_code": "002917",
+        "score": 100.0
       },
       {
-        "ts_code": "001308",
-        "score": 85.0
+        "ts_code": "300326",
+        "score": 100.0
       },
       {
-        "ts_code": "002026",
-        "score": 85.0
+        "ts_code": "301102",
+        "score": 100.0
       },
       {
-        "ts_code": "002056",
-        "score": 85.0
+        "ts_code": "301168",
+        "score": 100.0
       },
       {
-        "ts_code": "002063",
-        "score": 85.0
+        "ts_code": "301276",
+        "score": 100.0
       },
       {
-        "ts_code": "002117",
-        "score": 85.0
+        "ts_code": "600232",
+        "score": 100.0
       },
       {
-        "ts_code": "002145",
-        "score": 85.0
+        "ts_code": "600279",
+        "score": 100.0
       },
       {
-        "ts_code": "002166",
-        "score": 85.0
+        "ts_code": "600777",
+        "score": 100.0
       },
       {
-        "ts_code": "002238",
-        "score": 85.0
+        "ts_code": "600993",
+        "score": 100.0
       },
       {
-        "ts_code": "002401",
-        "score": 85.0
+        "ts_code": "603380",
+        "score": 100.0
       },
       {
-        "ts_code": "002402",
-        "score": 85.0
+        "ts_code": "603409",
+        "score": 100.0
       },
       {
-        "ts_code": "002449",
-        "score": 85.0
+        "ts_code": "603825",
+        "score": 100.0
+      },
+      {
+        "ts_code": "920050",
+        "score": 100.0
+      },
+      {
+        "ts_code": "920119",
+        "score": 100.0
+      },
+      {
+        "ts_code": "920454",
+        "score": 100.0
+      },
+      {
+        "ts_code": "920370",
+        "score": 98.0
+      },
+      {
+        "ts_code": "002599",
+        "score": 90.0
+      },
+      {
+        "ts_code": "002742",
+        "score": 90.0
       }
     ],
     "sector": [
       {
         "ts_code": "001259",
-        "score": 71.9
-      },
-      {
-        "ts_code": "002915",
-        "score": 70.6
+        "score": 71.1
       },
       {
         "ts_code": "601678",
-        "score": 70.5
+        "score": 70.3
       },
       {
-        "ts_code": "003018",
-        "score": 70.4
-      },
-      {
-        "ts_code": "002918",
-        "score": 70.2
+        "ts_code": "002374",
+        "score": 68.5
       },
       {
         "ts_code": "603386",
-        "score": 68.6
-      },
-      {
-        "ts_code": "000782",
-        "score": 67.8
+        "score": 68.1
       },
       {
         "ts_code": "603520",
@@ -121,14 +109,14 @@
       },
       {
         "ts_code": "002031",
-        "score": 66.2
+        "score": 66.3
+      },
+      {
+        "ts_code": "002918",
+        "score": 66.1
       },
       {
         "ts_code": "603278",
-        "score": 66.2
-      },
-      {
-        "ts_code": "002729",
         "score": 65.8
       },
       {
@@ -136,36 +124,294 @@
         "score": 65.7
       },
       {
-        "ts_code": "000839",
-        "score": 65.7
+        "ts_code": "002729",
+        "score": 63.2
       },
       {
-        "ts_code": "600130",
-        "score": 65.3
-      },
-      {
-        "ts_code": "688143",
-        "score": 63.5
-      },
-      {
-        "ts_code": "603757",
-        "score": 61.2
+        "ts_code": "002915",
+        "score": 62.9
       },
       {
         "ts_code": "600784",
-        "score": 61.0
+        "score": 60.8
       },
       {
-        "ts_code": "601991",
-        "score": 60.2
+        "ts_code": "600088",
+        "score": 60.8
       },
       {
-        "ts_code": "002374",
-        "score": 60.1
+        "ts_code": "002164",
+        "score": 59.6
       },
       {
-        "ts_code": "603310",
-        "score": 59.9
+        "ts_code": "002445",
+        "score": 59.6
+      },
+      {
+        "ts_code": "300083",
+        "score": 59.6
+      },
+      {
+        "ts_code": "300161",
+        "score": 59.6
+      },
+      {
+        "ts_code": "300567",
+        "score": 59.6
+      },
+      {
+        "ts_code": "300809",
+        "score": 59.6
+      },
+      {
+        "ts_code": "301377",
+        "score": 59.6
+      }
+    ],
+    "momentum": [
+      {
+        "ts_code": "600903",
+        "score": 98.5
+      },
+      {
+        "ts_code": "688679",
+        "score": 98.5
+      },
+      {
+        "ts_code": "002510",
+        "score": 98.5
+      },
+      {
+        "ts_code": "300909",
+        "score": 98.5
+      },
+      {
+        "ts_code": "300293",
+        "score": 98.5
+      },
+      {
+        "ts_code": "300190",
+        "score": 98.5
+      },
+      {
+        "ts_code": "688593",
+        "score": 98.5
+      },
+      {
+        "ts_code": "002888",
+        "score": 98.5
+      },
+      {
+        "ts_code": "002643",
+        "score": 98.5
+      },
+      {
+        "ts_code": "003028",
+        "score": 98.5
+      },
+      {
+        "ts_code": "300860",
+        "score": 98.5
+      },
+      {
+        "ts_code": "300622",
+        "score": 98.5
+      },
+      {
+        "ts_code": "688623",
+        "score": 98.5
+      },
+      {
+        "ts_code": "601566",
+        "score": 98.5
+      },
+      {
+        "ts_code": "688181",
+        "score": 98.5
+      },
+      {
+        "ts_code": "600619",
+        "score": 98.5
+      },
+      {
+        "ts_code": "688018",
+        "score": 98.5
+      },
+      {
+        "ts_code": "002291",
+        "score": 98.5
+      },
+      {
+        "ts_code": "688435",
+        "score": 98.5
+      },
+      {
+        "ts_code": "003017",
+        "score": 98.4
+      }
+    ],
+    "ranking_momentum": [
+      {
+        "ts_code": "300995",
+        "score": 99.4
+      },
+      {
+        "ts_code": "603217",
+        "score": 99.1
+      },
+      {
+        "ts_code": "002786",
+        "score": 99.1
+      },
+      {
+        "ts_code": "002406",
+        "score": 98.2
+      },
+      {
+        "ts_code": "600618",
+        "score": 97.0
+      },
+      {
+        "ts_code": "002765",
+        "score": 96.7
+      },
+      {
+        "ts_code": "603035",
+        "score": 95.8
+      },
+      {
+        "ts_code": "002139",
+        "score": 95.5
+      },
+      {
+        "ts_code": "600629",
+        "score": 94.9
+      },
+      {
+        "ts_code": "600917",
+        "score": 93.9
+      },
+      {
+        "ts_code": "300611",
+        "score": 93.8
+      },
+      {
+        "ts_code": "600793",
+        "score": 92.5
+      },
+      {
+        "ts_code": "300674",
+        "score": 92.4
+      },
+      {
+        "ts_code": "688580",
+        "score": 92.2
+      },
+      {
+        "ts_code": "603917",
+        "score": 92.1
+      },
+      {
+        "ts_code": "300831",
+        "score": 90.6
+      },
+      {
+        "ts_code": "603416",
+        "score": 89.5
+      },
+      {
+        "ts_code": "301486",
+        "score": 89.4
+      },
+      {
+        "ts_code": "688130",
+        "score": 89.4
+      },
+      {
+        "ts_code": "688633",
+        "score": 89.3
+      }
+    ],
+    "rebound": [
+      {
+        "ts_code": "002445",
+        "score": 100.0
+      },
+      {
+        "ts_code": "603757",
+        "score": 100.0
+      },
+      {
+        "ts_code": "000700",
+        "score": 100.0
+      },
+      {
+        "ts_code": "688143",
+        "score": 100.0
+      },
+      {
+        "ts_code": "002371",
+        "score": 100.0
+      },
+      {
+        "ts_code": "002886",
+        "score": 100.0
+      },
+      {
+        "ts_code": "603897",
+        "score": 100.0
+      },
+      {
+        "ts_code": "601799",
+        "score": 100.0
+      },
+      {
+        "ts_code": "688700",
+        "score": 94.9
+      },
+      {
+        "ts_code": "600201",
+        "score": 92.8
+      },
+      {
+        "ts_code": "003021",
+        "score": 92.5
+      },
+      {
+        "ts_code": "002164",
+        "score": 91.8
+      },
+      {
+        "ts_code": "002747",
+        "score": 91.5
+      },
+      {
+        "ts_code": "000839",
+        "score": 90.5
+      },
+      {
+        "ts_code": "603127",
+        "score": 90.3
+      },
+      {
+        "ts_code": "000695",
+        "score": 87.9
+      },
+      {
+        "ts_code": "600246",
+        "score": 87.8
+      },
+      {
+        "ts_code": "688507",
+        "score": 87.0
+      },
+      {
+        "ts_code": "301118",
+        "score": 85.6
+      },
+      {
+        "ts_code": "603416",
+        "score": 85.2
       }
     ],
     "popularity": [
@@ -174,210 +420,82 @@
         "score": 100.0
       },
       {
+        "ts_code": "688698",
+        "score": 100.0
+      },
+      {
+        "ts_code": "603040",
+        "score": 100.0
+      },
+      {
+        "ts_code": "688165",
+        "score": 100.0
+      },
+      {
+        "ts_code": "300278",
+        "score": 100.0
+      },
+      {
+        "ts_code": "603697",
+        "score": 100.0
+      },
+      {
+        "ts_code": "920177",
+        "score": 99.7
+      },
+      {
         "ts_code": "300179",
-        "score": 93.5
+        "score": 98.8
+      },
+      {
+        "ts_code": "300354",
+        "score": 98.4
       },
       {
         "ts_code": "600996",
-        "score": 93.5
+        "score": 96.2
       },
       {
         "ts_code": "688676",
-        "score": 84.5
+        "score": 95.3
       },
       {
-        "ts_code": "688716",
-        "score": 83.7
+        "ts_code": "920593",
+        "score": 92.5
       },
       {
-        "ts_code": "920641",
-        "score": 67.3
-      },
-      {
-        "ts_code": "300281",
-        "score": 64.9
-      },
-      {
-        "ts_code": "002915",
-        "score": 51.6
-      },
-      {
-        "ts_code": "603505",
-        "score": 50.8
-      },
-      {
-        "ts_code": "300065",
-        "score": 47.9
-      },
-      {
-        "ts_code": "603379",
-        "score": 43.5
-      },
-      {
-        "ts_code": "920438",
-        "score": 43.0
-      },
-      {
-        "ts_code": "301095",
-        "score": 41.1
-      },
-      {
-        "ts_code": "301071",
-        "score": 38.9
-      },
-      {
-        "ts_code": "600810",
-        "score": 38.2
-      },
-      {
-        "ts_code": "600060",
-        "score": 37.3
-      },
-      {
-        "ts_code": "000921",
-        "score": 36.0
-      },
-      {
-        "ts_code": "300811",
-        "score": 36.0
-      },
-      {
-        "ts_code": "600009",
-        "score": 35.4
-      },
-      {
-        "ts_code": "603165",
-        "score": 34.8
-      }
-    ],
-    "ranking_momentum": [
-      {
-        "ts_code": "002786",
-        "score": 98.3
-      },
-      {
-        "ts_code": "600618",
-        "score": 98.1
-      },
-      {
-        "ts_code": "002765",
-        "score": 96.9
-      },
-      {
-        "ts_code": "300611",
-        "score": 96.7
-      },
-      {
-        "ts_code": "002139",
-        "score": 96.5
-      },
-      {
-        "ts_code": "600629",
-        "score": 96.2
-      },
-      {
-        "ts_code": "688246",
-        "score": 96.2
-      },
-      {
-        "ts_code": "603035",
-        "score": 95.9
-      },
-      {
-        "ts_code": "002406",
-        "score": 95.1
-      },
-      {
-        "ts_code": "600917",
-        "score": 93.5
-      },
-      {
-        "ts_code": "600793",
-        "score": 92.8
-      },
-      {
-        "ts_code": "688580",
-        "score": 92.6
-      },
-      {
-        "ts_code": "603917",
+        "ts_code": "300691",
         "score": 92.3
       },
       {
-        "ts_code": "002520",
-        "score": 91.9
+        "ts_code": "301029",
+        "score": 91.6
       },
       {
-        "ts_code": "300674",
-        "score": 91.3
+        "ts_code": "301023",
+        "score": 91.1
       },
       {
-        "ts_code": "688130",
-        "score": 89.4
+        "ts_code": "300100",
+        "score": 90.8
       },
       {
-        "ts_code": "301486",
-        "score": 89.4
+        "ts_code": "920011",
+        "score": 90.4
       },
       {
-        "ts_code": "300878",
-        "score": 89.4
+        "ts_code": "001306",
+        "score": 90.3
       },
       {
-        "ts_code": "688633",
-        "score": 89.3
+        "ts_code": "300421",
+        "score": 90.2
       },
       {
-        "ts_code": "600984",
-        "score": 89.2
-      }
-    ],
-    "rebound": [
-      {
-        "ts_code": "600246",
-        "score": 66.3
-      },
-      {
-        "ts_code": "603127",
-        "score": 64.3
-      },
-      {
-        "ts_code": "002445",
-        "score": 62.3
-      },
-      {
-        "ts_code": "688662",
-        "score": 61.7
-      },
-      {
-        "ts_code": "002371",
-        "score": 61.0
-      },
-      {
-        "ts_code": "600400",
-        "score": 60.0
-      },
-      {
-        "ts_code": "002380",
-        "score": 57.0
-      },
-      {
-        "ts_code": "688507",
-        "score": 57.0
-      },
-      {
-        "ts_code": "603738",
-        "score": 55.5
-      },
-      {
-        "ts_code": "600509",
-        "score": 47.0
-      },
-      {
-        "ts_code": "002902",
-        "score": 46.3
+        "ts_code": "300946",
+        "score": 89.5
       }
     ]
   },
-  "recorded_at": "2026-05-15T12:14:27.522920"
+  "recorded_at": "2026-05-15T15:00:46.451866"
 }

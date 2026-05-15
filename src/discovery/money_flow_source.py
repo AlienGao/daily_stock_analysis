@@ -37,6 +37,41 @@ def fetch_intraday_money_flow(
     Tier 3: Tushare 资金流 + realtime_spot 实时指标（盘后兜底）
     """
 
+    # ── Tier 0: DB 缓存优先（盘后/回补直接命中，跳过所有 API）──
+    try:
+        from src.storage import DatabaseManager
+        from src.storage import MomentumSnapshot
+        db = DatabaseManager()
+        with db.get_session() as s:
+            rows = s.execute(
+                s.query(MomentumSnapshot).filter(
+                    MomentumSnapshot.trade_date == str(trade_date)[:8]
+                )
+            ).scalars().all()
+        if rows:
+            index_map = {
+                str(r.code).zfill(6): _code_to_ts_code(str(r.code))
+                for r in rows
+            }
+            ts_codes = [index_map[c] for c in index_map]
+            df_db = pd.DataFrame(
+                {
+                    "name": [r.name or "" for r in rows],
+                    "major_net": [r.major_net or 0 for r in rows],
+                    "lg_net": [r.lg_net or 0 for r in rows],
+                    "inflow_rate": [r.inflow_rate or 0 for r in rows],
+                    "pct_chg": [r.pct_chg or 0 for r in rows],
+                    "turnover_rate": [r.turnover_rate or 0 for r in rows],
+                    "volume_ratio": [r.volume_ratio or 1.0 for r in rows],
+                    "data_source": [r.data_source or "db_cache" for r in rows],
+                },
+                index=ts_codes,
+            )
+            logger.info("[MoneyFlow] DB 缓存命中: %d 只股票 (trade_date=%s)", len(df_db), trade_date)
+            return df_db
+    except Exception as e:
+        logger.debug("[MoneyFlow] DB 缓存读取失败: %s", e)
+
     # ── Tier 1: East Money push2 ──
     try:
         logger.info("[MoneyFlow] Tier 1: 拉取 East Money push2 实时资金流...")

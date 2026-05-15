@@ -175,6 +175,8 @@ class BuybackFactor(BaseFactor):
         signals = self._compute_signals(df, current_prices=prices)
         total = sum(signals.values()).clip(0, 100)
         total.name = self.name
+        # 同股票可能有多条回购记录（不同阶段），取最高分
+        total = total.groupby(total.index).max()
         return total
 
     def describe(self, df: pd.DataFrame, scores: pd.Series,

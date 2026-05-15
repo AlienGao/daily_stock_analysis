@@ -786,10 +786,13 @@ class StockDiscoveryEngine:
             logger.warning("[Discovery] 所有因子数据为空，取消发现")
             return []
 
-        # Phase 2: 收集所有出现过的 ts_code
+        # Phase 2: 收集所有出现过的股票代码，统一归一化为裸码（6 位数字）
         all_codes: set = set()
         for df in factor_data.values():
-            all_codes.update(df.index.tolist())
+            for code in df.index:
+                code_str = str(code)
+                bare = code_str.split(".")[0].zfill(6) if "." in code_str else code_str.strip().zfill(6)
+                all_codes.add(bare)
         all_codes.discard(None)
 
         if not all_codes:
@@ -798,11 +801,15 @@ class StockDiscoveryEngine:
 
         # 限制候选范围（用于盘后跟踪：只对特定股票重新评分）
         if candidate_codes:
-            all_codes = all_codes & set(candidate_codes)
+            candidate_set = {
+                str(c).split(".")[0].zfill(6) if "." in str(c) else str(c).strip().zfill(6)
+                for c in candidate_codes
+            }
+            all_codes = all_codes & candidate_set
             if not all_codes:
                 logger.warning("[Discovery] candidate_codes 过滤后无候选股票")
                 return []
-            logger.info(f"[Discovery] 候选范围受限: {len(all_codes)} 只 (原始因子覆盖 {len(candidate_codes)} 只)")
+            logger.info(f"[Discovery] 候选范围受限: {len(all_codes)} 只 (原始 {len(candidate_codes)} 只)")
 
         # Phase 3: 逐因子打分
         score_columns: Dict[str, pd.Series] = {}
@@ -991,6 +998,13 @@ class StockDiscoveryEngine:
         self._last_scan_trade_date = trade_date
         self._last_scan_time = time.strftime("%H:%M:%S")
         self._last_scan_mode = mode
+
+        # Phase 4.9a: 保存因子得分快照（供因子回测使用）
+        try:
+            from src.storage import DatabaseManager
+            DatabaseManager().save_factor_score_snapshots(raw_scores, trade_date, mode)
+        except Exception:
+            logger.warning("[Discovery] 因子得分快照保存失败", exc_info=True)
 
         # Phase 4.9b: 批量预取技术指标（ATR/MA），供止盈止损计算
         tech_cache: Dict[str, Dict[str, float]] = {}

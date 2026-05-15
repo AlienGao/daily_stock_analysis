@@ -419,7 +419,9 @@ def _compute_buy_range(
         buy_high = round(current_price * 1.02, 1)
 
     if buy_low >= buy_high:
-        buy_low = round(buy_high * 0.99, 1)
+        buy_low = round(buy_high * 0.98, 2)
+        if buy_low >= buy_high:
+            buy_low = buy_high - 0.01
 
     return buy_low, buy_high
 

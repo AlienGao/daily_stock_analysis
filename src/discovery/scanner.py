@@ -36,6 +36,8 @@ _REPORTS_DIR = Path(__file__).resolve().parent.parent.parent / "discovery_report
 _TZ_CN = timezone(timedelta(hours=8))
 _MARKET_OPEN = (9, 25)   # 盘中扫描开始
 _MARKET_CLOSE = (15, 1)  # 盘中扫描结束（收盘后再扫一轮）
+_MIDDAY_BREAK_START = (11, 30)
+_MIDDAY_BREAK_END = (13, 0)
 
 
 class IntradayScanner:
@@ -140,6 +142,24 @@ class IntradayScanner:
         self._previous = {}
 
         while self._now() < market_close:
+            now = self._now()
+            midday_start = now.replace(
+                hour=_MIDDAY_BREAK_START[0], minute=_MIDDAY_BREAK_START[1],
+                second=0, microsecond=0,
+            )
+            midday_end = now.replace(
+                hour=_MIDDAY_BREAK_END[0], minute=_MIDDAY_BREAK_END[1],
+                second=0, microsecond=0,
+            )
+            if midday_start <= now < midday_end:
+                sleep_sec = (midday_end - now).total_seconds()
+                logger.info(
+                    "[Scanner] 午间休市，暂停扫描 %.0f 分钟，%s 恢复",
+                    sleep_sec / 60, midday_end.strftime("%H:%M"),
+                )
+                time.sleep(sleep_sec)
+                continue
+
             self._round += 1
             round_start = time.time()
 

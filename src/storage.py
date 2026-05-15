@@ -1278,6 +1278,40 @@ class ScanResultPostmarket(Base):
         }
 
 
+class FactorScoreSnapshot(Base):
+    """因子得分快照（每轮扫描后保存每只股票在各因子上的原始得分）。
+
+    按 (trade_date, ts_code, mode, factor_name) 唯一约束。
+    同一 mode + trade_date 的新扫描会覆盖旧数据。
+    """
+    __tablename__ = 'factor_score_snapshots'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    trade_date = Column(String(8), nullable=False, index=True)
+    ts_code = Column(String(12), nullable=False, index=True)
+    mode = Column(String(16), nullable=False, index=True)
+    factor_name = Column(String(64), nullable=False)
+    score = Column(Float)
+    created_at = Column(DateTime, default=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint(
+            'trade_date', 'ts_code', 'mode', 'factor_name',
+            name='uix_fss_date_code_mode_factor',
+        ),
+        Index('ix_fss_date_mode', 'trade_date', 'mode'),
+    )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'trade_date': self.trade_date,
+            'ts_code': self.ts_code,
+            'mode': self.mode,
+            'factor_name': self.factor_name,
+            'score': self.score,
+        }
+
+
 class BrokerBacktestResult(Base):
     """券商金股月度回测结果快照。
 
@@ -4655,6 +4689,8 @@ class DatabaseManager:
             start_date: 起始日期 YYYYMMDD
             end_date: 结束日期 YYYYMMDD
         """
+        start_date = start_date.replace("-", "") if start_date else None
+        end_date = end_date.replace("-", "") if end_date else None
         with self.get_session() as session:
             stmt = select(MarginDetail)
             if codes:
@@ -5017,6 +5053,8 @@ class DatabaseManager:
             start_date: 起始日期 YYYYMMDD
             end_date: 结束日期 YYYYMMDD
         """
+        start_date = start_date.replace("-", "") if start_date else None
+        end_date = end_date.replace("-", "") if end_date else None
         with self.get_session() as session:
             stmt = select(BrokerEnrichmentCyqPerf)
             if start_date:
@@ -6639,6 +6677,67 @@ class DatabaseManager:
             return saved
         except Exception as e:
             logger.error("[ScanResultPostmarket] 保存失败: %s", e)
+            raise
+
+    def save_factor_score_snapshots(
+        self, raw_scores: Dict[str, object], trade_date: str, mode: str
+    ) -> int:
+        """保存因子得分快照（每轮扫描后调用）。
+
+        Args:
+            raw_scores: {factor_name: pd.Series(index=ts_code, values=0-100)}
+            trade_date: YYYYMMDD
+            mode: intraday / postmarket
+
+        Returns:
+            保存的记录数
+        """
+        if not raw_scores:
+            return 0
+
+        def _write(session: Session) -> int:
+            # 删除同 mode + trade_date 的旧数据（用 Core delete 避免 ORM session 同步问题）
+            from sqlalchemy import delete as sa_delete
+            session.execute(
+                sa_delete(FactorScoreSnapshot).where(
+                    FactorScoreSnapshot.trade_date == trade_date,
+                    FactorScoreSnapshot.mode == mode,
+                )
+            )
+
+            # 用 dict 去重：同 (ts_code, factor_name) 取 max score
+            deduped: Dict[tuple, Any] = {}
+            for factor_name, scores in raw_scores.items():
+                if scores is None:
+                    continue
+                s = scores if hasattr(scores, 'items') else {}
+                for ts_code, score_val in s.items():
+                    if ts_code is None:
+                        continue
+                    key = (str(ts_code), factor_name)
+                    val = self._normalize_sql_value(score_val)
+                    existing = deduped.get(key)
+                    if existing is None or (val is not None and val > (existing.score or 0)):
+                        deduped[key] = FactorScoreSnapshot(
+                            trade_date=trade_date,
+                            ts_code=str(ts_code),
+                            mode=mode,
+                            factor_name=factor_name,
+                            score=val,
+                        )
+            entities = list(deduped.values())
+            session.add_all(entities)
+            return len(entities)
+
+        try:
+            saved = self._run_write_transaction("save_factor_score_snapshots", _write)
+            logger.info(
+                "[FactorScoreSnapshot] 保存 %d 条 (trade_date=%s mode=%s)",
+                saved, trade_date, mode,
+            )
+            return saved
+        except Exception as e:
+            logger.error("[FactorScoreSnapshot] 保存失败: %s", e)
             raise
 
     # ------------------------------------------------------------------

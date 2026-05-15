@@ -53,6 +53,8 @@ class MarginFactor(BaseFactor):
         start_idx = max(0, idx - self._LOOKBACK_DAYS + 1)
         target_dates = trade_dates[start_idx : idx + 1]
 
+        target_dates = [td.replace("-", "") for td in target_dates]
+        trade_date = trade_date.replace("-", "") if "-" in trade_date else trade_date
         start_date = target_dates[0]
         end_date = target_dates[-1]
 

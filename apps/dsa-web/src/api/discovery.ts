@@ -29,6 +29,7 @@ export type DiscoveryItem = {
   formation_score?: number;
   tech_score_weights?: Record<string, number>;
   composite_score?: number;
+  recent_count?: number;
 };
 
 export type IntradayTopResponse = {

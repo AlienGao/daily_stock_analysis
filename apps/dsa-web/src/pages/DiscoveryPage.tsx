@@ -248,6 +248,11 @@ const StockCard: React.FC<{
                   {ch.icon}{ch.label}
                 </span>
               )}
+              {item.recent_count != null && item.recent_count > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-md border border-cyan/25 bg-cyan/8 px-1.5 py-0.5 text-[10px] text-cyan font-medium">
+                  近5日{item.recent_count}次
+                </span>
+              )}
               {item.discovered_at && (
                 <span className="text-[15px] font-medium text-foreground">{item.discovered_at} 发现</span>
               )}
@@ -423,7 +428,7 @@ type ActiveOverlay = 'ma5' | 'ma10' | 'ma20' | 'boll';
 
 const StockKLineChart: React.FC<{ stockCode: string; height?: number; minHeight?: number }> = ({
   stockCode,
-  height = 160,
+  height = 200,
   minHeight,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -433,6 +438,7 @@ const StockKLineChart: React.FC<{ stockCode: string; height?: number; minHeight?
   const [klines, setKlines] = useState<KLineItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeOverlays, setActiveOverlays] = useState<Set<ActiveOverlay>>(new Set(['boll']));
+  const [period, setPeriod] = useState<'day' | 'week'>('day');
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -447,12 +453,41 @@ const StockKLineChart: React.FC<{ stockCode: string; height?: number; minHeight?
     if (!stockCode) return;
     setLoading(true);
     stocksApi
-      .getHistory(stockCode, 120)
+      .getHistory(stockCode, 500)
       .then(data => { setKlines(data); setLoading(false); })
       .catch(() => setLoading(false));
   }, [stockCode]);
 
-  const raw = klines.filter(d => d.open != null && d.high != null && d.low != null && d.close != null);
+  const dailyRaw = klines.filter(d => d.open != null && d.high != null && d.low != null && d.close != null);
+
+  const aggregateWeekly = (daily: typeof dailyRaw): typeof dailyRaw => {
+    const weeks: Map<string, typeof daily> = new Map();
+    daily.forEach(d => {
+      const date = new Date(fmtDateShort(d.date));
+      const jan1 = new Date(date.getFullYear(), 0, 1);
+      const weekNum = Math.ceil(((date.getTime() - jan1.getTime()) / 86400000 + jan1.getDay() + 1) / 7);
+      const key = `${date.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+      if (!weeks.has(key)) weeks.set(key, []);
+      weeks.get(key)!.push(d);
+    });
+    return Array.from(weeks.values())
+      .map(days => {
+        const sorted = days.sort((a, b) => a.date.localeCompare(b.date));
+        return {
+          date: sorted[0].date,
+          open: sorted[0].open!,
+          close: sorted[sorted.length - 1].close!,
+          high: Math.max(...sorted.map(d => d.high!)),
+          low: Math.min(...sorted.map(d => d.low!)),
+          volume: sorted.reduce((s, d) => s + (d.volume || 0), 0),
+        };
+      })
+      .sort((a, b) => a.date.localeCompare(b.date));
+  };
+
+  const raw = period === 'week'
+    ? aggregateWeekly(dailyRaw)
+    : dailyRaw.slice(-100);
 
   // scroll to latest candle after data loads
   useEffect(() => {
@@ -473,8 +508,8 @@ const StockKLineChart: React.FC<{ stockCode: string; height?: number; minHeight?
 
   const pads = { t: 8, r: 8, b: 22, l: 48 };
   const count = raw.length;
-  const candleStep = Math.max(14, Math.min(28, (width - pads.l - pads.r) / count));
-  const candleW = Math.max(3, Math.min(8, candleStep * 0.35));
+  const candleStep = Math.max(24, Math.min(36, (width - pads.l - pads.r) / count));
+  const candleW = Math.max(5, Math.min(16, candleStep * 0.55));
   const chartW = pads.l + count * candleStep + pads.r;
   const chartH = height - pads.t - pads.b;
   const dayToX = (i: number) => pads.l + i * candleStep + candleStep / 2;
@@ -539,8 +574,20 @@ const StockKLineChart: React.FC<{ stockCode: string; height?: number; minHeight?
   return (
     <div className="mt-4">
       <div className="mb-1.5 flex items-center justify-between">
-        <div className="flex items-center gap-1.5 text-[11px] font-medium text-tertiary-text tracking-wide">
-          <TrendingUp className="h-3 w-3" /> 近四月行情
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 text-[11px] font-medium text-tertiary-text tracking-wide">
+            <TrendingUp className="h-3 w-3" /> {period === 'day' ? '日线' : '周线'}
+          </div>
+          <div className="flex rounded border border-border/40 overflow-hidden text-[10px]">
+            <button
+              onClick={(e) => { e.stopPropagation(); setPeriod('day'); }}
+              className={`px-1.5 py-0.5 font-medium transition-colors ${period === 'day' ? 'bg-primary/20 text-primary' : 'text-tertiary-text hover:text-primary'}`}
+            >日</button>
+            <button
+              onClick={(e) => { e.stopPropagation(); setPeriod('week'); }}
+              className={`px-1.5 py-0.5 font-medium transition-colors ${period === 'week' ? 'bg-primary/20 text-primary' : 'text-tertiary-text hover:text-primary'}`}
+            >周</button>
+          </div>
         </div>
         <div className="flex gap-1">
           {overlayBtns.map(({ key, label, color }) => {
@@ -1389,6 +1436,15 @@ const DiscoveryPage: React.FC = () => {
     setResultSubTab('composite');
   }, [tab]);
 
+  // 盘中 → 盘后自动切换：北京时间 15:00 后，若仍在 intraday tab 则自动切到 postmarket
+  useEffect(() => {
+    const id = setInterval(() => {
+      const next = getDefaultTabByCnMarketTime();
+      setTab(prev => (prev === 'intraday' && next === 'postmarket') ? 'postmarket' : prev);
+    }, 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   useEffect(() => {
     if (tab === 'intraday') { fetchIntraday(); fetchBacktest('intraday'); fetchScanMode('intraday'); }
     else {
@@ -1604,7 +1660,9 @@ const DiscoveryPage: React.FC = () => {
                   { label: '形态确认', key: 'formation_score' },
                 ];
                 return (
-                  <div className="grid grid-cols-2 gap-6 py-2">
+                  <div className="space-y-4 py-2" style={{ width: 0, minWidth: '100%' }}>
+                    <StockKLineChart stockCode={entry.stock_code} height={280} />
+                    <div className="grid grid-cols-2 gap-6">
                     {/* 左：因子得分 */}
                     <div className="space-y-2">
                       <div className="text-[11px] font-medium text-tertiary-text tracking-wide">因子得分</div>
@@ -1651,6 +1709,7 @@ const DiscoveryPage: React.FC = () => {
                         );
                       })})()}
                     </div>
+                  </div>
                   </div>
                 );
               },
