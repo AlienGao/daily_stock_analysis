@@ -9,6 +9,7 @@ import logging
 import random
 import re
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional
 
@@ -610,6 +611,89 @@ class StockDiscoveryEngine:
                 parts.append(f"{name}:{n}:{first_idx}:{last_idx}")
         return hashlib.md5("|".join(parts).encode()).hexdigest()[:12]
 
+    def _build_index_ohlcv_cache(self) -> Optional[np.ndarray]:
+        """拉取上证指数近 90 个交易日 OHLCV，转为 [open, high, low, close] 格式。
+
+        历史数据来自 Tushare index_daily（到前一交易日），当日 K 线从 Sina 补齐。
+        StockScorer 大盘评分 & 崩盘检测依赖此数据；失败时返回 None。
+        """
+        try:
+            if self.tushare_fetcher is None or not self.tushare_fetcher.is_available():
+                logger.debug("[Discovery] Tushare 不可用，跳过 index OHLCV 拉取")
+                return None
+
+            today = datetime.now().strftime("%Y%m%d")
+            start = (datetime.now() - pd.Timedelta(days=120)).strftime("%Y%m%d")
+
+            api = getattr(self.tushare_fetcher, '_api', None)
+            if api is None:
+                return None
+
+            df = api.index_daily(ts_code='000001.SH', start_date=start, end_date=today)
+            if df is None or df.empty:
+                logger.warning("[Discovery] index_daily 返回空，大盘评分降级为中性")
+                return None
+
+            df = df.sort_values('trade_date')
+            arr = df[['open', 'high', 'low', 'close']].values.astype(np.float64)
+
+            # 补齐当日指数 K 线（Sina 实时指数接口）
+            today_ohlc = self._fetch_index_today_sina()
+            if today_ohlc is not None:
+                arr = np.vstack([arr, today_ohlc])
+
+            logger.info("[Discovery] 已加载 %d 条上证指数 OHLCV 用于大盘评分", len(arr))
+            return arr
+        except Exception:
+            logger.warning("[Discovery] 拉取 index OHLCV 失败，大盘评分降级为中性", exc_info=True)
+            return None
+
+    def _refresh_index_ohlcv_latest(self) -> None:
+        """盘中每轮更新上证指数 OHLCV 末行（当日实时价来自 Sina）。"""
+        cache = getattr(self, '_index_ohlcv_cache', None)
+        if cache is None or len(cache) == 0:
+            return
+        today_ohlc = self._fetch_index_today_sina()
+        if today_ohlc is not None:
+            cache[-1] = today_ohlc
+
+    @staticmethod
+    def _fetch_index_today_sina() -> Optional[np.ndarray]:
+        """从 Sina 实时接口获取上证指数当日 [open, high, low, close]。
+
+        指数接口字段有限（无 open/high/low），用以下近似：
+        - close = 当前价
+        - open = 昨收（pre_close = 当前价 - 涨跌额）
+        - high/low = max/min(当前价, 昨收)
+        仅 close 参与 MA 计算，open/high/low 不影响大盘评分。
+        """
+        import re
+        try:
+            url = "http://hq.sinajs.cn/list=s_sh000001"
+            resp = requests.get(url, headers={"Referer": "http://finance.sina.com.cn"}, timeout=5)
+            resp.encoding = "gbk"
+            m = re.search(r'var hq_str_s_sh000001="([^"]*)"', resp.text)
+            if not m:
+                return None
+            fields = m.group(1).split(",")
+            if len(fields) < 3:
+                return None
+            current = float(fields[1]) if fields[1] else None
+            change = float(fields[2]) if fields[2] else 0.0
+            if current is None or current <= 0:
+                return None
+            pre_close = current - change
+            if pre_close <= 0:
+                return None
+            return np.array([
+                pre_close,                             # open ≈ 昨收
+                max(current, pre_close),               # high
+                min(current, pre_close),               # low
+                current,                               # close
+            ], dtype=np.float64)
+        except Exception:
+            return None
+
     def discover(self, mode: ModeStr, trade_date: Optional[str] = None,
                 candidate_codes: Optional[List[str]] = None,
                 skip_monitor: bool = False) -> List[DiscoveryResult]:
@@ -953,13 +1037,15 @@ class StockDiscoveryEngine:
             stock_code = ts_code.split(".")[0] if "." in ts_code else ts_code
             stock_name = names.get(ts_code) or self._stock_names.get(ts_code) or self._stock_names.get(stock_code) or stock_code
 
-            if universe_code_set and stock_code not in universe_code_set:
-                whitelist_skipped += 1
-                continue
+            # 仅全市场扫描时过滤（followup 不适用）
+            if not candidate_codes:
+                if universe_code_set and stock_code not in universe_code_set:
+                    whitelist_skipped += 1
+                    continue
 
-            if is_st_stock(stock_name):
-                st_skipped += 1
-                continue
+                if is_st_stock(stock_name):
+                    st_skipped += 1
+                    continue
 
             factor_breakdown = {}
             raw_score = row["_total"]
@@ -1002,7 +1088,12 @@ class StockDiscoveryEngine:
                     weight_formation=self.config.scorer_weight_formation,
                 )
                 scorer = StockScorer(scorer_config)
-                if hasattr(self, '_index_ohlcv_cache') and self._index_ohlcv_cache is not None:
+
+                if not hasattr(self, '_index_ohlcv_cache') or self._index_ohlcv_cache is None:
+                    self._index_ohlcv_cache = self._build_index_ohlcv_cache()
+                else:
+                    self._refresh_index_ohlcv_latest()  # 每轮更新当日指数实时价
+                if self._index_ohlcv_cache is not None:
                     scorer.preload_index_ohlcv(self._index_ohlcv_cache)
 
                 # 预加载板块涨跌幅
@@ -1161,23 +1252,24 @@ class StockDiscoveryEngine:
                     buy_low, buy_high = sl_result.buy_low, sl_result.buy_high
                     stop, tp1, tp2 = sl_result.stop_loss, sl_result.take_profit_1, sl_result.take_profit_2
 
-            # 过滤超买股 & 低盈亏比股
+            # 超买/低盈亏比过滤（仅全市场扫描，followup 不适用）
             ohlcv_rows_p2 = ohlcv_map.get(stock_code, [])
             if mode == "postmarket":
                 discovery_price = float(ohlcv_rows_p2[-1].close) if ohlcv_rows_p2 else None
             else:
                 discovery_price = live_prices.get(ts_code) or live_prices.get(stock_code) or (float(ohlcv_rows_p2[-1].close) if ohlcv_rows_p2 else None)
-            if discovery_price and tp1 and discovery_price >= tp1:
-                overbought_skipped += 1
-                continue
-            if discovery_price and tp1 and stop:
-                if discovery_price <= stop:
-                    lowpnl_skipped += 1
+            if not candidate_codes:
+                if discovery_price and tp1 and discovery_price >= tp1:
+                    overbought_skipped += 1
                     continue
-                pnl_ratio = (tp1 - discovery_price) / (discovery_price - stop)
-                if pnl_ratio <= 0:
-                    lowpnl_skipped += 1
-                    continue
+                if discovery_price and tp1 and stop:
+                    if discovery_price <= stop:
+                        lowpnl_skipped += 1
+                        continue
+                    pnl_ratio = (tp1 - discovery_price) / (discovery_price - stop)
+                    if pnl_ratio <= 0:
+                        lowpnl_skipped += 1
+                        continue
 
             # 推荐理由
             reasons = list(all_reasons.get(ts_code, []))

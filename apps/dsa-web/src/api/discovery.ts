@@ -76,6 +76,7 @@ export type TradeRecordItem = {
   return_pct: number;
   pnl: number;
   allocated_capital: number;
+  is_open?: boolean;
 };
 
 export type BacktestDailyItem = {
@@ -131,6 +132,11 @@ export type StockScoreItem = {
   factor_scores: Record<string, number>;
   factor_weights: Record<string, number>;
   sector: string;
+  current_price?: number | null;
+  buy_price_low?: number | null;
+  buy_price_high?: number | null;
+  stop_loss?: number | null;
+  take_profit_1?: number | null;
 };
 
 export type StockScoreEntry = {

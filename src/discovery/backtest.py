@@ -42,6 +42,7 @@ class TradeRecord:
     return_pct: float  # e.g. 0.03 = 3%
     pnl: float         # 实际盈亏金额
     allocated_capital: float  # 分配到该股的初始资金
+    is_open: bool = False  # 尚未到卖出时间，未平仓
 
 
 @dataclass
@@ -251,6 +252,7 @@ class DiscoveryBacktest:
                         return_pct=round(ret, 6),
                         pnl=round(pnl, 2),
                         allocated_capital=round(alloc, 2),
+                        is_open=is_open,
                     ))
 
                     # P&L 贡献 = alloc × (price/buy_price − 1)，量纲为元
@@ -411,6 +413,7 @@ class DiscoveryBacktest:
                         return_pct=round(ret, 6),
                         pnl=round(pnl, 2),
                         allocated_capital=round(alloc, 2),
+                        is_open=is_open,
                     ))
 
                     # P&L 贡献 = alloc × (price/buy_price − 1)，买入日 OHLC

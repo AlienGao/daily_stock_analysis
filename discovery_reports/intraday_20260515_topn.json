@@ -1,0 +1,223 @@
+[
+  {
+    "rank": 1,
+    "stock_code": "300927",
+    "stock_name": "江天化学",
+    "score": 36.2,
+    "sector": "化学原料",
+    "factor_scores": {
+      "ma_entry": 2.9553116390426815,
+      "sector": 18.327001547769804,
+      "ranking_momentum": 14.304324481335103,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 25.0,
+      "sector": 25.0,
+      "ranking_momentum": 15.0,
+      "rebound": 20.0,
+      "popularity": 18.0
+    },
+    "reasons": [
+      "排名连续上升(3天)",
+      "趋势加速↑(7.8%/天)",
+      "今日强于96%个股",
+      "所属板块: 化学原料"
+    ],
+    "buy_price_low": 27.6,
+    "buy_price_high": 30.5,
+    "stop_loss": 29.89,
+    "take_profit_1": 32.48,
+    "take_profit_2": 36.94,
+    "discovered_at": "12:14:16",
+    "price_at_discovery": 29.94,
+    "pct_chg": 7.01,
+    "tech_score": 79.59,
+    "rr_score": 100.0,
+    "market_score": 57.97472543570956,
+    "sector_score": 99.97258394674336,
+    "volume_score": 89.99999999948027,
+    "position_score": 75,
+    "formation_score": 20.0,
+    "composite_score": 66.57300000000001
+  },
+  {
+    "rank": 2,
+    "stock_code": "603379",
+    "stock_name": "三美股份",
+    "score": 39.7,
+    "sector": "化学制品",
+    "factor_scores": {
+      "ma_entry": 9.464479046554409,
+      "sector": 3.4473054734768542,
+      "ranking_momentum": 13.520055629395557,
+      "rebound": 0.0,
+      "popularity": 12.58252427184466
+    },
+    "factor_weights": {
+      "ma_entry": 25.0,
+      "sector": 25.0,
+      "ranking_momentum": 15.0,
+      "rebound": 20.0,
+      "popularity": 18.0
+    },
+    "reasons": [
+      "回踩MA10均线",
+      "排名连续上升(2天)",
+      "趋势加速↑(7.0%/天)",
+      "今日强于90%个股",
+      "人气核心圈(排名374)",
+      "人气股上涨(+3.6%)",
+      "所属板块: 化学制品"
+    ],
+    "buy_price_low": 58.5,
+    "buy_price_high": 63.6,
+    "stop_loss": 62.65,
+    "take_profit_1": 66.45,
+    "take_profit_2": 70.49,
+    "discovered_at": "12:14:16",
+    "price_at_discovery": 63.51,
+    "pct_chg": 4.08,
+    "tech_score": 76.97,
+    "rr_score": 100.0,
+    "market_score": 57.97472543570956,
+    "sector_score": 82.50412137030996,
+    "volume_score": 89.99999996611002,
+    "position_score": 75,
+    "formation_score": 20.0,
+    "composite_score": 65.789
+  },
+  {
+    "rank": 3,
+    "stock_code": "300233",
+    "stock_name": "金城医药",
+    "score": 47.6,
+    "sector": "化学制药",
+    "factor_scores": {
+      "ma_entry": 24.084799619748434,
+      "sector": 16.638525397495428,
+      "ranking_momentum": 8.238783899162918,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 25.0,
+      "sector": 25.0,
+      "ranking_momentum": 15.0,
+      "rebound": 20.0,
+      "popularity": 18.0
+    },
+    "reasons": [
+      "均线多头排列",
+      "均线粘合",
+      "回踩MA5均线",
+      "BOLL中轨支撑",
+      "今日强于91%个股",
+      "所属板块: 化学制药"
+    ],
+    "buy_price_low": 15.0,
+    "buy_price_high": 16.1,
+    "stop_loss": 15.74,
+    "take_profit_1": 16.79,
+    "take_profit_2": 17.46,
+    "discovered_at": "12:14:16",
+    "price_at_discovery": 16.05,
+    "pct_chg": 4.22,
+    "tech_score": 73.1,
+    "rr_score": 100.0,
+    "market_score": 57.97472543570956,
+    "sector_score": 44.7379106546485,
+    "volume_score": 61.932868928305574,
+    "position_score": 60,
+    "formation_score": 95.0,
+    "composite_score": 65.44999999999999
+  },
+  {
+    "rank": 4,
+    "stock_code": "301563",
+    "stock_name": "云汉芯城",
+    "score": 42.5,
+    "sector": "其他电子",
+    "factor_scores": {
+      "ma_entry": 20.150252180725122,
+      "sector": 9.145912480652878,
+      "ranking_momentum": 13.736587770335095,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 25.0,
+      "sector": 25.0,
+      "ranking_momentum": 15.0,
+      "rebound": 20.0,
+      "popularity": 18.0
+    },
+    "reasons": [
+      "均线多头排列",
+      "回踩MA5均线",
+      "趋势加速↑(8.9%/天)",
+      "今日强于88%个股",
+      "所属板块: 其他电子"
+    ],
+    "buy_price_low": 159.6,
+    "buy_price_high": 169.3,
+    "stop_loss": 169.17,
+    "take_profit_1": 183.6,
+    "take_profit_2": 196.99,
+    "discovered_at": "12:14:16",
+    "price_at_discovery": 173.17,
+    "pct_chg": 3.32,
+    "tech_score": 73.57,
+    "rr_score": 100.0,
+    "market_score": 57.97472543570956,
+    "sector_score": 57.1206089452006,
+    "volume_score": 71.06953318643228,
+    "position_score": 50,
+    "formation_score": 70.0,
+    "composite_score": 64.249
+  },
+  {
+    "rank": 5,
+    "stock_code": "688419",
+    "stock_name": "耐科装备",
+    "score": 39.9,
+    "sector": "专用设备",
+    "factor_scores": {
+      "ma_entry": 8.531454374213311,
+      "sector": 17.86970592373716,
+      "ranking_momentum": 12.812365217544384,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 25.0,
+      "sector": 25.0,
+      "ranking_momentum": 15.0,
+      "rebound": 20.0,
+      "popularity": 18.0
+    },
+    "reasons": [
+      "回踩MA5均线",
+      "趋势加速↑(20.2%/天)",
+      "今日强于93%个股",
+      "所属板块: 专用设备"
+    ],
+    "buy_price_low": 43.2,
+    "buy_price_high": 46.3,
+    "stop_loss": 45.06,
+    "take_profit_1": 50.89,
+    "take_profit_2": 55.88,
+    "discovered_at": "12:14:16",
+    "price_at_discovery": 46.83,
+    "pct_chg": 5.12,
+    "tech_score": 65.36,
+    "rr_score": 100.0,
+    "market_score": 57.97472543570956,
+    "sector_score": 27.854033949782064,
+    "volume_score": 53.911882359197165,
+    "position_score": 75,
+    "formation_score": 40.0,
+    "composite_score": 57.721999999999994
+  }
+]

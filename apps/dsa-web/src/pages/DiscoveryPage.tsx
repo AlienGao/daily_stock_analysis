@@ -1173,8 +1173,8 @@ const BacktestCard: React.FC<{
                       </td>
                       <td className="px-2 py-1.5 text-right text-tertiary-text">{fmtDate(t.buy_date)}</td>
                       <td className="px-2 py-1.5 text-right tabular-nums">{t.buy_price.toFixed(2)}</td>
-                      <td className="px-2 py-1.5 text-right text-tertiary-text">{fmtDate(t.sell_date)}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">{t.sell_price.toFixed(2)}</td>
+                      <td className="px-2 py-1.5 text-right text-tertiary-text">{t.is_open ? '--' : fmtDate(t.sell_date)}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">{t.is_open ? '--' : t.sell_price.toFixed(2)}</td>
                       <td className={`px-2 py-1.5 text-right font-medium tabular-nums ${t.return_pct >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                         {t.return_pct >= 0 ? '+' : ''}{(t.return_pct * 100).toFixed(2)}%
                       </td>
@@ -1215,6 +1215,8 @@ const DiscoveryPage: React.FC = () => {
   const [btEndDate, setBtEndDate] = useState<string>('');
   const intradayFetchInFlightRef = useRef(false);
   const intradayLastFetchAtRef = useRef(0);
+  const postTopNRef = useRef(postTopN);
+  postTopNRef.current = postTopN;
   const [intradayScanMode, setIntradayScanMode] = useState<ScanModeResponse>({ scan_universe: 'full_market', has_whitelist: false });
   const [postmarketScanMode, setPostmarketScanMode] = useState<ScanModeResponse>({ scan_universe: 'full_market', has_whitelist: false });
   const [resultSubTab, setResultSubTab] = useState<string>('composite');
@@ -1286,7 +1288,7 @@ const DiscoveryPage: React.FC = () => {
 
   const fetchReport = useCallback(async (date?: string) => {
     try {
-      setLoading(true);
+      if (postTopNRef.current.length === 0) setLoading(true);
       const d = await discoveryApi.getPostmarketReport(date);
       setPostTopN(d.top_n ?? []);
       setReportDate(d.date ?? null);
@@ -1298,7 +1300,7 @@ const DiscoveryPage: React.FC = () => {
 
   const fetchLiveRescore = useCallback(async () => {
     try {
-      setLoading(true);
+      if (postTopNRef.current.length === 0) setLoading(true);
       const d = await discoveryApi.getPostmarketFollowup();
       if (d.top_n && d.top_n.length > 0) {
         setPostTopN(d.top_n);
@@ -1321,7 +1323,7 @@ const DiscoveryPage: React.FC = () => {
         setLiveRescored(false);
       } catch { /* silent */ }
     } finally {
-      setLoading(false);
+      if (postTopNRef.current.length === 0) setLoading(false);
     }
   }, []);
 
@@ -1656,6 +1658,25 @@ const DiscoveryPage: React.FC = () => {
             columns={[
               { title: '代码', dataIndex: 'stock_code', width: 100, render: (v: string) => <span className="font-mono">{v}</span> },
               { title: '名称', dataIndex: 'stock_name', width: 100 },
+              { title: '当前价', width: 80, render: (_: any, r) => {
+                const s = r.intraday || r.postmarket;
+                return s?.current_price ? <span className="font-mono text-foreground">{s.current_price.toFixed(2)}</span> : '-';
+              }},
+              { title: '买入区间', width: 140, render: (_: any, r) => {
+                const s = r.intraday || r.postmarket;
+                if (s?.buy_price_low == null) return '-';
+                const lo = s.buy_price_low.toFixed(2);
+                const hi = s.buy_price_high != null && s.buy_price_high !== s.buy_price_low ? s.buy_price_high.toFixed(2) : null;
+                return <span className="font-mono text-cyan">{lo}{hi ? ` ~ ${hi}` : ''}</span>;
+              }},
+              { title: '止损', width: 80, render: (_: any, r) => {
+                const s = r.intraday || r.postmarket;
+                return s?.stop_loss ? <span className="font-mono text-emerald-400">{s.stop_loss.toFixed(2)}</span> : '-';
+              }},
+              { title: '止盈', width: 80, render: (_: any, r) => {
+                const s = r.intraday || r.postmarket;
+                return s?.take_profit_1 ? <span className="font-mono text-red-400">{s.take_profit_1.toFixed(2)}</span> : '-';
+              }},
               { title: '综合分', width: 70, render: (_: any, r) => {
                 const s = r.intraday || r.postmarket;
                 return s ? <span className="font-mono text-cyan">{s.composite_score > 0 ? s.composite_score.toFixed(1) : '-'}</span> : '-';

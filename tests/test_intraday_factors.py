@@ -459,14 +459,14 @@ class TestFallbackChain:
         provider._cache["slot"] = 99
         provider._cache["source"] = "tencent"
         monkeypatch.setattr(RealtimeSpotProvider, "_fetch_tencent", classmethod(lambda cls: None))
-        monkeypatch.setattr(RealtimeSpotProvider, "_fetch_mootdx_with_supplement", lambda self: None)
+        monkeypatch.setattr(RealtimeSpotProvider, "_fetch_sina", classmethod(lambda cls: None))
         monkeypatch.setattr(RealtimeSpotProvider, "_fetch_eastmoney", classmethod(lambda cls, **kw: None))
         df = provider.fetch()
         assert df is not None
 
     def test_all_fail_no_cache(self, provider, code_list, monkeypatch):
         monkeypatch.setattr(RealtimeSpotProvider, "_fetch_tencent", classmethod(lambda cls: None))
-        monkeypatch.setattr(RealtimeSpotProvider, "_fetch_mootdx_with_supplement", lambda self: None)
+        monkeypatch.setattr(RealtimeSpotProvider, "_fetch_sina", classmethod(lambda cls: None))
         monkeypatch.setattr(RealtimeSpotProvider, "_fetch_eastmoney", classmethod(lambda cls, **kw: None))
         df = provider.fetch()
         assert df is None
@@ -474,8 +474,8 @@ class TestFallbackChain:
     def test_empty_df_falls_through(self, provider, code_list, monkeypatch):
         monkeypatch.setattr(RealtimeSpotProvider, "_fetch_tencent",
                             classmethod(lambda cls: pd.DataFrame()))
-        monkeypatch.setattr(RealtimeSpotProvider, "_fetch_mootdx_with_supplement",
-                            lambda self: pd.DataFrame())
+        monkeypatch.setattr(RealtimeSpotProvider, "_fetch_sina",
+                            classmethod(lambda cls: pd.DataFrame()))
         monkeypatch.setattr(RealtimeSpotProvider, "_fetch_eastmoney",
                             classmethod(lambda cls, **kw: pd.DataFrame()))
         df = provider.fetch()

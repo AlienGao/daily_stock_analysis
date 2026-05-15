@@ -48,10 +48,8 @@ def _is_trading_hours() -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Live rescore cache & engine reuse
+# Engine reuse
 # ---------------------------------------------------------------------------
-
-_live_rescore_cache: Dict[str, dict] = {}  # {date_str: {"ts": float, "items": list}}
 _cached_engine = None
 _cached_engine_ts = 0
 
@@ -79,34 +77,39 @@ def _get_or_create_engine():
 def _get_live_quotes(ts_codes: List[str]) -> "tuple[Dict[str, float], Dict[str, float]]":
     """获取实时价格和涨跌幅。
 
-    交易时段优先从 realtime_spot DB 读取（盘中扫描器每 30s 刷新），
-    非交易时段（盘后/非交易日）回退到 Sina 实时行情接口补充。
+    优先从 realtime_spot DB 读取（盘中扫描器每 30s 刷新），
+    若数据过期（slot 落后 >30s）则回退到 Sina 实时行情接口。
 
     Returns: (prices_dict, pct_chg_dict)，key 为裸码（与 DB 一致）。
     """
+    bare_codes = [c.split(".")[0] if "." in c else c for c in ts_codes]
+    use_db = False
     try:
         from src.storage import DatabaseManager
-        bare_codes = [c.split(".")[0] if "." in c else c for c in ts_codes]
         spot_df = DatabaseManager().get_current_prices(bare_codes)
-        if spot_df is not None and not spot_df.empty:
-            prices: Dict[str, float] = {}
-            pct_chgs: Dict[str, float] = {}
-            for code in bare_codes:
-                try:
-                    p = spot_df.at[code, "price"]
-                    if pd.notna(p):
-                        prices[code] = float(p)
-                    pct = spot_df.at[code, "pct_chg"]
-                    if pd.notna(pct):
-                        pct_chgs[code] = float(pct)
-                except (KeyError, ValueError, TypeError):
-                    pass
-            if prices:
-                return prices, pct_chgs
+        if spot_df is not None and not spot_df.empty and "slot" in spot_df.columns:
+            current_slot = int(time.time() / 30)
+            max_slot = int(spot_df["slot"].max())
+            if current_slot - max_slot <= 1:
+                use_db = True
+                prices: Dict[str, float] = {}
+                pct_chgs: Dict[str, float] = {}
+                for code in bare_codes:
+                    try:
+                        p = spot_df.at[code, "price"]
+                        if pd.notna(p):
+                            prices[code] = float(p)
+                        pct = spot_df.at[code, "pct_chg"]
+                        if pd.notna(pct):
+                            pct_chgs[code] = float(pct)
+                    except (KeyError, ValueError, TypeError):
+                        pass
+                if prices:
+                    return prices, pct_chgs
     except Exception:
         logger.warning("[Discovery API] realtime_spot 读取出错", exc_info=True)
 
-    # 非交易时段：Sina 实时行情兜底
+    # DB 数据过期或不可用：Sina 实时行情兜底
     prices, pct_chgs = _get_live_quotes_sina(bare_codes)
     return prices, pct_chgs
 
@@ -640,8 +643,8 @@ async def postmarket_stream():
                         ticks_since_last_event = 0
                         yield "event: update\ndata: {}\n\n"
 
-                    # 交易时段每 30s 推送 rescore 事件
-                    if ticks_since_last_rescore >= 15:
+                    # 交易时段每 15s 推送 rescore 事件
+                    if ticks_since_last_rescore >= 7:
                         ticks_since_last_rescore = 0
                         yield "event: rescore\ndata: {}\n\n"
 
@@ -879,14 +882,6 @@ def postmarket_followup(
         from datetime import timedelta
         report_date = (date.today() - timedelta(days=1)).strftime("%Y%m%d")
 
-    # 缓存命中（内存，交易时段内一直有效；SSE 每 30 秒会触发重新计算覆盖）
-    cache = _live_rescore_cache.get(report_date)
-    if cache:
-        return PostmarketReportResponse(
-            date=report_date, report="", exists=True,
-            top_n=cache["items"], live_rescored=True,
-        )
-
     # 读取盘后 topn 获取候选股票代码
     topn_file = _INTRADAY_REPORTS_DIR / f"postmarket_{report_date}_topn.json"
     if not topn_file.exists():
@@ -949,9 +944,6 @@ def postmarket_followup(
         ))
 
     _enrich_live_quotes(items)
-
-    # 更新缓存
-    _live_rescore_cache[report_date] = {"ts": time.time(), "items": items}
 
     return PostmarketReportResponse(
         date=report_date, report="", exists=True,
@@ -1184,6 +1176,7 @@ class TradeRecordItem(BaseModel):
     return_pct: float
     pnl: float
     allocated_capital: float
+    is_open: bool = False  # 未到卖出时间，未平仓
 
 
 class BacktestDailyItem(BaseModel):
@@ -1280,6 +1273,7 @@ def get_backtest(
             return_pct=t.return_pct,
             pnl=t.pnl,
             allocated_capital=t.allocated_capital,
+            is_open=t.is_open,
         )
         for t in summary.trade_records
     ]
@@ -1328,6 +1322,12 @@ class StockScoreItem(BaseModel):
     factor_scores: Dict[str, float]
     factor_weights: Dict[str, float] = {}
     sector: str
+    # 价格点位（实时计算）
+    current_price: Optional[float] = None
+    buy_price_low: Optional[float] = None
+    buy_price_high: Optional[float] = None
+    stop_loss: Optional[float] = None
+    take_profit_1: Optional[float] = None
 
 
 class StockScoreEntry(BaseModel):
@@ -1355,8 +1355,41 @@ def _format_scanned_at(scan_date: str, scan_time: str) -> str:
     return d
 
 
-def _calc_tech_for_row(row, db: "DatabaseManager") -> Tuple[float, float, Dict, Dict]:
-    """从 DB 行实时计算 tech_score（需要 price、止盈止损、OHLCV、tech_indicators）。"""
+def _append_today_ohlcv(ohlcv_rows: list, stock_code: str, td_obj, db: "DatabaseManager") -> None:
+    """从 realtime_spot 取当日 OHLC 补齐到 OHLCV 列表末尾。
+
+    stock_daily 只有历史日线，盘中/盘后当日 K 线尚未落库。
+    用 realtime_spot 的 open_price/high/low/price 拼成当日 K 线。
+    """
+    from collections import namedtuple
+    try:
+        with db.get_session() as s:
+            from src.storage import RealtimeSpot
+            spot = s.execute(
+                s.query(RealtimeSpot).filter(RealtimeSpot.code == stock_code)
+            ).scalars().first()
+            if spot is None:
+                return
+            if spot.trade_date and spot.trade_date != td_obj.isoformat():
+                return
+
+        if not (spot.open_price and spot.high and spot.low and spot.price):
+            return
+
+        ORow = namedtuple("ORow", ["date", "open", "high", "low", "close"])
+        ohlcv_rows.append(ORow(
+            date=td_obj,
+            open=float(spot.open_price),
+            high=float(spot.high),
+            low=float(spot.low),
+            close=float(spot.price),
+        ))
+    except Exception:
+        pass
+
+
+def _calc_tech_for_row(row, db: "DatabaseManager") -> Tuple[float, float, Dict, Dict, float, Optional[float], Optional[float], Optional[float], Optional[float]]:  # noqa: E501
+    """从 DB 行实时计算 tech_score + 价格点位（price, buy_low, buy_high, stop_loss, tp1）。"""
     from src.services.stock_scorer import StockScorer, StockScorerConfig
     from src.services.stop_loss_calculator import compute_from_arrays
     import numpy as np
@@ -1391,7 +1424,7 @@ def _calc_tech_for_row(row, db: "DatabaseManager") -> Tuple[float, float, Dict, 
             if latest:
                 price = float(latest.close)
     if price <= 0:
-        return 0.0, 0.0, {}, {}
+        return 0.0, 0.0, {}, {}, 0.0, None, None, None, None
 
     # 量比（从 daily_basic 补）
     vol_ratio = max(tech_cache.get("vol_ratio", 1.0), 1.0)
@@ -1413,6 +1446,10 @@ def _calc_tech_for_row(row, db: "DatabaseManager") -> Tuple[float, float, Dict, 
     ohlcv_start = td_obj - timedelta(days=200)
     ohlcv_map = db.get_data_range_batch([stock_code], ohlcv_start, td_obj)
     ohlcv_rows = ohlcv_map.get(stock_code, [])
+
+    # 盘中/盘后补上当日 K 线（stock_daily 只有历史日线，当日尚未落库）
+    if not ohlcv_rows or (ohlcv_rows[-1].date != td_obj):
+        _append_today_ohlcv(ohlcv_rows, stock_code, td_obj, db)
 
     highs = np.array([d.high for d in ohlcv_rows], dtype=float)
     lows = np.array([d.low for d in ohlcv_rows], dtype=float)
@@ -1463,7 +1500,8 @@ def _calc_tech_for_row(row, db: "DatabaseManager") -> Tuple[float, float, Dict, 
         "position_score": tech.position_score,
         "formation_score": tech.formation_score,
     }
-    return tech.composite, composite, breakdown, tech.weights
+    return (tech.composite, composite, breakdown, tech.weights,
+            price, sl.buy_low, sl.buy_high, est_stop, est_tp1)
 
 
 def _row_to_item(row, factor_weights: Dict[str, float] = None,
@@ -1483,9 +1521,20 @@ def _row_to_item(row, factor_weights: Dict[str, float] = None,
     composite_val = round(float(getattr(row, 'composite_score', 0) or 0), 2)
     tech_breakdown = None
     tech_weights: Dict[str, float] = {}
+    current_price: Optional[float] = None
+    buy_price_low: Optional[float] = None
+    buy_price_high: Optional[float] = None
+    stop_loss: Optional[float] = None
+    take_profit_1: Optional[float] = None
     if db is not None:
         try:
-            _tech, _composite, _breakdown, _weights = _calc_tech_for_row(row, db)
+            (_tech, _composite, _breakdown, _weights,
+             _price, _buy_low, _buy_high, _stop_loss, _tp1) = _calc_tech_for_row(row, db)
+            current_price = _price if _price > 0 else None
+            buy_price_low = _buy_low
+            buy_price_high = _buy_high
+            stop_loss = _stop_loss if (_stop_loss and _stop_loss > 0) else None
+            take_profit_1 = _tp1 if (_tp1 and _tp1 > 0) else None
             if _tech > 0:
                 tech_score_val = round(_tech, 2)
                 alpha = 0.3
@@ -1507,6 +1556,11 @@ def _row_to_item(row, factor_weights: Dict[str, float] = None,
         factor_scores=factor_scores,
         factor_weights=factor_weights or {},
         sector=getattr(row, 'sector', '') or '',
+        current_price=current_price,
+        buy_price_low=buy_price_low,
+        buy_price_high=buy_price_high,
+        stop_loss=stop_loss,
+        take_profit_1=take_profit_1,
     )
 
 

@@ -18,6 +18,48 @@ from src.repositories.stock_repo import StockRepository
 logger = logging.getLogger(__name__)
 
 
+def _append_today_kl(data: list, stock_code: str) -> None:
+    """从 realtime_spot 取当日 OHLC 追加到 K 线列表末尾。
+
+    stock_daily 只有历史日线，盘中/盘后当日 K 线尚未落库时用此补齐。
+    """
+    if not data:
+        return
+    from datetime import date as dt_date
+    today_str = dt_date.today().isoformat()
+    if data[-1].get("date") == today_str:
+        return  # 已有当日数据
+    try:
+        from src.storage import DatabaseManager, RealtimeSpot
+        db = DatabaseManager()
+        with db.get_session() as s:
+            spot = s.execute(
+                s.query(RealtimeSpot).filter(RealtimeSpot.code == stock_code)
+            ).scalars().first()
+            if spot is None:
+                return
+            if spot.trade_date and spot.trade_date != today_str:
+                return
+        if not (spot.open_price and spot.high and spot.low and spot.price):
+            return
+        prev_close = data[-1].get("close", 0) or 0
+        pct = 0.0
+        if prev_close > 0:
+            pct = round((float(spot.price) - prev_close) / prev_close * 100, 2)
+        data.append({
+            "date": today_str,
+            "open": float(spot.open_price),
+            "high": float(spot.high),
+            "low": float(spot.low),
+            "close": float(spot.price),
+            "volume": float(spot.volume) if spot.volume else None,
+            "amount": float(spot.amount) if spot.amount else None,
+            "change_percent": pct,
+        })
+    except Exception:
+        pass
+
+
 class StockService:
     """
     股票数据服务
@@ -143,6 +185,7 @@ class StockService:
                         "change_percent": float(row_dict.get("pct_chg", 0)) if row_dict.get("pct_chg") else None,
                     })
                 logger.info(f"[{stock_code}] DB 命中: {len(data)} 条, 请求 {days} 天")
+                _append_today_kl(data, stock_code)
                 return {
                     "stock_code": stock_code,
                     "stock_name": stock_code,
@@ -190,6 +233,7 @@ class StockService:
                     "change_percent": float(row.get("pct_chg", 0)) if row.get("pct_chg") else None,
                 })
 
+            _append_today_kl(data, stock_code)
             return {
                 "stock_code": stock_code,
                 "stock_name": stock_name,

@@ -806,5 +806,142 @@
       }
     },
     "backfilled_at": "2026-05-14T11:22:20.490122"
+  },
+  {
+    "pick_date": "20260514",
+    "mode": "postmarket",
+    "eval_date": "20260515",
+    "eval_days": 5,
+    "factors": {
+      "money_flow": {
+        "avg_return": 0.0,
+        "median_return": 0.0,
+        "win_rate": 0.0,
+        "best": 0.0,
+        "worst": 0.0,
+        "n_valid": 20
+      },
+      "technical": {
+        "avg_return": 0.0,
+        "median_return": 0.0,
+        "win_rate": 0.0,
+        "best": 0.0,
+        "worst": 0.0,
+        "n_valid": 20
+      },
+      "broker_recommend": {
+        "avg_return": 0.0,
+        "median_return": 0.0,
+        "win_rate": 0.0,
+        "best": 0.0,
+        "worst": 0.0,
+        "n_valid": 20
+      },
+      "fundamental": {
+        "avg_return": 0.0,
+        "median_return": 0.0,
+        "win_rate": 0.0,
+        "best": 0.0,
+        "worst": 0.0,
+        "n_valid": 20
+      },
+      "hot_money": {
+        "avg_return": 0.0,
+        "median_return": 0.0,
+        "win_rate": 0.0,
+        "best": 0.0,
+        "worst": 0.0,
+        "n_valid": 20
+      },
+      "margin": {
+        "avg_return": 0.0,
+        "median_return": 0.0,
+        "win_rate": 0.0,
+        "best": 0.0,
+        "worst": 0.0,
+        "n_valid": 20
+      },
+      "chip": {
+        "avg_return": 0.0,
+        "median_return": 0.0,
+        "win_rate": 0.0,
+        "best": 0.0,
+        "worst": 0.0,
+        "n_valid": 20
+      },
+      "insider_buy": {
+        "avg_return": 0.0,
+        "median_return": 0.0,
+        "win_rate": 0.0,
+        "best": 0.0,
+        "worst": 0.0,
+        "n_valid": 9
+      },
+      "institution_hold": {
+        "avg_return": 0.0,
+        "median_return": 0.0,
+        "win_rate": 0.0,
+        "best": 0.0,
+        "worst": 0.0,
+        "n_valid": 19
+      },
+      "limit": {
+        "avg_return": 0.0,
+        "median_return": 0.0,
+        "win_rate": 0.0,
+        "best": 0.0,
+        "worst": 0.0,
+        "n_valid": 20
+      },
+      "performance": {
+        "avg_return": 0.0,
+        "median_return": 0.0,
+        "win_rate": 0.0,
+        "best": 0.0,
+        "worst": 0.0,
+        "n_valid": 19
+      },
+      "popularity": {
+        "avg_return": 0.0,
+        "median_return": 0.0,
+        "win_rate": 0.0,
+        "best": 0.0,
+        "worst": 0.0,
+        "n_valid": 20
+      },
+      "ranking_momentum": {
+        "avg_return": 0.0,
+        "median_return": 0.0,
+        "win_rate": 0.0,
+        "best": 0.0,
+        "worst": 0.0,
+        "n_valid": 20
+      },
+      "buyback": {
+        "avg_return": 0.0,
+        "median_return": 0.0,
+        "win_rate": 0.0,
+        "best": 0.0,
+        "worst": 0.0,
+        "n_valid": 20
+      },
+      "profit_forecast": {
+        "avg_return": 0.0,
+        "median_return": 0.0,
+        "win_rate": 0.0,
+        "best": 0.0,
+        "worst": 0.0,
+        "n_valid": 20
+      },
+      "concept_heat": {
+        "avg_return": 0.0,
+        "median_return": 0.0,
+        "win_rate": 0.0,
+        "best": 0.0,
+        "worst": 0.0,
+        "n_valid": 20
+      }
+    },
+    "backfilled_at": "2026-05-15T09:28:03.271504"
   }
 ]

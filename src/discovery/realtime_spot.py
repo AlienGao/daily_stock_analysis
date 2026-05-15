@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 """实时行情数据提供者 (Real-time Spot Data Provider).
 
-为盘中因子提供全市场实时行情快照，双数据源交替拉取，
-缓存 30 秒（对齐 :00/:30 秒边界），确保每轮扫描获取最新数据。
+为盘中因子提供全市场实时行情快照，缓存 30 秒（对齐 :00/:30 秒边界）。
 
 数据源:
-  - 偶数槽: 腾讯 HTTP (qt.gtimg.cn) → 主力，字段齐全，~1s
-  - 奇数槽: mootdx 实时报价 + 东财 push2 补充字段（换手率/量比），~12s
-    东财失败时降级到 DB 缓存补齐缺失字段
+  - 主力: 腾讯 HTTP (qt.gtimg.cn) → 全市场价量/名称/涨跌幅，~1.8s
+  - 兜底: 新浪 HTTP (hq.sinajs.cn) → 全市场价量/名称，~2.7s
+  - 补充: 东财 push2 → 换手率/量比独立落库，60s 间隔，不阻塞行情刷新
 
 用法:
     provider = get_provider()
@@ -24,35 +23,22 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-_MOOTDX_AVAILABLE = False
-try:
-    from mootdx.quotes import Quotes
-    _MOOTDX_AVAILABLE = True
-except ImportError:
-    pass
-
 
 class RealtimeSpotProvider:
-    """全市场实时行情提供者（双源交替，对齐 :00/:30 秒边界）。
+    """全市场实时行情提供者（腾讯主力 + 新浪兜底 + 东财补充换手率/量比）。
 
-    每次 fetch() 检查当前是否已进入新的半分钟时间槽（每 30 秒一个槽），
-    若未进入新槽则返回缓存，若进入新槽则拉取新数据。
-
-    偶数槽: 腾讯 HTTP（字段齐全，速度快）
-    奇数槽: mootdx 实时报价 + 东财 push2 补充（换手率/量比/名称）
+    每次 fetch() 检查当前 30s slot，同一 slot 内返回缓存，
+    新 slot 时拉取腾讯，失败则降级新浪，最后用东财补充换手率/量比。
     """
 
-    BATCH_SIZE = 800  # 腾讯单次请求最大代码数（~7200 字节 URL）
-    MOOTDX_BATCH = 500  # mootdx 单批最大代码数（通达信协议安全上限）
+    BATCH_SIZE = 800  # 腾讯/新浪单次请求最大代码数（~7200 字节 URL）
     _code_list_cache: List[str] = []
-    _code_list_date: str = ""  # YYYY-MM-DD，每日刷新代码列表
-    _mootdx_name_cache: Dict[str, str] = {}
-    _mootdx_name_date: str = ""
+    _code_list_date: str = ""
+    _em_supplement_ts: float = 0  # 东财补充上次更新时间
 
     def __init__(self):
         self._cache: Dict = {"data": None, "slot": -1, "source": ""}
         self._last_slot = -1
-        self._mootdx_client = None
 
     # ------------------------------------------------------------------
     # Public API
@@ -61,9 +47,8 @@ class RealtimeSpotProvider:
     def fetch(self) -> Optional[pd.DataFrame]:
         """获取全市场实时行情快照。
 
-        对齐到每分钟 :00 和 :30 秒边界：同一半分钟槽内返回缓存。
-        偶数槽: 腾讯 HTTP；奇数槽: mootdx + 东财补充。
-        当前源失败时自动回退到另一个源。
+        对齐到 30s slot 边界缓存。
+        主力: 腾讯 HTTP → 兜底: 新浪 HTTP → 补充: 东财换手率/量比（60s 间隔）。
         """
         now = time.time()
         slot = int(now // 30)
@@ -75,27 +60,15 @@ class RealtimeSpotProvider:
             return self._cache["data"]
 
         self._get_code_list()
-        even_slot = (slot % 2 == 0)
 
-        # ── 偶数槽：腾讯主力 ──
-        if even_slot:
-            df = self._fetch_tencent()
-            source_label = "tencent"
+        # 主力: 腾讯（全市场 5515 只，1.8s）
+        df = self._fetch_tencent()
+        source_label = "tencent"
 
-            if df is None or df.empty:
-                logger.info("[RealtimeSpot] 腾讯失败，回退 mootdx+东财")
-                df = self._fetch_mootdx_with_supplement()
-                source_label = "mootdx+em" if df is not None and not df.empty else "tencent_fallback"
-
-        # ── 奇数槽：mootdx + 东财补充 ──
-        else:
-            df = self._fetch_mootdx_with_supplement()
-            source_label = "mootdx+em"
-
-            if df is None or df.empty:
-                logger.info("[RealtimeSpot] mootdx+东财失败，回退腾讯")
-                df = self._fetch_tencent()
-                source_label = "tencent"
+        if df is None or df.empty:
+            logger.info("[RealtimeSpot] 腾讯失败，回退新浪")
+            df = self._fetch_sina()
+            source_label = "sina" if df is not None and not df.empty else "tencent_fallback"
 
         # 两个都失败，返回过期缓存
         if df is None or df.empty:
@@ -105,8 +78,14 @@ class RealtimeSpotProvider:
             logger.warning("[RealtimeSpot] 无可用数据")
             return None
 
-        # 标准化并缓存
+        # 标准化
         df = self._normalize(df, source_label)
+
+        # 东财补充: 换手率/量比，60s 更新一次，不阻塞行情
+        if now - RealtimeSpotProvider._em_supplement_ts >= 60:
+            self._supplement_eastmoney(df)
+
+        # 缓存
         self._cache["data"] = df
         self._cache["slot"] = slot
         self._cache["source"] = source_label
@@ -160,8 +139,8 @@ class RealtimeSpotProvider:
                         # 腾讯成交量单位「手」，成交额单位「万元」
                         "volume": float(parts[6]) * 100 if parts[6] else 0,
                         "amount": float(parts[37]) * 10000 if parts[37] else 0,
-                        "turnover_rate": float(parts[38]) if parts[38] else 0,
-                        "volume_ratio": float(parts[49]) if parts[49] else 0,
+                        "turnover_rate": float(parts[38]) if parts[38] else pd.NA,
+                        "volume_ratio": float(parts[49]) if parts[49] else pd.NA,
                     })
 
             elapsed = time.time() - api_start
@@ -316,8 +295,8 @@ class RealtimeSpotProvider:
                             "low": float(parts[5]) if parts[5] else 0.0,
                             "volume": float(parts[8]) if parts[8] else 0.0,
                             "amount": float(parts[9]) if parts[9] else 0.0,
-                            "turnover_rate": 0.0,
-                            "volume_ratio": 0.0,
+                            "turnover_rate": pd.NA,
+                            "volume_ratio": pd.NA,
                         })
                     except (ValueError, IndexError):
                         continue
@@ -334,236 +313,58 @@ class RealtimeSpotProvider:
             return None
 
     # ------------------------------------------------------------------
-    # mootdx + 东财补充（奇数槽）
+    # 东财补充：换手率/量比（60s 间隔独立更新）
     # ------------------------------------------------------------------
 
-    def _fetch_mootdx_with_supplement(self) -> Optional[pd.DataFrame]:
-        """奇数槽主方法：mootdx 实时报价 + 东财 push2 补充换手率/量比/名称。
+    def _supplement_eastmoney(self, df: pd.DataFrame) -> None:
+        """从东财 push2 补充 turnover_rate/volume_ratio，60s 更新一次。
 
-        mootdx 提供核心价量（price/open/high/low/vol/amount），
-        缺失的 turnover_rate/volume_ratio/name 从东财 push2 补齐，
-        东财失败则降级到 DB realtime_spot 缓存。
-        pct_chg 由 price/last_close 直接计算。
+        直接修改传入的 DataFrame（已由 _normalize 标准化，code 为 index）。
         """
-        df = self._fetch_mootdx()
-        if df is None or df.empty:
-            return None
-
-        # pct_chg: 直接计算，不依赖外部源
-        if "pct_chg" not in df.columns or df["pct_chg"].isna().all():
-            pre = pd.to_numeric(df["pre_close"], errors="coerce")
-            prc = pd.to_numeric(df["price"], errors="coerce")
-            mask = (pre > 0) & (prc > 0)
-            df.loc[mask, "pct_chg"] = round(
-                (prc[mask] - pre[mask]) / pre[mask] * 100, 2
-            ).values
-
-        # name: 优先 mootdx stocks 缓存
-        self._load_mootdx_name_cache()
-        if self._mootdx_name_cache:
-            df["name"] = df["name"].fillna(
-                pd.Series(df.index, index=df.index).map(self._mootdx_name_cache)
-            )
-
-        # turnover_rate / volume_ratio: 东财 → DB 缓存
-        df = self._supplement_extra_fields(df)
-
-        return df
-
-    def _get_mootdx_client(self):
-        """延迟初始化 mootdx 客户端。"""
-        if not _MOOTDX_AVAILABLE:
-            logger.warning("[RealtimeSpot] mootdx 不可用")
-            return None
-        if self._mootdx_client is None:
-            try:
-                self._mootdx_client = Quotes.factory(market="std")
-            except Exception as e:
-                logger.warning("[RealtimeSpot] mootdx 初始化失败: %s", e)
-                return None
-        return self._mootdx_client
-
-    def _load_mootdx_name_cache(self) -> None:
-        """加载 mootdx 代码→名称映射，每日刷新一次。"""
-        today = date.today().isoformat()
-        if self._mootdx_name_cache and self._mootdx_name_date == today:
-            return
-
-        client = self._get_mootdx_client()
-        if client is None:
-            return
-
-        try:
-            for market in (0, 1):  # 深圳 0, 上海 1
-                stocks_df = client.stocks(market=market)
-                if stocks_df is not None and not stocks_df.empty:
-                    for _, row in stocks_df.iterrows():
-                        code = str(row["code"]).strip().zfill(6)
-                        name = str(row.get("name", "")).strip()
-                        if code and name:
-                            self._mootdx_name_cache[code] = name
-            self._mootdx_name_date = today
-            logger.info("[RealtimeSpot] mootdx 名称缓存加载: %d 只", len(self._mootdx_name_cache))
-        except Exception as e:
-            logger.warning("[RealtimeSpot] mootdx 名称缓存加载失败: %s", e)
-
-    def _fetch_mootdx(self) -> Optional[pd.DataFrame]:
-        """mootdx 批量实时报价，返回中间格式 DataFrame（code 为索引）。
-
-        返回列: name, price, pre_close, open, high, low, volume, amount
-        缺失: pct_chg (由调用方计算), turnover_rate, volume_ratio (由 supplement 补齐)
-        """
-        client = self._get_mootdx_client()
-        if client is None:
-            return None
-
-        codes = self._get_code_list()
-        if not codes:
-            return None
-
-        # 转换为 mootdx 格式 (sh/sz 前缀)
-        dx_codes = []
-        for c in codes:
-            c_str = str(c).strip().zfill(6)
-            if c_str.startswith(("60", "68")):
-                dx_codes.append(f"sh{c_str}")
-            elif c_str.startswith(("00", "30")):
-                dx_codes.append(f"sz{c_str}")
-            # 北交所 mootdx 不支持，跳过（由腾讯槽覆盖）
-
-        if not dx_codes:
-            return None
-
-        all_rows = []
-        api_start = time.time()
-
-        for i in range(0, len(dx_codes), self.MOOTDX_BATCH):
-            batch = dx_codes[i : i + self.MOOTDX_BATCH]
-            try:
-                data = client.quotes(symbol=batch)
-                if data is not None and not data.empty:
-                    all_rows.append(data)
-            except Exception as e:
-                logger.warning(
-                    "[RealtimeSpot] mootdx 批次 %d/%d 失败: %s",
-                    i // self.MOOTDX_BATCH + 1,
-                    (len(dx_codes) + self.MOOTDX_BATCH - 1) // self.MOOTDX_BATCH, e,
-                )
-                continue
-
-        if not all_rows:
-            logger.warning("[RealtimeSpot] mootdx 所有批次均无数据")
-            return None
-
-        raw = pd.concat(all_rows, ignore_index=True)
-        elapsed = time.time() - api_start
-        logger.info(
-            "[RealtimeSpot] mootdx 返回 %d 只股票, %d 批, 耗时 %.1fs",
-            len(raw), (len(dx_codes) + self.MOOTDX_BATCH - 1) // self.MOOTDX_BATCH, elapsed,
-        )
-
-        # 映射到统一中间格式（code 为索引）
-        result = pd.DataFrame()
-        result["code"] = raw["code"].astype(str).str.strip().str.zfill(6)
-        result["price"] = pd.to_numeric(raw["price"], errors="coerce")
-        result["pre_close"] = pd.to_numeric(raw["last_close"], errors="coerce")
-        result["open"] = pd.to_numeric(raw["open"], errors="coerce")
-        result["high"] = pd.to_numeric(raw["high"], errors="coerce")
-        result["low"] = pd.to_numeric(raw["low"], errors="coerce")
-        result["volume"] = pd.to_numeric(raw["vol"], errors="coerce")
-        result["amount"] = pd.to_numeric(raw["amount"], errors="coerce")
-        result["name"] = ""  # 后续补充
-        result["pct_chg"] = pd.NA
-        result["turnover_rate"] = pd.NA
-        result["volume_ratio"] = pd.NA
-
-        result = result.dropna(subset=["price"])
-        result = result[result["price"] > 0]
-        result = result.set_index("code")
-        return result
-
-    def _supplement_extra_fields(self, df: pd.DataFrame) -> pd.DataFrame:
-        """补充 turnover_rate / volume_ratio: 优先东财 push2 全量，失败用 DB 缓存。"""
         em_df = self._fetch_eastmoney(max_pages=60)
-        if em_df is not None and not em_df.empty:
-            # 标准化东财数据提取 code 和补充字段
-            try:
-                em_supp = self._normalize_eastmoney_supplement(em_df)
-                if em_supp is not None and not em_supp.empty:
-                    for col in ["turnover_rate", "volume_ratio", "name"]:
-                        if col in em_supp.columns:
-                            mapped = em_supp[col].reindex(df.index)
-                            df[col] = df[col].fillna(mapped)
-                    logger.info(
-                        "[RealtimeSpot] 东财补充: turnover_rate=%d, volume_ratio=%d",
-                        df["turnover_rate"].notna().sum(),
-                        df["volume_ratio"].notna().sum(),
-                    )
-            except Exception as e:
-                logger.warning("[RealtimeSpot] 东财补充解析失败: %s", e)
+        if em_df is None or em_df.empty:
+            return
 
-        # DB 缓存兜底：补齐东财未命中的代码
-        remaining = df["turnover_rate"].isna() | df["volume_ratio"].isna() | (df["name"] == "")
-        if remaining.any():
-            need_codes = df.index[remaining].tolist()
-            try:
-                db_supp = self._supplement_from_db(need_codes)
-                if db_supp is not None and not db_supp.empty:
-                    for col in ["turnover_rate", "volume_ratio", "name"]:
-                        if col in db_supp.columns:
-                            mapped = db_supp[col].reindex(df.index)
-                            df[col] = df[col].fillna(mapped)
-                    logger.info(
-                        "[RealtimeSpot] DB 缓存补充: %d 只",
-                        len(db_supp),
-                    )
-            except Exception as e:
-                logger.warning("[RealtimeSpot] DB 缓存补充失败: %s", e)
-
-        return df
-
-    @staticmethod
-    def _normalize_eastmoney_supplement(df: pd.DataFrame) -> Optional[pd.DataFrame]:
-        """从东财 push2 原始数据提取 code + 补充字段（name, turnover_rate, volume_ratio）。"""
         code_col = next(
-            (c for c in ["f12", "代码", "code"] if c in df.columns), None
-        )
-        name_col = next(
-            (c for c in ["f14", "名称", "name"] if c in df.columns), None
+            (c for c in ["f12", "代码", "code"] if c in em_df.columns), None
         )
         turnover_col = next(
-            (c for c in ["f8", "换手率", "turnover_rate"] if c in df.columns), None
+            (c for c in ["f8", "换手率", "turnover_rate"] if c in em_df.columns), None
         )
         vol_ratio_col = next(
-            (c for c in ["f10", "量比", "volume_ratio"] if c in df.columns), None
+            (c for c in ["f10", "量比", "volume_ratio"] if c in em_df.columns), None
+        )
+        if code_col is None:
+            return
+
+        # 标准化东财代码（去掉交易所后缀，匹配 _normalize 后的 index）
+        em_codes = em_df[code_col].astype(str).str.strip()
+        em_codes = em_codes.str.replace(r"\.(SZ|SH|BJ)$", "", regex=True)
+        em_codes = em_codes.str.replace(r"^(sz|sh|bj)", "", regex=True)
+        em_codes_set = set(em_codes.values)
+
+        if turnover_col:
+            tr_map = pd.Series(
+                pd.to_numeric(em_df[turnover_col], errors="coerce").values,
+                index=em_codes,
+            )
+            mask = df.index.isin(em_codes_set)
+            df.loc[mask, "turnover_rate"] = df.index[mask].map(tr_map)
+        if vol_ratio_col:
+            vr_map = pd.Series(
+                pd.to_numeric(em_df[vol_ratio_col], errors="coerce").values,
+                index=em_codes,
+            )
+            mask = df.index.isin(em_codes_set)
+            df.loc[mask, "volume_ratio"] = df.index[mask].map(vr_map)
+
+        RealtimeSpotProvider._em_supplement_ts = time.time()
+        filled = df["turnover_rate"].notna().sum()
+        logger.info(
+            "[RealtimeSpot] 东财补充: turnover_rate=%d, volume_ratio=%d",
+            filled, df["volume_ratio"].notna().sum(),
         )
 
-        if code_col is None:
-            return None
-
-        result = pd.DataFrame()
-        result["code"] = df[code_col].astype(str).str.strip()
-        result["name"] = df[name_col].astype(str).str.strip() if name_col else pd.NA
-        result["turnover_rate"] = pd.to_numeric(df[turnover_col], errors="coerce") if turnover_col else pd.NA
-        result["volume_ratio"] = pd.to_numeric(df[vol_ratio_col], errors="coerce") if vol_ratio_col else pd.NA
-        result = result.set_index("code")
-        return result
-
-    @staticmethod
-    def _supplement_from_db(codes: List[str]) -> Optional[pd.DataFrame]:
-        """从 realtime_spot DB 缓存读取指定代码的补充字段。"""
-        try:
-            from src.storage import DatabaseManager
-            df = DatabaseManager().get_realtime_spot_for_codes(codes)
-            if df is not None and not df.empty:
-                cols = [c for c in ["name", "turnover_rate", "volume_ratio"] if c in df.columns]
-                return df[cols] if cols else None
-        except Exception as e:
-            logger.warning("[RealtimeSpot] DB 补充查询失败: %s", e)
-        return None
-
-    # ------------------------------------------------------------------
-    # Code list helpers
     # ------------------------------------------------------------------
 
     @classmethod
