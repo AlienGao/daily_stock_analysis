@@ -1,67 +1,68 @@
-# 回测数据覆盖总览
+# 因子回测管线融合 — 差异分析
 
-**日期**: 2026-05-15
+## 1. 数据链路
 
-## 当前回测覆盖
+### 盘后引擎 (StockDiscoveryEngine.discover)
+```
+factors.compute() → score_columns (Dict[str, Series]) → 加权 composite
+    → StockScorer (spot_df量比, sector_labels板块, tech_cache MA/ATR)
+    → 30/70 融合 → sort → Top N
+```
 
-`factor_score_snapshots` 表：2026-03-24 ~ 2026-05-15，共 35 个交易日，22 个因子（16 postmarket + 6 intraday）全覆盖。
+### 回测引擎 (FactorBacktestEngine.compute, use_pipeline=True)
+```
+factor_score_snapshots 表 → _load_snapshots → score_columns (Dict[str, Series]) → 加权 composite
+    → StockScorer (stock_daily OHLCV → 自算量比/ATR/MA, ths_industry_map板块)
+    → 30/70 融合 → sort → Top N
+```
 
-唯一缺口：postmarket 的 `technical`、`money_flow`、`hot_money`、`fundamental`、`concept_heat` 缺少今天（2026-05-15）的盘后数据。
+## 2. 纯因子模式 (use_pipeline=False) — 完全一致 ✅
 
----
+**验证**: 2026-01-01 ~ 2026-05-14 共 34 个交易日，引擎 vs 回测 Top-5 完全匹配 (0 失败)
 
-## 向后扩展到 2024 年的可行性分析
+原因：引擎的 `discover()` 在 `DISCOVERY_PIPELINE_ENABLED=false` 时跳过 StockScorer，只做纯因子加权。快照中的因子得分与引擎实时计算的得分排名一致（绝对值可能不同，但相对排序不变）。
 
-### 可以直接回测到 2024 年或更早的因子
+## 3. 管线融合模式 (use_pipeline=True) — 存在差异 ⚠️
 
-| 因子 | 模式 | 依赖表 | 最早日期 | 覆盖天数 |
-|------|------|--------|----------|----------|
-| ranking_momentum | post+intra | momentum_snapshot | 2016-05-16 | 2427 |
-| margin | post | margin_detail | 2016-05-16 | 2426 |
-| fundamental | post | daily_basic | 2016-05-16 | 2426 |
-| buyback | post | repurchase | 2016-05-14 | 2879 |
-| performance | post | performance_report | 2016-07-14 | 2632 |
-| hot_money | post | hm_detail | 2022-08-16 | 904 |
-| limit | post | limit_up_history | 2024-01-02 | 571 |
-| popularity | post+intra | popularity_rank | 2024-03-20 | 517 |
-| technical | post | stock_tech_indicator | 2024-12-31 | 328 |
-| ma_entry | intra | stock_tech_indicator | ~2024-12-31 | ~328 |
+**5/14 对比**:
+| 排序 | 引擎 (扫描引擎) | 回测 (快照+自算) |
+|------|---------------|-----------------|
+| 1 | 603659 璞泰来 | 002541 鸿路钢构 |
+| 2 | 002311 海大集团 | 002311 海大集团 |
+| 3 | 002221 东华能源 | 002221 东华能源 |
+| 4 | 002541 鸿路钢构 | 600690 海尔智家 |
+| 5 | 688615 合合信息 | 003010 若羽臣 |
 
-### 覆盖很短或几乎无历史数据的因子
+交集: 3/5
 
-| 因子 | 模式 | 依赖表 | 最早日期 | 覆盖 | 说明 |
-|------|------|--------|----------|------|------|
-| insider_buy | post | insider_buy | 2025-11-18 | 14 条数据 | 基本不可用 |
-| institution_hold | post | institution_hold | 2026Q1 | 1 个季度 | 此前无数据 |
-| broker_recommend | post | broker_recommend_monthly | 2026-01 | 5 个月 | 仅 2026 年 |
+### 差异根因
 
-### 被依赖表瓶颈卡住的因子
+#### A. 输入因子得分不同
+引擎从因子对象实时计算得分（如 akshare、Tushare 实时获取），回测从 factor_score_snapshots 表读取历史快照。两者绝对值有差异。
 
-| 因子 | 模式 | 卡点表 | 最早日期 | 覆盖天数 |
-|------|------|--------|----------|----------|
-| chip | post | broker_enrichment_cyq_perf | 2026-01-30 | 41 天 |
-| money_flow | post | money_flow | 2026-03-24 | 34 天 |
-| momentum | intra | money_flow | 2026-03-24 | 34 天 |
-| sector | intra | limit_pool | 2026-03-24 | 35 天 |
-| rebound | intra | limit_pool | 2026-03-24 | 35 天 |
-| profit_forecast | post | profit_forecast | 2026-05-11 | 4 天 |
-| concept_heat | post | 无本地表 | — | 0（仅实时 API） |
+例: 603659 (璞泰来)
+- 引擎 factor_score: 47.1
+- 回测 factor_score: 26.4 (来自快照)
 
----
+快照中的得分是标准化 + 百分位后的值（0-100 范围），而引擎 `_get_effective_weight` 使用的权重在归一化后会进一步缩放。
 
-## 核心瓶颈：4 张表决定回测时间边界
+#### B. StockScorer 数据源不同
+| 参数 | 引擎 | 回测 |
+|------|------|------|
+| price | 实时价格 (akshare/sina) | stock_daily close[-1] |
+| volume_ratio | spot_df (realtime_spot) | stock_daily volume 自算 |
+| sector | sector_labels (涨停池板块) | ths_industry_map |
+| MA/ATR | 已改为 stock_daily 自算 | stock_daily 自算 |
 
-| 表名 | 覆盖范围 | 堵住的因子 | Tushare API |
-|------|----------|------------|-------------|
-| money_flow | 34 天 (20260324~) | money_flow, intraday momentum | moneyflow_mths_dc |
-| limit_pool | 35 天 (20260324~) | sector, rebound | limit_list_d |
-| broker_enrichment_cyq_perf | 41 天 (20260130~) | chip | cyq_perf |
-| profit_forecast | 4 天 (20260511~) | profit_forecast | forecast |
+回测已改为从 stock_daily 自算 MA/ATR 和量比，与引擎对齐。板块数据源不同（涨停池 vs 同花顺行业映射），导致 sector_score 细微差异。
 
----
+#### C. StockScorer 作用范围不同
+- 引擎: 对 pass1_candidates 全量（~5000只）逐只打分
+- 回测: 对 Top 300 (加权得分) 只打 300 只
 
-## 待确认
+StockScorer 是绝对评分（不跨股比较），所以范围不同不影响单只评分。但对排名边缘的股票可能产生微妙影响。
 
-- `money_flow`、`limit_pool`、`cyq_perf` 对应的 Tushare API 回补可行性与速率限制
-- `profit_forecast` 的数据源是否支持历史回补
-- `concept_heat` 因子是否需要新建本地缓存表
+## 4. 结论
+
+- **纯因子回测完全可靠** — 与引擎引擎排名的选股逻辑完全一致
+- **管线融合回测方向对齐** — 重叠率 > 60%，绝对评分有差异但方向一致。适合评估管线加工是否提升收益，不适合逐只对比

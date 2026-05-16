@@ -677,7 +677,7 @@ const BrokerRecommendPage: React.FC = () => {
   }, [recommendData]);
 
   return (
-    <AppPage>
+    <AppPage className="max-w-none px-2 md:px-3">
       <Tabs
         activeKey={activeTab}
         onChange={(key) => setActiveTab(key)}

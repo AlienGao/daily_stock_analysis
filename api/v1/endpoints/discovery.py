@@ -440,6 +440,8 @@ def _enrich_recent_counts(items: List[DiscoveryItem]) -> None:
 
 _postmarket_tasks: Dict[str, dict] = {}
 
+_factor_backtest_tasks: Dict[str, dict] = {}
+
 
 def _get_latest_completed_task() -> Optional[dict]:
     """获取最近一个已完成且有报告的盘后任务（用于非交易日文件不存在时回退）。"""
@@ -1869,3 +1871,122 @@ def get_factor_tops(mode: str = fastapi.Path(..., description="扫描模式: int
     factors.sort(key=lambda f: weights.get(f.factor_name, 0), reverse=True)
 
     return FactorTopsResponse(mode=mode, scan_date=scan_date, factors=factors)
+
+
+# ------------------------------------------------------------------
+# Factor Backtest
+# ------------------------------------------------------------------
+
+
+class FactorBacktestRequest(BaseModel):
+    mode: str = "postmarket"
+    factor_weights: Dict[str, float] = {}
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    top_n: int = 5
+    hold_days: List[int] = [1, 3, 5, 10, 20]
+    initial_capital: float = 1_000_000.0
+    risk_free_rate: float = 0.02
+    use_pipeline: bool = False
+
+
+@router.post(
+    "/factor-backtest",
+    summary="因子组合回测（异步）",
+)
+def factor_backtest(req: FactorBacktestRequest):
+    """提交因子回测参数，返回 task_id，通过 GET /factor-backtest/status 轮询结果。
+
+    支持单因子评估和多因子加权组合，多持有期横向对比。
+    数据源为 factor_score_snapshots 表。
+    """
+    import uuid
+
+    if req.mode not in ("intraday", "postmarket"):
+        raise HTTPException(status_code=400, detail="mode 须为 intraday 或 postmarket")
+
+    task_id = str(uuid.uuid4())[:8]
+    _factor_backtest_tasks[task_id] = {
+        "status": "running",
+        "started_at": datetime.now().isoformat(),
+    }
+
+    def _run():
+        try:
+            from data_provider.tushare_fetcher import TushareFetcher
+            from src.discovery.factor_backtest_engine import FactorBacktestEngine
+
+            fetcher = TushareFetcher.get_instance()
+            engine = FactorBacktestEngine(fetcher)
+
+            # 过滤零权重：权重为 0 视为"未设置"，全部为零则使用默认权重
+            fw = None
+            if req.factor_weights:
+                non_zero = {k: v for k, v in req.factor_weights.items() if v > 0}
+                if non_zero:
+                    fw = non_zero
+            result = engine.compute(
+                mode=req.mode,
+                factor_weights=fw,
+                start_date=req.start_date,
+                end_date=req.end_date,
+                top_n=req.top_n,
+                hold_days=req.hold_days,
+                initial_capital=req.initial_capital,
+                risk_free_rate=req.risk_free_rate,
+                use_pipeline=req.use_pipeline,
+            )
+
+            if result is None:
+                _factor_backtest_tasks[task_id] = {
+                    "status": "failed",
+                    "error": "回测数据不足，请检查日期范围或因子选择",
+                }
+                return
+
+            from dataclasses import asdict
+            _factor_backtest_tasks[task_id] = {
+                "status": "completed",
+                "result": asdict(result),
+                "finished_at": datetime.now().isoformat(),
+            }
+        except Exception as e:
+            logger.error("因子回测失败: %s", e, exc_info=True)
+            _factor_backtest_tasks[task_id] = {"status": "failed", "error": str(e)}
+
+    threading.Thread(target=_run, daemon=True).start()
+    return {"task_id": task_id, "status": "running"}
+
+
+@router.get(
+    "/factor-backtest/status",
+    summary="查询因子回测任务状态",
+)
+def factor_backtest_status(task_id: str = Query(..., description="任务 ID")):
+    """轮询后台因子回测任务的执行状态。"""
+    task = _factor_backtest_tasks.get(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务 ID 不存在")
+    resp = {"task_id": task_id, "status": task.get("status", "unknown")}
+    if task.get("status") == "failed":
+        resp["error"] = task.get("error", "")
+    if task.get("status") == "completed":
+        resp["result"] = task.get("result")
+    return resp
+
+
+@router.get(
+    "/factor-snapshot-dates",
+    summary="查询因子快照可用日期范围",
+)
+def factor_snapshot_dates(mode: str = Query("postmarket", description="intraday 或 postmarket")):
+    """返回每个因子的可用日期范围及全量交集。"""
+    if mode not in ("intraday", "postmarket"):
+        raise HTTPException(status_code=400, detail="mode 须为 intraday 或 postmarket")
+
+    from src.discovery.factor_backtest_engine import FactorBacktestEngine
+
+    engine = FactorBacktestEngine()
+    factors, global_range = engine.get_snapshot_date_ranges(mode)
+
+    return {"factors": factors, "global": global_range}

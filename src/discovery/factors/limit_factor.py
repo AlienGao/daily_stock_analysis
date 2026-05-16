@@ -43,12 +43,12 @@ class LimitFactor(BaseFactor):
             if df is not None and not df.empty:
                 df = df.reset_index().copy()
                 df.index = [bare_to_ts_code(c) for c in df["code"]]
-                # DB 列名与 Tushare 不同：limit_type 为空，U/D/Z 在 limit_stats
+                # limit_stats 存行业/概念描述，limit_type 才是 U/D/Z 分类
                 if "limit" not in df.columns:
-                    if "limit_stats" in df.columns:
-                        df["limit"] = df["limit_stats"]
-                    elif "limit_type" in df.columns:
+                    if "limit_type" in df.columns:
                         df["limit"] = df["limit_type"]
+                    elif "limit_stats" in df.columns:
+                        df["limit"] = df["limit_stats"]
                 return df
         except Exception as e:
             logger.debug("[LimitFactor] limit_pool 查询失败，回退 Tushare: %s", e)

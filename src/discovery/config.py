@@ -126,14 +126,6 @@ class DiscoveryConfig:
         default_factory=lambda: _env_float("DISCOVER_SCORE_BLEND_ALPHA", 0.3)
     )
 
-    # --- 因子自动调权（FactorMonitor 反馈闭环）---
-    tune_factor_weights: bool = field(
-        default_factory=lambda: _env_bool("DISCOVER_TUNE_ENABLED", True)
-    )
-    tune_min_days: int = field(
-        default_factory=lambda: _env_int("DISCOVER_TUNE_MIN_DAYS", 5)
-    )
-
     # --- StockScorer 技术评分权重 ---
     scorer_weight_rr: float = field(
         default_factory=lambda: _env_float("DISCOVER_SCORER_WEIGHT_RR", 0.30)
@@ -204,6 +196,10 @@ class DiscoveryConfig:
         default_factory=lambda: _env_bool("ENABLE_STOCK_SCORER", False)
     )
 
+    enable_discovery_pipeline: bool = field(
+        default_factory=lambda: _env_bool("DISCOVERY_PIPELINE_ENABLED", True)
+    )
+
     @staticmethod
     def env_config_keys() -> List[str]:
         """返回所有环境变量键名，用于 .env.example 同步和 WebUI 配置。"""
@@ -261,6 +257,7 @@ class DiscoveryConfig:
             "DISCOVERY_SCAN_UNIVERSE",
             # --- 其他 ---
             "ENABLE_STOCK_SCORER",
+            "DISCOVERY_PIPELINE_ENABLED",
         ]
 
 

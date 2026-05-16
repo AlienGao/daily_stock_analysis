@@ -694,10 +694,121 @@ class StockDiscoveryEngine:
         except Exception:
             return None
 
+    @staticmethod
+    def _load_factor_scores_from_snapshots(trade_date: str, factor_names: list):
+        """从 factor_score_snapshots 读取因子得分（与回测引擎同源）。"""
+        try:
+            from src.storage import DatabaseManager, FactorScoreSnapshot
+            import pandas as pd
+            db = DatabaseManager()
+            with db.get_session() as s:
+                rows = s.query(FactorScoreSnapshot).filter(
+                    FactorScoreSnapshot.trade_date == trade_date,
+                    FactorScoreSnapshot.mode == "postmarket",
+                    FactorScoreSnapshot.factor_name.in_(factor_names),
+                ).all()
+            if not rows:
+                return {}
+            result: Dict[str, pd.Series] = {}
+            for r in rows:
+                code = (r.ts_code or "").split(".")[0]
+                result.setdefault(r.factor_name, {})[code] = r.score
+            return {k: pd.Series(v) for k, v in result.items()}
+        except Exception as e:
+            logger.warning("[Discovery] 从快照加载因子得分失败: %s", e)
+            return {}
+
+    def _validate_and_repair_tier1(
+        self, score_columns: Dict[str, pd.Series], raw_scores: Dict[str, pd.Series],
+        factor_data: Dict[str, pd.DataFrame], available: list, mode: str,
+        trade_date: str, all_codes: set,
+    ) -> List[str]:
+        """Tier 1 因子行数交叉校验 + 自动重算。仅 postmarket 模式生效。
+
+        Returns:
+            未能自动修复的异常描述列表（空 = 全部正常）。
+        """
+        if mode != "postmarket":
+            return []
+
+        TIER1 = {"technical", "fundamental", "chip", "ranking_momentum"}
+        counts: Dict[str, int] = {}
+        for name in TIER1:
+            s = score_columns.get(name)
+            if s is not None and hasattr(s, "__len__"):
+                counts[name] = len(s)
+
+        n = len(counts)
+        if n < 2:
+            return []
+
+        median = sorted(counts.values())[n // 2]
+
+        # 绝对检查：Tier 1 整体偏低（「全部一起烂」盲区兜底）
+        if median < 4000:
+            return [f"Tier1 整体行数偏低(中位数={median}, 因子={list(counts.keys())})"]
+
+        warnings: List[str] = []
+        for name, cnt in counts.items():
+            # 相对偏差：n>=3 用中位数，n==2 用 max/min 比
+            if n >= 3:
+                deviation = abs(cnt - median) / median
+                if deviation <= 0.05:
+                    continue
+            else:  # n == 2
+                other = [v for k, v in counts.items() if k != name][0]
+                if other > 0 and max(cnt, other) / min(cnt, other) <= 1.05:
+                    continue
+
+            # 尝试用 Phase 1 已拉取的 factor_data 重算
+            logger.warning(
+                "[Integrity] Tier1 '%s' 行数 %d 偏离(中位数=%d), 尝试重算...",
+                name, cnt, median,
+            )
+            repaired = False
+            if name in factor_data and name in self._factors:
+                try:
+                    factor = self._factors[name]
+                    new_raw = factor.score(
+                        factor_data[name],
+                        tushare_fetcher=self.tushare_fetcher,
+                        trade_date=trade_date,
+                    )
+                    if new_raw is not None and not new_raw.empty:
+                        new_raw.index = new_raw.index.map(str)
+                        new_raw.index = new_raw.index.map(
+                            lambda x: x.split(".")[0] if "." in str(x) else str(x)
+                        )
+                        new_cnt = len(new_raw)
+                        if n >= 3:
+                            new_dev = abs(new_cnt - median) / median
+                        else:
+                            other = [v for k, v in counts.items() if k != name][0]
+                            new_dev = abs(new_cnt - other) / max(other, 1)
+                        if new_dev <= 0.05:
+                            raw_scores[name] = new_raw
+                            score_columns[name] = new_raw
+                            all_codes.update(str(c) for c in new_raw.index)
+                            logger.info(
+                                "[Integrity] Tier1 '%s' 重算成功: %d → %d 行",
+                                name, cnt, new_cnt,
+                            )
+                            repaired = True
+                except Exception as e:
+                    logger.warning("[Integrity] Tier1 '%s' 重算失败: %s", name, e)
+
+            if not repaired:
+                warnings.append(
+                    f"Tier1 '{name}' 行数异常(cnt={cnt}, 中位数={median})"
+                )
+
+        return warnings
+
     def discover(self, mode: ModeStr, trade_date: Optional[str] = None,
                 candidate_codes: Optional[List[str]] = None,
                 skip_monitor: bool = False) -> List[DiscoveryResult]:
         start_time = time.time()
+        self._integrity_warnings: List[str] = []
 
         if trade_date is None and self.tushare_fetcher:
             # 盘中/盘后扫描都应使用当天交易日期，而非前一日
@@ -787,12 +898,29 @@ class StockDiscoveryEngine:
             return []
 
         # Phase 2: 收集所有出现过的股票代码，统一归一化为裸码（6 位数字）
+        # 提前声明 score_columns 供盘后模式在 Phase 2 中使用
+        score_columns: Dict[str, pd.Series] = {}
+        raw_scores: Dict[str, pd.Series] = {}
+        if mode == "postmarket":
+            snapshot_scores = self._load_factor_scores_from_snapshots(
+                trade_date or date.today().strftime("%Y%m%d"),
+                [f.name for f in available],
+            )
+            if snapshot_scores:
+                raw_scores = snapshot_scores
+                score_columns = dict(snapshot_scores)
+                logger.info("[Discovery] 盘后：从快照加载 %d 因子得分", len(raw_scores))
+
         all_codes: set = set()
-        for df in factor_data.values():
-            for code in df.index:
-                code_str = str(code)
-                bare = code_str.split(".")[0].zfill(6) if "." in code_str else code_str.strip().zfill(6)
-                all_codes.add(bare)
+        if mode == "postmarket" and score_columns:
+            for s in score_columns.values():
+                all_codes.update(str(c) for c in s.index)
+        else:
+            for df in factor_data.values():
+                for code in df.index:
+                    code_str = str(code)
+                    bare = code_str.split(".")[0].zfill(6) if "." in code_str else code_str.strip().zfill(6)
+                    all_codes.add(bare)
         all_codes.discard(None)
 
         if not all_codes:
@@ -811,14 +939,14 @@ class StockDiscoveryEngine:
                 return []
             logger.info(f"[Discovery] 候选范围受限: {len(all_codes)} 只 (原始 {len(candidate_codes)} 只)")
 
-        # Phase 3: 逐因子打分
-        score_columns: Dict[str, pd.Series] = {}
-        raw_scores: Dict[str, pd.Series] = {}
-
+        # Phase 3: 逐因子打分（快照已有的因子跳过，仅对缺失/新增因子实时计算）
         # 动态权重（市场状态自适应）
-        dynamic_adjustments = self._calc_dynamic_weights(mode)
+        dynamic_adjustments = self._calc_dynamic_weights(mode) if not score_columns else {}
 
+        _phase3_new_factors: List[str] = []
         for factor in available:
+            if factor.name in score_columns:
+                continue  # 该因子已从快照加载，跳过
             if factor.name not in factor_data:
                 continue
             try:
@@ -840,6 +968,7 @@ class StockDiscoveryEngine:
                         raw = raw.groupby(raw.index).mean()
                     raw_scores[factor.name] = raw
                     score_columns[factor.name] = raw  # 暂存原始分，标准化后再加权
+                    _phase3_new_factors.append(factor.name)
                     logger.debug(
                         f"[Discovery] {factor.name}: scored {len(raw)} stocks, "
                         f"max={raw.max():.1f}"
@@ -847,78 +976,61 @@ class StockDiscoveryEngine:
             except Exception as e:
                 logger.warning(f"[Discovery] 因子 {factor.name} 打分失败: {e}")
 
+        # Phase 3 对新增因子打分后，补充 all_codes
+        if _phase3_new_factors:
+            for name in _phase3_new_factors:
+                s = score_columns.get(name)
+                if s is not None and hasattr(s, 'index'):
+                    all_codes.update(str(c) for c in s.index)
+            logger.info(
+                "[Discovery] Phase 3 新增 %d 个因子评分: %s",
+                len(_phase3_new_factors), ", ".join(_phase3_new_factors),
+            )
+
+        # Phase 3 数据完整性校验（仅 postmarket，fail-open）
+        self._integrity_warnings = self._validate_and_repair_tier1(
+            score_columns, raw_scores, factor_data, available, mode,
+            trade_date, all_codes,
+        )
+
         if not score_columns:
             logger.warning("[Discovery] 无有效评分")
             return []
 
-        # Phase 3.5: 因子去相关（资金流组）
-        score_columns = self._decorrelate_scores(score_columns)
-
-        # Phase 3.6: 行业中性化
-        score_columns = self._apply_industry_neutral(score_columns, factor_data)
-
-        # Phase 3.7: 横截面百分位标准化 + 加权
-        # 在行业中性化之后做：每个因子的行业内排名(0-100) → 全市场百分位(0-1) × 权重。
-        # 行业中性化已经在行业内做了标准化，这里再做跨因子的量纲统一。
-        # total_weight 使用 config 有效权重（与分子一致），确保归一化正确。
-        total_weight = sum(
-            self._get_effective_weight(n, mode) for n in score_columns if n in self._factors
-        )
-        if total_weight <= 0:
-            total_weight = 1.0
-        for name in list(score_columns.keys()):
-            factor = self._factors.get(name)
-            if factor is None:
-                del score_columns[name]
-                continue
-            eff_w = self._get_effective_weight(name, mode)
-            if eff_w <= 0:
-                del score_columns[name]
-                continue
-            col = score_columns[name]
-            pct = col.rank(pct=True, na_option="bottom")  # 0-1
-            adj = dynamic_adjustments.get(name, 1.0)
-            effective_weight = eff_w * adj / total_weight
-            score_columns[name] = pct * 100 * effective_weight
-            logger.debug(
-                f"[Discovery] {name}: pct-std max={score_columns[name].max():.1f}, "
-                f"eff_w={eff_w:.1f} adj={adj:.2f} norm={effective_weight:.4f}"
-            )
-
-        # Phase 4: 合并评分 → 综合评分
+        # Phase 3.5: 纯因子加权（与回测引擎一致；DISCOVERY_PIPELINE_ENABLED 仅控制后段 StockScorer）
+        tw_all = sum(self._get_effective_weight(n, mode) for n in score_columns if n in self._factors) or 1.0
         combined = pd.DataFrame(score_columns).fillna(0)
-        # 限制候选范围（candidate_codes 过滤后 all_codes 可能远小于因子覆盖范围）
         combined = combined.loc[combined.index.isin(all_codes)]
-        combined["_total"] = combined.sum(axis=1)  # 权重已归一化，sum 即为加权总分 (0-100)
-
-        # Phase 4.1: 行业景气度加权（景气度高 → 系数 > 1.0）
-        industry_heat = self._compute_industry_heat()
-        if industry_heat:
-            industry_map = self._get_industry_map([])
-            if industry_map:
-                heat_by_stock = pd.Series(0.5, index=combined.index)
-                for code in combined.index:
-                    ind = industry_map.get(code, "")
-                    if ind:
-                        heat_by_stock[code] = industry_heat.get(ind, 0.5)
-                combined["_total"] = combined["_total"] * (0.85 + 0.30 * heat_by_stock)
-                top_heat = sorted(industry_heat.items(), key=lambda x: -x[1])[:5]
-                logger.info(
-                    "[Discovery] 行业热度 Top5: %s",
-                    ", ".join(f"{ind}={h:.2f}" for ind, h in top_heat),
-                )
+        for name in score_columns:
+            w = self._get_effective_weight(name, mode)
+            if w > 0:
+                combined[name] = combined[name] * w / tw_all
+        combined["_total"] = combined.sum(axis=1)
 
         combined = combined.sort_values("_total", ascending=False)
 
-        # Phase 4.5: 收集推荐理由
+        # Phase 4.5: 收集推荐理由（范围与 Phase 5 StockScorer 对齐：盘后 Top300，盘中全量）
+        if mode == "postmarket":
+            describe_limit = min(300, len(combined))
+            describe_codes = set(combined.index[:describe_limit])
+        else:
+            describe_codes = set(combined.index)
+        logger.info(
+            "[Discovery] Phase 4.5 describe 范围: %d 只 (mode=%s)", len(describe_codes), mode,
+        )
         all_reasons: Dict[str, List[str]] = {}
         for factor in available:
             if factor.name not in factor_data or factor.name not in raw_scores:
                 continue
             try:
+                fd = factor_data[factor.name]
+                keep = fd.index.map(lambda x: str(x).split(".")[0] in describe_codes)
+                fd_filtered = fd.loc[keep] if keep.any() else fd.iloc[:0]
+                raw_filtered = raw_scores[factor.name]
+                raw_filtered = raw_filtered[raw_filtered.index.isin(describe_codes)]
                 desc = factor.describe(
-                    factor_data[factor.name],
-                    raw_scores[factor.name],
+                    fd_filtered,
+                    raw_filtered,
                     tushare_fetcher=self.tushare_fetcher,
                     trade_date=trade_date,
                 )
@@ -1089,7 +1201,19 @@ class StockDiscoveryEngine:
         tech_scores_map: Dict[str, float] = {}  # ts_code → tech_score
         stop_tp_map: Dict[str, tuple] = {}  # stock_code → (buy_low, buy_high, stop, tp1, tp2)
 
-        if getattr(self.config, 'enable_stock_scorer', False) and pass1_candidates:
+        if mode == "postmarket" and pass1_candidates:
+            from src.discovery.factor_backtest_engine import FactorBacktestEngine
+            top300_for_bt = [c for c in pass1_candidates[:300]]
+            codes_for_bt = [c[1] for c in top300_for_bt]
+            raw_scores_for_bt = pd.Series({c[1]: c[3] for c in top300_for_bt})
+            tech_map_for_bt = FactorBacktestEngine._batch_stockscorer_static(
+                codes_for_bt, trade_date or date.today().strftime("%Y%m%d"), [], raw_scores_for_bt
+            )
+            for ts_code, stock_code, _, _, _, _, _ in top300_for_bt:
+                tech_scores_map[ts_code] = tech_map_for_bt.get(stock_code, 50.0)
+            logger.info("[Discovery] 盘后 StockScorer (Top300, 回测一致): %d 只", len(tech_scores_map))
+
+        if getattr(self.config, 'enable_discovery_pipeline', True) and pass1_candidates and not tech_scores_map:
             try:
                 from src.services.stock_scorer import StockScorer, StockScorerConfig
 
@@ -1145,12 +1269,16 @@ class StockDiscoveryEngine:
                                 lows_arr = np.append(lows_arr, rt_p)
                                 closes_arr = np.append(closes_arr, rt_p)
 
-                        # 精确止盈止损（纯 numpy，~0.1ms/只）
+                        # 精确止盈止损（自算 MA/ATR，对齐回测引擎）
+                        ma20_self = float(np.mean(closes_arr[-20:])) if len(closes_arr) >= 20 else float(closes_arr[-1])
+                        ma60_self = float(np.mean(closes_arr[-60:])) if len(closes_arr) >= 60 else float(closes_arr[-1])
+                        tr_arr = np.maximum(highs_arr[1:] - lows_arr[1:],
+                                           np.abs(highs_arr[1:] - closes_arr[:-1]))
+                        tr_arr = np.maximum(tr_arr, np.abs(lows_arr[1:] - closes_arr[:-1]))
+                        atr_self = float(np.mean(tr_arr[-14:])) if len(tr_arr) >= 14 else 0.01
                         sl_result = compute_from_arrays(
                             highs_arr, lows_arr, closes_arr, code=stock_code,
-                            ma20=tech_cache.get(stock_code, {}).get("ma20"),
-                            ma60=tech_cache.get(stock_code, {}).get("ma60"),
-                            atr=tech_cache.get(stock_code, {}).get("atr"),
+                            ma20=ma20_self, ma60=ma60_self, atr=atr_self,
                             factor_score=raw_score,
                         )
                         est_stop = sl_result.stop_loss or 0
@@ -1168,17 +1296,10 @@ class StockDiscoveryEngine:
                             price = float(closes_arr[-1])
                         pre_close = float(closes_arr[-2]) if len(closes_arr) > 1 else float(closes_arr[-1])
 
-                        # 量比
+                        # 量比（自算：当日成交量 / 5日均量）
                         vol_ratio = 1.0
-                        if spot_df is not None and "volume_ratio" in spot_df.columns:
-                            try:
-                                spot_vr = spot_df.at[stock_code, "volume_ratio"]
-                                if spot_vr is not None and float(spot_vr) > 0:
-                                    vol_ratio = float(spot_vr)
-                            except (KeyError, ValueError, TypeError):
-                                pass
-                        if vol_ratio <= 0 and hasattr(ohlcv_rows[-1], 'vol') and len(ohlcv_rows) >= 6:
-                            vols = np.array([d.vol for d in ohlcv_rows[-6:]], dtype=float)
+                        if len(ohlcv_rows) >= 6:
+                            vols = np.array([float(getattr(d, 'vol', 0) or 0) for d in ohlcv_rows[-6:]], dtype=float)
                             mean_vol = np.mean(vols[:-1])
                             if mean_vol > 0:
                                 vol_ratio = float(vols[-1] / mean_vol)
@@ -1256,11 +1377,15 @@ class StockDiscoveryEngine:
                     highs = np.array([d.high for d in ohlcv_rows], dtype=float)
                     lows = np.array([d.low for d in ohlcv_rows], dtype=float)
                     closes = np.array([d.close for d in ohlcv_rows], dtype=float)
+                    # 自算 MA/ATR（对齐回测引擎）
+                    ma20_self = float(np.mean(closes[-20:])) if len(closes) >= 20 else float(closes[-1])
+                    ma60_self = float(np.mean(closes[-60:])) if len(closes) >= 60 else float(closes[-1])
+                    tr_arr = np.maximum(highs[1:] - lows[1:], np.abs(highs[1:] - closes[:-1]))
+                    tr_arr = np.maximum(tr_arr, np.abs(lows[1:] - closes[:-1]))
+                    atr_self = float(np.mean(tr_arr[-14:])) if len(tr_arr) >= 14 else 0.01
                     sl_result = compute_from_arrays(
                         highs, lows, closes, code=stock_code,
-                        ma20=tech_cache.get(stock_code, {}).get("ma20"),
-                        ma60=tech_cache.get(stock_code, {}).get("ma60"),
-                        atr=tech_cache.get(stock_code, {}).get("atr"),
+                        ma20=ma20_self, ma60=ma60_self, atr=atr_self,
                         factor_score=raw_score,
                     )
                     buy_low, buy_high = sl_result.buy_low, sl_result.buy_high
@@ -1391,37 +1516,17 @@ class StockDiscoveryEngine:
         # Phase 5.5: 拥挤度惩罚
         results = self._apply_crowding_penalty(results, trade_date)
 
-        # Phase 5.6: IC 追踪 & 因子监控（盘中+盘后）
-        if not skip_monitor:
+        # Phase 5.6: 因子 IC 监控（盘中模式不触发，盘后统一检查 intraday+postmarket）
+        if not skip_monitor and mode == "postmarket":
             try:
-                from src.discovery.factor_monitor import FactorMonitor
-                monitor = FactorMonitor(top_n=20, eval_days=5)
-
-                # 检测因子变化，自动重跑历史数据
-                current_factors = list(raw_scores.keys())
-                if monitor.detect_factor_changes(current_factors, mode):
-                    logger.info("[FactorMonitor] 因子变化检测通过，开始重跑最近 5 天历史数据")
-                    monitor.replay_history(self, mode, days=5)
-
-                monitor.record_picks(raw_scores, trade_date, mode=mode)
-                monitor.backfill(trade_date)
+                from src.discovery.factor_backtest_engine import FactorBacktestEngine
+                backtest_engine = FactorBacktestEngine(self.tushare_fetcher)
+                for m in ("intraday", "postmarket"):
+                    report = backtest_engine.quick_monitor(mode=m, window=20)
+                    if report:
+                        logger.info("[Monitor %s]\n%s", m, report["summary"])
             except Exception as e:
-                logger.warning("[FactorMonitor] 因子监控失败: %s", e)
-
-        # Phase 5.7: 因子权重自动调优（FactorMonitor 反馈闭环）
-        if not skip_monitor and getattr(self.config, "tune_factor_weights", False):
-            try:
-                from src.discovery.factor_tuner import FactorTuner
-                from pathlib import Path
-
-                monitor_dir = Path(__file__).resolve().parent.parent.parent / "discovery_reports" / "factor_monitor"
-                perf_file = monitor_dir / "performance.json"
-                env_file = Path(__file__).resolve().parents[3] / ".env"
-                min_days = getattr(self.config, "tune_min_days", 5)
-                tuner = FactorTuner(perf_file, env_file, min_days=min_days)
-                tuner.tune(mode)
-            except Exception as e:
-                logger.warning("[FactorTuner] 权重调优失败: %s", e)
+                logger.warning("[Monitor] 因子监控失败: %s", e)
 
         elapsed = time.time() - start_time
         top_info = f"{results[0].stock_name} ({results[0].score:.1f})" if results else "N/A (0)"

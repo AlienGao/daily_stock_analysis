@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - [新功能] 定时任务前置 R&D 闭环（`RD_LOOP_AUTO_ENABLED=true`），每日分析前自动运行轻量级因子发现（2 轮 x 2 假设），新因子自动参与当天的选股和分析。
 - [新功能] 技术指标优先使用 Tushare 前复权数据：单股分析流程重构为先获取 Tushare stk_factor（MACD/RSI/KDJ/BOLL/CCI）再执行 StockTrendAnalyzer，Tushare 可用时自动覆盖本地计算结果（含 KDJ/BOLL 首次纳入趋势评分），MA 继续由本地计算（Tushare 不提供）。
 - [新功能] 新增 `stock_tech_indicator` 数据库缓存表，按 (code, date) 缓存 Tushare stk_factor 全量指标；单股分析缓存优先命中后跳过 Tushare API 调用，全量批量获取（discovery engine）自动写入缓存积累历史数据。
+- [chore] 移除 `src/discovery/ic_tracker.py`：ICTracker 从未接入主流程，IC 计算已整合到 FactorBacktestEngine。
+- [新功能] 新增因子回测页面 `/factor-backtest`：FactorBacktestEngine 统一替代 FactorMonitor + ICTracker，基于 `factor_score_snapshots` 表执行单因子评估和多因子加权组合回测，支持 1/3/5/10/20 交易日多持有期对比，输出资金曲线、胜率、夏普比率、最大回撤、Rank IC、分位数收益；前端含因子勾选、权重滑块、日期范围交集校验、Recharts 图表、交易明细分页；后端 API 含 `POST /factor-backtest` + `GET /factor-snapshot-dates`。
 - [改进] 新增 `BACKTEST_AUTO_MODE` 与 `BACKTEST_AUTO_ALLOWED_CATEGORIES`，支持定时任务结束后按“上一交易日 + BUY/HOLD”精确自动回测，同时保持手动 Web/API 回测行为不变。
 - [改进] 回测结果页与 `/api/v1/backtest/results` 新增 `trigger_source`（auto/manual）筛选，支持快速区分自动回测与手动回测记录。
 - [改进] 回测结果页新增“实际表现”全量排序，并在 `/api/v1/backtest/results` 支持 `sort_by=actual_return_pct` 与 `sort_order=asc|desc`，分页场景下按全量数据排序后再切页。

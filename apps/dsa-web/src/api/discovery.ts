@@ -176,6 +176,95 @@ export type FactorTopsResponse = {
   factors: FactorTopEntry[];
 };
 
+/* ── Factor Backtest ── */
+
+export type FactorSnapshotDateEntry = {
+  name: string;
+  label: string;
+  mode: string;
+  available_from: string;
+  available_to: string;
+  trading_days: number;
+  default_weight: number;
+};
+
+export type FactorSnapshotDatesResponse = {
+  factors: FactorSnapshotDateEntry[];
+  global: {
+    mode: string;
+    available_from: string;
+    available_to: string;
+  };
+};
+
+export type FactorBacktestRequest = {
+  mode: 'intraday' | 'postmarket';
+  factor_weights?: Record<string, number>;
+  start_date?: string;
+  end_date?: string;
+  top_n?: number;
+  hold_days?: number[];
+  initial_capital?: number;
+  risk_free_rate?: number;
+  use_pipeline?: boolean;
+};
+
+export type FactorBacktestFactorInfo = {
+  name: string;
+  weight: number;
+  available_from: string;
+  available_to: string;
+};
+
+export type FactorBacktestCapitalPoint = {
+  date: string;
+  capital: number;
+};
+
+export type FactorBacktestTrade = {
+  trade_date: string;
+  hold_days: number;
+  stock_code: string;
+  stock_name: string;
+  buy_price: number;
+  sell_date: string;
+  sell_price: number;
+  return_pct: number;
+  pnl: number;
+  allocated: number;
+  status: string;
+};
+
+export type FactorBacktestResultResponse = {
+  mode: string;
+  date_range: { start: string; end: string };
+  factors: FactorBacktestFactorInfo[];
+  params: {
+    top_n: number;
+    hold_days: number[];
+    initial_capital: number;
+    risk_free_rate: number;
+  };
+  summary: {
+    cumulative_return: number;
+    annualized_return: number;
+    win_rate: number;
+    max_drawdown: number;
+    sharpe_ratio: number;
+    total_trades: number;
+    total_periods: number;
+    final_capital: number;
+  };
+  capital_curves: Record<string, FactorBacktestCapitalPoint[]>;
+  rank_ic: Record<string, Record<string, number>>;
+  quantile_returns: Record<string, {
+    top_10pct: number;
+    top_20pct: number;
+    top_50pct: number;
+  }>;
+  trade_records: FactorBacktestTrade[];
+};
+
 const INTRADAY_MIN_REQUEST_GAP_MS = 60_000;
 let intradayInFlight: Promise<IntradayTopResponse> | null = null;
 let intradayLastFetchedAt = 0;
@@ -274,5 +363,31 @@ export const discoveryApi = {
   async getFactorTops(mode: 'intraday' | 'postmarket'): Promise<FactorTopsResponse> {
     const resp = await apiClient.get(`/api/v1/discovery/${mode}/factor-tops`);
     return resp.data as FactorTopsResponse;
+  },
+
+  /* ── Factor Backtest ── */
+
+  async getFactorSnapshotDates(mode: 'intraday' | 'postmarket'): Promise<FactorSnapshotDatesResponse> {
+    const resp = await apiClient.get('/api/v1/discovery/factor-snapshot-dates', {
+      params: { mode },
+    });
+    return resp.data as FactorSnapshotDatesResponse;
+  },
+
+  async runFactorBacktest(params: FactorBacktestRequest): Promise<{ task_id: string; status: string }> {
+    const resp = await apiClient.post('/api/v1/discovery/factor-backtest', params);
+    return resp.data;
+  },
+
+  async getFactorBacktestStatus(taskId: string): Promise<{
+    task_id: string;
+    status: string;
+    error?: string;
+    result?: FactorBacktestResultResponse;
+  }> {
+    const resp = await apiClient.get('/api/v1/discovery/factor-backtest/status', {
+      params: { task_id: taskId },
+    });
+    return resp.data;
   },
 };

@@ -1122,9 +1122,20 @@ def refresh_tech_indicator_postmarket(tushare_fetcher) -> int:
 
     get_bulk_stk_factor 内部已自动写 DB（_cache_bulk_stk_factor），
     此处仅触发拉取，写入在 TushareFetcher 中完成。
+    若首次拉取行数不足 4000，等 5s 后重试一次。
     """
+    import time as _time
     df = tushare_fetcher.get_bulk_stk_factor()
-    return len(df) if df is not None else 0
+    count = len(df) if df is not None else 0
+    if count < 4000:
+        logger.warning("[Scanner] tech_indicator 首次拉取仅 %d 行, 5s后重试...", count)
+        _time.sleep(5)
+        df = tushare_fetcher.get_bulk_stk_factor()
+        count2 = len(df) if df is not None else 0
+        if count2 > count:
+            logger.info("[Scanner] tech_indicator 重试成功: %d → %d 行", count, count2)
+            count = count2
+    return count
 
 
 def refresh_cyq_perf_postmarket(tushare_fetcher) -> int:
@@ -1871,11 +1882,24 @@ def ensure_postmarket_scan(
         ("popularity", lambda: refresh_popularity_postmarket(tushare_fetcher)),
         ("tech_indicator", lambda: refresh_tech_indicator_postmarket(tushare_fetcher)),
     ]
+    refresher_counts: Dict[str, int] = {}
+    integrity_warnings: List[str] = []
     for name, fn in refreshers:
         try:
-            fn()
+            count = fn()
+            refresher_counts[name] = count
         except Exception:
             logger.warning("[Scanner] %s 刷新失败，继续", name, exc_info=True)
+            refresher_counts[name] = -1
+
+    # 数据入口完整性：零行检测
+    for name, count in refresher_counts.items():
+        if count == 0:
+            integrity_warnings.append(f"数据源 '{name}' 返回 0 行")
+        if count > 0 and count < 4000 and name in ("money_flow", "daily_basic", "margin_detail"):
+            logger.warning(
+                "[Scanner] %s 行数偏低(%d), 后续 Tier1 校验将兜底", name, count
+            )
 
     # 盘后 Tushare 全量刷新 limit_pool 后，用正确数据重跑炸板检测，
     # 纠正盘中基于过期 AkShare 数据产生的误判。
@@ -1938,4 +1962,18 @@ def ensure_postmarket_scan(
             }
 
     logger.info("[Scanner] 盘后扫描完成: %d 只候选股, %d 条缓存", len(results or []), len(cache))
+
+    # ---- 数据完整性汇总 ----
+    # 收集 engine 层的 Tier 1 校验异常
+    if engine is not None and hasattr(engine, '_integrity_warnings') and engine._integrity_warnings:
+        integrity_warnings.extend(engine._integrity_warnings)
+
+    if integrity_warnings:
+        logger.warning(
+            "⚠️ 数据完整性异常(%d项):\n  %s",
+            len(integrity_warnings), "\n  ".join(integrity_warnings),
+        )
+    else:
+        logger.info("✅ 数据完整性检查通过")
+
     return cache, results, engine

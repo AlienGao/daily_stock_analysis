@@ -1542,7 +1542,7 @@ const DiscoveryPage: React.FC = () => {
   );
 
   return (
-    <AppPage>
+    <AppPage className="max-w-none px-2 md:px-3">
       {/* ── Header ── */}
       <div className="mb-7 flex flex-wrap items-center justify-between gap-4">
         <div>

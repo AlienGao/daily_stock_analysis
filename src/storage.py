@@ -2280,6 +2280,7 @@ class DatabaseManager:
                 cursor.execute(f"PRAGMA busy_timeout={int(self._sqlite_busy_timeout_ms)}")
                 if self._sqlite_file_db and self._sqlite_wal_enabled:
                     cursor.execute("PRAGMA journal_mode=WAL")
+                cursor.execute("PRAGMA cache_size=-50000")
             except Exception as exc:
                 logger.warning("初始化 SQLite PRAGMA 失败: %s", exc)
             finally:

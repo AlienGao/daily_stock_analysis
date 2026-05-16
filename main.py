@@ -450,6 +450,25 @@ def parse_arguments() -> argparse.Namespace:
         help='批准指定的待审核因子（因子名或文件名）'
     )
 
+    # === Factor Weight Optimization ===
+    parser.add_argument(
+        '--factor-optimize',
+        action='store_true',
+        help='运行因子权重优化（休盘时手动触发），生成 Markdown 报告'
+    )
+    parser.add_argument(
+        '--normalize',
+        action='store_true',
+        help='（配合 --factor-optimize）最优组合按原总权重归一化，实现零和重分配'
+    )
+    parser.add_argument(
+        '--factor-apply',
+        type=str,
+        default=None,
+        metavar='REPORT_PATH',
+        help='应用优化报告中的权重到 .env'
+    )
+
     return parser.parse_args()
 
 
@@ -1548,6 +1567,36 @@ def main() -> int:
 
             logger.info("\n%s", result.leaderboard_markdown())
             print(result.leaderboard_markdown())
+            raise _ModeExit(0)
+
+        # 模式: 因子权重优化
+        if getattr(args, 'factor_optimize', False):
+            logger.info("模式: 因子权重优化")
+            from data_provider.tushare_fetcher import TushareFetcher
+            tushare_fetcher = TushareFetcher.get_instance()
+            from src.discovery.factor_optimizer import FactorOptimizer
+            optimizer = FactorOptimizer(tushare_fetcher)
+            # 优化 postmarket 模式（权重配置最完整）
+            result = optimizer.optimize(mode="postmarket", window=60,
+                                          normalize=getattr(args, 'normalize', False))
+            if result:
+                logger.info("[FactorOptimizer] 报告已生成: %s", result["report_path"])
+                print(result["report"])
+            else:
+                logger.warning("[FactorOptimizer] 优化失败，无结果")
+                raise _ModeExit(1)
+            raise _ModeExit(0)
+
+        # 模式: 应用因子权重
+        if getattr(args, 'factor_apply', None):
+            logger.info("模式: 应用因子权重")
+            from src.discovery.factor_optimizer import FactorOptimizer
+            ok = FactorOptimizer.apply_weights(args.factor_apply)
+            if ok:
+                logger.info("权重已成功应用到 .env")
+            else:
+                logger.error("权重应用失败")
+                raise _ModeExit(1)
             raise _ModeExit(0)
 
         # 模式2: 定时任务模式

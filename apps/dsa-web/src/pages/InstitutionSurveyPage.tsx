@@ -174,7 +174,7 @@ const InstitutionSurveyPage: React.FC = () => {
   };
 
   return (
-    <AppPage>
+    <AppPage className="max-w-none px-2 md:px-3">
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
