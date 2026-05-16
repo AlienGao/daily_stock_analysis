@@ -5,8 +5,8 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
   BarChart, Bar, CartesianGrid,
 } from 'recharts';
-import { DatePicker, Segmented, Table, InputNumber, Checkbox, Button as AntButton } from 'antd';
-import { Activity, Download, Play, RefreshCw, Loader2 } from 'lucide-react';
+import { DatePicker, Segmented, Table, InputNumber, Checkbox } from 'antd';
+import { Activity, Download, Play, Loader2 } from 'lucide-react';
 import { AppPage, Card, StatCard, EmptyState, ApiErrorAlert } from '../components/common';
 import { discoveryApi, type FactorSnapshotDatesResponse, type FactorBacktestResultResponse, type FactorBacktestCapitalPoint, type FactorBacktestTrade } from '../api/discovery';
 import type { ParsedApiError } from '../api/error';
@@ -52,8 +52,8 @@ const FactorBacktestPage: React.FC = () => {
   const [dateRangeIntersection, setDateRangeIntersection] = useState<[string, string]>(['', '']);
 
   // params
-  const [holdDays, setHoldDays] = useState<number[]>([1, 3, 5]);
-  const [topN, setTopN] = useState(3);
+  const [holdDays, setHoldDays] = useState<number[]>([1, 5]);
+  const [topN, setTopN] = useState(1);
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [initialCapital, setInitialCapital] = useState(1_000_000);
@@ -222,9 +222,9 @@ const FactorBacktestPage: React.FC = () => {
       }
     }
     const sorted = Array.from(allDates).sort();
-    const data: Record<string, string | number>[] = [];
+    const data: Record<string, string | number | undefined>[] = [];
     for (const d of sorted) {
-      const row: Record<string, string | number> = { date: d.slice(4) };
+      const row: Record<string, string | number | undefined> = { date: d.slice(4) };
       for (const kd of Object.keys(result.capital_curves)) {
         if (!selectedCurves[kd]) continue;
         const curve = result.capital_curves[kd];
@@ -320,7 +320,7 @@ const FactorBacktestPage: React.FC = () => {
   ];
 
   return (
-    <AppPage title="因子回测" icon={<Activity className="h-5 w-5" />} className="max-w-none px-2 md:px-3">
+    <AppPage className="max-w-none px-2 md:px-3">
       <div className="flex flex-col lg:flex-row gap-5">
         {/* ──── Left Panel ──── */}
         <div className="lg:w-[260px] shrink-0 space-y-4">
@@ -361,7 +361,7 @@ const FactorBacktestPage: React.FC = () => {
                 </div>
               )}
 
-              <div className="max-h-[400px] overflow-y-auto space-y-1.5 pr-1">
+              <div className="max-h-[560px] overflow-y-auto space-y-1.5 pr-1">
                 {snapData?.factors.map((f) => (
                   <div key={f.name} className="flex items-center gap-2 py-1">
                     <Checkbox
@@ -523,7 +523,7 @@ const FactorBacktestPage: React.FC = () => {
                 />
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <StatCard label="累计收益" value={currentStats ? pctNum(currentStats.cumRet) : '--'} trend={currentStats && currentStats.cumRet >= 0 ? 'up' : 'down'} />
+                <StatCard label="累计收益" value={currentStats ? pctNum(currentStats.cumRet) : '--'} />
                 <StatCard label="胜率" value={currentStats ? pctNum(currentStats.wr) : '--'} />
                 <StatCard label="最大回撤" value={currentStats ? pctNum(currentStats.mdd) : '--'} />
                 <StatCard label="已平仓" value={currentStats ? String(currentStats.closed.length) : '--'} />
@@ -544,6 +544,7 @@ const FactorBacktestPage: React.FC = () => {
                       <YAxis tick={{ fontSize: 11 }} domain={['auto', 'auto']} />
                       <Tooltip contentStyle={{ background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', fontSize: 12 }} />
                       <Legend onClick={(e) => {
+                        if (!e.dataKey || typeof e.dataKey !== 'string') return;
                         const key = e.dataKey.replace('h', '');
                         // 同步 summaryPeriod
                         if (selectedCurves[key]) return;
@@ -600,7 +601,7 @@ const FactorBacktestPage: React.FC = () => {
                         <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                         <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                         <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => `${v.toFixed(1)}%`} />
-                        <Tooltip formatter={(v: number) => `${v.toFixed(2)}%`} contentStyle={{ background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', fontSize: 12 }} />
+                        <Tooltip formatter={(v) => `${Number(v).toFixed(2)}%`} contentStyle={{ background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', fontSize: 12 }} />
                         <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>

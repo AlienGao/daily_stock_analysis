@@ -413,43 +413,6 @@ def parse_arguments() -> argparse.Namespace:
         help='强制回测（即使已有回测结果也重新计算）'
     )
 
-    # === R&D Loop ===
-    parser.add_argument(
-        '--rd-loop',
-        action='store_true',
-        help='启动 R&D 因子发现闭环（自动化假设→实现→评估→迭代）'
-    )
-    parser.add_argument(
-        '--rd-loop-iterations',
-        type=int,
-        default=5,
-        help='R&D 闭环迭代轮数（默认 5）'
-    )
-    parser.add_argument(
-        '--rd-loop-hypotheses',
-        type=int,
-        default=3,
-        help='R&D 闭环每轮生成的假设数（默认 3）'
-    )
-    parser.add_argument(
-        '--rd-loop-days',
-        type=int,
-        default=120,
-        help='R&D 闭环回测窗口交易日数（默认 120）'
-    )
-    parser.add_argument(
-        '--rd-loop-list',
-        action='store_true',
-        help='列出 R&D 闭环待审核的因子'
-    )
-    parser.add_argument(
-        '--rd-loop-approve',
-        type=str,
-        default=None,
-        metavar='FACTOR_NAME',
-        help='批准指定的待审核因子（因子名或文件名）'
-    )
-
     # === Factor Weight Optimization ===
     parser.add_argument(
         '--factor-optimize',
@@ -1191,46 +1154,6 @@ def _reload_runtime_config() -> Config:
     return get_config()
 
 
-def _run_auto_rd_loop() -> None:
-    """Run a lightweight R&D loop before scheduled analysis (opt-in via RD_LOOP_AUTO_ENABLED).
-
-    Uses minimal iterations to keep cost/time low. Failure does not block the main analysis.
-    """
-    logger.info("[AutoRDLoop] 定时任务前置 R&D 闭环启动")
-
-    try:
-        from src.agent.llm_adapter import LLMToolAdapter
-        from src.discovery.rd_loop import RDLoop
-        from data_provider.tushare_fetcher import TushareFetcher
-    except Exception as e:
-        logger.warning("[AutoRDLoop] 导入失败，跳过: %s", e)
-        return
-
-    tushare_fetcher = TushareFetcher.get_instance()
-    if not tushare_fetcher.is_available():
-        logger.warning("[AutoRDLoop] Tushare 不可用，跳过")
-        return
-
-    llm_adapter = LLMToolAdapter()
-    if not llm_adapter.is_available:
-        logger.warning("[AutoRDLoop] LLM 不可用，跳过")
-        return
-
-    try:
-        loop = RDLoop(tushare_fetcher=tushare_fetcher, llm_adapter=llm_adapter)
-        result = loop.run(
-            iterations=2,
-            hypotheses_per_round=2,
-            sota_threshold=30.0,
-        )
-        logger.info(
-            "[AutoRDLoop] 完成: %d 轮, %d 个 SOTA 因子",
-            result.iterations, len(result.sota_factors),
-        )
-    except Exception as e:
-        logger.warning("[AutoRDLoop] 运行失败（不阻断定时任务）: %s", e)
-
-
 def _build_schedule_time_provider(default_schedule_time: str):
     """Read the latest schedule time directly from the active config file.
 
@@ -1441,9 +1364,6 @@ def main() -> int:
         # 模式: 盘中实时扫描
         if getattr(args, 'scan', False):
             logger.info("模式: 盘中实时扫描")
-            # 前置 R&D 因子发现（与定时任务一致，由 RD_LOOP_AUTO_ENABLED 控制）
-            if os.getenv("RD_LOOP_AUTO_ENABLED", "").strip().lower() in ("true", "1", "yes", "on"):
-                _run_auto_rd_loop()
             from src.discovery.config import get_discovery_config
             from src.discovery.scanner import run_intraday_scan
 
@@ -1484,89 +1404,6 @@ def main() -> int:
                 _sync_discovery_to_stock_list(results)
             else:
                 logger.info("未发现符合条件的股票")
-            raise _ModeExit(0)
-
-        # 模式: R&D 待审核因子列表
-        if getattr(args, 'rd_loop_list', False):
-            logger.info("模式: R&D 待审核因子列表")
-            from src.discovery.rd_loop import RDLoop
-
-            pending = RDLoop.list_pending_factors()
-            if not pending:
-                logger.info("暂无待审核因子。")
-                print("暂无待审核因子。")
-            else:
-                print(f"\n{'='*80}")
-                print(f"待审核因子: {len(pending)} 个")
-                print(f"{'='*80}")
-                for i, f in enumerate(pending, 1):
-                    print(f"\n  #{i} {f['name']}")
-                    print(f"     假设: {f.get('hypothesis', '?')}")
-                    print(f"     综合评分: {f.get('score', 0):.0f}  "
-                          f"累计收益: {f.get('cum_return', 0):.1f}%  "
-                          f"夏普: {f.get('sharpe', 0):.2f}  "
-                          f"胜率: {f.get('win_rate', 0):.0f}%")
-                print(f"\n使用 --rd-loop-approve <name> 批准因子")
-                print(f"{'='*80}\n")
-                logger.info("待审核因子: %d 个", len(pending))
-            raise _ModeExit(0)
-
-        # 模式: R&D 批准因子
-        if getattr(args, 'rd_loop_approve', None):
-            factor_name = args.rd_loop_approve
-            logger.info("模式: R&D 批准因子 — %s", factor_name)
-            from src.discovery.rd_loop import RDLoop
-
-            ok = RDLoop.approve_factor(factor_name)
-            if ok:
-                logger.info("因子已批准并移动到 src/discovery/factors/: %s", factor_name)
-                print(f"因子已批准: {factor_name}")
-            else:
-                logger.warning("批准失败，因子不存在: %s", factor_name)
-                print(f"批准失败，因子不存在: {factor_name}")
-                raise _ModeExit(1)
-            raise _ModeExit(0)
-
-        # 模式: R&D 因子发现闭环
-        if getattr(args, 'rd_loop', False):
-            if os.getenv("RD_LOOP_AUTO_ENABLED", "").strip().lower() not in ("true", "1", "yes", "on"):
-                logger.warning("R&D 因子发现闭环已禁用（RD_LOOP_AUTO_ENABLED=false），跳过执行。")
-                raise _ModeExit(0)
-            logger.info("模式: R&D 因子发现闭环")
-            from src.discovery.rd_loop import RDLoop
-            from src.agent.llm_adapter import LLMToolAdapter
-            from data_provider.tushare_fetcher import TushareFetcher
-
-            tushare_fetcher = TushareFetcher.get_instance()
-            if not tushare_fetcher.is_available():
-                logger.warning("Tushare 不可用，R&D 闭环评估可能受限")
-
-            llm_adapter = LLMToolAdapter()
-            if not llm_adapter.is_available:
-                logger.error("LLM 不可用，无法运行 R&D 闭环。请检查 API key 配置。")
-                return 1
-
-            iterations = getattr(args, 'rd_loop_iterations', 5)
-            hypotheses_per_round = getattr(args, 'rd_loop_hypotheses', 3)
-            backtest_days = getattr(args, 'rd_loop_days', 120)
-
-            logger.info(
-                "R&D 闭环参数: iterations=%d, hypotheses_per_round=%d, backtest_days=%d",
-                iterations, hypotheses_per_round, backtest_days,
-            )
-
-            loop = RDLoop(
-                tushare_fetcher=tushare_fetcher,
-                llm_adapter=llm_adapter,
-                backtest_days=backtest_days,
-            )
-            result = loop.run(
-                iterations=iterations,
-                hypotheses_per_round=hypotheses_per_round,
-            )
-
-            logger.info("\n%s", result.leaderboard_markdown())
-            print(result.leaderboard_markdown())
             raise _ModeExit(0)
 
         # 模式: 因子权重优化
@@ -1619,10 +1456,6 @@ def main() -> int:
 
             def scheduled_task():
                 runtime_config = _reload_runtime_config()
-
-                # Pre-step: run lightweight R&D loop to discover new factors (opt-in)
-                if os.getenv("RD_LOOP_AUTO_ENABLED", "").strip().lower() in ("true", "1", "yes", "on"):
-                    _run_auto_rd_loop()
 
                 # 每日维护：清理超过 10 年的历史数据
                 try:

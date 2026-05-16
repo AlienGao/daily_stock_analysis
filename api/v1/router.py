@@ -12,7 +12,7 @@ API v1 路由聚合
 from fastapi import APIRouter
 import os
 
-from api.v1.endpoints import analysis, auth, discovery, history, stocks, backtest, system_config, agent, usage, portfolio, broker_recommend, rd_loop
+from api.v1.endpoints import analysis, auth, discovery, history, stocks, backtest, system_config, agent, usage, portfolio, broker_recommend
 
 # 创建 v1 版本主路由
 router = APIRouter(prefix="/api/v1")
@@ -84,9 +84,4 @@ router.include_router(
     tags=["BrokerRecommend"]
 )
 
-router.include_router(
-    rd_loop.router,
-    prefix="/rd-loop",
-    tags=["RDLoop"]
-)
 

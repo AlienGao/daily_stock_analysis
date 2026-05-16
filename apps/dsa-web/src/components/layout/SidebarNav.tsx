@@ -29,8 +29,6 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'broker-recommend', label: '金股', to: '/broker-recommend', icon: TrendingUp },
   { key: 'institution-survey', label: '调研', to: '/institution-survey', icon: Users },
   { key: 'chat', label: '问股', to: '/chat', icon: MessageSquareQuote, badge: 'completion' },
-  // RD loop 禁用中，暂时隐藏
-  // { key: 'rd-loop-review', label: '审核', to: '/rd-loop-review', icon: ClipboardCheck },
   { key: 'factor-backtest', label: '因子', to: '/factor-backtest', icon: Activity },
   { key: 'backtest', label: '回测', to: '/backtest', icon: BarChart3 },
   { key: 'settings', label: '设置', to: '/settings', icon: Settings2 },

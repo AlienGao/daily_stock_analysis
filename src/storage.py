@@ -1300,6 +1300,7 @@ class FactorScoreSnapshot(Base):
             name='uix_fss_date_code_mode_factor',
         ),
         Index('ix_fss_date_mode', 'trade_date', 'mode'),
+        Index('ix_fss_mode_factor_date', 'mode', 'factor_name', 'trade_date'),
     )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -6697,12 +6698,14 @@ class DatabaseManager:
             return 0
 
         def _write(session: Session) -> int:
-            # 删除同 mode + trade_date 的旧数据（用 Core delete 避免 ORM session 同步问题）
+            # 只删除本次要写入的因子（避免误删同日期其他因子的数据）
             from sqlalchemy import delete as sa_delete
+            factor_names = list(raw_scores.keys())
             session.execute(
                 sa_delete(FactorScoreSnapshot).where(
                     FactorScoreSnapshot.trade_date == trade_date,
                     FactorScoreSnapshot.mode == mode,
+                    FactorScoreSnapshot.factor_name.in_(factor_names),
                 )
             )
 

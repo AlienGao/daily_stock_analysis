@@ -11,10 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- 新条目格式：- [类型] 描述（类型取值：新功能/改进/修复/文档/测试/chore）-->
 <!-- 每条独立一行追加到本段末尾，无需分类标题，合并时冲突最小 -->
-- [新功能] 新增 R&D 因子发现闭环（`--rd-loop`），借鉴 RD-Agent 的 Hypothesis → Implement → Test → Iterate 模式，LLM 自动生成因子代码 → 历史回测评估 → SOTA 跟踪 → 反馈迭代，输出排行榜报告到 `rd_loop_reports/rd_loop_*.md`。
-- [新功能] R&D 闭环生成的 SOTA 因子自动持久化到 `src/discovery/factors/rd_gen_*.py`，`__init__.py` 自动发现并注册，下次 auto-discovery 无需手动配置即可使用新因子。
-- [新功能] Discovery Engine 因子信号注入单股分析：定时任务批次启动前运行一次 discovery engine（含 R&D 新因子），单股分析时将因子评分注入 LLM prompt（非 Agent 路径渲染为 Markdown 表格，Agent 路径注入 JSON 块）。通过 `DISCOVERY_FACTOR_SIGNALS_ENABLED` 控制。
-- [新功能] 定时任务前置 R&D 闭环（`RD_LOOP_AUTO_ENABLED=true`），每日分析前自动运行轻量级因子发现（2 轮 x 2 假设），新因子自动参与当天的选股和分析。
+- [新功能] Discovery Engine 因子信号注入单股分析：定时任务批次启动前运行一次 discovery engine，单股分析时将因子评分注入 LLM prompt（非 Agent 路径渲染为 Markdown 表格，Agent 路径注入 JSON 块）。通过 `DISCOVERY_FACTOR_SIGNALS_ENABLED` 控制。
 - [新功能] 技术指标优先使用 Tushare 前复权数据：单股分析流程重构为先获取 Tushare stk_factor（MACD/RSI/KDJ/BOLL/CCI）再执行 StockTrendAnalyzer，Tushare 可用时自动覆盖本地计算结果（含 KDJ/BOLL 首次纳入趋势评分），MA 继续由本地计算（Tushare 不提供）。
 - [新功能] 新增 `stock_tech_indicator` 数据库缓存表，按 (code, date) 缓存 Tushare stk_factor 全量指标；单股分析缓存优先命中后跳过 Tushare API 调用，全量批量获取（discovery engine）自动写入缓存积累历史数据。
 - [chore] 移除 `src/discovery/ic_tracker.py`：ICTracker 从未接入主流程，IC 计算已整合到 FactorBacktestEngine。
@@ -28,6 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - [改进] 自动回测新增 `BACKTEST_AUTO_FILTER_MODE` 与评分区间配置，支持按“信号/评分/信号+评分”叠加筛选候选记录，并与 `BACKTEST_AUTO_MODE` 联动生效。
 - [改进] 新增 `python main.py --serve-only --webui-dev` 开发模式：自动启动 Vite 前端开发服务器并启用热更新，前端改动无需重启后端服务。
 - [改进] `--webui-dev` 新增单端口开发代理：保持访问 `http://127.0.0.1:8000` 时自动代理到 Vite 开发服务器，前端热更新与后端 API 可同端口调试。
+- [改进] `save_factor_score_snapshots` 改为局部删除：只删除本次写入的因子而非同日期全部因子，防止误删同日期其他因子数据。
+- [改进] 补齐 margin、chip 因子 postmarket 历史评分：margin 覆盖 728 个交易日（2023-05-17 ~ 2026-05-15），chip 依赖 broker_enrichment_cyq_perf 回填 727 天后同样覆盖 728 天。
+- [chore] 新增脚本 `scripts/rerun_margin_chip.py`（单因子评分重算）、`scripts/backfill_cyq_perf.py`（筹码胜率历史回填）。
 - [改进] 新增 `WEBUI_DEV_DEFAULT` 与 `--no-webui-dev`：本地沿用原启动指令可默认进入前端开发者模式（热更新），并支持按次关闭。
 - [改进] 新增持仓模块环境变量开关：`PORTFOLIO_MODULE_ENABLED` 与 `VITE_PORTFOLIO_MODULE_ENABLED`（默认 `false`），用于统一控制 Web 持仓入口与 `/api/v1/portfolio/*` 路由启停。
 - [测试] `backend-gate` 离线测试按 `PORTFOLIO_MODULE_ENABLED` 动态决定是否排除持仓模块用例（`test_portfolio_api/service/pr2`）。
