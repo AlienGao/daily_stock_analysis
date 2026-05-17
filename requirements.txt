@@ -61,6 +61,9 @@ lxml_html_clean             # Fix for lxml.html.clean ImportError in newer lxml 
 # 报告模板引擎（Report Engine P0）
 jinja2>=3.1.0               # Jinja2 template engine for report rendering
 
+# 因子权重优化
+optuna>=3.6.0               # TPE hyperparameter optimization for factor weights
+
 # FastAPI Web 框架
 fastapi>=0.109.0            # 现代 Python Web 框架
 uvicorn[standard]>=0.27.0   # ASGI 服务器

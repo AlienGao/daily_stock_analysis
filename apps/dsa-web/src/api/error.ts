@@ -8,6 +8,7 @@ export type ApiErrorCategory =
   | 'invalid_tool_call'
   | 'portfolio_oversell'
   | 'portfolio_busy'
+  | 'backtest_busy'
   | 'upstream_llm_400'
   | 'request_timeout'
   | 'upstream_timeout'
@@ -341,6 +342,16 @@ export function parseApiError(error: unknown): ParsedApiError {
       rawMessage,
       status,
       category: 'portfolio_busy',
+    });
+  }
+
+  if (status === 409 || includesAny(matchText, ['已有回测任务运行中'])) {
+    return createParsedApiError({
+      title: '已有回测任务运行中',
+      message: '请等待当前回测任务完成后再提交新任务。',
+      rawMessage,
+      status,
+      category: 'backtest_busy',
     });
   }
 

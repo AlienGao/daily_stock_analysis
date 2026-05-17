@@ -97,11 +97,36 @@ def create_discovery_engine(config=None, tushare_fetcher=None, akshare_fetcher=N
 
 
 def get_factor_weights(mode: str) -> Dict[str, float]:
-    """获取指定模式下所有活跃因子的权重映射（无需创建 engine 实例）。"""
+    """获取指定模式下所有活跃因子的权重映射（从 .env / DiscoveryConfig 读取）。
+
+    统一入口：发现引擎扫描、回测引擎、因子优化器、前端 API 均通过此函数获取权重。
+    """
+    from src.discovery.config import DiscoveryConfig
+    cfg = DiscoveryConfig()
+
+    # config 属性名与因子名的差异修正
+    _NAME_FIXES: Dict[str, str] = {
+        "money_flow": "moneyflow",
+        "limit": "limit_post",
+    }
+
     weights: Dict[str, float] = {}
     for f in _default_factors():
-        if f.is_available(mode):
-            weights[f.name] = f.weight
+        if not f.is_available(mode):
+            continue
+
+        attr_base = _NAME_FIXES.get(f.name, f.name)
+
+        # 优先 mode 后缀属性，其次通用属性，最后因子类默认值
+        cfg_val = None
+        if mode == "intraday":
+            cfg_val = getattr(cfg, f"weight_{attr_base}_intraday", None)
+        if cfg_val is None and mode == "postmarket":
+            cfg_val = getattr(cfg, f"weight_{attr_base}_postmarket", None)
+        if cfg_val is None:
+            cfg_val = getattr(cfg, f"weight_{attr_base}", None)
+
+        weights[f.name] = cfg_val if cfg_val is not None else f.weight
     return weights
 
 
@@ -139,20 +164,28 @@ class StockDiscoveryEngine:
     def get_factor(self, name: str) -> Optional[BaseFactor]:
         return self._factors.get(name)
 
+    # config 属性名与因子名的差异修正
+    _NAME_FIXES: Dict[str, str] = {
+        "money_flow": "moneyflow",
+        "limit": "limit_post",
+    }
+
     def _get_effective_weight(self, factor_name: str, mode: str) -> float:
         """根据 mode 返回因子的有效权重：config 优先，其次因子类默认值。
 
         对于盘中共用因子（如 popularity），根据 mode 选用对应后缀的配置。
         """
-        # 盘中共用因子的 mode 后缀 key
-        if mode == "intraday":
-            cfg_key = f"weight_{factor_name}_intraday"
-        elif mode == "postmarket":
-            cfg_key = f"weight_{factor_name}_postmarket"
-        else:
-            cfg_key = f"weight_{factor_name}"
+        attr_base = self._NAME_FIXES.get(factor_name, factor_name)
 
-        cfg_val = getattr(self.config, cfg_key, None)
+        # 优先 mode 后缀属性，其次通用属性
+        cfg_val = None
+        if mode == "intraday":
+            cfg_val = getattr(self.config, f"weight_{attr_base}_intraday", None)
+        if cfg_val is None and mode == "postmarket":
+            cfg_val = getattr(self.config, f"weight_{attr_base}_postmarket", None)
+        if cfg_val is None:
+            cfg_val = getattr(self.config, f"weight_{attr_base}", None)
+
         if cfg_val is not None:
             return cfg_val
         # 回退到因子类默认值
@@ -439,15 +472,51 @@ class StockDiscoveryEngine:
     # ------------------------------------------------------------------
 
     def _calc_dynamic_weights(self, mode: str) -> Dict[str, float]:
-        """根据近期市场状态动态调整因子权重（仅返回当前 mode 可用的因子）。"""
+        """根据近期市场状态动态调整因子权重（仅返回当前 mode 可用的因子）。
+
+        数据源优先级：stock_daily 表 → Tushare API 降级（自动回填缺失数据）。
+        """
         try:
-            if self.tushare_fetcher is None:
-                return {}
-            # 获取近期市场数据（用上证指数）
-            df = self.tushare_fetcher.get_daily_data("000001.SH", start_date="20260101", days=20)
-            if df is None or len(df) < 10:
-                return {}
-            returns = pd.to_numeric(df["pct_chg"], errors="coerce").dropna()
+            from src.storage import DatabaseManager, StockDaily
+
+            def _load_returns_from_db():
+                db = DatabaseManager()
+                with db.get_session() as sess:
+                    rows = (sess.query(StockDaily.pct_chg)
+                            .filter(StockDaily.code == "000001.SH")
+                            .order_by(StockDaily.date.desc())
+                            .limit(20).all())
+                return pd.Series([float(r[0]) for r in rows if r[0] is not None]).dropna()
+
+            returns = _load_returns_from_db()
+
+            # ── 降级：DB 数据不足，从 Tushare 拉取并回填 ──
+            if len(returns) < 5 and self.tushare_fetcher is not None:
+                logger.info("[Discovery] stock_daily 中 000001.SH 数据不足，降级到 Tushare")
+                try:
+                    raw_df = self.tushare_fetcher._api.index_daily(
+                        ts_code="000001.SH",
+                        start_date=(pd.Timestamp.today() - pd.Timedelta(days=60)).strftime("%Y%m%d"),
+                    )
+                    if raw_df is not None and len(raw_df) >= 5:
+                        import pandas as _pd
+                        df = _pd.DataFrame()
+                        df["date"] = _pd.to_datetime(raw_df["trade_date"], format="%Y%m%d")
+                        df["open"] = _pd.to_numeric(raw_df["open"], errors="coerce")
+                        df["high"] = _pd.to_numeric(raw_df["high"], errors="coerce")
+                        df["low"] = _pd.to_numeric(raw_df["low"], errors="coerce")
+                        df["close"] = _pd.to_numeric(raw_df["close"], errors="coerce")
+                        df["volume"] = _pd.to_numeric(raw_df["vol"], errors="coerce")
+                        df["amount"] = _pd.to_numeric(raw_df["amount"], errors="coerce") * 1000
+                        df["pct_chg"] = _pd.to_numeric(raw_df["pct_chg"], errors="coerce")
+                        DatabaseManager().save_daily_data(df, code="000001.SH",
+                                                          data_source="TushareFetcher-index")
+                        logger.info("[Discovery] 已回填 000001.SH 日线 %d 行", len(df))
+                        # 重新从 DB 加载
+                        returns = _load_returns_from_db()
+                except Exception as e:
+                    logger.debug("[Discovery] Tushare 降级拉取 000001.SH 失败: %s", e)
+
             if len(returns) < 5:
                 return {}
 
@@ -458,16 +527,13 @@ class StockDiscoveryEngine:
             trend_strength = abs(returns.mean() / (returns.std() + 1e-9))
 
             if trend_strength > 0.8:
-                # 强趋势市场：增配动量、北向
                 logger.info(f"[Discovery] 市场状态: 强趋势 (trend={trend_strength:.2f})")
                 raw = {"momentum": 1.3, "rebound": 0.7, "technical": 1.1}
             elif volatility > 1.5:
-                # 高波动震荡：增配反弹、业绩
                 logger.info(f"[Discovery] 市场状态: 高波动 (vol={volatility:.2f})")
                 raw = {"rebound": 1.4, "performance": 1.2, "profit_forecast": 1.1, "momentum": 0.6}
             else:
                 return {}
-            # 过滤掉当前 mode 不可用的因子
             return {k: v for k, v in raw.items() if k in available_names}
         except Exception as e:
             logger.debug(f"[Discovery] 动态权重计算失败: {e}")
@@ -940,8 +1006,8 @@ class StockDiscoveryEngine:
             logger.info(f"[Discovery] 候选范围受限: {len(all_codes)} 只 (原始 {len(candidate_codes)} 只)")
 
         # Phase 3: 逐因子打分（快照已有的因子跳过，仅对缺失/新增因子实时计算）
-        # 动态权重（市场状态自适应）
-        dynamic_adjustments = self._calc_dynamic_weights(mode) if not score_columns else {}
+        # 动态权重（市场状态自适应，每次扫描都重新计算）
+        dynamic_adjustments = self._calc_dynamic_weights(mode)
 
         _phase3_new_factors: List[str] = []
         for factor in available:
@@ -997,16 +1063,29 @@ class StockDiscoveryEngine:
             logger.warning("[Discovery] 无有效评分")
             return []
 
-        # Phase 3.5: 纯因子加权（与回测引擎一致；DISCOVERY_PIPELINE_ENABLED 仅控制后段 StockScorer）
-        tw_all = sum(self._get_effective_weight(n, mode) for n in score_columns if n in self._factors) or 1.0
+        # Phase 3.5: 去相关 → 行业中性化 → 纯因子加权（与回测引擎完全一致）
+        use_pipeline = getattr(self.config,
+                               'enable_intraday_pipeline' if mode == 'intraday' else 'enable_postmarket_pipeline',
+                               True)
+        if use_pipeline:
+            score_columns = self._decorrelate_scores(score_columns)
+            score_columns = self._apply_industry_neutral(score_columns, factor_data)
+        from src.discovery.factor_backtest_engine import FactorBacktestEngine
+        effective_weights = {
+            n: self._get_effective_weight(n, mode)
+            for n in score_columns
+        }
+        # 应用动态权重调整（根据大盘走势调整因子权重）
+        if dynamic_adjustments:
+            for fn, mult in dynamic_adjustments.items():
+                if fn in effective_weights:
+                    effective_weights[fn] = round(effective_weights[fn] * mult, 1)
+            logger.info("[Discovery] 动态权重已应用: %s",
+                        {k: effective_weights[k] for k in dynamic_adjustments if k in effective_weights})
+        composite = FactorBacktestEngine._compute_composite(score_columns, effective_weights)
         combined = pd.DataFrame(score_columns).fillna(0)
         combined = combined.loc[combined.index.isin(all_codes)]
-        for name in score_columns:
-            w = self._get_effective_weight(name, mode)
-            if w > 0:
-                combined[name] = combined[name] * w / tw_all
-        combined["_total"] = combined.sum(axis=1)
-
+        combined["_total"] = composite.reindex(combined.index).fillna(0)
         combined = combined.sort_values("_total", ascending=False)
 
         # Phase 4.5: 收集推荐理由（范围与 Phase 5 StockScorer 对齐：盘后 Top300，盘中全量）
@@ -1201,7 +1280,7 @@ class StockDiscoveryEngine:
         tech_scores_map: Dict[str, float] = {}  # ts_code → tech_score
         stop_tp_map: Dict[str, tuple] = {}  # stock_code → (buy_low, buy_high, stop, tp1, tp2)
 
-        if mode == "postmarket" and pass1_candidates:
+        if use_pipeline and mode == "postmarket" and pass1_candidates:
             from src.discovery.factor_backtest_engine import FactorBacktestEngine
             top300_for_bt = [c for c in pass1_candidates[:300]]
             codes_for_bt = [c[1] for c in top300_for_bt]
@@ -1213,7 +1292,7 @@ class StockDiscoveryEngine:
                 tech_scores_map[ts_code] = tech_map_for_bt.get(stock_code, 50.0)
             logger.info("[Discovery] 盘后 StockScorer (Top300, 回测一致): %d 只", len(tech_scores_map))
 
-        if getattr(self.config, 'enable_discovery_pipeline', True) and pass1_candidates and not tech_scores_map:
+        if use_pipeline and pass1_candidates and not tech_scores_map:
             try:
                 from src.services.stock_scorer import StockScorer, StockScorerConfig
 
@@ -1348,7 +1427,10 @@ class StockDiscoveryEngine:
         scored_candidates = []
         for ts_code, stock_code, stock_name, raw_score, factor_breakdown, sector, factor_weights in pass1_candidates:
             tech = tech_scores_map.get(ts_code, 0.0)
-            composite = alpha * raw_score + (1 - alpha) * tech
+            if tech_scores_map:
+                composite = alpha * raw_score + (1 - alpha) * tech
+            else:
+                composite = raw_score
             scored_candidates.append((composite, ts_code, stock_code, stock_name, raw_score, factor_breakdown, sector, factor_weights, tech))
 
         scored_candidates.sort(key=lambda x: x[0], reverse=True)
@@ -1505,7 +1587,10 @@ class StockDiscoveryEngine:
         # 综合分排序（无论 StockScorer 是否启用）
         alpha = self.config.score_blend_alpha
         for r in results:
-            r.composite_score = alpha * r.score + (1 - alpha) * r.tech_score
+            if tech_scores_map:
+                r.composite_score = alpha * r.score + (1 - alpha) * r.tech_score
+            else:
+                r.composite_score = r.score
         results.sort(key=lambda r: r.composite_score, reverse=True)
         logger.info(
             "[Discovery] 综合分排序完成 (alpha=%.2f), Top 3: %s",

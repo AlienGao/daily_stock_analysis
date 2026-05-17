@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Activity, BarChart3, Compass, Home, LogOut, MessageSquareQuote, Settings2, TrendingUp, Users } from 'lucide-react';
+import { Activity, BarChart3, Compass, Home, LogOut, MessageSquareQuote, Settings2, Sliders, TrendingUp, Users } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAgentChatStore } from '../../stores/agentChatStore';
@@ -26,10 +26,11 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { key: 'home', label: '首页', to: '/', icon: Home, exact: true },
   { key: 'discovery', label: '寻股', to: '/discovery', icon: Compass, exact: true },
+  { key: 'factor-backtest', label: '因子', to: '/factor-backtest', icon: Activity },
+  { key: 'factor-tuning', label: '调优', to: '/factor-tuning', icon: Sliders },
   { key: 'broker-recommend', label: '金股', to: '/broker-recommend', icon: TrendingUp },
   { key: 'institution-survey', label: '调研', to: '/institution-survey', icon: Users },
   { key: 'chat', label: '问股', to: '/chat', icon: MessageSquareQuote, badge: 'completion' },
-  { key: 'factor-backtest', label: '因子', to: '/factor-backtest', icon: Activity },
   { key: 'backtest', label: '回测', to: '/backtest', icon: BarChart3 },
   { key: 'settings', label: '设置', to: '/settings', icon: Settings2 },
 ];

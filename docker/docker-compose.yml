@@ -38,8 +38,8 @@ x-common: &common
     # API_PORT 从 .env 文件读取，无需在此硬编码
 
     # 代理设置（如果需要）
-    # - http_proxy=http://host.docker.internal:10809
-    # - https_proxy=http://host.docker.internal:10809
+    # - http_proxy=http://host.docker.internal:42484
+    # - https_proxy=http://host.docker.internal:42484
   logging:
     driver: "json-file"
     options:

@@ -11,7 +11,7 @@ import os
 import re
 import threading
 import time
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -30,6 +30,36 @@ router = APIRouter()
 
 _SCAN_OUTPUT = "/tmp/discovery_top10.json"
 _INTRADAY_REPORTS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "discovery_reports"
+_SNAPSHOT_CACHE_FILE = _INTRADAY_REPORTS_DIR / ".snapshot_dates_cache.json"
+
+
+def _load_snapshot_cache() -> Dict[str, tuple]:
+    """从文件加载快照日期缓存（跨重启持久化）。"""
+    if not _SNAPSHOT_CACHE_FILE.exists():
+        return {}
+    try:
+        raw = json.loads(_SNAPSHOT_CACHE_FILE.read_text(encoding="utf-8"))
+        cache: Dict[str, tuple] = {}
+        for key, val in raw.items():
+            factors = val.get("factors", [])
+            global_range = val.get("global", {})
+            cache[key] = (factors, global_range)
+        return cache
+    except Exception:
+        return {}
+
+
+def _save_snapshot_cache(cache: Dict[str, tuple]) -> None:
+    """将快照日期缓存写入文件。"""
+    try:
+        serializable: Dict[str, dict] = {}
+        for key, (factors, global_range) in cache.items():
+            serializable[key] = {"factors": factors, "global": global_range}
+        _SNAPSHOT_CACHE_FILE.write_text(
+            json.dumps(serializable, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+    except Exception:
+        pass
 
 
 def _postmarket_stream_path(date_str: str = "") -> Path:
@@ -441,6 +471,20 @@ def _enrich_recent_counts(items: List[DiscoveryItem]) -> None:
 _postmarket_tasks: Dict[str, dict] = {}
 
 _factor_backtest_tasks: Dict[str, dict] = {}
+_factor_optimize_tasks: Dict[str, dict] = {}
+
+
+def _cleanup_old_tasks():
+    """清理 60 分钟前完成/失败的回测与优化任务。"""
+    cutoff = datetime.now() - timedelta(minutes=60)
+    for tasks_dict in (_factor_backtest_tasks, _factor_optimize_tasks):
+        stale = [
+            tid for tid, t in list(tasks_dict.items())
+            if t.get("status") in ("completed", "failed")
+            and datetime.fromisoformat(t.get("finished_at", t.get("started_at", "2000-01-01T00:00:00"))) < cutoff
+        ]
+        for tid in stale:
+            del tasks_dict[tid]
 
 
 def _get_latest_completed_task() -> Optional[dict]:
@@ -811,6 +855,17 @@ def update_whitelist(body: UpdateWhitelistRequest):
 # Post-market report (from reports/
 # ---------------------------------------------------------------------------
 
+def _find_latest_report_date(candidate: str, pattern: str = "postmarket_") -> str:
+    """从 candidate 向前查找最近一个存在报告文件的日期（最多 14 天）。"""
+    reports_dir = Path(__file__).resolve().parent.parent.parent.parent / "discovery_reports"
+    for offset in range(14):
+        d = (datetime.strptime(candidate, "%Y%m%d") - timedelta(days=offset)).strftime("%Y%m%d")
+        for subdir in (reports_dir, reports_dir / "non_trading"):
+            if (subdir / f"{pattern}{d}.md").exists() or (subdir / f"{pattern}{d}_topn.json").exists():
+                return d
+    return candidate
+
+
 @router.get(
     "/postmarket/report",
     response_model=PostmarketReportResponse,
@@ -842,8 +897,8 @@ def get_postmarket_report(
 
     filepath, found_dir, effective_date = _find_report(report_date)
     if filepath is None:
-        yesterday = (date.today() - timedelta(days=1)).strftime("%Y%m%d")
-        filepath, found_dir, effective_date = _find_report(yesterday)
+        effective_date = _find_latest_report_date(report_date, "postmarket_")
+        filepath, found_dir, _ = _find_report(effective_date)
     if filepath is None:
         # 最后尝试内存中的最近完成任务
         recent = _get_latest_completed_task()
@@ -933,6 +988,10 @@ def postmarket_followup(
     if not _is_trading_hours():
         return PostmarketReportResponse(date=report_date or "", report="", exists=False)
 
+    from src.discovery.engine import is_trading_day
+    if not is_trading_day():
+        return PostmarketReportResponse(date=report_date or "", report="", exists=False)
+
     # TTL 内直接返回缓存
     now = time.time()
     if _followup_cache is not None and now - _followup_cache_ts < _FOLLOWUP_TTL:
@@ -953,10 +1012,9 @@ def postmarket_followup(
 def _postmarket_followup_locked(report_date: Optional[str]):
     global _followup_cache, _followup_cache_ts
 
-    # 确定盘后报告日期（默认昨天）
+    # 确定盘后报告日期（默认最近一个交易日）
     if report_date is None:
-        from datetime import timedelta
-        report_date = (date.today() - timedelta(days=1)).strftime("%Y%m%d")
+        report_date = _find_latest_report_date(date.today().strftime("%Y%m%d"), "postmarket_")
 
     # 读取盘后 topn 获取候选股票代码
     topn_file = _INTRADAY_REPORTS_DIR / f"postmarket_{report_date}_topn.json"
@@ -1888,6 +1946,7 @@ class FactorBacktestRequest(BaseModel):
     initial_capital: float = 1_000_000.0
     risk_free_rate: float = 0.02
     use_pipeline: bool = False
+    reoptimize_interval: Optional[int] = None  # None=固定权重, 5=每5日TPE调优
 
 
 @router.post(
@@ -1905,11 +1964,25 @@ def factor_backtest(req: FactorBacktestRequest):
     if req.mode not in ("intraday", "postmarket"):
         raise HTTPException(status_code=400, detail="mode 须为 intraday 或 postmarket")
 
+    # 并发控制：同一 mode 只允许一个回测运行
+    for tid, t in list(_factor_backtest_tasks.items()):
+        if t.get("status") == "running" and t.get("mode") == req.mode:
+            raise HTTPException(
+                status_code=409,
+                detail=f"已有回测任务运行中（task_id={tid}），请等待完成后再试",
+            )
+
     task_id = str(uuid.uuid4())[:8]
     _factor_backtest_tasks[task_id] = {
         "status": "running",
+        "mode": req.mode,
         "started_at": datetime.now().isoformat(),
     }
+
+    def _progress(msg: str):
+        t = _factor_backtest_tasks.get(task_id)
+        if t:
+            t["status_message"] = msg
 
     def _run():
         try:
@@ -1925,17 +1998,33 @@ def factor_backtest(req: FactorBacktestRequest):
                 non_zero = {k: v for k, v in req.factor_weights.items() if v > 0}
                 if non_zero:
                     fw = non_zero
-            result = engine.compute(
-                mode=req.mode,
-                factor_weights=fw,
-                start_date=req.start_date,
-                end_date=req.end_date,
-                top_n=req.top_n,
-                hold_days=req.hold_days,
-                initial_capital=req.initial_capital,
-                risk_free_rate=req.risk_free_rate,
-                use_pipeline=req.use_pipeline,
-            )
+            if req.reoptimize_interval and req.reoptimize_interval > 0:
+                result = engine.compute_walk_forward(
+                    mode=req.mode,
+                    factor_weights=fw,
+                    start_date=req.start_date,
+                    end_date=req.end_date,
+                    top_n=req.top_n,
+                    hold_days=req.hold_days,
+                    initial_capital=req.initial_capital,
+                    risk_free_rate=req.risk_free_rate,
+                    use_pipeline=req.use_pipeline,
+                    reoptimize_interval=req.reoptimize_interval,
+                    progress_cb=_progress,
+                )
+            else:
+                result = engine.compute(
+                    mode=req.mode,
+                    factor_weights=fw,
+                    start_date=req.start_date,
+                    end_date=req.end_date,
+                    top_n=req.top_n,
+                    hold_days=req.hold_days,
+                    initial_capital=req.initial_capital,
+                    risk_free_rate=req.risk_free_rate,
+                    use_pipeline=req.use_pipeline,
+                    progress_cb=_progress,
+                )
 
             if result is None:
                 _factor_backtest_tasks[task_id] = {
@@ -1952,7 +2041,10 @@ def factor_backtest(req: FactorBacktestRequest):
             }
         except Exception as e:
             logger.error("因子回测失败: %s", e, exc_info=True)
-            _factor_backtest_tasks[task_id] = {"status": "failed", "error": str(e)}
+            t = _factor_backtest_tasks.get(task_id, {})
+            t["status"] = "failed"
+            t["error"] = str(e)
+            t["finished_at"] = datetime.now().isoformat()
 
     threading.Thread(target=_run, daemon=True).start()
     return {"task_id": task_id, "status": "running"}
@@ -1964,10 +2056,15 @@ def factor_backtest(req: FactorBacktestRequest):
 )
 def factor_backtest_status(task_id: str = Query(..., description="任务 ID")):
     """轮询后台因子回测任务的执行状态。"""
+    # 懒清理：删除 60 分钟前完成/失败的任务
+    _cleanup_old_tasks()
+
     task = _factor_backtest_tasks.get(task_id)
     if task is None:
         raise HTTPException(status_code=404, detail="任务 ID 不存在")
     resp = {"task_id": task_id, "status": task.get("status", "unknown")}
+    if task.get("status_message"):
+        resp["status_message"] = task["status_message"]
     if task.get("status") == "failed":
         resp["error"] = task.get("error", "")
     if task.get("status") == "completed":
@@ -1975,18 +2072,359 @@ def factor_backtest_status(task_id: str = Query(..., description="任务 ID")):
     return resp
 
 
+# 快照日期范围缓存（按 mode + 日期，内存 + 文件持久化，重启不丢）
+_snapshot_dates_cache: Dict[str, tuple] = {}
+_snapshot_cache_loaded = False
+
+
+def _ensure_snapshot_cache():
+    """惰性加载文件缓存到内存（首次调用时触发）。"""
+    global _snapshot_dates_cache, _snapshot_cache_loaded
+    if _snapshot_cache_loaded:
+        return
+    _snapshot_dates_cache = _load_snapshot_cache()
+    _snapshot_cache_loaded = True
+
+
 @router.get(
     "/factor-snapshot-dates",
     summary="查询因子快照可用日期范围",
 )
 def factor_snapshot_dates(mode: str = Query("postmarket", description="intraday 或 postmarket")):
-    """返回每个因子的可用日期范围及全量交集。"""
+    """返回每个因子的可用日期范围及全量交集（缓存至当天，文件持久化跨重启有效）。"""
     if mode not in ("intraday", "postmarket"):
         raise HTTPException(status_code=400, detail="mode 须为 intraday 或 postmarket")
+
+    _ensure_snapshot_cache()
+
+    today = datetime.now().strftime("%Y%m%d")
+    cache_key = f"{mode}_{today}"
+    if cache_key in _snapshot_dates_cache:
+        factors, global_range = _snapshot_dates_cache[cache_key]
+        return {"factors": factors, "global": global_range}
 
     from src.discovery.factor_backtest_engine import FactorBacktestEngine
 
     engine = FactorBacktestEngine()
     factors, global_range = engine.get_snapshot_date_ranges(mode)
 
+    _snapshot_dates_cache[cache_key] = (factors, global_range)
+    _save_snapshot_cache(_snapshot_dates_cache)
     return {"factors": factors, "global": global_range}
+
+
+@router.get(
+    "/factor-weights",
+    summary="查询当前因子权重与管线模式（轻量，仅读 .env）",
+)
+def factor_weights(mode: str = Query("postmarket", description="intraday 或 postmarket")):
+    """返回当前 .env 中的因子权重映射及管线开关状态，无 DB 查询，毫秒级响应。"""
+    if mode not in ("intraday", "postmarket"):
+        raise HTTPException(status_code=400, detail="mode 须为 intraday 或 postmarket")
+
+    from src.discovery.factor_backtest_engine import FactorBacktestEngine
+    engine = FactorBacktestEngine()
+    weights = engine._get_default_weights(mode)
+
+    from src.discovery.config import DiscoveryConfig
+    cfg = DiscoveryConfig()
+    use_pipeline = cfg.enable_intraday_pipeline if mode == "intraday" else cfg.enable_postmarket_pipeline
+    blend_alpha = cfg.score_blend_alpha
+
+    return {
+        "mode": mode,
+        "weights": weights,
+        "use_pipeline": use_pipeline,
+        "score_blend_alpha": blend_alpha,
+    }
+
+
+# ------------------------------------------------------------------
+# Factor Weight Optimization (TPE)
+# ------------------------------------------------------------------
+
+
+class FactorOptimizeRequest(BaseModel):
+    mode: str = "postmarket"  # intraday 或 postmarket
+    window: int = 60  # 回测窗口交易日数
+    normalize: bool = False  # 归一化（零和重分配）
+    n_trials: int = 100  # TPE 试验次数
+    auto_apply: bool = True  # 自动写入 .env
+
+
+@router.post(
+    "/factor-backtest/optimize",
+    summary="因子权重优化（异步 TPE）",
+)
+def factor_optimize(req: FactorOptimizeRequest):
+    """提交因子权重优化参数，返回 task_id，通过 GET /factor-backtest/optimize/status 轮询结果。
+
+    复用 Optuna TPE + SQLite 持久化，CLI 与 Web 共享同一 study。
+    优化通过护栏后自动写入 .env。
+    """
+    import uuid
+
+    if req.mode not in ("intraday", "postmarket"):
+        raise HTTPException(status_code=400, detail="mode 须为 intraday 或 postmarket")
+    if req.window < 20 or req.window > 252:
+        raise HTTPException(status_code=400, detail="window 须在 20~252 之间")
+    if req.n_trials < 10 or req.n_trials > 500:
+        raise HTTPException(status_code=400, detail="n_trials 须在 10~500 之间")
+
+    # 并发控制：同一 mode 只允许一个优化运行
+    for tid, t in list(_factor_optimize_tasks.items()):
+        if t.get("status") == "running" and t.get("mode") == req.mode:
+            raise HTTPException(
+                status_code=409,
+                detail=f"已有优化任务运行中（task_id={tid}），请等待完成后再试",
+            )
+
+    task_id = str(uuid.uuid4())[:8]
+    _factor_optimize_tasks[task_id] = {
+        "status": "running",
+        "mode": req.mode,
+        "started_at": datetime.now().isoformat(),
+        "phase": "starting",
+        "progress": {"trial": 0, "n_trials": req.n_trials, "best_value": None},
+    }
+
+    def _progress(info: dict):
+        t = _factor_optimize_tasks.get(task_id)
+        if t is None:
+            return
+        phase = info.get("phase", t.get("phase", ""))
+        t["phase"] = phase
+        t["status_message"] = info.get("message", "")
+        if phase == "tpe":
+            t["progress"] = {
+                "trial": info.get("trial", 0),
+                "n_trials": info.get("n_trials", req.n_trials),
+                "best_value": info.get("best_value"),
+            }
+        elif phase == "done" and info.get("result"):
+            t["result"] = info["result"]
+
+    def _run():
+        try:
+            from src.discovery.factor_optimizer import FactorOptimizer
+
+            optimizer = FactorOptimizer(progress_callback=_progress)
+            result = optimizer.optimize(
+                mode=req.mode,
+                window=req.window,
+                normalize=req.normalize,
+                n_trials=req.n_trials,
+                auto_apply=False,  # Web 端始终不自动应用，由前端确认弹窗接管
+            )
+
+            t = _factor_optimize_tasks.get(task_id, {})
+            if result and result.get("report"):
+                t["status"] = "completed"
+                t["result"] = result
+            else:
+                t["status"] = "failed"
+                t["error"] = "优化未产生有效推荐（无因子通过筛选或无有效组合）"
+                t["result"] = result
+            t["finished_at"] = datetime.now().isoformat()
+        except Exception as e:
+            logger.error("因子权重优化失败: %s", e, exc_info=True)
+            t = _factor_optimize_tasks.get(task_id, {})
+            t["status"] = "failed"
+            t["error"] = str(e)
+            t["finished_at"] = datetime.now().isoformat()
+
+    threading.Thread(target=_run, daemon=True).start()
+    return {"task_id": task_id, "status": "running"}
+
+
+@router.get(
+    "/factor-backtest/optimize/status",
+    summary="查询因子权重优化任务状态",
+)
+def factor_optimize_status(task_id: str = Query(..., description="任务 ID")):
+    """轮询后台优化任务的执行状态，包含阶段、进度和结果。"""
+    _cleanup_old_tasks()
+
+    task = _factor_optimize_tasks.get(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务 ID 不存在")
+
+    resp = {
+        "task_id": task_id,
+        "status": task.get("status", "unknown"),
+        "phase": task.get("phase", ""),
+        "progress": task.get("progress", {}),
+    }
+    if task.get("status_message"):
+        resp["status_message"] = task["status_message"]
+    if task.get("status") == "failed":
+        resp["error"] = task.get("error", "")
+    if task.get("status") == "completed" and task.get("result"):
+        r = task["result"]
+        resp["result"] = {
+            "report_path": r.get("report_path"),
+            "recommendation": r.get("recommendation"),
+            "baseline": r.get("baseline"),
+            "applied": r.get("applied", False),
+        }
+    return resp
+
+
+class FactorApplyRequest(BaseModel):
+    mode: str = "postmarket"  # intraday 或 postmarket
+    weights: Dict[str, float]  # 因子名 → 新权重
+    report_path: Optional[str] = None  # 元数据 JSON 路径，用于标记 applied=true
+
+
+@router.post(
+    "/factor-backtest/optimize/apply",
+    summary="应用优化权重到 .env",
+)
+def factor_optimize_apply(req: FactorApplyRequest):
+    """将确认后的优化权重写入 .env（备份旧文件后替换），并标记元数据 JSON 的 applied=true。"""
+    if req.mode not in ("intraday", "postmarket"):
+        raise HTTPException(status_code=400, detail="mode 须为 intraday 或 postmarket")
+    if not req.weights:
+        raise HTTPException(status_code=400, detail="weights 不能为空")
+
+    from src.discovery.factor_optimizer import FactorOptimizer
+    success = FactorOptimizer.apply_weights(req.weights, mode=req.mode)
+    if not success:
+        raise HTTPException(status_code=500, detail="写入 .env 失败")
+
+    # 更新元数据 JSON 的 applied 标记
+    opt_dir = _INTRADAY_REPORTS_DIR / "factor_optimization"
+    meta_updated = False
+    logger.info("[apply] report_path=%s mode=%s weights_count=%d",
+                req.report_path, req.mode, len(req.weights))
+
+    if req.report_path:
+        meta_path = Path(req.report_path).with_suffix(".json")
+        logger.info("[apply] trying exact meta_path=%s exists=%s", meta_path, meta_path.exists())
+        if meta_path.exists():
+            try:
+                meta = json.loads(meta_path.read_text(encoding="utf-8"))
+                meta["applied"] = True
+                meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+                meta_updated = True
+                logger.info("[apply] updated via exact report_path")
+            except (json.JSONDecodeError, OSError) as e:
+                logger.warning("[apply] exact update failed: %s", e)
+
+    if not meta_updated and opt_dir.exists():
+        # 回退1：找到最近一条匹配模式的未应用元数据 JSON
+        import glob as _glob
+        for mp in sorted(_glob.glob(str(opt_dir / "*.json")), reverse=True):
+            if mp.endswith("latest.json"):
+                continue
+            try:
+                meta = json.loads(Path(mp).read_text(encoding="utf-8"))
+                if meta.get("mode") == req.mode and not meta.get("applied", False):
+                    meta["applied"] = True
+                    Path(mp).write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+                    meta_updated = True
+                    logger.info("[apply] updated via fallback: %s", os.path.basename(mp))
+                    break
+            except (json.JSONDecodeError, OSError) as e:
+                logger.warning("[apply] fallback skip %s: %s", os.path.basename(mp), e)
+                continue
+
+    if not meta_updated and opt_dir.exists():
+        # 回退2：按权重匹配，找到推荐权重与所应用权重一致的元数据
+        applied_set = set(f"{k}={v}" for k, v in sorted(req.weights.items()))
+        for mp in sorted(_glob.glob(str(opt_dir / "*.json")), reverse=True):
+            if mp.endswith("latest.json"):
+                continue
+            try:
+                meta = json.loads(Path(mp).read_text(encoding="utf-8"))
+                rec = meta.get("recommendation", {})
+                if not rec:
+                    continue
+                rec_set = set(f"{k}={v}" for k, v in sorted(rec.items()))
+                if applied_set == rec_set and not meta.get("applied", False):
+                    meta["applied"] = True
+                    Path(mp).write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+                    meta_updated = True
+                    logger.info("[apply] updated via weight-match: %s", os.path.basename(mp))
+                    break
+            except (json.JSONDecodeError, OSError) as e:
+                logger.warning("[apply] weight-match skip %s: %s", os.path.basename(mp), e)
+                continue
+
+    if not meta_updated:
+        logger.warning("[apply] weights applied to .env but no metadata JSON updated")
+
+    # 同步更新 latest.json
+    latest_path = opt_dir / "latest.json"
+    if latest_path.exists():
+        try:
+            latest = json.loads(latest_path.read_text(encoding="utf-8"))
+            if latest.get("mode") == req.mode:
+                latest["applied"] = True
+                latest_path.write_text(json.dumps(latest, ensure_ascii=False, indent=2), encoding="utf-8")
+                logger.info("[apply] synced latest.json applied=true")
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning("[apply] latest.json sync failed: %s", e)
+
+    return {"status": "applied", "mode": req.mode, "updated": len(req.weights)}
+
+
+@router.get(
+    "/factor-backtest/optimize/history",
+    summary="查询因子权重优化历史",
+)
+def factor_optimize_history(
+    mode: Optional[str] = Query(None, description="筛选模式：intraday 或 postmarket"),
+):
+    """扫描 discovery_reports/factor_optimization/ 目录下所有元数据 JSON，返回优化历史列表。"""
+    import glob
+
+    opt_dir = _INTRADAY_REPORTS_DIR / "factor_optimization"
+    if not opt_dir.exists():
+        return {"items": []}
+
+    items = []
+    for meta_path in sorted(glob.glob(str(opt_dir / "*.json")), reverse=True):
+        if meta_path.endswith("_latest.json") or meta_path.endswith("latest.json"):
+            continue
+        try:
+            meta = json.loads(Path(meta_path).read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+
+        if mode and meta.get("mode") != mode:
+            continue
+
+        recommendation = meta.get("recommendation", {})
+        items.append({
+            "report_path": meta.get("report_path", ""),
+            "timestamp": meta.get("timestamp", ""),
+            "mode": meta.get("mode", ""),
+            "recommendation": recommendation,
+            "changed_count": len(recommendation),
+            "baseline": meta.get("baseline", {}),
+            "applied": meta.get("applied", False),
+        })
+
+    return {"items": items}
+
+
+@router.get(
+    "/factor-backtest/optimize/report",
+    summary="查询因子权重优化报告全文",
+)
+def factor_optimize_report(report_path: str = Query(..., description="报告路径（从 history/status 获取）")):
+    """返回 Markdown 格式的优化报告全文。会校验路径必须在 factor_optimization/ 目录下。"""
+    opt_dir = (_INTRADAY_REPORTS_DIR / "factor_optimization").resolve()
+    rp = Path(report_path).resolve()
+
+    # 路径包含性校验
+    try:
+        rp.relative_to(opt_dir)
+    except ValueError:
+        raise HTTPException(status_code=403, detail="报告路径不在允许的目录下")
+
+    if not rp.exists():
+        raise HTTPException(status_code=404, detail="报告文件不存在")
+
+    return {"report_path": str(rp), "content": rp.read_text(encoding="utf-8")}

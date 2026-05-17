@@ -1,0 +1,33 @@
+{
+  "report_path": "/Users/justingao/Documents/daily_stock_analysis/discovery_reports/factor_optimization/optimize_20260517_1702.md",
+  "timestamp": "2026-05-17T17:02:49.864323",
+  "mode": "postmarket",
+  "recommendation": {
+    "money_flow": 13,
+    "hot_money": 9,
+    "margin": 19,
+    "insider_buy": 35,
+    "performance": 21,
+    "profit_forecast": 30,
+    "concept_heat": 19
+  },
+  "baseline": {
+    "money_flow": 25.0,
+    "technical": 21.25,
+    "broker_recommend": 22.0,
+    "fundamental": 5.0,
+    "hot_money": 8.0,
+    "margin": 17.0,
+    "chip": 12.75,
+    "insider_buy": 5.0,
+    "institution_hold": 8.0,
+    "limit": 15.0,
+    "performance": 10.0,
+    "popularity": 15.0,
+    "ranking_momentum": 10.0,
+    "buyback": 5.0,
+    "profit_forecast": 20.0,
+    "concept_heat": 16.0
+  },
+  "applied": true
+}

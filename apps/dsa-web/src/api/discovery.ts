@@ -194,6 +194,7 @@ export type FactorSnapshotDatesResponse = {
     mode: string;
     available_from: string;
     available_to: string;
+    trading_dates: string[];
   };
 };
 
@@ -207,6 +208,7 @@ export type FactorBacktestRequest = {
   initial_capital?: number;
   risk_free_rate?: number;
   use_pipeline?: boolean;
+  reoptimize_interval?: number | null;
 };
 
 export type FactorBacktestFactorInfo = {
@@ -244,16 +246,32 @@ export type FactorBacktestResultResponse = {
     hold_days: number[];
     initial_capital: number;
     risk_free_rate: number;
+    use_pipeline: boolean;
+    reoptimize_interval?: number | null;
   };
   summary: {
     cumulative_return: number;
     annualized_return: number;
     win_rate: number;
     max_drawdown: number;
+    max_drawdown_start?: string;
+    max_drawdown_end?: string;
     sharpe_ratio: number;
     total_trades: number;
     total_periods: number;
     final_capital: number;
+    dynamic?: {
+      cumulative_return: number;
+      annualized_return: number;
+      win_rate: number;
+      max_drawdown: number;
+      max_drawdown_start?: string;
+      max_drawdown_end?: string;
+      sharpe_ratio: number;
+      total_trades: number;
+      final_capital: number;
+      nodes_evaluated: number;
+    };
   };
   capital_curves: Record<string, FactorBacktestCapitalPoint[]>;
   rank_ic: Record<string, Record<string, number>>;
@@ -263,6 +281,53 @@ export type FactorBacktestResultResponse = {
     top_50pct: number;
   }>;
   trade_records: FactorBacktestTrade[];
+};
+
+/* ── Factor Weight Optimization (TPE) ── */
+
+export type FactorOptimizeRequest = {
+  mode: 'intraday' | 'postmarket';
+  window?: number;
+  normalize?: boolean;
+  n_trials?: number;
+  auto_apply?: boolean;
+};
+
+export type FactorOptimizeProgress = {
+  trial: number;
+  n_trials: number;
+  best_value: number | null;
+};
+
+export type FactorOptimizeResult = {
+  report_path: string;
+  recommendation: Record<string, number>;
+  baseline: Record<string, number>;
+  applied: boolean;
+};
+
+export type FactorOptimizeStatusResponse = {
+  task_id: string;
+  status: string;
+  phase: string;
+  progress: FactorOptimizeProgress;
+  status_message?: string;
+  error?: string;
+  result?: FactorOptimizeResult;
+};
+
+export type FactorOptimizeHistoryItem = {
+  report_path: string;
+  timestamp: string;
+  mode: string;
+  recommendation: Record<string, number>;
+  changed_count: number;
+  baseline: Record<string, number>;
+  applied: boolean;
+};
+
+export type FactorOptimizeHistoryResponse = {
+  items: FactorOptimizeHistoryItem[];
 };
 
 const INTRADAY_MIN_REQUEST_GAP_MS = 60_000;
@@ -382,11 +447,61 @@ export const discoveryApi = {
   async getFactorBacktestStatus(taskId: string): Promise<{
     task_id: string;
     status: string;
+    status_message?: string;
     error?: string;
     result?: FactorBacktestResultResponse;
   }> {
     const resp = await apiClient.get('/api/v1/discovery/factor-backtest/status', {
       params: { task_id: taskId },
+    });
+    return resp.data;
+  },
+
+  /* ── Factor Weights ── */
+
+  async getFactorWeights(mode: 'intraday' | 'postmarket'): Promise<{
+    mode: string;
+    weights: Record<string, number>;
+    use_pipeline: boolean;
+    score_blend_alpha: number;
+  }> {
+    const resp = await apiClient.get('/api/v1/discovery/factor-weights', { params: { mode } });
+    return resp.data;
+  },
+
+  /* ── Factor Weight Optimization (TPE) ── */
+
+  async runFactorOptimize(params: FactorOptimizeRequest): Promise<{ task_id: string; status: string }> {
+    const resp = await apiClient.post('/api/v1/discovery/factor-backtest/optimize', params);
+    return resp.data;
+  },
+
+  async applyFactorWeights(mode: string, weights: Record<string, number>, reportPath?: string): Promise<{ status: string; mode: string; updated: number }> {
+    const resp = await apiClient.post('/api/v1/discovery/factor-backtest/optimize/apply', {
+      mode,
+      weights,
+      ...(reportPath ? { report_path: reportPath } : {}),
+    });
+    return resp.data;
+  },
+
+  async getFactorOptimizeStatus(taskId: string): Promise<FactorOptimizeStatusResponse> {
+    const resp = await apiClient.get('/api/v1/discovery/factor-backtest/optimize/status', {
+      params: { task_id: taskId },
+    });
+    return resp.data;
+  },
+
+  async getFactorOptimizeHistory(mode?: 'intraday' | 'postmarket'): Promise<FactorOptimizeHistoryResponse> {
+    const resp = await apiClient.get('/api/v1/discovery/factor-backtest/optimize/history', {
+      params: mode ? { mode } : {},
+    });
+    return resp.data;
+  },
+
+  async getFactorOptimizeReport(reportPath: string): Promise<{ report_path: string; content: string }> {
+    const resp = await apiClient.get('/api/v1/discovery/factor-backtest/optimize/report', {
+      params: { report_path: reportPath },
     });
     return resp.data;
   },

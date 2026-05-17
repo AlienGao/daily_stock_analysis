@@ -2,19 +2,22 @@
 """因子权重优化器 (Factor Weight Optimizer).
 
 三步流程 + 四个护栏，输出 Markdown 变更报告。
-权重替换由独立指令 --factor-apply 执行。
+Step 2 使用 Optuna TPE 采样替代网格搜索，通过 SQLite 持久化实现 CLI/Web 共享。
+优化通过护栏后自动写入 .env。
 """
 
 import json
 import logging
-
+import os
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+
+import optuna
 
 from src.discovery.factor_backtest_engine import FactorBacktestEngine
 
@@ -23,17 +26,16 @@ logger = logging.getLogger(__name__)
 _REPORT_DIR = Path(__file__).resolve().parent.parent.parent / "discovery_reports" / "factor_optimization"
 _LATEST_JSON = _REPORT_DIR / "latest.json"
 _ENV_PATH = Path(__file__).resolve().parents[2] / ".env"
+_TPE_STORAGE = Path(__file__).resolve().parent.parent.parent / "optuna_cache" / "factor_opt.db"
 
 # 权重钳位范围
 _WEIGHT_MIN = 5
 _WEIGHT_MAX = 35
-# 扰动步长
-_PERTURB_STEPS = [-10, -5, 0, 5, 10]
-# 候选因子上限（控制网格搜索规模）
-_MAX_CANDIDATES = 6
+# 候选因子上限（控制 TPE 搜索空间维度）
+_MAX_CANDIDATES = 10
 # 回撤约束
-_MAX_DRAWDOWN = 0.20
-_MAX_DRAWDOWN_FALLBACK = 0.25
+_MAX_DRAWDOWN = 0.80
+_MAX_DRAWDOWN_FALLBACK = 0.90
 # 最小改进阈值（年化收益差 ≥ 1%）
 _MIN_IMPROVEMENT = 0.01
 # 相关性提示阈值
@@ -43,99 +45,154 @@ _CORR_WARN_THRESHOLD = 0.75
 class FactorOptimizer:
     """因子权重优化器。"""
 
-    def __init__(self, tushare_fetcher=None):
+    def __init__(self, tushare_fetcher=None, progress_callback: Optional[Callable] = None):
         self._engine = FactorBacktestEngine(tushare_fetcher)
         self._fetcher = tushare_fetcher
+        self._cb = progress_callback
+
+    def _notify(self, phase: str, **kwargs):
+        """通知进度回调（Web 轮询用）。"""
+        if self._cb:
+            try:
+                self._cb(dict(phase=phase, **kwargs))
+            except Exception:
+                pass
 
     # ── public API ──
 
     def optimize(self, mode: str = "postmarket", window: int = 60,
-                 normalize: bool = False) -> Optional[Dict]:
+                 normalize: bool = False, n_trials: int = 100,
+                 auto_apply: bool = True,
+                 preloaded: Optional[Dict] = None,
+                 use_persistent_storage: bool = True) -> Optional[Dict]:
         """运行完整优化流程，返回报告 dict。
 
         Args:
             mode: "intraday" 或 "postmarket"
             window: 回测窗口交易日数
             normalize: True 时最优组合按原总权重归一化（零和重分配）
-
-        Returns:
-            {
-                "report": "## 因子权重优化报告\\n...",
-                "report_path": "discovery_reports/factor_optimization/optimize_20260516_2130.md",
-                "recommendation": {factor_name: new_weight, ...},
-                "baseline": {factor_name: current_weight, ...},
-            }
+            n_trials: Optuna TPE 试验次数
+            auto_apply: True 时自动将推荐权重写入 .env
+            preloaded: 预加载数据（walk-forward 用），含 snap_dates/scores/trading_days/window_pool
+            use_persistent_storage: False 时使用纯内存 study（不写 SQLite）
         """
         current_weights = self._engine._get_default_weights(mode)
         if not current_weights:
             logger.warning("[FactorOptimizer] %s 模式无可用因子", mode)
             return None
 
-        # Step 1: 单因子筛选
+        # Step 1: 单因子筛选（仅排除 IC<0，放宽回撤限制）
+        self._notify("screen", message="Step 1: 因子筛选…")
         candidates = self._screen_factors(current_weights, mode, window)
         if not candidates:
             logger.warning("[FactorOptimizer] %s 模式无因子通过 Step 1 筛选", mode)
-            return self._no_result_report(mode, window, current_weights)
+            result = self._no_result_report(mode, window, current_weights, persist=use_persistent_storage)
+            self._notify("done", result=result)
+            return result
 
-        # Step 2: 权重扰动搜索
-        results, best = self._perturbation_search(candidates, current_weights, mode, window, normalize)
+        # Step 2: Optuna TPE 搜索
+        self._notify("tpe", message="Step 2: TPE 搜索…", trial=0, n_trials=n_trials)
+        all_results, best, total_trials = self._tpe_search(
+            candidates, current_weights, mode, window, n_trials, normalize,
+            preloaded=preloaded, use_persistent_storage=use_persistent_storage)
 
-        # 确定报告路径（一次 now 避免时间差）
+        if total_trials == 0:
+            logger.warning("[FactorOptimizer] TPE 搜索无有效 trial")
+            result = self._no_result_report(mode, window, current_weights, persist=use_persistent_storage)
+            self._notify("done", result=result)
+            return result
+
+        # 确定报告路径
         now = datetime.now()
         report_path = _REPORT_DIR / f"optimize_{now.strftime('%Y%m%d_%H%M')}.md"
 
         # Step 3: 护栏检查 + 生成报告
+        self._notify("guardrails", message="Step 3: 护栏检查…")
         report_md, recommendation = self._build_report(
-            mode, window, current_weights, candidates, results, best, report_path)
+            mode, window, current_weights, candidates, all_results, best, report_path, total_trials)
 
-        # 保存报告 + latest.json
-        _REPORT_DIR.mkdir(parents=True, exist_ok=True)
-        report_path.write_text(report_md, encoding="utf-8")
-        self._save_latest(recommendation, current_weights, mode, now.isoformat())
+        # 保存报告 + 元数据（仅持久化模式，避免回测 walk-forward 污染历史）
+        if use_persistent_storage:
+            _REPORT_DIR.mkdir(parents=True, exist_ok=True)
+            report_path.write_text(report_md, encoding="utf-8")
+            self._save_latest(recommendation, current_weights, mode, now.isoformat())
+            self._save_metadata(report_path, now, mode, recommendation, current_weights, auto_apply)
 
-        return {
+        result = {
             "report": report_md,
-            "report_path": str(report_path),
+            "report_path": str(report_path) if use_persistent_storage else "",
             "recommendation": recommendation,
             "baseline": current_weights,
+            "applied": False,
         }
 
+        # 自动应用权重到 .env
+        if auto_apply and recommendation:
+            applied = self.apply_weights(recommendation)
+            result["applied"] = applied
+            if applied:
+                logger.info("[FactorOptimizer] 权重已自动应用到 .env")
+            else:
+                logger.warning("[FactorOptimizer] 自动应用权重失败")
+
+        self._notify("done", result=result)
+        return result
+
     @staticmethod
-    def apply_weights(report_path: str) -> bool:
-        """从报告文件中提取新权重并写入 .env。
+    def apply_weights(source, mode: str = "") -> bool:
+        """写入权重到 .env。
+
+        Args:
+            source: str (报告路径) 或 Dict[str, float] (因子名→新权重)
+            mode: "intraday" 或 "postmarket"。dict 方式必须提供；文件路径时可从报告解析。
 
         Returns: True 如果成功写入。
         """
-        rp = Path(report_path)
-        if not rp.exists():
-            logger.error("[FactorOptimizer] 报告文件不存在: %s", report_path)
-            return False
+        if isinstance(source, dict):
+            changes = source
+            if not mode:
+                logger.error("[FactorOptimizer] dict 方式必须提供 mode 参数")
+                return False
+        else:
+            # 从 Markdown 报告解析权重变更
+            rp = Path(source)
+            if not rp.exists():
+                logger.error("[FactorOptimizer] 报告文件不存在: %s", source)
+                return False
 
-        text = rp.read_text(encoding="utf-8")
-        # 解析权重变更表
-        changes: Dict[str, float] = {}
-        in_table = False
-        for line in text.split("\n"):
-            line = line.strip()
-            if line.startswith("| 因子 |") and "新权重" in line:
-                in_table = True
-                continue
-            if in_table and line.startswith("|-"):
-                continue
-            if in_table and line.startswith("|") and "|" in line[1:]:
-                parts = [p.strip() for p in line.split("|")[1:-1]]
-                if len(parts) >= 3:
-                    fn = parts[0]
-                    try:
-                        nw = float(parts[2])
-                        changes[fn] = nw
-                    except ValueError:
-                        continue
-            elif in_table and not line.startswith("|"):
-                in_table = False
+            text = rp.read_text(encoding="utf-8")
+            # 解析模式
+            if not mode:
+                m = re.search(r'\*\*模式\*\*:\s*(\w+)', text)
+                if m:
+                    mode = m.group(1)
+                else:
+                    mode = "postmarket"  # 回退
+            logger.info("[FactorOptimizer] 从报告解析模式: %s", mode)
+
+            changes: Dict[str, float] = {}
+            in_table = False
+            for line in text.split("\n"):
+                line = line.strip()
+                if line.startswith("| 因子 |") and "新权重" in line:
+                    in_table = True
+                    continue
+                if in_table and line.startswith("|-"):
+                    continue
+                if in_table and line.startswith("|") and "|" in line[1:]:
+                    parts = [p.strip() for p in line.split("|")[1:-1]]
+                    if len(parts) >= 3:
+                        fn = parts[0]
+                        try:
+                            nw = float(parts[2])
+                            changes[fn] = nw
+                        except ValueError:
+                            continue
+                elif in_table and not line.startswith("|"):
+                    in_table = False
 
         if not changes:
-            logger.error("[FactorOptimizer] 报告中未找到权重变更")
+            logger.error("[FactorOptimizer] 未找到权重变更")
             return False
 
         # 备份原 .env
@@ -143,25 +200,35 @@ class FactorOptimizer:
         bak.write_text(_ENV_PATH.read_text(encoding="utf-8"), encoding="utf-8")
         logger.info("[FactorOptimizer] 已备份 .env → %s", bak.name)
 
-        # 替换权重
+        # 替换权重（mode-aware key mapping）
         content = _ENV_PATH.read_text(encoding="utf-8")
         for fn, nw in changes.items():
-            key = _weight_env_key(fn)
+            key = _weight_env_key(fn, mode)
             if key:
                 pattern = re.compile(rf"^{key}=.*$", re.MULTILINE)
-                content = pattern.sub(f"{key}={nw}", content)
+                if pattern.search(content):
+                    content = pattern.sub(f"{key}={nw}", content)
+                else:
+                    # key 不存在则追加
+                    content += f"\n{key}={nw}\n"
+                logger.info("[FactorOptimizer] %s → %s = %s", fn, key, nw)
 
         _ENV_PATH.write_text(content, encoding="utf-8")
-        logger.info("[FactorOptimizer] 已更新 %d 个因子权重到 .env", len(changes))
+        # 同步更新进程环境变量，使运行中的 server 无需重启即可读取新权重
+        for fn, nw in changes.items():
+            key = _weight_env_key(fn, mode)
+            if key:
+                os.environ[key] = str(int(nw))
+        logger.info("[FactorOptimizer] 已更新 %d 个因子权重到 .env (mode=%s)", len(changes), mode)
         return True
 
     # ── Step 1: 单因子筛选 ──
 
     def _screen_factors(self, weights: Dict[str, float], mode: str,
                         window: int) -> Dict[str, Dict]:
-        """对每个因子单独回测，筛选通过回撤+IC 约束的候选。
+        """对每个因子单独回测，筛选通过 IC 约束的候选。
 
-        Returns: {factor_name: {annual_return, max_drawdown, ic_1, ic_5, ...}}
+        仅排除 IC(1d) < 0 的因子，回撤过滤交给 TPE 处理。
         """
         factor_names = list(weights.keys())
         snap_dates = self._get_recent_snap_dates(factor_names, mode, window)
@@ -180,10 +247,11 @@ class FactorOptimizer:
                 if hasattr(s, 'index'):
                     all_codes.update(s.index.tolist())
         self._engine._prefetch_prices(list(all_codes), trading_days)
+        fw_returns = self._engine._precompute_forward_returns(
+            list(all_codes), trading_days, snap_dates, [1, 5], mode)
 
-        candidates = {}
+        entries = {}
         for fn in factor_names:
-            # 构造单因子 scores（权重 100%）
             single = {}
             for sd, ss in scores_by_date.items():
                 if fn in ss and not ss[fn].empty:
@@ -191,39 +259,32 @@ class FactorOptimizer:
             if len(single) < 10:
                 continue
 
-            # IC（1日/5日）
-            ic_1 = self._engine._calc_rank_ic(single, 1, trading_days, mode).get(fn)
-            ic_5 = self._engine._calc_rank_ic(single, 5, trading_days, mode).get(fn)
+            ic_1 = self._engine._calc_rank_ic(single, 1, trading_days, mode, fw_returns).get(fn)
+            ic_5 = self._engine._calc_rank_ic(single, 5, trading_days, mode, fw_returns).get(fn)
 
-            # 负 IC 排除
+            # 仅排除负 IC（方向错误），回撤交给 TPE
             if ic_1 is not None and ic_1 < 0:
                 logger.info("[FactorOptimizer] %s IC(1d)=%.4f 为负，排除", fn, ic_1)
                 continue
 
-            # 收益 & 回撤
             ar, mdd = self._backtest_single(single, fn, 5, snap_dates, trading_days, mode)
             if ar is None:
                 continue
 
-            entry = {"annual_return": ar, "max_drawdown": mdd,
-                     "ic_1": ic_1, "ic_5": ic_5}
-            if mdd <= _MAX_DRAWDOWN:
-                candidates[fn] = entry
+            entries[fn] = {"annual_return": ar, "max_drawdown": mdd,
+                           "ic_1": ic_1, "ic_5": ic_5}
 
         # 按年化收益排序，取 Top N
-        ranked = sorted(candidates.items(), key=lambda x: x[1]["annual_return"], reverse=True)
+        ranked = sorted(entries.items(), key=lambda x: x[1]["annual_return"], reverse=True)
         if len(ranked) > _MAX_CANDIDATES:
             ranked = ranked[:_MAX_CANDIDATES]
 
-        logger.info("[FactorOptimizer] Step 1: %d 通过 → %d 候选", len(candidates), len(ranked))
+        logger.info("[FactorOptimizer] Step 1: %d → %d 候选", len(entries), len(ranked))
         return dict(ranked)
 
     def _backtest_single(self, scores_by_date: Dict, fn: str, hold_days: int,
                          snap_dates: List[str], trading_days: List[str], mode: str):
-        """对单个因子做轻量回测，返回 (年化收益, 最大回撤)。
-
-        使用非重叠持有期，每 hold_days 个交易日开仓一次，避免收益重复计算。
-        """
+        """对单个因子做轻量回测，返回 (年化收益, 最大回撤)。"""
         is_intra = mode == "intraday"
         bf = "close" if is_intra else "open"
         sf = "close" if is_intra else "open"
@@ -266,101 +327,178 @@ class FactorOptimizer:
             if dd > mdd:
                 mdd = dd
 
-        if capital <= 1_000_000.0 or num_trades == 0:
+        if num_trades == 0:
             return None, None
         ar = (capital / 1_000_000.0) ** (252 / (num_trades * hold_days)) - 1
         return round(ar, 4), round(mdd, 4)
 
     def _get_recent_snap_dates(self, factor_names: List[str], mode: str,
-                               window: int) -> List[str]:
-        """获取最近 N 天快照日期。"""
+                               window: int, end_date: str = None) -> List[str]:
+        """获取最近 N 天快照日期。end_date 非空时取该日期及之前最近 window 个。"""
         from src.storage import DatabaseManager, FactorScoreSnapshot
         db = DatabaseManager()
         with db.get_session() as sess:
-            from sqlalchemy import func
-            rows = (sess.query(FactorScoreSnapshot.trade_date)
-                    .filter(FactorScoreSnapshot.mode == mode,
-                            FactorScoreSnapshot.factor_name.in_(factor_names))
-                    .group_by(FactorScoreSnapshot.trade_date)
+            q = (sess.query(FactorScoreSnapshot.trade_date)
+                 .filter(FactorScoreSnapshot.mode == mode,
+                         FactorScoreSnapshot.factor_name.in_(factor_names)))
+            if end_date:
+                q = q.filter(FactorScoreSnapshot.trade_date <= end_date)
+            rows = (q.group_by(FactorScoreSnapshot.trade_date)
                     .order_by(FactorScoreSnapshot.trade_date.desc())
                     .limit(window).all())
             return sorted([r[0] for r in rows])
 
-    # ── Step 2: 权重扰动搜索 ──
+    # ── Step 2: Optuna TPE 搜索 ──
 
-    def _perturbation_search(self, candidates: Dict[str, Dict],
-                             current_weights: Dict[str, float],
-                             mode: str, window: int,
-                             normalize: bool = False) -> Tuple[List[Dict], Optional[Dict]]:
-        """对候选因子在当前权重附近做全组合搜索。
+    def _tpe_search(self, candidates: Dict[str, Dict],
+                    current_weights: Dict[str, float],
+                    mode: str, window: int,
+                    n_trials: int,
+                    normalize: bool = False,
+                    preloaded: Optional[Dict] = None,
+                    use_persistent_storage: bool = True) -> Tuple[List[Dict], Optional[Dict], int]:
+        """用 Optuna TPE 采样搜索最优权重组合。
 
-        Returns: (all_results, best_result)
+        每个 trial 从历史中随机抽 5 个窗口，以平均超额收益（vs 等权基准）
+        为 objective，让 TPE 学到跨行情的鲁棒解。
         """
-        factor_names = list(candidates.keys())
-        # 构建每个因子的权重选项
-        weight_options = {}
-        for fn in factor_names:
-            cw = current_weights.get(fn, 15)
-            opts = set()
-            for step in _PERTURB_STEPS:
-                v = int(cw + step)
-                if _WEIGHT_MIN <= v <= _WEIGHT_MAX:
-                    opts.add(v)
-            weight_options[fn] = sorted(opts)
+        import random as _random
 
-        # 全组合
-        import itertools
-        snap_dates = self._get_recent_snap_dates(
-            list(current_weights.keys()), mode, window)
-        trading_days = self._engine._get_trading_days(snap_dates)
+        candidate_names = list(candidates.keys())
+        all_factor_names = list(current_weights.keys())
+        study_name = f"{mode}_w{window}"
 
-        best = None
-        all_results = []
-        total = 1
-        for opts in weight_options.values():
-            total *= len(opts)
+        if use_persistent_storage:
+            _TPE_STORAGE.parent.mkdir(parents=True, exist_ok=True)
+            storage_url = f"sqlite:///{_TPE_STORAGE}"
+        else:
+            storage_url = None
 
-        logger.info("[FactorOptimizer] Step 2: %d 因子, %d 组合", len(factor_names), total)
+        study = optuna.create_study(
+            direction="maximize",
+            storage=storage_url,
+            study_name=study_name,
+            load_if_exists=use_persistent_storage,
+            sampler=optuna.samplers.TPESampler(seed=42),
+        )
 
-        # 预加载快照（所有因子）
-        all_scores = self._engine._load_snapshots(list(current_weights.keys()), mode, snap_dates)
-        all_codes = set()
-        for ss in all_scores.values():
-            for s in ss.values():
-                if hasattr(s, 'index'):
-                    all_codes.update(s.index.tolist())
-        self._engine._prefetch_prices(list(all_codes), trading_days)
+        if preloaded:
+            all_snap_dates = preloaded["snap_dates"]
+            all_scores = preloaded["scores"]
+            full_tdays = preloaded["trading_days"]
+            _window_pool = preloaded["window_pool"]
+        else:
+            # 预加载全量历史数据
+            self._notify("preload", message="加载历史快照日期…")
+            all_snap_dates = self._get_recent_snap_dates(all_factor_names, mode, 9999)
+            if len(all_snap_dates) < window:
+                logger.warning("[FactorOptimizer] 历史数据不足 %d 日（仅 %d），使用全部", window, len(all_snap_dates))
 
-        keys = list(weight_options.keys())
-        for combo_idx, combo_vals in enumerate(itertools.product(*weight_options.values())):
-            combo = dict(zip(keys, combo_vals))
-            # 合并当前权重（候选之外保持原值）
+            self._notify("preload", message=f"加载因子得分 ({len(all_snap_dates)} 日)…")
+            all_scores = self._engine._load_snapshots(all_factor_names, mode, all_snap_dates)
+
+            all_codes = set()
+            for ss in all_scores.values():
+                for s in ss.values():
+                    if hasattr(s, 'index'):
+                        all_codes.update(s.index.tolist())
+
+            self._notify("preload", message=f"预取价格数据 ({len(all_codes)} 只)…")
+            full_tdays = self._engine._get_trading_days(all_snap_dates)
+            self._engine._prefetch_prices(list(all_codes), full_tdays)
+
+            # 预建窗口池：从全部历史日期切片 60 日窗口
+            self._notify("preload", message="构建窗口池…")
+            _window_pool: List[List[str]] = []
+            w = window
+            for i in range(w - 1, len(all_snap_dates), 5):
+                seg = all_snap_dates[max(0, i - w + 1): i + 1]
+                if len(seg) >= 30:
+                    _window_pool.append(seg)
+            if not _window_pool and len(all_snap_dates) >= 20:
+                _window_pool = [all_snap_dates]
+
+        logger.info("[FactorOptimizer] 窗口池: %d 个候选 (window=%d, dates=%d)",
+                    len(_window_pool), window, len(all_snap_dates))
+
+        all_results: List[Dict] = []
+        best: Optional[Dict] = None
+        best_excess_mdd_cache: Dict[str, float] = {}
+
+        def objective(trial: optuna.trial.Trial) -> float:
+            nonlocal best
             full_weights = dict(current_weights)
-            full_weights.update(combo)
+            for fn in candidate_names:
+                full_weights[fn] = trial.suggest_int(fn, _WEIGHT_MIN, _WEIGHT_MAX)
 
-            ar, mdd, sharpe, wr = self._evaluate_combo(
-                full_weights, all_scores, snap_dates, trading_days, mode)
-            if ar is None:
-                continue
+            excesses: List[float] = []
+            n_pick = min(5, len(_window_pool))
+            chosen = _random.sample(_window_pool, n_pick)
+            for w_dates in chosen:
+                w_tdays = self._engine._get_trading_days(w_dates)
+                ar, mdd, _, _, base_ar = self._evaluate_combo(
+                    full_weights, all_scores, w_dates, w_tdays, mode)
+                if ar is not None and base_ar is not None and mdd is not None:
+                    excesses.append(ar - base_ar)
 
-            entry = {"weights": full_weights, "annual_return": ar,
-                     "max_drawdown": mdd, "sharpe": sharpe, "win_rate": wr}
+            if not excesses:
+                return -999.0
+
+            excess = float(np.mean(excesses))
+            entry = {"weights": dict(full_weights), "excess_return": excess}
             all_results.append(entry)
 
-            if mdd <= _MAX_DRAWDOWN:
-                if best is None or ar > best["annual_return"]:
-                    best = entry
+            if best is None or excess > best.get("excess_return", -999):
+                best = entry
+                best_excess_mdd_cache.clear()
 
-            # 进度日志（每 20%）
-            if total > 100 and combo_idx % max(1, total // 5) == 0:
-                logger.info("[FactorOptimizer] Step 2: %d/%d", combo_idx + 1, total)
+            return excess
 
-        # 兜底：放宽回撤
+        def _tpe_callback(study_opt: optuna.Study, trial: optuna.trial.FrozenTrial):
+            self._notify("tpe", trial=len(study_opt.trials), n_trials=n_trials,
+                         best_value=study_opt.best_value if study_opt.best_value > -900 else None)
+
+        logger.info("[FactorOptimizer] Step 2: %d 因子, %d trials (study=%s)",
+                    len(candidate_names), n_trials, study_name)
+
+        study.optimize(objective, n_trials=n_trials, callbacks=[_tpe_callback], n_jobs=1)
+
+        total_trials = len(study.trials)
+
+        # TPE 完成后，用最新窗口评估最佳权重，获取度量用于报告护栏
+        latest_snap_dates = all_snap_dates[-window:] if len(all_snap_dates) >= window else all_snap_dates
+        latest_tdays = self._engine._get_trading_days(latest_snap_dates)
+        if best and best.get("weights"):
+            l_ar, l_mdd, l_sharpe, l_wr, l_base = self._evaluate_combo(
+                best["weights"], all_scores, latest_snap_dates, latest_tdays, mode)
+            if l_ar is not None:
+                best["annual_return"] = l_ar
+                best["max_drawdown"] = l_mdd if l_mdd is not None else 0
+                best["sharpe"] = l_sharpe if l_sharpe is not None else 0
+                best["win_rate"] = l_wr if l_wr is not None else 0
+                best["baseline_return"] = l_base if l_base is not None else 0
+                best["excess_return"] = l_ar - (l_base or l_ar)
+            else:
+                best["annual_return"] = 0.0
+                best["max_drawdown"] = 0.0
+                best["sharpe"] = 0.0
+                best["win_rate"] = 0.0
+                best["baseline_return"] = 0.0
+
+        # 兜底：放宽回撤（基于最新窗口的 max_drawdown）
         if best is None:
-            logger.warning("[FactorOptimizer] -20%% 约束无有效组合，放宽至 -25%%")
+            logger.warning("[FactorOptimizer] 无有效组合，放宽回撤约束")
             for entry in all_results:
-                if entry["max_drawdown"] <= _MAX_DRAWDOWN_FALLBACK:
-                    if best is None or entry["annual_return"] > best["annual_return"]:
+                if not entry.get("weights"):
+                    continue
+                l_ar, l_mdd, l_sh, l_wr, _ = self._evaluate_combo(
+                    entry["weights"], all_scores, latest_snap_dates, latest_tdays, mode)
+                if l_ar is not None and l_mdd is not None and l_mdd <= _MAX_DRAWDOWN_FALLBACK:
+                    if best is None or l_ar > best.get("annual_return", -999):
+                        entry["annual_return"] = l_ar
+                        entry["max_drawdown"] = l_mdd
+                        entry["sharpe"] = l_sh
+                        entry["win_rate"] = l_wr
                         best = entry
 
         if best:
@@ -368,8 +506,9 @@ class FactorOptimizer:
             if normalize:
                 self._normalize_weights(best, current_weights)
 
-        logger.info("[FactorOptimizer] Step 2 完成: %d 有效组合", len(all_results))
-        return all_results, best
+        logger.info("[FactorOptimizer] Step 2 完成: %d trials, %d 有效",
+                    total_trials, len(all_results))
+        return all_results, best, total_trials
 
     def _normalize_weights(self, best: Dict, current_weights: Dict[str, float]) -> None:
         """将最优组合权重按比例缩放到原总权重，保持零和重分配。"""
@@ -384,7 +523,6 @@ class FactorOptimizer:
             nv = max(_WEIGHT_MIN, min(_WEIGHT_MAX, round(v * scale)))
             normalized[k] = nv
 
-        # 四舍五入后补足差值（从最大权重项吸收）
         diff = orig_total - sum(normalized.values())
         if diff != 0:
             largest = max(normalized, key=lambda k: normalized[k])
@@ -396,12 +534,9 @@ class FactorOptimizer:
         best["weights"] = normalized
         best["weights_normalized"] = True
 
-    def _evaluate_combo(self, weights: Dict[str, float], all_scores: Dict,
-                        snap_dates: List[str], trading_days: List[str], mode: str):
-        """评估一组权重的回测表现。
-
-        使用非重叠持有期，每 hold_days 个交易日开仓一次。
-        """
+    def _eval_weights(self, weights: Dict[str, float], all_scores: Dict,
+                      snap_dates: List[str], trading_days: List[str], mode: str):
+        """评估一组权重的回测表现，返回 (ar, mdd, sharpe, wr) 或 (None*4)。"""
         is_intra = mode == "intraday"
         bf = "close" if is_intra else "open"
         sf = "close" if is_intra else "open"
@@ -452,7 +587,7 @@ class FactorOptimizer:
             if dd > mdd:
                 mdd = dd
 
-        if capital <= 1_000_000.0 or not daily_returns:
+        if not daily_returns:
             return None, None, None, None
 
         num_trades = len(daily_returns)
@@ -463,6 +598,17 @@ class FactorOptimizer:
 
         return round(ar, 4), round(mdd, 4), round(sharpe, 4), round(wr, 4)
 
+    def _evaluate_combo(self, weights: Dict[str, float], all_scores: Dict,
+                        snap_dates: List[str], trading_days: List[str], mode: str):
+        """评估权重组合 + 等权基准，返回 (ar, mdd, sharpe, wr, baseline_ar)。"""
+        ar, mdd, sharpe, wr = self._eval_weights(weights, all_scores, snap_dates, trading_days, mode)
+        if ar is None:
+            return None, None, None, None, None
+
+        eq_weights = {fn: 1.0 for fn in weights}
+        base_ar, _, _, _ = self._eval_weights(eq_weights, all_scores, snap_dates, trading_days, mode)
+        return ar, mdd, sharpe, wr, base_ar if base_ar is not None else ar
+
     # ── Step 3 + 护栏: 报告生成 ──
 
     def _build_report(self, mode: str, window: int,
@@ -470,7 +616,8 @@ class FactorOptimizer:
                       candidates: Dict[str, Dict],
                       all_results: List[Dict],
                       best: Optional[Dict],
-                      report_path: Path) -> Tuple[str, Dict[str, float]]:
+                      report_path: Path,
+                      total_trials: int = 0) -> Tuple[str, Dict[str, float]]:
         """生成 Markdown 报告 + 推荐权重。"""
         now = datetime.now()
         lines = [
@@ -479,6 +626,7 @@ class FactorOptimizer:
             f"**日期**: {now.strftime('%Y-%m-%d %H:%M')}",
             f"**模式**: {mode}",
             f"**回测窗口**: 最近 {window} 个交易日",
+            f"**优化算法**: Optuna TPE",
             "",
         ]
 
@@ -500,10 +648,9 @@ class FactorOptimizer:
 
         # ── Step 2 最优组合 ──
         lines.append("")
-        lines.append("## Step 2 最优组合")
+        lines.append("## Step 2 最优组合（TPE）")
         lines.append("")
 
-        # 稳定性检查
         prev = self._load_latest(mode)
         stability: Dict[str, str] = {}
 
@@ -548,7 +695,6 @@ class FactorOptimizer:
             else:
                 lines.append(f"| {fn} | {cw} | {cw} | 0 | — | — | — (未参与) |")
 
-        # 稳定性注释
         for fn, st in stability.items():
             if "跳过" in st:
                 prev_delta = prev.get("deltas", {}).get(fn, 0) if prev else "?"
@@ -573,14 +719,11 @@ class FactorOptimizer:
             cs = current_eval.get("sharpe", 0)
             bs = best.get("sharpe", 0)
             lines.append(f"| 夏普比率 | {cs:.4f} | {bs:.4f} | {bs-cs:+.4f} |")
-            cw = current_eval.get("win_rate", 0)
-            bw = best.get("win_rate", 0)
-            lines.append(f"| 胜率 | {cw:.1%} | {bw:.1%} | {bw-cw:+.1%} |")
+            cw_val = current_eval.get("win_rate", 0)
+            bw_val = best.get("win_rate", 0)
+            lines.append(f"| 胜率 | {cw_val:.1%} | {bw_val:.1%} | {bw_val-cw_val:+.1%} |")
 
-        # 搜索统计
-        total_combos = len(all_results)
-        valid_combos = sum(1 for r in all_results if r["max_drawdown"] <= _MAX_DRAWDOWN)
-        lines.append(f"\n搜索: {len(candidates)} 因子 × 5 档 = {total_combos} 组合, 有效 {valid_combos} 个")
+        lines.append(f"\n搜索: {len(candidates)} 因子 × TPE {total_trials} trials, 有效 {len(all_results)} 个")
 
         # ── 护栏 D: 相关性提示 ──
         corr_warnings = self._check_correlations(best["weights"], current_weights, mode, window)
@@ -598,21 +741,18 @@ class FactorOptimizer:
         lines.append("| 护栏 | 状态 |")
         lines.append("|------|------|")
 
-        # A: 最小改进阈值
         imp = best["annual_return"] - (current_eval.get("annual_return", 0) if current_eval else 0)
         if imp < _MIN_IMPROVEMENT:
             lines.append(f"| 最小改进阈值 (≥1%) | ⚠️ 改进不足 (+{imp:.1%})，建议保持当前权重 |")
         else:
             lines.append(f"| 最小改进阈值 (≥1%) | ✅ +{imp:.1%} |")
 
-        # B: 稳定性
         unstable = [fn for fn, st in stability.items() if "跳过" in st]
         if unstable:
             lines.append(f"| 稳定性 | ⚠️ {', '.join(unstable)} 跳过 |")
         else:
             lines.append("| 稳定性 | ✅ |")
 
-        # 兜底
         if best.get("fallback_triggered"):
             lines.append("| 兜底 (-25%) | ⚠️ 已触发 |")
         else:
@@ -668,7 +808,7 @@ class FactorOptimizer:
         snap_dates = self._get_recent_snap_dates(list(weights.keys()), mode, window)
         trading_days = self._engine._get_trading_days(snap_dates)
         all_scores = self._engine._load_snapshots(list(weights.keys()), mode, snap_dates)
-        ar, mdd, sharpe, wr = self._evaluate_combo(weights, all_scores, snap_dates, trading_days, mode)
+        ar, mdd, sharpe, wr, _ = self._evaluate_combo(weights, all_scores, snap_dates, trading_days, mode)
         if ar is not None:
             return {"annual_return": ar, "max_drawdown": mdd, "sharpe": sharpe, "win_rate": wr}
         return None
@@ -714,7 +854,8 @@ class FactorOptimizer:
     # ── 无结果报告 ──
 
     def _no_result_report(self, mode: str, window: int,
-                          current_weights: Dict[str, float]) -> Dict:
+                          current_weights: Dict[str, float],
+                          persist: bool = True) -> Dict:
         """生成无结果时的报告。"""
         now = datetime.now()
         lines = [
@@ -731,10 +872,13 @@ class FactorOptimizer:
             "建议扩大回测窗口或检查因子数据完整性。",
         ]
         report_md = "\n".join(lines)
-        rp = _REPORT_DIR / f"optimize_{now.strftime('%Y%m%d_%H%M')}.md"
-        _REPORT_DIR.mkdir(parents=True, exist_ok=True)
-        rp.write_text(report_md, encoding="utf-8")
-        return {"report": report_md, "report_path": str(rp),
+        report_path_str = ""
+        if persist:
+            rp = _REPORT_DIR / f"optimize_{now.strftime('%Y%m%d_%H%M')}.md"
+            _REPORT_DIR.mkdir(parents=True, exist_ok=True)
+            rp.write_text(report_md, encoding="utf-8")
+            report_path_str = str(rp)
+        return {"report": report_md, "report_path": report_path_str,
                 "recommendation": {}, "baseline": current_weights}
 
     # ── 稳定性持久化 ──
@@ -766,18 +910,39 @@ class FactorOptimizer:
             pass
         return None
 
+    @staticmethod
+    def _save_metadata(report_path: Path, now: datetime, mode: str,
+                       recommendation: Dict[str, float],
+                       baseline: Dict[str, float],
+                       applied: bool):
+        """保存元数据 JSON，方便 API 读取（无需解析 Markdown）。"""
+        meta = {
+            "report_path": str(report_path),
+            "timestamp": now.isoformat(),
+            "mode": mode,
+            "recommendation": recommendation,
+            "baseline": baseline,
+            "applied": applied,
+        }
+        meta_path = report_path.with_suffix(".json")
+        meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+
 
 # ── 工具函数 ──
 
-def _weight_env_key(factor_name: str) -> Optional[str]:
-    """因子名 → .env key 映射。"""
+def _weight_env_key(factor_name: str, mode: str = "postmarket") -> Optional[str]:
+    """因子名 → .env key 映射（区分盘中/盘后模式）。
+
+    intraday popularity → DISCOVER_WEIGHT_POPULARITY_INTRADAY
+    postmarket popularity → DISCOVER_WEIGHT_POPULARITY_POSTMARKET
+    intraday ranking_momentum → DISCOVER_WEIGHT_RANKING_MOMENTUM (无后缀)
+    postmarket ranking_momentum → DISCOVER_WEIGHT_RANKING_MOMENTUM_POSTMARKET
+    """
     mapping = {
         "sector": "DISCOVER_WEIGHT_SECTOR",
         "ma_entry": "DISCOVER_WEIGHT_MA_ENTRY",
         "momentum": "DISCOVER_WEIGHT_MOMENTUM",
         "rebound": "DISCOVER_WEIGHT_REBOUND",
-        "popularity": "DISCOVER_WEIGHT_POPULARITY_POSTMARKET",
-        "ranking_momentum": "DISCOVER_WEIGHT_RANKING_MOMENTUM_POSTMARKET",
         "money_flow": "DISCOVER_WEIGHT_MONEYFLOW",
         "margin": "DISCOVER_WEIGHT_MARGIN",
         "chip": "DISCOVER_WEIGHT_CHIP",
@@ -791,6 +956,10 @@ def _weight_env_key(factor_name: str) -> Optional[str]:
         "institution_hold": "DISCOVER_WEIGHT_INSTITUTION_HOLD",
         "fundamental": "DISCOVER_WEIGHT_FUNDAMENTAL",
     }
+    if factor_name == "popularity":
+        return f"DISCOVER_WEIGHT_POPULARITY_{'INTRADAY' if mode == 'intraday' else 'POSTMARKET'}"
+    if factor_name == "ranking_momentum":
+        return f"DISCOVER_WEIGHT_RANKING_MOMENTUM{'_POSTMARKET' if mode == 'postmarket' else ''}"
     key = mapping.get(factor_name)
     if key:
         return key

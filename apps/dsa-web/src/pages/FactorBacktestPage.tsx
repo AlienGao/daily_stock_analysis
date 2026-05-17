@@ -1,11 +1,11 @@
 import type React from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dayjs from 'dayjs';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
   BarChart, Bar, CartesianGrid,
 } from 'recharts';
-import { DatePicker, Segmented, Table, InputNumber, Checkbox } from 'antd';
+import { DatePicker, Segmented, Table, InputNumber, Checkbox, Switch } from 'antd';
 import { Activity, Download, Play, Loader2 } from 'lucide-react';
 import { AppPage, Card, StatCard, EmptyState, ApiErrorAlert } from '../components/common';
 import { discoveryApi, type FactorSnapshotDatesResponse, type FactorBacktestResultResponse, type FactorBacktestCapitalPoint, type FactorBacktestTrade } from '../api/discovery';
@@ -38,9 +38,16 @@ function fmtMoney(v: number): string {
 
 const CAPITAL_COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444'];
 
+const BT_TASK_KEY = 'factor_backtest_task';
+const BT_RESULT_KEY = 'factor_backtest_result';
+
 const FactorBacktestPage: React.FC = () => {
+  const isOwnerRef = useRef(false);
+  const abortRef = useRef(false);
+
   const [mode, setMode] = useState<TabKey>('postmarket');
   const [loading, setLoading] = useState(false);
+  const [progressMsg, setProgressMsg] = useState('');
   const [error, setError] = useState<ParsedApiError | null>(null);
 
   // snapshot data
@@ -59,6 +66,8 @@ const FactorBacktestPage: React.FC = () => {
   const [initialCapital, setInitialCapital] = useState(1_000_000);
   const [riskFreeRate, setRiskFreeRate] = useState(2.0);
   const [usePipeline, setUsePipeline] = useState(true);
+  const [reoptimize, setReoptimize] = useState(false);
+  const [quickRange, setQuickRange] = useState<number | null>(null);
 
   // result
   const [result, setResult] = useState<FactorBacktestResultResponse | null>(null);
@@ -71,9 +80,32 @@ const FactorBacktestPage: React.FC = () => {
     discoveryApi.getFactorSnapshotDates(mode).then((data) => {
       if (cancelled) return;
       setSnapData(data);
-      setResult(null);
       setError(null);
-      // init selection: all checked, 0 weight (use default)
+      // 恢复缓存的回测结果（无活跃任务 & 模式匹配时）
+      let restored = false;
+      const taskRaw = localStorage.getItem(BT_TASK_KEY);
+      if (!taskRaw) {
+        const cachedRaw = localStorage.getItem(BT_RESULT_KEY);
+        if (cachedRaw) {
+          try {
+            const cached = JSON.parse(cachedRaw);
+            if (cached.result && cached.mode === mode) {
+              setResult(cached.result);
+              const sc: Record<string, boolean> = {};
+              for (const k of Object.keys(cached.result.capital_curves)) sc[k] = true;
+              setSelectedCurves(sc);
+              restored = true;
+            } else {
+              setResult(null);
+            }
+          } catch { setResult(null); }
+        } else {
+          setResult(null);
+        }
+      } else {
+        setResult(null);
+      }
+      // init selection: all checked, use cached defaults first
       const sf: Record<string, boolean> = {};
       const fw: Record<string, number> = {};
       for (const f of data.factors) {
@@ -86,12 +118,125 @@ const FactorBacktestPage: React.FC = () => {
         setStartDate(data.global.available_from);
         setEndDate(data.global.available_to);
       }
-      setSelectedCurves({});
+      if (!restored) setSelectedCurves({});
+      // 同步拉取 .env 实时权重覆盖缓存默认值
+      discoveryApi.getFactorWeights(mode).then((wData) => {
+        if (cancelled) return;
+        const liveFw: Record<string, number> = { ...fw };
+        for (const [fn, w] of Object.entries(wData.weights)) {
+          liveFw[fn] = w;
+        }
+        setFactorWeights(liveFw);
+      }).catch(() => {});
     }).catch((e) => {
       if (!cancelled) setError(getParsedApiError(e));
     });
     return () => { cancelled = true; };
   }, [mode]);
+
+  // quick range → auto-set start/end dates from trading_dates
+  useEffect(() => {
+    if (!quickRange || !snapData?.global.trading_dates?.length) return;
+    const tds = snapData.global.trading_dates;
+    const end = tds[tds.length - 1];
+    const startIdx = Math.max(0, tds.length - quickRange);
+    const start = tds[startIdx];
+    setStartDate(start);
+    setEndDate(end);
+  }, [quickRange, snapData]);
+
+  // cross-tab backtest sync: resume polling on mount or when another tab starts one
+  useEffect(() => {
+    let active = true;
+    const run = async () => {
+      const raw = localStorage.getItem(BT_TASK_KEY);
+      if (!raw || isOwnerRef.current) return;
+      let taskId = '';
+      let taskMode = '';
+      try {
+        const parsed = JSON.parse(raw);
+        taskId = parsed.task_id;
+        taskMode = parsed.mode || '';
+      } catch { return; }
+      if (!taskId) return;
+
+      setLoading(true);
+      setProgressMsg('');
+      setError(null);
+      setResult(null);
+
+      try {
+        const poll = async (): Promise<FactorBacktestResultResponse> => {
+          if (!active) throw new Error('aborted');
+          const status = await discoveryApi.getFactorBacktestStatus(taskId);
+          if (!active) throw new Error('aborted');
+          if (status.status_message) setProgressMsg(status.status_message);
+          if (status.status === 'completed' && status.result) return status.result;
+          if (status.status === 'failed') throw new Error(status.error || '回测失败');
+          await new Promise((r) => setTimeout(r, 1000));
+          return poll();
+        };
+        const data = await poll();
+        if (!active) return;
+        setResult(data);
+        const sc: Record<string, boolean> = {};
+        for (const k of Object.keys(data.capital_curves)) sc[k] = true;
+        setSelectedCurves(sc);
+        const isDyn = data.params.reoptimize_interval != null;
+        setSummaryPeriod(isDyn ? `${Math.min(...holdDays)}_fixed` : String(Math.min(...holdDays)));
+        localStorage.setItem(BT_RESULT_KEY, JSON.stringify({ result: data, mode: taskMode }));
+        localStorage.removeItem(BT_TASK_KEY);
+      } catch (e) {
+        if (active && (e as Error).message !== 'aborted') {
+          setError(getParsedApiError(e));
+          localStorage.removeItem(BT_TASK_KEY);
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+          setProgressMsg('');
+        }
+      }
+    };
+
+    run();
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === BT_TASK_KEY) {
+        if (!localStorage.getItem(BT_TASK_KEY)) {
+          // task cleared → reset loading if we were polling (not owner) and restore cached result
+          if (!isOwnerRef.current && active) {
+            setLoading(false);
+            setProgressMsg('');
+            const cachedRaw = localStorage.getItem(BT_RESULT_KEY);
+            if (cachedRaw) {
+              try {
+                const cached = JSON.parse(cachedRaw);
+                if (cached.result) {
+                  setResult(cached.result);
+                  const sc: Record<string, boolean> = {};
+                  for (const k of Object.keys(cached.result.capital_curves)) sc[k] = true;
+                  setSelectedCurves(sc);
+                }
+              } catch { /* ignore parse errors */ }
+            }
+          }
+        } else {
+          run();
+        }
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => {
+      active = false;
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [holdDays]);
+
+  // abort owner poll on unmount
+  useEffect(() => {
+    return () => { abortRef.current = true; };
+  }, []);
 
   // compute date range intersection + bottleneck
   const bottleneckFactor = useMemo(() => {
@@ -129,9 +274,13 @@ const FactorBacktestPage: React.FC = () => {
 
   // run backtest
   const handleRun = useCallback(async () => {
+    isOwnerRef.current = true;
+    abortRef.current = false;
     setLoading(true);
+    setProgressMsg('');
     setError(null);
     setResult(null);
+    localStorage.removeItem(BT_RESULT_KEY);
     try {
       const fw: Record<string, number> = {};
       for (const fn of activeFactors) {
@@ -148,11 +297,19 @@ const FactorBacktestPage: React.FC = () => {
         initial_capital: initialCapital,
         risk_free_rate: riskFreeRate / 100,
         use_pipeline: usePipeline,
+        reoptimize_interval: reoptimize ? 5 : null,
       });
+
+      localStorage.setItem(BT_TASK_KEY, JSON.stringify({ task_id, mode, started_at: Date.now() }));
 
       // poll until complete
       const poll = async (): Promise<FactorBacktestResultResponse> => {
+        if (abortRef.current) throw new Error('aborted');
         const status = await discoveryApi.getFactorBacktestStatus(task_id);
+        if (abortRef.current) throw new Error('aborted');
+        if (status.status_message) {
+          setProgressMsg(status.status_message);
+        }
         if (status.status === 'completed' && status.result) {
           return status.result;
         }
@@ -171,13 +328,23 @@ const FactorBacktestPage: React.FC = () => {
         sc[k] = true;
       }
       setSelectedCurves(sc);
-      setSummaryPeriod(String(Math.min(...holdDays)));
+      const isDyn = data.params.reoptimize_interval != null;
+      setSummaryPeriod(isDyn ? `${Math.min(...holdDays)}_fixed` : String(Math.min(...holdDays)));
+      localStorage.setItem(BT_RESULT_KEY, JSON.stringify({ result: data, mode }));
     } catch (e) {
-      setError(getParsedApiError(e));
+      if ((e as Error).message !== 'aborted') {
+        setError(getParsedApiError(e));
+      }
     } finally {
       setLoading(false);
+      setProgressMsg('');
+      /* 仅任务真正完成/失败时清理标记；卸载中止时保留以便回页恢复轮询 */
+      if (!abortRef.current) {
+        localStorage.removeItem(BT_TASK_KEY);
+        isOwnerRef.current = false;
+      }
     }
-  }, [mode, activeFactors, factorWeights, startDate, endDate, topN, holdDays, initialCapital, riskFreeRate, usePipeline]);
+  }, [mode, activeFactors, factorWeights, startDate, endDate, topN, holdDays, initialCapital, riskFreeRate, usePipeline, reoptimize]);
 
   // 切换持有期 → 曲线联动
   useEffect(() => {
@@ -224,7 +391,7 @@ const FactorBacktestPage: React.FC = () => {
     const sorted = Array.from(allDates).sort();
     const data: Record<string, string | number | undefined>[] = [];
     for (const d of sorted) {
-      const row: Record<string, string | number | undefined> = { date: d.slice(4) };
+      const row: Record<string, string | number | undefined> = { date: `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}` };
       for (const kd of Object.keys(result.capital_curves)) {
         if (!selectedCurves[kd]) continue;
         const curve = result.capital_curves[kd];
@@ -258,35 +425,96 @@ const FactorBacktestPage: React.FC = () => {
     _pipeline: '管线综合',
   };
 
+  const isDynamicMode = result?.params.reoptimize_interval != null;
+
   const periodStats = useMemo(() => {
     if (!result) return {};
-    const stats: Record<string, { closed: FactorBacktestTrade[]; wr: number; cumRet: number; mdd: number; annRet: number }> = {};
+    const stats: Record<string, { closed: FactorBacktestTrade[]; wr: number; cumRet: number; mdd: number; mddStart: string; mddEnd: string; annRet: number; finalCapital: number; sharpe: number; totalTrades: number }> = {};
     const hds = [...new Set(result.trade_records.map((t: FactorBacktestTrade) => t.hold_days))].sort();
-    for (const hd of hds) {
-      const trades = result.trade_records.filter((t: FactorBacktestTrade) => t.hold_days === hd);
+
+    const computeStats = (curveKey: string, trades: FactorBacktestTrade[]) => {
+      const curve = result.capital_curves[curveKey] || [];
       const closed = trades.filter((t: FactorBacktestTrade) => t.status === 'closed' || t.status === 'extended');
       const wins = closed.filter((t: FactorBacktestTrade) => t.return_pct > 0).length;
       const wr = closed.length > 0 ? wins / closed.length : 0;
-      // 从资金曲线终点算（考虑仓位分配）
-      const curve = result.capital_curves[String(hd)] || [];
-      const cumRet = curve.length > 1 ? (curve[curve.length - 1].capital / result.params.initial_capital) - 1 : 0;
-      const annRet = cumRet > -1 && curve.length > 1 ? (1 + cumRet) ** (252 / (curve.length - 1)) - 1 : 0;
-      
-      // max drawdown
-      let peak = result.params.initial_capital, mdd = 0;
-      for (const pt of curve) {
-        if (pt.capital > peak) peak = pt.capital;
-        const dd = peak > 0 ? (peak - pt.capital) / peak : 0;
-        if (dd > mdd) mdd = dd;
+      const finalCapital = curve.length > 0 ? curve[curve.length - 1].capital : result.params.initial_capital;
+      const cumRet = (finalCapital / result.params.initial_capital) - 1;
+      let annRet = 0;
+      if (cumRet > -1 && curve.length > 1) {
+        const logAr = Math.log1p(cumRet) * 252 / (curve.length - 1);
+        annRet = logAr < 700 ? Math.exp(logAr) - 1 : Infinity;
       }
-      stats[String(hd)] = { closed, wr, cumRet, mdd, annRet };
+      let peak = result.params.initial_capital, mdd = 0, mddStart = '', mddEnd = '';
+      let peakDate = curve[0]?.date || '', ddStart = '';
+      for (const pt of curve) {
+        if (pt.capital > peak) { peak = pt.capital; peakDate = pt.date; }
+        const dd = peak > 0 ? (peak - pt.capital) / peak : 0;
+        if (dd > 0 && !ddStart) ddStart = pt.date;
+        if (dd > mdd) { mdd = dd; mddStart = ddStart || peakDate; mddEnd = pt.date; }
+        if (dd === 0) ddStart = '';
+      }
+      let sharpe = 0;
+      if (curve.length > 1) {
+        const drs: number[] = [];
+        for (let i = 1; i < curve.length; i++) {
+          drs.push((curve[i].capital - curve[i - 1].capital) / curve[i - 1].capital);
+        }
+        const avgDr = drs.reduce((a, b) => a + b, 0) / drs.length;
+        const stdDr = Math.sqrt(drs.reduce((s, r) => s + (r - avgDr) ** 2, 0) / drs.length);
+        sharpe = stdDr > 0 ? (avgDr / stdDr) * Math.sqrt(252) : 0;
+      }
+      return { closed, wr, cumRet, mdd, mddStart, mddEnd, annRet, finalCapital, sharpe, totalTrades: trades.length };
+    };
+
+    for (const hd of hds) {
+      const trades = result.trade_records.filter((t: FactorBacktestTrade) => t.hold_days === hd);
+      if (isDynamicMode) {
+        const fixedTrades = trades.filter((t: any) => !t.reoptimized);
+        const dynamicTrades = trades.filter((t: any) => t.reoptimized);
+        stats[`${hd}_fixed`] = computeStats(`${hd}_fixed`, fixedTrades);
+        stats[`${hd}_dynamic`] = computeStats(`${hd}_dynamic`, dynamicTrades);
+      } else {
+        stats[String(hd)] = computeStats(String(hd), trades);
+      }
     }
     return stats;
-  }, [result]);
+  }, [result, isDynamicMode]);
 
-  const currentStats = periodStats[summaryPeriod];
+  const currentStats = isDynamicMode
+    ? periodStats[`${summaryPeriod}_fixed`]
+    : periodStats[summaryPeriod];
+  const currentDynamicStats = isDynamicMode
+    ? periodStats[`${summaryPeriod}_dynamic`]
+    : undefined;
 
   const [icSortOrder, setIcSortOrder] = useState<'descend' | 'ascend'>('descend');
+
+  /* 长周期收缩：交易日 > 120 时默认只展示最近 120 日 */
+  const [showAllHistory, setShowAllHistory] = useState(false);
+
+  const maxTradingDays = useMemo(() => {
+    if (!result) return 0;
+    return Math.max(0, ...Object.values(result.capital_curves).map((c) => c.length));
+  }, [result]);
+
+  const recentCutoffDate = useMemo(() => {
+    if (!result || maxTradingDays <= 120 || showAllHistory) return null;
+    const curves = Object.values(result.capital_curves);
+    const longest = curves.reduce((a, b) => (a.length >= b.length ? a : b), [] as FactorBacktestCapitalPoint[]);
+    if (longest.length <= 120) return null;
+    return longest[longest.length - 120].date;
+  }, [result, maxTradingDays, showAllHistory]);
+
+  const displayChartData = useMemo(() => {
+    if (!chartData || !recentCutoffDate) return chartData;
+    return chartData.filter((d) => (d.date as string).replace(/-/g, '') >= recentCutoffDate);
+  }, [chartData, recentCutoffDate]);
+
+  const displayTrades = useMemo(() => {
+    if (!result) return [];
+    if (!recentCutoffDate) return result.trade_records;
+    return result.trade_records.filter((t: FactorBacktestTrade) => t.trade_date >= recentCutoffDate);
+  }, [result, recentCutoffDate]);
 
   const icData = useMemo(() => {
     if (!result?.rank_ic) return null;
@@ -304,8 +532,12 @@ const FactorBacktestPage: React.FC = () => {
   const tradeColumns = [
     { title: '信号日', dataIndex: 'trade_date', key: 'trade_date', width: 100 },
     { title: '持有期', dataIndex: 'hold_days', key: 'hold_days', width: 70 },
-    { title: '代码', dataIndex: 'stock_code', key: 'stock_code', width: 90 },
-    { title: '名称', dataIndex: 'stock_name', key: 'stock_name', width: 100 },
+    { title: '股票', key: 'stock', width: 110, render: (_: unknown, r: FactorBacktestTrade) => (
+      <div className="leading-tight">
+        <div>{r.stock_name}</div>
+        <div className="text-xs text-secondary-text">{r.stock_code}</div>
+      </div>
+    )},
     { title: '买入价', dataIndex: 'buy_price', key: 'buy_price', width: 80, render: (_: unknown, r: FactorBacktestTrade) => r.status === 'pending' ? '--' : r.buy_price },
     { title: '卖出日', dataIndex: 'sell_date', key: 'sell_date', width: 100, render: (_: unknown, r: FactorBacktestTrade) => r.status === 'pending' ? '--' : r.sell_date },
     { title: '卖出价', dataIndex: 'sell_price', key: 'sell_price', width: 80, render: (_: unknown, r: FactorBacktestTrade) => r.status === 'pending' ? '--' : r.sell_price },
@@ -362,7 +594,7 @@ const FactorBacktestPage: React.FC = () => {
               )}
 
               <div className="max-h-[560px] overflow-y-auto space-y-1.5 pr-1">
-                {snapData?.factors.map((f) => (
+                {[...(snapData?.factors ?? [])].sort((a, b) => (factorWeights[b.name] ?? 0) - (factorWeights[a.name] ?? 0)).map((f) => (
                   <div key={f.name} className="flex items-center gap-2 py-1">
                     <Checkbox
                       checked={!!selectedFactors[f.name]}
@@ -450,13 +682,13 @@ const FactorBacktestPage: React.FC = () => {
                   </span>
                   <DatePicker
                     size="small"
-                    value={startDate ? dayjs(startDate) : null}
-                    onChange={(d) => setStartDate(d ? d.format('YYYYMMDD') : '')}
+                    value={startDate ? dayjs(startDate, 'YYYYMMDD') : null}
+                    onChange={(d) => { setStartDate(d ? d.format('YYYYMMDD') : ''); setQuickRange(null); }}
                     status={dateOutOfRange ? 'error' : undefined}
-                    disabled={activeFactors.length === 0 || !dateRangeIntersection[0]}
+                    disabled={!!quickRange || activeFactors.length === 0 || !dateRangeIntersection[0]}
                     disabledDate={(d) => {
                       if (!dateRangeIntersection[0]) return true;
-                      return d.isBefore(dayjs(dateRangeIntersection[0])) || d.isAfter(dayjs(dateRangeIntersection[1]));
+                      return d.isBefore(dayjs(dateRangeIntersection[0], 'YYYYMMDD')) || d.isAfter(dayjs(dateRangeIntersection[1], 'YYYYMMDD')) || d.isSame(dayjs(), 'day') || d.isAfter(dayjs(), 'day');
                     }}
                   />
                 </div>
@@ -466,16 +698,35 @@ const FactorBacktestPage: React.FC = () => {
                   </span>
                   <DatePicker
                     size="small"
-                    value={endDate ? dayjs(endDate) : null}
-                    onChange={(d) => setEndDate(d ? d.format('YYYYMMDD') : '')}
+                    value={endDate ? dayjs(endDate, 'YYYYMMDD') : null}
+                    onChange={(d) => { setEndDate(d ? d.format('YYYYMMDD') : ''); setQuickRange(null); }}
                     status={dateOutOfRange ? 'error' : undefined}
-                    disabled={activeFactors.length === 0 || !dateRangeIntersection[0]}
+                    disabled={!!quickRange || activeFactors.length === 0 || !dateRangeIntersection[0]}
                     disabledDate={(d) => {
                       if (!dateRangeIntersection[0]) return true;
-                      return d.isBefore(dayjs(dateRangeIntersection[0])) || d.isAfter(dayjs(dateRangeIntersection[1]));
+                      return d.isBefore(dayjs(dateRangeIntersection[0], 'YYYYMMDD')) || d.isAfter(dayjs(dateRangeIntersection[1], 'YYYYMMDD')) || d.isSame(dayjs(), 'day') || d.isAfter(dayjs(), 'day');
                     }}
                   />
                 </div>
+                <Segmented
+                  size="small"
+                  value={quickRange}
+                  onChange={(v) => setQuickRange(v as number | null)}
+                  options={[
+                    { label: '近30日', value: 30 },
+                    { label: '近60日', value: 60 },
+                    { label: '近120日', value: 120 },
+                  ]}
+                />
+                {quickRange && (
+                  <button
+                    type="button"
+                    className="text-xs text-tertiary-text hover:text-foreground underline"
+                    onClick={() => setQuickRange(null)}
+                  >
+                    取消
+                  </button>
+                )}
               </div>
 
               {/* 操作区 */}
@@ -501,6 +752,13 @@ const FactorBacktestPage: React.FC = () => {
                   </span>
                   <span className="text-xs text-foreground/70">使用管线加工得分（去相关/中性化/标准化/融合）</span>
                 </label>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-foreground/70">动态调优 (Walk-Forward TPE)</span>
+                  <Switch checked={reoptimize} onChange={setReoptimize} size="small" />
+                  {reoptimize && (
+                    <span className="text-[11px] text-amber-500">每 5 日 TPE 调优权重（内存 study，不污染生产数据）</span>
+                  )}
+                </div>
               </div>
             </div>
           </Card>
@@ -518,27 +776,88 @@ const FactorBacktestPage: React.FC = () => {
                   onChange={(v) => setSummaryPeriod(v as string)}
                   options={Object.keys(periodStats).map((k) => {
                     const s = periodStats[k];
-                    return { label: `${k}日 (${s.closed.length}笔)`, value: k };
+                    const isFixed = k.endsWith('_fixed');
+                    const isDynSfx = k.endsWith('_dynamic');
+                    const hd = k.split('_')[0];
+                    let lbl = `${hd}日`;
+                    if (isFixed) lbl += ' 固定';
+                    else if (isDynSfx) lbl += ' 动态';
+                    return { label: `${lbl} (${s.closed.length}笔)`, value: k };
                   })}
                 />
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <StatCard label="累计收益" value={currentStats ? pctNum(currentStats.cumRet) : '--'} />
+                <StatCard label="最终资金" value={currentStats ? fmtMoney(currentStats.finalCapital) : '--'} />
                 <StatCard label="胜率" value={currentStats ? pctNum(currentStats.wr) : '--'} />
-                <StatCard label="最大回撤" value={currentStats ? pctNum(currentStats.mdd) : '--'} />
-                <StatCard label="已平仓" value={currentStats ? String(currentStats.closed.length) : '--'} />
-                <StatCard label="期数" value={String(result.summary.total_periods)} />
-                <StatCard label="最终资金" value={fmtMoney(result.summary.final_capital)} />
+                <StatCard label="最大回撤" value={currentStats ? pctNum(currentStats.mdd) : '--'}
+                  hint={currentStats?.mddStart && currentStats?.mddEnd ? `${currentStats.mddStart} ~ ${currentStats.mddEnd}` : undefined} />
                 <StatCard label="年化收益" value={currentStats ? pctNum(currentStats.annRet) : '--'} />
-                <StatCard label="夏普比率" value={result.summary.sharpe_ratio.toFixed(2)} />
+                <StatCard label="夏普比率" value={currentStats ? currentStats.sharpe.toFixed(2) : '--'} />
+                <StatCard label="交易笔数" value={currentStats ? String(currentStats.totalTrades) : '--'} />
+                <StatCard label="已平仓" value={currentStats ? String(currentStats.closed.length) : '--'} />
               </div>
 
+              {/* Walk-forward comparison */}
+              {isDynamicMode && result.summary.dynamic && currentDynamicStats && (() => {
+                const hdClean = summaryPeriod.replace('_fixed', '').replace('_dynamic', '');
+                const rows = [
+                  { metric: '累计收益', fixedVal: pctNum(currentStats!.cumRet), dynamicVal: pctNum(currentDynamicStats.cumRet), better: currentDynamicStats.cumRet > currentStats!.cumRet ? 'dynamic' : currentStats!.cumRet > currentDynamicStats.cumRet ? 'fixed' : 'tie' as const },
+                  { metric: '年化收益', fixedVal: pctNum(currentStats!.annRet), dynamicVal: pctNum(currentDynamicStats.annRet), better: currentDynamicStats.annRet > currentStats!.annRet ? 'dynamic' : currentStats!.annRet > currentDynamicStats.annRet ? 'fixed' : 'tie' as const },
+                  { metric: '胜率', fixedVal: pctNum(currentStats!.wr), dynamicVal: pctNum(currentDynamicStats.wr), better: currentDynamicStats.wr > currentStats!.wr ? 'dynamic' : currentStats!.wr > currentDynamicStats.wr ? 'fixed' : 'tie' as const },
+                  { metric: '最大回撤', fixedVal: pctNum(currentStats!.mdd), dynamicVal: pctNum(currentDynamicStats.mdd), better: currentDynamicStats.mdd < currentStats!.mdd ? 'dynamic' : currentStats!.mdd < currentDynamicStats.mdd ? 'fixed' : 'tie' as const },
+                  { metric: '夏普比率', fixedVal: currentStats!.sharpe.toFixed(2), dynamicVal: currentDynamicStats.sharpe.toFixed(2), better: currentDynamicStats.sharpe > currentStats!.sharpe ? 'dynamic' : currentStats!.sharpe > currentDynamicStats.sharpe ? 'fixed' : 'tie' as const },
+                  { metric: '最终资金', fixedVal: fmtMoney(currentStats!.finalCapital), dynamicVal: fmtMoney(currentDynamicStats.finalCapital), better: currentDynamicStats.finalCapital > currentStats!.finalCapital ? 'dynamic' : currentStats!.finalCapital > currentDynamicStats.finalCapital ? 'fixed' : 'tie' as const },
+                  { metric: '交易笔数', fixedVal: String(currentStats!.totalTrades), dynamicVal: String(currentDynamicStats.totalTrades), better: 'tie' as const },
+                ];
+                return (
+                  <Card>
+                    <div className="font-medium text-sm text-secondary-text mb-3">固定 vs 动态对比 · {hdClean}日</div>
+                    <Table
+                      size="small"
+                      dataSource={rows}
+                      rowKey="metric"
+                      pagination={false}
+                      columns={[
+                        { title: '指标', dataIndex: 'metric', key: 'metric' },
+                        { title: '固定权重', dataIndex: 'fixedVal', key: 'fixed', render: (_: unknown, r: typeof rows[0]) => <span className={r.better === 'fixed' ? 'text-green-500 font-medium' : ''}>{r.fixedVal}</span> },
+                        { title: '动态调优', dataIndex: 'dynamicVal', key: 'dynamic', render: (_: unknown, r: typeof rows[0]) => <span className={r.better === 'dynamic' ? 'text-green-500 font-medium' : ''}>{r.dynamicVal}</span> },
+                      ]}
+                    />
+                    {result.summary.dynamic.nodes_evaluated != null && (
+                      <div className="mt-2 text-xs text-tertiary-text">Walk-forward 共评估 {result.summary.dynamic.nodes_evaluated} 个调优节点</div>
+                    )}
+                  </Card>
+                );
+              })()}
+
+              {/* Recent-only toggle */}
+              {maxTradingDays > 120 && (
+                <div className="flex items-center gap-3 px-1">
+                  <span className="text-xs text-tertiary-text">
+                    共 {maxTradingDays} 个交易日
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowAllHistory((v) => !v)}
+                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                      showAllHistory
+                        ? 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400'
+                        : 'bg-cyan/10 text-cyan hover:bg-cyan/20'
+                    }`}
+                  >
+                    {showAllHistory ? '展开全部' : '最近 120 日'}
+                    <span className={`text-[10px] transition-transform ${showAllHistory ? 'rotate-180' : ''}`}>▼</span>
+                  </button>
+                </div>
+              )}
+
               {/* Capital Curve */}
-              {chartData && chartData.length > 0 && (
+              {displayChartData && displayChartData.length > 0 && (
                 <Card>
                   <div className="font-medium text-sm text-secondary-text mb-3">资金曲线</div>
                   <ResponsiveContainer width="100%" height={320}>
-                    <LineChart data={chartData}>
+                    <LineChart data={displayChartData}>
                       <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                       <XAxis dataKey="date" tick={{ fontSize: 11 }} />
                       <YAxis tick={{ fontSize: 11 }} domain={['auto', 'auto']} />
@@ -550,19 +869,30 @@ const FactorBacktestPage: React.FC = () => {
                         if (selectedCurves[key]) return;
                         setSummaryPeriod(key);
                       }} />
-                      {Object.keys(result.capital_curves).map((k, i) => (
-                        <Line
-                          key={k}
-                          type="monotone"
-                          dataKey={`h${k}`}
-                          name={`${k}日`}
-                          stroke={CAPITAL_COLORS[i % CAPITAL_COLORS.length]}
-                          strokeWidth={2}
-                          strokeOpacity={selectedCurves[k] ? 1 : 0.15}
-                          dot={false}
-                          connectNulls
-                        />
-                      ))}
+                      {Object.keys(result.capital_curves).map((k) => {
+                        const isFixed = k.endsWith('_fixed');
+                        const isDynSfx = k.endsWith('_dynamic');
+                        const hdNum = parseInt(k.split('_')[0]) || parseInt(k) || 0;
+                        const colorIdx = HOLD_DAY_OPTIONS.findIndex(o => o.value === hdNum);
+                        const colorIdxSafe = colorIdx >= 0 ? colorIdx : Object.keys(result.capital_curves).indexOf(k) % CAPITAL_COLORS.length;
+                        let label = `${hdNum}日`;
+                        if (isFixed) label += ' (固定)';
+                        else if (isDynSfx) label += ' (动态)';
+                        return (
+                          <Line
+                            key={k}
+                            type="monotone"
+                            dataKey={`h${k}`}
+                            name={label}
+                            stroke={CAPITAL_COLORS[colorIdxSafe]}
+                            strokeWidth={2}
+                            strokeDasharray={isFixed ? '5 5' : undefined}
+                            strokeOpacity={selectedCurves[k] ? 1 : 0.15}
+                            dot={false}
+                            connectNulls
+                          />
+                        );
+                      })}
                     </LineChart>
                   </ResponsiveContainer>
                 </Card>
@@ -610,23 +940,26 @@ const FactorBacktestPage: React.FC = () => {
               </div>
 
               {/* Trade Records */}
-              {result.trade_records.length > 0 && (
+              {displayTrades.length > 0 && (
                 <Card>
-                  <div className="font-medium text-sm text-secondary-text mb-3">
-                    交易明细（{currentStats ? currentStats.closed.length : result.trade_records.length} 笔 · {summaryPeriod}日）
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="font-medium text-sm text-secondary-text">
+                      交易明细（{currentStats ? currentStats.closed.length : displayTrades.length} 笔 · {summaryPeriod}日）
+                    </span>
+                    <div className="flex gap-2">
                     <button
                       type="button"
-                      className="ml-auto inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs text-secondary-text hover:text-foreground transition-colors"
+                      className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs text-secondary-text hover:text-foreground transition-colors"
                       onClick={() => {
-                        const header = '信号日,持有期,代码,名称,买入价,卖出日,卖出价,买入额,卖出额,收益率,盈亏,状态';
-                        const rows = result.trade_records.filter((t: FactorBacktestTrade) => t.hold_days === Number(summaryPeriod)).map((t: FactorBacktestTrade) =>
-                          `${t.trade_date},${t.hold_days},${t.stock_code},${t.stock_name},${t.buy_price},${t.sell_date},${t.sell_price},${t.allocated || 0},${(t.allocated || 0) + (t.pnl || 0)},${t.return_pct},${t.pnl},${t.status}`
+                        const header = '信号日,持有期,股票,买入价,卖出日,卖出价,买入额,卖出额,收益率,盈亏,状态';
+                        const rows = displayTrades.filter((t: FactorBacktestTrade) => t.hold_days === Number(summaryPeriod)).map((t: FactorBacktestTrade) =>
+                          `${t.trade_date},${t.hold_days},"${t.stock_name}\n${t.stock_code}",${t.buy_price},${t.sell_date},${t.sell_price},${t.allocated || 0},${(t.allocated || 0) + (t.pnl || 0)},${t.return_pct},${t.pnl},${t.status}`
                         ).join('\n');
                         const bom = '\uFEFF';
                         const blob = new Blob([bom + header + '\n' + rows], { type: 'text/csv;charset=utf-8;' });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
-                        a.href = url; a.download = `factor_backtest_${result.date_range.start}_${result.date_range.end}.csv`;
+                        a.href = url; a.download = `factor_backtest_${result.mode}_${summaryPeriod}d_${result.date_range.start}_${result.date_range.end}${usePipeline ? '_pipeline' : ''}.csv`;
                         a.click(); URL.revokeObjectURL(url);
                       }}
                     >
@@ -636,48 +969,44 @@ const FactorBacktestPage: React.FC = () => {
                       type="button"
                       className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs text-secondary-text hover:text-foreground transition-colors"
                       onClick={() => {
+                        const st = periodStats[summaryPeriod];
+                        if (!st) return;
                         const curves = result.capital_curves;
-                        const keys = Object.keys(curves).filter(k => curves[k].length > 1);
-                        if (!keys.length) return;
-                        const allCap: number[] = [];
-                        keys.forEach(k => curves[k].forEach((p: FactorBacktestCapitalPoint) => allCap.push(p.capital)));
+                        const pts = curves[summaryPeriod];
+                        if (!pts || pts.length < 2) return;
+                        const allCap = pts.map((p: FactorBacktestCapitalPoint) => p.capital);
                         const minC = Math.min(...allCap), maxC = Math.max(...allCap);
                         const pad = (maxC - minC) * 0.1 || 10000;
                         const yMin = minC - pad, yMax = maxC + pad;
                         const W = 800, H = 360, R = 30;
-                        const colors = ['#22c55e','#3b82f6','#f59e0b','#8b5cf6','#ef4444'];
+                        const color = CAPITAL_COLORS[0];
                         const toX = (i: number, n: number) => R + (i / Math.max(n - 1, 1)) * (W - 2 * R);
                         const toY = (v: number) => H - R - ((v - yMin) / (yMax - yMin)) * (H - 2 * R);
-                        let paths = '';
-                        keys.forEach((k, ki) => {
-                          const pts = curves[k];
-                          const d = pts.map((p: FactorBacktestCapitalPoint, i: number) => `${i === 0 ? 'M' : 'L'}${toX(i, pts.length).toFixed(1)},${toY(p.capital).toFixed(1)}`).join(' ');
-                          paths += `<path d="${d}" fill="none" stroke="${colors[ki % colors.length]}" stroke-width="2"/>\n`;
-                        });
+                        const d = pts.map((p: FactorBacktestCapitalPoint, i: number) => `${i === 0 ? 'M' : 'L'}${toX(i, pts.length).toFixed(1)},${toY(p.capital).toFixed(1)}`).join(' ');
+                        const path = `<path d="${d}" fill="none" stroke="${color}" stroke-width="2"/>\n`;
                         let yLabels = '';
                         for (let yi = 0; yi <= 4; yi++) {
                           const v = yMin + (yi / 4) * (yMax - yMin);
                           yLabels += `<text x="${R - 8}" y="${toY(v).toFixed(1)}" text-anchor="end" font-size="10" fill="#888">${(v / 10000).toFixed(1)}万</text>\n`;
                         }
-                        let legend = '';
-                        keys.forEach((k, ki) => {
-                          legend += `<rect x="${R + ki * 70}" y="${H - R + 8}" width="12" height="12" fill="${colors[ki % colors.length]}"/><text x="${R + ki * 70 + 16}" y="${H - R + 18}" font-size="11" fill="#ccc">${k}日</text>`;
-                        });
-                        const s = result.summary;
-                        const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>因子回测 '+result.date_range.start+'-'+result.date_range.end+'</title><style>body{font-family:-apple-system,sans-serif;background:#111;color:#ddd;padding:24px;max-width:900px;margin:auto}h1{font-size:18px;margin-bottom:16px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}.card{background:#1a1a1a;border-radius:8px;padding:14px}.card .label{font-size:11px;color:#888}.card .value{font-size:20px;font-weight:600;color:#fff}svg{display:block;margin:0 auto}table{width:100%;border-collapse:collapse;margin-top:24px;font-size:12px}th,td{padding:6px 8px;text-align:left;border-bottom:1px solid #333}th{color:#888;font-weight:500}td{color:#ccc}</style></head><body><h1>因子回测报告 '+result.date_range.start+' ~ '+result.date_range.end+' ('+result.mode+')</h1><div class="grid"><div class="card"><div class="label">累计收益</div><div class="value">'+(s.cumulative_return*100).toFixed(2)+'%</div></div><div class="card"><div class="label">年化收益</div><div class="value">'+(s.annualized_return*100).toFixed(2)+'%</div></div><div class="card"><div class="label">胜率</div><div class="value">'+(s.win_rate*100).toFixed(1)+'%</div></div><div class="card"><div class="label">夏普</div><div class="value">'+s.sharpe_ratio.toFixed(2)+'</div></div><div class="card"><div class="label">最大回撤</div><div class="value" style="color:#ef4444">'+(s.max_drawdown*100).toFixed(2)+'%</div></div><div class="card"><div class="label">已平仓</div><div class="value">'+s.total_trades+'</div></div><div class="card"><div class="label">最终资金</div><div class="value">'+(s.final_capital/10000).toFixed(1)+'万</div></div><div class="card"><div class="label">初始</div><div class="value">'+(result.params.initial_capital/10000).toFixed(0)+'万</div></div></div><svg width="'+W+'" height="'+(H+20)+'"><line x1="'+R+'" y1="'+(H-R)+'" x2="'+(W-R)+'" y2="'+(H-R)+'" stroke="#444"/><line x1="'+R+'" y1="'+R+'" x2="'+R+'" y2="'+(H-R)+'" stroke="#444"/>'+yLabels+paths+legend+'</svg><table><thead><tr><th>信号日</th><th>持有期</th><th>代码</th><th>名称</th><th>买入价</th><th>卖出日</th><th>卖出价</th><th>买入额</th><th>卖出额</th><th>收益</th><th>盈亏</th><th>状态</th></tr></thead><tbody>'+result.trade_records.filter((t: FactorBacktestTrade) => t.hold_days === Number(summaryPeriod)).map((t: FactorBacktestTrade) => '<tr><td>'+t.trade_date+'</td><td>'+t.hold_days+'日</td><td>'+t.stock_code+'</td><td>'+t.stock_name+'</td><td>'+t.buy_price+'</td><td>'+t.sell_date+'</td><td>'+t.sell_price+'</td><td>'+(t.allocated||0).toFixed(0)+'</td><td>'+((t.allocated||0)+(t.pnl||0)).toFixed(0)+'</td><td>'+(t.return_pct*100).toFixed(2)+'%</td><td>'+t.pnl.toFixed(0)+'</td><td>'+t.status+'</td></tr>').join('')+'</tbody></table></body></html>';
+                        const legend = `<rect x="${R}" y="${H - R + 8}" width="12" height="12" fill="${color}"/><text x="${R + 16}" y="${H - R + 18}" font-size="11" fill="#ccc">${summaryPeriod}日</text>`;
+                        const trades = displayTrades.filter((t: FactorBacktestTrade) => t.hold_days === Number(summaryPeriod));
+                        const tradeRows = trades.map((t: FactorBacktestTrade) => '<tr><td>'+t.trade_date+'</td><td>'+t.hold_days+'日</td><td>'+t.stock_name+'<br/><span style="color:#888;font-size:11px">'+t.stock_code+'</span></td><td>'+t.buy_price+'</td><td>'+t.sell_date+'</td><td>'+t.sell_price+'</td><td>'+(t.allocated||0).toFixed(0)+'</td><td>'+((t.allocated||0)+(t.pnl||0)).toFixed(0)+'</td><td>'+(t.return_pct*100).toFixed(2)+'%</td><td>'+t.pnl.toFixed(0)+'</td><td>'+t.status+'</td></tr>').join('');
+                        const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>因子回测 '+result.mode+' '+summaryPeriod+'日 '+result.date_range.start+'-'+result.date_range.end+'</title><style>body{font-family:-apple-system,sans-serif;background:#111;color:#ddd;padding:24px;max-width:900px;margin:auto}h1{font-size:18px;margin-bottom:16px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}.card{background:#1a1a1a;border-radius:8px;padding:14px}.card .label{font-size:11px;color:#888}.card .value{font-size:20px;font-weight:600;color:#fff}svg{display:block;margin:0 auto}table{width:100%;border-collapse:collapse;margin-top:24px;font-size:12px}th,td{padding:6px 8px;text-align:left;border-bottom:1px solid #333}th{color:#888;font-weight:500}td{color:#ccc}</style></head><body><h1>因子回测报告 '+result.mode+' · '+summaryPeriod+'日持有 · '+result.date_range.start+' ~ '+result.date_range.end+'</h1><div class="grid"><div class="card"><div class="label">累计收益</div><div class="value">'+(st.cumRet*100).toFixed(2)+'%</div></div><div class="card"><div class="label">年化收益</div><div class="value">'+(st.annRet !== null && isFinite(st.annRet) ? (st.annRet*100).toFixed(2)+'%' : 'N/A')+'</div></div><div class="card"><div class="label">胜率</div><div class="value">'+(st.wr*100).toFixed(1)+'%</div></div><div class="card"><div class="label">夏普</div><div class="value">'+st.sharpe.toFixed(2)+'</div></div><div class="card"><div class="label">最大回撤</div><div class="value" style="color:#ef4444">'+(st.mdd*100).toFixed(2)+'%</div></div><div class="card"><div class="label">已平仓</div><div class="value">'+st.closed.length+'</div></div><div class="card"><div class="label">最终资金</div><div class="value">'+(st.finalCapital/10000).toFixed(1)+'万</div></div><div class="card"><div class="label">初始</div><div class="value">'+(result.params.initial_capital/10000).toFixed(0)+'万</div></div></div><svg width="'+W+'" height="'+(H+20)+'"><line x1="'+R+'" y1="'+(H-R)+'" x2="'+(W-R)+'" y2="'+(H-R)+'" stroke="#444"/><line x1="'+R+'" y1="'+R+'" x2="'+R+'" y2="'+(H-R)+'" stroke="#444"/>'+yLabels+path+legend+'</svg><table><thead><tr><th>信号日</th><th>持有期</th><th>股票</th><th>买入价</th><th>卖出日</th><th>卖出价</th><th>买入额</th><th>卖出额</th><th>收益</th><th>盈亏</th><th>状态</th></tr></thead><tbody>'+tradeRows+'</tbody></table></body></html>';
                         const blob = new Blob([html], { type: 'text/html;charset=utf-8;' });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
-                        a.href = url; a.download = 'factor_backtest_'+result.date_range.start+'_'+result.date_range.end+'.html';
+                        a.href = url; a.download = 'factor_backtest_'+result.mode+'_'+summaryPeriod+'d_'+result.date_range.start+'_'+result.date_range.end+(usePipeline ? '_pipeline' : '')+'.html';
                         a.click(); URL.revokeObjectURL(url);
                       }}
                     >
                       <Download className="h-3.5 w-3.5" />导出 HTML
                     </button>
+                    </div>
                   </div>
                   <Table
                     size="small"
-                    dataSource={result.trade_records.filter((t: FactorBacktestTrade) => t.hold_days === Number(summaryPeriod))}
+                    dataSource={displayTrades.filter((t: FactorBacktestTrade) => t.hold_days === Number(summaryPeriod))}
                     rowKey={(r) => `${r.trade_date}_${r.hold_days}_${r.stock_code}`}
                     pagination={{ pageSize: 50, showSizeChanger: false }}
                     columns={tradeColumns}
@@ -688,6 +1017,14 @@ const FactorBacktestPage: React.FC = () => {
             </>
           )}
 
+          {loading && (
+            <div className="flex flex-col items-center justify-center py-12 gap-3">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <span className="text-sm text-secondary-text">
+                {progressMsg || '回测计算中…'}
+              </span>
+            </div>
+          )}
           {!result && !error && !loading && (
             <EmptyState icon={<Activity className="h-8 w-8" />} title="选择因子和参数后开始回测" />
           )}

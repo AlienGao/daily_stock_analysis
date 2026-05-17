@@ -9,9 +9,10 @@
 """
 
 import logging
+import math
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -35,6 +36,7 @@ class FactorBacktestTrade:
     pnl: float
     allocated: float
     status: str
+    reoptimized: bool = False
 
 
 @dataclass
@@ -69,6 +71,7 @@ class FactorBacktestEngine:
         initial_capital=_DEFAULT_INITIAL_CAPITAL,
         risk_free_rate=_DEFAULT_RISK_FREE_RATE,
         use_pipeline=False,
+        progress_cb: Optional[Callable[[str], None]] = None,
     ):
         if hold_days is None:
             hold_days = [1, 3, 5, 10, 20]
@@ -102,16 +105,23 @@ class FactorBacktestEngine:
         if len(trading_days) < 2:
             return None
 
-        scores_by_date = self._load_snapshots(list(factor_weights.keys()), mode, snap_filtered)
+        scores_by_date = self._load_snapshots(list(factor_weights.keys()), mode, snap_filtered,
+                                             progress_cb=progress_cb)
         # 保存原始单因子分用于 IC 计算（管线模式会替换为 _pipeline 综合分）
         raw_scores_by_date = {k: dict(v) for k, v in scores_by_date.items()}
         if use_pipeline:
-            # StockScorer 融合：加权 composite Top300 → StockScorer → 30/70 blend
-            pool_n = max(top_n * 60, 300)
+            if progress_cb:
+                progress_cb("管线融合计算中…")
+            # StockScorer 融合：去相关 → 行业中性化 → 加权 composite → Top300 → StockScorer → 30/70 blend
+            pool_n = 300
             for sdate in scores_by_date:
                 sc = scores_by_date[sdate]
                 if not sc: continue
-                comp = self._compute_composite(sc, factor_weights)
+                sc = self._decorrelate_scores(sc)
+                sc = self._neutralize_scores(sc)
+                multipliers = self._get_market_multipliers(sdate)
+                adjusted_weights = self._apply_dynamic_weights(factor_weights, multipliers)
+                comp = self._compute_composite(sc, adjusted_weights)
                 if comp.empty: continue
                 pool = comp.nlargest(pool_n).index.tolist()
                 tech = self._batch_stockscorer(pool, sdate, trading_days, comp)
@@ -125,12 +135,18 @@ class FactorBacktestEngine:
                 all_codes.update(s.index.tolist() if hasattr(s, 'index') else s)
         self._prefetch_prices(list(all_codes), trading_days)
         self._prefetch_stock_names(list(all_codes))
+        if progress_cb:
+            progress_cb("预计算收益率矩阵…")
+        fw_returns = self._precompute_forward_returns(all_codes, trading_days, snap_filtered, hold_days, mode)
 
         today_str = date.today().strftime("%Y%m%d")
         capital_curves = {str(h): [] for h in hold_days}
         all_trades = {h: [] for h in hold_days}
+        cached_composites: Dict[str, pd.Series] = {}
 
-        for hd in hold_days:
+        for hd_i, hd in enumerate(hold_days):
+            if progress_cb:
+                progress_cb(f"回测计算中 (持有期 {hd_i + 1}/{len(hold_days)})…")
             cap = initial_capital
             curve = [{"date": snap_filtered[0], "capital": cap}]
 
@@ -155,7 +171,10 @@ class FactorBacktestEngine:
                 if use_pipeline:
                     composite = scores.get("_pipeline", pd.Series())
                 else:
-                    composite = self._compute_composite(scores, factor_weights)
+                    multipliers = self._get_market_multipliers(snap_date)
+                    adjusted = self._apply_dynamic_weights(factor_weights, multipliers)
+                    composite = self._compute_composite(scores, adjusted)
+                    cached_composites[snap_date] = composite
                 if composite.empty:
                     continue
 
@@ -176,7 +195,7 @@ class FactorBacktestEngine:
                 for code, _sc in ranked.items():
                     if len(bought) >= top_n: break
                     name = self._stock_names.get(code, code)
-                    if not is_intra and self._is_limit_up(code, buy_date):
+                    if self._is_limit_up(code, buy_date):
                         skipped.append(code); continue
                     bp = self._get_price(code, buy_date, buy_field)
                     sp = self._get_price(code, sell_date, sell_field)
@@ -231,21 +250,30 @@ class FactorBacktestEngine:
         cr = (fc - initial_capital) / initial_capital
         wins = sum(1 for t in closed if t.return_pct > 0)
         wr = wins / len(closed) if closed else 0
-        mdd = self._calc_mdd(pcurve, initial_capital)
+        mdd, mdd_start, mdd_end = self._calc_mdd(pcurve, initial_capital)
         td = (datetime.strptime(ed, "%Y%m%d") - datetime.strptime(sd, "%Y%m%d")).days
-        ar = (1 + cr) ** (365 / max(td, 1)) - 1 if cr > -1 else cr
+        if cr > -1:
+            log_ar = math.log1p(cr) * 365 / max(td, 1)
+            ar = math.exp(log_ar) - 1 if log_ar < 700 else None
+        else:
+            ar = cr
         drs = []
         pc = initial_capital
         for pt in pcurve[1:]:
             drs.append((pt["capital"] - pc) / pc)
             pc = pt["capital"]
         sh = self._calc_sharpe(drs, risk_free_rate) if drs else 0
+        # 主循环已结束，价格缓存不再需要（IC/quantile 用预计算的 fw_returns）
+        self._price_cache.clear()
+        if progress_cb:
+            progress_cb("计算 IC / 分位数中…")
         ric: Dict[str, Dict[str, float]] = {}
         for hd in hold_days:
-            ric[str(hd)] = self._calc_rank_ic(raw_scores_by_date, hd, trading_days, mode)
+            ric[str(hd)] = self._calc_rank_ic(raw_scores_by_date, hd, trading_days, mode, fw_returns)
         qr = {}
         for hd in hold_days:
-            qr[str(hd)] = self._calc_quantile(scores_by_date, factor_weights, hd, trading_days, mode)
+            qr[str(hd)] = self._calc_quantile(scores_by_date, factor_weights, hd, trading_days, mode,
+                                              fw_returns, cached_composites)
 
         finfo = []
         for fn, fw in factor_weights.items():
@@ -268,10 +296,505 @@ class FactorBacktestEngine:
             params={"top_n": top_n, "hold_days": hold_days,
                     "initial_capital": initial_capital, "risk_free_rate": risk_free_rate,
                     "use_pipeline": use_pipeline},
-            summary={"cumulative_return": round(cr, 4), "annualized_return": round(ar, 4),
+            summary={"cumulative_return": round(cr, 4),
+                     "annualized_return": round(ar, 4) if ar is not None else None,
                      "win_rate": round(wr, 4), "max_drawdown": round(mdd, 4),
+                     "max_drawdown_start": mdd_start, "max_drawdown_end": mdd_end,
                      "sharpe_ratio": round(sh, 4), "total_trades": len(closed),
                      "total_periods": len(snap_filtered), "final_capital": round(fc, 2)},
+            capital_curves=capital_curves, rank_ic=ric, quantile_returns=qr,
+            trade_records=tds)
+
+    def compute_walk_forward(
+        self,
+        mode="postmarket",
+        factor_weights=None,
+        start_date=None,
+        end_date=None,
+        top_n=5,
+        hold_days=None,
+        initial_capital=_DEFAULT_INITIAL_CAPITAL,
+        risk_free_rate=_DEFAULT_RISK_FREE_RATE,
+        use_pipeline=False,
+        reoptimize_interval=5,
+        n_trials=None,
+        progress_cb=None,
+    ):
+        """Walk-forward TPE 动态权重回测。
+
+        每个 reoptimize_interval 个交易日，使用之前 60 日窗口运行独立 TPE
+        优化权重，然后用优化后的权重评估接下来 interval 日的交易。
+        返回双线资金曲线：固定权重（基线）+ 动态调优。
+        """
+        if hold_days is None:
+            hold_days = [1, 3, 5, 10, 20]
+        if factor_weights is None:
+            factor_weights = self._get_default_weights(mode)
+        if not factor_weights:
+            return None
+
+        snap_dates = self._get_available_dates(list(factor_weights.keys()), mode)
+        if not snap_dates:
+            available_factors = self._list_factors_with_data(mode)
+            if not available_factors:
+                return None
+            factor_weights = {k: v for k, v in factor_weights.items() if k in available_factors}
+            snap_dates = self._get_available_dates(list(factor_weights.keys()), mode)
+        if not snap_dates:
+            return None
+        if start_date and start_date > snap_dates[-1]:
+            return None
+        if end_date and end_date < snap_dates[0]:
+            return None
+
+        sd = start_date if start_date and start_date >= snap_dates[0] else snap_dates[0]
+        ed = end_date if end_date and end_date <= snap_dates[-1] else snap_dates[-1]
+        snap_filtered = [d for d in snap_dates if sd <= d <= ed]
+        if len(snap_filtered) < 1:
+            return None
+
+        trading_days = self._get_trading_days(snap_filtered)
+        if len(trading_days) < 2:
+            return None
+
+        all_codes_set = set()
+        scores_by_date = self._load_snapshots(
+            list(factor_weights.keys()), mode, snap_filtered, progress_cb=progress_cb)
+        raw_scores_by_date = {k: dict(v) for k, v in scores_by_date.items()}
+        if use_pipeline:
+            if progress_cb:
+                progress_cb("管线融合计算中…")
+            pool_n = 300
+            for sdate in scores_by_date:
+                sc = scores_by_date[sdate]
+                if not sc:
+                    continue
+                sc = self._decorrelate_scores(sc)
+                sc = self._neutralize_scores(sc)
+                multipliers = self._get_market_multipliers(sdate)
+                adjusted_weights = self._apply_dynamic_weights(factor_weights, multipliers)
+                comp = self._compute_composite(sc, adjusted_weights)
+                if comp.empty:
+                    continue
+                pool = comp.nlargest(pool_n).index.tolist()
+                tech = self._batch_stockscorer(pool, sdate, trading_days, comp)
+                blended = pd.Series(0.0, index=comp.index)
+                for c in comp.index:
+                    blended[c] = 0.3 * comp.get(c, 0) + 0.7 * tech.get(c, 50.0)
+                scores_by_date[sdate] = {'_pipeline': blended.dropna()}
+        for ss in scores_by_date.values():
+            for s in ss.values():
+                all_codes_set.update(s.index.tolist() if hasattr(s, 'index') else s)
+        self._prefetch_prices(list(all_codes_set), trading_days)
+        self._prefetch_stock_names(list(all_codes_set))
+        if progress_cb:
+            progress_cb("预计算收益率矩阵…")
+        fw_returns = self._precompute_forward_returns(
+            all_codes_set, trading_days, snap_filtered, hold_days, mode)
+
+        today_str = date.today().strftime("%Y%m%d")
+
+        # ── 1. Fixed-weight baseline ──
+        if progress_cb:
+            progress_cb("固定权重回测中…")
+        fixed_curves: Dict[str, List[Dict]] = {str(h): [] for h in hold_days}
+        fixed_trades: Dict[int, List[FactorBacktestTrade]] = {h: [] for h in hold_days}
+        cached_composites: Dict[str, pd.Series] = {}
+
+        for hd in hold_days:
+            cap = initial_capital
+            curve = [{"date": snap_filtered[0], "capital": cap}]
+            for snap_date in snap_filtered:
+                if snap_date not in trading_days:
+                    continue
+                ti = trading_days.index(snap_date)
+                is_intra = mode == "intraday"
+                buy_idx = ti if is_intra else ti + 1
+                sell_idx = (ti + hd) if is_intra else (ti + 1 + hd)
+                if buy_idx >= len(trading_days) or sell_idx >= len(trading_days):
+                    continue
+                buy_date = trading_days[buy_idx]
+                sell_date = trading_days[sell_idx]
+                buy_field = "close" if is_intra else "open"
+                sell_field = "close" if is_intra else "open"
+
+                scores = scores_by_date.get(snap_date, {})
+                if not scores:
+                    continue
+                if use_pipeline:
+                    composite = scores.get("_pipeline", pd.Series())
+                else:
+                    multipliers = self._get_market_multipliers(snap_date)
+                    adjusted = self._apply_dynamic_weights(factor_weights, multipliers)
+                    composite = self._compute_composite(scores, adjusted)
+                    cached_composites[snap_date] = composite
+                if composite.empty:
+                    continue
+
+                if buy_date > today_str:
+                    ranked = composite.nlargest(top_n)
+                    for code, _sc in ranked.items():
+                        fixed_trades[hd].append(FactorBacktestTrade(
+                            trade_date=snap_date, hold_days=hd, stock_code=code,
+                            stock_name=self._stock_names.get(code, code),
+                            buy_price=0, sell_date=sell_date, sell_price=0,
+                            return_pct=0, pnl=0, allocated=0, status="pending"))
+                    continue
+
+                ranked = composite.nlargest(top_n * 5)
+                bought = []
+                skipped = []
+                for code, _sc in ranked.items():
+                    if len(bought) >= top_n:
+                        break
+                    name = self._stock_names.get(code, code)
+                    if self._is_limit_up(code, buy_date):
+                        skipped.append(code)
+                        continue
+                    bp = self._get_price(code, buy_date, buy_field)
+                    sp = self._get_price(code, sell_date, sell_field)
+                    status = "closed"
+                    ext_date = sell_date
+                    if sp is None:
+                        ext = self._find_next_td(sell_date, trading_days)
+                        if ext:
+                            ext_sp = self._get_price(code, ext, sell_field)
+                            if ext_sp is not None:
+                                sp = ext_sp
+                                ext_date = ext
+                                status = "extended"
+                    if bp and sp and bp > 0:
+                        bought.append((code, name, bp, sp, ext_date, status))
+                    elif bp is None:
+                        skipped.append(code)
+                    else:
+                        bought.append((code, name, bp, 0, ext_date, "open"))
+                n_bought = len(bought)
+                if n_bought == 0:
+                    continue
+                alloc = cap / n_bought / hd
+                day_pnl = 0.0
+                for code, name, bp, sp, sd_ext, status in bought:
+                    if bp and sp and bp > 0:
+                        ret = (sp - bp) / bp
+                        pnl = alloc * ret
+                        day_pnl += pnl
+                    else:
+                        ret = 0.0
+                        pnl = 0.0
+                    fixed_trades[hd].append(FactorBacktestTrade(
+                        trade_date=snap_date, hold_days=hd, stock_code=code, stock_name=name,
+                        buy_price=round(bp, 2) if bp else 0, sell_date=sd_ext,
+                        sell_price=round(sp, 2) if sp else 0, return_pct=round(ret, 6),
+                        pnl=round(pnl, 2), allocated=round(alloc, 2), status=status))
+                for code in skipped:
+                    fixed_trades[hd].append(FactorBacktestTrade(
+                        trade_date=snap_date, hold_days=hd, stock_code=code,
+                        stock_name=self._stock_names.get(code, code),
+                        buy_price=0, sell_date=sell_date, sell_price=0,
+                        return_pct=0, pnl=0, allocated=0, status="canceled"))
+                cap += day_pnl
+                if day_pnl != 0:
+                    curve.append({"date": snap_date, "capital": round(cap, 2)})
+            fixed_curves[str(hd)] = curve
+
+        # ── 2. Dynamic walk-forward TPE ──
+        if progress_cb:
+            progress_cb("动态调优回测中…")
+
+        from src.discovery.factor_optimizer import FactorOptimizer
+
+        window_size = 60
+        node_end_indices = list(range(window_size - 1, len(snap_filtered), reoptimize_interval))
+        nodes_evaluated = 0
+        # Phase 1: Run TPE once per node, save optimized weights — reused across all hold_days
+        node_weights: Dict[int, Dict[str, float]] = {}
+
+        for node_idx in node_end_indices:
+            opt_start = max(0, node_idx - window_size + 1)
+            opt_window_dates = snap_filtered[opt_start:node_idx + 1]
+            if len(opt_window_dates) < 20:
+                continue
+
+            eval_start = node_idx + 1
+            eval_end = min(node_idx + reoptimize_interval, len(snap_filtered))
+            eval_dates = snap_filtered[eval_start:eval_end]
+            if not eval_dates:
+                continue
+
+            nodes_evaluated += 1
+            if progress_cb:
+                progress_cb(
+                    f"动态调优节点 {nodes_evaluated}/{len(node_end_indices)} "
+                    f"({opt_window_dates[0]}..{opt_window_dates[-1]}"
+                    f" → {eval_dates[0]}..{eval_dates[-1]})…")
+
+            opt_tdays = self._get_trading_days(opt_window_dates)
+            opt_scores = {d: scores_by_date[d] for d in opt_window_dates
+                          if d in scores_by_date}
+
+            w_pool = []
+            for i in range(window_size - 1, len(opt_window_dates), 5):
+                seg = opt_window_dates[max(0, i - window_size + 1):i + 1]
+                if len(seg) >= 20:
+                    w_pool.append(seg)
+            if not w_pool and len(opt_window_dates) >= 20:
+                w_pool = [opt_window_dates]
+
+            preloaded = {
+                "snap_dates": opt_window_dates,
+                "scores": opt_scores,
+                "trading_days": opt_tdays,
+                "window_pool": w_pool,
+            }
+
+            optimizer = FactorOptimizer(tushare_fetcher=self._fetcher)
+            optimizer._engine._price_cache = self._price_cache
+            optimizer._engine._stock_names = self._stock_names
+
+            opt_result = optimizer.optimize(
+                mode=mode, window=window_size, normalize=False,
+                n_trials=n_trials if n_trials is not None else min(30, max(10, len(opt_window_dates) // 2)),
+                auto_apply=False,
+                preloaded=preloaded,
+                use_persistent_storage=False,
+            )
+
+            if opt_result and opt_result.get("recommendation"):
+                dyn_weights = {**factor_weights}
+                for fn, w in opt_result["recommendation"].items():
+                    if fn in dyn_weights:
+                        dyn_weights[fn] = w
+            else:
+                dyn_weights = dict(factor_weights)
+
+            node_weights[node_idx] = dyn_weights
+
+        # Phase 2: Evaluate with pre-computed dynamic weights for each hold_days
+        dynamic_curves: Dict[str, List[Dict]] = {str(h): [] for h in hold_days}
+        dynamic_trades: Dict[int, List[FactorBacktestTrade]] = {h: [] for h in hold_days}
+
+        for hd in hold_days:
+            if progress_cb:
+                progress_cb(f"评估动态权重 · {hd}日持有期…")
+            cap = initial_capital
+            curve = [{"date": snap_filtered[0], "capital": cap}]
+
+            for node_idx in node_end_indices:
+                dyn_weights = node_weights.get(node_idx)
+                if dyn_weights is None:
+                    continue
+
+                eval_start = node_idx + 1
+                eval_end = min(node_idx + reoptimize_interval, len(snap_filtered))
+                eval_dates = snap_filtered[eval_start:eval_end]
+
+                for snap_date in eval_dates:
+                    if snap_date not in trading_days:
+                        continue
+                    ti = trading_days.index(snap_date)
+                    is_intra = mode == "intraday"
+                    buy_idx = ti if is_intra else ti + 1
+                    sell_idx = (ti + hd) if is_intra else (ti + 1 + hd)
+                    if buy_idx >= len(trading_days) or sell_idx >= len(trading_days):
+                        continue
+                    buy_date = trading_days[buy_idx]
+                    sell_date = trading_days[sell_idx]
+                    buy_field = "close" if is_intra else "open"
+                    sell_field = "close" if is_intra else "open"
+
+                    scores = scores_by_date.get(snap_date, {})
+                    if not scores:
+                        continue
+                    if use_pipeline:
+                        composite = scores.get("_pipeline", pd.Series())
+                    else:
+                        multipliers = self._get_market_multipliers(snap_date)
+                        adjusted = self._apply_dynamic_weights(dyn_weights, multipliers)
+                        composite = self._compute_composite(scores, adjusted)
+                    if composite.empty:
+                        continue
+
+                    if buy_date > today_str:
+                        ranked = composite.nlargest(top_n)
+                        for code, _sc in ranked.items():
+                            dynamic_trades[hd].append(FactorBacktestTrade(
+                                trade_date=snap_date, hold_days=hd, stock_code=code,
+                                stock_name=self._stock_names.get(code, code),
+                                buy_price=0, sell_date=sell_date, sell_price=0,
+                                return_pct=0, pnl=0, allocated=0, status="pending"))
+                        continue
+
+                    ranked = composite.nlargest(top_n * 5)
+                    bought = []
+                    skipped = []
+                    for code, _sc in ranked.items():
+                        if len(bought) >= top_n:
+                            break
+                        name = self._stock_names.get(code, code)
+                        if self._is_limit_up(code, buy_date):
+                            skipped.append(code)
+                            continue
+                        bp = self._get_price(code, buy_date, buy_field)
+                        sp = self._get_price(code, sell_date, sell_field)
+                        status = "closed"
+                        ext_date = sell_date
+                        if sp is None:
+                            ext = self._find_next_td(sell_date, trading_days)
+                            if ext:
+                                ext_sp = self._get_price(code, ext, sell_field)
+                                if ext_sp is not None:
+                                    sp = ext_sp
+                                    ext_date = ext
+                                    status = "extended"
+                        if bp and sp and bp > 0:
+                            bought.append((code, name, bp, sp, ext_date, status))
+                        elif bp is None:
+                            skipped.append(code)
+                        else:
+                            bought.append((code, name, bp, 0, ext_date, "open"))
+                    n_bought = len(bought)
+                    if n_bought == 0:
+                        continue
+                    alloc = cap / n_bought / hd
+                    day_pnl = 0.0
+                    for code, name, bp, sp, sd_ext, status in bought:
+                        if bp and sp and bp > 0:
+                            ret = (sp - bp) / bp
+                            pnl = alloc * ret
+                            day_pnl += pnl
+                        else:
+                            ret = 0.0
+                            pnl = 0.0
+                        dynamic_trades[hd].append(FactorBacktestTrade(
+                            trade_date=snap_date, hold_days=hd, stock_code=code,
+                            stock_name=name, buy_price=round(bp, 2) if bp else 0,
+                            sell_date=sd_ext, sell_price=round(sp, 2) if sp else 0,
+                            return_pct=round(ret, 6), pnl=round(pnl, 2),
+                            allocated=round(alloc, 2), status=status,
+                            reoptimized=True))
+                    for code in skipped:
+                        dynamic_trades[hd].append(FactorBacktestTrade(
+                            trade_date=snap_date, hold_days=hd, stock_code=code,
+                            stock_name=self._stock_names.get(code, code),
+                            buy_price=0, sell_date=sell_date, sell_price=0,
+                            return_pct=0, pnl=0, allocated=0, status="canceled",
+                            reoptimized=True))
+                    cap += day_pnl
+                    if day_pnl != 0:
+                        curve.append({"date": snap_date, "capital": round(cap, 2)})
+            dynamic_curves[str(hd)] = curve
+
+        # ── 3. Build result with dual curves ──
+        capital_curves: Dict[str, List[Dict]] = {}
+        for hd in hold_days:
+            capital_curves[f"{hd}_fixed"] = fixed_curves[str(hd)]
+            capital_curves[f"{hd}_dynamic"] = dynamic_curves[str(hd)]
+
+        phd = min(hold_days)
+        fcurve = fixed_curves[str(phd)]
+        dcurve = dynamic_curves[str(phd)]
+        fc_fixed = fcurve[-1]["capital"] if fcurve else initial_capital
+        fc_dynamic = dcurve[-1]["capital"] if dcurve else initial_capital
+        cr_fixed = (fc_fixed - initial_capital) / initial_capital
+        cr_dynamic = (fc_dynamic - initial_capital) / initial_capital
+
+        td = (datetime.strptime(ed, "%Y%m%d") - datetime.strptime(sd, "%Y%m%d")).days
+        if cr_fixed > -1:
+            ar_fixed = math.exp(math.log1p(cr_fixed) * 365 / max(td, 1)) - 1
+        else:
+            ar_fixed = cr_fixed
+        if cr_dynamic > -1:
+            ar_dynamic = math.exp(math.log1p(cr_dynamic) * 365 / max(td, 1)) - 1
+        else:
+            ar_dynamic = cr_dynamic
+
+        mdd_fixed, mf_start, mf_end = self._calc_mdd(fcurve, initial_capital)
+        mdd_dynamic, md_start, md_end = self._calc_mdd(dcurve, initial_capital)
+
+        drs_fixed = []
+        pc = initial_capital
+        for pt in fcurve[1:]:
+            drs_fixed.append((pt["capital"] - pc) / pc)
+            pc = pt["capital"]
+        sh_fixed = self._calc_sharpe(drs_fixed, risk_free_rate) if drs_fixed else 0
+
+        drs_dynamic = []
+        pc = initial_capital
+        for pt in dcurve[1:]:
+            drs_dynamic.append((pt["capital"] - pc) / pc)
+            pc = pt["capital"]
+        sh_dynamic = self._calc_sharpe(drs_dynamic, risk_free_rate) if drs_dynamic else 0
+
+        ft_closed = [t for t in fixed_trades[phd] if t.status in ("closed", "extended")]
+        dt_closed = [t for t in dynamic_trades[phd] if t.status in ("closed", "extended")]
+        wr_fixed = sum(1 for t in ft_closed if t.return_pct > 0) / len(ft_closed) if ft_closed else 0
+        wr_dynamic = sum(1 for t in dt_closed if t.return_pct > 0) / len(dt_closed) if dt_closed else 0
+
+        self._price_cache.clear()
+
+        if progress_cb:
+            progress_cb("计算 IC / 分位数中…")
+        ric: Dict[str, Dict[str, float]] = {}
+        for hd in hold_days:
+            ric[str(hd)] = self._calc_rank_ic(raw_scores_by_date, hd, trading_days, mode, fw_returns)
+        qr = {}
+        for hd in hold_days:
+            qr[str(hd)] = self._calc_quantile(scores_by_date, factor_weights, hd, trading_days, mode,
+                                              fw_returns, cached_composites)
+
+        finfo = []
+        for fn, fw in factor_weights.items():
+            fd = self._get_factor_date_range(fn, mode)
+            finfo.append({"name": fn, "weight": fw,
+                          "available_from": fd[0] if fd else "",
+                          "available_to": fd[1] if fd else ""})
+
+        tds = []
+        for hd in hold_days:
+            for t in fixed_trades[hd]:
+                tds.append({"trade_date": t.trade_date, "hold_days": t.hold_days,
+                           "stock_code": t.stock_code, "stock_name": t.stock_name,
+                           "buy_price": t.buy_price, "sell_date": t.sell_date,
+                           "sell_price": t.sell_price, "return_pct": t.return_pct,
+                           "pnl": t.pnl, "allocated": t.allocated, "status": t.status,
+                           "reoptimized": False})
+            for t in dynamic_trades[hd]:
+                tds.append({"trade_date": t.trade_date, "hold_days": t.hold_days,
+                           "stock_code": t.stock_code, "stock_name": t.stock_name,
+                           "buy_price": t.buy_price, "sell_date": t.sell_date,
+                           "sell_price": t.sell_price, "return_pct": t.return_pct,
+                           "pnl": t.pnl, "allocated": t.allocated, "status": t.status,
+                           "reoptimized": True})
+
+        return FactorBacktestResult(
+            mode=mode, date_range={"start": sd, "end": ed}, factors=finfo,
+            params={"top_n": top_n, "hold_days": hold_days,
+                    "initial_capital": initial_capital, "risk_free_rate": risk_free_rate,
+                    "use_pipeline": use_pipeline,
+                    "reoptimize_interval": reoptimize_interval},
+            summary={"cumulative_return": round(cr_fixed, 4),
+                     "annualized_return": round(ar_fixed, 4),
+                     "win_rate": round(wr_fixed, 4),
+                     "max_drawdown": round(mdd_fixed, 4),
+                     "max_drawdown_start": mf_start,
+                     "max_drawdown_end": mf_end,
+                     "sharpe_ratio": round(sh_fixed, 4),
+                     "total_trades": len(ft_closed),
+                     "total_periods": len(snap_filtered),
+                     "final_capital": round(fc_fixed, 2),
+                     "dynamic": {
+                         "cumulative_return": round(cr_dynamic, 4),
+                         "annualized_return": round(ar_dynamic, 4),
+                         "win_rate": round(wr_dynamic, 4),
+                         "max_drawdown": round(mdd_dynamic, 4),
+                         "max_drawdown_start": md_start,
+                         "max_drawdown_end": md_end,
+                         "sharpe_ratio": round(sh_dynamic, 4),
+                         "total_trades": len(dt_closed),
+                         "final_capital": round(fc_dynamic, 2),
+                         "nodes_evaluated": nodes_evaluated,
+                     }},
             capital_curves=capital_curves, rank_ic=ric, quantile_returns=qr,
             trade_records=tds)
 
@@ -297,17 +820,26 @@ class FactorBacktestEngine:
         if len(score_columns) < 2:
             return score_columns
         try:
-            df = pd.DataFrame(score_columns)
-            for group in [["money_flow", "hot_money"], ["momentum", "ranking_momentum"], ["technical", "chip"]]:
-                existing = [f for f in group if f in df.columns]
+            df_scores = pd.DataFrame(score_columns)
+            corr_matrix = df_scores.corr()
+
+            groups = [
+                ["money_flow", "hot_money"],
+                ["momentum", "ranking_momentum"],
+                ["technical", "chip"],
+            ]
+            for group in groups:
+                existing = [f for f in group if f in corr_matrix.columns]
                 if len(existing) < 2:
                     continue
-                sub = df[existing]
+                sub = df_scores[existing]
                 pc = sub.mean(axis=1)
                 for f in existing:
-                    corr = df[existing].corr().loc[f, existing].mean()
-                    df[f] = (df[f] - pc * corr).clip(0, 100).fillna(0)
-            return {c: df[c] for c in df.columns}
+                    orig = df_scores[f]
+                    corr_with_mean = corr_matrix.loc[f, existing].mean()
+                    score_columns[f] = (orig - pc * corr_with_mean).clip(0, 100).fillna(0)
+
+            return score_columns
         except Exception:
             return score_columns
 
@@ -580,7 +1112,21 @@ class FactorBacktestEngine:
                     af = md
                 if at is None or xd < at:
                     at = xd
-        return fi, {"mode": mode, "available_from": af or "", "available_to": at or ""}
+        # 查询该模式下的唯一交易日列表（用于前端快捷日期范围）
+        trading_dates = []
+        try:
+            with db.get_session() as sess:
+                from sqlalchemy import distinct as sa_distinct
+                dt_rows = sess.query(
+                    sa_distinct(FactorScoreSnapshot.trade_date)
+                ).filter(
+                    FactorScoreSnapshot.mode == mode
+                ).order_by(FactorScoreSnapshot.trade_date).all()
+                trading_dates = [r[0] for r in dt_rows]
+        except Exception:
+            pass
+        return fi, {"mode": mode, "available_from": af or "", "available_to": at or "",
+                     "trading_dates": trading_dates}
 
     def _list_factors_with_data(self, mode):
         """列出指定模式下有快照数据的因子名。"""
@@ -635,26 +1181,33 @@ class FactorBacktestEngine:
                 return (r[0], r[1])
         return ("", "")
 
-    def _load_snapshots(self, factor_names, mode, dates):
+    def _load_snapshots(self, factor_names, mode, dates, progress_cb=None):
         from src.storage import DatabaseManager, FactorScoreSnapshot
         db = DatabaseManager()
         result = {}
-        with db.get_session() as sess:
-            rows = sess.query(FactorScoreSnapshot).filter(
-                FactorScoreSnapshot.mode == mode,
-                FactorScoreSnapshot.factor_name.in_(list(factor_names)),
-                FactorScoreSnapshot.trade_date.in_(dates)).all()
-        for r in rows:
-            code = r.ts_code or ""
-            if "." in code:
-                code = code.split(".")[0]
-            result.setdefault(r.trade_date, {}).setdefault(r.factor_name, {})[code] = r.score
+        total = len(dates)
+        fns = list(factor_names)
+        for i, d in enumerate(dates):
+            with db.get_session() as sess:
+                rows = sess.query(FactorScoreSnapshot).filter(
+                    FactorScoreSnapshot.mode == mode,
+                    FactorScoreSnapshot.factor_name.in_(fns),
+                    FactorScoreSnapshot.trade_date == d,
+                ).all()
+            for r in rows:
+                code = r.ts_code or ""
+                if "." in code:
+                    code = code.split(".")[0]
+                result.setdefault(r.trade_date, {}).setdefault(r.factor_name, {})[code] = r.score
+            if progress_cb and (i % 20 == 0 or i == total - 1):
+                progress_cb(f"加载因子数据中 ({i + 1}/{total})…")
         for dd in result:
             for fn in result[dd]:
                 result[dd][fn] = pd.Series(result[dd][fn])
         return result
 
-    def _compute_composite(self, scores, weights):
+    @staticmethod
+    def _compute_composite(scores, weights):
         tw = 0.0
         comp = pd.Series(0.0, index=pd.Index([]))
         for fn, w in weights.items():
@@ -705,6 +1258,43 @@ class FactorBacktestEngine:
                 return td
         return None
 
+    def _get_market_multipliers(self, snap_date: str) -> Dict[str, float]:
+        """根据 snap_date 前 20 个交易日上证指数走势返回动态权重乘数。
+
+        与 engine._calc_dynamic_weights 逻辑一致，数据源从 Tushare API 换为 stock_daily 表。
+        """
+        try:
+            from src.storage import DatabaseManager, StockDaily
+            db = DatabaseManager()
+            sd = datetime.strptime(snap_date, "%Y%m%d").date()
+            with db.get_session() as sess:
+                rows = (sess.query(StockDaily.pct_chg)
+                        .filter(StockDaily.code == "000001.SH",
+                                StockDaily.date < sd)
+                        .order_by(StockDaily.date.desc())
+                        .limit(20).all())
+            returns = pd.Series([float(r[0]) for r in rows if r[0] is not None]).dropna()
+            if len(returns) < 5:
+                return {}
+
+            volatility = returns.std()
+            trend_strength = abs(returns.mean() / (returns.std() + 1e-9))
+
+            if trend_strength > 0.8:
+                return {"momentum": 1.3, "rebound": 0.7, "technical": 1.1}
+            elif volatility > 1.5:
+                return {"rebound": 1.4, "performance": 1.2, "profit_forecast": 1.1, "momentum": 0.6}
+            return {}
+        except Exception:
+            return {}
+
+    def _apply_dynamic_weights(self, base_weights: Dict[str, float],
+                                multipliers: Dict[str, float]) -> Dict[str, float]:
+        """将市场状态乘数应用到基础权重。"""
+        if not multipliers:
+            return base_weights
+        return {k: v * multipliers.get(k, 1.0) for k, v in base_weights.items()}
+
     def _prefetch_prices(self, codes, tds):
         if not codes or not tds:
             return
@@ -712,21 +1302,25 @@ class FactorBacktestEngine:
         try:
             from src.storage import DatabaseManager, StockDaily
             db = DatabaseManager()
-            s = db.get_session()
-            try:
-                do = [datetime.strptime(d, "%Y%m%d").date() for d in tds]
-                rows = s.query(StockDaily).filter(
-                    StockDaily.code.in_(codes), StockDaily.date.in_(do)).all()
-                for r in rows:
-                    ds = r.date.strftime("%Y%m%d") if isinstance(r.date, date) else str(r.date)[:8]
-                    self._price_cache.setdefault(ds, {})[r.code] = {
-                        "open": float(r.open) if r.open else None,
-                        "high": float(r.high) if r.high else None,
-                        "low": float(r.low) if r.low else None,
-                        "close": float(r.close) if r.close else None}
-                dbcs = {r.code for r in rows}
-            finally:
-                s.close()
+            do = [datetime.strptime(d, "%Y%m%d").date() for d in tds]
+            # Batch codes to keep IN clause small
+            codes_list = list(codes)
+            for batch_start in range(0, len(codes_list), 500):
+                batch = codes_list[batch_start:batch_start + 500]
+                s = db.get_session()
+                try:
+                    rows = s.query(StockDaily).filter(
+                        StockDaily.code.in_(batch), StockDaily.date.in_(do)).all()
+                    for r in rows:
+                        ds = r.date.strftime("%Y%m%d") if isinstance(r.date, date) else str(r.date)[:8]
+                        self._price_cache.setdefault(ds, {})[r.code] = {
+                            "open": float(r.open) if r.open else None,
+                            "high": float(r.high) if r.high else None,
+                            "low": float(r.low) if r.low else None,
+                            "close": float(r.close) if r.close else None}
+                    dbcs.update(r.code for r in rows)
+                finally:
+                    s.close()
         except Exception as e:
             logger.debug("[FactorBacktest] DB price: %s", e)
         miss = [c for c in codes if c not in dbcs]
@@ -798,6 +1392,37 @@ class FactorBacktestEngine:
         except Exception:
             pass
 
+    def _precompute_forward_returns(self, all_codes, trading_days, snap_dates, hold_days, mode):
+        """预计算所有 (code, buy_date, sell_date) 的 forward return，供 IC & quantile 复用。"""
+        is_intra = mode == "intraday"
+        bf = "close" if is_intra else "open"
+        sf = "close" if is_intra else "open"
+        fw = {}  # (buy_date, sell_date) -> {code: return}
+        seen = set()
+        for hd in hold_days:
+            for sd in snap_dates:
+                if sd not in trading_days:
+                    continue
+                ti = trading_days.index(sd)
+                buy_idx = ti if is_intra else ti + 1
+                sell_idx = (ti + hd) if is_intra else (ti + 1 + hd)
+                if buy_idx >= len(trading_days) or sell_idx >= len(trading_days):
+                    continue
+                bd = trading_days[buy_idx]
+                ed = trading_days[sell_idx]
+                pair = (bd, ed)
+                if pair in seen:
+                    continue
+                seen.add(pair)
+                fr = {}
+                for c in all_codes:
+                    bp = self._get_price(c, bd, bf)
+                    sp = self._get_price(c, ed, sf)
+                    if bp and sp and bp > 0:
+                        fr[c] = (sp - bp) / bp
+                fw[pair] = fr
+        return fw
+
     def _get_price(self, code, ds, field):
         v = (self._price_cache.get(ds, {}).get(code) or {}).get(field)
         return float(v) if v is not None else None
@@ -813,15 +1438,27 @@ class FactorBacktestEngine:
 
     def _calc_mdd(self, curve, ic):
         mdd = 0.0
+        mdd_start = ""
+        mdd_end = ""
         peak = ic
+        peak_date = curve[0].get("date", "") if curve else ""
+        dd_start = ""
         for pt in curve[1:]:
             cap = pt.get("capital", peak)
+            pt_date = pt.get("date", "")
             if cap > peak:
                 peak = cap
+                peak_date = pt_date
             dd = (peak - cap) / peak if peak > 0 else 0.0
+            if dd > 0 and dd_start == "":
+                dd_start = pt_date
             if dd > mdd:
                 mdd = dd
-        return mdd
+                mdd_start = dd_start or peak_date
+                mdd_end = pt_date
+            if dd == 0:
+                dd_start = ""
+        return mdd, mdd_start, mdd_end
 
     def _calc_sharpe(self, drs, rfr):
         if not drs:
@@ -834,10 +1471,9 @@ class FactorBacktestEngine:
         drf = (1 + rfr) ** (1 / 252) - 1
         return (m - drf) / s * np.sqrt(252)
 
-    def _calc_rank_ic(self, sbd, hd, tds, mode):
+    def _calc_rank_ic(self, sbd, hd, tds, mode, fw_returns):
+        """向量化 Rank IC：每日期一次 pd.DataFrame.corr 替代逐因子 scipy.spearmanr。"""
         is_intra = mode == "intraday"
-        bf = "close" if is_intra else "open"
-        sf = "close" if is_intra else "open"
         res = {}
         for sd, ss in sbd.items():
             if sd not in tds:
@@ -849,36 +1485,23 @@ class FactorBacktestEngine:
                 continue
             bd = tds[bd_idx]
             ed = tds[sd_idx]
-            ac = set()
-            for s in ss.values():
-                ac.update(s.index.tolist())
-            fr = {}
-            for c in ac:
-                bp = self._get_price(c, bd, bf)
-                sp = self._get_price(c, ed, sf)
-                if bp and sp and bp > 0:
-                    fr[c] = (sp - bp) / bp
+            fr = fw_returns.get((bd, ed), {})
             if len(fr) < 30:
                 continue
-            for fn, fs in ss.items():
-                cm = fs.index.intersection(list(fr.keys()))
-                if len(cm) < 30:
-                    continue
-                try:
-                    from scipy.stats import spearmanr
-                    ic, _ = spearmanr(
-                        fs.reindex(cm).fillna(0),
-                        pd.Series(fr).reindex(cm).fillna(0))
-                    if not np.isnan(ic):
-                        res.setdefault(fn, []).append(ic)
-                except Exception:
-                    pass
+            # 构建 DataFrame：每因子一列 + _fr 列，一次 corr 算出所有因子 IC
+            data = {fn: fs for fn, fs in ss.items()}
+            data['_fr'] = pd.Series(fr)
+            df = pd.DataFrame(data)
+            corr = df.corr(method='spearman', min_periods=30)
+            ic_row = corr['_fr']
+            for fn in ss:
+                ic = ic_row.get(fn)
+                if ic is not None and not np.isnan(ic):
+                    res.setdefault(fn, []).append(ic)
         return {n: round(float(np.mean(v)), 4) for n, v in res.items() if v}
 
-    def _calc_quantile(self, sbd, wts, hd, tds, mode):
+    def _calc_quantile(self, sbd, wts, hd, tds, mode, fw_returns, cached_composites=None):
         is_intra = mode == "intraday"
-        bf = "close" if is_intra else "open"
-        sf = "close" if is_intra else "open"
         ar, tr10, tr20 = [], [], []
         for sd, ss in sbd.items():
             if sd not in tds:
@@ -890,22 +1513,18 @@ class FactorBacktestEngine:
                 continue
             bd = tds[bd_idx]
             ed = tds[sd_idx]
+            fr = fw_returns.get((bd, ed), {})
+            if len(fr) < 10:
+                continue
             if "_pipeline" in ss:
                 comp = ss["_pipeline"]
+            elif cached_composites and sd in cached_composites:
+                comp = cached_composites[sd]
             else:
                 comp = self._compute_composite(ss, wts)
             if comp.empty:
                 continue
-            sc = comp.sort_values(ascending=False).index.tolist()
-            n = len(sc)
-            if n < 10:
-                continue
-            rs = []
-            for c in sc:
-                bp = self._get_price(c, bd, bf)
-                sp = self._get_price(c, ed, sf)
-                if bp and sp and bp > 0:
-                    rs.append((sp - bp) / bp)
+            rs = [fr[c] for c in comp.sort_values(ascending=False).index if c in fr]
             if not rs:
                 continue
             t10n = max(1, len(rs) // 10)

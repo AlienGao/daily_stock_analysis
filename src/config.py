@@ -926,7 +926,7 @@ class Config:
     # === 系统配置 ===
     max_workers: int = 3  # 低并发防封禁
     debug: bool = False
-    http_proxy: Optional[str] = None  # HTTP 代理 (例如: http://127.0.0.1:10809)
+    http_proxy: Optional[str] = None  # HTTP 代理 (例如: http://127.0.0.1:42484)
     https_proxy: Optional[str] = None # HTTPS 代理
     
     # === 定时任务配置 ===

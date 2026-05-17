@@ -1366,6 +1366,11 @@ def main() -> int:
             logger.info("模式: 盘中实时扫描")
             from src.discovery.config import get_discovery_config
             from src.discovery.scanner import run_intraday_scan
+            from src.discovery.engine import is_trading_day
+
+            if not is_trading_day():
+                logger.info("今日非 A 股交易日，跳过盘中扫描")
+                raise _ModeExit(0)
 
             discovery_config = get_discovery_config()
             from data_provider.tushare_fetcher import TushareFetcher
@@ -1383,6 +1388,11 @@ def main() -> int:
             from data_provider.tushare_fetcher import TushareFetcher
             from data_provider.akshare_fetcher import AkshareFetcher
             from src.discovery.scanner import ensure_postmarket_scan
+            from src.discovery.engine import is_trading_day
+
+            if not is_trading_day():
+                logger.info("今日非 A 股交易日，跳过盘后发现")
+                raise _ModeExit(0)
 
             tushare_fetcher = TushareFetcher.get_instance()
             if not tushare_fetcher.is_available():

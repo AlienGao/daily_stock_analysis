@@ -200,6 +200,22 @@ class DiscoveryConfig:
         default_factory=lambda: _env_bool("DISCOVERY_PIPELINE_ENABLED", True)
     )
 
+    @property
+    def enable_intraday_pipeline(self) -> bool:
+        """盘中管线开关（独立配置，未设置时回退到 enable_discovery_pipeline）。"""
+        val = os.getenv("DISCOVERY_INTRADAY_PIPELINE_ENABLED", "").strip().lower()
+        if val:
+            return val in ("true", "1", "yes", "on")
+        return self.enable_discovery_pipeline
+
+    @property
+    def enable_postmarket_pipeline(self) -> bool:
+        """盘后管线开关（独立配置，未设置时回退到 enable_discovery_pipeline）。"""
+        val = os.getenv("DISCOVERY_POSTMARKET_PIPELINE_ENABLED", "").strip().lower()
+        if val:
+            return val in ("true", "1", "yes", "on")
+        return self.enable_discovery_pipeline
+
     @staticmethod
     def env_config_keys() -> List[str]:
         """返回所有环境变量键名，用于 .env.example 同步和 WebUI 配置。"""
@@ -258,6 +274,8 @@ class DiscoveryConfig:
             # --- 其他 ---
             "ENABLE_STOCK_SCORER",
             "DISCOVERY_PIPELINE_ENABLED",
+            "DISCOVERY_INTRADAY_PIPELINE_ENABLED",
+            "DISCOVERY_POSTMARKET_PIPELINE_ENABLED",
         ]
 
 
