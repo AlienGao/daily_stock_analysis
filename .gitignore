@@ -97,3 +97,4 @@ static/
 
 # 快照日期文件缓存（纯本地提速，非版本化数据）
 discovery_reports/.snapshot_dates_cache.json
+docs/specs/

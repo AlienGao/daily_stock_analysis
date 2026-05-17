@@ -2,7 +2,6 @@ import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth, useSystemConfig } from '../hooks';
 import { createParsedApiError, getParsedApiError, type ParsedApiError } from '../api/error';
-import { discoveryApi } from '../api/discovery';
 import { systemConfigApi } from '../api/systemConfig';
 import { ApiErrorAlert, Button, ConfirmDialog, EmptyState } from '../components/common';
 import {
@@ -10,12 +9,12 @@ import {
   ChangePasswordCard,
   IntelligentImport,
   LLMChannelEditor,
-  RunFullAnalysisButton,
   NotificationTestPanel,
   SettingsCategoryNav,
   SettingsAlert,
   SettingsField,
   SettingsLoading,
+  SettingsPanelErrorBoundary,
   SettingsSectionCard,
 } from '../components/settings';
 import { WEB_BUILD_INFO } from '../utils/constants';
@@ -209,9 +208,6 @@ const SettingsPage: React.FC = () => {
   const [showImportConfirm, setShowImportConfirm] = useState(false);
   const [desktopUpdateState, setDesktopUpdateState] = useState<DesktopUpdateState | null>(null);
   const [isCheckingDesktopUpdate, setIsCheckingDesktopUpdate] = useState(false);
-  const [whitelistCodes, setWhitelistCodes] = useState<string>('');
-  const [whitelistSaving, setWhitelistSaving] = useState(false);
-  const [whitelistMsg, setWhitelistMsg] = useState<string>('');
   const envBackupImportRef = useRef<HTMLInputElement | null>(null);
   const desktopRuntimeApi = getDesktopRuntimeApi();
   const isDesktopRuntime = Boolean(desktopRuntimeApi);
@@ -224,11 +220,6 @@ const SettingsPage: React.FC = () => {
   // Set page title
   useEffect(() => {
     document.title = '系统设置 - DSA';
-  }, []);
-
-  // Load whitelist on settings page mount
-  useEffect(() => {
-    discoveryApi.getWhitelist().then((data) => setWhitelistCodes(data.codes.join(', '))).catch(() => {});
   }, []);
 
   const {
@@ -505,6 +496,40 @@ const SettingsPage: React.FC = () => {
   };
 
   const desktopUpdateNotice = getDesktopUpdateNotice(desktopUpdateState);
+  const shouldGuardActiveConfigPanel = activeCategory === 'notification' || activeCategory === 'agent';
+  const activeConfigPanelErrorTitle = activeCategory === 'agent' ? 'Agent 设置' : '通知设置';
+  const settingsPanelDiagnosticHint = isDesktopRuntime ? (
+    <>
+      请查看并提供桌面端日志
+      <code className="mx-1 rounded bg-background/45 px-1 py-0.5 font-mono text-xs">desktop.log</code>
+      ，同时补充 release 版本、Windows 版本和触发入口。
+    </>
+  ) : (
+    <>请查看浏览器开发者工具控制台与后端日志，并补充 release 版本、浏览器版本和触发入口。</>
+  );
+  const activeConfigPanel = activeItems.length ? (
+    <SettingsSectionCard
+      title="当前分类配置项"
+      description={getCategoryDescriptionZh(activeCategory as SystemConfigCategory, '') || '使用统一字段卡片维护当前分类的系统配置。'}
+    >
+      {activeItems.map((item) => (
+        <SettingsField
+          key={item.key}
+          item={item}
+          value={item.value}
+          disabled={isSaving}
+          onChange={setDraftValue}
+          issues={issueByKey[item.key] || []}
+        />
+      ))}
+    </SettingsSectionCard>
+  ) : (
+    <EmptyState
+      title="当前分类下暂无配置项"
+      description="当前分类没有可编辑字段；可切换左侧分类继续查看其它系统配置。"
+      className="settings-surface-panel settings-border-strong border-none bg-transparent shadow-none"
+    />
+  );
 
   return (
     <div className="settings-page min-h-full px-4 pb-6 pt-4 md:px-6">
@@ -744,51 +769,6 @@ const SettingsPage: React.FC = () => {
                 />
               </SettingsSectionCard>
             ) : null}
-            {activeCategory === 'base' ? (
-              <SettingsSectionCard
-                title="扫描白名单"
-                description="配置寻股扫描白名单（逗号分隔股票代码）。保存后立即生效，盘中下一轮扫描即使用新白名单。"
-              >
-                <div className="space-y-3">
-                  <textarea
-                    className="w-full min-h-[80px] rounded-xl border border-border/40 bg-muted/25 px-3 py-2 text-sm text-primary-text placeholder:text-tertiary-text/60 focus:border-cyan/50 focus:outline-none focus:ring-1 focus:ring-cyan/30 resize-y"
-                    placeholder="例如：600519, 300750, 000858"
-                    value={whitelistCodes}
-                    onChange={(e) => setWhitelistCodes(e.target.value)}
-                    disabled={whitelistSaving}
-                  />
-                  <div className="flex items-center gap-3">
-                    <Button
-                      variant="settings-secondary"
-                      onClick={async () => {
-                        setWhitelistSaving(true);
-                        setWhitelistMsg('');
-                        try {
-                          const codes = whitelistCodes.split(/[，,\s]+/).map(s => s.trim()).filter(Boolean);
-                          const result = await discoveryApi.updateWhitelist(codes);
-                          setWhitelistCodes(result.codes.join(', '));
-                          setWhitelistMsg(`已保存 ${result.count} 只股票，立即生效`);
-                        } catch {
-                          setWhitelistMsg('保存失败，请重试');
-                        } finally {
-                          setWhitelistSaving(false);
-                        }
-                      }}
-                      disabled={whitelistSaving}
-                      isLoading={whitelistSaving}
-                      loadingText="保存中..."
-                    >
-                      保存白名单
-                    </Button>
-                    {whitelistMsg ? (
-                      <span className={`text-xs ${whitelistMsg.includes('失败') ? 'text-red' : 'text-emerald-400'}`}>
-                        {whitelistMsg}
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-              </SettingsSectionCard>
-            ) : null}
             {activeCategory === 'ai_model' ? (
               <SettingsSectionCard
                 title="AI 模型接入"
@@ -809,52 +789,27 @@ const SettingsPage: React.FC = () => {
               <ChangePasswordCard />
             ) : null}
             {activeCategory === 'notification' ? (
-              <NotificationTestPanel
-                items={rawActiveItems.map((item) => ({ key: item.key, value: String(item.value ?? '') }))}
-                maskToken={maskToken}
-                disabled={isSaving || isLoading}
-              />
-            ) : null}
-            {activeItems.length ? (
-              <SettingsSectionCard
-                title="当前分类配置项"
-                description={getCategoryDescriptionZh(activeCategory as SystemConfigCategory, '') || '使用统一字段卡片维护当前分类的系统配置。'}
+              <SettingsPanelErrorBoundary
+                title="通知测试"
+                resetKey={`notification-test:${configVersion}`}
+                diagnosticHint={settingsPanelDiagnosticHint}
               >
-                {activeItems.map((item) => {
-                  const isStockList = item.key === 'STOCK_LIST';
-                  const stockCount = isStockList
-                    ? String(item.value ?? '')
-                        .split(',')
-                        .map((entry) => entry.trim())
-                        .filter(Boolean).length
-                    : 0;
-                  return (
-                    <SettingsField
-                      key={item.key}
-                      item={item}
-                      value={item.value}
-                      disabled={isSaving}
-                      onChange={setDraftValue}
-                      issues={issueByKey[item.key] || []}
-                      extraHeaderAction={
-                        isStockList ? (
-                          <RunFullAnalysisButton
-                            stockCount={stockCount}
-                            disabled={isSaving || isLoading}
-                          />
-                        ) : undefined
-                      }
-                    />
-                  );
-                })}
-              </SettingsSectionCard>
-            ) : (
-              <EmptyState
-                title="当前分类下暂无配置项"
-                description="当前分类没有可编辑字段；可切换左侧分类继续查看其它系统配置。"
-                className="settings-surface-panel settings-border-strong border-none bg-transparent shadow-none"
-              />
-            )}
+                <NotificationTestPanel
+                  items={rawActiveItems.map((item) => ({ key: item.key, value: String(item.value ?? '') }))}
+                  maskToken={maskToken}
+                  disabled={isSaving || isLoading}
+                />
+              </SettingsPanelErrorBoundary>
+            ) : null}
+            {shouldGuardActiveConfigPanel && activeItems.length ? (
+              <SettingsPanelErrorBoundary
+                title={activeConfigPanelErrorTitle}
+                resetKey={`${activeCategory}:${configVersion}`}
+                diagnosticHint={settingsPanelDiagnosticHint}
+              >
+                {activeConfigPanel}
+              </SettingsPanelErrorBoundary>
+            ) : activeConfigPanel}
           </section>
         </div>
       )}

@@ -31,6 +31,7 @@ from src.notification_noise import (
     parse_notification_quiet_hours,
     validate_notification_timezone,
 )
+from src.llm import generation_params as llm_generation_params
 
 logger = logging.getLogger(__name__)
 
@@ -61,20 +62,6 @@ _FALSEY_ENV_VALUES = {"0", "false", "no", "off"}
 # These are compatibility examples; actual availability should be validated by Anspire console/model entitlement.
 ANSPIRE_LLM_BASE_URL_DEFAULT = "https://open-gateway.anspire.cn/v6"
 ANSPIRE_LLM_MODEL_DEFAULT = "Doubao-Seed-2.0-lite"
-# Kimi K2.6 is consumed through Moonshot's OpenAI-compatible API in this
-# repository. Official references:
-# - https://platform.kimi.ai/docs/guide/kimi-k2-6-quickstart
-# - https://platform.moonshot.ai/docs/guide/compatibility#parameters-differences-in-request-body
-# - https://huggingface.co/moonshotai/Kimi-K2.6
-# - https://docs.litellm.ai/docs/providers/openai_compatible
-# Only the strict Kimi K2.6 family is normalized here; other models and
-# fallbacks continue using the configured runtime temperature.
-_FIXED_TEMPERATURE_LITELLM_MODELS: Dict[str, Dict[str, float]] = {
-    "kimi-k2.6": {
-        "thinking": 1.0,
-        "non_thinking": 0.6,
-    },
-}
 
 
 def _has_ntfy_topic_endpoint(value: Optional[str]) -> bool:
@@ -103,6 +90,7 @@ def _has_gotify_base_url(value: Optional[str]) -> bool:
 
 
 AGENT_MAX_STEPS_DEFAULT = 10
+FUNDAMENTAL_STAGE_TIMEOUT_SECONDS_DEFAULT = 8.0
 NEWS_STRATEGY_WINDOWS: Dict[str, int] = {
     "ultra_short": 1,
     "short": 3,
@@ -164,25 +152,6 @@ def parse_env_int(
         )
         parsed = maximum
     return parsed
-
-
-def parse_env_optional_int(
-    value: Optional[str],
-    *,
-    field_name: str,
-    minimum: Optional[int] = None,
-    maximum: Optional[int] = None,
-) -> Optional[int]:
-    """Parse an optional integer env value; empty/None returns None."""
-    if value is None or not str(value).strip():
-        return None
-    return parse_env_int(
-        value,
-        0,
-        field_name=field_name,
-        minimum=minimum,
-        maximum=maximum,
-    )
 
 
 def parse_env_float(
@@ -368,71 +337,7 @@ def resolve_litellm_wire_model(
     model_list: Optional[List[Dict[str, Any]]] = None,
 ) -> str:
     """Resolve a router alias to its underlying LiteLLM wire model."""
-    normalized_model = (model or "").strip()
-    if not normalized_model or not model_list:
-        return normalized_model
-
-    model_entry = _resolve_litellm_model_list_entry(normalized_model, model_list)
-    if not model_entry:
-        return normalized_model
-
-    params = model_entry.get("litellm_params", {}) or {}
-    wire_model = str(params.get("model") or "").strip()
-    if wire_model:
-        return wire_model
-    return normalized_model
-
-
-def _resolve_litellm_model_list_entry(
-    model: str,
-    model_list: Optional[List[Dict[str, Any]]] = None,
-) -> Optional[Dict[str, Any]]:
-    """Return the Router model_list entry matching the configured alias."""
-    normalized_model = (model or "").strip()
-    if not normalized_model or not model_list:
-        return None
-
-    for entry in model_list:
-        model_name = str(entry.get("model_name") or "").strip()
-        if not model_name:
-            params = entry.get("litellm_params", {}) or {}
-            model_name = str(params.get("model") or "").strip()
-        if model_name == normalized_model:
-            return entry
-    return None
-
-
-def _extract_thinking_config(payload: Optional[Dict[str, Any]]) -> Any:
-    """Extract a thinking-mode flag from LiteLLM-style request kwargs."""
-    if not isinstance(payload, dict):
-        return None
-    extra_body = payload.get("extra_body")
-    if isinstance(extra_body, dict) and "thinking" in extra_body:
-        return extra_body.get("thinking")
-    if "thinking" in payload:
-        return payload.get("thinking")
-    return None
-
-
-def _parse_thinking_enabled(value: Any) -> Optional[bool]:
-    """Parse thinking-mode config into True/False/unknown."""
-    if value is None:
-        return None
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        normalized = value.strip().lower()
-        if normalized in {"enabled", "enable", "true", "1", "on", "thinking"}:
-            return True
-        if normalized in {"disabled", "disable", "false", "0", "off", "none", "non-thinking", "non_thinking"}:
-            return False
-        return None
-    if isinstance(value, dict):
-        if "enabled" in value:
-            return _parse_thinking_enabled(value.get("enabled"))
-        if "type" in value:
-            return _parse_thinking_enabled(value.get("type"))
-    return None
+    return llm_generation_params.resolve_litellm_wire_model(model, model_list)
 
 
 def resolve_litellm_thinking_enabled(
@@ -441,19 +346,11 @@ def resolve_litellm_thinking_enabled(
     request_overrides: Optional[Dict[str, Any]] = None,
 ) -> Optional[bool]:
     """Resolve whether the outgoing LiteLLM request explicitly enables thinking."""
-    thinking_config = None
-    model_entry = _resolve_litellm_model_list_entry(model, model_list)
-    if model_entry:
-        thinking_config = _extract_thinking_config(model_entry)
-        entry_params = model_entry.get("litellm_params", {}) or {}
-        entry_thinking_config = _extract_thinking_config(entry_params)
-        if entry_thinking_config is not None:
-            thinking_config = entry_thinking_config
-
-    override_thinking_config = _extract_thinking_config(request_overrides)
-    if override_thinking_config is not None:
-        thinking_config = override_thinking_config
-    return _parse_thinking_enabled(thinking_config)
+    return llm_generation_params.resolve_litellm_thinking_enabled(
+        model,
+        model_list=model_list,
+        request_overrides=request_overrides,
+    )
 
 
 def get_fixed_litellm_temperature(
@@ -462,24 +359,11 @@ def get_fixed_litellm_temperature(
     request_overrides: Optional[Dict[str, Any]] = None,
 ) -> Optional[float]:
     """Return a provider-mandated temperature for known strict models."""
-    normalized_model = resolve_litellm_wire_model(model, model_list).lower()
-    if not normalized_model:
-        return None
-    thinking_enabled = resolve_litellm_thinking_enabled(
+    return llm_generation_params.get_fixed_litellm_temperature(
         model,
         model_list=model_list,
         request_overrides=request_overrides,
     )
-    model_parts = [part for part in re.split(r"[/:\s]+", normalized_model) if part]
-    for model_name, temperatures in _FIXED_TEMPERATURE_LITELLM_MODELS.items():
-        if any(part == model_name or part.startswith(f"{model_name}-") for part in model_parts):
-            if thinking_enabled is False and temperatures.get("non_thinking") is not None:
-                return temperatures["non_thinking"]
-            if temperatures.get("thinking") is not None:
-                return temperatures["thinking"]
-            if temperatures.get("non_thinking") is not None:
-                return temperatures["non_thinking"]
-    return None
 
 
 def normalize_litellm_temperature(
@@ -491,16 +375,13 @@ def normalize_litellm_temperature(
     request_overrides: Optional[Dict[str, Any]] = None,
 ) -> float:
     """Normalize temperature before sending a LiteLLM request."""
-    fixed_temperature = get_fixed_litellm_temperature(
+    return llm_generation_params.normalize_litellm_temperature(
         model,
+        temperature,
+        default=default,
         model_list=model_list,
         request_overrides=request_overrides,
     )
-    if fixed_temperature is not None:
-        return fixed_temperature
-    if temperature is None:
-        return default
-    return float(temperature)
 
 
 def resolve_unified_llm_temperature(model: str) -> float:
@@ -608,14 +489,15 @@ def get_effective_agent_models_to_try(config: "Config") -> List[str]:
     return ordered_models
 
 
-def setup_env(override: bool = True):
+def setup_env(override: bool = False):
     """
     Initialize environment variables from .env file.
 
     Args:
         override: If True, overwrite existing environment variables with values
-                  from .env file. Default is True so .env values always take
-                  precedence over system environment variables.
+                  from .env file. Set to True when reloading config after updates.
+                  Default is False to preserve behavior on initial load where
+                  system environment variables take precedence.
     """
     Config._capture_bootstrap_runtime_env_overrides()
     # src/config.py -> src/ -> root
@@ -649,6 +531,8 @@ class Config:
     # === 数据源 API Token ===
     tushare_token: Optional[str] = None
     tickflow_api_key: Optional[str] = None
+    finnhub_api_key: Optional[str] = None
+    alphavantage_api_key: Optional[str] = None
     longbridge_app_key: Optional[str] = None
     longbridge_app_secret: Optional[str] = None
     longbridge_access_token: Optional[str] = None
@@ -717,38 +601,15 @@ class Config:
     serpapi_keys: List[str] = field(default_factory=list)  # SerpAPI Keys
     searxng_base_urls: List[str] = field(default_factory=list)  # SearXNG instance URLs (self-hosted, no quota)
     searxng_public_instances_enabled: bool = True  # Auto-discover public SearXNG instances when base URLs are absent
-    enable_akshare_news: bool = False  # Enable East Money stock_news_em as primary news source (no API key)
 
     # === Social Sentiment (US stocks only, api.adanos.org) ===
     social_sentiment_api_key: Optional[str] = None
     social_sentiment_api_url: str = "https://api.adanos.org"
 
     # === 新闻与分析筛选配置 ===
-    news_max_age_days: int = 5   # 新闻最大时效（天）
+    news_max_age_days: int = 3   # 新闻最大时效（天）
     news_strategy_profile: str = "short"  # 新闻窗口策略档位：ultra_short/short/medium/long
     bias_threshold: float = 5.0  # 乖离率阈值（%），超过此值提示不追高
-
-    # === 股票自动发现配置 (Stock Discovery Engine) ===
-    auto_discover: bool = False              # AUTO_DISCOVER — 开启自动发现（true 时忽略 STOCK_LIST）
-    auto_discover_count: int = 10            # AUTO_DISCOVER_COUNT — 每日推荐数量
-
-    # 盘中扫描权重 (4因子，相加=100)
-    discover_weight_sector: float = 25.0     # DISCOVER_WEIGHT_SECTOR — 板块热度
-    discover_weight_ma_entry: float = 35.0   # DISCOVER_WEIGHT_MA_ENTRY — 均线买点（核心）
-    discover_weight_momentum: float = 25.0   # DISCOVER_WEIGHT_MOMENTUM — 强势启动
-    discover_weight_rebound: float = 15.0    # DISCOVER_WEIGHT_REBOUND — 炸板回封
-
-    # 盘后深度权重 (5因子，相加=100)
-    discover_weight_moneyflow: float = 25.0  # DISCOVER_WEIGHT_MONEYFLOW — 资金流向
-    discover_weight_margin: float = 20.0     # DISCOVER_WEIGHT_MARGIN — 融资融券（T+1）
-    discover_weight_chip: float = 15.0       # DISCOVER_WEIGHT_CHIP — 筹码结构
-    discover_weight_technical: float = 25.0  # DISCOVER_WEIGHT_TECHNICAL — 技术面
-    discover_weight_limit_post: float = 15.0 # DISCOVER_WEIGHT_LIMIT_POST — 涨跌停
-
-    # 扫描器设置
-    discover_scan_interval: int = 60        # DISCOVER_SCAN_INTERVAL — 盘中轮询间隔（秒）
-    discover_scan_max_runtime: int = 240     # DISCOVER_SCAN_MAX_RUNTIME — 最大运行时间（分钟）
-    discover_scan_top_n: int = 10            # DISCOVER_SCAN_TOP_N — 盘中保持 Top N
 
     # === Agent 模式配置 ===
     agent_litellm_model: str = ""  # Optional Agent-only primary model; empty inherits LITELLM_MODEL
@@ -770,16 +631,6 @@ class Config:
     agent_event_monitor_enabled: bool = False  # Enable periodic event-driven alert checks in schedule mode
     agent_event_monitor_interval_minutes: int = 5  # Polling interval for event monitor background checks
     agent_event_alert_rules_json: str = ""  # JSON array of serialized EventMonitor rules
-
-    # Top-N multi-agent recheck (after batch run, sentiment top N → multi, merge & report)
-    top_n_multi_agent_review_enabled: bool = False
-    top_n_multi_agent_review_count: int = 10
-    top_n_multi_agent_review_orchestrator_mode: str = "full"  # quick/standard/full/specialist
-    top_n_multi_agent_review_schedule: str = "after_batch"  # after_batch / both / close / open
-    top_n_multi_agent_review_concurrency: int = 3
-    top_n_multi_agent_review_output_dir: str = "reports_multi_agent"
-    # 首页/API 交互式单股分析落盘目录（按日分子目录、按代码覆盖同日复跑）
-    home_analysis_reports_dir: str = "reports_temp"
 
     # === 通知配置（可同时配置多个，全部推送）===
     
@@ -862,6 +713,7 @@ class Config:
 
     # 仅分析结果摘要：true 时只推送汇总，不含个股详情（Issue #262）
     report_summary_only: bool = False
+    report_show_llm_model: bool = True
 
     # Report Engine P0: Jinja2 renderer and integrity checks
     report_templates_dir: str = "templates"  # Template directory (relative to project root)
@@ -913,11 +765,6 @@ class Config:
     backtest_min_age_days: int = 14
     backtest_engine_version: str = "v1"
     backtest_neutral_band_pct: float = 2.0
-    backtest_auto_mode: str = "legacy"  # legacy | previous_trading_day_buy_hold
-    backtest_auto_filter_mode: str = "signal"  # all | signal | score | signal_and_score
-    backtest_auto_allowed_categories: str = "BUY,HOLD"
-    backtest_auto_sentiment_score_min: Optional[int] = None
-    backtest_auto_sentiment_score_max: Optional[int] = None
     
     # === 日志配置 ===
     log_dir: str = "./logs"  # 日志文件目录
@@ -926,7 +773,7 @@ class Config:
     # === 系统配置 ===
     max_workers: int = 3  # 低并发防封禁
     debug: bool = False
-    http_proxy: Optional[str] = None  # HTTP 代理 (例如: http://127.0.0.1:42484)
+    http_proxy: Optional[str] = None  # HTTP 代理 (例如: http://127.0.0.1:10809)
     https_proxy: Optional[str] = None # HTTPS 代理
     
     # === 定时任务配置 ===
@@ -935,8 +782,9 @@ class Config:
     schedule_run_immediately: bool = True     # 启动时是否立即执行一次
     run_immediately: bool = True              # 启动时是否立即执行一次（非定时模式）
     market_review_enabled: bool = True        # 是否启用大盘复盘
-    # 大盘复盘市场区域：cn(A股)、us(美股)、both(两者)，us 适合仅关注美股的用户
+    # 大盘复盘市场区域：cn(A股)、hk(港股)、us(美股)、both(三市场)，us 适合仅关注美股的用户
     market_review_region: str = "cn"
+    market_review_color_scheme: str = "green_up"
     # 交易日检查：默认启用，非交易日跳过执行；设为 false 或 --force-run 可强制执行（Issue #373）
     trading_day_check_enabled: bool = True
 
@@ -947,12 +795,6 @@ class Config:
     enable_realtime_technical_indicators: bool = True
     # 筹码分布开关（该接口不稳定，云端部署建议关闭）
     enable_chip_distribution: bool = True
-    # 分钟级筹码分布（需 Tushare stk_mins 单独开通权限，默认禁用水水水）
-    # enable_minute_chip_distribution: bool = False
-    # tushare_minute_chip_freq: str = "5min"
-    # tushare_minute_chip_days: int = 1
-    # Tushare 大模型语料新闻（需 doc_id 143/176 等语料权限，默认禁用水水水）
-    enable_tushare_news: bool = False
     # 东财接口补丁开关
     enable_eastmoney_patch: bool = False
     # 实时行情数据源优先级（逗号分隔）
@@ -971,9 +813,9 @@ class Config:
     # 全局总开关；关闭时返回 not_supported 并保持主流程无变化
     enable_fundamental_pipeline: bool = True
     # 基本面阶段总预算（秒）
-    fundamental_stage_timeout_seconds: float = 30.0
+    fundamental_stage_timeout_seconds: float = FUNDAMENTAL_STAGE_TIMEOUT_SECONDS_DEFAULT
     # 单能力源调用超时（秒）
-    fundamental_fetch_timeout_seconds: float = 30.0
+    fundamental_fetch_timeout_seconds: float = 3.0
     # 单能力失败重试次数（已包含首次）
     fundamental_retry_max: int = 1
     # 基本面上下文短 TTL（秒）
@@ -1084,20 +926,6 @@ class Config:
                 self.agent_skill_routing, self._VALID_SKILL_ROUTING,
             )
             object.__setattr__(self, "agent_skill_routing", "auto")
-        if self.top_n_multi_agent_review_orchestrator_mode not in self._VALID_ORCHESTRATOR_MODES:
-            _log.warning(
-                "Invalid TOP_N_MULTI_AGENT_REVIEW_MODE=%r, falling back to 'full'. Valid: %s",
-                self.top_n_multi_agent_review_orchestrator_mode,
-                self._VALID_ORCHESTRATOR_MODES,
-            )
-            object.__setattr__(self, "top_n_multi_agent_review_orchestrator_mode", "full")
-        _valid_top_n_sched = {"close", "open", "both", "after_batch"}
-        if self.top_n_multi_agent_review_schedule not in _valid_top_n_sched:
-            _log.warning(
-                "Invalid TOP_N_MULTI_AGENT_REVIEW_SCHEDULE=%r, falling back to 'after_batch'.",
-                self.top_n_multi_agent_review_schedule,
-            )
-            object.__setattr__(self, "top_n_multi_agent_review_schedule", "after_batch")
 
     # 单例实例存储
     _instance: Optional['Config'] = None
@@ -1394,10 +1222,6 @@ class Config:
             os.getenv('SEARXNG_PUBLIC_INSTANCES_ENABLED'),
             default=True,
         )
-        enable_akshare_news = parse_env_bool(
-            os.getenv('ENABLE_AKSHARE_NEWS'),
-            default=False,
-        )
 
         # 企微消息类型与最大字节数逻辑
         wechat_msg_type = os.getenv('WECHAT_MSG_TYPE', 'markdown')
@@ -1455,7 +1279,11 @@ class Config:
         report_language_raw = cls._resolve_report_language_env_value(
             preexisting_report_language
         )
-        
+        report_show_llm_model_raw = os.getenv('REPORT_SHOW_LLM_MODEL')
+        report_show_llm_model = parse_env_bool(report_show_llm_model_raw, default=True)
+        if report_show_llm_model_raw is not None and not report_show_llm_model_raw.strip():
+            report_show_llm_model = False
+
         return cls(
             stock_list=stock_list,
             feishu_app_id=os.getenv('FEISHU_APP_ID'),
@@ -1463,6 +1291,8 @@ class Config:
             feishu_folder_token=os.getenv('FEISHU_FOLDER_TOKEN'),
             tushare_token=os.getenv('TUSHARE_TOKEN'),
             tickflow_api_key=os.getenv('TICKFLOW_API_KEY'),
+            finnhub_api_key=os.getenv('FINNHUB_API_KEY') or None,
+            alphavantage_api_key=os.getenv('ALPHAVANTAGE_API_KEY') or None,
             longbridge_app_key=os.getenv('LONGBRIDGE_APP_KEY') or None,
             longbridge_app_secret=os.getenv('LONGBRIDGE_APP_SECRET') or None,
             longbridge_access_token=os.getenv('LONGBRIDGE_ACCESS_TOKEN') or None,
@@ -1514,55 +1344,13 @@ class Config:
             serpapi_keys=serpapi_keys,
             searxng_base_urls=searxng_base_urls,
             searxng_public_instances_enabled=searxng_public_instances_enabled,
-            enable_akshare_news=enable_akshare_news,
             social_sentiment_api_key=os.getenv('SOCIAL_SENTIMENT_API_KEY') or None,
             social_sentiment_api_url=os.getenv('SOCIAL_SENTIMENT_API_URL', 'https://api.adanos.org').rstrip('/'),
-            news_max_age_days=parse_env_int(os.getenv('NEWS_MAX_AGE_DAYS'), 5, field_name='NEWS_MAX_AGE_DAYS', minimum=1),
+            news_max_age_days=parse_env_int(os.getenv('NEWS_MAX_AGE_DAYS'), 3, field_name='NEWS_MAX_AGE_DAYS', minimum=1),
             news_strategy_profile=cls._parse_news_strategy_profile(
                 os.getenv('NEWS_STRATEGY_PROFILE', 'short')
             ),
             bias_threshold=parse_env_float(os.getenv('BIAS_THRESHOLD'), 5.0, field_name='BIAS_THRESHOLD', minimum=1.0),
-            # --- 股票自动发现 ---
-            auto_discover=os.getenv('AUTO_DISCOVER', 'false').lower() == 'true',
-            auto_discover_count=parse_env_int(
-                os.getenv('AUTO_DISCOVER_COUNT'), 10, field_name='AUTO_DISCOVER_COUNT', minimum=1, maximum=50
-            ),
-            discover_weight_sector=parse_env_float(
-                os.getenv('DISCOVER_WEIGHT_SECTOR'), 25.0, field_name='DISCOVER_WEIGHT_SECTOR', minimum=0.0, maximum=100.0
-            ),
-            discover_weight_ma_entry=parse_env_float(
-                os.getenv('DISCOVER_WEIGHT_MA_ENTRY'), 35.0, field_name='DISCOVER_WEIGHT_MA_ENTRY', minimum=0.0, maximum=100.0
-            ),
-            discover_weight_momentum=parse_env_float(
-                os.getenv('DISCOVER_WEIGHT_MOMENTUM'), 25.0, field_name='DISCOVER_WEIGHT_MOMENTUM', minimum=0.0, maximum=100.0
-            ),
-            discover_weight_rebound=parse_env_float(
-                os.getenv('DISCOVER_WEIGHT_REBOUND'), 15.0, field_name='DISCOVER_WEIGHT_REBOUND', minimum=0.0, maximum=100.0
-            ),
-            discover_weight_moneyflow=parse_env_float(
-                os.getenv('DISCOVER_WEIGHT_MONEYFLOW'), 25.0, field_name='DISCOVER_WEIGHT_MONEYFLOW', minimum=0.0, maximum=100.0
-            ),
-            discover_weight_margin=parse_env_float(
-                os.getenv('DISCOVER_WEIGHT_MARGIN'), 20.0, field_name='DISCOVER_WEIGHT_MARGIN', minimum=0.0, maximum=100.0
-            ),
-            discover_weight_chip=parse_env_float(
-                os.getenv('DISCOVER_WEIGHT_CHIP'), 15.0, field_name='DISCOVER_WEIGHT_CHIP', minimum=0.0, maximum=100.0
-            ),
-            discover_weight_technical=parse_env_float(
-                os.getenv('DISCOVER_WEIGHT_TECHNICAL'), 25.0, field_name='DISCOVER_WEIGHT_TECHNICAL', minimum=0.0, maximum=100.0
-            ),
-            discover_weight_limit_post=parse_env_float(
-                os.getenv('DISCOVER_WEIGHT_LIMIT_POST'), 15.0, field_name='DISCOVER_WEIGHT_LIMIT_POST', minimum=0.0, maximum=100.0
-            ),
-            discover_scan_interval=parse_env_int(
-                os.getenv('DISCOVER_SCAN_INTERVAL'), 300, field_name='DISCOVER_SCAN_INTERVAL', minimum=30, maximum=3600
-            ),
-            discover_scan_max_runtime=parse_env_int(
-                os.getenv('DISCOVER_SCAN_MAX_RUNTIME'), 240, field_name='DISCOVER_SCAN_MAX_RUNTIME', minimum=30, maximum=480
-            ),
-            discover_scan_top_n=parse_env_int(
-                os.getenv('DISCOVER_SCAN_TOP_N'), 10, field_name='DISCOVER_SCAN_TOP_N', minimum=1, maximum=30
-            ),
             agent_litellm_model=agent_litellm_model,
             agent_mode=os.getenv('AGENT_MODE', 'false').lower() == 'true',
             _agent_mode_explicit=os.getenv('AGENT_MODE') is not None,
@@ -1613,33 +1401,6 @@ class Config:
                 minimum=1,
             ),
             agent_event_alert_rules_json=os.getenv('AGENT_EVENT_ALERT_RULES_JSON', ''),
-            top_n_multi_agent_review_enabled=(
-                os.getenv('TOP_N_MULTI_AGENT_REVIEW_ENABLED', 'false').lower() == 'true'
-            ),
-            top_n_multi_agent_review_count=parse_env_int(
-                os.getenv('TOP_N_MULTI_AGENT_REVIEW_COUNT'),
-                10,
-                field_name='TOP_N_MULTI_AGENT_REVIEW_COUNT',
-                minimum=1,
-            ),
-            top_n_multi_agent_review_orchestrator_mode=(
-                os.getenv('TOP_N_MULTI_AGENT_REVIEW_MODE', 'full') or 'full'
-            ).lower(),
-            top_n_multi_agent_review_schedule=(
-                os.getenv('TOP_N_MULTI_AGENT_REVIEW_SCHEDULE', 'after_batch') or 'after_batch'
-            ).lower(),
-            top_n_multi_agent_review_concurrency=parse_env_int(
-                os.getenv('TOP_N_MULTI_AGENT_REVIEW_CONCURRENCY'),
-                3,
-                field_name='TOP_N_MULTI_AGENT_REVIEW_CONCURRENCY',
-                minimum=1,
-            ),
-            top_n_multi_agent_review_output_dir=(
-                os.getenv('TOP_N_MULTI_AGENT_REVIEW_OUTPUT_DIR', 'reports_multi_agent') or 'reports_multi_agent'
-            ),
-            home_analysis_reports_dir=(
-                os.getenv('HOME_ANALYSIS_REPORTS_DIR', 'reports_temp') or 'reports_temp'
-            ),
             wechat_webhook_url=os.getenv('WECHAT_WEBHOOK_URL'),
             feishu_webhook_url=os.getenv('FEISHU_WEBHOOK_URL'),
             feishu_webhook_secret=os.getenv('FEISHU_WEBHOOK_SECRET'),
@@ -1709,6 +1470,7 @@ class Config:
             report_type=cls._parse_report_type(os.getenv('REPORT_TYPE', 'simple')),
             report_language=cls._parse_report_language(report_language_raw),
             report_summary_only=os.getenv('REPORT_SUMMARY_ONLY', 'false').lower() == 'true',
+            report_show_llm_model=report_show_llm_model,
             report_templates_dir=os.getenv('REPORT_TEMPLATES_DIR', 'templates'),
             report_renderer_enabled=os.getenv('REPORT_RENDERER_ENABLED', 'false').lower() == 'true',
             report_integrity_enabled=os.getenv('REPORT_INTEGRITY_ENABLED', 'true').lower() == 'true',
@@ -1764,21 +1526,6 @@ class Config:
                 field_name='BACKTEST_NEUTRAL_BAND_PCT',
                 minimum=0.0,
             ),
-            backtest_auto_mode=(os.getenv('BACKTEST_AUTO_MODE', 'legacy') or 'legacy').strip().lower(),
-            backtest_auto_filter_mode=(os.getenv('BACKTEST_AUTO_FILTER_MODE', 'signal') or 'signal').strip().lower(),
-            backtest_auto_allowed_categories=os.getenv('BACKTEST_AUTO_ALLOWED_CATEGORIES', 'BUY,HOLD'),
-            backtest_auto_sentiment_score_min=parse_env_optional_int(
-                os.getenv('BACKTEST_AUTO_SENTIMENT_SCORE_MIN'),
-                field_name='BACKTEST_AUTO_SENTIMENT_SCORE_MIN',
-                minimum=0,
-                maximum=100,
-            ),
-            backtest_auto_sentiment_score_max=parse_env_optional_int(
-                os.getenv('BACKTEST_AUTO_SENTIMENT_SCORE_MAX'),
-                field_name='BACKTEST_AUTO_SENTIMENT_SCORE_MAX',
-                minimum=0,
-                maximum=100,
-            ),
             log_dir=os.getenv('LOG_DIR', './logs'),
             log_level=os.getenv('LOG_LEVEL', 'INFO'),
             max_workers=parse_env_int(os.getenv('MAX_WORKERS'), 3, field_name='MAX_WORKERS', minimum=1),
@@ -1797,6 +1544,9 @@ class Config:
             market_review_enabled=os.getenv('MARKET_REVIEW_ENABLED', 'true').lower() == 'true',
             market_review_region=cls._parse_market_review_region(
                 os.getenv('MARKET_REVIEW_REGION', 'cn')
+            ),
+            market_review_color_scheme=cls._parse_market_review_color_scheme(
+                os.getenv('MARKET_REVIEW_COLOR_SCHEME', 'green_up')
             ),
             trading_day_check_enabled=os.getenv('TRADING_DAY_CHECK_ENABLED', 'true').lower() != 'false',
             webui_enabled=os.getenv('WEBUI_ENABLED', 'false').lower() == 'true',
@@ -1831,12 +1581,8 @@ class Config:
                 'ENABLE_REALTIME_TECHNICAL_INDICATORS', 'true'
             ).lower() == 'true',
             enable_chip_distribution=os.getenv('ENABLE_CHIP_DISTRIBUTION', 'true').lower() == 'true',
-            # enable_minute_chip_distribution=False,  # 需要单独权限，默认关闭
-            # tushare_minute_chip_freq=os.getenv('TUSHARE_MINUTE_CHIP_FREQ', '5min'),
-            # tushare_minute_chip_days=int(os.getenv('TUSHARE_MINUTE_CHIP_DAYS', '1')),
             # 东财接口补丁开关
             enable_eastmoney_patch=os.getenv('ENABLE_EASTMONEY_PATCH', 'false').lower() == 'true',
-            enable_tushare_news=os.getenv('ENABLE_TUSHARE_NEWS', 'false').lower() == 'true',
             # 实时行情数据源优先级：
             # - tencent: 腾讯财经，有量比/换手率/PE/PB等，单股查询稳定（推荐）
             # - akshare_sina: 新浪财经，基本行情稳定，但无量比
@@ -1848,13 +1594,13 @@ class Config:
             enable_fundamental_pipeline=os.getenv('ENABLE_FUNDAMENTAL_PIPELINE', 'true').lower() == 'true',
             fundamental_stage_timeout_seconds=parse_env_float(
                 os.getenv('FUNDAMENTAL_STAGE_TIMEOUT_SECONDS'),
-                30.0,
+                FUNDAMENTAL_STAGE_TIMEOUT_SECONDS_DEFAULT,
                 field_name='FUNDAMENTAL_STAGE_TIMEOUT_SECONDS',
                 minimum=0.0,
             ),
             fundamental_fetch_timeout_seconds=parse_env_float(
                 os.getenv('FUNDAMENTAL_FETCH_TIMEOUT_SECONDS'),
-                30.0,
+                3.0,
                 field_name='FUNDAMENTAL_FETCH_TIMEOUT_SECONDS',
                 minimum=0.0,
             ),
@@ -2351,6 +2097,19 @@ class Config:
         return 'cn'
 
     @classmethod
+    def _parse_market_review_color_scheme(cls, value: str) -> str:
+        """Parse market-review index change color scheme."""
+        import logging
+        v = (value or 'green_up').strip().lower().replace('-', '_')
+        if v in ('green_up', 'red_up'):
+            return v
+        logging.getLogger(__name__).warning(
+            "MARKET_REVIEW_COLOR_SCHEME 配置值 '%s' 无效，已回退为默认值 'green_up'（合法值：green_up / red_up）",
+            value,
+        )
+        return 'green_up'
+
+    @classmethod
     def _parse_md2img_engine(cls, value: str) -> str:
         """Parse MD2IMG_ENGINE, fallback to wkhtmltoimage for invalid values (Issue #455)."""
         v = (value or 'wkhtmltoimage').strip().lower()
@@ -2416,7 +2175,6 @@ class Config:
             or self.brave_api_keys
             or self.serpapi_keys
             or self.has_searxng_enabled()
-            or self.enable_akshare_news
         )
 
     def is_agent_available(self) -> bool:
