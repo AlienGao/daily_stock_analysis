@@ -196,6 +196,9 @@ export type FactorSnapshotDatesResponse = {
     available_to: string;
     trading_dates: string[];
   };
+  weights: Record<string, number>;
+  use_pipeline: boolean;
+  score_blend_alpha: number;
 };
 
 export type FactorBacktestRequest = {
@@ -208,6 +211,7 @@ export type FactorBacktestRequest = {
   initial_capital?: number;
   risk_free_rate?: number;
   use_pipeline?: boolean;
+  score_blend_alpha?: number;
   reoptimize_interval?: number | null;
 };
 
@@ -281,6 +285,7 @@ export type FactorBacktestResultResponse = {
     top_50pct: number;
   }>;
   trade_records: FactorBacktestTrade[];
+  benchmark_curve: FactorBacktestCapitalPoint[];
 };
 
 /* ── Factor Weight Optimization (TPE) ── */
@@ -503,6 +508,17 @@ export const discoveryApi = {
     const resp = await apiClient.get('/api/v1/discovery/factor-backtest/optimize/report', {
       params: { report_path: reportPath },
     });
+    return resp.data;
+  },
+
+  /* pipeline / score-blend config */
+  async getPipelineConfig(): Promise<{ intraday_pipeline_enabled: boolean | null; postmarket_pipeline_enabled: boolean | null; score_blend_alpha: number | null }> {
+    const resp = await apiClient.get('/api/v1/discovery/pipeline-config');
+    return resp.data;
+  },
+
+  async setPipelineConfig(body: { intraday_pipeline_enabled?: boolean | null; postmarket_pipeline_enabled?: boolean | null; score_blend_alpha?: number | null }): Promise<{ intraday_pipeline_enabled: boolean | null; postmarket_pipeline_enabled: boolean | null; score_blend_alpha: number | null }> {
+    const resp = await apiClient.post('/api/v1/discovery/pipeline-config', body);
     return resp.data;
   },
 };

@@ -2,15 +2,14 @@
 """运行日志清理脚本。
 
 功能：
-- 删除超过指定交易日数的 debug 日志文件
+- 删除超过指定交易日数的所有运行日志（普通 + debug + API）
 - 清理 replay 测试日志
-- 可选：清理数据库 WAL 文件（需无连接）
+- 每次自动清理数据库 WAL 文件
 
 用法：
     python scripts/clean_logs.py                    # 默认保留 7 个交易日
     python scripts/clean_logs.py --days 5           # 保留 5 个交易日
-    python scripts/clean_logs.py --dry-run         # 预览不删除
-    python scripts/clean_logs.py --include-wal     # 同时清理数据库 WAL
+    python scripts/clean_logs.py --dry-run          # 预览不删除
 """
 
 import argparse
@@ -25,30 +24,24 @@ DB_PATH = os.path.join(DATA_DIR, "stock_analysis.db")
 
 
 def get_trading_days_ago(n: int) -> datetime:
-    """获取 N 个交易日前的日期（跳过周末）。
-
-    从今天往前数 n 个交易日（排除周六、周日），
-    用于日志清理的截止日期判断。
-    """
+    """获取 N 个交易日前的日期（跳过周末）。"""
     today = datetime.now()
     count = 0
     current = today
 
     while count < n:
         current -= timedelta(days=1)
-        # 0=周一, 6=周日
         if current.weekday() < 5:
             count += 1
 
     return current
 
 
-def clean_debug_logs(cutoff: datetime, dry_run: bool = False) -> tuple:
-    """删除 modification time 早于 cutoff 的 debug 日志。"""
+def _clean_logs_by_pattern(pattern: str, cutoff: datetime, dry_run: bool = False) -> tuple:
+    """按 pattern 匹配日志文件，删除 mtime 早于 cutoff 的文件。"""
     removed = []
     total_size = 0
 
-    pattern = os.path.join(LOGS_DIR, "stock_analysis_debug_*.log*")
     for path in glob.glob(pattern):
         try:
             mtime = datetime.fromtimestamp(os.path.getmtime(path))
@@ -64,6 +57,23 @@ def clean_debug_logs(cutoff: datetime, dry_run: bool = False) -> tuple:
         except Exception as e:
             print(f"  警告: 处理失败 {path}: {e}")
     return removed, total_size
+
+
+def clean_all_logs(cutoff: datetime, dry_run: bool = False) -> tuple:
+    """清理所有运行日志（普通、debug、API）。"""
+    patterns = [
+        os.path.join(LOGS_DIR, "stock_analysis_*.log*"),
+        os.path.join(LOGS_DIR, "stock_analysis_debug_*.log*"),
+        os.path.join(LOGS_DIR, "api_server_*.log*"),
+        os.path.join(LOGS_DIR, "api_server_debug_*.log*"),
+    ]
+    all_removed = []
+    all_size = 0
+    for pattern in patterns:
+        removed, size = _clean_logs_by_pattern(pattern, cutoff, dry_run)
+        all_removed.extend(removed)
+        all_size += size
+    return all_removed, all_size
 
 
 def clean_replay_logs(dry_run: bool = False) -> list:
@@ -85,32 +95,27 @@ def clean_replay_logs(dry_run: bool = False) -> list:
 
 
 def clean_wal_files(dry_run: bool = False) -> tuple:
-    """清理数据库 WAL 和 SHM 文件（需无连接）。"""
+    """清理数据库 WAL 文件（仅 checkpoint truncate，不删除文件）。
+
+    SHM 文件由 SQLite WAL 模式自动管理，删除会导致活跃连接出现 disk I/O error。
+    """
     import sqlite3
     removed = []
     total_size = 0
 
     wal_path = DB_PATH + "-wal"
-    shm_path = DB_PATH + "-shm"
-    for path in [wal_path, shm_path]:
-        if os.path.exists(path):
-            size = os.path.getsize(path)
+    if os.path.exists(wal_path):
+        size = os.path.getsize(wal_path)
+        try:
+            conn = sqlite3.connect(DB_PATH, timeout=5)
+            conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            conn.close()
+            total_size = size
             if size > 0:
-                try:
-                    if path == wal_path:
-                        conn = sqlite3.connect(DB_PATH, timeout=5)
-                        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-                        conn.close()
-                        print(f"  WAL checkpoint 完成")
-                    if dry_run:
-                        print(f"  [DRY-RUN] 将删除: {path} ({size/1024/1024:.1f}MB)")
-                    else:
-                        os.remove(path)
-                        print(f"  删除: {os.path.basename(path)} ({size/1024/1024:.1f}MB)")
-                    removed.append(path)
-                    total_size += size
-                except Exception as e:
-                    print(f"  警告: 处理失败 {path}: {e}")
+                print(f"  WAL checkpoint 完成，释放 {size/1024/1024:.1f}MB")
+            removed.append(wal_path)
+        except Exception as e:
+            print(f"  警告: WAL checkpoint 失败: {e}")
     return removed, total_size
 
 
@@ -118,7 +123,6 @@ def main():
     parser = argparse.ArgumentParser(description="清理运行日志，保留最近 N 个交易日")
     parser.add_argument("--days", type=int, default=7, help="保留交易日数（默认 7）")
     parser.add_argument("--dry-run", action="store_true", help="预览模式，不实际删除")
-    parser.add_argument("--include-wal", action="store_true", help="同时清理数据库 WAL 文件")
     args = parser.parse_args()
 
     cutoff = get_trading_days_ago(args.days)
@@ -132,21 +136,19 @@ def main():
         print("DRY-RUN 模式：仅预览不删除")
     print()
 
-    print("清理 debug 日志（按交易日）...")
-    debug_removed, debug_size = clean_debug_logs(cutoff, args.dry_run)
+    print("清理所有运行日志...")
+    log_removed, log_size = clean_all_logs(cutoff, args.dry_run)
 
     print()
     print("清理 replay 日志...")
     replay_removed = clean_replay_logs(args.dry_run)
 
-    wal_size = 0
-    if args.include_wal:
-        print()
-        print("清理数据库 WAL 文件...")
-        wal_removed, wal_size = clean_wal_files(args.dry_run)
+    print()
+    print("清理数据库 WAL 文件...")
+    wal_removed, wal_size = clean_wal_files(args.dry_run)
 
-    total_removed = len(debug_removed) + len(replay_removed)
-    total_size = (debug_size + wal_size) / 1024 / 1024
+    total_removed = len(log_removed) + len(replay_removed) + len(wal_removed)
+    total_size = (log_size + wal_size) / 1024 / 1024
 
     print()
     print("=" * 50)

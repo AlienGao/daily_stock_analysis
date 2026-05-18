@@ -4,6 +4,7 @@
 协调因子注册、数据获取、加权评分、去重排序，输出发现结果。
 """
 
+import functools
 import json
 import logging
 import random
@@ -96,6 +97,7 @@ def create_discovery_engine(config=None, tushare_fetcher=None, akshare_fetcher=N
     return engine
 
 
+@functools.lru_cache(maxsize=2)
 def get_factor_weights(mode: str) -> Dict[str, float]:
     """获取指定模式下所有活跃因子的权重映射（从 .env / DiscoveryConfig 读取）。
 
@@ -1048,6 +1050,9 @@ class StockDiscoveryEngine:
                 s = score_columns.get(name)
                 if s is not None and hasattr(s, 'index'):
                     all_codes.update(str(c) for c in s.index)
+            # 重新应用候选范围限制（避免 Phase 3 扩展 all_codes 后绕过过滤）
+            if candidate_codes:
+                all_codes = all_codes & candidate_set
             logger.info(
                 "[Discovery] Phase 3 新增 %d 个因子评分: %s",
                 len(_phase3_new_factors), ", ".join(_phase3_new_factors),
@@ -1276,7 +1281,7 @@ class StockDiscoveryEngine:
         logger.info("[Discovery] Pass 1 完成: %d 只候选", len(pass1_candidates))
 
         # --- 全量 tech_score（StockScorer，精确止盈止损 + 跳过 reason）---
-        alpha = self.config.score_blend_alpha
+        alpha = self.config.effective_score_blend_alpha
         tech_scores_map: Dict[str, float] = {}  # ts_code → tech_score
         stop_tp_map: Dict[str, tuple] = {}  # stock_code → (buy_low, buy_high, stop, tp1, tp2)
 
@@ -1526,8 +1531,8 @@ class StockDiscoveryEngine:
             logger.info("[Discovery] Pass 2: 已剔除 %d 只低盈亏比股（盈亏比 <= 0）", lowpnl_skipped)
 
         # Phase 4.7: 用精确止盈止损重算 tech_score（复用全量评分阶段的 scorer）
-        scorer = getattr(self, '_scorer', None)
-        spot_df = getattr(self, '_spot_df', None)
+        scorer = getattr(self, '_scorer', None) if use_pipeline else None
+        spot_df = getattr(self, '_spot_df', None) if use_pipeline else None
         if scorer and results:
             for r in results:
                 try:
@@ -1585,7 +1590,7 @@ class StockDiscoveryEngine:
             )
 
         # 综合分排序（无论 StockScorer 是否启用）
-        alpha = self.config.score_blend_alpha
+        alpha = self.config.effective_score_blend_alpha
         for r in results:
             if tech_scores_map:
                 r.composite_score = alpha * r.score + (1 - alpha) * r.tech_score
@@ -1621,6 +1626,8 @@ class StockDiscoveryEngine:
             f"耗时 {elapsed:.1f}s"
         )
 
+        self._last_tech_scores_map = tech_scores_map
+        self._last_score_blend_alpha = alpha
         return results
 
     def get_last_full_scan_records(self, scan_round: int = 0) -> List[Dict[str, Any]]:

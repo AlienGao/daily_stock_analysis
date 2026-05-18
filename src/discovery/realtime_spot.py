@@ -496,6 +496,16 @@ class RealtimeSpotProvider:
         result["trade_date"] = date.today().isoformat()
         result["source"] = source
 
+        # 用 price / pre_close 重新计算 pct_chg，不信任 API 原始字段
+        # （Tencent/Sina 在涨停无成交时可能返回 0.00，导致展示及涨停扣分失效）
+        has_price = result["price"].notna()
+        has_preclose = result["pre_close"].notna() & (result["pre_close"] > 0)
+        mask = has_price & has_preclose
+        result.loc[mask, "pct_chg"] = (
+            (result.loc[mask, "price"] - result.loc[mask, "pre_close"])
+            / result.loc[mask, "pre_close"] * 100
+        ).round(2)
+
         # 过滤停牌/无效数据
         result = result.dropna(subset=["price"])
         result = result[result["price"] > 0]

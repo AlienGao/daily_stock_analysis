@@ -6604,6 +6604,8 @@ class DatabaseManager:
                         stock_name=r.get("stock_name", ""),
                         rank=r.get("rank", 0),
                         total_score=self._normalize_sql_value(r.get("total_score")),
+                        tech_score=self._normalize_sql_value(r.get("tech_score")),
+                        composite_score=self._normalize_sql_value(r.get("composite_score")),
                         factor_scores_json=factor_json,
                         sector=r.get("sector", ""),
                     )

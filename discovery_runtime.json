@@ -164,5 +164,8 @@
     "688820",
     "688981",
     "920961"
-  ]
+  ],
+  "intraday_pipeline_enabled": false,
+  "postmarket_pipeline_enabled": true,
+  "score_blend_alpha": 0.3
 }

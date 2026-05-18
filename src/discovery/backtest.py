@@ -202,12 +202,15 @@ class DiscoveryBacktest:
                 continue
             td_next = trading_days[i + 1]
 
-            # 卖点未到：不展示未平仓交易
-            if td_next > today_str:
+            # 买入日未到：跳过（卖出日未到则展示为未平仓）
+            if td > today_str:
                 continue
 
-            is_open = td_next == today_str  # 当天盘中，用实时价展示
-            sell_time = datetime.now().strftime("%H:%M:%S") if is_open else "15:00:00"
+            # 卖出日 > 今天 → 未平仓；卖出日 == 今天但未到 15:00 → 未平仓
+            now = datetime.now()
+            market_closed = now.time() >= datetime.strptime("15:00", "%H:%M").time()
+            is_open = td_next > today_str or (td_next == today_str and not market_closed)
+            sell_time = now.strftime("%H:%M:%S") if is_open else "15:00:00"
 
             picks = picks_by_date[td]
             n = len(picks)
@@ -230,7 +233,12 @@ class DiscoveryBacktest:
                 code = p.get("stock_code", "")
                 name = p.get("stock_name", "")
                 close_today = self._get_price(code, td, "close")
-                close_next = self._get_price(code, td_next, "close")
+                # 未平仓用今天收盘价作为卖出参考价
+                close_next = (
+                    self._get_price(code, today_str, "close")
+                    if is_open
+                    else self._get_price(code, td_next, "close")
+                )
                 if (
                     close_today and close_next and close_today > 0
                     and code and name
@@ -247,7 +255,7 @@ class DiscoveryBacktest:
                         stock_name=name,
                         buy_date=td + " 15:00:00",
                         buy_price=round(close_today, 2),
-                        sell_date=td_next + " " + sell_time,
+                        sell_date=(today_str if is_open else td_next) + " " + sell_time,
                         sell_price=round(close_next, 2),
                         return_pct=round(ret, 6),
                         pnl=round(pnl, 2),
@@ -256,9 +264,11 @@ class DiscoveryBacktest:
                     ))
 
                     # P&L 贡献 = alloc × (price/buy_price − 1)，量纲为元
-                    o = self._get_price(code, td_next, "open")
-                    h = self._get_price(code, td_next, "high")
-                    lo = self._get_price(code, td_next, "low")
+                    # 未平仓使用今日价格计算 OHLC
+                    ohlc_day = today_str if is_open else td_next
+                    o = self._get_price(code, ohlc_day, "open")
+                    h = self._get_price(code, ohlc_day, "high")
+                    lo = self._get_price(code, ohlc_day, "low")
                     if o and h and lo:
                         w_open += alloc * (o / close_today - 1)
                         w_high += alloc * (h / close_today - 1)
@@ -538,11 +548,13 @@ class DiscoveryBacktest:
             session = db.get_session()
             try:
                 from src.storage import StockDaily
+                # trading_days 是 YYYYMMDD 字符串，DB date 列存 YYYY-MM-DD，需转换
+                db_dates = [f"{d[:4]}-{d[4:6]}-{d[6:8]}" for d in trading_days]
                 rows = (
                     session.query(StockDaily)
                     .filter(
                         StockDaily.code.in_(codes),
-                        StockDaily.date.in_([d for d in trading_days]),
+                        StockDaily.date.in_(db_dates),
                     )
                     .all()
                 )
@@ -725,11 +737,16 @@ class DiscoveryBacktest:
             return float(val)
 
         # Fallback：未来日期及当天（收盘价可能尚未生成）用缓存中最近交易日的 close 替代。
-        # 仅对 close 字段做 fallback，open/high/low 等缓存未命中直接返回 None，
-        # 避免在开盘前用历史收盘价伪造买入记录（产生「今日 09:30」的未来时间标记）。
         today_str = date.today().strftime("%Y%m%d")
-        if date_str < today_str or field != "close":
+        if date_str < today_str:
             return None
+
+        # 当天非 close 字段（open/high/low）未命中缓存时，优先用当天 close（实时价）
+        # 作为近似值，避免在开盘前静默丢弃未平仓交易记录。
+        if field != "close":
+            close_val = stock_cache.get("close")
+            if close_val is not None:
+                return float(close_val)
 
         for ds in sorted(self._price_cache.keys(), reverse=True):
             cv = self._price_cache[ds].get(code, {}).get("close")
@@ -747,7 +764,11 @@ class DiscoveryBacktest:
         return _REPORTS_DIR / f"{mode}_backtest_summary.json"
 
     def _resolve_backtest_date(self) -> date:
-        """Resolve backtest reference date: use trading date when fetcher available."""
+        """Resolve backtest reference date: use today (weekday) or latest trading day."""
+        today = date.today()
+        # 周一至周五默认使用今天；周末回退到最近交易日
+        if today.weekday() < 5:
+            return today
         if self._fetcher:
             trade_date_str = self._fetcher.get_trade_time(
                 early_time="00:00", late_time="18:00"
@@ -761,7 +782,7 @@ class DiscoveryBacktest:
                     )
                 except (ValueError, IndexError):
                     pass
-        return date.today()
+        return today
 
     def _save_backtest_summary(
         self, summary: BacktestSummary, entry_date: str = None

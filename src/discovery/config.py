@@ -200,21 +200,49 @@ class DiscoveryConfig:
         default_factory=lambda: _env_bool("DISCOVERY_PIPELINE_ENABLED", True)
     )
 
+    # 运行时覆盖（None = 使用 env / 默认值），由 API 修改并持久化到 discovery_runtime.json
+    _intraday_pipeline_enabled: Optional[bool] = field(default=None)
+    _postmarket_pipeline_enabled: Optional[bool] = field(default=None)
+    _score_blend_alpha: Optional[float] = field(default=None)
+
     @property
     def enable_intraday_pipeline(self) -> bool:
-        """盘中管线开关（独立配置，未设置时回退到 enable_discovery_pipeline）。"""
+        """盘中管线开关（运行时覆盖 > 环境变量 > enable_discovery_pipeline）。"""
+        if self._intraday_pipeline_enabled is not None:
+            return self._intraday_pipeline_enabled
         val = os.getenv("DISCOVERY_INTRADAY_PIPELINE_ENABLED", "").strip().lower()
         if val:
             return val in ("true", "1", "yes", "on")
         return self.enable_discovery_pipeline
 
+    @enable_intraday_pipeline.setter
+    def enable_intraday_pipeline(self, v: bool) -> None:
+        self._intraday_pipeline_enabled = v
+
     @property
     def enable_postmarket_pipeline(self) -> bool:
-        """盘后管线开关（独立配置，未设置时回退到 enable_discovery_pipeline）。"""
+        """盘后管线开关（运行时覆盖 > 环境变量 > enable_discovery_pipeline）。"""
+        if self._postmarket_pipeline_enabled is not None:
+            return self._postmarket_pipeline_enabled
         val = os.getenv("DISCOVERY_POSTMARKET_PIPELINE_ENABLED", "").strip().lower()
         if val:
             return val in ("true", "1", "yes", "on")
         return self.enable_discovery_pipeline
+
+    @enable_postmarket_pipeline.setter
+    def enable_postmarket_pipeline(self, v: bool) -> None:
+        self._postmarket_pipeline_enabled = v
+
+    @property
+    def effective_score_blend_alpha(self) -> float:
+        """综合分混合比例（运行时覆盖 > 环境变量 > 默认 0.3）。"""
+        if self._score_blend_alpha is not None:
+            return self._score_blend_alpha
+        return self.score_blend_alpha
+
+    @effective_score_blend_alpha.setter
+    def effective_score_blend_alpha(self, v: float) -> None:
+        self._score_blend_alpha = v
 
     @staticmethod
     def env_config_keys() -> List[str]:
@@ -327,18 +355,29 @@ def _load_runtime_state_into(cfg: DiscoveryConfig) -> None:
                 cfg.postmarket_scan_universe = data["postmarket_scan_universe"]
             if "discover_whitelist" in data:
                 cfg.discover_whitelist = set(data["discover_whitelist"])
+            if "intraday_pipeline_enabled" in data:
+                cfg._intraday_pipeline_enabled = data["intraday_pipeline_enabled"]
+            if "postmarket_pipeline_enabled" in data:
+                cfg._postmarket_pipeline_enabled = data["postmarket_pipeline_enabled"]
+            if "score_blend_alpha" in data:
+                cfg._score_blend_alpha = float(data["score_blend_alpha"])
     except Exception:
         pass
 
 
 def save_runtime_state() -> None:
-    """持久化当前 active config 的扫描模式和白名单到 JSON 文件。"""
+    """持久化当前 active config 的扫描模式、管线开关、alpha 和白名单到 JSON 文件。"""
     cfg = _ensure_active_config()
     data = {
         "intraday_scan_universe": cfg.intraday_scan_universe,
         "postmarket_scan_universe": cfg.postmarket_scan_universe,
         "discover_whitelist": sorted(cfg.discover_whitelist),
+        "intraday_pipeline_enabled": cfg._intraday_pipeline_enabled,
+        "postmarket_pipeline_enabled": cfg._postmarket_pipeline_enabled,
+        "score_blend_alpha": cfg._score_blend_alpha,
     }
+    # 清理 None 值避免 JSON null 污染
+    data = {k: v for k, v in data.items() if v is not None or k in ("intraday_scan_universe", "postmarket_scan_universe", "discover_whitelist")}
     _RUNTIME_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
     _RUNTIME_STATE_PATH.write_text(_json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 

@@ -10,14 +10,76 @@
 
 import logging
 import math
+import re
+import sqlite3
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
+import requests
 
 logger = logging.getLogger(__name__)
+
+_OPTUNA_DB = Path(__file__).resolve().parent.parent.parent / "optuna_cache" / "factor_opt.db"
+
+
+def _optuna_study_has_trials(study_name: str) -> bool:
+    """检查 Optuna study 是否已有完成的 trial。"""
+    try:
+        conn = sqlite3.connect(str(_OPTUNA_DB))
+        cur = conn.cursor()
+        cur.execute("SELECT study_id FROM studies WHERE study_name = ?", (study_name,))
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return False
+        study_id = row[0]
+        cur.execute(
+            "SELECT COUNT(*) FROM trials WHERE study_id = ? AND state = 'COMPLETE'",
+            (study_id,))
+        count = cur.fetchone()[0]
+        conn.close()
+        return count > 0
+    except Exception:
+        return False
+
+
+def _load_optuna_best_weights(study_name: str, fallback_weights: Dict[str, float]) -> Dict[str, float]:
+    """从 Optuna 缓存加载指定 study 的最优因子权重。"""
+    try:
+        conn = sqlite3.connect(str(_OPTUNA_DB))
+        cur = conn.cursor()
+        cur.execute("SELECT study_id FROM studies WHERE study_name = ?", (study_name,))
+        row = cur.fetchone()
+        if not row:
+            logger.info("Optuna study '%s' 未找到，使用默认权重", study_name)
+            return dict(fallback_weights)
+        study_id = row[0]
+        cur.execute("""
+            SELECT t.trial_id FROM trials t
+            JOIN trial_values tv ON t.trial_id = tv.trial_id
+            WHERE t.study_id = ? ORDER BY tv.value DESC LIMIT 1
+        """, (study_id,))
+        row = cur.fetchone()
+        if not row:
+            logger.info("study '%s' 无已完成 trial，使用默认权重", study_name)
+            return dict(fallback_weights)
+        trial_id = row[0]
+        cur.execute("SELECT param_name, param_value FROM trial_params WHERE trial_id = ?", (trial_id,))
+        opt_weights = {name: value for name, value in cur.fetchall()}
+        conn.close()
+        result = {**fallback_weights}
+        for fn, w in opt_weights.items():
+            if fn in result:
+                result[fn] = w
+        logger.info("从 Optuna 缓存加载最优权重 study='%s': %s", study_name, opt_weights)
+        return result
+    except Exception:
+        logger.exception("加载 Optuna 缓存权重失败，使用默认权重")
+        return dict(fallback_weights)
 
 _DEFAULT_INITIAL_CAPITAL = 1_000_000.0
 _DEFAULT_RISK_FREE_RATE = 0.02
@@ -50,6 +112,11 @@ class FactorBacktestResult:
     rank_ic: Dict[str, Dict[str, float]]
     quantile_returns: Dict[str, Dict[str, float]]
     trade_records: List[Dict]
+    benchmark_curve: List[Dict] = None  # 上证指数归一化曲线
+
+    def __post_init__(self):
+        if self.benchmark_curve is None:
+            self.benchmark_curve = []
 
 
 class FactorBacktestEngine:
@@ -59,6 +126,7 @@ class FactorBacktestEngine:
         self._price_cache: Dict[str, Dict[str, Dict[str, float]]] = {}
         self._sector_cache: Dict[str, str] = {}
         self._stock_names: Dict[str, str] = {}
+        self._market_mult_cache: Dict[str, Dict[str, float]] = {}
 
     def compute(
         self,
@@ -71,6 +139,7 @@ class FactorBacktestEngine:
         initial_capital=_DEFAULT_INITIAL_CAPITAL,
         risk_free_rate=_DEFAULT_RISK_FREE_RATE,
         use_pipeline=False,
+        score_blend_alpha=0.3,
         progress_cb: Optional[Callable[[str], None]] = None,
     ):
         if hold_days is None:
@@ -107,6 +176,7 @@ class FactorBacktestEngine:
 
         scores_by_date = self._load_snapshots(list(factor_weights.keys()), mode, snap_filtered,
                                              progress_cb=progress_cb)
+        self._prefetch_market_multipliers(snap_filtered)
         # 保存原始单因子分用于 IC 计算（管线模式会替换为 _pipeline 综合分）
         raw_scores_by_date = {k: dict(v) for k, v in scores_by_date.items()}
         if use_pipeline:
@@ -127,7 +197,7 @@ class FactorBacktestEngine:
                 tech = self._batch_stockscorer(pool, sdate, trading_days, comp)
                 blended = pd.Series(0.0, index=comp.index)
                 for c in comp.index:
-                    blended[c] = 0.3 * comp.get(c, 0) + 0.7 * tech.get(c, 50.0)
+                    blended[c] = score_blend_alpha * comp.get(c, 0) + (1 - score_blend_alpha) * tech.get(c, 50.0)
                 scores_by_date[sdate] = {'_pipeline': blended.dropna()}
         all_codes = set()
         for ss in scores_by_date.values():
@@ -139,10 +209,22 @@ class FactorBacktestEngine:
             progress_cb("预计算收益率矩阵…")
         fw_returns = self._precompute_forward_returns(all_codes, trading_days, snap_filtered, hold_days, mode)
 
+        # 预计算所有 snap_date 的综合得分（所有 hold_days 共用，避免重复计算）
+        cached_composites: Dict[str, pd.Series] = {}
+        for sdate in snap_filtered:
+            ss = scores_by_date.get(sdate, {})
+            if not ss:
+                continue
+            if use_pipeline:
+                cached_composites[sdate] = ss.get("_pipeline", pd.Series())
+            else:
+                multipliers = self._get_market_multipliers(sdate)
+                adjusted = self._apply_dynamic_weights(factor_weights, multipliers)
+                cached_composites[sdate] = self._compute_composite(ss, adjusted)
+
         today_str = date.today().strftime("%Y%m%d")
         capital_curves = {str(h): [] for h in hold_days}
         all_trades = {h: [] for h in hold_days}
-        cached_composites: Dict[str, pd.Series] = {}
 
         for hd_i, hd in enumerate(hold_days):
             if progress_cb:
@@ -165,16 +247,7 @@ class FactorBacktestEngine:
                 buy_field = "close" if is_intra else "open"
                 sell_field = "close" if is_intra else "open"
 
-                scores = scores_by_date.get(snap_date, {})
-                if not scores:
-                    continue
-                if use_pipeline:
-                    composite = scores.get("_pipeline", pd.Series())
-                else:
-                    multipliers = self._get_market_multipliers(snap_date)
-                    adjusted = self._apply_dynamic_weights(factor_weights, multipliers)
-                    composite = self._compute_composite(scores, adjusted)
-                    cached_composites[snap_date] = composite
+                composite = cached_composites.get(snap_date, pd.Series())
                 if composite.empty:
                     continue
 
@@ -195,22 +268,17 @@ class FactorBacktestEngine:
                 for code, _sc in ranked.items():
                     if len(bought) >= top_n: break
                     name = self._stock_names.get(code, code)
-                    if self._is_limit_up(code, buy_date):
+                    if self._is_limit_up(code, buy_date, buy_field):
                         skipped.append(code); continue
                     bp = self._get_price(code, buy_date, buy_field)
-                    sp = self._get_price(code, sell_date, sell_field)
-                    status = "closed"; ext_date = sell_date
-                    if sp is None:
-                        ext = self._find_next_td(sell_date, trading_days)
-                        if ext:
-                            ext_sp = self._get_price(code, ext, sell_field)
-                            if ext_sp is not None: sp = ext_sp; ext_date = ext; status = "extended"
-                    if bp and sp and bp > 0:
+                    sp, ext_date, status = self._resolve_sell_price(
+                        code, sell_date, sell_field, trading_days)
+                    if bp and sp and bp > 0 and status not in ("locked", "open"):
                         bought.append((code, name, bp, sp, ext_date, status))
                     elif bp is None:
                         skipped.append(code)
                     else:
-                        bought.append((code, name, bp, 0, ext_date, "open"))
+                        bought.append((code, name, bp, sp if sp else 0, ext_date, status))
                 n_bought = len(bought)
                 if n_bought == 0: continue
                 alloc = cap / n_bought / hd
@@ -251,9 +319,8 @@ class FactorBacktestEngine:
         wins = sum(1 for t in closed if t.return_pct > 0)
         wr = wins / len(closed) if closed else 0
         mdd, mdd_start, mdd_end = self._calc_mdd(pcurve, initial_capital)
-        td = (datetime.strptime(ed, "%Y%m%d") - datetime.strptime(sd, "%Y%m%d")).days
         if cr > -1:
-            log_ar = math.log1p(cr) * 365 / max(td, 1)
+            log_ar = math.log1p(cr) * 252 / max(len(snap_filtered), 1)
             ar = math.exp(log_ar) - 1 if log_ar < 700 else None
         else:
             ar = cr
@@ -291,6 +358,8 @@ class FactorBacktestEngine:
                            "sell_price": t.sell_price, "return_pct": t.return_pct,
                            "pnl": t.pnl, "allocated": t.allocated, "status": t.status})
 
+        benchmark_curve = self._build_benchmark_curve(trading_days, initial_capital)
+
         return FactorBacktestResult(
             mode=mode, date_range={"start": sd, "end": ed}, factors=finfo,
             params={"top_n": top_n, "hold_days": hold_days,
@@ -303,7 +372,7 @@ class FactorBacktestEngine:
                      "sharpe_ratio": round(sh, 4), "total_trades": len(closed),
                      "total_periods": len(snap_filtered), "final_capital": round(fc, 2)},
             capital_curves=capital_curves, rank_ic=ric, quantile_returns=qr,
-            trade_records=tds)
+            trade_records=tds, benchmark_curve=benchmark_curve)
 
     def compute_walk_forward(
         self,
@@ -316,13 +385,14 @@ class FactorBacktestEngine:
         initial_capital=_DEFAULT_INITIAL_CAPITAL,
         risk_free_rate=_DEFAULT_RISK_FREE_RATE,
         use_pipeline=False,
-        reoptimize_interval=5,
+        score_blend_alpha=0.3,
+        reoptimize_interval=10,
         n_trials=None,
         progress_cb=None,
     ):
         """Walk-forward TPE 动态权重回测。
 
-        每个 reoptimize_interval 个交易日，使用之前 60 日窗口运行独立 TPE
+        每 reoptimize_interval 个交易日（默认10），使用之前 60 日窗口运行独立 TPE
         优化权重，然后用优化后的权重评估接下来 interval 日的交易。
         返回双线资金曲线：固定权重（基线）+ 动态调优。
         """
@@ -360,6 +430,7 @@ class FactorBacktestEngine:
         all_codes_set = set()
         scores_by_date = self._load_snapshots(
             list(factor_weights.keys()), mode, snap_filtered, progress_cb=progress_cb)
+        self._prefetch_market_multipliers(snap_filtered)
         raw_scores_by_date = {k: dict(v) for k, v in scores_by_date.items()}
         if use_pipeline:
             if progress_cb:
@@ -380,7 +451,7 @@ class FactorBacktestEngine:
                 tech = self._batch_stockscorer(pool, sdate, trading_days, comp)
                 blended = pd.Series(0.0, index=comp.index)
                 for c in comp.index:
-                    blended[c] = 0.3 * comp.get(c, 0) + 0.7 * tech.get(c, 50.0)
+                    blended[c] = score_blend_alpha * comp.get(c, 0) + (1 - score_blend_alpha) * tech.get(c, 50.0)
                 scores_by_date[sdate] = {'_pipeline': blended.dropna()}
         for ss in scores_by_date.values():
             for s in ss.values():
@@ -397,9 +468,20 @@ class FactorBacktestEngine:
         # ── 1. Fixed-weight baseline ──
         if progress_cb:
             progress_cb("固定权重回测中…")
+        cached_composites: Dict[str, pd.Series] = {}
+        for sdate in snap_filtered:
+            ss = scores_by_date.get(sdate, {})
+            if not ss:
+                continue
+            if use_pipeline:
+                cached_composites[sdate] = ss.get("_pipeline", pd.Series())
+            else:
+                multipliers = self._get_market_multipliers(sdate)
+                adjusted = self._apply_dynamic_weights(factor_weights, multipliers)
+                cached_composites[sdate] = self._compute_composite(ss, adjusted)
+
         fixed_curves: Dict[str, List[Dict]] = {str(h): [] for h in hold_days}
         fixed_trades: Dict[int, List[FactorBacktestTrade]] = {h: [] for h in hold_days}
-        cached_composites: Dict[str, pd.Series] = {}
 
         for hd in hold_days:
             cap = initial_capital
@@ -418,16 +500,7 @@ class FactorBacktestEngine:
                 buy_field = "close" if is_intra else "open"
                 sell_field = "close" if is_intra else "open"
 
-                scores = scores_by_date.get(snap_date, {})
-                if not scores:
-                    continue
-                if use_pipeline:
-                    composite = scores.get("_pipeline", pd.Series())
-                else:
-                    multipliers = self._get_market_multipliers(snap_date)
-                    adjusted = self._apply_dynamic_weights(factor_weights, multipliers)
-                    composite = self._compute_composite(scores, adjusted)
-                    cached_composites[snap_date] = composite
+                composite = cached_composites.get(snap_date, pd.Series())
                 if composite.empty:
                     continue
 
@@ -448,27 +521,18 @@ class FactorBacktestEngine:
                     if len(bought) >= top_n:
                         break
                     name = self._stock_names.get(code, code)
-                    if self._is_limit_up(code, buy_date):
+                    if self._is_limit_up(code, buy_date, buy_field):
                         skipped.append(code)
                         continue
                     bp = self._get_price(code, buy_date, buy_field)
-                    sp = self._get_price(code, sell_date, sell_field)
-                    status = "closed"
-                    ext_date = sell_date
-                    if sp is None:
-                        ext = self._find_next_td(sell_date, trading_days)
-                        if ext:
-                            ext_sp = self._get_price(code, ext, sell_field)
-                            if ext_sp is not None:
-                                sp = ext_sp
-                                ext_date = ext
-                                status = "extended"
-                    if bp and sp and bp > 0:
+                    sp, ext_date, status = self._resolve_sell_price(
+                        code, sell_date, sell_field, trading_days)
+                    if bp and sp and bp > 0 and status not in ("locked", "open"):
                         bought.append((code, name, bp, sp, ext_date, status))
                     elif bp is None:
                         skipped.append(code)
                     else:
-                        bought.append((code, name, bp, 0, ext_date, "open"))
+                        bought.append((code, name, bp, sp if sp else 0, ext_date, status))
                 n_bought = len(bought)
                 if n_bought == 0:
                     continue
@@ -498,7 +562,7 @@ class FactorBacktestEngine:
                     curve.append({"date": snap_date, "capital": round(cap, 2)})
             fixed_curves[str(hd)] = curve
 
-        # ── 2. Dynamic walk-forward TPE ──
+        # ── 2. Dynamic walk-forward (按窗口 TPE + DB 持久化缓存) ──
         if progress_cb:
             progress_cb("动态调优回测中…")
 
@@ -507,7 +571,6 @@ class FactorBacktestEngine:
         window_size = 60
         node_end_indices = list(range(window_size - 1, len(snap_filtered), reoptimize_interval))
         nodes_evaluated = 0
-        # Phase 1: Run TPE once per node, save optimized weights — reused across all hold_days
         node_weights: Dict[int, Dict[str, float]] = {}
 
         for node_idx in node_end_indices:
@@ -523,12 +586,26 @@ class FactorBacktestEngine:
                 continue
 
             nodes_evaluated += 1
+            window_end = opt_window_dates[-1]
+            node_study = f"{mode}_w{window_size}_{window_end}"
+
+            # 先查 DB 缓存：同一窗口跑过 TPE 就直接读
+            if _optuna_study_has_trials(node_study):
+                if progress_cb:
+                    progress_cb(
+                        f"动态调优节点 {nodes_evaluated}/{len(node_end_indices)} "
+                        f"({opt_window_dates[0]}..{window_end}"
+                        f" → {eval_dates[0]}..{eval_dates[-1]}) [缓存命中]")
+                node_weights[node_idx] = _load_optuna_best_weights(node_study, factor_weights)
+                continue
+
             if progress_cb:
                 progress_cb(
                     f"动态调优节点 {nodes_evaluated}/{len(node_end_indices)} "
-                    f"({opt_window_dates[0]}..{opt_window_dates[-1]}"
-                    f" → {eval_dates[0]}..{eval_dates[-1]})…")
+                    f"({opt_window_dates[0]}..{window_end}"
+                    f" → {eval_dates[0]}..{eval_dates[-1]}) [TPE 中…]")
 
+            # 构建此节点的窗口数据和窗口池
             opt_tdays = self._get_trading_days(opt_window_dates)
             opt_scores = {d: scores_by_date[d] for d in opt_window_dates
                           if d in scores_by_date}
@@ -557,7 +634,9 @@ class FactorBacktestEngine:
                 n_trials=n_trials if n_trials is not None else min(30, max(10, len(opt_window_dates) // 2)),
                 auto_apply=False,
                 preloaded=preloaded,
-                use_persistent_storage=False,
+                use_persistent_storage=True,
+                study_name=node_study,
+                skip_report=True,
             )
 
             if opt_result and opt_result.get("recommendation"):
@@ -570,7 +649,29 @@ class FactorBacktestEngine:
 
             node_weights[node_idx] = dyn_weights
 
-        # Phase 2: Evaluate with pre-computed dynamic weights for each hold_days
+        # Phase 2: Precompute dynamic composites per node (shared across hold_days)
+        node_composites: Dict[int, Dict[str, pd.Series]] = {}
+        for node_idx in node_end_indices:
+            dyn_weights = node_weights.get(node_idx)
+            if dyn_weights is None:
+                continue
+            eval_start = node_idx + 1
+            eval_end = min(node_idx + reoptimize_interval, len(snap_filtered))
+            eval_dates = snap_filtered[eval_start:eval_end]
+            comps = {}
+            for sdate in eval_dates:
+                ss = scores_by_date.get(sdate, {})
+                if not ss:
+                    continue
+                if use_pipeline:
+                    comps[sdate] = ss.get("_pipeline", pd.Series())
+                else:
+                    multipliers = self._get_market_multipliers(sdate)
+                    adjusted = self._apply_dynamic_weights(dyn_weights, multipliers)
+                    comps[sdate] = self._compute_composite(ss, adjusted)
+            node_composites[node_idx] = comps
+
+        # Phase 3: Evaluate dynamic weights for each hold_days
         dynamic_curves: Dict[str, List[Dict]] = {str(h): [] for h in hold_days}
         dynamic_trades: Dict[int, List[FactorBacktestTrade]] = {h: [] for h in hold_days}
 
@@ -581,8 +682,8 @@ class FactorBacktestEngine:
             curve = [{"date": snap_filtered[0], "capital": cap}]
 
             for node_idx in node_end_indices:
-                dyn_weights = node_weights.get(node_idx)
-                if dyn_weights is None:
+                comps = node_composites.get(node_idx, {})
+                if not comps:
                     continue
 
                 eval_start = node_idx + 1
@@ -603,15 +704,7 @@ class FactorBacktestEngine:
                     buy_field = "close" if is_intra else "open"
                     sell_field = "close" if is_intra else "open"
 
-                    scores = scores_by_date.get(snap_date, {})
-                    if not scores:
-                        continue
-                    if use_pipeline:
-                        composite = scores.get("_pipeline", pd.Series())
-                    else:
-                        multipliers = self._get_market_multipliers(snap_date)
-                        adjusted = self._apply_dynamic_weights(dyn_weights, multipliers)
-                        composite = self._compute_composite(scores, adjusted)
+                    composite = comps.get(snap_date, pd.Series())
                     if composite.empty:
                         continue
 
@@ -632,27 +725,18 @@ class FactorBacktestEngine:
                         if len(bought) >= top_n:
                             break
                         name = self._stock_names.get(code, code)
-                        if self._is_limit_up(code, buy_date):
+                        if self._is_limit_up(code, buy_date, buy_field):
                             skipped.append(code)
                             continue
                         bp = self._get_price(code, buy_date, buy_field)
-                        sp = self._get_price(code, sell_date, sell_field)
-                        status = "closed"
-                        ext_date = sell_date
-                        if sp is None:
-                            ext = self._find_next_td(sell_date, trading_days)
-                            if ext:
-                                ext_sp = self._get_price(code, ext, sell_field)
-                                if ext_sp is not None:
-                                    sp = ext_sp
-                                    ext_date = ext
-                                    status = "extended"
-                        if bp and sp and bp > 0:
+                        sp, ext_date, status = self._resolve_sell_price(
+                            code, sell_date, sell_field, trading_days)
+                        if bp and sp and bp > 0 and status not in ("locked", "open"):
                             bought.append((code, name, bp, sp, ext_date, status))
                         elif bp is None:
                             skipped.append(code)
                         else:
-                            bought.append((code, name, bp, 0, ext_date, "open"))
+                            bought.append((code, name, bp, sp if sp else 0, ext_date, status))
                     n_bought = len(bought)
                     if n_bought == 0:
                         continue
@@ -699,13 +783,12 @@ class FactorBacktestEngine:
         cr_fixed = (fc_fixed - initial_capital) / initial_capital
         cr_dynamic = (fc_dynamic - initial_capital) / initial_capital
 
-        td = (datetime.strptime(ed, "%Y%m%d") - datetime.strptime(sd, "%Y%m%d")).days
         if cr_fixed > -1:
-            ar_fixed = math.exp(math.log1p(cr_fixed) * 365 / max(td, 1)) - 1
+            ar_fixed = math.exp(math.log1p(cr_fixed) * 252 / max(len(snap_filtered), 1)) - 1
         else:
             ar_fixed = cr_fixed
         if cr_dynamic > -1:
-            ar_dynamic = math.exp(math.log1p(cr_dynamic) * 365 / max(td, 1)) - 1
+            ar_dynamic = math.exp(math.log1p(cr_dynamic) * 252 / max(len(snap_filtered), 1)) - 1
         else:
             ar_dynamic = cr_dynamic
 
@@ -767,6 +850,8 @@ class FactorBacktestEngine:
                            "pnl": t.pnl, "allocated": t.allocated, "status": t.status,
                            "reoptimized": True})
 
+        benchmark_curve = self._build_benchmark_curve(trading_days, initial_capital)
+
         return FactorBacktestResult(
             mode=mode, date_range={"start": sd, "end": ed}, factors=finfo,
             params={"top_n": top_n, "hold_days": hold_days,
@@ -796,9 +881,9 @@ class FactorBacktestEngine:
                          "nodes_evaluated": nodes_evaluated,
                      }},
             capital_curves=capital_curves, rank_ic=ric, quantile_returns=qr,
-            trade_records=tds)
+            trade_records=tds, benchmark_curve=benchmark_curve)
 
-    def _run_full_pipeline(self, scores_by_date, weights, trading_days, pool_n):
+    def _run_full_pipeline(self, scores_by_date, weights, trading_days, pool_n, score_blend_alpha=0.3):
         """管线：纯因子加权 + StockScorer 融合（与盘后扫描完全一致）。"""
         result = {}
         for snap_date, raw_scores in scores_by_date.items():
@@ -811,7 +896,7 @@ class FactorBacktestEngine:
             tech = self._batch_stockscorer(pool, snap_date, trading_days, composite)
             final = pd.Series(0.0, index=composite.index)
             for c in composite.index:
-                final[c] = 0.3 * composite.get(c, 0) + 0.7 * tech.get(c, 50.0)
+                final[c] = score_blend_alpha * composite.get(c, 0) + (1 - score_blend_alpha) * tech.get(c, 50.0)
             result[snap_date] = {'_pipeline': final.dropna()}
         return result
 
@@ -1017,6 +1102,46 @@ class FactorBacktestEngine:
         except Exception:
             return None
 
+    @staticmethod
+    def _build_benchmark_curve(trading_days, initial_capital):
+        """构建上证指数归一化曲线（按初始资金等比例缩放）。"""
+        try:
+            from datetime import datetime
+            from src.storage import DatabaseManager, StockDaily
+            db = DatabaseManager()
+            td_min = datetime.strptime(min(trading_days), "%Y%m%d").date()
+            td_max = datetime.strptime(max(trading_days), "%Y%m%d").date()
+            s = db.get_session()
+            try:
+                rows = s.query(StockDaily).filter(
+                    StockDaily.code == "000001.SH",
+                    StockDaily.date >= td_min,
+                    StockDaily.date <= td_max,
+                ).order_by(StockDaily.date).all()
+            finally:
+                s.close()
+            if not rows or len(rows) < 2:
+                return []
+            close_map = {}
+            for r in rows:
+                ds = r.date.strftime("%Y%m%d")
+                close_map[ds] = float(r.close or 0)
+            curve = []
+            first_close = None
+            for td in trading_days:
+                if td not in close_map:
+                    continue
+                if first_close is None:
+                    first_close = close_map[td]
+                if first_close and first_close > 0:
+                    capital = initial_capital * (close_map[td] / first_close)
+                else:
+                    capital = float(initial_capital)
+                curve.append({"date": td, "capital": round(capital, 2)})
+            return curve
+        except Exception:
+            return []
+
     def _prefetch_ohlcv(self, codes, snap_date):
         """从 stock_daily 预取 OHLCV 数据: {code: (highs, lows, closes)}。"""
         try:
@@ -1095,13 +1220,13 @@ class FactorBacktestEngine:
                "sector": "板块", "ma_entry": "均线",
                "ranking_momentum": "排名动量", "concept_heat": "概念热度"}
         dw = self._get_default_weights(mode)
-        fi, af, at = [], None, None
+        fi, af, at, trading_dates = [], None, None, []
         with db.get_session() as sess:
-            from sqlalchemy import func, distinct as dd
+            from sqlalchemy import func, distinct as sa_distinct
             rows = (sess.query(FactorScoreSnapshot.factor_name,
                     func.min(FactorScoreSnapshot.trade_date),
                     func.max(FactorScoreSnapshot.trade_date),
-                    func.count(dd(FactorScoreSnapshot.trade_date)))
+                    func.count(sa_distinct(FactorScoreSnapshot.trade_date)))
                     .filter(FactorScoreSnapshot.mode == mode)
                     .group_by(FactorScoreSnapshot.factor_name).all())
             for fn, md, xd, cnt in rows:
@@ -1112,19 +1237,13 @@ class FactorBacktestEngine:
                     af = md
                 if at is None or xd < at:
                     at = xd
-        # 查询该模式下的唯一交易日列表（用于前端快捷日期范围）
-        trading_dates = []
-        try:
-            with db.get_session() as sess:
-                from sqlalchemy import distinct as sa_distinct
-                dt_rows = sess.query(
-                    sa_distinct(FactorScoreSnapshot.trade_date)
-                ).filter(
-                    FactorScoreSnapshot.mode == mode
-                ).order_by(FactorScoreSnapshot.trade_date).all()
-                trading_dates = [r[0] for r in dt_rows]
-        except Exception:
-            pass
+            # 一次查询获取全部唯一交易日（与 GROUP BY 共用同一 session）
+            dt_rows = sess.query(
+                sa_distinct(FactorScoreSnapshot.trade_date)
+            ).filter(
+                FactorScoreSnapshot.mode == mode
+            ).order_by(FactorScoreSnapshot.trade_date).all()
+            trading_dates = [r[0] for r in dt_rows]
         return fi, {"mode": mode, "available_from": af or "", "available_to": at or "",
                      "trading_dates": trading_dates}
 
@@ -1184,23 +1303,22 @@ class FactorBacktestEngine:
     def _load_snapshots(self, factor_names, mode, dates, progress_cb=None):
         from src.storage import DatabaseManager, FactorScoreSnapshot
         db = DatabaseManager()
-        result = {}
-        total = len(dates)
         fns = list(factor_names)
-        for i, d in enumerate(dates):
-            with db.get_session() as sess:
-                rows = sess.query(FactorScoreSnapshot).filter(
-                    FactorScoreSnapshot.mode == mode,
-                    FactorScoreSnapshot.factor_name.in_(fns),
-                    FactorScoreSnapshot.trade_date == d,
-                ).all()
-            for r in rows:
-                code = r.ts_code or ""
-                if "." in code:
-                    code = code.split(".")[0]
-                result.setdefault(r.trade_date, {}).setdefault(r.factor_name, {})[code] = r.score
-            if progress_cb and (i % 20 == 0 or i == total - 1):
-                progress_cb(f"加载因子数据中 ({i + 1}/{total})…")
+        # 单次批量查询，而非逐日期循环（728 日期 → 1 次查询）
+        if progress_cb:
+            progress_cb(f"加载因子数据中 ({len(dates)} 日期)...")
+        with db.get_session() as sess:
+            rows = sess.query(FactorScoreSnapshot).filter(
+                FactorScoreSnapshot.mode == mode,
+                FactorScoreSnapshot.factor_name.in_(fns),
+                FactorScoreSnapshot.trade_date.in_(dates),
+            ).all()
+        result = {}
+        for r in rows:
+            code = r.ts_code or ""
+            if "." in code:
+                code = code.split(".")[0]
+            result.setdefault(r.trade_date, {}).setdefault(r.factor_name, {})[code] = r.score
         for dd in result:
             for fn in result[dd]:
                 result[dd][fn] = pd.Series(result[dd][fn])
@@ -1258,11 +1376,77 @@ class FactorBacktestEngine:
                 return td
         return None
 
-    def _get_market_multipliers(self, snap_date: str) -> Dict[str, float]:
-        """根据 snap_date 前 20 个交易日上证指数走势返回动态权重乘数。
+    def _resolve_sell_price(self, code, sell_date, sell_field, trading_days, max_ext=5):
+        """解析卖出价：若卖出日在跌停板或缺失价格，顺延至下一个可交易日。
 
-        与 engine._calc_dynamic_weights 逻辑一致，数据源从 Tushare API 换为 stock_daily 表。
+        Returns (sell_price, final_sell_date, status)。
+        status: "closed" | "extended" | "locked"（跌停无法卖出）| "open"（无价格）
         """
+        sp = self._get_price(code, sell_date, sell_field)
+        ext_date = sell_date
+        status = "closed"
+
+        for _ in range(max_ext):
+            if sp is not None and not self._is_limit_down(code, ext_date, sell_field):
+                return sp, ext_date, status
+            ext = self._find_next_td(ext_date, trading_days)
+            if not ext:
+                break
+            ext_sp = self._get_price(code, ext, sell_field)
+            ext_date = ext
+            if ext_sp is not None:
+                sp = ext_sp
+                status = "extended"
+
+        if sp is not None and self._is_limit_down(code, ext_date, sell_field):
+            status = "locked"
+        elif sp is None:
+            status = "open"
+        return sp, ext_date, status
+
+    def _prefetch_market_multipliers(self, snap_dates):
+        """一次 DB 查询批量预计算所有 snap_date 的市场动态权重乘数。"""
+        if not snap_dates or self._market_mult_cache:
+            return
+        try:
+            from src.storage import DatabaseManager, StockDaily
+            db = DatabaseManager()
+            min_sd = datetime.strptime(min(snap_dates), "%Y%m%d").date() - timedelta(days=25)
+            max_sd = datetime.strptime(max(snap_dates), "%Y%m%d").date()
+            with db.get_session() as sess:
+                rows = (sess.query(StockDaily.pct_chg, StockDaily.date)
+                        .filter(StockDaily.code == "000001.SH",
+                                StockDaily.date >= min_sd,
+                                StockDaily.date <= max_sd)
+                        .order_by(StockDaily.date.asc()).all())
+            # build ordered list of (date_str, pct_chg) for fast slicing
+            daily_returns = [(r.date.strftime("%Y%m%d") if isinstance(r.date, date) else str(r.date)[:8],
+                              float(r.pct_chg) if r.pct_chg is not None else 0.0)
+                             for r in rows]
+            for sd in snap_dates:
+                # collect preceding ≤20 returns
+                preceding = [pct for d, pct in daily_returns if d < sd]
+                returns = pd.Series(preceding[-20:]).dropna()
+                if len(returns) < 5:
+                    self._market_mult_cache[sd] = {}
+                    continue
+                vol = returns.std()
+                ts = abs(returns.mean() / (vol + 1e-9))
+                if ts > 0.8:
+                    self._market_mult_cache[sd] = {"momentum": 1.3, "rebound": 0.7, "technical": 1.1}
+                elif vol > 1.5:
+                    self._market_mult_cache[sd] = {"rebound": 1.4, "performance": 1.2,
+                                                   "profit_forecast": 1.1, "momentum": 0.6}
+                else:
+                    self._market_mult_cache[sd] = {}
+        except Exception:
+            pass
+
+    def _get_market_multipliers(self, snap_date: str) -> Dict[str, float]:
+        """返回 snap_date 的市场动态权重乘数，优先使用批量预计算结果。"""
+        if self._market_mult_cache:
+            return self._market_mult_cache.get(snap_date, {})
+        # fallback: per-date DB query（批量预取未调用时）
         try:
             from src.storage import DatabaseManager, StockDaily
             db = DatabaseManager()
@@ -1276,10 +1460,8 @@ class FactorBacktestEngine:
             returns = pd.Series([float(r[0]) for r in rows if r[0] is not None]).dropna()
             if len(returns) < 5:
                 return {}
-
             volatility = returns.std()
             trend_strength = abs(returns.mean() / (returns.std() + 1e-9))
-
             if trend_strength > 0.8:
                 return {"momentum": 1.3, "rebound": 0.7, "technical": 1.1}
             elif volatility > 1.5:
@@ -1317,7 +1499,8 @@ class FactorBacktestEngine:
                             "open": float(r.open) if r.open else None,
                             "high": float(r.high) if r.high else None,
                             "low": float(r.low) if r.low else None,
-                            "close": float(r.close) if r.close else None}
+                            "close": float(r.close) if r.close else None,
+                            "pct_chg": float(r.pct_chg) if r.pct_chg is not None else None}
                     dbcs.update(r.code for r in rows)
                 finally:
                     s.close()
@@ -1349,11 +1532,121 @@ class FactorBacktestEngine:
                                 "open": float(r["open"]) if pd.notna(r.get("open")) else None,
                                 "high": float(r["high"]) if pd.notna(r.get("high")) else None,
                                 "low": float(r["low"]) if pd.notna(r.get("low")) else None,
-                                "close": float(r["close"]) if pd.notna(r.get("close")) else None}
+                                "close": float(r["close"]) if pd.notna(r.get("close")) else None,
+                                "pct_chg": float(r["pct_chg"]) if pd.notna(r.get("pct_chg")) else None}
                 except Exception:
                     pass
         except Exception as e:
             logger.debug("[FactorBacktest] Tushare price: %s", e)
+
+        # 实时行情补充：realtime_spot DB + Sina API 补齐今日盘中价格
+        today_str = date.today().strftime("%Y%m%d")
+        if today_str in tds:
+            self._prefetch_realtime_spot(codes, today_str)
+            self._prefetch_sina_realtime(codes, today_str)
+
+    def _prefetch_realtime_spot(self, codes, date_str):
+        """从 realtime_spot DB 补齐当日盘中 OHLC。"""
+        try:
+            from src.storage import DatabaseManager
+            db = DatabaseManager()
+            spot_df = db.get_realtime_spot()
+            if spot_df is None or spot_df.empty:
+                return
+
+            from datetime import datetime as _dt, timezone, timedelta
+            now_cn = _dt.now(timezone(timedelta(hours=8)))
+            is_market_open = (
+                now_cn.weekday() < 5
+                and now_cn.time() >= _dt.strptime("09:25", "%H:%M").time()
+            )
+
+            spot_index = spot_df.index.astype(str).str.strip().str.zfill(6)
+            for code in codes:
+                bare = str(code).strip().zfill(6)
+                matches = spot_df[spot_index == bare]
+                if matches.empty:
+                    continue
+                row = matches.iloc[0]
+                cache_entry = self._price_cache.setdefault(date_str, {}).setdefault(code, {})
+
+                price = row.get("price")
+                if pd.notna(price) and float(price) > 0:
+                    cache_entry["close"] = float(price)
+
+                if not is_market_open:
+                    continue
+                if pd.notna(row.get("open_price")):
+                    cache_entry.setdefault("open", float(row["open_price"]))
+                if pd.notna(row.get("high")):
+                    cache_entry.setdefault("high", float(row["high"]))
+                if pd.notna(row.get("low")):
+                    cache_entry.setdefault("low", float(row["low"]))
+        except Exception as e:
+            logger.debug("[FactorBacktest] realtime_spot 取价失败: %s", e)
+
+    def _prefetch_sina_realtime(self, codes, date_str):
+        """通过 Sina 实时行情补齐当日 OHLC（盘中可用）。"""
+        sina_codes = []
+        for c in codes:
+            if not c.isdigit() or len(c) != 6:
+                continue
+            existing = (self._price_cache.get(date_str, {}).get(c) or {})
+            if existing.get("open") and existing.get("high") and existing.get("low") and existing.get("close"):
+                continue
+            prefix = "sh" if c.startswith(("6", "68")) else "sz" if c.startswith(("0", "3")) else "bj"
+            sina_codes.append(f"{prefix}{c}")
+
+        if not sina_codes:
+            return
+
+        try:
+            url = f"http://hq.sinajs.cn/list={','.join(sina_codes)}"
+            headers = {"Referer": "http://finance.sina.com.cn"}
+            resp = requests.get(url, headers=headers, timeout=10)
+            resp.encoding = "gbk"
+            body = resp.text
+        except Exception as e:
+            logger.debug("[FactorBacktest] Sina 实时行情请求失败: %s", e)
+            return
+
+        from datetime import datetime as _dt, timezone, timedelta as td
+        now_cn = _dt.now(timezone(timedelta(hours=8)))
+        is_market_open = (
+            now_cn.weekday() < 5
+            and now_cn.time() >= _dt.strptime("09:25", "%H:%M").time()
+        )
+
+        for sc in sina_codes:
+            try:
+                pattern = re.compile(rf"var hq_str_{sc}=\"([^\"]*)\"")
+                m = pattern.search(body)
+                if not m:
+                    continue
+                fields = m.group(1).split(",")
+                if len(fields) < 6:
+                    continue
+                code = sc[2:]
+                open_p = float(fields[1]) if fields[1] and fields[1] != "0.000" else None
+                high_p = float(fields[4]) if fields[4] and fields[4] != "0.000" else None
+                low_p = float(fields[5]) if fields[5] and fields[5] != "0.000" else None
+                close_p = float(fields[3]) if fields[3] and fields[3] != "0.000" else None
+
+                if open_p is None and high_p is None and low_p is None and close_p is None:
+                    continue
+
+                cache_entry = self._price_cache.setdefault(date_str, {}).setdefault(code, {})
+                if is_market_open:
+                    if open_p is not None:
+                        cache_entry["open"] = open_p
+                    if high_p is not None:
+                        cache_entry["high"] = high_p
+                    if low_p is not None:
+                        cache_entry["low"] = low_p
+                if close_p is not None:
+                    cache_entry["close"] = close_p
+            except Exception:
+                pass
 
     def _prefetch_stock_names(self, codes):
         if not codes:
@@ -1425,15 +1718,75 @@ class FactorBacktestEngine:
 
     def _get_price(self, code, ds, field):
         v = (self._price_cache.get(ds, {}).get(code) or {}).get(field)
-        return float(v) if v is not None else None
+        if v is not None:
+            return float(v)
 
-    def _is_limit_up(self, code, ds):
+        # Fallback：当天非 close 字段（open/high/low）未命中缓存时，
+        # 优先用当天 close（实时价）作为近似值，避免盘中静默丢弃未平仓交易。
+        today_str = date.today().strftime("%Y%m%d")
+        if ds == today_str and field != "close":
+            close_val = (self._price_cache.get(ds, {}).get(code) or {}).get("close")
+            if close_val is not None:
+                return float(close_val)
+
+        # 当天 close 仍未命中 → 搜索缓存中最近交易日的 close（仅当天，未来日期无数据不降级）
+        if ds == today_str:
+            for d in sorted(self._price_cache.keys(), reverse=True):
+                cv = (self._price_cache.get(d, {}).get(code) or {}).get("close")
+                if cv is not None:
+                    return float(cv)
+
+        return None
+
+    @staticmethod
+    def _get_limit_pct(code: str) -> float:
+        """返回涨跌停幅度：创业板30xxxx/301xxx 和科创板688xxx 为20%，其余为10%。"""
+        if code.startswith(("300", "301", "688")):
+            return 0.20
+        return 0.10
+
+    def _is_limit_up(self, code, ds, field="close"):
+        """检查交易日 ds 是否涨停（无法以 field 价买入）。
+
+        field="open"（盘后开盘买入）：仅检查一字涨停。
+        field="close"（盘中收盘买入）：检查一字涨停 + pct_chg 阈值。"""
         o = self._get_price(code, ds, "open")
         h = self._get_price(code, ds, "high")
         l = self._get_price(code, ds, "low")
         if o and h and l and o > 0:
             if abs(h - l) < 0.001 and abs(o - h) < 0.001:
-                return True
+                pct = self._get_price(code, ds, "pct_chg")
+                if pct is None or pct >= 0:
+                    return True  # 一字涨停 或 无法分辨（保守）
+                return False  # 一字跌停 → 可以买入
+        if field == "close":
+            pct = self._get_price(code, ds, "pct_chg")
+            if pct is not None:
+                limit_pct = self._get_limit_pct(code)
+                if pct >= (limit_pct * 100 - 1.0):
+                    return True
+        return False
+
+    def _is_limit_down(self, code, ds, field="close"):
+        """检查交易日 ds 是否跌停（无法以 field 价卖出）。
+
+        field="open"（盘后开盘卖出）：仅检查一字跌停。
+        field="close"（盘中收盘卖出）：检查一字跌停 + pct_chg 阈值。"""
+        o = self._get_price(code, ds, "open")
+        h = self._get_price(code, ds, "high")
+        l = self._get_price(code, ds, "low")
+        if o and h and l and o > 0:
+            if abs(h - l) < 0.001 and abs(o - h) < 0.001:
+                pct = self._get_price(code, ds, "pct_chg")
+                if pct is None or pct <= 0:
+                    return True  # 一字跌停 或 无法分辨（保守）
+                return False  # 一字涨停 → 可以卖出
+        if field == "close":
+            pct = self._get_price(code, ds, "pct_chg")
+            if pct is not None:
+                limit_pct = self._get_limit_pct(code)
+                if pct <= -(limit_pct * 100 - 1.0):
+                    return True
         return False
 
     def _calc_mdd(self, curve, ic):

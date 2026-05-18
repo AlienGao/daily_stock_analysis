@@ -64,7 +64,9 @@ class FactorOptimizer:
                  normalize: bool = False, n_trials: int = 100,
                  auto_apply: bool = True,
                  preloaded: Optional[Dict] = None,
-                 use_persistent_storage: bool = True) -> Optional[Dict]:
+                 use_persistent_storage: bool = True,
+                 study_name: Optional[str] = None,
+                 skip_report: bool = False) -> Optional[Dict]:
         """运行完整优化流程，返回报告 dict。
 
         Args:
@@ -75,6 +77,8 @@ class FactorOptimizer:
             auto_apply: True 时自动将推荐权重写入 .env
             preloaded: 预加载数据（walk-forward 用），含 snap_dates/scores/trading_days/window_pool
             use_persistent_storage: False 时使用纯内存 study（不写 SQLite）
+            study_name: 自定义 Optuna study 名（walk-forward 按日期分 study 用）
+            skip_report: True 时不写报告文件（walk-forward 用）
         """
         current_weights = self._engine._get_default_weights(mode)
         if not current_weights:
@@ -94,7 +98,8 @@ class FactorOptimizer:
         self._notify("tpe", message="Step 2: TPE 搜索…", trial=0, n_trials=n_trials)
         all_results, best, total_trials = self._tpe_search(
             candidates, current_weights, mode, window, n_trials, normalize,
-            preloaded=preloaded, use_persistent_storage=use_persistent_storage)
+            preloaded=preloaded, use_persistent_storage=use_persistent_storage,
+            study_name=study_name)
 
         if total_trials == 0:
             logger.warning("[FactorOptimizer] TPE 搜索无有效 trial")
@@ -112,7 +117,7 @@ class FactorOptimizer:
             mode, window, current_weights, candidates, all_results, best, report_path, total_trials)
 
         # 保存报告 + 元数据（仅持久化模式，避免回测 walk-forward 污染历史）
-        if use_persistent_storage:
+        if use_persistent_storage and not skip_report:
             _REPORT_DIR.mkdir(parents=True, exist_ok=True)
             report_path.write_text(report_md, encoding="utf-8")
             self._save_latest(recommendation, current_weights, mode, now.isoformat())
@@ -312,9 +317,13 @@ class FactorOptimizer:
             top5 = ss.nlargest(5)
             returns = []
             for code in top5.index:
+                # 涨跌停限制：买入日涨停则跳过
+                if self._engine._is_limit_up(code, buy_date, bf):
+                    continue
                 bp = self._engine._get_price(code, buy_date, bf)
-                sp = self._engine._get_price(code, sell_date, sf)
-                if bp and sp and bp > 0:
+                sp, _, sell_status = self._engine._resolve_sell_price(
+                    code, sell_date, sf, trading_days)
+                if bp and sp and bp > 0 and sell_status not in ("locked", "open"):
                     returns.append((sp - bp) / bp)
             if not returns:
                 continue
@@ -356,7 +365,8 @@ class FactorOptimizer:
                     n_trials: int,
                     normalize: bool = False,
                     preloaded: Optional[Dict] = None,
-                    use_persistent_storage: bool = True) -> Tuple[List[Dict], Optional[Dict], int]:
+                    use_persistent_storage: bool = True,
+                    study_name: Optional[str] = None) -> Tuple[List[Dict], Optional[Dict], int]:
         """用 Optuna TPE 采样搜索最优权重组合。
 
         每个 trial 从历史中随机抽 5 个窗口，以平均超额收益（vs 等权基准）
@@ -366,7 +376,7 @@ class FactorOptimizer:
 
         candidate_names = list(candidates.keys())
         all_factor_names = list(current_weights.keys())
-        study_name = f"{mode}_w{window}"
+        study_name = study_name or f"{mode}_w{window}"
 
         if use_persistent_storage:
             _TPE_STORAGE.parent.mkdir(parents=True, exist_ok=True)
@@ -568,9 +578,13 @@ class FactorOptimizer:
             top5 = comp.nlargest(5)
             returns = []
             for code in top5.index:
+                # 涨跌停限制：买入日涨停则跳过
+                if self._engine._is_limit_up(code, buy_date, bf):
+                    continue
                 bp = self._engine._get_price(code, buy_date, bf)
-                sp = self._engine._get_price(code, sell_date, sf)
-                if bp and sp and bp > 0:
+                sp, _, sell_status = self._engine._resolve_sell_price(
+                    code, sell_date, sf, trading_days)
+                if bp and sp and bp > 0 and sell_status not in ("locked", "open"):
                     ret = (sp - bp) / bp
                     returns.append(ret)
                     total_trades += 1

@@ -54,8 +54,15 @@ const FactorTuningPage: React.FC = () => {
   /* current weights & pipeline mode from .env */
   const [currentWeights, setCurrentWeights] = useState<Record<string, number>>({});
   const [weightsLoading, setWeightsLoading] = useState(false);
-  const [usePipeline, setUsePipeline] = useState(true);
-  const [blendAlpha, setBlendAlpha] = useState(0.3);
+
+  /* 发现管线配置（运行时覆盖，持久化到服务端） */
+  const [intradayPipeline, setIntradayPipeline] = useState(true);
+  const [postmarketPipeline, setPostmarketPipeline] = useState(true);
+  const [pipelineAlpha, setPipelineAlpha] = useState(0.3);
+  const [pipelineSaving, setPipelineSaving] = useState(false);
+
+  const usePipeline = mode === 'intraday' ? intradayPipeline : postmarketPipeline;
+  const blendAlpha = pipelineAlpha;
 
   /* result */
   const [result, setResult] = useState<{
@@ -101,8 +108,6 @@ const FactorTuningPage: React.FC = () => {
     discoveryApi.getFactorWeights(mode).then((data) => {
       if (cancelled) return;
       setCurrentWeights(data.weights);
-      setUsePipeline(data.use_pipeline);
-      setBlendAlpha(data.score_blend_alpha);
       setWeightsLoading(false);
     }).catch(() => {
       if (!cancelled) setWeightsLoading(false);
@@ -114,10 +119,34 @@ const FactorTuningPage: React.FC = () => {
   const refreshWeights = useCallback(() => {
     discoveryApi.getFactorWeights(mode).then((data) => {
       setCurrentWeights(data.weights);
-      setUsePipeline(data.use_pipeline);
-      setBlendAlpha(data.score_blend_alpha);
     }).catch(() => { /* silent */ });
   }, [mode]);
+
+  /* load pipeline runtime config from server (intraday/postmarket toggles + alpha) */
+  useEffect(() => {
+    let cancelled = false;
+    discoveryApi.getPipelineConfig().then((data) => {
+      if (cancelled) return;
+      if (data.intraday_pipeline_enabled != null) setIntradayPipeline(data.intraday_pipeline_enabled);
+      if (data.postmarket_pipeline_enabled != null) setPostmarketPipeline(data.postmarket_pipeline_enabled);
+      if (data.score_blend_alpha != null) setPipelineAlpha(data.score_blend_alpha);
+    }).catch(() => { /* ignore */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  /* persist pipeline config to server (debounced by caller) */
+  const savePipelineConfig = useCallback(async (intra: boolean, post: boolean, alpha: number) => {
+    setPipelineSaving(true);
+    try {
+      await discoveryApi.setPipelineConfig({
+        intraday_pipeline_enabled: intra,
+        postmarket_pipeline_enabled: post,
+        score_blend_alpha: alpha,
+      });
+      refreshWeights();
+    } catch { /* ignore */ }
+    finally { setPipelineSaving(false); }
+  }, [refreshWeights]);
 
   /* resume polling on mount (cross-route) or when another tab starts a task */
   useEffect(() => {
@@ -669,6 +698,57 @@ const FactorTuningPage: React.FC = () => {
             </div>
           </Card>
 
+          <Card>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-sm text-secondary-text">管线配置</span>
+                {pipelineSaving && <span className="text-[11px] text-tertiary-text">保存中…</span>}
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={usePipeline}
+                  onChange={(e) => {
+                    if (mode === 'intraday') {
+                      setIntradayPipeline(e.target.checked);
+                      savePipelineConfig(e.target.checked, postmarketPipeline, pipelineAlpha);
+                    } else {
+                      setPostmarketPipeline(e.target.checked);
+                      savePipelineConfig(intradayPipeline, e.target.checked, pipelineAlpha);
+                    }
+                  }}
+                  className="sr-only"
+                />
+                <span className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${usePipeline ? 'bg-cyan' : 'bg-gray-300'}`}>
+                  <span className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${usePipeline ? 'translate-x-[18px]' : 'translate-x-[2px]'}`} />
+                </span>
+                <span className="text-xs text-foreground/70">{mode === 'intraday' ? '盘中管线' : '盘后管线'}</span>
+              </label>
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-foreground/70 whitespace-nowrap">
+                    综合分混合 α = {pipelineAlpha.toFixed(2)}
+                  </span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={Math.round(pipelineAlpha * 100)}
+                    onChange={(e) => {
+                      setPipelineAlpha(Number(e.target.value) / 100);
+                    }}
+                    onMouseUp={() => savePipelineConfig(intradayPipeline, postmarketPipeline, pipelineAlpha)}
+                    onTouchEnd={() => savePipelineConfig(intradayPipeline, postmarketPipeline, pipelineAlpha)}
+                    className="w-20 h-1 accent-cyan"
+                  />
+                </div>
+                <div className="text-[11px] text-foreground/40">
+                  factor&times;{pipelineAlpha.toFixed(2)} + tech&times;{(1 - pipelineAlpha).toFixed(2)}
+                </div>
+              </div>
+            </div>
+          </Card>
+
         </div>
 
         {/* Right Panel */}
@@ -757,8 +837,15 @@ const FactorTuningPage: React.FC = () => {
                 </Card>
               )}
 
-              {/* Manual apply hint */}
-              {!result.applied && Object.keys(result.recommendation).length > 0 && (
+              {/* Manual apply hint — also suppressed when recommendation already matches current weights */}
+              {!result.applied && (() => {
+                const rec = result.recommendation;
+                const keys = Object.keys(rec);
+                if (keys.length === 0) return false;
+                // If every recommendation weight already matches current weight, treat as applied
+                const allMatch = keys.every(k => Math.abs((rec[k] ?? 0) - (currentWeights[k] ?? 0)) < 0.5);
+                return !allMatch;
+              })() && (
                 <Card>
                   <div className="flex items-center justify-between">
                     <div>

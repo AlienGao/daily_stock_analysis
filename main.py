@@ -1478,13 +1478,14 @@ def main() -> int:
                 try:
                     import sys
                     sys.path.insert(0, 'scripts')
-                    from clean_logs import clean_debug_logs, clean_replay_logs, get_trading_days_ago
+                    from clean_logs import clean_all_logs, clean_replay_logs, clean_wal_files, get_trading_days_ago
                     cutoff = get_trading_days_ago(7)
-                    debug_removed, debug_size = clean_debug_logs(cutoff, dry_run=False)
+                    log_removed, log_size = clean_all_logs(cutoff, dry_run=False)
                     replay_removed = clean_replay_logs(dry_run=False)
+                    wal_removed, wal_size = clean_wal_files(dry_run=False)
                     logger.info('[维护] 日志清理完成，删除 %d 文件，释放 %.1fMB，保留 %d 个交易日（截止 %s）',
-                        len(debug_removed) + len(replay_removed),
-                        (debug_size) / 1024 / 1024,
+                        len(log_removed) + len(replay_removed) + len(wal_removed),
+                        (log_size + wal_size) / 1024 / 1024,
                         7,
                         cutoff.strftime('%Y-%m-%d'))
                 except Exception:

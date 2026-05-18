@@ -1436,11 +1436,16 @@ const DiscoveryPage: React.FC = () => {
     setResultSubTab('composite');
   }, [tab]);
 
-  // 盘中 → 盘后自动切换：北京时间 15:00 后，若仍在 intraday tab 则自动切到 postmarket
+  // 盘中 → 盘后自动切换：15:00 后仅切一次，之后尊重用户手动选择
+  const autoSwitchedRef = useRef(false);
   useEffect(() => {
     const id = setInterval(() => {
+      if (autoSwitchedRef.current) return;
       const next = getDefaultTabByCnMarketTime();
-      setTab(prev => (prev === 'intraday' && next === 'postmarket') ? 'postmarket' : prev);
+      if (next === 'postmarket') {
+        autoSwitchedRef.current = true;
+        setTab(prev => prev === 'intraday' ? 'postmarket' : prev);
+      }
     }, 60_000);
     return () => clearInterval(id);
   }, []);

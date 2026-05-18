@@ -1936,11 +1936,23 @@ def ensure_postmarket_scan(
                 "tech_score": r.tech_score,
                 "composite_score": r.composite_score,
             }
+        tech_scores_map: Dict[str, float] = getattr(engine, '_last_tech_scores_map', {}) or {}
+        score_blend_alpha = getattr(engine, '_last_score_blend_alpha', 1.0) or 1.0
         for rec in records:
             sm = score_map.get(rec.get("stock_code", ""))
+            ts_code = rec.get("ts_code", "")
+            stock_code = rec.get("stock_code", "")
             if sm:
                 rec["tech_score"] = sm["tech_score"]
                 rec["composite_score"] = sm["composite_score"]
+            else:
+                tech = tech_scores_map.get(ts_code) or tech_scores_map.get(stock_code)
+                if tech:
+                    rec["tech_score"] = tech
+                    rec["composite_score"] = (
+                        score_blend_alpha * rec.get("total_score", 0)
+                        + (1 - score_blend_alpha) * tech
+                    )
         try:
             db.save_scan_results_postmarket(records, today)
         except Exception:

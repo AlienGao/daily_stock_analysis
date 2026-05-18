@@ -7,12 +7,14 @@
 import asyncio
 import json
 import logging
+import multiprocessing
 import os
 import re
 import threading
 import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from queue import Empty as QueueEmpty
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -812,6 +814,53 @@ def set_scan_mode(
     return ScanModeResponse(
         scan_universe=result_universe,
         has_whitelist=bool(cfg.discover_whitelist),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Pipeline config (运行时覆盖，持久化到 discovery_runtime.json)
+# ---------------------------------------------------------------------------
+
+class PipelineConfigResponse(BaseModel):
+    intraday_pipeline_enabled: Optional[bool] = None
+    postmarket_pipeline_enabled: Optional[bool] = None
+    score_blend_alpha: Optional[float] = None
+
+
+@router.get(
+    "/pipeline-config",
+    response_model=PipelineConfigResponse,
+    summary="获取管线开关 & 综合分混合比例",
+)
+def get_pipeline_config():
+    from src.discovery.config import _ensure_active_config
+    cfg = _ensure_active_config()
+    return PipelineConfigResponse(
+        intraday_pipeline_enabled=cfg._intraday_pipeline_enabled,
+        postmarket_pipeline_enabled=cfg._postmarket_pipeline_enabled,
+        score_blend_alpha=cfg._score_blend_alpha,
+    )
+
+
+@router.post(
+    "/pipeline-config",
+    response_model=PipelineConfigResponse,
+    summary="更新管线开关 & 综合分混合比例（立即生效）",
+)
+def set_pipeline_config(body: PipelineConfigResponse):
+    from src.discovery.config import _ensure_active_config, save_runtime_state
+    cfg = _ensure_active_config()
+    if body.intraday_pipeline_enabled is not None:
+        cfg._intraday_pipeline_enabled = body.intraday_pipeline_enabled
+    if body.postmarket_pipeline_enabled is not None:
+        cfg._postmarket_pipeline_enabled = body.postmarket_pipeline_enabled
+    if body.score_blend_alpha is not None:
+        cfg._score_blend_alpha = max(0.0, min(1.0, body.score_blend_alpha))
+    save_runtime_state()
+    return PipelineConfigResponse(
+        intraday_pipeline_enabled=cfg._intraday_pipeline_enabled,
+        postmarket_pipeline_enabled=cfg._postmarket_pipeline_enabled,
+        score_blend_alpha=cfg._score_blend_alpha,
     )
 
 
@@ -1721,7 +1770,7 @@ def _row_to_item(row, factor_weights: Dict[str, float] = None,
     except (json.JSONDecodeError, TypeError):
         pass
 
-    # 实时计算 tech_score（DB 里因子分对应的 tech 分）
+    # 实时计算 tech_score（DB 里因子分对应的 tech 分），仅管线开启时执行
     tech_score_val = round(float(getattr(row, 'tech_score', 0) or 0), 2)
     composite_val = round(float(getattr(row, 'composite_score', 0) or 0), 2)
     tech_breakdown = None
@@ -1733,20 +1782,24 @@ def _row_to_item(row, factor_weights: Dict[str, float] = None,
     take_profit_1: Optional[float] = None
     if db is not None:
         try:
-            (_tech, _composite, _breakdown, _weights,
-             _price, _buy_low, _buy_high, _stop_loss, _tp1) = _calc_tech_for_row(row, db)
-            current_price = _price if _price > 0 else None
-            buy_price_low = _buy_low
-            buy_price_high = _buy_high
-            stop_loss = _stop_loss if (_stop_loss and _stop_loss > 0) else None
-            take_profit_1 = _tp1 if (_tp1 and _tp1 > 0) else None
-            if _tech > 0:
-                tech_score_val = round(_tech, 2)
-                alpha = 0.3
-                factor_score = float(row.total_score or 0)
-                composite_val = round(alpha * factor_score + (1 - alpha) * _tech, 2)
-                tech_breakdown = _breakdown
-                tech_weights = _weights
+            from src.discovery.config import _ensure_active_config
+            cfg = _ensure_active_config()
+            use_pipeline = cfg.enable_intraday_pipeline if row.scan_mode == 'intraday' else cfg.enable_postmarket_pipeline
+            if use_pipeline:
+                (_tech, _composite, _breakdown, _weights,
+                 _price, _buy_low, _buy_high, _stop_loss, _tp1) = _calc_tech_for_row(row, db)
+                current_price = _price if _price > 0 else None
+                buy_price_low = _buy_low
+                buy_price_high = _buy_high
+                stop_loss = _stop_loss if (_stop_loss and _stop_loss > 0) else None
+                take_profit_1 = _tp1 if (_tp1 and _tp1 > 0) else None
+                if _tech > 0:
+                    tech_score_val = round(_tech, 2)
+                    factor_score = float(row.total_score or 0)
+                    alpha = cfg.effective_score_blend_alpha
+                    composite_val = round(alpha * factor_score + (1 - alpha) * _tech, 2)
+                    tech_breakdown = _breakdown
+                    tech_weights = _weights
         except Exception:
             pass
 
@@ -1946,7 +1999,117 @@ class FactorBacktestRequest(BaseModel):
     initial_capital: float = 1_000_000.0
     risk_free_rate: float = 0.02
     use_pipeline: bool = False
-    reoptimize_interval: Optional[int] = None  # None=固定权重, 5=每5日TPE调优
+    score_blend_alpha: float = 0.3
+    reoptimize_interval: Optional[int] = None  # None=固定权重, 10=每10日TPE调优
+
+
+def _run_backtest_in_process(queue: multiprocessing.Queue, req_dict: dict):
+    """在独立进程中运行回测（拥有独立 GIL，不阻塞 uvicorn 事件循环）。"""
+    try:
+        from data_provider.tushare_fetcher import TushareFetcher
+        from src.discovery.factor_backtest_engine import FactorBacktestEngine
+
+        fetcher = TushareFetcher.get_instance()
+        engine = FactorBacktestEngine(fetcher)
+
+        fw = None
+        if req_dict.get("factor_weights"):
+            non_zero = {k: v for k, v in req_dict["factor_weights"].items() if v > 0}
+            if non_zero:
+                fw = non_zero
+
+        def _progress(msg: str):
+            queue.put(("progress", msg))
+
+        if req_dict.get("reoptimize_interval") and req_dict["reoptimize_interval"] > 0:
+            result = engine.compute_walk_forward(
+                mode=req_dict["mode"],
+                factor_weights=fw,
+                start_date=req_dict.get("start_date"),
+                end_date=req_dict.get("end_date"),
+                top_n=req_dict.get("top_n"),
+                hold_days=req_dict.get("hold_days"),
+                initial_capital=req_dict.get("initial_capital"),
+                risk_free_rate=req_dict.get("risk_free_rate"),
+                use_pipeline=req_dict.get("use_pipeline"),
+                score_blend_alpha=req_dict.get("score_blend_alpha"),
+                reoptimize_interval=req_dict["reoptimize_interval"],
+                progress_cb=_progress,
+            )
+        else:
+            result = engine.compute(
+                mode=req_dict["mode"],
+                factor_weights=fw,
+                start_date=req_dict.get("start_date"),
+                end_date=req_dict.get("end_date"),
+                top_n=req_dict.get("top_n"),
+                hold_days=req_dict.get("hold_days"),
+                initial_capital=req_dict.get("initial_capital"),
+                risk_free_rate=req_dict.get("risk_free_rate"),
+                use_pipeline=req_dict.get("use_pipeline"),
+                score_blend_alpha=req_dict.get("score_blend_alpha"),
+                progress_cb=_progress,
+            )
+
+        if result is None:
+            queue.put(("failed", "回测数据不足，请检查日期范围或因子选择"))
+        else:
+            from dataclasses import asdict
+            queue.put(("completed", asdict(result)))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        queue.put(("failed", str(e)))
+
+
+def _monitor_backtest_process(task_id: str, queue: multiprocessing.Queue, proc: multiprocessing.Process):
+    """轻量监控线程：从 Queue 读取进度/结果并更新任务字典。queue.get 会释放 GIL。"""
+    logger.info("回测监控线程启动 task_id=%s proc_pid=%s", task_id, proc.pid)
+    try:
+        while True:
+            try:
+                msg = queue.get(timeout=2.0)
+            except QueueEmpty:
+                if not proc.is_alive():
+                    exitcode = proc.exitcode
+                    logger.error("回测进程异常退出 task_id=%s exitcode=%s", task_id, exitcode)
+                    t = _factor_backtest_tasks.get(task_id, {})
+                    if t.get("status") == "running":
+                        t["status"] = "failed"
+                        t["error"] = f"回测进程异常退出 (exitcode={exitcode})"
+                        t["finished_at"] = datetime.now().isoformat()
+                    break
+                continue
+
+            msg_type, payload = msg
+            if msg_type == "progress":
+                t = _factor_backtest_tasks.get(task_id)
+                if t:
+                    t["status_message"] = payload
+            elif msg_type == "completed":
+                _factor_backtest_tasks[task_id] = {
+                    "status": "completed",
+                    "result": payload,
+                    "finished_at": datetime.now().isoformat(),
+                }
+                break
+            elif msg_type == "failed":
+                t = _factor_backtest_tasks.get(task_id, {})
+                t["status"] = "failed"
+                t["error"] = payload
+                t["finished_at"] = datetime.now().isoformat()
+                break
+    except Exception as e:
+        logger.error("回测监控线程异常: %s", e)
+        t = _factor_backtest_tasks.get(task_id, {})
+        if t.get("status") == "running":
+            t["status"] = "failed"
+            t["error"] = f"监控异常: {e}"
+            t["finished_at"] = datetime.now().isoformat()
+    finally:
+        proc.join(timeout=5)
+        if proc.is_alive():
+            proc.kill()
 
 
 @router.post(
@@ -1979,74 +2142,35 @@ def factor_backtest(req: FactorBacktestRequest):
         "started_at": datetime.now().isoformat(),
     }
 
-    def _progress(msg: str):
-        t = _factor_backtest_tasks.get(task_id)
-        if t:
-            t["status_message"] = msg
+    req_dict = {
+        "mode": req.mode,
+        "factor_weights": req.factor_weights,
+        "start_date": req.start_date,
+        "end_date": req.end_date,
+        "top_n": req.top_n,
+        "hold_days": req.hold_days,
+        "initial_capital": req.initial_capital,
+        "risk_free_rate": req.risk_free_rate,
+        "use_pipeline": req.use_pipeline,
+        "score_blend_alpha": req.score_blend_alpha,
+        "reoptimize_interval": req.reoptimize_interval,
+    }
 
-    def _run():
-        try:
-            from data_provider.tushare_fetcher import TushareFetcher
-            from src.discovery.factor_backtest_engine import FactorBacktestEngine
+    queue: multiprocessing.Queue = multiprocessing.Queue()
+    proc = multiprocessing.Process(
+        target=_run_backtest_in_process,
+        args=(queue, req_dict),
+        daemon=True,
+    )
+    proc.start()
+    logger.info("回测进程已启动 task_id=%s proc_pid=%s mode=%s", task_id, proc.pid, req.mode)
 
-            fetcher = TushareFetcher.get_instance()
-            engine = FactorBacktestEngine(fetcher)
+    threading.Thread(
+        target=_monitor_backtest_process,
+        args=(task_id, queue, proc),
+        daemon=True,
+    ).start()
 
-            # 过滤零权重：权重为 0 视为"未设置"，全部为零则使用默认权重
-            fw = None
-            if req.factor_weights:
-                non_zero = {k: v for k, v in req.factor_weights.items() if v > 0}
-                if non_zero:
-                    fw = non_zero
-            if req.reoptimize_interval and req.reoptimize_interval > 0:
-                result = engine.compute_walk_forward(
-                    mode=req.mode,
-                    factor_weights=fw,
-                    start_date=req.start_date,
-                    end_date=req.end_date,
-                    top_n=req.top_n,
-                    hold_days=req.hold_days,
-                    initial_capital=req.initial_capital,
-                    risk_free_rate=req.risk_free_rate,
-                    use_pipeline=req.use_pipeline,
-                    reoptimize_interval=req.reoptimize_interval,
-                    progress_cb=_progress,
-                )
-            else:
-                result = engine.compute(
-                    mode=req.mode,
-                    factor_weights=fw,
-                    start_date=req.start_date,
-                    end_date=req.end_date,
-                    top_n=req.top_n,
-                    hold_days=req.hold_days,
-                    initial_capital=req.initial_capital,
-                    risk_free_rate=req.risk_free_rate,
-                    use_pipeline=req.use_pipeline,
-                    progress_cb=_progress,
-                )
-
-            if result is None:
-                _factor_backtest_tasks[task_id] = {
-                    "status": "failed",
-                    "error": "回测数据不足，请检查日期范围或因子选择",
-                }
-                return
-
-            from dataclasses import asdict
-            _factor_backtest_tasks[task_id] = {
-                "status": "completed",
-                "result": asdict(result),
-                "finished_at": datetime.now().isoformat(),
-            }
-        except Exception as e:
-            logger.error("因子回测失败: %s", e, exc_info=True)
-            t = _factor_backtest_tasks.get(task_id, {})
-            t["status"] = "failed"
-            t["error"] = str(e)
-            t["finished_at"] = datetime.now().isoformat()
-
-    threading.Thread(target=_run, daemon=True).start()
     return {"task_id": task_id, "status": "running"}
 
 
@@ -2086,22 +2210,52 @@ def _ensure_snapshot_cache():
     _snapshot_cache_loaded = True
 
 
+def _factor_snapshot_response(factors, global_range, mode):
+    """构建 snapshot-dates 统一响应（含权重与管线配置）。"""
+    from src.discovery.engine import get_factor_weights
+    from src.discovery.config import DiscoveryConfig
+    weights = get_factor_weights(mode)
+    cfg = DiscoveryConfig()
+    use_pipeline = cfg.enable_intraday_pipeline if mode == "intraday" else cfg.enable_postmarket_pipeline
+    return {
+        "factors": factors, "global": global_range,
+        "weights": weights, "use_pipeline": use_pipeline,
+        "score_blend_alpha": cfg.score_blend_alpha,
+    }
+
+
 @router.get(
     "/factor-snapshot-dates",
     summary="查询因子快照可用日期范围",
 )
 def factor_snapshot_dates(mode: str = Query("postmarket", description="intraday 或 postmarket")):
-    """返回每个因子的可用日期范围及全量交集（缓存至当天，文件持久化跨重启有效）。"""
+    """返回每个因子的可用日期范围及全量交集（按 mode 缓存，文件持久化跨重启有效）。"""
     if mode not in ("intraday", "postmarket"):
         raise HTTPException(status_code=400, detail="mode 须为 intraday 或 postmarket")
 
     _ensure_snapshot_cache()
 
-    today = datetime.now().strftime("%Y%m%d")
-    cache_key = f"{mode}_{today}"
-    if cache_key in _snapshot_dates_cache:
-        factors, global_range = _snapshot_dates_cache[cache_key]
-        return {"factors": factors, "global": global_range}
+    cache_key = mode
+    cached = _snapshot_dates_cache.get(cache_key)
+    if cached is not None:
+        factors, global_range = cached
+        cached_to = global_range.get("available_to", "") if isinstance(global_range, dict) else ""
+        try:
+            from src.storage import DatabaseManager, FactorScoreSnapshot
+            from sqlalchemy import func
+            db = DatabaseManager()
+            with db.get_session() as sess:
+                db_max = sess.query(func.max(FactorScoreSnapshot.trade_date)).filter(
+                    FactorScoreSnapshot.mode == mode
+                ).scalar()
+            # 仅比较最新日期：数据为 append-only，max 不变则缓存有效
+            if db_max and cached_to and db_max <= cached_to:
+                return _factor_snapshot_response(factors, global_range, mode)
+        except Exception:
+            import logging
+            _log = logging.getLogger(__name__)
+            _log.warning("[snapshot-dates] DB 校验失败，降级复用缓存 (mode=%s)", mode, exc_info=True)
+            return _factor_snapshot_response(factors, global_range, mode)
 
     from src.discovery.factor_backtest_engine import FactorBacktestEngine
 
@@ -2110,7 +2264,7 @@ def factor_snapshot_dates(mode: str = Query("postmarket", description="intraday 
 
     _snapshot_dates_cache[cache_key] = (factors, global_range)
     _save_snapshot_cache(_snapshot_dates_cache)
-    return {"factors": factors, "global": global_range}
+    return _factor_snapshot_response(factors, global_range, mode)
 
 
 @router.get(
@@ -2126,10 +2280,10 @@ def factor_weights(mode: str = Query("postmarket", description="intraday 或 pos
     engine = FactorBacktestEngine()
     weights = engine._get_default_weights(mode)
 
-    from src.discovery.config import DiscoveryConfig
-    cfg = DiscoveryConfig()
+    from src.discovery.config import get_active_config, DiscoveryConfig
+    cfg = get_active_config() or DiscoveryConfig()
     use_pipeline = cfg.enable_intraday_pipeline if mode == "intraday" else cfg.enable_postmarket_pipeline
-    blend_alpha = cfg.score_blend_alpha
+    blend_alpha = cfg.effective_score_blend_alpha
 
     return {
         "mode": mode,

@@ -44,9 +44,11 @@ const BT_RESULT_KEY = 'factor_backtest_result';
 const FactorBacktestPage: React.FC = () => {
   const isOwnerRef = useRef(false);
   const abortRef = useRef(false);
+  const taskIdRef = useRef('');
 
   const [mode, setMode] = useState<TabKey>('postmarket');
   const [loading, setLoading] = useState(false);
+  const [snapLoading, setSnapLoading] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
   const [error, setError] = useState<ParsedApiError | null>(null);
 
@@ -66,8 +68,10 @@ const FactorBacktestPage: React.FC = () => {
   const [initialCapital, setInitialCapital] = useState(1_000_000);
   const [riskFreeRate, setRiskFreeRate] = useState(2.0);
   const [usePipeline, setUsePipeline] = useState(true);
+  const [blendAlpha, setBlendAlpha] = useState(0.3);
   const [reoptimize, setReoptimize] = useState(false);
   const [quickRange, setQuickRange] = useState<number | null>(null);
+
 
   // result
   const [result, setResult] = useState<FactorBacktestResultResponse | null>(null);
@@ -77,10 +81,12 @@ const FactorBacktestPage: React.FC = () => {
   // load snapshot dates on mount + mode change
   useEffect(() => {
     let cancelled = false;
+    setSnapLoading(true);
     discoveryApi.getFactorSnapshotDates(mode).then((data) => {
       if (cancelled) return;
       setSnapData(data);
       setError(null);
+      setSnapLoading(false);
       // 恢复缓存的回测结果（无活跃任务 & 模式匹配时）
       let restored = false;
       const taskRaw = localStorage.getItem(BT_TASK_KEY);
@@ -89,11 +95,20 @@ const FactorBacktestPage: React.FC = () => {
         if (cachedRaw) {
           try {
             const cached = JSON.parse(cachedRaw);
-            if (cached.result && cached.mode === mode) {
-              setResult(cached.result);
-              const sc: Record<string, boolean> = {};
-              for (const k of Object.keys(cached.result.capital_curves)) sc[k] = true;
-              setSelectedCurves(sc);
+            if (cached.task_id && cached.mode === mode) {
+              // 重新从 API 获取结果（localStorage 不存大数据）
+              discoveryApi.getFactorBacktestStatus(cached.task_id).then((status) => {
+                if (status.status === 'completed' && status.result) {
+                  setResult(status.result);
+                  const sc: Record<string, boolean> = {};
+                  const curveKeys = Object.keys(status.result.capital_curves);
+                  for (const k of curveKeys) sc[k] = true;
+                  setSelectedCurves(sc);
+                  if (curveKeys.length > 0) setSummaryPeriod(curveKeys[0]);
+                }
+              }).catch(() => {
+                localStorage.removeItem(BT_RESULT_KEY);
+              });
               restored = true;
             } else {
               setResult(null);
@@ -105,12 +120,12 @@ const FactorBacktestPage: React.FC = () => {
       } else {
         setResult(null);
       }
-      // init selection: all checked, use cached defaults first
+      // init selection: all checked, use .env live weights from merged response
       const sf: Record<string, boolean> = {};
       const fw: Record<string, number> = {};
       for (const f of data.factors) {
         sf[f.name] = true;
-        fw[f.name] = f.default_weight || 0;
+        fw[f.name] = data.weights[f.name] ?? f.default_weight ?? 0;
       }
       setSelectedFactors(sf);
       setFactorWeights(fw);
@@ -119,18 +134,23 @@ const FactorBacktestPage: React.FC = () => {
         setEndDate(data.global.available_to);
       }
       if (!restored) setSelectedCurves({});
-      // 同步拉取 .env 实时权重覆盖缓存默认值
-      discoveryApi.getFactorWeights(mode).then((wData) => {
-        if (cancelled) return;
-        const liveFw: Record<string, number> = { ...fw };
-        for (const [fn, w] of Object.entries(wData.weights)) {
-          liveFw[fn] = w;
-        }
-        setFactorWeights(liveFw);
-      }).catch(() => {});
     }).catch((e) => {
-      if (!cancelled) setError(getParsedApiError(e));
+      if (!cancelled) { setError(getParsedApiError(e)); setSnapLoading(false); }
     });
+    return () => { cancelled = true; };
+  }, [mode]);
+
+  /* 同步 usePipeline / blendAlpha 与当前模式的实际管线配置 */
+  useEffect(() => {
+    let cancelled = false;
+    discoveryApi.getPipelineConfig().then((data) => {
+      if (cancelled) return;
+      const enabled = mode === 'intraday'
+        ? (data.intraday_pipeline_enabled ?? true)
+        : (data.postmarket_pipeline_enabled ?? true);
+      setUsePipeline(enabled);
+      if (data.score_blend_alpha != null) setBlendAlpha(data.score_blend_alpha);
+    }).catch(() => { /* 忽略 */ });
     return () => { cancelled = true; };
   }, [mode]);
 
@@ -166,9 +186,19 @@ const FactorBacktestPage: React.FC = () => {
       setResult(null);
 
       try {
+        let pollFailures = 0;
         const poll = async (): Promise<FactorBacktestResultResponse> => {
           if (!active) throw new Error('aborted');
-          const status = await discoveryApi.getFactorBacktestStatus(taskId);
+          let status: Awaited<ReturnType<typeof discoveryApi.getFactorBacktestStatus>>;
+          try {
+            status = await discoveryApi.getFactorBacktestStatus(taskId);
+            pollFailures = 0;
+          } catch (e) {
+            pollFailures++;
+            if (pollFailures > 3) throw e;
+            await new Promise((r) => setTimeout(r, 2000 * pollFailures));
+            return poll();
+          }
           if (!active) throw new Error('aborted');
           if (status.status_message) setProgressMsg(status.status_message);
           if (status.status === 'completed' && status.result) return status.result;
@@ -180,11 +210,11 @@ const FactorBacktestPage: React.FC = () => {
         if (!active) return;
         setResult(data);
         const sc: Record<string, boolean> = {};
-        for (const k of Object.keys(data.capital_curves)) sc[k] = true;
+        const curveKeys = Object.keys(data.capital_curves);
+        for (const k of curveKeys) sc[k] = true;
         setSelectedCurves(sc);
-        const isDyn = data.params.reoptimize_interval != null;
-        setSummaryPeriod(isDyn ? `${Math.min(...holdDays)}_fixed` : String(Math.min(...holdDays)));
-        localStorage.setItem(BT_RESULT_KEY, JSON.stringify({ result: data, mode: taskMode }));
+        if (curveKeys.length > 0) setSummaryPeriod(curveKeys[0]);
+        localStorage.setItem(BT_RESULT_KEY, JSON.stringify({ task_id: taskId, mode: taskMode }));
         localStorage.removeItem(BT_TASK_KEY);
       } catch (e) {
         if (active && (e as Error).message !== 'aborted') {
@@ -212,11 +242,17 @@ const FactorBacktestPage: React.FC = () => {
             if (cachedRaw) {
               try {
                 const cached = JSON.parse(cachedRaw);
-                if (cached.result) {
-                  setResult(cached.result);
-                  const sc: Record<string, boolean> = {};
-                  for (const k of Object.keys(cached.result.capital_curves)) sc[k] = true;
-                  setSelectedCurves(sc);
+                if (cached.task_id) {
+                  discoveryApi.getFactorBacktestStatus(cached.task_id).then((status) => {
+                    if (status.status === 'completed' && status.result) {
+                      setResult(status.result);
+                      const sc: Record<string, boolean> = {};
+                      const curveKeys = Object.keys(status.result.capital_curves);
+                      for (const k of curveKeys) sc[k] = true;
+                      setSelectedCurves(sc);
+                      if (curveKeys.length > 0) setSummaryPeriod(curveKeys[0]);
+                    }
+                  }).catch(() => {});
                 }
               } catch { /* ignore parse errors */ }
             }
@@ -297,15 +333,27 @@ const FactorBacktestPage: React.FC = () => {
         initial_capital: initialCapital,
         risk_free_rate: riskFreeRate / 100,
         use_pipeline: usePipeline,
-        reoptimize_interval: reoptimize ? 5 : null,
+        score_blend_alpha: blendAlpha,
+        reoptimize_interval: reoptimize ? 10 : null,
       });
 
+      taskIdRef.current = task_id;
       localStorage.setItem(BT_TASK_KEY, JSON.stringify({ task_id, mode, started_at: Date.now() }));
 
-      // poll until complete
+      // poll until complete (with retry for transient network errors)
+      let pollFailures = 0;
       const poll = async (): Promise<FactorBacktestResultResponse> => {
         if (abortRef.current) throw new Error('aborted');
-        const status = await discoveryApi.getFactorBacktestStatus(task_id);
+        let status: Awaited<ReturnType<typeof discoveryApi.getFactorBacktestStatus>>;
+        try {
+          status = await discoveryApi.getFactorBacktestStatus(task_id);
+          pollFailures = 0;
+        } catch (e) {
+          pollFailures++;
+          if (pollFailures > 3) throw e;
+          await new Promise((r) => setTimeout(r, 2000 * pollFailures));
+          return poll();
+        }
         if (abortRef.current) throw new Error('aborted');
         if (status.status_message) {
           setProgressMsg(status.status_message);
@@ -324,13 +372,13 @@ const FactorBacktestPage: React.FC = () => {
       setResult(data);
       // init curve visibility
       const sc: Record<string, boolean> = {};
-      for (const k of Object.keys(data.capital_curves)) {
+      const curveKeys = Object.keys(data.capital_curves);
+      for (const k of curveKeys) {
         sc[k] = true;
       }
       setSelectedCurves(sc);
-      const isDyn = data.params.reoptimize_interval != null;
-      setSummaryPeriod(isDyn ? `${Math.min(...holdDays)}_fixed` : String(Math.min(...holdDays)));
-      localStorage.setItem(BT_RESULT_KEY, JSON.stringify({ result: data, mode }));
+      if (curveKeys.length > 0) setSummaryPeriod(curveKeys[0]);
+      localStorage.setItem(BT_RESULT_KEY, JSON.stringify({ task_id: taskIdRef.current, mode }));
     } catch (e) {
       if ((e as Error).message !== 'aborted') {
         setError(getParsedApiError(e));
@@ -344,15 +392,21 @@ const FactorBacktestPage: React.FC = () => {
         isOwnerRef.current = false;
       }
     }
-  }, [mode, activeFactors, factorWeights, startDate, endDate, topN, holdDays, initialCapital, riskFreeRate, usePipeline, reoptimize]);
+  }, [mode, activeFactors, factorWeights, startDate, endDate, topN, holdDays, initialCapital, riskFreeRate, usePipeline, blendAlpha, reoptimize]);
 
   // 切换持有期 → 曲线联动
   useEffect(() => {
     if (!result) return;
+    const isDyn = result.params?.reoptimize_interval != null;
     setSelectedCurves((prev) => {
       const n: Record<string, boolean> = {};
       for (const k of Object.keys(prev)) n[k] = false;
-      n[summaryPeriod] = true;
+      if (isDyn) {
+        n[`${summaryPeriod}_fixed`] = true;
+        n[`${summaryPeriod}_dynamic`] = true;
+      } else {
+        n[summaryPeriod] = true;
+      }
       return n;
     });
   }, [summaryPeriod, result]);
@@ -388,6 +442,12 @@ const FactorBacktestPage: React.FC = () => {
         allDates.add(pt.date);
       }
     }
+    // 始终包含上证指数日期
+    if (result.benchmark_curve?.length) {
+      for (const pt of result.benchmark_curve) {
+        allDates.add(pt.date);
+      }
+    }
     const sorted = Array.from(allDates).sort();
     const data: Record<string, string | number | undefined>[] = [];
     for (const d of sorted) {
@@ -398,6 +458,11 @@ const FactorBacktestPage: React.FC = () => {
         const pt = curve.find((p: FactorBacktestCapitalPoint) => p.date === d);
         row[`h${kd}`] = pt ? pt.capital : undefined;
       }
+      // 上证指数基准线（始终显示）
+      if (result.benchmark_curve?.length) {
+        const bpt = result.benchmark_curve.find((p: FactorBacktestCapitalPoint) => p.date === d);
+        row['h_benchmark'] = bpt ? bpt.capital : undefined;
+      }
       data.push(row);
     }
     return data;
@@ -405,7 +470,7 @@ const FactorBacktestPage: React.FC = () => {
 
   const quantileData = useMemo(() => {
     if (!result?.quantile_returns) return null;
-    const q = result.quantile_returns[summaryPeriod];
+    const q = result.quantile_returns[summaryPeriod] || result.quantile_returns[`${summaryPeriod}_fixed`];
     if (!q) return null;
     return [
       { name: 'Top 10%', value: q.top_10pct * 100 },
@@ -425,7 +490,7 @@ const FactorBacktestPage: React.FC = () => {
     _pipeline: '管线综合',
   };
 
-  const isDynamicMode = result?.params.reoptimize_interval != null;
+  const isDynamicMode = result?.params?.reoptimize_interval != null;
 
   const periodStats = useMemo(() => {
     if (!result) return {};
@@ -437,14 +502,16 @@ const FactorBacktestPage: React.FC = () => {
       const closed = trades.filter((t: FactorBacktestTrade) => t.status === 'closed' || t.status === 'extended');
       const wins = closed.filter((t: FactorBacktestTrade) => t.return_pct > 0).length;
       const wr = closed.length > 0 ? wins / closed.length : 0;
-      const finalCapital = curve.length > 0 ? curve[curve.length - 1].capital : result.params.initial_capital;
-      const cumRet = (finalCapital / result.params.initial_capital) - 1;
+      const ic = result.params?.initial_capital ?? 1_000_000;
+      const finalCapital = curve.length > 0 ? curve[curve.length - 1].capital : ic;
+      const cumRet = (finalCapital / ic) - 1;
       let annRet = 0;
       if (cumRet > -1 && curve.length > 1) {
-        const logAr = Math.log1p(cumRet) * 252 / (curve.length - 1);
+        const periods = result.summary?.total_periods || (curve.length - 1);
+        const logAr = Math.log1p(cumRet) * 252 / Math.max(periods, 1);
         annRet = logAr < 700 ? Math.exp(logAr) - 1 : Infinity;
       }
-      let peak = result.params.initial_capital, mdd = 0, mddStart = '', mddEnd = '';
+      let peak = ic, mdd = 0, mddStart = '', mddEnd = '';
       let peakDate = curve[0]?.date || '', ddStart = '';
       for (const pt of curve) {
         if (pt.capital > peak) { peak = pt.capital; peakDate = pt.date; }
@@ -518,7 +585,7 @@ const FactorBacktestPage: React.FC = () => {
 
   const icData = useMemo(() => {
     if (!result?.rank_ic) return null;
-    const dayData = result.rank_ic[summaryPeriod];
+    const dayData = result.rank_ic[summaryPeriod] || result.rank_ic[`${summaryPeriod}_fixed`];
     if (!dayData) return null;
     const raw = Object.entries(dayData).map(([name, ic]) => ({
       name,
@@ -546,7 +613,7 @@ const FactorBacktestPage: React.FC = () => {
     { title: '收益', dataIndex: 'return_pct', key: 'return_pct', width: 80, render: (_: unknown, r: FactorBacktestTrade) => r.status === 'pending' ? '--' : pct(r.return_pct) },
     { title: '盈亏', dataIndex: 'pnl', key: 'pnl', width: 100, render: (_: unknown, r: FactorBacktestTrade) => r.status === 'pending' ? '--' : r.pnl.toFixed(2) },
     { title: '状态', dataIndex: 'status', key: 'status', width: 80, render: (_: unknown, r: FactorBacktestTrade) => {
-      const m: Record<string, string> = { closed: '已平', extended: '延期', canceled: '取消', open: '持仓', pending: '待执行' };
+      const m: Record<string, string> = { closed: '已平', extended: '延期', canceled: '取消', open: '持仓', pending: '待执行', locked: '锁仓' };
       return m[r.status] || r.status;
     }},
   ];
@@ -563,6 +630,7 @@ const FactorBacktestPage: React.FC = () => {
                 block
                 value={mode}
                 onChange={(v) => setMode(v as TabKey)}
+                disabled={snapLoading}
                 options={[
                   { label: '盘后', value: 'postmarket' },
                   { label: '盘中', value: 'intraday' },
@@ -625,6 +693,15 @@ const FactorBacktestPage: React.FC = () => {
 
         {/* ──── Right Panel ──── */}
         <div className="flex-1 min-w-0 space-y-4">
+          {snapLoading && (
+            <Card>
+              <div className="flex flex-col items-center justify-center py-20 gap-3">
+                <Loader2 className="h-6 w-6 animate-spin text-cyan" />
+                <span className="text-sm text-secondary-text">加载中…</span>
+              </div>
+            </Card>
+          )}
+          {!snapLoading && (<>
           {/* Parameters */}
           <Card>
             <div className="space-y-5">
@@ -774,29 +851,71 @@ const FactorBacktestPage: React.FC = () => {
                   size="small"
                   value={summaryPeriod}
                   onChange={(v) => setSummaryPeriod(v as string)}
-                  options={Object.keys(periodStats).map((k) => {
-                    const s = periodStats[k];
-                    const isFixed = k.endsWith('_fixed');
-                    const isDynSfx = k.endsWith('_dynamic');
-                    const hd = k.split('_')[0];
-                    let lbl = `${hd}日`;
-                    if (isFixed) lbl += ' 固定';
-                    else if (isDynSfx) lbl += ' 动态';
-                    return { label: `${lbl} (${s.closed.length}笔)`, value: k };
-                  })}
+                  options={(() => {
+                    if (isDynamicMode) {
+                      const seen = new Set<string>();
+                      return Object.keys(periodStats)
+                        .filter((k) => {
+                          const hd = k.split('_')[0];
+                          if (seen.has(hd)) return false;
+                          seen.add(hd);
+                          return true;
+                        })
+                        .map((k) => {
+                          const hd = k.split('_')[0];
+                          const fixed = periodStats[`${hd}_fixed`];
+                          const dynamic = periodStats[`${hd}_dynamic`];
+                          const totalClosed = (fixed?.closed.length || 0) + (dynamic?.closed.length || 0);
+                          return { label: `${hd}日 (${totalClosed}笔)`, value: hd };
+                        });
+                    }
+                    return Object.keys(periodStats).map((k) => {
+                      const s = periodStats[k];
+                      return { label: `${k}日 (${s.closed.length}笔)`, value: k };
+                    });
+                  })()}
                 />
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <StatCard label="累计收益" value={currentStats ? pctNum(currentStats.cumRet) : '--'} />
-                <StatCard label="最终资金" value={currentStats ? fmtMoney(currentStats.finalCapital) : '--'} />
-                <StatCard label="胜率" value={currentStats ? pctNum(currentStats.wr) : '--'} />
-                <StatCard label="最大回撤" value={currentStats ? pctNum(currentStats.mdd) : '--'}
-                  hint={currentStats?.mddStart && currentStats?.mddEnd ? `${currentStats.mddStart} ~ ${currentStats.mddEnd}` : undefined} />
-                <StatCard label="年化收益" value={currentStats ? pctNum(currentStats.annRet) : '--'} />
-                <StatCard label="夏普比率" value={currentStats ? currentStats.sharpe.toFixed(2) : '--'} />
-                <StatCard label="交易笔数" value={currentStats ? String(currentStats.totalTrades) : '--'} />
-                <StatCard label="已平仓" value={currentStats ? String(currentStats.closed.length) : '--'} />
-              </div>
+              {isDynamicMode && currentDynamicStats ? (
+                <>
+                  <div className="text-xs font-medium text-foreground/60 mb-2">固定权重</div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                    <StatCard label="累计收益" value={currentStats ? pctNum(currentStats.cumRet) : '--'} />
+                    <StatCard label="最终资金" value={currentStats ? fmtMoney(currentStats.finalCapital) : '--'} />
+                    <StatCard label="胜率" value={currentStats ? pctNum(currentStats.wr) : '--'} />
+                    <StatCard label="最大回撤" value={currentStats ? pctNum(currentStats.mdd) : '--'}
+                      hint={currentStats?.mddStart && currentStats?.mddEnd ? `${currentStats.mddStart} ~ ${currentStats.mddEnd}` : undefined} />
+                    <StatCard label="年化收益" value={currentStats ? pctNum(currentStats.annRet) : '--'} />
+                    <StatCard label="夏普比率" value={currentStats ? currentStats.sharpe.toFixed(2) : '--'} />
+                    <StatCard label="交易笔数" value={currentStats ? String(currentStats.totalTrades) : '--'} />
+                    <StatCard label="已平仓" value={currentStats ? String(currentStats.closed.length) : '--'} />
+                  </div>
+                  <div className="text-xs font-medium text-foreground/60 mb-2">动态调优</div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                    <StatCard label="累计收益" value={pctNum(currentDynamicStats.cumRet)} />
+                    <StatCard label="最终资金" value={fmtMoney(currentDynamicStats.finalCapital)} />
+                    <StatCard label="胜率" value={pctNum(currentDynamicStats.wr)} />
+                    <StatCard label="最大回撤" value={pctNum(currentDynamicStats.mdd)}
+                      hint={currentDynamicStats?.mddStart && currentDynamicStats?.mddEnd ? `${currentDynamicStats.mddStart} ~ ${currentDynamicStats.mddEnd}` : undefined} />
+                    <StatCard label="年化收益" value={pctNum(currentDynamicStats.annRet)} />
+                    <StatCard label="夏普比率" value={currentDynamicStats.sharpe.toFixed(2)} />
+                    <StatCard label="交易笔数" value={String(currentDynamicStats.totalTrades)} />
+                    <StatCard label="已平仓" value={String(currentDynamicStats.closed.length)} />
+                  </div>
+                </>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <StatCard label="累计收益" value={currentStats ? pctNum(currentStats.cumRet) : '--'} />
+                  <StatCard label="最终资金" value={currentStats ? fmtMoney(currentStats.finalCapital) : '--'} />
+                  <StatCard label="胜率" value={currentStats ? pctNum(currentStats.wr) : '--'} />
+                  <StatCard label="最大回撤" value={currentStats ? pctNum(currentStats.mdd) : '--'}
+                    hint={currentStats?.mddStart && currentStats?.mddEnd ? `${currentStats.mddStart} ~ ${currentStats.mddEnd}` : undefined} />
+                  <StatCard label="年化收益" value={currentStats ? pctNum(currentStats.annRet) : '--'} />
+                  <StatCard label="夏普比率" value={currentStats ? currentStats.sharpe.toFixed(2) : '--'} />
+                  <StatCard label="交易笔数" value={currentStats ? String(currentStats.totalTrades) : '--'} />
+                  <StatCard label="已平仓" value={currentStats ? String(currentStats.closed.length) : '--'} />
+                </div>
+              )}
 
               {/* Walk-forward comparison */}
               {isDynamicMode && result.summary.dynamic && currentDynamicStats && (() => {
@@ -864,12 +983,24 @@ const FactorBacktestPage: React.FC = () => {
                       <Tooltip contentStyle={{ background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', fontSize: 12 }} />
                       <Legend onClick={(e) => {
                         if (!e.dataKey || typeof e.dataKey !== 'string') return;
+                        if (e.dataKey === 'h_benchmark') return; // 基准线不可切换
                         const key = e.dataKey.replace('h', '');
-                        // 同步 summaryPeriod
-                        if (selectedCurves[key]) return;
-                        setSummaryPeriod(key);
+                        setSelectedCurves((prev) => {
+                          const next = { ...prev, [key]: !prev[key] };
+                          const anyVisible = Object.values(next).some(v => v);
+                          if (!anyVisible) {
+                            for (const k of Object.keys(next)) next[k] = true;
+                          }
+                          return next;
+                        });
                       }} />
-                      {Object.keys(result.capital_curves).map((k) => {
+                      {Object.keys(result.capital_curves).filter((k) => {
+                        if (isDynamicMode) {
+                          const prefix = String(summaryPeriod);
+                          return k === `${prefix}_fixed` || k === `${prefix}_dynamic`;
+                        }
+                        return true;
+                      }).map((k) => {
                         const isFixed = k.endsWith('_fixed');
                         const isDynSfx = k.endsWith('_dynamic');
                         const hdNum = parseInt(k.split('_')[0]) || parseInt(k) || 0;
@@ -893,6 +1024,20 @@ const FactorBacktestPage: React.FC = () => {
                           />
                         );
                       })}
+                      {result.benchmark_curve?.length > 0 && (
+                        <Line
+                          key="_benchmark"
+                          type="monotone"
+                          dataKey="h_benchmark"
+                          name="上证指数"
+                          stroke="#fbbf24"
+                          strokeWidth={1.5}
+                          strokeDasharray="3 3"
+                          strokeOpacity={0.7}
+                          dot={false}
+                          connectNulls
+                        />
+                      )}
                     </LineChart>
                   </ResponsiveContainer>
                 </Card>
@@ -969,10 +1114,10 @@ const FactorBacktestPage: React.FC = () => {
                       type="button"
                       className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs text-secondary-text hover:text-foreground transition-colors"
                       onClick={() => {
-                        const st = periodStats[summaryPeriod];
+                        const st = periodStats[summaryPeriod] || periodStats[`${summaryPeriod}_fixed`];
                         if (!st) return;
                         const curves = result.capital_curves;
-                        const pts = curves[summaryPeriod];
+                        const pts = curves[summaryPeriod] || curves[`${summaryPeriod}_fixed`];
                         if (!pts || pts.length < 2) return;
                         const allCap = pts.map((p: FactorBacktestCapitalPoint) => p.capital);
                         const minC = Math.min(...allCap), maxC = Math.max(...allCap);
@@ -992,7 +1137,7 @@ const FactorBacktestPage: React.FC = () => {
                         const legend = `<rect x="${R}" y="${H - R + 8}" width="12" height="12" fill="${color}"/><text x="${R + 16}" y="${H - R + 18}" font-size="11" fill="#ccc">${summaryPeriod}日</text>`;
                         const trades = displayTrades.filter((t: FactorBacktestTrade) => t.hold_days === Number(summaryPeriod));
                         const tradeRows = trades.map((t: FactorBacktestTrade) => '<tr><td>'+t.trade_date+'</td><td>'+t.hold_days+'日</td><td>'+t.stock_name+'<br/><span style="color:#888;font-size:11px">'+t.stock_code+'</span></td><td>'+t.buy_price+'</td><td>'+t.sell_date+'</td><td>'+t.sell_price+'</td><td>'+(t.allocated||0).toFixed(0)+'</td><td>'+((t.allocated||0)+(t.pnl||0)).toFixed(0)+'</td><td>'+(t.return_pct*100).toFixed(2)+'%</td><td>'+t.pnl.toFixed(0)+'</td><td>'+t.status+'</td></tr>').join('');
-                        const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>因子回测 '+result.mode+' '+summaryPeriod+'日 '+result.date_range.start+'-'+result.date_range.end+'</title><style>body{font-family:-apple-system,sans-serif;background:#111;color:#ddd;padding:24px;max-width:900px;margin:auto}h1{font-size:18px;margin-bottom:16px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}.card{background:#1a1a1a;border-radius:8px;padding:14px}.card .label{font-size:11px;color:#888}.card .value{font-size:20px;font-weight:600;color:#fff}svg{display:block;margin:0 auto}table{width:100%;border-collapse:collapse;margin-top:24px;font-size:12px}th,td{padding:6px 8px;text-align:left;border-bottom:1px solid #333}th{color:#888;font-weight:500}td{color:#ccc}</style></head><body><h1>因子回测报告 '+result.mode+' · '+summaryPeriod+'日持有 · '+result.date_range.start+' ~ '+result.date_range.end+'</h1><div class="grid"><div class="card"><div class="label">累计收益</div><div class="value">'+(st.cumRet*100).toFixed(2)+'%</div></div><div class="card"><div class="label">年化收益</div><div class="value">'+(st.annRet !== null && isFinite(st.annRet) ? (st.annRet*100).toFixed(2)+'%' : 'N/A')+'</div></div><div class="card"><div class="label">胜率</div><div class="value">'+(st.wr*100).toFixed(1)+'%</div></div><div class="card"><div class="label">夏普</div><div class="value">'+st.sharpe.toFixed(2)+'</div></div><div class="card"><div class="label">最大回撤</div><div class="value" style="color:#ef4444">'+(st.mdd*100).toFixed(2)+'%</div></div><div class="card"><div class="label">已平仓</div><div class="value">'+st.closed.length+'</div></div><div class="card"><div class="label">最终资金</div><div class="value">'+(st.finalCapital/10000).toFixed(1)+'万</div></div><div class="card"><div class="label">初始</div><div class="value">'+(result.params.initial_capital/10000).toFixed(0)+'万</div></div></div><svg width="'+W+'" height="'+(H+20)+'"><line x1="'+R+'" y1="'+(H-R)+'" x2="'+(W-R)+'" y2="'+(H-R)+'" stroke="#444"/><line x1="'+R+'" y1="'+R+'" x2="'+R+'" y2="'+(H-R)+'" stroke="#444"/>'+yLabels+path+legend+'</svg><table><thead><tr><th>信号日</th><th>持有期</th><th>股票</th><th>买入价</th><th>卖出日</th><th>卖出价</th><th>买入额</th><th>卖出额</th><th>收益</th><th>盈亏</th><th>状态</th></tr></thead><tbody>'+tradeRows+'</tbody></table></body></html>';
+                        const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>因子回测 '+result.mode+' '+summaryPeriod+'日 '+result.date_range.start+'-'+result.date_range.end+'</title><style>body{font-family:-apple-system,sans-serif;background:#111;color:#ddd;padding:24px;max-width:900px;margin:auto}h1{font-size:18px;margin-bottom:16px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}.card{background:#1a1a1a;border-radius:8px;padding:14px}.card .label{font-size:11px;color:#888}.card .value{font-size:20px;font-weight:600;color:#fff}svg{display:block;margin:0 auto}table{width:100%;border-collapse:collapse;margin-top:24px;font-size:12px}th,td{padding:6px 8px;text-align:left;border-bottom:1px solid #333}th{color:#888;font-weight:500}td{color:#ccc}</style></head><body><h1>因子回测报告 '+result.mode+' · '+summaryPeriod+'日持有 · '+result.date_range.start+' ~ '+result.date_range.end+'</h1><div class="grid"><div class="card"><div class="label">累计收益</div><div class="value">'+(st.cumRet*100).toFixed(2)+'%</div></div><div class="card"><div class="label">年化收益</div><div class="value">'+(st.annRet !== null && isFinite(st.annRet) ? (st.annRet*100).toFixed(2)+'%' : 'N/A')+'</div></div><div class="card"><div class="label">胜率</div><div class="value">'+(st.wr*100).toFixed(1)+'%</div></div><div class="card"><div class="label">夏普</div><div class="value">'+st.sharpe.toFixed(2)+'</div></div><div class="card"><div class="label">最大回撤</div><div class="value" style="color:#ef4444">'+(st.mdd*100).toFixed(2)+'%</div></div><div class="card"><div class="label">已平仓</div><div class="value">'+st.closed.length+'</div></div><div class="card"><div class="label">最终资金</div><div class="value">'+(st.finalCapital/10000).toFixed(1)+'万</div></div><div class="card"><div class="label">初始</div><div class="value">'+((result.params?.initial_capital??0)/10000).toFixed(0)+'万</div></div></div><svg width="'+W+'" height="'+(H+20)+'"><line x1="'+R+'" y1="'+(H-R)+'" x2="'+(W-R)+'" y2="'+(H-R)+'" stroke="#444"/><line x1="'+R+'" y1="'+R+'" x2="'+R+'" y2="'+(H-R)+'" stroke="#444"/>'+yLabels+path+legend+'</svg><table><thead><tr><th>信号日</th><th>持有期</th><th>股票</th><th>买入价</th><th>卖出日</th><th>卖出价</th><th>买入额</th><th>卖出额</th><th>收益</th><th>盈亏</th><th>状态</th></tr></thead><tbody>'+tradeRows+'</tbody></table></body></html>';
                         const blob = new Blob([html], { type: 'text/html;charset=utf-8;' });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
@@ -1028,6 +1173,7 @@ const FactorBacktestPage: React.FC = () => {
           {!result && !error && !loading && (
             <EmptyState icon={<Activity className="h-8 w-8" />} title="选择因子和参数后开始回测" />
           )}
+          </>)}
         </div>
       </div>
     </AppPage>
