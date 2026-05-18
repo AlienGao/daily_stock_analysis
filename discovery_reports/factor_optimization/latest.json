@@ -1,19 +1,19 @@
 {
   "mode": "intraday",
-  "timestamp": "2026-05-17T23:09:23.877376",
+  "timestamp": "2026-05-19T01:23:28.278925",
   "deltas": {
-    "ma_entry": -9.0,
-    "momentum": -15.0,
-    "sector": -17.0,
-    "popularity": 13.0,
-    "ranking_momentum": 4.0
+    "ma_entry": 2.0,
+    "momentum": 3.0,
+    "sector": 25.0,
+    "popularity": 3.0,
+    "ranking_momentum": -2.0
   },
   "recommendation": {
-    "ma_entry": 26,
-    "momentum": 10,
-    "sector": 8,
-    "popularity": 31,
-    "ranking_momentum": 19
+    "ma_entry": 28,
+    "momentum": 13,
+    "sector": 33,
+    "popularity": 34,
+    "ranking_momentum": 17
   },
   "applied": true
 }

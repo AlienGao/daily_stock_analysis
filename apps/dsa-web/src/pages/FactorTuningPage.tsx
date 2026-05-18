@@ -2,6 +2,8 @@ import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Segmented, InputNumber, Switch, Table, Modal } from 'antd';
 import { Play, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
+import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { AppPage, Card, StatCard, EmptyState, ApiErrorAlert } from '../components/common';
 import { discoveryApi, type FactorOptimizeHistoryItem } from '../api/discovery';
 import type { ParsedApiError } from '../api/error';
@@ -355,6 +357,17 @@ const FactorTuningPage: React.FC = () => {
     try {
       await discoveryApi.applyFactorWeights(mode, result.recommendation, result.report_path || undefined);
       setResult((prev) => prev ? { ...prev, applied: true } : prev);
+      // 同步更新 localStorage 缓存，避免切换模式后再切回时复活旧 applied=false
+      try {
+        const raw = localStorage.getItem(RESULT_KEY);
+        if (raw) {
+          const cached = JSON.parse(raw);
+          if (cached.result && cached.mode === mode) {
+            cached.result.applied = true;
+            localStorage.setItem(RESULT_KEY, JSON.stringify(cached));
+          }
+        }
+      } catch { /* ignore */ }
       setConfirmModalOpen(false);
       refreshWeights();
       void loadHistory();
@@ -380,6 +393,17 @@ const FactorTuningPage: React.FC = () => {
         item.recommendation,
         item.report_path || undefined,
       );
+      // 同步更新 localStorage 缓存
+      try {
+        const raw = localStorage.getItem(RESULT_KEY);
+        if (raw) {
+          const cached = JSON.parse(raw);
+          if (cached.result && cached.mode === item.mode) {
+            cached.result.applied = true;
+            localStorage.setItem(RESULT_KEY, JSON.stringify(cached));
+          }
+        }
+      } catch { /* ignore */ }
       void loadHistory();
       refreshWeights();
     } catch (e) {
@@ -824,8 +848,20 @@ const FactorTuningPage: React.FC = () => {
                       完整优化报告
                     </button>
                     {reportExpanded && reportContent && (
-                      <div className="max-h-[600px] overflow-y-auto rounded-lg border border-border p-4 bg-gray-50 dark:bg-gray-900">
-                        <pre className="text-xs whitespace-pre-wrap font-mono text-foreground/80">{reportContent}</pre>
+                      <div className="max-h-[600px] overflow-y-auto rounded-lg border border-border p-4 bg-gray-50 dark:bg-gray-900
+                        home-markdown-prose prose prose-invert prose-sm max-w-none
+                        prose-headings:text-foreground prose-headings:font-semibold prose-headings:mt-4 prose-headings:mb-2
+                        prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
+                        prose-p:leading-relaxed prose-p:mb-3 prose-p:last:mb-0
+                        prose-strong:text-foreground prose-strong:font-semibold
+                        prose-ul:my-2 prose-ol:my-2 prose-li:my-1
+                        prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none
+                        prose-pre:border prose-table:border-collapse
+                        prose-hr:my-4 prose-a:no-underline hover:prose-a:underline
+                        prose-blockquote:text-secondary-text
+                        whitespace-pre-line break-words
+                      ">
+                        <Markdown remarkPlugins={[remarkGfm]}>{reportContent}</Markdown>
                       </div>
                     )}
                     {reportExpanded && !reportContent && (
@@ -837,27 +873,7 @@ const FactorTuningPage: React.FC = () => {
                 </Card>
               )}
 
-              {/* Manual apply hint — also suppressed when recommendation already matches current weights */}
-              {!result.applied && (() => {
-                const rec = result.recommendation;
-                const keys = Object.keys(rec);
-                if (keys.length === 0) return false;
-                // If every recommendation weight already matches current weight, treat as applied
-                const allMatch = keys.every(k => Math.abs((rec[k] ?? 0) - (currentWeights[k] ?? 0)) < 0.5);
-                return !allMatch;
-              })() && (
-                <Card>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-sm font-medium text-amber-500">权重尚未应用</div>
-                      <div className="text-xs text-tertiary-text mt-1">
-                        可使用 CLI 应用: <code className="text-cyan">python main.py --factor-apply {result.report_path}</code>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              )}
-            </>
+                          </>
           )}
 
           {/* Empty state */}
@@ -882,8 +898,20 @@ const FactorTuningPage: React.FC = () => {
                   优化报告
                 </button>
                 {reportExpanded && reportContent && (
-                  <div className="max-h-[600px] overflow-y-auto rounded-lg border border-border p-4 bg-gray-50 dark:bg-gray-900">
-                    <pre className="text-xs whitespace-pre-wrap font-mono text-foreground/80">{reportContent}</pre>
+                  <div className="max-h-[600px] overflow-y-auto rounded-lg border border-border p-4 bg-gray-50 dark:bg-gray-900
+                    home-markdown-prose prose prose-invert prose-sm max-w-none
+                    prose-headings:text-foreground prose-headings:font-semibold prose-headings:mt-4 prose-headings:mb-2
+                    prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
+                    prose-p:leading-relaxed prose-p:mb-3 prose-p:last:mb-0
+                    prose-strong:text-foreground prose-strong:font-semibold
+                    prose-ul:my-2 prose-ol:my-2 prose-li:my-1
+                    prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none
+                    prose-pre:border prose-table:border-collapse
+                    prose-hr:my-4 prose-a:no-underline hover:prose-a:underline
+                    prose-blockquote:text-secondary-text
+                    whitespace-pre-line break-words
+                  ">
+                    <Markdown remarkPlugins={[remarkGfm]}>{reportContent}</Markdown>
                   </div>
                 )}
                 {reportExpanded && !reportContent && (

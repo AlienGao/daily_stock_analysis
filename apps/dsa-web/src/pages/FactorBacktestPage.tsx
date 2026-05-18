@@ -40,6 +40,7 @@ const CAPITAL_COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444'];
 
 const BT_TASK_KEY = 'factor_backtest_task';
 const BT_RESULT_KEY = 'factor_backtest_result';
+const BT_PARAMS_KEY = 'factor_backtest_params';
 
 const FactorBacktestPage: React.FC = () => {
   const isOwnerRef = useRef(false);
@@ -133,6 +134,42 @@ const FactorBacktestPage: React.FC = () => {
         setStartDate(data.global.available_from);
         setEndDate(data.global.available_to);
       }
+      // 回填上次回测参数
+      if (!restored) {
+        const paramsRaw = localStorage.getItem(BT_PARAMS_KEY);
+        if (paramsRaw) {
+          try {
+            const p = JSON.parse(paramsRaw);
+            if (p.mode === mode) {
+              if (p.holdDays) setHoldDays(p.holdDays);
+              if (p.topN != null) setTopN(p.topN);
+              if (p.startDate) setStartDate(p.startDate);
+              if (p.endDate) setEndDate(p.endDate);
+              if (p.initialCapital) setInitialCapital(p.initialCapital);
+              if (p.riskFreeRate != null) setRiskFreeRate(p.riskFreeRate);
+              if (p.usePipeline != null) setUsePipeline(p.usePipeline);
+              if (p.blendAlpha != null) setBlendAlpha(p.blendAlpha);
+              if (p.reoptimize != null) setReoptimize(p.reoptimize);
+              // 因子选择与权重：仅恢复快照中仍存在的因子
+              if (p.selectedFactors) setSelectedFactors((prev) => {
+                const next = { ...prev };
+                for (const k of Object.keys(next)) next[k] = false;
+                for (const k of Object.keys(p.selectedFactors)) {
+                  if (p.selectedFactors[k] && k in next) next[k] = true;
+                }
+                return next;
+              });
+              if (p.factorWeights) setFactorWeights((prev) => {
+                const next = { ...prev };
+                for (const k of Object.keys(p.factorWeights)) {
+                  if (k in next) next[k] = p.factorWeights[k];
+                }
+                return next;
+              });
+            }
+          } catch { /* ignore parse errors */ }
+        }
+      }
       if (!restored) setSelectedCurves({});
     }).catch((e) => {
       if (!cancelled) { setError(getParsedApiError(e)); setSnapLoading(false); }
@@ -140,8 +177,15 @@ const FactorBacktestPage: React.FC = () => {
     return () => { cancelled = true; };
   }, [mode]);
 
-  /* 同步 usePipeline / blendAlpha 与当前模式的实际管线配置 */
+  /* 同步 usePipeline / blendAlpha 与当前模式的实际管线配置（无已保存参数时） */
   useEffect(() => {
+    const paramsRaw = localStorage.getItem(BT_PARAMS_KEY);
+    if (paramsRaw) {
+      try {
+        const p = JSON.parse(paramsRaw);
+        if (p.mode === mode) return; // 已有保存参数，跳过默认覆盖
+      } catch { /* continue */ }
+    }
     let cancelled = false;
     discoveryApi.getPipelineConfig().then((data) => {
       if (cancelled) return;
@@ -339,6 +383,10 @@ const FactorBacktestPage: React.FC = () => {
 
       taskIdRef.current = task_id;
       localStorage.setItem(BT_TASK_KEY, JSON.stringify({ task_id, mode, started_at: Date.now() }));
+      localStorage.setItem(BT_PARAMS_KEY, JSON.stringify({
+        mode, holdDays, topN, startDate, endDate, initialCapital, riskFreeRate,
+        usePipeline, blendAlpha, reoptimize, selectedFactors, factorWeights,
+      }));
 
       // poll until complete (with retry for transient network errors)
       let pollFailures = 0;

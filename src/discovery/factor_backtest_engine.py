@@ -284,7 +284,7 @@ class FactorBacktestEngine:
                 alloc = cap / n_bought / hd
                 day_pnl = 0.0
                 for code, name, bp, sp, sd, status in bought:
-                    if bp and sp and bp > 0:
+                    if bp and sp and bp > 0 and status not in ("locked", "open"):
                         ret = (sp - bp) / bp
                         pnl = alloc * ret; day_pnl += pnl
                     else:
@@ -539,7 +539,7 @@ class FactorBacktestEngine:
                 alloc = cap / n_bought / hd
                 day_pnl = 0.0
                 for code, name, bp, sp, sd_ext, status in bought:
-                    if bp and sp and bp > 0:
+                    if bp and sp and bp > 0 and status not in ("locked", "open"):
                         ret = (sp - bp) / bp
                         pnl = alloc * ret
                         day_pnl += pnl
@@ -743,7 +743,7 @@ class FactorBacktestEngine:
                     alloc = cap / n_bought / hd
                     day_pnl = 0.0
                     for code, name, bp, sp, sd_ext, status in bought:
-                        if bp and sp and bp > 0:
+                        if bp and sp and bp > 0 and status not in ("locked", "open"):
                             ret = (sp - bp) / bp
                             pnl = alloc * ret
                             day_pnl += pnl
@@ -1302,23 +1302,35 @@ class FactorBacktestEngine:
 
     def _load_snapshots(self, factor_names, mode, dates, progress_cb=None):
         from src.storage import DatabaseManager, FactorScoreSnapshot
+        from sqlalchemy import select
         db = DatabaseManager()
         fns = list(factor_names)
-        # 单次批量查询，而非逐日期循环（728 日期 → 1 次查询）
         if progress_cb:
             progress_cb(f"加载因子数据中 ({len(dates)} 日期)...")
         with db.get_session() as sess:
-            rows = sess.query(FactorScoreSnapshot).filter(
-                FactorScoreSnapshot.mode == mode,
-                FactorScoreSnapshot.factor_name.in_(fns),
-                FactorScoreSnapshot.trade_date.in_(dates),
-            ).all()
+            # 用 select + column list 代替 ORM 全量查询，避免为 12M+ 行创建 ORM 对象
+            # 实测：252 日期 × 16 因子 → ORM .all() 超时 120s，tuple 查询 ~3s
+            stmt = (
+                select(
+                    FactorScoreSnapshot.trade_date,
+                    FactorScoreSnapshot.factor_name,
+                    FactorScoreSnapshot.ts_code,
+                    FactorScoreSnapshot.score,
+                )
+                .where(
+                    FactorScoreSnapshot.mode == mode,
+                    FactorScoreSnapshot.factor_name.in_(fns),
+                    FactorScoreSnapshot.trade_date.in_(dates),
+                )
+                .order_by(FactorScoreSnapshot.trade_date)
+            )
+            rows = sess.execute(stmt).all()
         result = {}
-        for r in rows:
-            code = r.ts_code or ""
+        for trade_date, factor_name, ts_code, score in rows:
+            code = ts_code or ""
             if "." in code:
                 code = code.split(".")[0]
-            result.setdefault(r.trade_date, {}).setdefault(r.factor_name, {})[code] = r.score
+            result.setdefault(trade_date, {}).setdefault(factor_name, {})[code] = score
         for dd in result:
             for fn in result[dd]:
                 result[dd][fn] = pd.Series(result[dd][fn])
@@ -1750,21 +1762,20 @@ class FactorBacktestEngine:
 
         field="open"（盘后开盘买入）：仅检查一字涨停。
         field="close"（盘中收盘买入）：检查一字涨停 + pct_chg 阈值。"""
-        o = self._get_price(code, ds, "open")
-        h = self._get_price(code, ds, "high")
-        l = self._get_price(code, ds, "low")
+        row = (self._price_cache.get(ds) or {}).get(code)
+        if row is None:
+            return False
+        o, h, l = row.get("open"), row.get("high"), row.get("low")
+        pct = row.get("pct_chg")
         if o and h and l and o > 0:
             if abs(h - l) < 0.001 and abs(o - h) < 0.001:
-                pct = self._get_price(code, ds, "pct_chg")
                 if pct is None or pct >= 0:
-                    return True  # 一字涨停 或 无法分辨（保守）
-                return False  # 一字跌停 → 可以买入
-        if field == "close":
-            pct = self._get_price(code, ds, "pct_chg")
-            if pct is not None:
-                limit_pct = self._get_limit_pct(code)
-                if pct >= (limit_pct * 100 - 1.0):
                     return True
+                return False
+        if field == "close" and pct is not None:
+            limit_pct = self._get_limit_pct(code)
+            if pct >= (limit_pct * 100 - 1.0):
+                return True
         return False
 
     def _is_limit_down(self, code, ds, field="close"):
@@ -1772,21 +1783,20 @@ class FactorBacktestEngine:
 
         field="open"（盘后开盘卖出）：仅检查一字跌停。
         field="close"（盘中收盘卖出）：检查一字跌停 + pct_chg 阈值。"""
-        o = self._get_price(code, ds, "open")
-        h = self._get_price(code, ds, "high")
-        l = self._get_price(code, ds, "low")
+        row = (self._price_cache.get(ds) or {}).get(code)
+        if row is None:
+            return False
+        o, h, l = row.get("open"), row.get("high"), row.get("low")
+        pct = row.get("pct_chg")
         if o and h and l and o > 0:
             if abs(h - l) < 0.001 and abs(o - h) < 0.001:
-                pct = self._get_price(code, ds, "pct_chg")
                 if pct is None or pct <= 0:
-                    return True  # 一字跌停 或 无法分辨（保守）
-                return False  # 一字涨停 → 可以卖出
-        if field == "close":
-            pct = self._get_price(code, ds, "pct_chg")
-            if pct is not None:
-                limit_pct = self._get_limit_pct(code)
-                if pct <= -(limit_pct * 100 - 1.0):
                     return True
+                return False
+        if field == "close" and pct is not None:
+            limit_pct = self._get_limit_pct(code)
+            if pct <= -(limit_pct * 100 - 1.0):
+                return True
         return False
 
     def _calc_mdd(self, curve, ic):

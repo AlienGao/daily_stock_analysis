@@ -133,7 +133,7 @@ class FactorOptimizer:
 
         # 自动应用权重到 .env
         if auto_apply and recommendation:
-            applied = self.apply_weights(recommendation)
+            applied = FactorOptimizer.apply_weights(recommendation, mode)
             result["applied"] = applied
             if applied:
                 logger.info("[FactorOptimizer] 权重已自动应用到 .env")
@@ -224,6 +224,9 @@ class FactorOptimizer:
             key = _weight_env_key(fn, mode)
             if key:
                 os.environ[key] = str(int(nw))
+        # 清除 get_factor_weights 的 LRU 缓存，使下次调用能读到新权重
+        from src.discovery.engine import get_factor_weights
+        get_factor_weights.cache_clear()
         logger.info("[FactorOptimizer] 已更新 %d 个因子权重到 .env (mode=%s)", len(changes), mode)
         return True
 
@@ -398,9 +401,9 @@ class FactorOptimizer:
             full_tdays = preloaded["trading_days"]
             _window_pool = preloaded["window_pool"]
         else:
-            # 预加载全量历史数据
+            # 预加载历史数据（上限 252 个交易日 ≈ 1 年，避免全表扫描 49M 行）
             self._notify("preload", message="加载历史快照日期…")
-            all_snap_dates = self._get_recent_snap_dates(all_factor_names, mode, 9999)
+            all_snap_dates = self._get_recent_snap_dates(all_factor_names, mode, 252)
             if len(all_snap_dates) < window:
                 logger.warning("[FactorOptimizer] 历史数据不足 %d 日（仅 %d），使用全部", window, len(all_snap_dates))
 
