@@ -10,6 +10,7 @@ import ChatPage from './pages/ChatPage';
 import DiscoveryPage from './pages/DiscoveryPage';
 import FactorBacktestPage from './pages/FactorBacktestPage';
 import FactorTuningPage from './pages/FactorTuningPage';
+import LightGBMPage from './pages/LightGBMPage';
 import { ApiErrorAlert, Shell } from './components/common';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useAgentChatStore } from './stores/agentChatStore';
@@ -71,6 +72,7 @@ const AppContent: React.FC = () => {
         <Route path="/discovery" element={<DiscoveryPage />} />
         <Route path="/factor-backtest" element={<FactorBacktestPage />} />
         <Route path="/factor-tuning" element={<FactorTuningPage />} />
+        <Route path="/lgb" element={<LightGBMPage />} />
         <Route path="/backtest" element={<BacktestPage />} />
         <Route path="/broker-recommend" element={<Suspense fallback={<div className="flex justify-center py-12"><div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan/20 border-t-cyan" /></div>}><BrokerRecommendPage /></Suspense>} />
         <Route path="/institution-survey" element={<Suspense fallback={<div className="flex justify-center py-12"><div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan/20 border-t-cyan" /></div>}><InstitutionSurveyPage /></Suspense>} />

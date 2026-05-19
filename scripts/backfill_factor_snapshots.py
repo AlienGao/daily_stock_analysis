@@ -128,6 +128,13 @@ def load_all_factors():
         PerformanceFactor, PopularityFactor, RankingMomentumFactor, ReboundFactor,
         BuybackFactor, ProfitForecastFactor, ConceptHeatFactor,
     )
+    from src.discovery.factors.alpha042_factor import Alpha042Factor
+    from src.discovery.factors.vwap_deviation_factor import VwapDeviationFactor
+    from src.discovery.factors.gap_reversal_factor import GapReversalFactor
+    from src.discovery.factors.liquid_oversold_factor import LiquidOversoldFactor
+    from src.discovery.factors.vwap_reversal_factor import VwapReversalFactor
+    from src.discovery.factors.gtja114_factor import Gtja114Factor
+
     return [
         MaEntryFactor(),
         MomentumFactor(), MoneyFlowFactor(), SectorFactor(), TechnicalFactor(),
@@ -135,6 +142,8 @@ def load_all_factors():
         ChipFactor(), InsiderBuyFactor(), InstitutionHoldFactor(), LimitFactor(),
         PerformanceFactor(), PopularityFactor(), RankingMomentumFactor(), ReboundFactor(),
         BuybackFactor(), ProfitForecastFactor(), ConceptHeatFactor(),
+        Alpha042Factor(), VwapDeviationFactor(), GapReversalFactor(),
+        LiquidOversoldFactor(), VwapReversalFactor(), Gtja114Factor(),
     ]
 
 

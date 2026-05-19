@@ -955,8 +955,14 @@ class FactorBacktestEngine:
             return scores
 
     @staticmethod
-    def _batch_stockscorer_static(codes, snap_date, trading_days, composite=None):
-        """对候选池批量 StockScorer（静态版本，可供引擎直接调用）。"""
+    def _batch_stockscorer_static(codes, snap_date, trading_days, composite=None, return_full=False):
+        """对候选池批量 StockScorer（静态版本，可供引擎直接调用）。
+
+        Args:
+            return_full: 若为 True，返回 Dict[str, dict] 含 composite/rr_score/market_score/
+                         sector_score/volume_score/position_score/formation_score；
+                         否则返回 Dict[str, float]（仅 composite，向后兼容）。
+        """
         try:
             from src.services.stock_scorer import StockScorer, StockScorerConfig
             from src.services.stop_loss_calculator import compute_from_arrays
@@ -978,7 +984,7 @@ class FactorBacktestEngine:
                 try:
                     r = full.get(code)
                     if r is None or len(r["close"]) < 20:
-                        tech[code] = 50.0; continue
+                        tech[code] = 50.0 if not return_full else {"composite": 50.0}; continue
                     h, l, c, v = (np.array(r[k]) for k in ["high","low","close","volume"])
                     price = float(c[-1])
                     tr = np.maximum(h[1:]-l[1:], np.abs(h[1:]-c[:-1]))
@@ -997,12 +1003,23 @@ class FactorBacktestEngine:
                         tp1=sl.take_profit_1 or price*1.1, tp2=sl.take_profit_2 or price*1.2,
                         stop_loss=sl.stop_loss or price*0.93, reasons=[],
                         ohlcv=(h, l, c), volume_ratio=vr)
-                    tech[code] = res.composite
+                    if return_full:
+                        tech[code] = {
+                            "composite": res.composite,
+                            "rr_score": res.rr_score,
+                            "market_score": res.market_score,
+                            "sector_score": res.sector_score,
+                            "volume_score": res.volume_score,
+                            "position_score": res.position_score,
+                            "formation_score": res.formation_score,
+                        }
+                    else:
+                        tech[code] = res.composite
                 except Exception:
-                    tech[code] = 50.0
+                    tech[code] = 50.0 if not return_full else {"composite": 50.0}
             return tech
         except Exception:
-            return {c: 50.0 for c in codes}
+            return {c: 50.0 if not return_full else {"composite": 50.0} for c in codes}
 
     def _batch_stockscorer(self, codes, snap_date, trading_days, composite=None):
         """委托到静态版本。"""
@@ -1220,7 +1237,10 @@ class FactorBacktestEngine:
                "broker_recommend": "券商推荐", "popularity": "人气", "hot_money": "游资",
                "performance": "业绩", "momentum": "动量", "rebound": "反弹",
                "sector": "板块", "ma_entry": "均线",
-               "ranking_momentum": "排名动量", "concept_heat": "概念热度"}
+               "ranking_momentum": "排名动量", "concept_heat": "概念热度",
+               "alpha042": "均值回归Alpha042", "vwap_deviation": "VWAP偏离",
+               "gap_reversal": "跳空反转", "liquid_oversold": "流动性超卖",
+               "vwap_reversal": "VWAP动量反转", "gtja114": "GTJA114"}
         dw = self._get_default_weights(mode)
         fi, af, at, trading_dates = [], None, None, []
         with db.get_session() as sess:
@@ -1311,7 +1331,7 @@ class FactorBacktestEngine:
             progress_cb(f"加载因子数据中 ({len(dates)} 日期)...")
         with db.get_session() as sess:
             # 用 select + column list 代替 ORM 全量查询，避免为 12M+ 行创建 ORM 对象
-            # 实测：252 日期 × 16 因子 → ORM .all() 超时 120s，tuple 查询 ~3s
+            # 实测：252 日期 × 22 因子 → ORM .all() 超时 120s，tuple 查询 ~3s
             stmt = (
                 select(
                     FactorScoreSnapshot.trade_date,

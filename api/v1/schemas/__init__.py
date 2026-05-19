@@ -105,6 +105,17 @@ from api.v1.schemas.alerts import (
     AlertTriggerItem,
     AlertTriggerListResponse,
 )
+from api.v1.schemas.research import (
+    LGBTrainRequest,
+    LGBTaskStatusResponse,
+    LGBFeatureImportanceResponse,
+    LGBPredictionItem,
+    LGBPredictionsResponse,
+    LGBBacktestCompareResponse,
+    LGBModelInfo,
+    LGBModelListResponse,
+    LGBDateRangeResponse,
+)
 
 __all__ = [
     # common
@@ -196,4 +207,14 @@ __all__ = [
     "AlertRuleUpdateRequest",
     "AlertTriggerItem",
     "AlertTriggerListResponse",
+    # research
+    "LGBTrainRequest",
+    "LGBTaskStatusResponse",
+    "LGBFeatureImportanceResponse",
+    "LGBPredictionItem",
+    "LGBPredictionsResponse",
+    "LGBBacktestCompareResponse",
+    "LGBModelInfo",
+    "LGBModelListResponse",
+    "LGBDateRangeResponse",
 ]

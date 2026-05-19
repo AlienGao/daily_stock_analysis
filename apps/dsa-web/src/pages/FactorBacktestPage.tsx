@@ -540,6 +540,9 @@ const FactorBacktestPage: React.FC = () => {
     popularity: '人气', hot_money: '游资', performance: '业绩',
     momentum: '动量', rebound: '反弹', sector: '板块', ma_entry: '均线',
     ranking_momentum: '排名动量', concept_heat: '概念热度',
+    alpha042: '均值回归Alpha042', vwap_deviation: 'VWAP偏离',
+    gap_reversal: '跳空反转', liquid_oversold: '流动性超卖',
+    vwap_reversal: 'VWAP动量反转', gtja114: 'GTJA114',
     _pipeline: '管线综合',
   };
 

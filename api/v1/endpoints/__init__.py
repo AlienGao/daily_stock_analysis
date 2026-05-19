@@ -21,6 +21,7 @@ from api.v1.endpoints import (
     portfolio,
     broker_recommend,
     alerts,
+    research,
 )
 __all__ = [
     "health",
@@ -35,4 +36,5 @@ __all__ = [
     "portfolio",
     "broker_recommend",
     "alerts",
+    "research",
 ]

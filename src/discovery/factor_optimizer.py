@@ -972,6 +972,12 @@ def _weight_env_key(factor_name: str, mode: str = "postmarket") -> Optional[str]
         "insider_buy": "DISCOVER_WEIGHT_INSIDER_BUY",
         "institution_hold": "DISCOVER_WEIGHT_INSTITUTION_HOLD",
         "fundamental": "DISCOVER_WEIGHT_FUNDAMENTAL",
+        "alpha042": "DISCOVER_WEIGHT_ALPHA042",
+        "vwap_deviation": "DISCOVER_WEIGHT_VWAP_DEVIATION",
+        "gap_reversal": "DISCOVER_WEIGHT_GAP_REVERSAL",
+        "liquid_oversold": "DISCOVER_WEIGHT_LIQUID_OVERSOLD",
+        "vwap_reversal": "DISCOVER_WEIGHT_VWAP_REVERSAL",
+        "gtja114": "DISCOVER_WEIGHT_GTJA114",
     }
     if factor_name == "popularity":
         return f"DISCOVER_WEIGHT_POPULARITY_{'INTRADAY' if mode == 'intraday' else 'POSTMARKET'}"

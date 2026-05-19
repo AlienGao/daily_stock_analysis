@@ -163,6 +163,9 @@ class IntradayScanner:
             self._round += 1
             round_start = time.time()
 
+            # 每轮开始前做被动 WAL checkpoint，减少 DB 操作的 disk I/O 压力
+            self._wal_checkpoint(passive=True)
+
             try:
                 self._refresh_realtime_spot()
                 self._refresh_limit_pool()
@@ -175,6 +178,8 @@ class IntradayScanner:
                     self._print_round(annotated)
                     self._notify_new_stocks(annotated)
                     self._save_full_scan_to_db()
+                    if self._round % 2 == 0:
+                        self._wal_checkpoint()
                     self._previous = {
                         r.ts_code: i for i, r in enumerate(results)
                     }
@@ -812,6 +817,20 @@ class IntradayScanner:
                 DatabaseManager().save_scan_results_intraday(records, scan_date)
         except Exception as e:
             logger.warning("[Scanner] 全量扫描结果落库失败: %s", e)
+
+    def _wal_checkpoint(self, passive: bool = False) -> None:
+        """定期 truncate SQLite WAL 文件，避免无限增长导致 disk I/O error。"""
+        try:
+            from src.storage import DatabaseManager
+            db = DatabaseManager.get_instance()
+            if hasattr(db, '_engine') and db._is_sqlite_engine:
+                with db._engine.raw_connection() as conn:
+                    if passive:
+                        conn.execute("PRAGMA wal_checkpoint(PASSIVE)")
+                    else:
+                        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        except Exception:
+            pass
 
 
 def refresh_limit_pool_postmarket(tushare_fetcher) -> int:

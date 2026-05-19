@@ -3,10 +3,12 @@
 
 每个因子对应一个独立文件，继承 BaseFactor 抽象基类。
 盘中因子 (5个): SectorFactor, MaEntryFactor, MomentumFactor, ReboundFactor, PopularityFactor
-盘后因子 (14个): MoneyFlowFactor, MarginFactor, ChipFactor, TechnicalFactor, LimitFactor,
+盘后因子 (20个): MoneyFlowFactor, MarginFactor, ChipFactor, TechnicalFactor, LimitFactor,
                  FundamentalFactor, HotMoneyFactor, InstitutionHoldFactor,
                  ProfitForecastFactor, PerformanceFactor, BuybackFactor, InsiderBuyFactor,
-                 PopularityFactor, BrokerRecommendFactor
+                 PopularityFactor, BrokerRecommendFactor, Alpha042Factor,
+                 VwapDeviationFactor, GapReversalFactor, LiquidOversoldFactor, VwapReversalFactor,
+                 Gtja114Factor
 """
 
 import logging
@@ -36,6 +38,12 @@ from src.discovery.factors.buyback_factor import BuybackFactor
 from src.discovery.factors.insider_buy_factor import InsiderBuyFactor
 from src.discovery.factors.broker_recommend_factor import BrokerRecommendFactor
 from src.discovery.factors.concept_heat_factor import ConceptHeatFactor
+from src.discovery.factors.alpha042_factor import Alpha042Factor
+from src.discovery.factors.vwap_deviation_factor import VwapDeviationFactor
+from src.discovery.factors.gap_reversal_factor import GapReversalFactor
+from src.discovery.factors.liquid_oversold_factor import LiquidOversoldFactor
+from src.discovery.factors.vwap_reversal_factor import VwapReversalFactor
+from src.discovery.factors.gtja114_factor import Gtja114Factor
 
 __all__ = [
     "BaseFactor",
@@ -60,4 +68,10 @@ __all__ = [
     "InsiderBuyFactor",
     "BrokerRecommendFactor",
     "ConceptHeatFactor",
+    "Alpha042Factor",
+    "VwapDeviationFactor",
+    "GapReversalFactor",
+    "LiquidOversoldFactor",
+    "VwapReversalFactor",
+    "Gtja114Factor",
 ]

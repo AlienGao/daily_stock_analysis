@@ -2358,6 +2358,7 @@ class DatabaseManager:
                 cursor.execute(f"PRAGMA busy_timeout={int(self._sqlite_busy_timeout_ms)}")
                 if self._sqlite_file_db and self._sqlite_wal_enabled:
                     cursor.execute("PRAGMA journal_mode=WAL")
+                    cursor.execute("PRAGMA wal_autocheckpoint=500")
                 cursor.execute("PRAGMA cache_size=-50000")
             except Exception as exc:
                 logger.warning("初始化 SQLite PRAGMA 失败: %s", exc)
@@ -2388,11 +2389,7 @@ class DatabaseManager:
                 return result
             except OperationalError as exc:
                 session.rollback()
-                if (
-                    self._is_sqlite_engine
-                    and self._is_sqlite_locked_error(exc)
-                    and attempt < max_retries
-                ):
+                if self._is_sqlite_engine and attempt < max_retries:
                     delay = self._sqlite_write_retry_base_delay * (2 ** attempt)
                     logger.warning(
                         "SQLite 写入锁冲突，准备重试: %s (%s/%s, %.2fs)",
@@ -2420,6 +2417,7 @@ class DatabaseManager:
                 "database is locked",
                 "database schema is locked",
                 "database table is locked",
+                "disk i/o error",
             )
         )
 
@@ -3109,8 +3107,11 @@ class DatabaseManager:
         codes: List[str],
         start_date: date,
         end_date: date,
+        max_retries: int = 3,
     ) -> Dict[str, List[StockDaily]]:
         """批量获取多只股票的 OHLCV 数据。
+
+        SQLite 并发场景下偶发 disk I/O error，内置重试逻辑。
 
         Returns:
             {code: [StockDaily]} 字典，按日期升序排列
@@ -3118,23 +3119,32 @@ class DatabaseManager:
         if not codes:
             return {}
 
-        with self.get_session() as session:
-            rows = session.execute(
-                select(StockDaily)
-                .where(
-                    and_(
-                        StockDaily.code.in_(codes),
-                        StockDaily.date >= start_date,
-                        StockDaily.date <= end_date,
-                    )
-                )
-                .order_by(StockDaily.code, StockDaily.date)
-            ).scalars().all()
+        last_err = None
+        for attempt in range(max_retries):
+            try:
+                with self.get_session() as session:
+                    rows = session.execute(
+                        select(StockDaily)
+                        .where(
+                            and_(
+                                StockDaily.code.in_(codes),
+                                StockDaily.date >= start_date,
+                                StockDaily.date <= end_date,
+                            )
+                        )
+                        .order_by(StockDaily.code, StockDaily.date)
+                    ).scalars().all()
 
-        result: Dict[str, List[StockDaily]] = {}
-        for r in rows:
-            result.setdefault(r.code, []).append(r)
-        return result
+                result: Dict[str, List[StockDaily]] = {}
+                for r in rows:
+                    result.setdefault(r.code, []).append(r)
+                return result
+            except Exception as e:
+                last_err = e
+                if attempt < max_retries - 1:
+                    import time as _time
+                    _time.sleep(0.3 * (attempt + 1))
+        raise last_err
 
     # ------------------------------------------------------------------
     # Realtime spot (intraday snapshot)

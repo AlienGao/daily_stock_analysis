@@ -12,7 +12,7 @@ import os
 import re
 import threading
 import time
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from queue import Empty as QueueEmpty
 from typing import Dict, List, Optional, Tuple
@@ -72,12 +72,12 @@ def _postmarket_stream_path(date_str: str = "") -> Path:
 
 
 def _is_trading_hours() -> bool:
-    """当前是否在 A 股交易时段（工作日 9:30-11:30, 13:00-15:00）。"""
-    now = datetime.now()
+    """当前是否在 A 股交易时段（工作日 9:30-11:30, 13:00-15:00），使用北京时间。"""
+    now = datetime.now(timezone(timedelta(hours=8)))
     if now.weekday() >= 5:
         return False
     minute_of_day = now.hour * 60 + now.minute
-    if minute_of_day < 9 * 60 + 30 or minute_of_day > 15 * 60:
+    if minute_of_day < 9 * 60 + 30 or minute_of_day >= 15 * 60:
         return False
     return not (11 * 60 + 30 <= minute_of_day < 13 * 60)
 
@@ -445,13 +445,14 @@ def _enrich_live_quotes(items: List[DiscoveryItem]) -> None:
         return
     live_prices, live_pct_chgs = _get_live_quotes(all_codes)
     for item in items:
-        code = item.ts_code or item.stock_code
-        if not code:
+        full = item.ts_code or item.stock_code
+        if not full:
             continue
-        lp = live_prices.get(code)
+        bare = full.split(".")[0] if "." in full else full
+        lp = live_prices.get(bare) or live_prices.get(full)
         if lp is not None:
             item.live_price = lp
-        pct = live_pct_chgs.get(code)
+        pct = live_pct_chgs.get(bare)
         if pct is not None:
             item.pct_chg = pct
 
@@ -568,7 +569,8 @@ def get_intraday_top10():
         top_n = []
         for entry in data.get("top_n", []):
             ts_code = entry.get("ts_code", "")
-            live_price = live_prices.get(ts_code) or entry.get("price_at_discovery")
+            bare = ts_code.split(".")[0] if "." in ts_code else ts_code
+            live_price = live_prices.get(bare) or live_prices.get(ts_code) or entry.get("price_at_discovery")
             tp1 = entry.get("take_profit_1")
             stop = entry.get("stop_loss")
 
@@ -599,7 +601,7 @@ def get_intraday_top10():
                 change=entry.get("change", ""),
                 discovered_at=entry.get("discovered_at", ""),
                 price_at_discovery=entry.get("price_at_discovery"),
-                live_price=live_prices.get(ts_code) if live_prices.get(ts_code) != entry.get("price_at_discovery") else None,
+                live_price=live_prices.get(bare) if live_prices.get(bare) != entry.get("price_at_discovery") else None,
                 pct_chg=entry.get("pct_chg"),
                 factor_weights=entry.get("factor_weights") or _get_factor_weights("intraday"),
                 tech_score=entry.get("tech_score", 0.0),
@@ -612,9 +614,9 @@ def get_intraday_top10():
                 tech_score_weights=_get_tech_score_weights(),
                 composite_score=entry.get("composite_score", 0.0),
             ))
-        # 按综合分重新排序，只返回前 5
+        # 按综合分重新排序，只返回前 4
         top_n.sort(key=lambda x: x.composite_score, reverse=True)
-        top_n = top_n[:5]
+        top_n = top_n[:4]
         for i, item in enumerate(top_n):
             item.rank = i + 1
 
@@ -630,6 +632,7 @@ def get_intraday_top10():
                 factor_weights={},
             ))
 
+        _enrich_live_quotes(top_n)
         _enrich_recent_counts(top_n)
         _enrich_recent_counts(dropped)
         return IntradayTopResponse(
@@ -1018,6 +1021,62 @@ def get_postmarket_report(
         return PostmarketReportResponse(date=report_date, report="", exists=False)
 
 
+def _load_postmarket_topn(report_date: Optional[str] = None) -> Tuple[Optional[List[DiscoveryItem]], str]:
+    """加载盘后 topn JSON 并构建 DiscoveryItem 列表。
+
+    Returns:
+        (items, effective_date) — items 为 None 表示无数据。
+    """
+    if report_date is None:
+        report_date = _find_latest_report_date(date.today().strftime("%Y%m%d"), "postmarket_")
+
+    topn_file = _INTRADAY_REPORTS_DIR / f"postmarket_{report_date}_topn.json"
+    if not topn_file.exists():
+        return None, report_date
+
+    try:
+        raw_items = json.loads(topn_file.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None, report_date
+
+    if not raw_items:
+        return None, report_date
+
+    items: List[DiscoveryItem] = []
+    for entry in raw_items:
+        items.append(DiscoveryItem(
+            rank=entry.get("rank", 0),
+            ts_code=entry.get("ts_code", ""),
+            stock_code=entry.get("stock_code", ""),
+            stock_name=entry.get("stock_name", ""),
+            score=entry.get("score", 0),
+            sector=entry.get("sector", ""),
+            factor_scores=entry.get("factor_scores", {}),
+            reasons=entry.get("reasons", []),
+            buy_price_low=entry.get("buy_price_low"),
+            buy_price_high=entry.get("buy_price_high"),
+            stop_loss=entry.get("stop_loss"),
+            take_profit_1=entry.get("take_profit_1"),
+            take_profit_2=entry.get("take_profit_2"),
+            discovered_at=entry.get("discovered_at", ""),
+            price_at_discovery=entry.get("price_at_discovery"),
+            pct_chg=entry.get("pct_chg"),
+            factor_weights=entry.get("factor_weights") or _get_factor_weights("postmarket"),
+            tech_score=entry.get("tech_score", 0.0),
+            rr_score=entry.get("rr_score", 0.0),
+            market_score=entry.get("market_score", 0.0),
+            sector_score=entry.get("sector_score", 0.0),
+            volume_score=entry.get("volume_score", 0.0),
+            position_score=entry.get("position_score", 0.0),
+            formation_score=entry.get("formation_score", 0.0),
+            tech_score_weights=_get_tech_score_weights(),
+            composite_score=entry.get("composite_score", 0.0),
+        ))
+    _enrich_live_quotes(items)
+    _enrich_recent_counts(items)
+    return items, report_date
+
+
 # ---------------------------------------------------------------------------
 # Postmarket followup — 盘中交易时段对盘后推荐股实时重评
 # ---------------------------------------------------------------------------
@@ -1027,7 +1086,7 @@ def get_postmarket_report(
     "/postmarket/followup",
     response_model=PostmarketReportResponse,
     summary="盘中实时重评盘后推荐股",
-    description="交易时段内，对盘后推荐股票用盘中因子重新评分。非交易时段返回 exists=False。",
+    description="交易时段内，对盘后推荐股票用盘中因子重新评分。非交易时段返回最新盘后数据（无盘中重评）。",
 )
 def postmarket_followup(
     report_date: Optional[str] = Query(None, description="盘后报告日期 YYYYMMDD，默认昨天"),
@@ -1035,11 +1094,24 @@ def postmarket_followup(
     global _followup_cache, _followup_cache_ts
 
     if not _is_trading_hours():
-        return PostmarketReportResponse(date=report_date or "", report="", exists=False)
+        # 非交易时段：直接返回最新盘后数据，不进行盘中重评
+        items, effective_date = _load_postmarket_topn(report_date)
+        if items is None:
+            return PostmarketReportResponse(date=report_date or "", report="", exists=False)
+        return PostmarketReportResponse(
+            date=effective_date, report="", exists=True,
+            top_n=items, live_rescored=False,
+        )
 
     from src.discovery.engine import is_trading_day
     if not is_trading_day():
-        return PostmarketReportResponse(date=report_date or "", report="", exists=False)
+        items, effective_date = _load_postmarket_topn(report_date)
+        if items is None:
+            return PostmarketReportResponse(date=report_date or "", report="", exists=False)
+        return PostmarketReportResponse(
+            date=effective_date, report="", exists=True,
+            top_n=items, live_rescored=False,
+        )
 
     # TTL 内直接返回缓存
     now = time.time()
@@ -1759,7 +1831,7 @@ def _calc_tech_for_row(row, db: "DatabaseManager") -> Tuple[float, float, Dict, 
 
 
 def _row_to_item(row, factor_weights: Dict[str, float] = None,
-                 db: "DatabaseManager" = None) -> Optional[StockScoreItem]:
+                 db: "DatabaseManager" = None, mode: str = "intraday") -> Optional[StockScoreItem]:
     """将 ORM 行转为 StockScoreItem，tech_score 实时计算。"""
     if row is None:
         return None
@@ -1784,7 +1856,7 @@ def _row_to_item(row, factor_weights: Dict[str, float] = None,
         try:
             from src.discovery.config import _ensure_active_config
             cfg = _ensure_active_config()
-            use_pipeline = cfg.enable_intraday_pipeline if row.scan_mode == 'intraday' else cfg.enable_postmarket_pipeline
+            use_pipeline = cfg.enable_intraday_pipeline if mode == 'intraday' else cfg.enable_postmarket_pipeline
             if use_pipeline:
                 (_tech, _composite, _breakdown, _weights,
                  _price, _buy_low, _buy_high, _stop_loss, _tp1) = _calc_tech_for_row(row, db)
@@ -1864,7 +1936,7 @@ def get_stock_score(
             )
 
             stock_name = (row and row.stock_name) or code
-            score_item = _row_to_item(row, factor_weights=factor_weights, db=db)
+            score_item = _row_to_item(row, factor_weights=factor_weights, db=db, mode=mode)
 
             items.append(StockScoreEntry(
                 stock_code=code,
@@ -2215,6 +2287,7 @@ def _ensure_snapshot_cache():
 def _factor_snapshot_response(factors, global_range, mode):
     """构建 snapshot-dates 统一响应（含权重与管线配置）。"""
     from src.discovery.engine import get_factor_weights
+    get_factor_weights.cache_clear()  # 确保读取最新 .env 权重
     from src.discovery.config import DiscoveryConfig
     weights = get_factor_weights(mode)
     cfg = DiscoveryConfig()
@@ -2259,6 +2332,9 @@ def factor_snapshot_dates(mode: str = Query("postmarket", description="intraday 
             _log.warning("[snapshot-dates] DB 校验失败，降级复用缓存 (mode=%s)", mode, exc_info=True)
             return _factor_snapshot_response(factors, global_range, mode)
 
+    from src.discovery.engine import get_factor_weights
+    get_factor_weights.cache_clear()  # 确保读取最新 .env 权重
+
     from src.discovery.factor_backtest_engine import FactorBacktestEngine
 
     engine = FactorBacktestEngine()
@@ -2277,6 +2353,9 @@ def factor_weights(mode: str = Query("postmarket", description="intraday 或 pos
     """返回当前 .env 中的因子权重映射及管线开关状态，无 DB 查询，毫秒级响应。"""
     if mode not in ("intraday", "postmarket"):
         raise HTTPException(status_code=400, detail="mode 须为 intraday 或 postmarket")
+
+    from src.discovery.engine import get_factor_weights
+    get_factor_weights.cache_clear()  # 确保读取最新 .env 权重
 
     from src.discovery.factor_backtest_engine import FactorBacktestEngine
     engine = FactorBacktestEngine()

@@ -37,6 +37,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - [修复] Bot `/market` 命令复用 `get_open_markets_today()` / `compute_effective_region()` 做交易日过滤：结果作为 `override_region` 透传给 `run_market_review`；若结果为空字符串则跳过复盘并推送“今日相关市场休市”，与 CLI/调度入口行为一致。
 - [测试] 新增 `tests/test_bot_market_command.py`，覆盖 `MARKET_REVIEW_REGION=both` + open markets `{"cn","us"}` / `{"cn","hk"}` 的 `override_region` 透传断言，并覆盖全市场休市跳过与关闭交易日检查路径；新增 `tests/test_yfinance_hk_indices.py` 覆盖港股指数符号映射与部分/全部失败降级路径。
 - [修复] 问股 Agent 在未配置可用 LLM 时保留后端真实错误原因并维持 `done.success=false` 失败语义，避免前端把配置缺失误当成成功回答。
+- [新功能] 新增 Alpha101-042 因子：基于 5 日收盘价 20% 分位数与当日收盘价比值 (`quantile_0.2(close,5)/close`)，捕捉短期均值回归机会，盘后扫描可用。
+- [新功能] 新增 5 日最低价支撑因子 (`ts_min(low,5)/close`)：基于 5 日最低价与当日收盘价比值，识别价格处于短期支撑位附近的股票，盘后扫描可用。
+- [新功能] 新增 VWAP 偏离因子 (`rank(vwap-close)/rank(vwap+close)`)：基于 VWAP(amount/volume) 与收盘价偏离的横截面排名比，捕捉尾盘超卖反弹机会，盘后扫描可用。
+- [新功能] 新增跳空反转因子 (`-1*RANK(STD(\|close-open\|,10)+(close-open)+CORR(close,open,10))`)：基于跳空振幅波动、当日阴阳方向、量价同步性三重信号的反转因子，盘后扫描可用。
+- [新功能] 新增流动性超卖反转因子 (`rank((-1*ret)*mean(v,20)*vwap*(high-close))`)：基于收益反转、20日均量、VWAP 与高点回落幅度的四因子乘积排名，捕捉高流动性股票尾盘杀跌后的反转机会，盘后扫描可用。
+- [新功能] 新增 VWAP 动量反转因子 (`RANK(MAX(DELTA(VWAP,3),5))*-1`)：基于 3 日 VWAP 动量的 5 日滚动最大值排名取反，捕捉 VWAP 持续下跌后的均值回归机会，盘后扫描可用。
+- [新功能] 新增 GTJA114 因子 (`RANK(DELAY(hl_ratio,2))*RANK(RANK(VOLUME))/(hl_ratio/(VWAP-CLOSE))`)：基于延迟振幅排名、双次成交量排名与 VWAP 偏离消化的复合反转/突破信号，盘后扫描可用。
+- [改进] 移除 min_low_5d 因子（与 alpha042 高度重叠 r=0.86），将其权重重新分配至 vwap_deviation(10→13)、liquid_oversold(10→13)、gtja114(10→14)，消除冗余信号 double counting。
 - [文档] 补充 LLM 配置指南与 FAQ，明确问股 Agent 对 `LITELLM_CONFIG` / `LLM_CHANNELS` / legacy `GEMINI_*` `OPENAI_*` `ANTHROPIC_*` 的兼容优先级、回退路径与“不静默迁移旧配置”的结论。
 - [修复] Agent 模式未生成有效决策仪表盘时保留本地趋势分析的评分、趋势和操作建议，并将强买/强卖 fallback 归一到兼容的 `buy`/`sell` 决策类型，避免首页结果被 `50 / 观望 / 未知` 缺省值覆盖。
 - [修复] 持仓快照现价缺失时不再静默回退为持仓成本；当天快照优先使用历史收盘价，仅在缺失时使用实时价 fallback，缺价持仓不再污染市值与未实现盈亏汇总，并为持仓明细返回价格来源、日期、stale 与缺价状态。

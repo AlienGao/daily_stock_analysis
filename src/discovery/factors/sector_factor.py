@@ -335,11 +335,161 @@ class SectorFactor(BaseFactor):
         return signals
 
     # ------------------------------------------------------------------
-    # 盘中板块动量（realtime_spot + 同花顺行业）
+    # 盘中板块动量（同花顺行业板块排行 → 个股聚合降级）
     # ------------------------------------------------------------------
 
     def _compute_intraday_momentum(self, trade_date: str) -> pd.Series:
-        """基于 realtime_spot 计算每只股票的盘中板块动量得分 (0-30)。
+        """计算盘中板块动量得分 (0-30)，映射到每只个股。
+
+        主数据源：ak.stock_board_industry_summary_ths() 同花顺官方板块排行。
+        降级方案：_compute_intraday_momentum_from_stocks() 个股聚合。
+        返回 Series (index=stock_code, dtype=float)。
+        """
+        try:
+            result = self._compute_intraday_momentum_from_board(trade_date)
+            if result is not None and not result.empty and len(result) > 0:
+                return result
+        except Exception as e:
+            logger.warning("[SectorFactor] 同花顺板块接口失败，降级到个股聚合: %s", e)
+        return self._compute_intraday_momentum_from_stocks(trade_date)
+
+    def _compute_intraday_momentum_from_board(self, trade_date: str) -> pd.Series:
+        """基于同花顺行业板块排行 (stock_board_industry_summary_ths) 计算板块动量 (0-30)。
+
+        使用官方板块指数数据：涨跌幅（加权）→ [0,10]、上涨广度 → [0,8]、
+        资金压强 → [0,4]、成交额排名 → [0,3]、领涨股强度 → [0,5]。
+        保留轮次间 delta 调整与跨板块共振逻辑，与个股聚合版完全相同。
+        """
+        try:
+            import akshare as ak
+            from src.storage import DatabaseManager
+
+            db = DatabaseManager()
+            ths_map = db.get_ths_industry_map()
+            if not ths_map:
+                logger.warning("[SectorFactor] ths_industry_map 为空")
+                return pd.Series(dtype=float)
+
+            # ── 0. 跨日重置 ──
+            if self._momentum_trade_date != trade_date:
+                self._prev_sector_momentum.clear()
+                self._prev_capital_share.clear()
+                self._prev_leader_pull.clear()
+                self._momentum_trade_date = trade_date
+
+            # ── 1. 拉取同花顺行业板块排行 ──
+            summary = ak.stock_board_industry_summary_ths()
+            if summary is None or summary.empty:
+                logger.warning("[SectorFactor] stock_board_industry_summary_ths 返回空")
+                return pd.Series(dtype=float)
+
+            # 板块名 → 行索引
+            summary = summary.set_index("板块")
+
+            # ── 2. 计算各子得分 (0-30) ──
+
+            # 2a. 涨跌幅得分 (0-10)：板块涨跌幅 [-2, 8] → [0, 10]
+            raw_chg = summary["涨跌幅"].clip(-2, 8)
+            score_chg = ((raw_chg + 2) / 10 * 10).clip(0, 10)
+
+            # 2b. 上涨广度得分 (0-8)：上涨家数/(上涨+下跌)
+            up = summary["上涨家数"].fillna(0)
+            down = summary["下跌家数"].fillna(0)
+            breadth = up / (up + down).clip(lower=1)
+            score_breadth = (breadth * 8).clip(0, 8)
+
+            # 2c. 资金压强得分 (0-4)：净流入/成交额 → 归一化
+            net_inflow = summary["净流入"].fillna(0)
+            total_amount = summary["总成交额"].fillna(0).clip(lower=1e-8)
+            flow_pressure = net_inflow / total_amount  # 净流入占成交额比
+            # 映射到 [-0.1, 0.1] → [0, 4]
+            score_flow = ((flow_pressure.clip(-0.1, 0.1) + 0.1) / 0.2 * 4).clip(0, 4)
+
+            # 2d. 成交额排名得分 (0-3)：总成交额分位
+            amount_rank = total_amount.rank(pct=True)
+            score_amount = (amount_rank * 3).clip(0, 3)
+
+            # 2e. 领涨股强度得分 (0-5)：板块领涨股涨跌幅
+            leader_chg = summary.get("领涨股-涨跌幅", pd.Series(0.0, index=summary.index)).fillna(0)
+            score_leader = (leader_chg.clip(0, 10) / 10 * 5).clip(0, 5)
+
+            base_series = score_chg + score_breadth + score_flow + score_amount + score_leader  # 0-30
+
+            # ── 3. 板块内部分化度调整 ──
+            # THS 数据无 std_pct_chg，用涨跌家数比代替：涨跌越均衡（breadth ~0.5），分化越大
+            div_penalty = 1.0 - (breadth - 0.5).abs() * 0.15  # 0.925 ~ 1.0
+            base_series = base_series * div_penalty
+
+            # ── 4. 轮次间 delta 调整（升温/走弱）(P1: 3 轮 SMA) ──
+            prev_map = self._prev_sector_momentum
+            delta_series = pd.Series(0.0, index=base_series.index)
+            raw_deltas: Dict[str, float] = {}
+            for industry, cur in base_series.items():
+                dq = prev_map.get(industry)
+                if dq and len(dq) > 0:
+                    sma = sum(dq) / len(dq)
+                    raw_delta = cur - sma
+                    raw_deltas[industry] = float(raw_delta)
+                    delta_series[industry] = max(-5, min(5, raw_delta * 0.5))
+                else:
+                    raw_deltas[industry] = 0.0
+
+            # ── 5. 跨板块共振 (P5) ──
+            warming_cnt = sum(1 for d in raw_deltas.values() if d > 0)
+            total_industries = len(raw_deltas)
+            if total_industries > 0:
+                warming_ratio = warming_cnt / total_industries
+                if warming_ratio >= 0.6:
+                    resonance_mult = 1.10
+                elif warming_ratio >= 0.4:
+                    resonance_mult = 1.05
+                elif warming_ratio >= 0.2:
+                    resonance_mult = 1.0
+                else:
+                    resonance_mult = 0.95
+            else:
+                resonance_mult = 1.0
+
+            momentum_by_industry = (base_series + delta_series) * resonance_mult
+            momentum_by_industry = momentum_by_industry.clip(0, 40)
+
+            # 更新快照 (P1: deque maxlen=3)
+            for industry, cur in base_series.items():
+                dq = prev_map.get(industry)
+                if dq is None:
+                    dq = deque(maxlen=3)
+                    prev_map[industry] = dq
+                dq.append(float(cur))
+            self._cached_industry_deltas = raw_deltas
+            # THS 版无 leader_pull 计算，leader_pull 缓存留空（describe() 兼容）
+            self._cached_leader_pull = {}
+
+            # ── 6. 映射到个股 ──
+            stock_momentum = pd.Series(0.0, index=pd.Index(list(ths_map.keys()), name="code"))
+            for code, ind in ths_map.items():
+                if ind in momentum_by_industry.index:
+                    stock_momentum[code] = momentum_by_industry[ind]
+            stock_momentum = stock_momentum.rename("sector_momentum")
+            self._cached_momentum = stock_momentum
+
+            n_industries = len(momentum_by_industry)
+            top3 = momentum_by_industry.nlargest(3)
+            top_info = ", ".join(
+                f"{ind}={v:.1f}(资金{score_amount.get(ind, 0)*100/3:.1f}%)"
+                for ind, v in top3.items()
+            )
+            logger.info(
+                "[SectorFactor] [THS] 盘中热度: %d 个行业, Top3: %s",
+                n_industries, top_info,
+            )
+            return stock_momentum
+
+        except Exception as e:
+            logger.warning("[SectorFactor] THS 板块动量计算失败: %s", e)
+            return pd.Series(dtype=float)
+
+    def _compute_intraday_momentum_from_stocks(self, trade_date: str) -> pd.Series:
+        """[降级] 基于 realtime_spot 个股聚合计算板块动量得分 (0-30)。
 
         按同花顺行业聚合 pct_chg / 涨幅广度 / 换手率 / 成交额占比 → base_score，
         与上一轮快照对比：升温加分（最多+5），走弱减分（最多-5）。

@@ -65,7 +65,7 @@ class DiscoveryConfig:
         default_factory=lambda: _env_float("DISCOVER_WEIGHT_REBOUND", 15.0)
     )
 
-    # --- 盘后深度权重 (16因子) ---
+    # --- 盘后深度权重 (22因子) ---
     weight_moneyflow: float = field(
         default_factory=lambda: _env_float("DISCOVER_WEIGHT_MONEYFLOW", 25.0)
     )
@@ -119,6 +119,24 @@ class DiscoveryConfig:
     )
     weight_profit_forecast: float = field(
         default_factory=lambda: _env_float("DISCOVER_WEIGHT_PROFIT_FORECAST", 20.0)
+    )
+    weight_alpha042: float = field(
+        default_factory=lambda: _env_float("DISCOVER_WEIGHT_ALPHA042", 10.0)
+    )
+    weight_vwap_deviation: float = field(
+        default_factory=lambda: _env_float("DISCOVER_WEIGHT_VWAP_DEVIATION", 13.0)
+    )
+    weight_gap_reversal: float = field(
+        default_factory=lambda: _env_float("DISCOVER_WEIGHT_GAP_REVERSAL", 10.0)
+    )
+    weight_liquid_oversold: float = field(
+        default_factory=lambda: _env_float("DISCOVER_WEIGHT_LIQUID_OVERSOLD", 13.0)
+    )
+    weight_vwap_reversal: float = field(
+        default_factory=lambda: _env_float("DISCOVER_WEIGHT_VWAP_REVERSAL", 10.0)
+    )
+    weight_gtja114: float = field(
+        default_factory=lambda: _env_float("DISCOVER_WEIGHT_GTJA114", 14.0)
     )
 
     # --- 综合分混合比例（factor_score × alpha + tech_score × (1-alpha)）---
@@ -274,6 +292,12 @@ class DiscoveryConfig:
             "DISCOVER_WEIGHT_RANKING_MOMENTUM_POSTMARKET",
             "DISCOVER_WEIGHT_PERFORMANCE",
             "DISCOVER_WEIGHT_PROFIT_FORECAST",
+            "DISCOVER_WEIGHT_ALPHA042",
+            "DISCOVER_WEIGHT_VWAP_DEVIATION",
+            "DISCOVER_WEIGHT_GAP_REVERSAL",
+            "DISCOVER_WEIGHT_LIQUID_OVERSOLD",
+            "DISCOVER_WEIGHT_VWAP_REVERSAL",
+            "DISCOVER_WEIGHT_GTJA114",
             # --- 综合分混合 ---
             "DISCOVER_SCORE_BLEND_ALPHA",
             # --- 因子自动调权 ---

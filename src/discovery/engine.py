@@ -47,6 +47,12 @@ _FACTOR_DISPLAY: Dict[str, str] = {
     "insider_buy": "险资举牌",
     "concept_heat": "概念热度",
     "ranking_momentum": "排名动量",
+    "alpha042": "均值回归Alpha042",
+    "vwap_deviation": "VWAP偏离",
+    "gap_reversal": "跳空反转",
+    "liquid_oversold": "流动性超卖",
+    "vwap_reversal": "VWAP动量反转",
+    "gtja114": "GTJA114",
 }
 
 _REPORTS_DIR = Path(__file__).resolve().parent.parent.parent / "discovery_reports"
@@ -67,6 +73,12 @@ def is_trading_day(engine=None) -> bool:
 def _default_factors():
     """返回所有内置因子实例列表（盘前+盘中+盘后）。"""
     from src.discovery.factors import (
+        Alpha042Factor,
+        VwapDeviationFactor,
+        GapReversalFactor,
+        LiquidOversoldFactor,
+        VwapReversalFactor,
+        Gtja114Factor,
         MaEntryFactor,
         MomentumFactor, MoneyFlowFactor, SectorFactor, TechnicalFactor,
         BrokerRecommendFactor, FundamentalFactor, HotMoneyFactor, MarginFactor,
@@ -75,6 +87,12 @@ def _default_factors():
         BuybackFactor, ProfitForecastFactor, ConceptHeatFactor,
     )
     return [
+        Alpha042Factor(),
+        VwapDeviationFactor(),
+        GapReversalFactor(),
+        LiquidOversoldFactor(),
+        VwapReversalFactor(),
+        Gtja114Factor(),
         MaEntryFactor(),
         MomentumFactor(), MoneyFlowFactor(), SectorFactor(), TechnicalFactor(),
         BrokerRecommendFactor(), FundamentalFactor(), HotMoneyFactor(), MarginFactor(),
@@ -346,8 +364,8 @@ class StockDiscoveryEngine:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _get_batch_realtime_prices_akshare(ts_codes: List[str]) -> Dict[str, float]:
-        """通过 akshare 获取全 A 股实时价格（单次调用）。"""
+    def _get_batch_realtime_prices_akshare(ts_codes: List[str]) -> Dict[str, tuple]:
+        """通过 akshare 获取全 A 股实时价格与涨跌幅（单次调用）。返回 {ts_code: (price, pct_chg)}。"""
         if not ts_codes:
             return {}
         try:
@@ -355,22 +373,24 @@ class StockDiscoveryEngine:
             df = ak.stock_zh_a_spot_em()
             if df is None or df.empty:
                 return {}
-            # akshare 返回列：代码, 名称, 最新价, ...
-            price_map: Dict[str, float] = {}
+            # akshare 返回列：代码, 名称, 最新价, 涨跌幅, ...
+            spot_map: Dict[str, tuple] = {}
             for _, row in df.iterrows():
                 code = str(row.get('代码', '')).strip()
                 price = row.get('最新价')
+                pct = row.get('涨跌幅')
                 if code and price is not None:
                     try:
-                        price_map[code] = float(price)
+                        pct_val = float(pct) if pct is not None else 0.0
+                        spot_map[code] = (float(price), pct_val)
                     except (ValueError, TypeError):
                         pass
-            # map ts_code → price (akshare code has no suffix)
-            result: Dict[str, float] = {}
+            # map ts_code → (price, pct_chg) (akshare code has no suffix)
+            result: Dict[str, tuple] = {}
             for ts_code in ts_codes:
                 code = ts_code.split(".")[0] if "." in ts_code else ts_code
-                if code in price_map:
-                    result[ts_code] = price_map[code]
+                if code in spot_map:
+                    result[ts_code] = spot_map[code]
             return result
         except Exception as e:
             logger.debug(f"[Discovery] akshare 实时价格获取失败: {e}")
@@ -386,8 +406,8 @@ class StockDiscoveryEngine:
         return f"sz{code}"
 
     @staticmethod
-    def _get_batch_realtime_prices(ts_codes: List[str]) -> Dict[str, float]:
-        """通过新浪批量接口获取实时价格。"""
+    def _get_batch_realtime_prices(ts_codes: List[str]) -> Dict[str, tuple]:
+        """通过新浪批量接口获取实时价格与涨跌幅。返回 {ts_code: (price, pct_chg)}。"""
         if not ts_codes:
             return {}
         symbols = [StockDiscoveryEngine._to_sina_symbol(c) for c in ts_codes]
@@ -399,7 +419,7 @@ class StockDiscoveryEngine:
                 timeout=10,
             )
             resp.encoding = "gbk"
-            prices: Dict[str, float] = {}
+            result: Dict[str, tuple] = {}
             for line in resp.text.strip().split("\n"):
                 m = re.search(r'hq_str_(\w+)="([^"]*)"', line)
                 if not m:
@@ -409,15 +429,18 @@ class StockDiscoveryEngine:
                 if len(fields) < 4:
                     continue
                 try:
-                    prices[sym] = float(fields[3])  # fields[3] = 当前价
-                except (ValueError, IndexError):
+                    price = float(fields[3])
+                    pre_close = float(fields[2]) if fields[2] else 0.0
+                    pct_chg = round((price - pre_close) / pre_close * 100, 2) if pre_close > 0 else 0.0
+                    result[sym] = (price, pct_chg)
+                except (ValueError, IndexError, ZeroDivisionError):
                     pass
             # map back: sina symbol → ts_code
-            result: Dict[str, float] = {}
+            mapped: Dict[str, tuple] = {}
             for i, ts_code in enumerate(ts_codes):
-                if i < len(symbols) and symbols[i] in prices:
-                    result[ts_code] = prices[symbols[i]]
-            return result
+                if i < len(symbols) and symbols[i] in result:
+                    mapped[ts_code] = result[symbols[i]]
+            return mapped
         except Exception as e:
             logger.debug(f"[Discovery] 批量实时价格获取失败: {e}")
             return {}
@@ -1180,11 +1203,15 @@ class StockDiscoveryEngine:
                 logger.warning("[Discovery] 从 realtime_spot 获取实时价格失败，回退 HTTP", exc_info=True)
                 for i in range(0, len(candidate_codes), 20):
                     chunk = candidate_codes[i:i + 20]
-                    prices = self._get_batch_realtime_prices(chunk)
-                    if prices:
-                        live_prices.update(prices)
+                    spot_data = self._get_batch_realtime_prices(chunk)
+                    for ts_code, (price, pct) in spot_data.items():
+                        live_prices[ts_code] = price
+                        live_pct_chg[ts_code] = pct
                 if not live_prices:
-                    live_prices = self._get_batch_realtime_prices_akshare(candidate_codes)
+                    ak_data = self._get_batch_realtime_prices_akshare(candidate_codes)
+                    for ts_code, (price, pct) in ak_data.items():
+                        live_prices[ts_code] = price
+                        live_pct_chg[ts_code] = pct
 
         # Phase 4.9: 暂存全量评分数据供外部（Scanner/main）落库
         self._last_full_scan_df = combined
@@ -1217,19 +1244,25 @@ class StockDiscoveryEngine:
                 candidate_bare_codes, trade_date_str
             )
         except Exception:
-            logger.debug("[Discovery] 批量获取技术指标失败，降级固定百分比", exc_info=True)
+            logger.warning("[Discovery] 批量获取技术指标失败，降级固定百分比", exc_info=True)
 
         # Phase 4.9c: 批量预取 OHLCV，供 stop_loss_calculator 计算
         ohlcv_map: Dict[str, List] = {}
-        try:
-            from datetime import datetime as _dt2, timedelta as _td
-            td_obj = _dt2.strptime(str(trade_date)[:8], "%Y%m%d").date()
-            ohlcv_start = td_obj - _td(days=180)
-            ohlcv_map = DatabaseManager().get_data_range_batch(
-                candidate_bare_codes, ohlcv_start, td_obj,
-            )
-        except Exception:
-            logger.debug("[Discovery] 批量获取 OHLCV 失败", exc_info=True)
+        for ohlcv_attempt in range(3):
+            try:
+                from datetime import datetime as _dt2, timedelta as _td
+                td_obj = _dt2.strptime(str(trade_date)[:8], "%Y%m%d").date()
+                ohlcv_start = td_obj - _td(days=180)
+                ohlcv_map = DatabaseManager().get_data_range_batch(
+                    candidate_bare_codes, ohlcv_start, td_obj,
+                )
+                break
+            except Exception:
+                if ohlcv_attempt < 2:
+                    import time as _time
+                    _time.sleep(0.5 * (ohlcv_attempt + 1))
+                else:
+                    logger.warning("[Discovery] 批量获取 OHLCV 失败（已重试3次），技术评分将使用默认值", exc_info=True)
 
         # ==============================================================
         # Phase 5: 两阶段构建 DiscoveryResult
@@ -1431,11 +1464,8 @@ class StockDiscoveryEngine:
         # --- 综合分排序 → 取 top_n ---
         scored_candidates = []
         for ts_code, stock_code, stock_name, raw_score, factor_breakdown, sector, factor_weights in pass1_candidates:
-            tech = tech_scores_map.get(ts_code, 0.0)
-            if tech_scores_map:
-                composite = alpha * raw_score + (1 - alpha) * tech
-            else:
-                composite = raw_score
+            tech = tech_scores_map.get(ts_code, 50.0)
+            composite = alpha * raw_score + (1 - alpha) * tech
             scored_candidates.append((composite, ts_code, stock_code, stock_name, raw_score, factor_breakdown, sector, factor_weights, tech))
 
         scored_candidates.sort(key=lambda x: x[0], reverse=True)
@@ -1592,10 +1622,7 @@ class StockDiscoveryEngine:
         # 综合分排序（无论 StockScorer 是否启用）
         alpha = self.config.effective_score_blend_alpha
         for r in results:
-            if tech_scores_map:
-                r.composite_score = alpha * r.score + (1 - alpha) * r.tech_score
-            else:
-                r.composite_score = r.score
+            r.composite_score = alpha * r.score + (1 - alpha) * r.tech_score
         results.sort(key=lambda r: r.composite_score, reverse=True)
         logger.info(
             "[Discovery] 综合分排序完成 (alpha=%.2f), Top 3: %s",
