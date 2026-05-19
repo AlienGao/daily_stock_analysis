@@ -213,6 +213,7 @@ export type FactorBacktestRequest = {
   use_pipeline?: boolean;
   score_blend_alpha?: number;
   reoptimize_interval?: number | null;
+  opt_window?: number;
 };
 
 export type FactorBacktestFactorInfo = {
@@ -252,6 +253,7 @@ export type FactorBacktestResultResponse = {
     risk_free_rate: number;
     use_pipeline: boolean;
     reoptimize_interval?: number | null;
+    opt_window?: number;
   };
   summary: {
     cumulative_return: number;

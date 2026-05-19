@@ -71,6 +71,8 @@ const FactorBacktestPage: React.FC = () => {
   const [usePipeline, setUsePipeline] = useState(true);
   const [blendAlpha, setBlendAlpha] = useState(0.3);
   const [reoptimize, setReoptimize] = useState(false);
+  const [reoptimizeInterval, setReoptimizeInterval] = useState(10);
+  const [optWindow, setOptWindow] = useState(60);
   const [quickRange, setQuickRange] = useState<number | null>(null);
 
 
@@ -150,6 +152,8 @@ const FactorBacktestPage: React.FC = () => {
               if (p.usePipeline != null) setUsePipeline(p.usePipeline);
               if (p.blendAlpha != null) setBlendAlpha(p.blendAlpha);
               if (p.reoptimize != null) setReoptimize(p.reoptimize);
+              if (p.reoptimizeInterval != null) setReoptimizeInterval(p.reoptimizeInterval);
+              if (p.optWindow != null) setOptWindow(p.optWindow);
               // 因子选择与权重：仅恢复快照中仍存在的因子
               if (p.selectedFactors) setSelectedFactors((prev) => {
                 const next = { ...prev };
@@ -378,14 +382,15 @@ const FactorBacktestPage: React.FC = () => {
         risk_free_rate: riskFreeRate / 100,
         use_pipeline: usePipeline,
         score_blend_alpha: blendAlpha,
-        reoptimize_interval: reoptimize ? 10 : null,
+        reoptimize_interval: reoptimize ? reoptimizeInterval : null,
+        opt_window: reoptimize ? optWindow : undefined,
       });
 
       taskIdRef.current = task_id;
       localStorage.setItem(BT_TASK_KEY, JSON.stringify({ task_id, mode, started_at: Date.now() }));
       localStorage.setItem(BT_PARAMS_KEY, JSON.stringify({
         mode, holdDays, topN, startDate, endDate, initialCapital, riskFreeRate,
-        usePipeline, blendAlpha, reoptimize, selectedFactors, factorWeights,
+        usePipeline, blendAlpha, reoptimize, reoptimizeInterval, optWindow, selectedFactors, factorWeights,
       }));
 
       // poll until complete (with retry for transient network errors)
@@ -881,7 +886,14 @@ const FactorBacktestPage: React.FC = () => {
                   <span className="text-xs text-foreground/70">动态调优 (Walk-Forward TPE)</span>
                   <Switch checked={reoptimize} onChange={setReoptimize} size="small" />
                   {reoptimize && (
-                    <span className="text-[11px] text-amber-500">每 5 日 TPE 调优权重（内存 study，不污染生产数据）</span>
+                    <span className="text-[11px] text-amber-500">
+                      每 <InputNumber size="small" min={1} max={60} value={reoptimizeInterval}
+                        onChange={(v) => setReoptimizeInterval(v ?? 10)} className="w-14" style={{ fontSize: 11 }} />
+                      {' '}日，回看{' '}
+                      <InputNumber size="small" min={20} max={252} value={optWindow}
+                        onChange={(v) => setOptWindow(v ?? 60)} className="w-16" style={{ fontSize: 11 }} />
+                      {' '}日窗口 TPE 调优权重（内存 study，不污染生产数据）
+                    </span>
                   )}
                 </div>
               </div>

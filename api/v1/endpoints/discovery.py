@@ -2001,6 +2001,7 @@ class FactorBacktestRequest(BaseModel):
     use_pipeline: bool = False
     score_blend_alpha: float = 0.3
     reoptimize_interval: Optional[int] = None  # None=固定权重, 10=每10日TPE调优
+    opt_window: int = 60  # TPE 优化窗口交易日数
 
 
 def _run_backtest_in_process(queue: multiprocessing.Queue, req_dict: dict):
@@ -2034,6 +2035,7 @@ def _run_backtest_in_process(queue: multiprocessing.Queue, req_dict: dict):
                 use_pipeline=req_dict.get("use_pipeline"),
                 score_blend_alpha=req_dict.get("score_blend_alpha"),
                 reoptimize_interval=req_dict["reoptimize_interval"],
+                opt_window=req_dict.get("opt_window", 60),
                 progress_cb=_progress,
             )
         else:

@@ -202,9 +202,13 @@ class DiscoveryBacktest:
                 continue
             td_next = trading_days[i + 1]
 
-            # 买入日未到：跳过（卖出日未到则展示为未平仓）
+            # 买入日未到或当天未收盘：跳过（盘中扫描需收盘后确认）
             if td > today_str:
                 continue
+            if td == today_str:
+                now = datetime.now()
+                if now.time() < datetime.strptime("15:00", "%H:%M").time():
+                    continue
 
             # 卖出日 > 今天 → 未平仓；卖出日 == 今天但未到 15:00 → 未平仓
             now = datetime.now()
@@ -574,6 +578,10 @@ class DiscoveryBacktest:
 
         missing_codes = [c for c in codes if c not in db_codes]
         if not missing_codes or self._fetcher is None:
+            today_str = date.today().strftime("%Y%m%d")
+            if today_str in trading_days:
+                self._prefetch_realtime_spot(codes, today_str)
+                self._prefetch_sina_realtime(codes, today_str)
             return
 
         try:

@@ -387,12 +387,13 @@ class FactorBacktestEngine:
         use_pipeline=False,
         score_blend_alpha=0.3,
         reoptimize_interval=10,
+        opt_window=60,
         n_trials=None,
         progress_cb=None,
     ):
         """Walk-forward TPE 动态权重回测。
 
-        每 reoptimize_interval 个交易日（默认10），使用之前 60 日窗口运行独立 TPE
+        每 reoptimize_interval 个交易日（默认10），使用之前 opt_window 日窗口运行独立 TPE
         优化权重，然后用优化后的权重评估接下来 interval 日的交易。
         返回双线资金曲线：固定权重（基线）+ 动态调优。
         """
@@ -568,7 +569,7 @@ class FactorBacktestEngine:
 
         from src.discovery.factor_optimizer import FactorOptimizer
 
-        window_size = 60
+        window_size = opt_window
         node_end_indices = list(range(window_size - 1, len(snap_filtered), reoptimize_interval))
         nodes_evaluated = 0
         node_weights: Dict[int, Dict[str, float]] = {}
@@ -857,7 +858,8 @@ class FactorBacktestEngine:
             params={"top_n": top_n, "hold_days": hold_days,
                     "initial_capital": initial_capital, "risk_free_rate": risk_free_rate,
                     "use_pipeline": use_pipeline,
-                    "reoptimize_interval": reoptimize_interval},
+                    "reoptimize_interval": reoptimize_interval,
+                    "opt_window": opt_window},
             summary={"cumulative_return": round(cr_fixed, 4),
                      "annualized_return": round(ar_fixed, 4),
                      "win_rate": round(wr_fixed, 4),
