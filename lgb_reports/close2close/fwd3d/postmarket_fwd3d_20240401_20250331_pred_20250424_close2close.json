@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240401",
+  "train_end": "20250331",
+  "pred_date": "20250424",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 98.68,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 3,
+      "ts_code": "002009.SZ",
+      "stock_code": "002009",
+      "stock_name": "天奇股份",
+      "lgb_score": 98.15,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "301022.SZ",
+      "stock_code": "301022",
+      "stock_name": "海泰科",
+      "lgb_score": 95.36,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "688316.SH",
+      "stock_code": "688316",
+      "stock_name": "青云科技-U",
+      "lgb_score": 94.0,
+      "raw_score": 0.09
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240101",
+  "train_end": "20241231",
+  "pred_date": "20250116",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "601678.SH",
+      "stock_code": "601678",
+      "stock_name": "滨化股份",
+      "lgb_score": 86.06,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 85.02,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "600761.SH",
+      "stock_code": "600761",
+      "stock_name": "安徽合力",
+      "lgb_score": 84.4,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "000665.SZ",
+      "stock_code": "000665",
+      "stock_name": "湖北广电",
+      "lgb_score": 83.32,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "000159.SZ",
+      "stock_code": "000159",
+      "stock_name": "国际实业",
+      "lgb_score": 83.1,
+      "raw_score": 0.08
+    }
+  ]
+}

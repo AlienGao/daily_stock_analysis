@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240501",
+  "train_end": "20250430",
+  "pred_date": "20250520",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000936.SZ",
+      "stock_code": "000936",
+      "stock_name": "华西股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 2,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 96.8,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 3,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 95.67,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 4,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 95.41,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 5,
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 94.64,
+      "raw_score": 0.13
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240301",
+  "train_end": "20250228",
+  "pred_date": "20250306",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000665.SZ",
+      "stock_code": "000665",
+      "stock_name": "湖北广电",
+      "lgb_score": 100.0,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 2,
+      "ts_code": "600589.SH",
+      "stock_code": "600589",
+      "stock_name": "大位科技",
+      "lgb_score": 86.35,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
+      "ts_code": "003021.SZ",
+      "stock_code": "003021",
+      "stock_name": "兆威机电",
+      "lgb_score": 78.5,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "603300.SH",
+      "stock_code": "603300",
+      "stock_name": "海南华铁",
+      "lgb_score": 77.85,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "688319.SH",
+      "stock_code": "688319",
+      "stock_name": "欧林生物",
+      "lgb_score": 77.7,
+      "raw_score": 0.09
+    }
+  ]
+}

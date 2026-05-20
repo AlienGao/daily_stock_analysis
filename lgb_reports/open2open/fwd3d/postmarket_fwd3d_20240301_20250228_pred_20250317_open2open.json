@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240301",
+  "train_end": "20250228",
+  "pred_date": "20250317",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000915.SZ",
+      "stock_code": "000915",
+      "stock_name": "华特达因",
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "300936.SZ",
+      "stock_code": "300936",
+      "stock_name": "中英科技",
+      "lgb_score": 92.1,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 3,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 88.61,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "002732.SZ",
+      "stock_code": "002732",
+      "stock_name": "燕塘乳业",
+      "lgb_score": 88.21,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "600509.SH",
+      "stock_code": "600509",
+      "stock_name": "天富能源",
+      "lgb_score": 86.54,
+      "raw_score": 0.08
+    }
+  ]
+}

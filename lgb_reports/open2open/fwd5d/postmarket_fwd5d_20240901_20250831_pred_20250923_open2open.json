@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240901",
+  "train_end": "20250831",
+  "pred_date": "20250923",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002438.SZ",
+      "stock_code": "002438",
+      "stock_name": "江苏神通",
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 99.01,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
+      "ts_code": "000001.SH.SZ",
+      "stock_code": "000001",
+      "stock_name": "平安银行",
+      "lgb_score": 98.11,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 4,
+      "ts_code": "000812.SZ",
+      "stock_code": "000812",
+      "stock_name": "陕西金叶",
+      "lgb_score": 97.63,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 5,
+      "ts_code": "600798.SH",
+      "stock_code": "600798",
+      "stock_name": "宁波海运",
+      "lgb_score": 95.47,
+      "raw_score": 0.11
+    }
+  ]
+}

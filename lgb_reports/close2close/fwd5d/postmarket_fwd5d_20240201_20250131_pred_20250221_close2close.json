@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240201",
+  "train_end": "20250131",
+  "pred_date": "20250221",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300046.SZ",
+      "stock_code": "300046",
+      "stock_name": "台基股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 96.46,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 94.28,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 4,
+      "ts_code": "600509.SH",
+      "stock_code": "600509",
+      "stock_name": "天富能源",
+      "lgb_score": 94.04,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 5,
+      "ts_code": "600151.SH",
+      "stock_code": "600151",
+      "stock_name": "航天机电",
+      "lgb_score": 92.58,
+      "raw_score": 0.11
+    }
+  ]
+}

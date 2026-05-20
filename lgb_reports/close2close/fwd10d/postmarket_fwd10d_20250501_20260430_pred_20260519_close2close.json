@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260519",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002395",
+      "stock_code": "002395",
+      "stock_name": "双象股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.2
+    },
+    {
+      "rank": 2,
+      "ts_code": "002165",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 99.87,
+      "raw_score": 0.2
+    },
+    {
+      "rank": 3,
+      "ts_code": "688696",
+      "stock_code": "688696",
+      "stock_name": "极米科技",
+      "lgb_score": 99.15,
+      "raw_score": 0.2
+    },
+    {
+      "rank": 4,
+      "ts_code": "301205",
+      "stock_code": "301205",
+      "stock_name": "联特科技",
+      "lgb_score": 98.57,
+      "raw_score": 0.2
+    },
+    {
+      "rank": 5,
+      "ts_code": "300083",
+      "stock_code": "300083",
+      "stock_name": "创世纪",
+      "lgb_score": 97.89,
+      "raw_score": 0.2
+    }
+  ]
+}

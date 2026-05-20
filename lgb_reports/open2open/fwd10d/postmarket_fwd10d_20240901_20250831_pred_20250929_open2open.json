@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20240901",
+  "train_end": "20250831",
+  "pred_date": "20250929",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 100.0,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 2,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 95.69,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 3,
+      "ts_code": "600386.SH",
+      "stock_code": "600386",
+      "stock_name": "北巴传媒",
+      "lgb_score": 91.51,
+      "raw_score": 0.2
+    },
+    {
+      "rank": 4,
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 89.45,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 5,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 89.3,
+      "raw_score": 0.18
+    }
+  ]
+}

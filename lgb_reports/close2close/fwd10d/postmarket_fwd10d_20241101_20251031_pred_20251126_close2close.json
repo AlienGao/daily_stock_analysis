@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20241101",
+  "train_end": "20251031",
+  "pred_date": "20251126",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.36
+    },
+    {
+      "rank": 2,
+      "ts_code": "300045.SZ",
+      "stock_code": "300045",
+      "stock_name": "华力创通",
+      "lgb_score": 99.89,
+      "raw_score": 0.36
+    },
+    {
+      "rank": 3,
+      "ts_code": "002438.SZ",
+      "stock_code": "002438",
+      "stock_name": "江苏神通",
+      "lgb_score": 98.89,
+      "raw_score": 0.35
+    },
+    {
+      "rank": 4,
+      "ts_code": "600199.SH",
+      "stock_code": "600199",
+      "stock_name": "金种子酒",
+      "lgb_score": 95.3,
+      "raw_score": 0.33
+    },
+    {
+      "rank": 5,
+      "ts_code": "002395.SZ",
+      "stock_code": "002395",
+      "stock_name": "双象股份",
+      "lgb_score": 94.23,
+      "raw_score": 0.33
+    }
+  ]
+}

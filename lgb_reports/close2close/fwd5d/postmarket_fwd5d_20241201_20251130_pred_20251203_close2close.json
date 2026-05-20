@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20241201",
+  "train_end": "20251130",
+  "pred_date": "20251203",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 100.0,
+      "raw_score": 0.2
+    },
+    {
+      "rank": 2,
+      "ts_code": "301071.SZ",
+      "stock_code": "301071",
+      "stock_name": "力量钻石",
+      "lgb_score": 89.42,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 3,
+      "ts_code": "301589.SZ",
+      "stock_code": "301589",
+      "stock_name": "诺瓦星云",
+      "lgb_score": 87.01,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 4,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 86.46,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 5,
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
+      "lgb_score": 79.64,
+      "raw_score": 0.14
+    }
+  ]
+}

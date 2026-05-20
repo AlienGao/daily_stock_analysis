@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20250301",
+  "train_end": "20260228",
+  "pred_date": "20260326",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688256.SH",
+      "stock_code": "688256",
+      "stock_name": "寒武纪",
+      "lgb_score": 100.0,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 2,
+      "ts_code": "688795.SH",
+      "stock_code": "688795",
+      "stock_name": "摩尔线程-U",
+      "lgb_score": 87.52,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 3,
+      "ts_code": "301008.SZ",
+      "stock_code": "301008",
+      "stock_name": "宏昌科技",
+      "lgb_score": 83.38,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 4,
+      "ts_code": "688781.SH",
+      "stock_code": "688781",
+      "stock_name": "视涯科技-UW",
+      "lgb_score": 82.95,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 5,
+      "ts_code": "002234.SZ",
+      "stock_code": "002234",
+      "stock_name": "民和股份",
+      "lgb_score": 81.77,
+      "raw_score": 0.16
+    }
+  ]
+}

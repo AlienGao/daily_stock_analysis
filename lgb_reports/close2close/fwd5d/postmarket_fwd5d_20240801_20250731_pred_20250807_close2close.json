@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240801",
+  "train_end": "20250731",
+  "pred_date": "20250807",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "601138.SH",
+      "stock_code": "601138",
+      "stock_name": "工业富联",
+      "lgb_score": 100.0,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 2,
+      "ts_code": "301110.SZ",
+      "stock_code": "301110",
+      "stock_name": "青木科技",
+      "lgb_score": 99.35,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 3,
+      "ts_code": "688135.SH",
+      "stock_code": "688135",
+      "stock_name": "利扬芯片",
+      "lgb_score": 96.83,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 4,
+      "ts_code": "300429.SZ",
+      "stock_code": "300429",
+      "stock_name": "强力新材",
+      "lgb_score": 96.46,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 5,
+      "ts_code": "688401.SH",
+      "stock_code": "688401",
+      "stock_name": "路维光电",
+      "lgb_score": 94.82,
+      "raw_score": 0.12
+    }
+  ]
+}

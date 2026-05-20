@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240901",
+  "train_end": "20250831",
+  "pred_date": "20250911",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 100.0,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 2,
+      "ts_code": "301617.SZ",
+      "stock_code": "301617",
+      "stock_name": "博苑新材",
+      "lgb_score": 89.14,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 87.58,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "002458.SZ",
+      "stock_code": "002458",
+      "stock_name": "益生股份",
+      "lgb_score": 86.27,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "600500.SH",
+      "stock_code": "600500",
+      "stock_name": "中化国际",
+      "lgb_score": 85.91,
+      "raw_score": 0.09
+    }
+  ]
+}

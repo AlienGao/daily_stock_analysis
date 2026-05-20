@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240701",
+  "train_end": "20250630",
+  "pred_date": "20250721",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "601992.SH",
+      "stock_code": "601992",
+      "stock_name": "金隅集团",
+      "lgb_score": 93.74,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 2,
+      "ts_code": "600326.SH",
+      "stock_code": "600326",
+      "stock_name": "西藏天路",
+      "lgb_score": 91.67,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 3,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 90.91,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 4,
+      "ts_code": "600425.SH",
+      "stock_code": "600425",
+      "stock_name": "青松建化",
+      "lgb_score": 82.36,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "300185.SZ",
+      "stock_code": "300185",
+      "stock_name": "通裕重工",
+      "lgb_score": 80.23,
+      "raw_score": 0.1
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240501",
+  "train_end": "20250430",
+  "pred_date": "20250515",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 100.0,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 2,
+      "ts_code": "300429.SZ",
+      "stock_code": "300429",
+      "stock_name": "强力新材",
+      "lgb_score": 96.9,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 3,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 96.05,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 4,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 94.61,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 5,
+      "ts_code": "002274.SZ",
+      "stock_code": "002274",
+      "stock_name": "华昌化工",
+      "lgb_score": 87.98,
+      "raw_score": 0.1
+    }
+  ]
+}

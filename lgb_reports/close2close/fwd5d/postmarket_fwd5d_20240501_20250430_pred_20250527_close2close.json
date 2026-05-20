@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240501",
+  "train_end": "20250430",
+  "pred_date": "20250527",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688135.SH",
+      "stock_code": "688135",
+      "stock_name": "利扬芯片",
+      "lgb_score": 100.0,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 2,
+      "ts_code": "920580.BJ",
+      "stock_code": "920580.BJ",
+      "stock_name": "",
+      "lgb_score": 98.03,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 3,
+      "ts_code": "688368.SH",
+      "stock_code": "688368",
+      "stock_name": "晶丰明源",
+      "lgb_score": 97.05,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 4,
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
+      "lgb_score": 96.94,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 5,
+      "ts_code": "300784.SZ",
+      "stock_code": "300784",
+      "stock_name": "利安科技",
+      "lgb_score": 96.8,
+      "raw_score": 0.14
+    }
+  ]
+}

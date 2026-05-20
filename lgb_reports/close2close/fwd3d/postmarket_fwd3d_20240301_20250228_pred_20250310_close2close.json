@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240301",
+  "train_end": "20250228",
+  "pred_date": "20250310",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "600403.SH",
+      "stock_code": "600403",
+      "stock_name": "大有能源",
+      "lgb_score": 98.31,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 3,
+      "ts_code": "920375.BJ",
+      "stock_code": "920375.BJ",
+      "stock_name": "",
+      "lgb_score": 92.23,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "301021.SZ",
+      "stock_code": "301021",
+      "stock_name": "英诺激光",
+      "lgb_score": 91.97,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 89.41,
+      "raw_score": 0.09
+    }
+  ]
+}

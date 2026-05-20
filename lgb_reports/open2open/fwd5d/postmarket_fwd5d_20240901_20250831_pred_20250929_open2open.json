@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240901",
+  "train_end": "20250831",
+  "pred_date": "20250929",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 2,
+      "ts_code": "002291.SZ",
+      "stock_code": "002291",
+      "stock_name": "遥望科技",
+      "lgb_score": 95.5,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 3,
+      "ts_code": "000812.SZ",
+      "stock_code": "000812",
+      "stock_name": "陕西金叶",
+      "lgb_score": 94.59,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 4,
+      "ts_code": "002438.SZ",
+      "stock_code": "002438",
+      "stock_name": "江苏神通",
+      "lgb_score": 90.23,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 5,
+      "ts_code": "300429.SZ",
+      "stock_code": "300429",
+      "stock_name": "强力新材",
+      "lgb_score": 88.95,
+      "raw_score": 0.12
+    }
+  ]
+}

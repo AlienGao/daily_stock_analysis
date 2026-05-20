@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240801",
+  "train_end": "20250731",
+  "pred_date": "20250820",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 100.0,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 2,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 98.97,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 3,
+      "ts_code": "600526.SH",
+      "stock_code": "600526",
+      "stock_name": "菲达环保",
+      "lgb_score": 96.73,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "600500.SH",
+      "stock_code": "600500",
+      "stock_name": "中化国际",
+      "lgb_score": 96.63,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "002426.SZ",
+      "stock_code": "002426",
+      "stock_name": "胜利精密",
+      "lgb_score": 95.19,
+      "raw_score": 0.09
+    }
+  ]
+}

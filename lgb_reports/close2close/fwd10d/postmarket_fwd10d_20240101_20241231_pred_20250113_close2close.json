@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20240101",
+  "train_end": "20241231",
+  "pred_date": "20250113",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688652.SH",
+      "stock_code": "688652",
+      "stock_name": "京仪装备",
+      "lgb_score": 100.0,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 2,
+      "ts_code": "002407.SZ",
+      "stock_code": "002407",
+      "stock_name": "多氟多",
+      "lgb_score": 99.45,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 3,
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 96.46,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 4,
+      "ts_code": "301231.SZ",
+      "stock_code": "301231",
+      "stock_name": "荣信文化",
+      "lgb_score": 94.95,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 5,
+      "ts_code": "688458.SH",
+      "stock_code": "688458",
+      "stock_name": "美芯晟",
+      "lgb_score": 94.37,
+      "raw_score": 0.15
+    }
+  ]
+}

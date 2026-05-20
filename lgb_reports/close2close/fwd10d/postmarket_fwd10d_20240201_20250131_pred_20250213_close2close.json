@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20240201",
+  "train_end": "20250131",
+  "pred_date": "20250213",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688368.SH",
+      "stock_code": "688368",
+      "stock_name": "晶丰明源",
+      "lgb_score": 100.0,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 2,
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 96.78,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 3,
+      "ts_code": "301205.SZ",
+      "stock_code": "301205",
+      "stock_name": "联特科技",
+      "lgb_score": 94.56,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 4,
+      "ts_code": "300975.SZ",
+      "stock_code": "300975",
+      "stock_name": "商络电子",
+      "lgb_score": 90.16,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 5,
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
+      "lgb_score": 89.72,
+      "raw_score": 0.19
+    }
+  ]
+}

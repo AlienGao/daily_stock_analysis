@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20250401",
+  "train_end": "20260331",
+  "pred_date": "20260407",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688048.SH",
+      "stock_code": "688048",
+      "stock_name": "长光华芯",
+      "lgb_score": 100.0,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 2,
+      "ts_code": "301683.SZ",
+      "stock_code": "301683",
+      "stock_name": "慧谷新材",
+      "lgb_score": 95.24,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 3,
+      "ts_code": "688205.SH",
+      "stock_code": "688205",
+      "stock_name": "德科立",
+      "lgb_score": 94.41,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 4,
+      "ts_code": "688103.SH",
+      "stock_code": "688103",
+      "stock_name": "国力电子",
+      "lgb_score": 87.71,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 5,
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
+      "lgb_score": 85.28,
+      "raw_score": 0.15
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20250201",
+  "train_end": "20260131",
+  "pred_date": "20260212",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002311.SZ",
+      "stock_code": "002311",
+      "stock_name": "海大集团",
+      "lgb_score": 100.0,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 2,
+      "ts_code": "688256.SH",
+      "stock_code": "688256",
+      "stock_name": "寒武纪",
+      "lgb_score": 98.02,
+      "raw_score": 0.2
+    },
+    {
+      "rank": 3,
+      "ts_code": "002510.SZ",
+      "stock_code": "002510",
+      "stock_name": "天汽模",
+      "lgb_score": 94.55,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 4,
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
+      "lgb_score": 91.94,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 5,
+      "ts_code": "002458.SZ",
+      "stock_code": "002458",
+      "stock_name": "益生股份",
+      "lgb_score": 84.42,
+      "raw_score": 0.15
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20241201",
+  "train_end": "20251130",
+  "pred_date": "20251225",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 100.0,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 2,
+      "ts_code": "301633.SZ",
+      "stock_code": "301633",
+      "stock_name": "港迪技术",
+      "lgb_score": 94.75,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "300970.SZ",
+      "stock_code": "300970",
+      "stock_name": "华绿生物",
+      "lgb_score": 93.09,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "002009.SZ",
+      "stock_code": "002009",
+      "stock_name": "天奇股份",
+      "lgb_score": 92.67,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "000936.SZ",
+      "stock_code": "000936",
+      "stock_name": "华西股份",
+      "lgb_score": 92.24,
+      "raw_score": 0.09
+    }
+  ]
+}

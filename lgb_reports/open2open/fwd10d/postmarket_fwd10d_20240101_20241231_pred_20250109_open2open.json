@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20240101",
+  "train_end": "20241231",
+  "pred_date": "20250109",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 100.0,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 2,
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 94.6,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 3,
+      "ts_code": "300042.SZ",
+      "stock_code": "300042",
+      "stock_name": "朗科科技",
+      "lgb_score": 92.85,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 4,
+      "ts_code": "301209.SZ",
+      "stock_code": "301209",
+      "stock_name": "联合化学",
+      "lgb_score": 89.48,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 5,
+      "ts_code": "002407.SZ",
+      "stock_code": "002407",
+      "stock_name": "多氟多",
+      "lgb_score": 88.39,
+      "raw_score": 0.17
+    }
+  ]
+}

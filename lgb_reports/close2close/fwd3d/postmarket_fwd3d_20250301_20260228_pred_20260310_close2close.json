@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20250301",
+  "train_end": "20260228",
+  "pred_date": "20260310",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300757.SZ",
+      "stock_code": "300757",
+      "stock_name": "罗博特科",
+      "lgb_score": 100.0,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 2,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 99.73,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 3,
+      "ts_code": "002986.SZ",
+      "stock_code": "002986",
+      "stock_name": "宇新股份",
+      "lgb_score": 96.14,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 4,
+      "ts_code": "002108.SZ",
+      "stock_code": "002108",
+      "stock_name": "沧州明珠",
+      "lgb_score": 95.48,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 5,
+      "ts_code": "000001.SH.SZ",
+      "stock_code": "000001",
+      "stock_name": "平安银行",
+      "lgb_score": 95.34,
+      "raw_score": 0.07
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240201",
+  "train_end": "20250131",
+  "pred_date": "20250217",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000816.SZ",
+      "stock_code": "000816",
+      "stock_name": "智慧农业",
+      "lgb_score": 100.0,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 2,
+      "ts_code": "301189.SZ",
+      "stock_code": "301189",
+      "stock_name": "奥尼电子",
+      "lgb_score": 93.65,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "000096.SZ",
+      "stock_code": "000096",
+      "stock_name": "广聚能源",
+      "lgb_score": 88.16,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "601616.SH",
+      "stock_code": "601616",
+      "stock_name": "广电电气",
+      "lgb_score": 87.73,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "603716.SH",
+      "stock_code": "603716",
+      "stock_name": "塞力医疗",
+      "lgb_score": 85.55,
+      "raw_score": 0.07
+    }
+  ]
+}

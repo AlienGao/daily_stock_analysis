@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240501",
+  "train_end": "20250430",
+  "pred_date": "20250514",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600500.SH",
+      "stock_code": "600500",
+      "stock_name": "中化国际",
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 99.51,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "688135.SH",
+      "stock_code": "688135",
+      "stock_name": "利扬芯片",
+      "lgb_score": 94.75,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 93.31,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "300128.SZ",
+      "stock_code": "300128",
+      "stock_name": "锦富技术",
+      "lgb_score": 92.95,
+      "raw_score": 0.1
+    }
+  ]
+}

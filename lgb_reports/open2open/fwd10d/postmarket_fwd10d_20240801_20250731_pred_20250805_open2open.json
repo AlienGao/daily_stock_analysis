@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20240801",
+  "train_end": "20250731",
+  "pred_date": "20250805",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 100.0,
+      "raw_score": 0.3
+    },
+    {
+      "rank": 2,
+      "ts_code": "301110.SZ",
+      "stock_code": "301110",
+      "stock_name": "青木科技",
+      "lgb_score": 88.14,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 3,
+      "ts_code": "688181.SH",
+      "stock_code": "688181",
+      "stock_name": "八亿时空",
+      "lgb_score": 85.78,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 4,
+      "ts_code": "000955.SZ",
+      "stock_code": "000955",
+      "stock_name": "欣龙控股",
+      "lgb_score": 82.79,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 5,
+      "ts_code": "300612.SZ",
+      "stock_code": "300612",
+      "stock_name": "宣亚国际",
+      "lgb_score": 82.41,
+      "raw_score": 0.21
+    }
+  ]
+}

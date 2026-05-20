@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20250401",
+  "train_end": "20260331",
+  "pred_date": "20260429",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688048.SH",
+      "stock_code": "688048",
+      "stock_name": "长光华芯",
+      "lgb_score": 100.0,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 2,
+      "ts_code": "600183.SH",
+      "stock_code": "600183",
+      "stock_name": "生益科技",
+      "lgb_score": 91.18,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 3,
+      "ts_code": "000001.SH.SZ",
+      "stock_code": "000001",
+      "stock_name": "平安银行",
+      "lgb_score": 89.57,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 4,
+      "ts_code": "002658.SZ",
+      "stock_code": "002658",
+      "stock_name": "雪迪龙",
+      "lgb_score": 88.43,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 5,
+      "ts_code": "002647.SZ",
+      "stock_code": "002647",
+      "stock_name": "仁东控股",
+      "lgb_score": 88.12,
+      "raw_score": 0.12
+    }
+  ]
+}

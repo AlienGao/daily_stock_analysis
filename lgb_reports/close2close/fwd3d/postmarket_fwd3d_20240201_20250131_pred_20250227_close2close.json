@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240201",
+  "train_end": "20250131",
+  "pred_date": "20250227",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301196.SZ",
+      "stock_code": "301196",
+      "stock_name": "唯科科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "301008.SZ",
+      "stock_code": "301008",
+      "stock_name": "宏昌科技",
+      "lgb_score": 90.68,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "003021.SZ",
+      "stock_code": "003021",
+      "stock_name": "兆威机电",
+      "lgb_score": 85.88,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 78.91,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 5,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 78.53,
+      "raw_score": 0.06
+    }
+  ]
+}

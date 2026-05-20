@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20241201",
+  "train_end": "20251130",
+  "pred_date": "20251203",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600151.SH",
+      "stock_code": "600151",
+      "stock_name": "航天机电",
+      "lgb_score": 100.0,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 2,
+      "ts_code": "000692.SZ",
+      "stock_code": "000692",
+      "stock_name": "惠天热电",
+      "lgb_score": 98.16,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 3,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 96.99,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "002589.SZ",
+      "stock_code": "002589",
+      "stock_name": "瑞康医药",
+      "lgb_score": 94.15,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "920701.BJ",
+      "stock_code": "920701.BJ",
+      "stock_name": "",
+      "lgb_score": 92.98,
+      "raw_score": 0.09
+    }
+  ]
+}

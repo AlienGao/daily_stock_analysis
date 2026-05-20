@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240301",
+  "train_end": "20250228",
+  "pred_date": "20250327",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600800.SH",
+      "stock_code": "600800",
+      "stock_name": "渤海化学",
+      "lgb_score": 100.0,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 2,
+      "ts_code": "300995.SZ",
+      "stock_code": "300995",
+      "stock_name": "奇德新材",
+      "lgb_score": 97.98,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 3,
+      "ts_code": "300870.SZ",
+      "stock_code": "300870",
+      "stock_name": "欧陆通",
+      "lgb_score": 97.69,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 97.35,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 96.53,
+      "raw_score": 0.09
+    }
+  ]
+}

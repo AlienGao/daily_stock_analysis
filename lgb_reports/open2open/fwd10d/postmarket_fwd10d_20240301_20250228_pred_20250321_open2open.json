@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20240301",
+  "train_end": "20250228",
+  "pred_date": "20250321",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000915.SZ",
+      "stock_code": "000915",
+      "stock_name": "华特达因",
+      "lgb_score": 100.0,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 2,
+      "ts_code": "920689.BJ",
+      "stock_code": "920689.BJ",
+      "stock_name": "",
+      "lgb_score": 96.16,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 3,
+      "ts_code": "301633.SZ",
+      "stock_code": "301633",
+      "stock_name": "港迪技术",
+      "lgb_score": 95.09,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 4,
+      "ts_code": "301173.SZ",
+      "stock_code": "301173",
+      "stock_name": "毓恬冠佳",
+      "lgb_score": 93.03,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 5,
+      "ts_code": "300842.SZ",
+      "stock_code": "300842",
+      "stock_name": "帝科股份",
+      "lgb_score": 92.63,
+      "raw_score": 0.21
+    }
+  ]
+}

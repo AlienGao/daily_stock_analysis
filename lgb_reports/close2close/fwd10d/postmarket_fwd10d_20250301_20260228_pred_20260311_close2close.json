@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20250301",
+  "train_end": "20260228",
+  "pred_date": "20260311",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002458.SZ",
+      "stock_code": "002458",
+      "stock_name": "益生股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 2,
+      "ts_code": "688027.SH",
+      "stock_code": "688027",
+      "stock_name": "国盾量子",
+      "lgb_score": 86.37,
+      "raw_score": 0.2
+    },
+    {
+      "rank": 3,
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
+      "lgb_score": 85.21,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 4,
+      "ts_code": "688031.SH",
+      "stock_code": "688031",
+      "stock_name": "星环科技-U",
+      "lgb_score": 83.58,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 5,
+      "ts_code": "301022.SZ",
+      "stock_code": "301022",
+      "stock_name": "海泰科",
+      "lgb_score": 82.86,
+      "raw_score": 0.18
+    }
+  ]
+}

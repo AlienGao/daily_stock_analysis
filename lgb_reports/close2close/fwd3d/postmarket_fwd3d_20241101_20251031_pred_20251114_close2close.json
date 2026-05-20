@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20241101",
+  "train_end": "20251031",
+  "pred_date": "20251114",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "002146.SZ",
+      "stock_code": "002146",
+      "stock_name": "荣盛发展",
+      "lgb_score": 99.58,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
+      "ts_code": "000620.SZ",
+      "stock_code": "000620",
+      "stock_name": "盈新发展",
+      "lgb_score": 89.33,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "600157.SH",
+      "stock_code": "600157",
+      "stock_name": "永泰能源",
+      "lgb_score": 85.86,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 84.16,
+      "raw_score": 0.09
+    }
+  ]
+}

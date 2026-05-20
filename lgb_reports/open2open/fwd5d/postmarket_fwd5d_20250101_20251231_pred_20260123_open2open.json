@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20250101",
+  "train_end": "20251231",
+  "pred_date": "20260123",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 2,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 99.8,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 3,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 95.57,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 4,
+      "ts_code": "301589.SZ",
+      "stock_code": "301589",
+      "stock_name": "诺瓦星云",
+      "lgb_score": 95.24,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 5,
+      "ts_code": "000936.SZ",
+      "stock_code": "000936",
+      "stock_name": "华西股份",
+      "lgb_score": 94.82,
+      "raw_score": 0.13
+    }
+  ]
+}

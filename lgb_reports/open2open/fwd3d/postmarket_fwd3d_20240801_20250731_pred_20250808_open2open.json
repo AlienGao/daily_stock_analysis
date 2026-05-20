@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240801",
+  "train_end": "20250731",
+  "pred_date": "20250808",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301110.SZ",
+      "stock_code": "301110",
+      "stock_name": "青木科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 98.25,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "300772.SZ",
+      "stock_code": "300772",
+      "stock_name": "运达股份",
+      "lgb_score": 97.72,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "002148.SZ",
+      "stock_code": "002148",
+      "stock_name": "北纬科技",
+      "lgb_score": 96.52,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "603915.SH",
+      "stock_code": "603915",
+      "stock_name": "国茂股份",
+      "lgb_score": 96.51,
+      "raw_score": 0.08
+    }
+  ]
+}

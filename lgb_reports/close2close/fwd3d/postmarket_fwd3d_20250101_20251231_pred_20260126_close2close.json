@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20250101",
+  "train_end": "20251231",
+  "pred_date": "20260126",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "601678.SH",
+      "stock_code": "601678",
+      "stock_name": "滨化股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 2,
+      "ts_code": "002458.SZ",
+      "stock_code": "002458",
+      "stock_name": "益生股份",
+      "lgb_score": 99.79,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "603248.SH",
+      "stock_code": "603248",
+      "stock_name": "锡华科技",
+      "lgb_score": 91.86,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 89.0,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "000629.SZ",
+      "stock_code": "000629",
+      "stock_name": "钒钛股份",
+      "lgb_score": 86.49,
+      "raw_score": 0.08
+    }
+  ]
+}

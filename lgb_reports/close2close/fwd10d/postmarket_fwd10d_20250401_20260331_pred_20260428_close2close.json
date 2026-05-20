@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20250401",
+  "train_end": "20260331",
+  "pred_date": "20260428",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688048.SH",
+      "stock_code": "688048",
+      "stock_name": "长光华芯",
+      "lgb_score": 100.0,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 2,
+      "ts_code": "603986.SH",
+      "stock_code": "603986",
+      "stock_name": "兆易创新",
+      "lgb_score": 91.83,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 3,
+      "ts_code": "300308.SZ.SZ",
+      "stock_code": "300308",
+      "stock_name": "中际旭创",
+      "lgb_score": 84.96,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 4,
+      "ts_code": "000672.SZ",
+      "stock_code": "000672",
+      "stock_name": "上峰水泥",
+      "lgb_score": 84.05,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 5,
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
+      "lgb_score": 83.72,
+      "raw_score": 0.12
+    }
+  ]
+}

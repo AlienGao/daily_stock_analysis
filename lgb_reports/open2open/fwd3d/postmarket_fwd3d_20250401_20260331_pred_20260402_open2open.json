@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20250401",
+  "train_end": "20260331",
+  "pred_date": "20260402",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "603738.SH",
+      "stock_code": "603738",
+      "stock_name": "泰晶科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 2,
+      "ts_code": "601126.SH",
+      "stock_code": "601126",
+      "stock_name": "四方股份",
+      "lgb_score": 91.68,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 3,
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
+      "lgb_score": 90.64,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 4,
+      "ts_code": "603993.SH",
+      "stock_code": "603993",
+      "stock_name": "洛阳钼业",
+      "lgb_score": 89.52,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 5,
+      "ts_code": "000657.SZ",
+      "stock_code": "000657",
+      "stock_name": "中钨高新",
+      "lgb_score": 88.21,
+      "raw_score": 0.05
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20240501",
+  "train_end": "20250430",
+  "pred_date": "20250516",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.27
+    },
+    {
+      "rank": 2,
+      "ts_code": "002031.SZ",
+      "stock_code": "002031",
+      "stock_name": "巨轮智能",
+      "lgb_score": 97.43,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 3,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 93.33,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 4,
+      "ts_code": "603619.SH",
+      "stock_code": "603619",
+      "stock_name": "中曼石油",
+      "lgb_score": 92.5,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 5,
+      "ts_code": "300691.SZ",
+      "stock_code": "300691",
+      "stock_name": "联合光电",
+      "lgb_score": 91.84,
+      "raw_score": 0.23
+    }
+  ]
+}

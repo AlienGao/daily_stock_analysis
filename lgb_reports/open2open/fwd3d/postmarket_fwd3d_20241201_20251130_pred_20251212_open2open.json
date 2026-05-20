@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20241201",
+  "train_end": "20251130",
+  "pred_date": "20251212",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000936.SZ",
+      "stock_code": "000936",
+      "stock_name": "华西股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "002438.SZ",
+      "stock_code": "002438",
+      "stock_name": "江苏神通",
+      "lgb_score": 95.31,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "920580.BJ",
+      "stock_code": "920580.BJ",
+      "stock_name": "",
+      "lgb_score": 86.04,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "301590.SZ",
+      "stock_code": "301590",
+      "stock_name": "优优绿能",
+      "lgb_score": 85.41,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 83.13,
+      "raw_score": 0.08
+    }
+  ]
+}

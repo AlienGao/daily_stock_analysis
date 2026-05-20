@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20241201",
+  "train_end": "20251130",
+  "pred_date": "20251225",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 2,
+      "ts_code": "002438.SZ",
+      "stock_code": "002438",
+      "stock_name": "江苏神通",
+      "lgb_score": 96.84,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 3,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 95.8,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 4,
+      "ts_code": "300612.SZ",
+      "stock_code": "300612",
+      "stock_name": "宣亚国际",
+      "lgb_score": 95.71,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 5,
+      "ts_code": "002291.SZ",
+      "stock_code": "002291",
+      "stock_name": "遥望科技",
+      "lgb_score": 90.74,
+      "raw_score": 0.15
+    }
+  ]
+}

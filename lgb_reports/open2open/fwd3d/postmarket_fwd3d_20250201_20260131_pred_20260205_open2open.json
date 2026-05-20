@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20250201",
+  "train_end": "20260131",
+  "pred_date": "20260205",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002218.SZ",
+      "stock_code": "002218",
+      "stock_name": "拓日新能",
+      "lgb_score": 100.0,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 2,
+      "ts_code": "600307.SH",
+      "stock_code": "600307",
+      "stock_name": "酒钢宏兴",
+      "lgb_score": 99.06,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 3,
+      "ts_code": "002488.SZ",
+      "stock_code": "002488",
+      "stock_name": "金固股份",
+      "lgb_score": 97.2,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 4,
+      "ts_code": "300861.SZ",
+      "stock_code": "300861",
+      "stock_name": "美畅股份",
+      "lgb_score": 96.89,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 5,
+      "ts_code": "002150.SZ",
+      "stock_code": "002150",
+      "stock_name": "正泰电源",
+      "lgb_score": 96.53,
+      "raw_score": 0.06
+    }
+  ]
+}

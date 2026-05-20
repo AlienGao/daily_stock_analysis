@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20240701",
+  "train_end": "20250630",
+  "pred_date": "20250725",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 100.0,
+      "raw_score": 0.27
+    },
+    {
+      "rank": 2,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 98.08,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 3,
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 97.63,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 4,
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 82.97,
+      "raw_score": 0.2
+    },
+    {
+      "rank": 5,
+      "ts_code": "300674.SZ",
+      "stock_code": "300674",
+      "stock_name": "宇信科技",
+      "lgb_score": 81.49,
+      "raw_score": 0.19
+    }
+  ]
+}

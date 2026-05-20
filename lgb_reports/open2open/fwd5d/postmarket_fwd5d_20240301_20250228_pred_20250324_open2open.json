@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240301",
+  "train_end": "20250228",
+  "pred_date": "20250324",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000915.SZ",
+      "stock_code": "000915",
+      "stock_name": "华特达因",
+      "lgb_score": 100.0,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 2,
+      "ts_code": "688316.SH",
+      "stock_code": "688316",
+      "stock_name": "青云科技-U",
+      "lgb_score": 90.67,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 3,
+      "ts_code": "301633.SZ",
+      "stock_code": "301633",
+      "stock_name": "港迪技术",
+      "lgb_score": 86.93,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 4,
+      "ts_code": "301173.SZ",
+      "stock_code": "301173",
+      "stock_name": "毓恬冠佳",
+      "lgb_score": 86.05,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 5,
+      "ts_code": "301538.SZ",
+      "stock_code": "301538",
+      "stock_name": "骏鼎达",
+      "lgb_score": 84.68,
+      "raw_score": 0.13
+    }
+  ]
+}

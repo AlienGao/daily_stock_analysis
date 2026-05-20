@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20250401",
+  "train_end": "20260331",
+  "pred_date": "20260428",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "603283.SH",
+      "stock_code": "603283",
+      "stock_name": "赛腾股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "688256.SH",
+      "stock_code": "688256",
+      "stock_name": "寒武纪",
+      "lgb_score": 87.9,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 3,
+      "ts_code": "301500.SZ",
+      "stock_code": "301500",
+      "stock_name": "飞南资源",
+      "lgb_score": 82.86,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "688048.SH",
+      "stock_code": "688048",
+      "stock_name": "长光华芯",
+      "lgb_score": 81.42,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "600770.SH",
+      "stock_code": "600770",
+      "stock_name": "综艺股份",
+      "lgb_score": 78.63,
+      "raw_score": 0.08
+    }
+  ]
+}

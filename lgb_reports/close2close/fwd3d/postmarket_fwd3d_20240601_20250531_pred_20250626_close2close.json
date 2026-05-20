@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240601",
+  "train_end": "20250531",
+  "pred_date": "20250626",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000563.SZ",
+      "stock_code": "000563",
+      "stock_name": "陕国投Ａ",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "301488.SZ",
+      "stock_code": "301488",
+      "stock_name": "豪恩汽电",
+      "lgb_score": 97.62,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 3,
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 96.62,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "002073.SZ",
+      "stock_code": "002073",
+      "stock_name": "软控股份",
+      "lgb_score": 96.62,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 95.48,
+      "raw_score": 0.1
+    }
+  ]
+}

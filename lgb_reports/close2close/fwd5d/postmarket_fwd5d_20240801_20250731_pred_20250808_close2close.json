@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240801",
+  "train_end": "20250731",
+  "pred_date": "20250808",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300031.SZ",
+      "stock_code": "300031",
+      "stock_name": "宝通科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 2,
+      "ts_code": "301110.SZ",
+      "stock_code": "301110",
+      "stock_name": "青木科技",
+      "lgb_score": 96.38,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 3,
+      "ts_code": "688401.SH",
+      "stock_code": "688401",
+      "stock_name": "路维光电",
+      "lgb_score": 95.81,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 4,
+      "ts_code": "301590.SZ",
+      "stock_code": "301590",
+      "stock_name": "优优绿能",
+      "lgb_score": 95.57,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 5,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 95.28,
+      "raw_score": 0.13
+    }
+  ]
+}

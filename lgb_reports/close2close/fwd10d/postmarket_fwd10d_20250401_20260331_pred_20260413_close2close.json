@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20250401",
+  "train_end": "20260331",
+  "pred_date": "20260413",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000959.SZ",
+      "stock_code": "000959",
+      "stock_name": "首钢股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 2,
+      "ts_code": "601869.SH",
+      "stock_code": "601869",
+      "stock_name": "长飞光纤",
+      "lgb_score": 90.54,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 3,
+      "ts_code": "300757.SZ",
+      "stock_code": "300757",
+      "stock_name": "罗博特科",
+      "lgb_score": 89.51,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 4,
+      "ts_code": "001203.SZ",
+      "stock_code": "001203",
+      "stock_name": "大中矿业",
+      "lgb_score": 84.27,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 5,
+      "ts_code": "300559.SZ",
+      "stock_code": "300559",
+      "stock_name": "佳发教育",
+      "lgb_score": 84.0,
+      "raw_score": 0.12
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20241201",
+  "train_end": "20251130",
+  "pred_date": "20251202",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "601500.SH",
+      "stock_code": "601500",
+      "stock_name": "通用股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "688458.SH",
+      "stock_code": "688458",
+      "stock_name": "美芯晟",
+      "lgb_score": 89.36,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 86.7,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "300576.SZ",
+      "stock_code": "300576",
+      "stock_name": "容大感光",
+      "lgb_score": 85.75,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 85.7,
+      "raw_score": 0.08
+    }
+  ]
+}

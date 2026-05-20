@@ -244,7 +244,7 @@ const LightGBMPage: React.FC = () => {
   useEffect(() => { fetchBacktestSimAvailable(); }, []); // mount
   useEffect(() => { fetchBacktestSimAvailable(); }, [trainExecMode]);
 
-  useEffect(() => { fetchBacktestSim(backtestFwd, trainExecMode, backtestTopN); }, [fetchBacktestSim, trainExecMode, backtestTopN]);
+  useEffect(() => { fetchBacktestSim(backtestFwd, trainExecMode, backtestTopN); }, [fetchBacktestSim, backtestFwd, trainExecMode, backtestTopN]);
 
   /* ── Cleanup polling on unmount ── */
   useEffect(() => {
@@ -533,21 +533,13 @@ const LightGBMPage: React.FC = () => {
                   min={1}
                   max={5}
                   value={backtestTopN}
-                  onChange={(v) => {
-                    const n = v ?? 1;
-                    setBacktestTopN(n);
-                    fetchBacktestSim(backtestFwd, trainExecMode, n);
-                  }}
+                  onChange={(v) => setBacktestTopN(v ?? 1)}
                   style={{ width: 52 }}
                 />
                 <Segmented
                   size="small"
                   value={backtestFwd.toString()}
-                  onChange={(v) => {
-                    const fwd = Number(v);
-                    setBacktestFwd(fwd);
-                    fetchBacktestSim(fwd, trainExecMode, backtestTopN);
-                  }}
+                  onChange={(v) => setBacktestFwd(Number(v))}
                   options={(backtestSimAvailable
                     ? (trainExecMode === 'open'
                       ? backtestSimAvailable.open

@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20250101",
+  "train_end": "20251231",
+  "pred_date": "20260120",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000936.SZ",
+      "stock_code": "000936",
+      "stock_name": "华西股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 2,
+      "ts_code": "000589.SZ",
+      "stock_code": "000589",
+      "stock_name": "贵州轮胎",
+      "lgb_score": 87.53,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 3,
+      "ts_code": "301590.SZ",
+      "stock_code": "301590",
+      "stock_name": "优优绿能",
+      "lgb_score": 86.95,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 4,
+      "ts_code": "600704.SH",
+      "stock_code": "600704",
+      "stock_name": "物产中大",
+      "lgb_score": 85.72,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 5,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 82.02,
+      "raw_score": 0.11
+    }
+  ]
+}

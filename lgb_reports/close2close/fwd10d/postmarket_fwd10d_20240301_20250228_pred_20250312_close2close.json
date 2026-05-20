@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20240301",
+  "train_end": "20250228",
+  "pred_date": "20250312",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 2,
+      "ts_code": "920066.BJ",
+      "stock_code": "920066.BJ",
+      "stock_name": "",
+      "lgb_score": 95.56,
+      "raw_score": 0.2
+    },
+    {
+      "rank": 3,
+      "ts_code": "688316.SH",
+      "stock_code": "688316",
+      "stock_name": "青云科技-U",
+      "lgb_score": 93.85,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 4,
+      "ts_code": "003021.SZ",
+      "stock_code": "003021",
+      "stock_name": "兆威机电",
+      "lgb_score": 93.23,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 5,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 92.85,
+      "raw_score": 0.18
+    }
+  ]
+}

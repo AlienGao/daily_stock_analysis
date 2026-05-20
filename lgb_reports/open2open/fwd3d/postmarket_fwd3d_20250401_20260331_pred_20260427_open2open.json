@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20250401",
+  "train_end": "20260331",
+  "pred_date": "20260427",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301071.SZ",
+      "stock_code": "301071",
+      "stock_name": "力量钻石",
+      "lgb_score": 100.0,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 2,
+      "ts_code": "002281.SZ",
+      "stock_code": "002281",
+      "stock_name": "光迅科技",
+      "lgb_score": 95.7,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 3,
+      "ts_code": "300308.SZ.SZ",
+      "stock_code": "300308",
+      "stock_name": "中际旭创",
+      "lgb_score": 95.51,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 4,
+      "ts_code": "603738.SH",
+      "stock_code": "603738",
+      "stock_name": "泰晶科技",
+      "lgb_score": 95.38,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 5,
+      "ts_code": "300394.SZ.SZ",
+      "stock_code": "300394",
+      "stock_name": "天孚通信",
+      "lgb_score": 91.61,
+      "raw_score": 0.06
+    }
+  ]
+}

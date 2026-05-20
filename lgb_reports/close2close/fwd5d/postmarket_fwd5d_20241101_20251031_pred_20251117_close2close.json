@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20241101",
+  "train_end": "20251031",
+  "pred_date": "20251117",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300612.SZ",
+      "stock_code": "300612",
+      "stock_name": "宣亚国际",
+      "lgb_score": 100.0,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 2,
+      "ts_code": "002291.SZ",
+      "stock_code": "002291",
+      "stock_name": "遥望科技",
+      "lgb_score": 94.2,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 3,
+      "ts_code": "000665.SZ",
+      "stock_code": "000665",
+      "stock_name": "湖北广电",
+      "lgb_score": 92.75,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 4,
+      "ts_code": "002438.SZ",
+      "stock_code": "002438",
+      "stock_name": "江苏神通",
+      "lgb_score": 92.38,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 5,
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
+      "lgb_score": 90.4,
+      "raw_score": 0.16
+    }
+  ]
+}

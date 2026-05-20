@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20240701",
+  "train_end": "20250630",
+  "pred_date": "20250717",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301538.SZ",
+      "stock_code": "301538",
+      "stock_name": "骏鼎达",
+      "lgb_score": 100.0,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 2,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 91.78,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 3,
+      "ts_code": "301008.SZ",
+      "stock_code": "301008",
+      "stock_name": "宏昌科技",
+      "lgb_score": 91.34,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 4,
+      "ts_code": "300953.SZ",
+      "stock_code": "300953",
+      "stock_name": "震裕科技",
+      "lgb_score": 90.77,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 5,
+      "ts_code": "688135.SH",
+      "stock_code": "688135",
+      "stock_name": "利扬芯片",
+      "lgb_score": 89.93,
+      "raw_score": 0.21
+    }
+  ]
+}

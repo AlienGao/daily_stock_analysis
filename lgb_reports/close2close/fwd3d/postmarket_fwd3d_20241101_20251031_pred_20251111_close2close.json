@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20241101",
+  "train_end": "20251031",
+  "pred_date": "20251111",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002506.SZ",
+      "stock_code": "002506",
+      "stock_name": "协鑫集成",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "002309.SZ",
+      "stock_code": "002309",
+      "stock_name": "中利集团",
+      "lgb_score": 98.43,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 3,
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 96.77,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "600477.SH",
+      "stock_code": "600477",
+      "stock_name": "杭萧钢构",
+      "lgb_score": 95.71,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "002274.SZ",
+      "stock_code": "002274",
+      "stock_name": "华昌化工",
+      "lgb_score": 95.51,
+      "raw_score": 0.1
+    }
+  ]
+}

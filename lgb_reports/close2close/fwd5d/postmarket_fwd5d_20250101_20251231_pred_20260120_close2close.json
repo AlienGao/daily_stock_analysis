@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20250101",
+  "train_end": "20251231",
+  "pred_date": "20260120",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "603915.SH",
+      "stock_code": "603915",
+      "stock_name": "国茂股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 2,
+      "ts_code": "002617.SZ",
+      "stock_code": "002617",
+      "stock_name": "露笑科技",
+      "lgb_score": 94.64,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
+      "ts_code": "301071.SZ",
+      "stock_code": "301071",
+      "stock_name": "力量钻石",
+      "lgb_score": 92.69,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 4,
+      "ts_code": "301590.SZ",
+      "stock_code": "301590",
+      "stock_name": "优优绿能",
+      "lgb_score": 91.78,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 5,
+      "ts_code": "601678.SH",
+      "stock_code": "601678",
+      "stock_name": "滨化股份",
+      "lgb_score": 90.58,
+      "raw_score": 0.11
+    }
+  ]
+}

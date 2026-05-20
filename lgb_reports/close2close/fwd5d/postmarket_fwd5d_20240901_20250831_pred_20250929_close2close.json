@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240901",
+  "train_end": "20250831",
+  "pred_date": "20250929",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000001.SH.SZ",
+      "stock_code": "000001",
+      "stock_name": "平安银行",
+      "lgb_score": 100.0,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 2,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 97.13,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 3,
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 96.08,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 4,
+      "ts_code": "002371.SZ",
+      "stock_code": "002371",
+      "stock_name": "北方华创",
+      "lgb_score": 94.53,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 5,
+      "ts_code": "002291.SZ",
+      "stock_code": "002291",
+      "stock_name": "遥望科技",
+      "lgb_score": 93.61,
+      "raw_score": 0.13
+    }
+  ]
+}

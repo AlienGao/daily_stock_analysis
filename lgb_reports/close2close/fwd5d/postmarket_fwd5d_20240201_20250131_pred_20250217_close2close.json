@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240201",
+  "train_end": "20250131",
+  "pred_date": "20250217",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600151.SH",
+      "stock_code": "600151",
+      "stock_name": "航天机电",
+      "lgb_score": 100.0,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 2,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 94.57,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 3,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 84.23,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 4,
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 83.46,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 5,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 81.53,
+      "raw_score": 0.12
+    }
+  ]
+}

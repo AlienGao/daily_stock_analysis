@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240301",
+  "train_end": "20250228",
+  "pred_date": "20250326",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300265.SZ",
+      "stock_code": "300265",
+      "stock_name": "通光线缆",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 94.54,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "002146.SZ",
+      "stock_code": "002146",
+      "stock_name": "荣盛发展",
+      "lgb_score": 92.23,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "000637.SZ",
+      "stock_code": "000637",
+      "stock_name": "茂化实华",
+      "lgb_score": 89.64,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "002535.SZ",
+      "stock_code": "002535",
+      "stock_name": "林州重机",
+      "lgb_score": 88.41,
+      "raw_score": 0.08
+    }
+  ]
+}

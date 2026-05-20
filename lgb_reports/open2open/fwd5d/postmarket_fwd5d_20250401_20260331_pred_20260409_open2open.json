@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20250401",
+  "train_end": "20260331",
+  "pred_date": "20260409",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300757.SZ",
+      "stock_code": "300757",
+      "stock_name": "罗博特科",
+      "lgb_score": 100.0,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 2,
+      "ts_code": "688381.SH",
+      "stock_code": "688381",
+      "stock_name": "帝奥微",
+      "lgb_score": 96.06,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "603344.SH",
+      "stock_code": "603344",
+      "stock_name": "星德胜",
+      "lgb_score": 90.37,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "002940.SZ.SZ",
+      "stock_code": "002940",
+      "stock_name": "昂利康",
+      "lgb_score": 89.54,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
+      "lgb_score": 88.42,
+      "raw_score": 0.08
+    }
+  ]
+}

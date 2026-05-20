@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240601",
+  "train_end": "20250531",
+  "pred_date": "20250630",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002401.SZ",
+      "stock_code": "002401",
+      "stock_name": "中远海科",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 92.76,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 91.73,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "300650.SZ",
+      "stock_code": "300650",
+      "stock_name": "太龙股份",
+      "lgb_score": 91.61,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "603601.SH",
+      "stock_code": "603601",
+      "stock_name": "再升科技",
+      "lgb_score": 91.23,
+      "raw_score": 0.09
+    }
+  ]
+}

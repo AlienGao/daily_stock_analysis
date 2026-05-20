@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20250101",
+  "train_end": "20251231",
+  "pred_date": "20260123",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301589.SZ",
+      "stock_code": "301589",
+      "stock_name": "诺瓦星云",
+      "lgb_score": 100.0,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "301633.SZ",
+      "stock_code": "301633",
+      "stock_name": "港迪技术",
+      "lgb_score": 97.28,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 3,
+      "ts_code": "301313.SZ",
+      "stock_code": "301313",
+      "stock_name": "凡拓数创",
+      "lgb_score": 90.05,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 4,
+      "ts_code": "603619.SH",
+      "stock_code": "603619",
+      "stock_name": "中曼石油",
+      "lgb_score": 89.81,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 5,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 89.37,
+      "raw_score": 0.07
+    }
+  ]
+}

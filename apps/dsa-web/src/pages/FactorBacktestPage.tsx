@@ -20,6 +20,7 @@ const HOLD_DAY_OPTIONS = [
   { label: '5日', value: 5 },
   { label: '10日', value: 10 },
   { label: '20日', value: 20 },
+  { label: '60日', value: 60 },
 ];
 
 function pct(v: number): string {
@@ -160,13 +161,6 @@ const FactorBacktestPage: React.FC = () => {
                 for (const k of Object.keys(next)) next[k] = false;
                 for (const k of Object.keys(p.selectedFactors)) {
                   if (p.selectedFactors[k] && k in next) next[k] = true;
-                }
-                return next;
-              });
-              if (p.factorWeights) setFactorWeights((prev) => {
-                const next = { ...prev };
-                for (const k of Object.keys(p.factorWeights)) {
-                  if (k in next) next[k] = p.factorWeights[k];
                 }
                 return next;
               });
@@ -390,7 +384,7 @@ const FactorBacktestPage: React.FC = () => {
       localStorage.setItem(BT_TASK_KEY, JSON.stringify({ task_id, mode, started_at: Date.now() }));
       localStorage.setItem(BT_PARAMS_KEY, JSON.stringify({
         mode, holdDays, topN, startDate, endDate, initialCapital, riskFreeRate,
-        usePipeline, blendAlpha, reoptimize, reoptimizeInterval, optWindow, selectedFactors, factorWeights,
+        usePipeline, blendAlpha, reoptimize, reoptimizeInterval, optWindow, selectedFactors,
       }));
 
       // poll until complete (with retry for transient network errors)

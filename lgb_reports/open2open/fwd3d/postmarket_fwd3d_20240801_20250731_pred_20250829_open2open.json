@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240801",
+  "train_end": "20250731",
+  "pred_date": "20250829",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "603290.SH",
+      "stock_code": "603290",
+      "stock_name": "斯达半导",
+      "lgb_score": 100.0,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 2,
+      "ts_code": "300429.SZ",
+      "stock_code": "300429",
+      "stock_name": "强力新材",
+      "lgb_score": 97.49,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "688775.SH",
+      "stock_code": "688775",
+      "stock_name": "影石创新",
+      "lgb_score": 95.31,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "300757.SZ",
+      "stock_code": "300757",
+      "stock_name": "罗博特科",
+      "lgb_score": 94.52,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 91.93,
+      "raw_score": 0.08
+    }
+  ]
+}

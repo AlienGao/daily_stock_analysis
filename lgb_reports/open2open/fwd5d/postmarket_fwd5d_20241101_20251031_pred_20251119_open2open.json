@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20241101",
+  "train_end": "20251031",
+  "pred_date": "20251119",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 100.0,
+      "raw_score": 0.2
+    },
+    {
+      "rank": 2,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 95.01,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 3,
+      "ts_code": "002009.SZ",
+      "stock_code": "002009",
+      "stock_name": "天奇股份",
+      "lgb_score": 87.97,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 4,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 87.96,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 5,
+      "ts_code": "688458.SH",
+      "stock_code": "688458",
+      "stock_name": "美芯晟",
+      "lgb_score": 85.97,
+      "raw_score": 0.15
+    }
+  ]
+}

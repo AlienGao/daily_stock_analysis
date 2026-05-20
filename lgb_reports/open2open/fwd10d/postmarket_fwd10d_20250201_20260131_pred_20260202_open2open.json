@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20250201",
+  "train_end": "20260131",
+  "pred_date": "20260202",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 2,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 97.62,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 3,
+      "ts_code": "600704.SH",
+      "stock_code": "600704",
+      "stock_name": "物产中大",
+      "lgb_score": 97.48,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 4,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 96.42,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 5,
+      "ts_code": "600216.SH",
+      "stock_code": "600216",
+      "stock_name": "浙江医药",
+      "lgb_score": 95.58,
+      "raw_score": 0.18
+    }
+  ]
+}

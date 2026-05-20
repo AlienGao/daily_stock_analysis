@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240901",
+  "train_end": "20250831",
+  "pred_date": "20250929",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 100.0,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 2,
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 99.64,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 3,
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
+      "lgb_score": 94.35,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 4,
+      "ts_code": "688323.SH",
+      "stock_code": "688323",
+      "stock_name": "瑞华泰",
+      "lgb_score": 90.92,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 5,
+      "ts_code": "301081.SZ",
+      "stock_code": "301081",
+      "stock_name": "严牌股份",
+      "lgb_score": 90.59,
+      "raw_score": 0.11
+    }
+  ]
+}

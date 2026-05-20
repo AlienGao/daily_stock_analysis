@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240701",
+  "train_end": "20250630",
+  "pred_date": "20250716",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 2,
+      "ts_code": "601138.SH",
+      "stock_code": "601138",
+      "stock_name": "工业富联",
+      "lgb_score": 95.79,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 3,
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 92.02,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 4,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 89.66,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 5,
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 89.16,
+      "raw_score": 0.11
+    }
+  ]
+}

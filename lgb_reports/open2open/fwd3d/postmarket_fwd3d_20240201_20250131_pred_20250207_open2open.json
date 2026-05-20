@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240201",
+  "train_end": "20250131",
+  "pred_date": "20250207",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688003.SH",
+      "stock_code": "688003",
+      "stock_name": "天准科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "301022.SZ",
+      "stock_code": "301022",
+      "stock_name": "海泰科",
+      "lgb_score": 95.97,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 3,
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 94.36,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "688135.SH",
+      "stock_code": "688135",
+      "stock_name": "利扬芯片",
+      "lgb_score": 91.79,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "301488.SZ",
+      "stock_code": "301488",
+      "stock_name": "豪恩汽电",
+      "lgb_score": 88.76,
+      "raw_score": 0.08
+    }
+  ]
+}

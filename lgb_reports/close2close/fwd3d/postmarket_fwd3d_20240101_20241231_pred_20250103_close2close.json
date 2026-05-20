@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240101",
+  "train_end": "20241231",
+  "pred_date": "20250103",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002164.SZ",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 100.0,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 95.1,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 3,
+      "ts_code": "301322.SZ",
+      "stock_code": "301322",
+      "stock_name": "绿通科技",
+      "lgb_score": 92.13,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "920363.BJ",
+      "stock_code": "920363.BJ",
+      "stock_name": "",
+      "lgb_score": 88.01,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 5,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 87.7,
+      "raw_score": 0.07
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240501",
+  "train_end": "20250430",
+  "pred_date": "20250519",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600509.SH",
+      "stock_code": "600509",
+      "stock_name": "天富能源",
+      "lgb_score": 100.0,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 2,
+      "ts_code": "301110.SZ",
+      "stock_code": "301110",
+      "stock_name": "青木科技",
+      "lgb_score": 96.29,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 3,
+      "ts_code": "688316.SH",
+      "stock_code": "688316",
+      "stock_name": "青云科技-U",
+      "lgb_score": 95.43,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 4,
+      "ts_code": "603120.SH",
+      "stock_code": "603120",
+      "stock_name": "肯特催化",
+      "lgb_score": 93.39,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 5,
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
+      "lgb_score": 93.22,
+      "raw_score": 0.14
+    }
+  ]
+}

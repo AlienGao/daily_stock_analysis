@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240701",
+  "train_end": "20250630",
+  "pred_date": "20250718",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 100.0,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 2,
+      "ts_code": "600792.SH",
+      "stock_code": "600792",
+      "stock_name": "云煤能源",
+      "lgb_score": 79.04,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "002652.SZ",
+      "stock_code": "002652",
+      "stock_name": "扬子新材",
+      "lgb_score": 75.62,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "688170.SH",
+      "stock_code": "688170",
+      "stock_name": "德龙激光",
+      "lgb_score": 73.43,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "688071.SH",
+      "stock_code": "688071",
+      "stock_name": "华依科技",
+      "lgb_score": 73.25,
+      "raw_score": 0.08
+    }
+  ]
+}

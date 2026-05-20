@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20240801",
+  "train_end": "20250731",
+  "pred_date": "20250812",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 100.0,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 2,
+      "ts_code": "301383.SZ",
+      "stock_code": "301383",
+      "stock_name": "天键股份",
+      "lgb_score": 96.91,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 3,
+      "ts_code": "002031.SZ",
+      "stock_code": "002031",
+      "stock_name": "巨轮智能",
+      "lgb_score": 93.54,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 4,
+      "ts_code": "002590.SZ",
+      "stock_code": "002590",
+      "stock_name": "万安科技",
+      "lgb_score": 91.7,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 5,
+      "ts_code": "603220.SH",
+      "stock_code": "603220",
+      "stock_name": "中贝通信",
+      "lgb_score": 91.55,
+      "raw_score": 0.22
+    }
+  ]
+}

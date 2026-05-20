@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20240101",
+  "train_end": "20241231",
+  "pred_date": "20250113",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 100.0,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 2,
+      "ts_code": "688320.SH",
+      "stock_code": "688320",
+      "stock_name": "禾川科技",
+      "lgb_score": 97.33,
+      "raw_score": 0.2
+    },
+    {
+      "rank": 3,
+      "ts_code": "002915.SZ",
+      "stock_code": "002915",
+      "stock_name": "中欣氟材",
+      "lgb_score": 92.88,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 4,
+      "ts_code": "301209.SZ",
+      "stock_code": "301209",
+      "stock_name": "联合化学",
+      "lgb_score": 91.79,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 5,
+      "ts_code": "002407.SZ",
+      "stock_code": "002407",
+      "stock_name": "多氟多",
+      "lgb_score": 89.0,
+      "raw_score": 0.17
+    }
+  ]
+}

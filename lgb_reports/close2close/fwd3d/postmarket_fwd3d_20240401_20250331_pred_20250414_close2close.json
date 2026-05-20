@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240401",
+  "train_end": "20250331",
+  "pred_date": "20250414",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "603011.SH",
+      "stock_code": "603011",
+      "stock_name": "合锻智能",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 99.74,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "600798.SH",
+      "stock_code": "600798",
+      "stock_name": "宁波海运",
+      "lgb_score": 95.63,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "002471.SZ",
+      "stock_code": "002471",
+      "stock_name": "中超控股",
+      "lgb_score": 92.8,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "000031.SZ",
+      "stock_code": "000031",
+      "stock_name": "大悦城",
+      "lgb_score": 92.76,
+      "raw_score": 0.1
+    }
+  ]
+}

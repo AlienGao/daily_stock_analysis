@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20241201",
+  "train_end": "20251130",
+  "pred_date": "20251218",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002812.SZ",
+      "stock_code": "002812",
+      "stock_name": "恩捷股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
+      "lgb_score": 98.72,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "601500.SH",
+      "stock_code": "601500",
+      "stock_name": "通用股份",
+      "lgb_score": 96.4,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "301590.SZ",
+      "stock_code": "301590",
+      "stock_name": "优优绿能",
+      "lgb_score": 91.89,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 88.63,
+      "raw_score": 0.08
+    }
+  ]
+}

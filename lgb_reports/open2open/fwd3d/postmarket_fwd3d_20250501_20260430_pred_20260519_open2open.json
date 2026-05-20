@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260519",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301205",
+      "stock_code": "301205",
+      "stock_name": "联特科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "300476",
+      "stock_code": "300476",
+      "stock_name": "胜宏科技",
+      "lgb_score": 90.95,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 3,
+      "ts_code": "301396",
+      "stock_code": "301396",
+      "stock_name": "宏景科技",
+      "lgb_score": 85.37,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 4,
+      "ts_code": "688628",
+      "stock_code": "688628",
+      "stock_name": "优利德",
+      "lgb_score": 84.84,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 5,
+      "ts_code": "300953",
+      "stock_code": "300953",
+      "stock_name": "震裕科技",
+      "lgb_score": 83.27,
+      "raw_score": 0.06
+    }
+  ]
+}

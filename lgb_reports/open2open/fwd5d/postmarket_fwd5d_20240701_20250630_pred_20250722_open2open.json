@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240701",
+  "train_end": "20250630",
+  "pred_date": "20250722",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 100.0,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 2,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 90.65,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 3,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 81.91,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 4,
+      "ts_code": "000936.SZ",
+      "stock_code": "000936",
+      "stock_name": "华西股份",
+      "lgb_score": 80.07,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 5,
+      "ts_code": "300429.SZ",
+      "stock_code": "300429",
+      "stock_name": "强力新材",
+      "lgb_score": 79.95,
+      "raw_score": 0.11
+    }
+  ]
+}

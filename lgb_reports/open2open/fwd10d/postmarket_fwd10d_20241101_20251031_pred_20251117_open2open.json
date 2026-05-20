@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20241101",
+  "train_end": "20251031",
+  "pred_date": "20251117",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.34
+    },
+    {
+      "rank": 2,
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 99.8,
+      "raw_score": 0.34
+    },
+    {
+      "rank": 3,
+      "ts_code": "002438.SZ",
+      "stock_code": "002438",
+      "stock_name": "江苏神通",
+      "lgb_score": 99.59,
+      "raw_score": 0.34
+    },
+    {
+      "rank": 4,
+      "ts_code": "300045.SZ",
+      "stock_code": "300045",
+      "stock_name": "华力创通",
+      "lgb_score": 92.88,
+      "raw_score": 0.31
+    },
+    {
+      "rank": 5,
+      "ts_code": "000915.SZ",
+      "stock_code": "000915",
+      "stock_name": "华特达因",
+      "lgb_score": 92.67,
+      "raw_score": 0.31
+    }
+  ]
+}

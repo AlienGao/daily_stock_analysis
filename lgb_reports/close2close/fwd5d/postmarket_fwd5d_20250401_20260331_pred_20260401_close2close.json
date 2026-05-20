@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20250401",
+  "train_end": "20260331",
+  "pred_date": "20260401",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688693.SH",
+      "stock_code": "688693",
+      "stock_name": "锴威特",
+      "lgb_score": 100.0,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "688813.SH",
+      "stock_code": "688813",
+      "stock_name": "泰金新能",
+      "lgb_score": 99.54,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
+      "lgb_score": 99.47,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "688068.SH",
+      "stock_code": "688068",
+      "stock_name": "热景生物",
+      "lgb_score": 95.55,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "301118.SZ",
+      "stock_code": "301118",
+      "stock_name": "恒光股份",
+      "lgb_score": 94.26,
+      "raw_score": 0.08
+    }
+  ]
+}

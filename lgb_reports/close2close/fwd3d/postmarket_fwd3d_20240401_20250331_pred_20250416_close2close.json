@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240401",
+  "train_end": "20250331",
+  "pred_date": "20250416",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000965.SZ",
+      "stock_code": "000965",
+      "stock_name": "天保基建",
+      "lgb_score": 100.0,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "002820.SZ",
+      "stock_code": "002820",
+      "stock_name": "桂发祥",
+      "lgb_score": 97.45,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "688316.SH",
+      "stock_code": "688316",
+      "stock_name": "青云科技-U",
+      "lgb_score": 96.17,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 95.68,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 95.62,
+      "raw_score": 0.09
+    }
+  ]
+}

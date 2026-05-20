@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240901",
+  "train_end": "20250831",
+  "pred_date": "20250922",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "688381.SH",
+      "stock_code": "688381",
+      "stock_name": "帝奥微",
+      "lgb_score": 97.35,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 3,
+      "ts_code": "000981.SZ",
+      "stock_code": "000981",
+      "stock_name": "山子高科",
+      "lgb_score": 96.13,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 94.95,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "002239.SZ",
+      "stock_code": "002239",
+      "stock_name": "奥特佳",
+      "lgb_score": 94.24,
+      "raw_score": 0.09
+    }
+  ]
+}

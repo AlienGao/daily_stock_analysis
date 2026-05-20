@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20240301",
+  "train_end": "20250228",
+  "pred_date": "20250321",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.2
+    },
+    {
+      "rank": 2,
+      "ts_code": "002565.SZ",
+      "stock_code": "002565",
+      "stock_name": "顺灏股份",
+      "lgb_score": 99.57,
+      "raw_score": 0.2
+    },
+    {
+      "rank": 3,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 97.48,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 4,
+      "ts_code": "300007.SZ",
+      "stock_code": "300007",
+      "stock_name": "汉威科技",
+      "lgb_score": 97.1,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 5,
+      "ts_code": "688316.SH",
+      "stock_code": "688316",
+      "stock_name": "青云科技-U",
+      "lgb_score": 96.72,
+      "raw_score": 0.18
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20240501",
+  "train_end": "20250430",
+  "pred_date": "20250513",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 100.0,
+      "raw_score": 0.34
+    },
+    {
+      "rank": 2,
+      "ts_code": "300042.SZ",
+      "stock_code": "300042",
+      "stock_name": "朗科科技",
+      "lgb_score": 80.65,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 3,
+      "ts_code": "603893.SH",
+      "stock_code": "603893",
+      "stock_name": "瑞芯微",
+      "lgb_score": 79.46,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 4,
+      "ts_code": "688181.SH",
+      "stock_code": "688181",
+      "stock_name": "八亿时空",
+      "lgb_score": 77.92,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 5,
+      "ts_code": "002031.SZ",
+      "stock_code": "002031",
+      "stock_name": "巨轮智能",
+      "lgb_score": 76.24,
+      "raw_score": 0.22
+    }
+  ]
+}

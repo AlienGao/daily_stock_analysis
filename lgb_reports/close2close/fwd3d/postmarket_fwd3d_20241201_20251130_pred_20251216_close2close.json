@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20241201",
+  "train_end": "20251130",
+  "pred_date": "20251216",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300423.SZ",
+      "stock_code": "300423",
+      "stock_name": "昇辉科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "002285.SZ",
+      "stock_code": "002285",
+      "stock_name": "世联行",
+      "lgb_score": 96.03,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "603023.SH",
+      "stock_code": "603023",
+      "stock_name": "威帝股份",
+      "lgb_score": 93.21,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "002766.SZ",
+      "stock_code": "002766",
+      "stock_name": "索菱股份",
+      "lgb_score": 89.39,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 5,
+      "ts_code": "601933.SH",
+      "stock_code": "601933",
+      "stock_name": "永辉超市",
+      "lgb_score": 88.1,
+      "raw_score": 0.07
+    }
+  ]
+}

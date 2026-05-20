@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20240901",
+  "train_end": "20250831",
+  "pred_date": "20250923",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300042.SZ",
+      "stock_code": "300042",
+      "stock_name": "朗科科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 2,
+      "ts_code": "002590.SZ",
+      "stock_code": "002590",
+      "stock_name": "万安科技",
+      "lgb_score": 98.3,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 3,
+      "ts_code": "002291.SZ",
+      "stock_code": "002291",
+      "stock_name": "遥望科技",
+      "lgb_score": 96.94,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 4,
+      "ts_code": "300691.SZ",
+      "stock_code": "300691",
+      "stock_name": "联合光电",
+      "lgb_score": 96.88,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 5,
+      "ts_code": "300484.SZ",
+      "stock_code": "300484",
+      "stock_name": "蓝海华腾",
+      "lgb_score": 96.6,
+      "raw_score": 0.21
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240901",
+  "train_end": "20250831",
+  "pred_date": "20250922",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 100.0,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 2,
+      "ts_code": "000001.SH.SZ",
+      "stock_code": "000001",
+      "stock_name": "平安银行",
+      "lgb_score": 98.39,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 3,
+      "ts_code": "000404.SZ",
+      "stock_code": "000404",
+      "stock_name": "长虹华意",
+      "lgb_score": 89.71,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 4,
+      "ts_code": "301488.SZ",
+      "stock_code": "301488",
+      "stock_name": "豪恩汽电",
+      "lgb_score": 87.96,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 5,
+      "ts_code": "002239.SZ",
+      "stock_code": "002239",
+      "stock_name": "奥特佳",
+      "lgb_score": 87.53,
+      "raw_score": 0.12
+    }
+  ]
+}

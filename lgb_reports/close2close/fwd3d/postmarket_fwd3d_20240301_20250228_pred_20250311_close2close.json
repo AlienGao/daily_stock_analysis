@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240301",
+  "train_end": "20250228",
+  "pred_date": "20250311",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002292.SZ",
+      "stock_code": "002292",
+      "stock_name": "奥飞娱乐",
+      "lgb_score": 100.0,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 2,
+      "ts_code": "920375.BJ",
+      "stock_code": "920375.BJ",
+      "stock_name": "",
+      "lgb_score": 98.96,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "002104.SZ",
+      "stock_code": "002104",
+      "stock_name": "恒宝股份",
+      "lgb_score": 97.7,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "002574.SZ",
+      "stock_code": "002574",
+      "stock_name": "明牌珠宝",
+      "lgb_score": 96.78,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "002377.SZ",
+      "stock_code": "002377",
+      "stock_name": "国创高新",
+      "lgb_score": 92.07,
+      "raw_score": 0.08
+    }
+  ]
+}

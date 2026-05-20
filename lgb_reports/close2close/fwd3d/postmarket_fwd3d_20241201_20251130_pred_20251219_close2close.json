@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20241201",
+  "train_end": "20251130",
+  "pred_date": "20251219",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 100.0,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 2,
+      "ts_code": "000981.SZ",
+      "stock_code": "000981",
+      "stock_name": "山子高科",
+      "lgb_score": 91.65,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "000523.SZ",
+      "stock_code": "000523",
+      "stock_name": "红棉股份",
+      "lgb_score": 91.55,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 4,
+      "ts_code": "001325.SZ",
+      "stock_code": "001325",
+      "stock_name": "元创股份",
+      "lgb_score": 83.67,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "002735.SZ",
+      "stock_code": "002735",
+      "stock_name": "王子新材",
+      "lgb_score": 82.91,
+      "raw_score": 0.09
+    }
+  ]
+}

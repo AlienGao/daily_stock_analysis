@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240501",
+  "train_end": "20250430",
+  "pred_date": "20250519",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002590.SZ",
+      "stock_code": "002590",
+      "stock_name": "万安科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 2,
+      "ts_code": "002379.SZ",
+      "stock_code": "002379",
+      "stock_name": "宏桥控股",
+      "lgb_score": 93.53,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
+      "ts_code": "002274.SZ",
+      "stock_code": "002274",
+      "stock_name": "华昌化工",
+      "lgb_score": 91.12,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 4,
+      "ts_code": "600343.SH",
+      "stock_code": "600343",
+      "stock_name": "航天动力",
+      "lgb_score": 90.41,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 5,
+      "ts_code": "300883.SZ",
+      "stock_code": "300883",
+      "stock_name": "龙利得",
+      "lgb_score": 86.96,
+      "raw_score": 0.1
+    }
+  ]
+}

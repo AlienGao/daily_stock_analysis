@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240901",
+  "train_end": "20250831",
+  "pred_date": "20250923",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002513.SZ",
+      "stock_code": "002513",
+      "stock_name": "蓝丰生化",
+      "lgb_score": 100.0,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 2,
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 94.35,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 92.67,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 4,
+      "ts_code": "600798.SH",
+      "stock_code": "600798",
+      "stock_name": "宁波海运",
+      "lgb_score": 92.27,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 5,
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
+      "lgb_score": 88.38,
+      "raw_score": 0.1
+    }
+  ]
+}

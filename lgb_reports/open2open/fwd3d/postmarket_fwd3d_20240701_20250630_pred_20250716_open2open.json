@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240701",
+  "train_end": "20250630",
+  "pred_date": "20250716",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002852.SZ",
+      "stock_code": "002852",
+      "stock_name": "道道全",
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "002722.SZ",
+      "stock_code": "002722",
+      "stock_name": "物产金轮",
+      "lgb_score": 96.1,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "605288.SH",
+      "stock_code": "605288",
+      "stock_name": "凯迪股份",
+      "lgb_score": 95.28,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "688695.SH",
+      "stock_code": "688695",
+      "stock_name": "中创股份",
+      "lgb_score": 91.96,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "002401.SZ",
+      "stock_code": "002401",
+      "stock_name": "中远海科",
+      "lgb_score": 91.77,
+      "raw_score": 0.09
+    }
+  ]
+}

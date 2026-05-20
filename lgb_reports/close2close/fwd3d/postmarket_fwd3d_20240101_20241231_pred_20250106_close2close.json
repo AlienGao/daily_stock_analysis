@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240101",
+  "train_end": "20241231",
+  "pred_date": "20250106",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000533.SZ",
+      "stock_code": "000533",
+      "stock_name": "顺钠股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 2,
+      "ts_code": "600222.SH",
+      "stock_code": "600222",
+      "stock_name": "太龙药业",
+      "lgb_score": 98.81,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 3,
+      "ts_code": "688320.SH",
+      "stock_code": "688320",
+      "stock_name": "禾川科技",
+      "lgb_score": 97.22,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 96.82,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "002164.SZ",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 95.41,
+      "raw_score": 0.08
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20241201",
+  "train_end": "20251130",
+  "pred_date": "20251230",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300970.SZ",
+      "stock_code": "300970",
+      "stock_name": "华绿生物",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "601500.SH",
+      "stock_code": "601500",
+      "stock_name": "通用股份",
+      "lgb_score": 99.88,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "000665.SZ",
+      "stock_code": "000665",
+      "stock_name": "湖北广电",
+      "lgb_score": 96.54,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "002009.SZ",
+      "stock_code": "002009",
+      "stock_name": "天奇股份",
+      "lgb_score": 95.59,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "301596.SZ",
+      "stock_code": "301596",
+      "stock_name": "瑞迪智驱",
+      "lgb_score": 92.71,
+      "raw_score": 0.09
+    }
+  ]
+}

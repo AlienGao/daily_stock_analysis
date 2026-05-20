@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240101",
+  "train_end": "20241231",
+  "pred_date": "20250115",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002605.SZ",
+      "stock_code": "002605",
+      "stock_name": "姚记科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "300952.SZ",
+      "stock_code": "300952",
+      "stock_name": "恒辉安防",
+      "lgb_score": 95.25,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 3,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 93.29,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "301231.SZ",
+      "stock_code": "301231",
+      "stock_name": "荣信文化",
+      "lgb_score": 93.15,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 90.03,
+      "raw_score": 0.07
+    }
+  ]
+}

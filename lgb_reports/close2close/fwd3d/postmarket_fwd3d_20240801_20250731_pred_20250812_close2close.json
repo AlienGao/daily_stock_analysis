@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240801",
+  "train_end": "20250731",
+  "pred_date": "20250812",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "600495.SH",
+      "stock_code": "600495",
+      "stock_name": "晋西车轴",
+      "lgb_score": 91.73,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "601138.SH",
+      "stock_code": "601138",
+      "stock_name": "工业富联",
+      "lgb_score": 87.95,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "002328.SZ",
+      "stock_code": "002328",
+      "stock_name": "新朋股份",
+      "lgb_score": 87.66,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "600425.SH",
+      "stock_code": "600425",
+      "stock_name": "青松建化",
+      "lgb_score": 87.27,
+      "raw_score": 0.09
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20250401",
+  "train_end": "20260331",
+  "pred_date": "20260409",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688205.SH",
+      "stock_code": "688205",
+      "stock_name": "德科立",
+      "lgb_score": 100.0,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 2,
+      "ts_code": "603459.SH",
+      "stock_code": "603459",
+      "stock_name": "红板科技",
+      "lgb_score": 89.73,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 3,
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
+      "lgb_score": 88.72,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 4,
+      "ts_code": "688808.SH",
+      "stock_code": "688808",
+      "stock_name": "联讯仪器",
+      "lgb_score": 84.94,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 5,
+      "ts_code": "300757.SZ",
+      "stock_code": "300757",
+      "stock_name": "罗博特科",
+      "lgb_score": 84.04,
+      "raw_score": 0.14
+    }
+  ]
+}

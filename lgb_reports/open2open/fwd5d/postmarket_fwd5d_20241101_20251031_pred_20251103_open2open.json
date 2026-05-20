@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20241101",
+  "train_end": "20251031",
+  "pred_date": "20251103",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "603960.SH",
+      "stock_code": "603960",
+      "stock_name": "克来机电",
+      "lgb_score": 100.0,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 2,
+      "ts_code": "002438.SZ",
+      "stock_code": "002438",
+      "stock_name": "江苏神通",
+      "lgb_score": 96.2,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 3,
+      "ts_code": "301590.SZ",
+      "stock_code": "301590",
+      "stock_name": "优优绿能",
+      "lgb_score": 92.73,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 4,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 91.64,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 5,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 91.49,
+      "raw_score": 0.15
+    }
+  ]
+}

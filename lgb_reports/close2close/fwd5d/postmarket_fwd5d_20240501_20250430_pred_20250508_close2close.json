@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240501",
+  "train_end": "20250430",
+  "pred_date": "20250508",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688316.SH",
+      "stock_code": "688316",
+      "stock_name": "青云科技-U",
+      "lgb_score": 100.0,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 2,
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 99.63,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 3,
+      "ts_code": "301076.SZ",
+      "stock_code": "301076",
+      "stock_name": "新瀚新材",
+      "lgb_score": 96.08,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 4,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 95.49,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 5,
+      "ts_code": "600509.SH",
+      "stock_code": "600509",
+      "stock_name": "天富能源",
+      "lgb_score": 95.12,
+      "raw_score": 0.14
+    }
+  ]
+}

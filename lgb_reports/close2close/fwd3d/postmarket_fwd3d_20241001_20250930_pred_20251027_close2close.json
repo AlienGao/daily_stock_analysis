@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20241001",
+  "train_end": "20250930",
+  "pred_date": "20251027",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002478.SZ",
+      "stock_code": "002478",
+      "stock_name": "常宝股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "600376.SH",
+      "stock_code": "600376",
+      "stock_name": "首开股份",
+      "lgb_score": 91.17,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "000599.SZ",
+      "stock_code": "000599",
+      "stock_name": "青岛双星",
+      "lgb_score": 88.43,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "002515.SZ",
+      "stock_code": "002515",
+      "stock_name": "金字火腿",
+      "lgb_score": 88.4,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "000543.SZ",
+      "stock_code": "000543",
+      "stock_name": "皖能电力",
+      "lgb_score": 83.98,
+      "raw_score": 0.07
+    }
+  ]
+}

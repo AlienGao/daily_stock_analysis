@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20240501",
+  "train_end": "20250430",
+  "pred_date": "20250528",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 2,
+      "ts_code": "603120.SH",
+      "stock_code": "603120",
+      "stock_name": "肯特催化",
+      "lgb_score": 96.43,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 3,
+      "ts_code": "002617.SZ",
+      "stock_code": "002617",
+      "stock_name": "露笑科技",
+      "lgb_score": 92.74,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 4,
+      "ts_code": "300612.SZ",
+      "stock_code": "300612",
+      "stock_name": "宣亚国际",
+      "lgb_score": 92.19,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 5,
+      "ts_code": "688320.SH",
+      "stock_code": "688320",
+      "stock_name": "禾川科技",
+      "lgb_score": 90.99,
+      "raw_score": 0.21
+    }
+  ]
+}

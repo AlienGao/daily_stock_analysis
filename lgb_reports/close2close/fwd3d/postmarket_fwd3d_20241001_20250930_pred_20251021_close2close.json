@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20241001",
+  "train_end": "20250930",
+  "pred_date": "20251021",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002278.SZ",
+      "stock_code": "002278",
+      "stock_name": "神开股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 2,
+      "ts_code": "600162.SH",
+      "stock_code": "600162",
+      "stock_name": "香江控股",
+      "lgb_score": 95.12,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 3,
+      "ts_code": "000620.SZ",
+      "stock_code": "000620",
+      "stock_name": "盈新发展",
+      "lgb_score": 94.07,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 4,
+      "ts_code": "601515.SH",
+      "stock_code": "601515",
+      "stock_name": "衢州东峰",
+      "lgb_score": 92.36,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 5,
+      "ts_code": "002554.SZ",
+      "stock_code": "002554",
+      "stock_name": "惠博普",
+      "lgb_score": 89.27,
+      "raw_score": 0.11
+    }
+  ]
+}

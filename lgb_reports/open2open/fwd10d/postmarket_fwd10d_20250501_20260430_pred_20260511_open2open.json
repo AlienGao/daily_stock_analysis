@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260511",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301232.SZ",
+      "stock_code": "301232",
+      "stock_name": "飞沃科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 2,
+      "ts_code": "301511.SZ",
+      "stock_code": "301511",
+      "stock_name": "德福科技",
+      "lgb_score": 99.34,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 3,
+      "ts_code": "688455.SH",
+      "stock_code": "688455",
+      "stock_name": "科捷智能",
+      "lgb_score": 97.84,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 4,
+      "ts_code": "301531.SZ",
+      "stock_code": "301531",
+      "stock_name": "春光集团",
+      "lgb_score": 96.83,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 5,
+      "ts_code": "300857.SZ",
+      "stock_code": "300857",
+      "stock_name": "协创数据",
+      "lgb_score": 96.33,
+      "raw_score": 0.23
+    }
+  ]
+}

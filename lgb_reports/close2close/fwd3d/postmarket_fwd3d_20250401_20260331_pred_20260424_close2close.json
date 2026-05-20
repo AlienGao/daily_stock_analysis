@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20250401",
+  "train_end": "20260331",
+  "pred_date": "20260424",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 100.0,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 2,
+      "ts_code": "920375.BJ",
+      "stock_code": "920375.BJ",
+      "stock_name": "",
+      "lgb_score": 98.21,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 3,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 98.13,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 4,
+      "ts_code": "300502.SZ.SZ",
+      "stock_code": "300502",
+      "stock_name": "新易盛",
+      "lgb_score": 98.07,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 5,
+      "ts_code": "688102.SH",
+      "stock_code": "688102",
+      "stock_name": "斯瑞新材",
+      "lgb_score": 95.58,
+      "raw_score": 0.06
+    }
+  ]
+}

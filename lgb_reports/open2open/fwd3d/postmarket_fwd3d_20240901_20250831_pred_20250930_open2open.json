@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240901",
+  "train_end": "20250831",
+  "pred_date": "20250930",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 99.05,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
+      "ts_code": "300429.SZ",
+      "stock_code": "300429",
+      "stock_name": "强力新材",
+      "lgb_score": 97.2,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 4,
+      "ts_code": "603990.SH",
+      "stock_code": "603990",
+      "stock_name": "麦迪科技",
+      "lgb_score": 96.17,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 5,
+      "ts_code": "300328.SZ",
+      "stock_code": "300328",
+      "stock_name": "宜安科技",
+      "lgb_score": 95.27,
+      "raw_score": 0.1
+    }
+  ]
+}

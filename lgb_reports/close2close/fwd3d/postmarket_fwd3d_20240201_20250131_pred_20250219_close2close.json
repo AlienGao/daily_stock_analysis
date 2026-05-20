@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240201",
+  "train_end": "20250131",
+  "pred_date": "20250219",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688401.SH",
+      "stock_code": "688401",
+      "stock_name": "路维光电",
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "300674.SZ",
+      "stock_code": "300674",
+      "stock_name": "宇信科技",
+      "lgb_score": 84.14,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 3,
+      "ts_code": "920578.BJ",
+      "stock_code": "920578.BJ",
+      "stock_name": "",
+      "lgb_score": 81.86,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "002535.SZ",
+      "stock_code": "002535",
+      "stock_name": "林州重机",
+      "lgb_score": 81.69,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "301550.SZ",
+      "stock_code": "301550",
+      "stock_name": "斯菱智驱",
+      "lgb_score": 80.81,
+      "raw_score": 0.08
+    }
+  ]
+}

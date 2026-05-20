@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20241001",
+  "train_end": "20250930",
+  "pred_date": "20251028",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002217.SZ",
+      "stock_code": "002217",
+      "stock_name": "合力泰",
+      "lgb_score": 100.0,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 2,
+      "ts_code": "600408.SH",
+      "stock_code": "600408",
+      "stock_name": "安泰集团",
+      "lgb_score": 89.1,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 3,
+      "ts_code": "601326.SH",
+      "stock_code": "601326",
+      "stock_name": "秦港股份",
+      "lgb_score": 87.08,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "600815.SH",
+      "stock_code": "600815",
+      "stock_name": "厦工股份",
+      "lgb_score": 84.97,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "688135.SH",
+      "stock_code": "688135",
+      "stock_name": "利扬芯片",
+      "lgb_score": 83.94,
+      "raw_score": 0.09
+    }
+  ]
+}

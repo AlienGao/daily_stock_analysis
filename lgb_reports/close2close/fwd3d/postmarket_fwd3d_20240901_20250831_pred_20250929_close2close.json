@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240901",
+  "train_end": "20250831",
+  "pred_date": "20250929",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000981.SZ",
+      "stock_code": "000981",
+      "stock_name": "山子高科",
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 99.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
+      "ts_code": "002291.SZ",
+      "stock_code": "002291",
+      "stock_name": "遥望科技",
+      "lgb_score": 98.28,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 4,
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 89.34,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "002274.SZ",
+      "stock_code": "002274",
+      "stock_name": "华昌化工",
+      "lgb_score": 88.96,
+      "raw_score": 0.09
+    }
+  ]
+}

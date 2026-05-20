@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20250301",
+  "train_end": "20260228",
+  "pred_date": "20260331",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688256.SH",
+      "stock_code": "688256",
+      "stock_name": "寒武纪",
+      "lgb_score": 100.0,
+      "raw_score": 0.2
+    },
+    {
+      "rank": 2,
+      "ts_code": "688195.SH",
+      "stock_code": "688195",
+      "stock_name": "腾景科技",
+      "lgb_score": 95.88,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 3,
+      "ts_code": "688048.SH",
+      "stock_code": "688048",
+      "stock_name": "长光华芯",
+      "lgb_score": 91.07,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 4,
+      "ts_code": "001309.SZ",
+      "stock_code": "001309",
+      "stock_name": "德明利",
+      "lgb_score": 88.38,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 5,
+      "ts_code": "600704.SH",
+      "stock_code": "600704",
+      "stock_name": "物产中大",
+      "lgb_score": 83.39,
+      "raw_score": 0.14
+    }
+  ]
+}

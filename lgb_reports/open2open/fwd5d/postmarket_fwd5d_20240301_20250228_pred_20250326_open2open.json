@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240301",
+  "train_end": "20250228",
+  "pred_date": "20250326",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688316.SH",
+      "stock_code": "688316",
+      "stock_name": "青云科技-U",
+      "lgb_score": 100.0,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 2,
+      "ts_code": "688108.SH",
+      "stock_code": "688108",
+      "stock_name": "赛诺医疗",
+      "lgb_score": 95.55,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 3,
+      "ts_code": "300963.SZ",
+      "stock_code": "300963",
+      "stock_name": "中洲特材",
+      "lgb_score": 91.89,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 4,
+      "ts_code": "920580.BJ",
+      "stock_code": "920580.BJ",
+      "stock_name": "",
+      "lgb_score": 89.97,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 5,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 88.02,
+      "raw_score": 0.12
+    }
+  ]
+}

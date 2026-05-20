@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20241001",
+  "train_end": "20250930",
+  "pred_date": "20251023",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 100.0,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 2,
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 98.54,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 3,
+      "ts_code": "601500.SH",
+      "stock_code": "601500",
+      "stock_name": "通用股份",
+      "lgb_score": 97.22,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 4,
+      "ts_code": "002274.SZ",
+      "stock_code": "002274",
+      "stock_name": "华昌化工",
+      "lgb_score": 96.95,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 5,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 91.94,
+      "raw_score": 0.11
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240801",
+  "train_end": "20250731",
+  "pred_date": "20250825",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600584.SH",
+      "stock_code": "600584",
+      "stock_name": "长电科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 93.72,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "688012.SH",
+      "stock_code": "688012",
+      "stock_name": "中微公司",
+      "lgb_score": 93.48,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "002241.SZ",
+      "stock_code": "002241",
+      "stock_name": "歌尔股份",
+      "lgb_score": 92.66,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "600500.SH",
+      "stock_code": "600500",
+      "stock_name": "中化国际",
+      "lgb_score": 91.85,
+      "raw_score": 0.08
+    }
+  ]
+}

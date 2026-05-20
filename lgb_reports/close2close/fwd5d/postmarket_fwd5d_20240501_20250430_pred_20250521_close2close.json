@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240501",
+  "train_end": "20250430",
+  "pred_date": "20250521",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688368.SH",
+      "stock_code": "688368",
+      "stock_name": "晶丰明源",
+      "lgb_score": 100.0,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 2,
+      "ts_code": "600509.SH",
+      "stock_code": "600509",
+      "stock_name": "天富能源",
+      "lgb_score": 99.34,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 3,
+      "ts_code": "688135.SH",
+      "stock_code": "688135",
+      "stock_name": "利扬芯片",
+      "lgb_score": 97.82,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 4,
+      "ts_code": "603986.SH",
+      "stock_code": "603986",
+      "stock_name": "兆易创新",
+      "lgb_score": 97.24,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 5,
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 96.42,
+      "raw_score": 0.14
+    }
+  ]
+}

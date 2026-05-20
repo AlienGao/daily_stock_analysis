@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20241001",
+  "train_end": "20250930",
+  "pred_date": "20251023",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002482.SZ",
+      "stock_code": "002482",
+      "stock_name": "广田集团",
+      "lgb_score": 100.0,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 2,
+      "ts_code": "600408.SH",
+      "stock_code": "600408",
+      "stock_name": "安泰集团",
+      "lgb_score": 99.82,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 3,
+      "ts_code": "000070.SZ",
+      "stock_code": "000070",
+      "stock_name": "特发信息",
+      "lgb_score": 95.48,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 4,
+      "ts_code": "000592.SZ",
+      "stock_code": "000592",
+      "stock_name": "平潭发展",
+      "lgb_score": 91.88,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 5,
+      "ts_code": "000090.SZ",
+      "stock_code": "000090",
+      "stock_name": "天健集团",
+      "lgb_score": 91.64,
+      "raw_score": 0.11
+    }
+  ]
+}

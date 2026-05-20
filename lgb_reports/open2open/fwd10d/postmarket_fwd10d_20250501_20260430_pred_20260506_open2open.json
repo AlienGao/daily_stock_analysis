@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260506",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301232.SZ",
+      "stock_code": "301232",
+      "stock_name": "飞沃科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.3
+    },
+    {
+      "rank": 2,
+      "ts_code": "688025.SH",
+      "stock_code": "688025",
+      "stock_name": "杰普特",
+      "lgb_score": 92.83,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 3,
+      "ts_code": "002281.SZ",
+      "stock_code": "002281",
+      "stock_name": "光迅科技",
+      "lgb_score": 91.06,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 4,
+      "ts_code": "002371.SZ",
+      "stock_code": "002371",
+      "stock_name": "北方华创",
+      "lgb_score": 87.54,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 5,
+      "ts_code": "688455.SH",
+      "stock_code": "688455",
+      "stock_name": "科捷智能",
+      "lgb_score": 85.74,
+      "raw_score": 0.23
+    }
+  ]
+}

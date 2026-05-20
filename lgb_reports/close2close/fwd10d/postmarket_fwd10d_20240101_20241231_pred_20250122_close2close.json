@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20240101",
+  "train_end": "20241231",
+  "pred_date": "20250122",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 100.0,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 2,
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 95.2,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 3,
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 83.64,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 4,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 83.32,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 5,
+      "ts_code": "300007.SZ",
+      "stock_code": "300007",
+      "stock_name": "汉威科技",
+      "lgb_score": 81.97,
+      "raw_score": 0.16
+    }
+  ]
+}

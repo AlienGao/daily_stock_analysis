@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20250201",
+  "train_end": "20260131",
+  "pred_date": "20260225",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000545.SZ",
+      "stock_code": "000545",
+      "stock_name": "金浦钛业",
+      "lgb_score": 98.34,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "000589.SZ",
+      "stock_code": "000589",
+      "stock_name": "贵州轮胎",
+      "lgb_score": 95.93,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "600010.SH",
+      "stock_code": "600010",
+      "stock_name": "包钢股份",
+      "lgb_score": 92.54,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "002283.SZ",
+      "stock_code": "002283",
+      "stock_name": "天润工业",
+      "lgb_score": 92.2,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "605007.SH",
+      "stock_code": "605007",
+      "stock_name": "五洲特纸",
+      "lgb_score": 90.43,
+      "raw_score": 0.08
+    }
+  ]
+}

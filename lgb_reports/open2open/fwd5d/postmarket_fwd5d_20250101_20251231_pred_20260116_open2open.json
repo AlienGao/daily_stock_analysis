@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20250101",
+  "train_end": "20251231",
+  "pred_date": "20260116",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "001325.SZ",
+      "stock_code": "001325",
+      "stock_name": "元创股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 2,
+      "ts_code": "300751.SZ",
+      "stock_code": "300751",
+      "stock_name": "迈为股份",
+      "lgb_score": 92.53,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 90.48,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 90.21,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "002283.SZ",
+      "stock_code": "002283",
+      "stock_name": "天润工业",
+      "lgb_score": 88.54,
+      "raw_score": 0.1
+    }
+  ]
+}

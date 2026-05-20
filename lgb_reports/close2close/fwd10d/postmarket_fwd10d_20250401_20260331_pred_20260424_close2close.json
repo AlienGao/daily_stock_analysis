@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20250401",
+  "train_end": "20260331",
+  "pred_date": "20260424",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "603986.SH",
+      "stock_code": "603986",
+      "stock_name": "兆易创新",
+      "lgb_score": 100.0,
+      "raw_score": 0.2
+    },
+    {
+      "rank": 2,
+      "ts_code": "300757.SZ",
+      "stock_code": "300757",
+      "stock_name": "罗博特科",
+      "lgb_score": 86.77,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 3,
+      "ts_code": "603788.SH",
+      "stock_code": "603788",
+      "stock_name": "宁波高发",
+      "lgb_score": 76.88,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 4,
+      "ts_code": "601126.SH",
+      "stock_code": "601126",
+      "stock_name": "四方股份",
+      "lgb_score": 76.71,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 5,
+      "ts_code": "300483.SZ",
+      "stock_code": "300483",
+      "stock_name": "首华燃气",
+      "lgb_score": 75.92,
+      "raw_score": 0.12
+    }
+  ]
+}

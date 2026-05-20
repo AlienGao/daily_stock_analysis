@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20241001",
+  "train_end": "20250930",
+  "pred_date": "20251031",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002374.SZ",
+      "stock_code": "002374",
+      "stock_name": "中锐股份",
+      "lgb_score": 85.19,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 2,
+      "ts_code": "600067.SH",
+      "stock_code": "600067",
+      "stock_name": "冠城新材",
+      "lgb_score": 79.99,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "688627.SH",
+      "stock_code": "688627",
+      "stock_name": "精智达",
+      "lgb_score": 79.13,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "002108.SZ",
+      "stock_code": "002108",
+      "stock_name": "沧州明珠",
+      "lgb_score": 78.09,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "600439.SH",
+      "stock_code": "600439",
+      "stock_name": "瑞贝卡",
+      "lgb_score": 74.48,
+      "raw_score": 0.07
+    }
+  ]
+}

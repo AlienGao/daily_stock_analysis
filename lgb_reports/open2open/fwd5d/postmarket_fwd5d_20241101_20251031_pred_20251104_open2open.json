@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20241101",
+  "train_end": "20251031",
+  "pred_date": "20251104",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "603960.SH",
+      "stock_code": "603960",
+      "stock_name": "克来机电",
+      "lgb_score": 100.0,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 2,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 99.74,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 3,
+      "ts_code": "301590.SZ",
+      "stock_code": "301590",
+      "stock_name": "优优绿能",
+      "lgb_score": 96.53,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 4,
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 93.55,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 5,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 91.47,
+      "raw_score": 0.16
+    }
+  ]
+}

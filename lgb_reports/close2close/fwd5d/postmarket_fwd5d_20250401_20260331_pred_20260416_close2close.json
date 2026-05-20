@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20250401",
+  "train_end": "20260331",
+  "pred_date": "20260416",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300976.SZ",
+      "stock_code": "300976",
+      "stock_name": "达瑞电子",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "000959.SZ",
+      "stock_code": "000959",
+      "stock_name": "首钢股份",
+      "lgb_score": 91.9,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 3,
+      "ts_code": "000589.SZ",
+      "stock_code": "000589",
+      "stock_name": "贵州轮胎",
+      "lgb_score": 90.21,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "002421.SZ",
+      "stock_code": "002421",
+      "stock_name": "达实智能",
+      "lgb_score": 84.72,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "300163.SZ",
+      "stock_code": "300163",
+      "stock_name": "先锋新材",
+      "lgb_score": 84.47,
+      "raw_score": 0.08
+    }
+  ]
+}

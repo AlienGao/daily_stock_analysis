@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20240501",
+  "train_end": "20250430",
+  "pred_date": "20250516",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 100.0,
+      "raw_score": 0.33
+    },
+    {
+      "rank": 2,
+      "ts_code": "600151.SH",
+      "stock_code": "600151",
+      "stock_name": "航天机电",
+      "lgb_score": 83.22,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 3,
+      "ts_code": "002031.SZ",
+      "stock_code": "002031",
+      "stock_name": "巨轮智能",
+      "lgb_score": 79.64,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 4,
+      "ts_code": "301205.SZ",
+      "stock_code": "301205",
+      "stock_name": "联特科技",
+      "lgb_score": 76.9,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 5,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 76.82,
+      "raw_score": 0.21
+    }
+  ]
+}

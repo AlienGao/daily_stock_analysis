@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20241101",
+  "train_end": "20251031",
+  "pred_date": "20251113",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301590.SZ",
+      "stock_code": "301590",
+      "stock_name": "优优绿能",
+      "lgb_score": 100.0,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 2,
+      "ts_code": "002438.SZ",
+      "stock_code": "002438",
+      "stock_name": "江苏神通",
+      "lgb_score": 95.43,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "002228.SZ",
+      "stock_code": "002228",
+      "stock_name": "合兴包装",
+      "lgb_score": 94.37,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "301071.SZ",
+      "stock_code": "301071",
+      "stock_name": "力量钻石",
+      "lgb_score": 94.06,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "920580.BJ",
+      "stock_code": "920580.BJ",
+      "stock_name": "",
+      "lgb_score": 93.7,
+      "raw_score": 0.09
+    }
+  ]
+}

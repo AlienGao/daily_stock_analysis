@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240301",
+  "train_end": "20250228",
+  "pred_date": "20250317",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600467.SH",
+      "stock_code": "600467",
+      "stock_name": "好当家",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "603183.SH",
+      "stock_code": "603183",
+      "stock_name": "建研院",
+      "lgb_score": 96.5,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "600151.SH",
+      "stock_code": "600151",
+      "stock_name": "航天机电",
+      "lgb_score": 84.71,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "000915.SZ",
+      "stock_code": "000915",
+      "stock_name": "华特达因",
+      "lgb_score": 84.7,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "002162.SZ",
+      "stock_code": "002162",
+      "stock_name": "悦心健康",
+      "lgb_score": 84.69,
+      "raw_score": 0.08
+    }
+  ]
+}

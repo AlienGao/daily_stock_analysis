@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260519",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688693",
+      "stock_code": "688693",
+      "stock_name": "锴威特",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "300661",
+      "stock_code": "300661",
+      "stock_name": "圣邦股份",
+      "lgb_score": 97.53,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 3,
+      "ts_code": "300395",
+      "stock_code": "300395",
+      "stock_name": "菲利华",
+      "lgb_score": 97.24,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "301205",
+      "stock_code": "301205",
+      "stock_name": "联特科技",
+      "lgb_score": 97.1,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "688766",
+      "stock_code": "688766",
+      "stock_name": "普冉股份",
+      "lgb_score": 95.17,
+      "raw_score": 0.1
+    }
+  ]
+}

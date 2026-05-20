@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240801",
+  "train_end": "20250731",
+  "pred_date": "20250805",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000665.SZ",
+      "stock_code": "000665",
+      "stock_name": "湖北广电",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 97.31,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 3,
+      "ts_code": "300045.SZ",
+      "stock_code": "300045",
+      "stock_name": "华力创通",
+      "lgb_score": 91.69,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "601138.SH",
+      "stock_code": "601138",
+      "stock_name": "工业富联",
+      "lgb_score": 88.89,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "000032.SZ",
+      "stock_code": "000032",
+      "stock_name": "深桑达Ａ",
+      "lgb_score": 88.78,
+      "raw_score": 0.08
+    }
+  ]
+}

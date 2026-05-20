@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240101",
+  "train_end": "20241231",
+  "pred_date": "20250120",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 100.0,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 2,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 99.2,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 3,
+      "ts_code": "300963.SZ",
+      "stock_code": "300963",
+      "stock_name": "中洲特材",
+      "lgb_score": 98.81,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 98.3,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "603082.SH",
+      "stock_code": "603082",
+      "stock_name": "北自科技",
+      "lgb_score": 97.52,
+      "raw_score": 0.08
+    }
+  ]
+}

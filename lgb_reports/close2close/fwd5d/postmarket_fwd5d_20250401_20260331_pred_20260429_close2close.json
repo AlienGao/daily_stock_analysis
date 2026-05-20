@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20250401",
+  "train_end": "20260331",
+  "pred_date": "20260429",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002847.SZ",
+      "stock_code": "002847",
+      "stock_name": "盐津铺子",
+      "lgb_score": 100.0,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 2,
+      "ts_code": "002931.SZ",
+      "stock_code": "002931",
+      "stock_name": "锋龙股份",
+      "lgb_score": 97.08,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "688048.SH",
+      "stock_code": "688048",
+      "stock_name": "长光华芯",
+      "lgb_score": 92.45,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "300976.SZ",
+      "stock_code": "300976",
+      "stock_name": "达瑞电子",
+      "lgb_score": 91.26,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "002291.SZ",
+      "stock_code": "002291",
+      "stock_name": "遥望科技",
+      "lgb_score": 90.19,
+      "raw_score": 0.08
+    }
+  ]
+}

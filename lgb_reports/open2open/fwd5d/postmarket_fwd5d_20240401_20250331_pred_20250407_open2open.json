@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240401",
+  "train_end": "20250331",
+  "pred_date": "20250407",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 100.0,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 2,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 96.55,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 3,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 89.55,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 4,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 88.38,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 5,
+      "ts_code": "600509.SH",
+      "stock_code": "600509",
+      "stock_name": "天富能源",
+      "lgb_score": 87.9,
+      "raw_score": 0.12
+    }
+  ]
+}

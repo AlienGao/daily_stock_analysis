@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20250401",
+  "train_end": "20260331",
+  "pred_date": "20260423",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300757.SZ",
+      "stock_code": "300757",
+      "stock_name": "罗博特科",
+      "lgb_score": 100.0,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 2,
+      "ts_code": "603986.SH",
+      "stock_code": "603986",
+      "stock_name": "兆易创新",
+      "lgb_score": 96.01,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 3,
+      "ts_code": "300857.SZ",
+      "stock_code": "300857",
+      "stock_name": "协创数据",
+      "lgb_score": 91.66,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 4,
+      "ts_code": "002552.SZ",
+      "stock_code": "002552",
+      "stock_name": "宝鼎科技",
+      "lgb_score": 88.66,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 5,
+      "ts_code": "601126.SH",
+      "stock_code": "601126",
+      "stock_name": "四方股份",
+      "lgb_score": 88.4,
+      "raw_score": 0.12
+    }
+  ]
+}

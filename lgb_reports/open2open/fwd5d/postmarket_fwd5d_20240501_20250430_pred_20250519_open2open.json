@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240501",
+  "train_end": "20250430",
+  "pred_date": "20250519",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300158.SZ",
+      "stock_code": "300158",
+      "stock_name": "振东制药",
+      "lgb_score": 100.0,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 2,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 96.89,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 3,
+      "ts_code": "000665.SZ",
+      "stock_code": "000665",
+      "stock_name": "湖北广电",
+      "lgb_score": 96.2,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 4,
+      "ts_code": "300007.SZ",
+      "stock_code": "300007",
+      "stock_name": "汉威科技",
+      "lgb_score": 95.73,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 5,
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 95.17,
+      "raw_score": 0.14
+    }
+  ]
+}

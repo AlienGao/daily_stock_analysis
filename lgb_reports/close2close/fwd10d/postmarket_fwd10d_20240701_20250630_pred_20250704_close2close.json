@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20240701",
+  "train_end": "20250630",
+  "pred_date": "20250704",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 2,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 94.39,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 3,
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 90.35,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 4,
+      "ts_code": "002124.SZ",
+      "stock_code": "002124",
+      "stock_name": "天邦食品",
+      "lgb_score": 86.41,
+      "raw_score": 0.2
+    },
+    {
+      "rank": 5,
+      "ts_code": "601366.SH",
+      "stock_code": "601366",
+      "stock_name": "利群股份",
+      "lgb_score": 80.27,
+      "raw_score": 0.18
+    }
+  ]
+}

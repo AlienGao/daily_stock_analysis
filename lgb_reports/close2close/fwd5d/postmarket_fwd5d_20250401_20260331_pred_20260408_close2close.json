@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20250401",
+  "train_end": "20260331",
+  "pred_date": "20260408",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002042.SZ",
+      "stock_code": "002042",
+      "stock_name": "华孚时尚",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "002718.SZ",
+      "stock_code": "002718",
+      "stock_name": "友邦吊顶",
+      "lgb_score": 92.17,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
+      "lgb_score": 90.41,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "000589.SZ",
+      "stock_code": "000589",
+      "stock_name": "贵州轮胎",
+      "lgb_score": 89.31,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "688228.SH",
+      "stock_code": "688228",
+      "stock_name": "开普云",
+      "lgb_score": 87.8,
+      "raw_score": 0.08
+    }
+  ]
+}

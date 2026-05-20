@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240701",
+  "train_end": "20250630",
+  "pred_date": "20250709",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002395.SZ",
+      "stock_code": "002395",
+      "stock_name": "双象股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 2,
+      "ts_code": "300335.SZ",
+      "stock_code": "300335",
+      "stock_name": "迪森股份",
+      "lgb_score": 80.06,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 78.48,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 77.71,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 76.1,
+      "raw_score": 0.08
+    }
+  ]
+}

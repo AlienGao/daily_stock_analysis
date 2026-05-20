@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20250101",
+  "train_end": "20251231",
+  "pred_date": "20260129",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002395.SZ",
+      "stock_code": "002395",
+      "stock_name": "双象股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "688766.SH",
+      "stock_code": "688766",
+      "stock_name": "普冉股份",
+      "lgb_score": 99.49,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
+      "lgb_score": 98.24,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 4,
+      "ts_code": "002716.SZ",
+      "stock_code": "002716",
+      "stock_name": "湖南白银",
+      "lgb_score": 98.06,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 5,
+      "ts_code": "600199.SH",
+      "stock_code": "600199",
+      "stock_name": "金种子酒",
+      "lgb_score": 94.61,
+      "raw_score": 0.11
+    }
+  ]
+}

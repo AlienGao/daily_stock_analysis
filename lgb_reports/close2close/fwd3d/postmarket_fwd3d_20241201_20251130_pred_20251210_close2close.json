@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20241201",
+  "train_end": "20251130",
+  "pred_date": "20251210",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "601828.SH",
+      "stock_code": "601828",
+      "stock_name": "美凯龙",
+      "lgb_score": 100.0,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 2,
+      "ts_code": "002133.SZ",
+      "stock_code": "002133",
+      "stock_name": "广宇集团",
+      "lgb_score": 82.45,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "002285.SZ",
+      "stock_code": "002285",
+      "stock_name": "世联行",
+      "lgb_score": 80.48,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 4,
+      "ts_code": "000936.SZ",
+      "stock_code": "000936",
+      "stock_name": "华西股份",
+      "lgb_score": 78.54,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "002596.SZ",
+      "stock_code": "002596",
+      "stock_name": "海南瑞泽",
+      "lgb_score": 75.18,
+      "raw_score": 0.09
+    }
+  ]
+}

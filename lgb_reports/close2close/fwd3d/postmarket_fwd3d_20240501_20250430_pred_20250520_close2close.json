@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240501",
+  "train_end": "20250430",
+  "pred_date": "20250520",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "920001.BJ",
+      "stock_code": "920001.BJ",
+      "stock_name": "",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "002274.SZ",
+      "stock_code": "002274",
+      "stock_name": "华昌化工",
+      "lgb_score": 97.43,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 3,
+      "ts_code": "300883.SZ",
+      "stock_code": "300883",
+      "stock_name": "龙利得",
+      "lgb_score": 96.92,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 96.84,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "301022.SZ",
+      "stock_code": "301022",
+      "stock_name": "海泰科",
+      "lgb_score": 96.3,
+      "raw_score": 0.1
+    }
+  ]
+}

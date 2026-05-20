@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20240701",
+  "train_end": "20250630",
+  "pred_date": "20250722",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 100.0,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 2,
+      "ts_code": "300953.SZ",
+      "stock_code": "300953",
+      "stock_name": "震裕科技",
+      "lgb_score": 99.26,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 3,
+      "ts_code": "300674.SZ",
+      "stock_code": "300674",
+      "stock_name": "宇信科技",
+      "lgb_score": 97.92,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 4,
+      "ts_code": "002009.SZ",
+      "stock_code": "002009",
+      "stock_name": "天奇股份",
+      "lgb_score": 94.39,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 5,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 93.81,
+      "raw_score": 0.22
+    }
+  ]
+}

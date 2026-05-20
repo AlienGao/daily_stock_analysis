@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240701",
+  "train_end": "20250630",
+  "pred_date": "20250722",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301362.SZ",
+      "stock_code": "301362",
+      "stock_name": "民爆光电",
+      "lgb_score": 100.0,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 99.95,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "600720.SH",
+      "stock_code": "600720",
+      "stock_name": "中交设计",
+      "lgb_score": 99.94,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 99.7,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "002124.SZ",
+      "stock_code": "002124",
+      "stock_name": "天邦食品",
+      "lgb_score": 97.51,
+      "raw_score": 0.08
+    }
+  ]
+}

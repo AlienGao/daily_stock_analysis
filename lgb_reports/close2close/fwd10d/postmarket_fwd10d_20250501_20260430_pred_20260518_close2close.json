@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260518",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300083.SZ",
+      "stock_code": "300083",
+      "stock_name": "创世纪",
+      "lgb_score": 100.0,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 2,
+      "ts_code": "301513.SZ",
+      "stock_code": "301513",
+      "stock_name": "尚水智能",
+      "lgb_score": 97.24,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 3,
+      "ts_code": "688808.SH",
+      "stock_code": "688808",
+      "stock_name": "联讯仪器",
+      "lgb_score": 96.65,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 4,
+      "ts_code": "301040.SZ",
+      "stock_code": "301040",
+      "stock_name": "中环海陆",
+      "lgb_score": 96.18,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 5,
+      "ts_code": "301488.SZ",
+      "stock_code": "301488",
+      "stock_name": "豪恩汽电",
+      "lgb_score": 95.67,
+      "raw_score": 0.23
+    }
+  ]
+}

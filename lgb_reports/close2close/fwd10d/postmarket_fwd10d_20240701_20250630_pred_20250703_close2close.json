@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20240701",
+  "train_end": "20250630",
+  "pred_date": "20250703",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688181.SH",
+      "stock_code": "688181",
+      "stock_name": "八亿时空",
+      "lgb_score": 100.0,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 2,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 94.58,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 3,
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 94.2,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 4,
+      "ts_code": "002124.SZ",
+      "stock_code": "002124",
+      "stock_name": "天邦食品",
+      "lgb_score": 89.21,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 5,
+      "ts_code": "920689.BJ",
+      "stock_code": "920689.BJ",
+      "stock_name": "",
+      "lgb_score": 88.87,
+      "raw_score": 0.19
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20240201",
+  "train_end": "20250131",
+  "pred_date": "20250224",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688316.SH",
+      "stock_code": "688316",
+      "stock_name": "青云科技-U",
+      "lgb_score": 100.0,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 2,
+      "ts_code": "300007.SZ",
+      "stock_code": "300007",
+      "stock_name": "汉威科技",
+      "lgb_score": 95.01,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 3,
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 94.59,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 4,
+      "ts_code": "688368.SH",
+      "stock_code": "688368",
+      "stock_name": "晶丰明源",
+      "lgb_score": 90.01,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 5,
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 89.95,
+      "raw_score": 0.21
+    }
+  ]
+}

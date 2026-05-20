@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240201",
+  "train_end": "20250131",
+  "pred_date": "20250226",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 2,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 97.68,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 3,
+      "ts_code": "301550.SZ",
+      "stock_code": "301550",
+      "stock_name": "斯菱智驱",
+      "lgb_score": 91.56,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 4,
+      "ts_code": "603915.SH",
+      "stock_code": "603915",
+      "stock_name": "国茂股份",
+      "lgb_score": 90.94,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 5,
+      "ts_code": "301486.SZ",
+      "stock_code": "301486",
+      "stock_name": "致尚科技",
+      "lgb_score": 85.84,
+      "raw_score": 0.11
+    }
+  ]
+}

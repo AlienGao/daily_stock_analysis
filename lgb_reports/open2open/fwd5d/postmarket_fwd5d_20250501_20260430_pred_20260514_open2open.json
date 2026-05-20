@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260514",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301511.SZ",
+      "stock_code": "301511",
+      "stock_name": "德福科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 2,
+      "ts_code": "601126.SH",
+      "stock_code": "601126",
+      "stock_name": "四方股份",
+      "lgb_score": 94.46,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
+      "ts_code": "300395.SZ",
+      "stock_code": "300395",
+      "stock_name": "菲利华",
+      "lgb_score": 90.1,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 4,
+      "ts_code": "688455.SH",
+      "stock_code": "688455",
+      "stock_name": "科捷智能",
+      "lgb_score": 90.04,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 5,
+      "ts_code": "688808.SH",
+      "stock_code": "688808",
+      "stock_name": "联讯仪器",
+      "lgb_score": 87.66,
+      "raw_score": 0.1
+    }
+  ]
+}

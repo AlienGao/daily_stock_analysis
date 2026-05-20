@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20250201",
+  "train_end": "20260131",
+  "pred_date": "20260202",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002311.SZ",
+      "stock_code": "002311",
+      "stock_name": "海大集团",
+      "lgb_score": 100.0,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 2,
+      "ts_code": "605178.SH",
+      "stock_code": "605178",
+      "stock_name": "时空科技",
+      "lgb_score": 81.11,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 3,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 79.75,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 4,
+      "ts_code": "002648.SZ",
+      "stock_code": "002648",
+      "stock_name": "卫星化学",
+      "lgb_score": 78.72,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 5,
+      "ts_code": "688766.SH",
+      "stock_code": "688766",
+      "stock_name": "普冉股份",
+      "lgb_score": 78.64,
+      "raw_score": 0.14
+    }
+  ]
+}

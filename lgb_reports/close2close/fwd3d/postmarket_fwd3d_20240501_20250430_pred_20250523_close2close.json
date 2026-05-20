@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240501",
+  "train_end": "20250430",
+  "pred_date": "20250523",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 96.86,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 96.69,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 4,
+      "ts_code": "300883.SZ",
+      "stock_code": "300883",
+      "stock_name": "龙利得",
+      "lgb_score": 95.17,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 95.03,
+      "raw_score": 0.1
+    }
+  ]
+}

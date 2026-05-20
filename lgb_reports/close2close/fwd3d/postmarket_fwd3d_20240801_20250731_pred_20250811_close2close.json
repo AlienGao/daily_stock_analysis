@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240801",
+  "train_end": "20250731",
+  "pred_date": "20250811",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "600495.SH",
+      "stock_code": "600495",
+      "stock_name": "晋西车轴",
+      "lgb_score": 90.54,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "600666.SH",
+      "stock_code": "600666",
+      "stock_name": "奥瑞德",
+      "lgb_score": 90.17,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "603538.SH",
+      "stock_code": "603538",
+      "stock_name": "美诺华",
+      "lgb_score": 87.35,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "300158.SZ",
+      "stock_code": "300158",
+      "stock_name": "振东制药",
+      "lgb_score": 85.78,
+      "raw_score": 0.08
+    }
+  ]
+}

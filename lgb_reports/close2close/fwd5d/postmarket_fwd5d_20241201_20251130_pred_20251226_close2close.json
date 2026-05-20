@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20241201",
+  "train_end": "20251130",
+  "pred_date": "20251226",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600704.SH",
+      "stock_code": "600704",
+      "stock_name": "物产中大",
+      "lgb_score": 100.0,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 2,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 95.01,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 3,
+      "ts_code": "002291.SZ",
+      "stock_code": "002291",
+      "stock_name": "遥望科技",
+      "lgb_score": 92.34,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 4,
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 91.2,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 5,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 90.63,
+      "raw_score": 0.13
+    }
+  ]
+}

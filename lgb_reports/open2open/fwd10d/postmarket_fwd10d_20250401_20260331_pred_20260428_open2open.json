@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20250401",
+  "train_end": "20260331",
+  "pred_date": "20260428",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688048.SH",
+      "stock_code": "688048",
+      "stock_name": "长光华芯",
+      "lgb_score": 100.0,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 2,
+      "ts_code": "301345.SZ",
+      "stock_code": "301345",
+      "stock_name": "涛涛车业",
+      "lgb_score": 82.77,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 3,
+      "ts_code": "688025.SH",
+      "stock_code": "688025",
+      "stock_name": "杰普特",
+      "lgb_score": 81.84,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 4,
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
+      "lgb_score": 79.49,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 5,
+      "ts_code": "688808.SH",
+      "stock_code": "688808",
+      "stock_name": "联讯仪器",
+      "lgb_score": 72.96,
+      "raw_score": 0.14
+    }
+  ]
+}

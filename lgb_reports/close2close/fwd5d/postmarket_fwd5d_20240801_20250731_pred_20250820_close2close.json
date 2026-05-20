@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240801",
+  "train_end": "20250731",
+  "pred_date": "20250820",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 100.0,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 2,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 99.95,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 3,
+      "ts_code": "301110.SZ",
+      "stock_code": "301110",
+      "stock_name": "青木科技",
+      "lgb_score": 97.39,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 4,
+      "ts_code": "300502.SZ",
+      "stock_code": "300502",
+      "stock_name": "新易盛",
+      "lgb_score": 96.62,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 5,
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 95.84,
+      "raw_score": 0.13
+    }
+  ]
+}

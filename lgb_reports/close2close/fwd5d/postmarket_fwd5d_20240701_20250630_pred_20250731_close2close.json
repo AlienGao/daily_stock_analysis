@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240701",
+  "train_end": "20250630",
+  "pred_date": "20250731",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688108.SH",
+      "stock_code": "688108",
+      "stock_name": "赛诺医疗",
+      "lgb_score": 100.0,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 97.81,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "600545.SH",
+      "stock_code": "600545",
+      "stock_name": "卓郎智能",
+      "lgb_score": 97.27,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 95.94,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "301205.SZ",
+      "stock_code": "301205",
+      "stock_name": "联特科技",
+      "lgb_score": 95.9,
+      "raw_score": 0.08
+    }
+  ]
+}

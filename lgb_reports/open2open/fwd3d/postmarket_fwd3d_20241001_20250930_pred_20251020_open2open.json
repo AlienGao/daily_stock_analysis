@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20241001",
+  "train_end": "20250930",
+  "pred_date": "20251020",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600984.SH",
+      "stock_code": "600984",
+      "stock_name": "建设机械",
+      "lgb_score": 100.0,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 2,
+      "ts_code": "688627.SH",
+      "stock_code": "688627",
+      "stock_name": "精智达",
+      "lgb_score": 96.07,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 3,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 88.98,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 4,
+      "ts_code": "600103.SH",
+      "stock_code": "600103",
+      "stock_name": "青山纸业",
+      "lgb_score": 88.75,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 5,
+      "ts_code": "688190.SH",
+      "stock_code": "688190",
+      "stock_name": "云路股份",
+      "lgb_score": 87.61,
+      "raw_score": 0.06
+    }
+  ]
+}

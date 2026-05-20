@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20240801",
+  "train_end": "20250731",
+  "pred_date": "20250822",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 100.0,
+      "raw_score": 0.29
+    },
+    {
+      "rank": 2,
+      "ts_code": "688166.SH",
+      "stock_code": "688166",
+      "stock_name": "博瑞医药",
+      "lgb_score": 84.75,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 3,
+      "ts_code": "603915.SH",
+      "stock_code": "603915",
+      "stock_name": "国茂股份",
+      "lgb_score": 84.53,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 4,
+      "ts_code": "000955.SZ",
+      "stock_code": "000955",
+      "stock_name": "欣龙控股",
+      "lgb_score": 83.55,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 5,
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 82.95,
+      "raw_score": 0.21
+    }
+  ]
+}

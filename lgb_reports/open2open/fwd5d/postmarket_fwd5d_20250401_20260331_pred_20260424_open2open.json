@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20250401",
+  "train_end": "20260331",
+  "pred_date": "20260424",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300757.SZ",
+      "stock_code": "300757",
+      "stock_name": "罗博特科",
+      "lgb_score": 100.0,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 2,
+      "ts_code": "300976.SZ",
+      "stock_code": "300976",
+      "stock_name": "达瑞电子",
+      "lgb_score": 91.94,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
+      "ts_code": "300870.SZ",
+      "stock_code": "300870",
+      "stock_name": "欧陆通",
+      "lgb_score": 85.28,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "300394.SZ.SZ",
+      "stock_code": "300394",
+      "stock_name": "天孚通信",
+      "lgb_score": 81.62,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "601126.SH",
+      "stock_code": "601126",
+      "stock_name": "四方股份",
+      "lgb_score": 80.2,
+      "raw_score": 0.09
+    }
+  ]
+}

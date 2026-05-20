@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20240101",
+  "train_end": "20241231",
+  "pred_date": "20250106",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 100.0,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 2,
+      "ts_code": "300042.SZ",
+      "stock_code": "300042",
+      "stock_name": "朗科科技",
+      "lgb_score": 98.03,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 3,
+      "ts_code": "688320.SH",
+      "stock_code": "688320",
+      "stock_name": "禾川科技",
+      "lgb_score": 92.55,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 4,
+      "ts_code": "300975.SZ",
+      "stock_code": "300975",
+      "stock_name": "商络电子",
+      "lgb_score": 89.1,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 5,
+      "ts_code": "600151.SH",
+      "stock_code": "600151",
+      "stock_name": "航天机电",
+      "lgb_score": 88.01,
+      "raw_score": 0.22
+    }
+  ]
+}

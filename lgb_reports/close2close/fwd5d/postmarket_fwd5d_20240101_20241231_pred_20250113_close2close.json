@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240101",
+  "train_end": "20241231",
+  "pred_date": "20250113",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688693.SH",
+      "stock_code": "688693",
+      "stock_name": "锴威特",
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 97.92,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 96.69,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 4,
+      "ts_code": "301231.SZ",
+      "stock_code": "301231",
+      "stock_name": "荣信文化",
+      "lgb_score": 96.27,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 5,
+      "ts_code": "688458.SH",
+      "stock_code": "688458",
+      "stock_name": "美芯晟",
+      "lgb_score": 93.74,
+      "raw_score": 0.11
+    }
+  ]
+}

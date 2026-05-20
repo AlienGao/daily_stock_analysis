@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240901",
+  "train_end": "20250831",
+  "pred_date": "20250916",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301600.SZ",
+      "stock_code": "301600",
+      "stock_name": "慧翰股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "301008.SZ",
+      "stock_code": "301008",
+      "stock_name": "宏昌科技",
+      "lgb_score": 98.78,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "002400.SZ",
+      "stock_code": "002400",
+      "stock_name": "省广集团",
+      "lgb_score": 96.24,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 4,
+      "ts_code": "002067.SZ",
+      "stock_code": "002067",
+      "stock_name": "景兴纸业",
+      "lgb_score": 96.07,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 5,
+      "ts_code": "300975.SZ",
+      "stock_code": "300975",
+      "stock_name": "商络电子",
+      "lgb_score": 95.56,
+      "raw_score": 0.11
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20240701",
+  "train_end": "20250630",
+  "pred_date": "20250715",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.27
+    },
+    {
+      "rank": 2,
+      "ts_code": "688181.SH",
+      "stock_code": "688181",
+      "stock_name": "八亿时空",
+      "lgb_score": 89.34,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 3,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 87.17,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 4,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 82.12,
+      "raw_score": 0.2
+    },
+    {
+      "rank": 5,
+      "ts_code": "603350.SH",
+      "stock_code": "603350",
+      "stock_name": "XD安乃达",
+      "lgb_score": 77.01,
+      "raw_score": 0.18
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240801",
+  "train_end": "20250731",
+  "pred_date": "20250821",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000650.SZ",
+      "stock_code": "000650",
+      "stock_name": "仁和药业",
+      "lgb_score": 100.0,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 2,
+      "ts_code": "000420.SZ",
+      "stock_code": "000420",
+      "stock_name": "吉林化纤",
+      "lgb_score": 97.1,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "002212.SZ",
+      "stock_code": "002212",
+      "stock_name": "天融信",
+      "lgb_score": 94.25,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "688489.SH",
+      "stock_code": "688489",
+      "stock_name": "三未信安",
+      "lgb_score": 94.2,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 90.65,
+      "raw_score": 0.08
+    }
+  ]
+}

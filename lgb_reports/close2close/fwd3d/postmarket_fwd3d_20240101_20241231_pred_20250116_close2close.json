@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240101",
+  "train_end": "20241231",
+  "pred_date": "20250116",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688458.SH",
+      "stock_code": "688458",
+      "stock_name": "美芯晟",
+      "lgb_score": 100.0,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "000665.SZ",
+      "stock_code": "000665",
+      "stock_name": "湖北广电",
+      "lgb_score": 98.7,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "002765.SZ",
+      "stock_code": "002765",
+      "stock_name": "蓝黛科技",
+      "lgb_score": 97.45,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 96.03,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "002649.SZ",
+      "stock_code": "002649",
+      "stock_name": "博彦科技",
+      "lgb_score": 92.03,
+      "raw_score": 0.08
+    }
+  ]
+}

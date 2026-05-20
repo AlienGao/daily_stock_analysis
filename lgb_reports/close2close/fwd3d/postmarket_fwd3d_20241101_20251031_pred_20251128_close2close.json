@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20241101",
+  "train_end": "20251031",
+  "pred_date": "20251128",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000545.SZ",
+      "stock_code": "000545",
+      "stock_name": "金浦钛业",
+      "lgb_score": 85.87,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "600227.SH",
+      "stock_code": "600227",
+      "stock_name": "赤天化",
+      "lgb_score": 83.35,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "002285.SZ",
+      "stock_code": "002285",
+      "stock_name": "世联行",
+      "lgb_score": 77.3,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "002565.SZ",
+      "stock_code": "002565",
+      "stock_name": "顺灏股份",
+      "lgb_score": 74.91,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "600981.SH",
+      "stock_code": "600981",
+      "stock_name": "苏豪汇鸿",
+      "lgb_score": 74.44,
+      "raw_score": 0.09
+    }
+  ]
+}

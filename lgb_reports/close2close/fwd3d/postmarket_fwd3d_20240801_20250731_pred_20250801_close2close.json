@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240801",
+  "train_end": "20250731",
+  "pred_date": "20250801",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "603757.SH",
+      "stock_code": "603757",
+      "stock_name": "大元泵业",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "002907.SZ",
+      "stock_code": "002907",
+      "stock_name": "华森制药",
+      "lgb_score": 99.77,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "002775.SZ",
+      "stock_code": "002775",
+      "stock_name": "文科股份",
+      "lgb_score": 92.04,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "000032.SZ",
+      "stock_code": "000032",
+      "stock_name": "深桑达Ａ",
+      "lgb_score": 87.87,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "301022.SZ",
+      "stock_code": "301022",
+      "stock_name": "海泰科",
+      "lgb_score": 87.38,
+      "raw_score": 0.08
+    }
+  ]
+}

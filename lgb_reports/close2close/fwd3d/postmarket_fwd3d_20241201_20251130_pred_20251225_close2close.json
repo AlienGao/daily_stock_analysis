@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20241201",
+  "train_end": "20251130",
+  "pred_date": "20251225",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002009.SZ",
+      "stock_code": "002009",
+      "stock_name": "天奇股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "002374.SZ",
+      "stock_code": "002374",
+      "stock_name": "中锐股份",
+      "lgb_score": 95.05,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 3,
+      "ts_code": "603601.SH",
+      "stock_code": "603601",
+      "stock_name": "再升科技",
+      "lgb_score": 93.94,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "600376.SH",
+      "stock_code": "600376",
+      "stock_name": "首开股份",
+      "lgb_score": 88.37,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "002363.SZ",
+      "stock_code": "002363",
+      "stock_name": "隆基机械",
+      "lgb_score": 88.0,
+      "raw_score": 0.09
+    }
+  ]
+}

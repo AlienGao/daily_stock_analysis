@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20241101",
+  "train_end": "20251031",
+  "pred_date": "20251121",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000936.SZ",
+      "stock_code": "000936",
+      "stock_name": "华西股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.37
+    },
+    {
+      "rank": 2,
+      "ts_code": "301071.SZ",
+      "stock_code": "301071",
+      "stock_name": "力量钻石",
+      "lgb_score": 98.28,
+      "raw_score": 0.37
+    },
+    {
+      "rank": 3,
+      "ts_code": "300045.SZ",
+      "stock_code": "300045",
+      "stock_name": "华力创通",
+      "lgb_score": 98.05,
+      "raw_score": 0.36
+    },
+    {
+      "rank": 4,
+      "ts_code": "920100.BJ",
+      "stock_code": "920100.BJ",
+      "stock_name": "",
+      "lgb_score": 95.79,
+      "raw_score": 0.35
+    },
+    {
+      "rank": 5,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 95.36,
+      "raw_score": 0.35
+    }
+  ]
+}

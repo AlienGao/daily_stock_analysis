@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20241201",
+  "train_end": "20251130",
+  "pred_date": "20251205",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301590.SZ",
+      "stock_code": "301590",
+      "stock_name": "优优绿能",
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "688360.SH",
+      "stock_code": "688360",
+      "stock_name": "德马科技",
+      "lgb_score": 88.79,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 3,
+      "ts_code": "600800.SH",
+      "stock_code": "600800",
+      "stock_name": "渤海化学",
+      "lgb_score": 88.26,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "601500.SH",
+      "stock_code": "601500",
+      "stock_name": "通用股份",
+      "lgb_score": 86.92,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "002031.SZ",
+      "stock_code": "002031",
+      "stock_name": "巨轮智能",
+      "lgb_score": 86.68,
+      "raw_score": 0.09
+    }
+  ]
+}

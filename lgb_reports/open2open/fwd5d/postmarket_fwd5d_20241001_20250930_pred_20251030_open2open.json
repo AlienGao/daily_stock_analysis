@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20241001",
+  "train_end": "20250930",
+  "pred_date": "20251030",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 99.8,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 98.91,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 4,
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
+      "lgb_score": 98.43,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 5,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 95.92,
+      "raw_score": 0.11
+    }
+  ]
+}

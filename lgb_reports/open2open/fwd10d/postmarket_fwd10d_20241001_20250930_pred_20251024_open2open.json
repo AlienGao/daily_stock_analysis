@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20241001",
+  "train_end": "20250930",
+  "pred_date": "20251024",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.29
+    },
+    {
+      "rank": 2,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 88.63,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 3,
+      "ts_code": "000159.SZ",
+      "stock_code": "000159",
+      "stock_name": "国际实业",
+      "lgb_score": 88.34,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 4,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 88.28,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 5,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 84.51,
+      "raw_score": 0.22
+    }
+  ]
+}

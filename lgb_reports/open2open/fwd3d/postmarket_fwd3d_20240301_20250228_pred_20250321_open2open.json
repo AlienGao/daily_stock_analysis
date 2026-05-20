@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240301",
+  "train_end": "20250228",
+  "pred_date": "20250321",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300775.SZ",
+      "stock_code": "300775",
+      "stock_name": "三角防务",
+      "lgb_score": 100.0,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 2,
+      "ts_code": "688332.SH",
+      "stock_code": "688332",
+      "stock_name": "中科蓝讯",
+      "lgb_score": 97.58,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 97.25,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 96.66,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 94.46,
+      "raw_score": 0.08
+    }
+  ]
+}

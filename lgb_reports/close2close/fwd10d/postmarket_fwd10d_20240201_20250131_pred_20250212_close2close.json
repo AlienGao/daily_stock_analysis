@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20240201",
+  "train_end": "20250131",
+  "pred_date": "20250212",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301205.SZ",
+      "stock_code": "301205",
+      "stock_name": "联特科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 2,
+      "ts_code": "300842.SZ",
+      "stock_code": "300842",
+      "stock_name": "帝科股份",
+      "lgb_score": 98.96,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 3,
+      "ts_code": "300042.SZ",
+      "stock_code": "300042",
+      "stock_name": "朗科科技",
+      "lgb_score": 98.96,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 4,
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 98.38,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 5,
+      "ts_code": "300995.SZ",
+      "stock_code": "300995",
+      "stock_name": "奇德新材",
+      "lgb_score": 94.05,
+      "raw_score": 0.2
+    }
+  ]
+}

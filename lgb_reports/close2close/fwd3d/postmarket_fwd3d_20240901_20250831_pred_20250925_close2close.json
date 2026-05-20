@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240901",
+  "train_end": "20250831",
+  "pred_date": "20250925",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301137.SZ",
+      "stock_code": "301137",
+      "stock_name": "哈焊华通",
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "002021.SZ",
+      "stock_code": "002021",
+      "stock_name": "中捷资源",
+      "lgb_score": 95.92,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "002164.SZ",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 89.64,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 89.47,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "300128.SZ",
+      "stock_code": "300128",
+      "stock_name": "锦富技术",
+      "lgb_score": 87.23,
+      "raw_score": 0.09
+    }
+  ]
+}

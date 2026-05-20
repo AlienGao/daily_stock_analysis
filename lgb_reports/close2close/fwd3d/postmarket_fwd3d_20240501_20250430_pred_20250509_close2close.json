@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240501",
+  "train_end": "20250430",
+  "pred_date": "20250509",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301040.SZ",
+      "stock_code": "301040",
+      "stock_name": "中环海陆",
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "600110.SH",
+      "stock_code": "600110",
+      "stock_name": "诺德股份",
+      "lgb_score": 95.42,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 91.59,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "301550.SZ",
+      "stock_code": "301550",
+      "stock_name": "斯菱智驱",
+      "lgb_score": 90.68,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "300883.SZ",
+      "stock_code": "300883",
+      "stock_name": "龙利得",
+      "lgb_score": 90.3,
+      "raw_score": 0.1
+    }
+  ]
+}

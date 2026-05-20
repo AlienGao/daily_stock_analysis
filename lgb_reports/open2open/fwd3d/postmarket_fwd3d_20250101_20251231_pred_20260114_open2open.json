@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20250101",
+  "train_end": "20251231",
+  "pred_date": "20260114",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "001387.SZ",
+      "stock_code": "001387",
+      "stock_name": "雪祺电气",
+      "lgb_score": 100.0,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "301302.SZ",
+      "stock_code": "301302",
+      "stock_name": "华如科技",
+      "lgb_score": 95.72,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 3,
+      "ts_code": "301235.SZ",
+      "stock_code": "301235",
+      "stock_name": "华康洁净",
+      "lgb_score": 95.2,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "300970.SZ",
+      "stock_code": "300970",
+      "stock_name": "华绿生物",
+      "lgb_score": 91.29,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 5,
+      "ts_code": "301023.SZ",
+      "stock_code": "301023",
+      "stock_name": "奕帆传动",
+      "lgb_score": 91.25,
+      "raw_score": 0.07
+    }
+  ]
+}

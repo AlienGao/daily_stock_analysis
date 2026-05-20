@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240701",
+  "train_end": "20250630",
+  "pred_date": "20250724",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600820.SH",
+      "stock_code": "600820",
+      "stock_name": "隧道股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "600875.SH",
+      "stock_code": "600875",
+      "stock_name": "东方电气",
+      "lgb_score": 90.51,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 3,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 89.41,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "002226.SZ",
+      "stock_code": "002226",
+      "stock_name": "江南化工",
+      "lgb_score": 86.59,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "002215.SZ",
+      "stock_code": "002215",
+      "stock_name": "诺 普 信",
+      "lgb_score": 85.66,
+      "raw_score": 0.08
+    }
+  ]
+}

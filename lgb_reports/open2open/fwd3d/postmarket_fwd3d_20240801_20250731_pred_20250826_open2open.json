@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240801",
+  "train_end": "20250731",
+  "pred_date": "20250826",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "600526.SH",
+      "stock_code": "600526",
+      "stock_name": "菲达环保",
+      "lgb_score": 99.42,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 98.6,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 4,
+      "ts_code": "600500.SH",
+      "stock_code": "600500",
+      "stock_name": "中化国际",
+      "lgb_score": 96.73,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 5,
+      "ts_code": "300042.SZ",
+      "stock_code": "300042",
+      "stock_name": "朗科科技",
+      "lgb_score": 90.49,
+      "raw_score": 0.09
+    }
+  ]
+}

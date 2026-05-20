@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240701",
+  "train_end": "20250630",
+  "pred_date": "20250715",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002161.SZ",
+      "stock_code": "002161",
+      "stock_name": "远 望 谷",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "002086.SZ",
+      "stock_code": "002086",
+      "stock_name": "东方海洋",
+      "lgb_score": 91.46,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 3,
+      "ts_code": "301076.SZ",
+      "stock_code": "301076",
+      "stock_name": "新瀚新材",
+      "lgb_score": 91.05,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "300502.SZ",
+      "stock_code": "300502",
+      "stock_name": "新易盛",
+      "lgb_score": 89.54,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "603350.SH",
+      "stock_code": "603350",
+      "stock_name": "XD安乃达",
+      "lgb_score": 85.47,
+      "raw_score": 0.08
+    }
+  ]
+}

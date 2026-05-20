@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260518",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688808.SH",
+      "stock_code": "688808",
+      "stock_name": "联讯仪器",
+      "lgb_score": 100.0,
+      "raw_score": 0.27
+    },
+    {
+      "rank": 2,
+      "ts_code": "300757.SZ",
+      "stock_code": "300757",
+      "stock_name": "罗博特科",
+      "lgb_score": 99.74,
+      "raw_score": 0.27
+    },
+    {
+      "rank": 3,
+      "ts_code": "300868.SZ",
+      "stock_code": "300868",
+      "stock_name": "杰美特",
+      "lgb_score": 95.2,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 4,
+      "ts_code": "002371.SZ",
+      "stock_code": "002371",
+      "stock_name": "北方华创",
+      "lgb_score": 95.18,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 5,
+      "ts_code": "600704.SH",
+      "stock_code": "600704",
+      "stock_name": "物产中大",
+      "lgb_score": 95.09,
+      "raw_score": 0.25
+    }
+  ]
+}

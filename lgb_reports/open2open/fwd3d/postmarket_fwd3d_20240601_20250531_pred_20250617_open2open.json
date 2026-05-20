@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240601",
+  "train_end": "20250531",
+  "pred_date": "20250617",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "603218.SH",
+      "stock_code": "603218",
+      "stock_name": "日月股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 2,
+      "ts_code": "688068.SH",
+      "stock_code": "688068",
+      "stock_name": "热景生物",
+      "lgb_score": 84.17,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "301293.SZ",
+      "stock_code": "301293",
+      "stock_name": "三博脑科",
+      "lgb_score": 83.95,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "001296.SZ",
+      "stock_code": "001296",
+      "stock_name": "长江材料",
+      "lgb_score": 83.92,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "002878.SZ",
+      "stock_code": "002878",
+      "stock_name": "元隆雅图",
+      "lgb_score": 82.3,
+      "raw_score": 0.08
+    }
+  ]
+}

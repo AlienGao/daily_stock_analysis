@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240301",
+  "train_end": "20250228",
+  "pred_date": "20250305",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600751.SH",
+      "stock_code": "600751",
+      "stock_name": "海航科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "920578.BJ",
+      "stock_code": "920578.BJ",
+      "stock_name": "",
+      "lgb_score": 96.58,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "002526.SZ",
+      "stock_code": "002526",
+      "stock_name": "山东矿机",
+      "lgb_score": 96.46,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "000701.SZ",
+      "stock_code": "000701",
+      "stock_name": "厦门信达",
+      "lgb_score": 94.64,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "300447.SZ",
+      "stock_code": "300447",
+      "stock_name": "全信股份",
+      "lgb_score": 94.54,
+      "raw_score": 0.08
+    }
+  ]
+}

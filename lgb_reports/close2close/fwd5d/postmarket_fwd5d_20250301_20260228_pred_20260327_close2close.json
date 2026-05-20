@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20250301",
+  "train_end": "20260228",
+  "pred_date": "20260327",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000589.SZ",
+      "stock_code": "000589",
+      "stock_name": "贵州轮胎",
+      "lgb_score": 100.0,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 2,
+      "ts_code": "600704.SH",
+      "stock_code": "600704",
+      "stock_name": "物产中大",
+      "lgb_score": 94.84,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 3,
+      "ts_code": "002291.SZ",
+      "stock_code": "002291",
+      "stock_name": "遥望科技",
+      "lgb_score": 91.85,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 4,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 91.85,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 5,
+      "ts_code": "301590.SZ",
+      "stock_code": "301590",
+      "stock_name": "优优绿能",
+      "lgb_score": 90.12,
+      "raw_score": 0.13
+    }
+  ]
+}

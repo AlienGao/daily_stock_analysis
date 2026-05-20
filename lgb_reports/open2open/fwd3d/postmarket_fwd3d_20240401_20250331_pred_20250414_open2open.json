@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240401",
+  "train_end": "20250331",
+  "pred_date": "20250414",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300433.SZ",
+      "stock_code": "300433",
+      "stock_name": "蓝思科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 2,
+      "ts_code": "002048.SZ",
+      "stock_code": "002048",
+      "stock_name": "宁波华翔",
+      "lgb_score": 90.84,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
+      "ts_code": "002241.SZ",
+      "stock_code": "002241",
+      "stock_name": "歌尔股份",
+      "lgb_score": 87.39,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 4,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 86.96,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 5,
+      "ts_code": "300612.SZ",
+      "stock_code": "300612",
+      "stock_name": "宣亚国际",
+      "lgb_score": 86.01,
+      "raw_score": 0.1
+    }
+  ]
+}

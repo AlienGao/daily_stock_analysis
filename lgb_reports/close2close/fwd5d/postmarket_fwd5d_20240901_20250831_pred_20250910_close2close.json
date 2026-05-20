@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240901",
+  "train_end": "20250831",
+  "pred_date": "20250910",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688411.SH",
+      "stock_code": "688411",
+      "stock_name": "海博思创",
+      "lgb_score": 100.0,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 2,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 98.91,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 3,
+      "ts_code": "600545.SH",
+      "stock_code": "600545",
+      "stock_name": "卓郎智能",
+      "lgb_score": 94.1,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 4,
+      "ts_code": "688506.SH",
+      "stock_code": "688506",
+      "stock_name": "百利天恒",
+      "lgb_score": 88.49,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 5,
+      "ts_code": "002164.SZ",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 87.43,
+      "raw_score": 0.11
+    }
+  ]
+}

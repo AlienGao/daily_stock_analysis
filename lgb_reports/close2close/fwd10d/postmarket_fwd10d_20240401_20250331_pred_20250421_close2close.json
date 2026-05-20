@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20240401",
+  "train_end": "20250331",
+  "pred_date": "20250421",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 2,
+      "ts_code": "600592.SH",
+      "stock_code": "600592",
+      "stock_name": "龙溪股份",
+      "lgb_score": 96.4,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 3,
+      "ts_code": "000032.SZ",
+      "stock_code": "000032",
+      "stock_name": "深桑达Ａ",
+      "lgb_score": 90.09,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 4,
+      "ts_code": "600589.SH",
+      "stock_code": "600589",
+      "stock_name": "大位科技",
+      "lgb_score": 89.24,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 5,
+      "ts_code": "002255.SZ",
+      "stock_code": "002255",
+      "stock_name": "海陆重工",
+      "lgb_score": 88.87,
+      "raw_score": 0.2
+    }
+  ]
+}

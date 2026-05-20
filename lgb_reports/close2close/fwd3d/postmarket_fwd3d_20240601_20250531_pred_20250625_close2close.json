@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240601",
+  "train_end": "20250531",
+  "pred_date": "20250625",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600210.SH",
+      "stock_code": "600210",
+      "stock_name": "紫江企业",
+      "lgb_score": 100.0,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 2,
+      "ts_code": "601162.SH",
+      "stock_code": "601162",
+      "stock_name": "天风证券",
+      "lgb_score": 93.43,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
+      "ts_code": "300545.SZ",
+      "stock_code": "300545",
+      "stock_name": "联得装备",
+      "lgb_score": 92.48,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 4,
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 90.85,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 5,
+      "ts_code": "002396.SZ",
+      "stock_code": "002396",
+      "stock_name": "星网锐捷",
+      "lgb_score": 86.48,
+      "raw_score": 0.1
+    }
+  ]
+}

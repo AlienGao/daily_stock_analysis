@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20250101",
+  "train_end": "20251231",
+  "pred_date": "20260119",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000589.SZ",
+      "stock_code": "000589",
+      "stock_name": "贵州轮胎",
+      "lgb_score": 100.0,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 2,
+      "ts_code": "001325.SZ",
+      "stock_code": "001325",
+      "stock_name": "元创股份",
+      "lgb_score": 97.23,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 3,
+      "ts_code": "301023.SZ",
+      "stock_code": "301023",
+      "stock_name": "奕帆传动",
+      "lgb_score": 88.31,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 4,
+      "ts_code": "601678.SH",
+      "stock_code": "601678",
+      "stock_name": "滨化股份",
+      "lgb_score": 86.38,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 5,
+      "ts_code": "002438.SZ",
+      "stock_code": "002438",
+      "stock_name": "江苏神通",
+      "lgb_score": 85.59,
+      "raw_score": 0.11
+    }
+  ]
+}

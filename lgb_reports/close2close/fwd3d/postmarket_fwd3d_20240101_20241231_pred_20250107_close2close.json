@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240101",
+  "train_end": "20241231",
+  "pred_date": "20250107",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002245.SZ",
+      "stock_code": "002245",
+      "stock_name": "蔚蓝锂芯",
+      "lgb_score": 100.0,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 2,
+      "ts_code": "002112.SZ",
+      "stock_code": "002112",
+      "stock_name": "三变科技",
+      "lgb_score": 95.48,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 92.81,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 89.14,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "000533.SZ",
+      "stock_code": "000533",
+      "stock_name": "顺钠股份",
+      "lgb_score": 88.86,
+      "raw_score": 0.08
+    }
+  ]
+}

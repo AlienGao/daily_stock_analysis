@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20250101",
+  "train_end": "20251231",
+  "pred_date": "20260120",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688035.SH",
+      "stock_code": "688035",
+      "stock_name": "德邦科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "300042.SZ",
+      "stock_code": "300042",
+      "stock_name": "朗科科技",
+      "lgb_score": 98.11,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "301590.SZ",
+      "stock_code": "301590",
+      "stock_name": "优优绿能",
+      "lgb_score": 96.78,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "301071.SZ",
+      "stock_code": "301071",
+      "stock_name": "力量钻石",
+      "lgb_score": 90.62,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "688689.SH",
+      "stock_code": "688689",
+      "stock_name": "银河微电",
+      "lgb_score": 85.2,
+      "raw_score": 0.07
+    }
+  ]
+}

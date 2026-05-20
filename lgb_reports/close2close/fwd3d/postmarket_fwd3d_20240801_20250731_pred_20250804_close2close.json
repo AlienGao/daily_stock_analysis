@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240801",
+  "train_end": "20250731",
+  "pred_date": "20250804",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 2,
+      "ts_code": "300519.SZ",
+      "stock_code": "300519",
+      "stock_name": "新光药业",
+      "lgb_score": 87.63,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 3,
+      "ts_code": "002651.SZ",
+      "stock_code": "002651",
+      "stock_name": "利君股份",
+      "lgb_score": 87.37,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "002248.SZ",
+      "stock_code": "002248",
+      "stock_name": "华东数控",
+      "lgb_score": 87.14,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "600192.SH",
+      "stock_code": "600192",
+      "stock_name": "长城电工",
+      "lgb_score": 83.74,
+      "raw_score": 0.09
+    }
+  ]
+}

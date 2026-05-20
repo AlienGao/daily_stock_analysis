@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240601",
+  "train_end": "20250531",
+  "pred_date": "20250616",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 100.0,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "603218.SH",
+      "stock_code": "603218",
+      "stock_name": "日月股份",
+      "lgb_score": 98.64,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "002269.SZ",
+      "stock_code": "002269",
+      "stock_name": "美邦服饰",
+      "lgb_score": 96.11,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "002490.SZ",
+      "stock_code": "002490",
+      "stock_name": "山东墨龙",
+      "lgb_score": 95.52,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
+      "lgb_score": 93.85,
+      "raw_score": 0.08
+    }
+  ]
+}

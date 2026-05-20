@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20250301",
+  "train_end": "20260228",
+  "pred_date": "20260312",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688031.SH",
+      "stock_code": "688031",
+      "stock_name": "星环科技-U",
+      "lgb_score": 100.0,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 2,
+      "ts_code": "002458.SZ",
+      "stock_code": "002458",
+      "stock_name": "益生股份",
+      "lgb_score": 97.64,
+      "raw_score": 0.2
+    },
+    {
+      "rank": 3,
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
+      "lgb_score": 95.58,
+      "raw_score": 0.2
+    },
+    {
+      "rank": 4,
+      "ts_code": "688027.SH",
+      "stock_code": "688027",
+      "stock_name": "国盾量子",
+      "lgb_score": 94.38,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 5,
+      "ts_code": "688525.SH",
+      "stock_code": "688525",
+      "stock_name": "佰维存储",
+      "lgb_score": 90.19,
+      "raw_score": 0.17
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260508",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "603056.SH",
+      "stock_code": "603056",
+      "stock_name": "",
+      "lgb_score": 100.0,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 2,
+      "ts_code": "000001.SH.SZ",
+      "stock_code": "000001",
+      "stock_name": "平安银行",
+      "lgb_score": 89.94,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 3,
+      "ts_code": "688121.SH",
+      "stock_code": "688121",
+      "stock_name": "卓然股份",
+      "lgb_score": 88.15,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 4,
+      "ts_code": "301129.SZ",
+      "stock_code": "301129",
+      "stock_name": "瑞纳智能",
+      "lgb_score": 87.27,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 5,
+      "ts_code": "920641.BJ",
+      "stock_code": "920641.BJ",
+      "stock_name": "",
+      "lgb_score": 86.36,
+      "raw_score": 0.06
+    }
+  ]
+}

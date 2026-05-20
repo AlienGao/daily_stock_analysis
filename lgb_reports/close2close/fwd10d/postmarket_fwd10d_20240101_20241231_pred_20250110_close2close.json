@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20240101",
+  "train_end": "20241231",
+  "pred_date": "20250110",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 100.0,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 2,
+      "ts_code": "002407.SZ",
+      "stock_code": "002407",
+      "stock_name": "多氟多",
+      "lgb_score": 99.63,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 3,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 99.26,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 4,
+      "ts_code": "688652.SH",
+      "stock_code": "688652",
+      "stock_name": "京仪装备",
+      "lgb_score": 92.99,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 5,
+      "ts_code": "300042.SZ",
+      "stock_code": "300042",
+      "stock_name": "朗科科技",
+      "lgb_score": 92.46,
+      "raw_score": 0.15
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240301",
+  "train_end": "20250228",
+  "pred_date": "20250304",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002164.SZ",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "002255.SZ",
+      "stock_code": "002255",
+      "stock_name": "海陆重工",
+      "lgb_score": 91.7,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "300042.SZ",
+      "stock_code": "300042",
+      "stock_name": "朗科科技",
+      "lgb_score": 89.18,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "600619.SH",
+      "stock_code": "600619",
+      "stock_name": "海立股份",
+      "lgb_score": 87.25,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 84.58,
+      "raw_score": 0.08
+    }
+  ]
+}

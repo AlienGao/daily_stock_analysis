@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20241101",
+  "train_end": "20251031",
+  "pred_date": "20251121",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002274.SZ",
+      "stock_code": "002274",
+      "stock_name": "华昌化工",
+      "lgb_score": 100.0,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "301071.SZ",
+      "stock_code": "301071",
+      "stock_name": "力量钻石",
+      "lgb_score": 98.02,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "002438.SZ",
+      "stock_code": "002438",
+      "stock_name": "江苏神通",
+      "lgb_score": 97.13,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 96.52,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "688627.SH",
+      "stock_code": "688627",
+      "stock_name": "精智达",
+      "lgb_score": 96.25,
+      "raw_score": 0.09
+    }
+  ]
+}

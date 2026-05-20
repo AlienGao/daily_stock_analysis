@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240401",
+  "train_end": "20250331",
+  "pred_date": "20250421",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "603893.SH",
+      "stock_code": "603893",
+      "stock_name": "瑞芯微",
+      "lgb_score": 100.0,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 2,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 99.42,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 3,
+      "ts_code": "301633.SZ",
+      "stock_code": "301633",
+      "stock_name": "港迪技术",
+      "lgb_score": 89.1,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 4,
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 88.69,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 5,
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 87.52,
+      "raw_score": 0.11
+    }
+  ]
+}

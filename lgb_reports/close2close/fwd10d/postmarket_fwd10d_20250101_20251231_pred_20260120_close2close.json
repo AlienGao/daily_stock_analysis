@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20250101",
+  "train_end": "20251231",
+  "pred_date": "20260120",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 100.0,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 2,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 98.35,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 3,
+      "ts_code": "600798.SH",
+      "stock_code": "600798",
+      "stock_name": "宁波海运",
+      "lgb_score": 97.88,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 4,
+      "ts_code": "600704.SH",
+      "stock_code": "600704",
+      "stock_name": "物产中大",
+      "lgb_score": 97.41,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 5,
+      "ts_code": "688212.SH",
+      "stock_code": "688212",
+      "stock_name": "澳华内镜",
+      "lgb_score": 96.5,
+      "raw_score": 0.22
+    }
+  ]
+}

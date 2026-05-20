@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240501",
+  "train_end": "20250430",
+  "pred_date": "20250516",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600509.SH",
+      "stock_code": "600509",
+      "stock_name": "天富能源",
+      "lgb_score": 100.0,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 2,
+      "ts_code": "301209.SZ",
+      "stock_code": "301209",
+      "stock_name": "联合化学",
+      "lgb_score": 96.59,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 3,
+      "ts_code": "688682.SH",
+      "stock_code": "688682",
+      "stock_name": "霍莱沃",
+      "lgb_score": 90.6,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 4,
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
+      "lgb_score": 89.37,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 5,
+      "ts_code": "301205.SZ",
+      "stock_code": "301205",
+      "stock_name": "联特科技",
+      "lgb_score": 88.74,
+      "raw_score": 0.14
+    }
+  ]
+}

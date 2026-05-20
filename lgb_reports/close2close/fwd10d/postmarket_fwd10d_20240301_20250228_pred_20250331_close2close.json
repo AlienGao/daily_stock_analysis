@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20240301",
+  "train_end": "20250228",
+  "pred_date": "20250331",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 2,
+      "ts_code": "301137.SZ",
+      "stock_code": "301137",
+      "stock_name": "哈焊华通",
+      "lgb_score": 99.0,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 3,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 98.2,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 4,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 98.15,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 5,
+      "ts_code": "300378.SZ",
+      "stock_code": "300378",
+      "stock_name": "鼎捷数智",
+      "lgb_score": 96.84,
+      "raw_score": 0.17
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20250401",
+  "train_end": "20260331",
+  "pred_date": "20260430",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688048.SH",
+      "stock_code": "688048",
+      "stock_name": "长光华芯",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "300976.SZ",
+      "stock_code": "300976",
+      "stock_name": "达瑞电子",
+      "lgb_score": 99.71,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "300083.SZ",
+      "stock_code": "300083",
+      "stock_name": "创世纪",
+      "lgb_score": 88.01,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
+      "lgb_score": 87.96,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "688331.SH.SH",
+      "stock_code": "688331",
+      "stock_name": "荣昌生物",
+      "lgb_score": 87.66,
+      "raw_score": 0.08
+    }
+  ]
+}

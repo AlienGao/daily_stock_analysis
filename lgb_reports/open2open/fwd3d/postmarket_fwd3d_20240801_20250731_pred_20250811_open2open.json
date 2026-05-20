@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240801",
+  "train_end": "20250731",
+  "pred_date": "20250811",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 100.0,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 99.93,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "300774.SZ",
+      "stock_code": "300774",
+      "stock_name": "倍杰特",
+      "lgb_score": 98.17,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "002407.SZ",
+      "stock_code": "002407",
+      "stock_name": "多氟多",
+      "lgb_score": 96.59,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "002756.SZ",
+      "stock_code": "002756",
+      "stock_name": "永兴材料",
+      "lgb_score": 96.43,
+      "raw_score": 0.09
+    }
+  ]
+}

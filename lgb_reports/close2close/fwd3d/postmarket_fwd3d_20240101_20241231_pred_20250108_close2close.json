@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240101",
+  "train_end": "20241231",
+  "pred_date": "20250108",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300992.SZ",
+      "stock_code": "300992",
+      "stock_name": "泰福泵业",
+      "lgb_score": 100.0,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 2,
+      "ts_code": "002164.SZ",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 94.4,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 92.82,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 89.5,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "688768.SH",
+      "stock_code": "688768",
+      "stock_name": "容知日新",
+      "lgb_score": 87.19,
+      "raw_score": 0.07
+    }
+  ]
+}

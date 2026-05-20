@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20250201",
+  "train_end": "20260131",
+  "pred_date": "20260206",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "001215.SZ",
+      "stock_code": "001215",
+      "stock_name": "千味央厨",
+      "lgb_score": 100.0,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 2,
+      "ts_code": "301322.SZ",
+      "stock_code": "301322",
+      "stock_name": "绿通科技",
+      "lgb_score": 98.1,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 3,
+      "ts_code": "600498.SH",
+      "stock_code": "600498",
+      "stock_name": "烽火通信",
+      "lgb_score": 96.83,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 4,
+      "ts_code": "600566.SH",
+      "stock_code": "600566",
+      "stock_name": "济川药业",
+      "lgb_score": 95.74,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 5,
+      "ts_code": "002407.SZ",
+      "stock_code": "002407",
+      "stock_name": "多氟多",
+      "lgb_score": 95.06,
+      "raw_score": 0.06
+    }
+  ]
+}

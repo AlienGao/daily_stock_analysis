@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20241201",
+  "train_end": "20251130",
+  "pred_date": "20251215",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000936.SZ",
+      "stock_code": "000936",
+      "stock_name": "华西股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "002438.SZ",
+      "stock_code": "002438",
+      "stock_name": "江苏神通",
+      "lgb_score": 96.97,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "000536.SZ",
+      "stock_code": "000536",
+      "stock_name": "华映科技",
+      "lgb_score": 93.2,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "002885.SZ",
+      "stock_code": "002885",
+      "stock_name": "京泉华",
+      "lgb_score": 91.73,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "000850.SZ",
+      "stock_code": "000850",
+      "stock_name": "华茂股份",
+      "lgb_score": 90.96,
+      "raw_score": 0.08
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240701",
+  "train_end": "20250630",
+  "pred_date": "20250702",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 100.0,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "002086.SZ",
+      "stock_code": "002086",
+      "stock_name": "东方海洋",
+      "lgb_score": 97.87,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "600467.SH",
+      "stock_code": "600467",
+      "stock_name": "好当家",
+      "lgb_score": 97.56,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 96.95,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "600362.SH",
+      "stock_code": "600362",
+      "stock_name": "江西铜业",
+      "lgb_score": 96.46,
+      "raw_score": 0.09
+    }
+  ]
+}

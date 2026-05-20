@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240601",
+  "train_end": "20250531",
+  "pred_date": "20250617",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688693.SH",
+      "stock_code": "688693",
+      "stock_name": "锴威特",
+      "lgb_score": 100.0,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 2,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 97.47,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 3,
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 95.13,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 4,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 94.96,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 5,
+      "ts_code": "300970.SZ",
+      "stock_code": "300970",
+      "stock_name": "华绿生物",
+      "lgb_score": 93.58,
+      "raw_score": 0.14
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240201",
+  "train_end": "20250131",
+  "pred_date": "20250225",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "603915.SH",
+      "stock_code": "603915",
+      "stock_name": "国茂股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "688506.SH",
+      "stock_code": "688506",
+      "stock_name": "百利天恒",
+      "lgb_score": 85.38,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 3,
+      "ts_code": "300738.SZ",
+      "stock_code": "300738",
+      "stock_name": "奥飞数据",
+      "lgb_score": 82.53,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 4,
+      "ts_code": "301486.SZ",
+      "stock_code": "301486",
+      "stock_name": "致尚科技",
+      "lgb_score": 80.33,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 5,
+      "ts_code": "300657.SZ",
+      "stock_code": "300657",
+      "stock_name": "弘信电子",
+      "lgb_score": 79.3,
+      "raw_score": 0.07
+    }
+  ]
+}

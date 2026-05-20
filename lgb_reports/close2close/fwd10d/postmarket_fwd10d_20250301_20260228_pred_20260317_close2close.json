@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20250301",
+  "train_end": "20260228",
+  "pred_date": "20260317",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688411.SH",
+      "stock_code": "688411",
+      "stock_name": "海博思创",
+      "lgb_score": 100.0,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 2,
+      "ts_code": "601869.SH",
+      "stock_code": "601869",
+      "stock_name": "长飞光纤",
+      "lgb_score": 99.02,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 3,
+      "ts_code": "688048.SH",
+      "stock_code": "688048",
+      "stock_name": "长光华芯",
+      "lgb_score": 96.67,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 4,
+      "ts_code": "688125.SH",
+      "stock_code": "688125",
+      "stock_name": "安达智能",
+      "lgb_score": 91.18,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 5,
+      "ts_code": "688320.SH",
+      "stock_code": "688320",
+      "stock_name": "禾川科技",
+      "lgb_score": 89.81,
+      "raw_score": 0.15
+    }
+  ]
+}

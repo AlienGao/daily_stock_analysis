@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240701",
+  "train_end": "20250630",
+  "pred_date": "20250715",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300502.SZ",
+      "stock_code": "300502",
+      "stock_name": "新易盛",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "002511.SZ",
+      "stock_code": "002511",
+      "stock_name": "中顺洁柔",
+      "lgb_score": 92.04,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "000652.SZ",
+      "stock_code": "000652",
+      "stock_name": "泰达股份",
+      "lgb_score": 89.64,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "002009.SZ",
+      "stock_code": "002009",
+      "stock_name": "天奇股份",
+      "lgb_score": 89.54,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 89.52,
+      "raw_score": 0.09
+    }
+  ]
+}

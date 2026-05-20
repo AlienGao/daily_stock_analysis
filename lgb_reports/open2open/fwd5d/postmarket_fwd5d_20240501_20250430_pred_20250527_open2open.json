@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240501",
+  "train_end": "20250430",
+  "pred_date": "20250527",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 100.0,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 2,
+      "ts_code": "600199.SH",
+      "stock_code": "600199",
+      "stock_name": "金种子酒",
+      "lgb_score": 98.1,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 3,
+      "ts_code": "300612.SZ",
+      "stock_code": "300612",
+      "stock_name": "宣亚国际",
+      "lgb_score": 95.61,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 4,
+      "ts_code": "301538.SZ",
+      "stock_code": "301538",
+      "stock_name": "骏鼎达",
+      "lgb_score": 95.5,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 5,
+      "ts_code": "688320.SH",
+      "stock_code": "688320",
+      "stock_name": "禾川科技",
+      "lgb_score": 94.73,
+      "raw_score": 0.13
+    }
+  ]
+}

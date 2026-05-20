@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240701",
+  "train_end": "20250630",
+  "pred_date": "20250716",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300066.SZ",
+      "stock_code": "300066",
+      "stock_name": "三川智慧",
+      "lgb_score": 100.0,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 2,
+      "ts_code": "301538.SZ",
+      "stock_code": "301538",
+      "stock_name": "骏鼎达",
+      "lgb_score": 98.05,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "603325.SH",
+      "stock_code": "603325",
+      "stock_name": "博隆技术",
+      "lgb_score": 92.03,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "300128.SZ",
+      "stock_code": "300128",
+      "stock_name": "锦富技术",
+      "lgb_score": 90.64,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "002511.SZ",
+      "stock_code": "002511",
+      "stock_name": "中顺洁柔",
+      "lgb_score": 89.94,
+      "raw_score": 0.08
+    }
+  ]
+}

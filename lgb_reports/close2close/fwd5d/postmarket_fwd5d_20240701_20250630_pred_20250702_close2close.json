@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240701",
+  "train_end": "20250630",
+  "pred_date": "20250702",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688108.SH",
+      "stock_code": "688108",
+      "stock_name": "赛诺医疗",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "000153.SZ",
+      "stock_code": "000153",
+      "stock_name": "丰原药业",
+      "lgb_score": 98.9,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "002278.SZ",
+      "stock_code": "002278",
+      "stock_name": "神开股份",
+      "lgb_score": 98.77,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 4,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 98.68,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 5,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 98.25,
+      "raw_score": 0.11
+    }
+  ]
+}

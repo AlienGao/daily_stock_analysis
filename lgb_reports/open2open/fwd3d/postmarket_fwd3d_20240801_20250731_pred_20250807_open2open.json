@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240801",
+  "train_end": "20250731",
+  "pred_date": "20250807",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "601138.SH",
+      "stock_code": "601138",
+      "stock_name": "工业富联",
+      "lgb_score": 100.0,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 2,
+      "ts_code": "300629.SZ",
+      "stock_code": "300629",
+      "stock_name": "新劲刚",
+      "lgb_score": 84.2,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 3,
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 83.33,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "603926.SH",
+      "stock_code": "603926",
+      "stock_name": "铁流股份",
+      "lgb_score": 82.23,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "002331.SZ",
+      "stock_code": "002331",
+      "stock_name": "皖通科技",
+      "lgb_score": 81.88,
+      "raw_score": 0.09
+    }
+  ]
+}

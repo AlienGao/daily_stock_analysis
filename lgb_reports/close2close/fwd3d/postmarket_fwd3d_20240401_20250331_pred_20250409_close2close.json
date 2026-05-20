@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240401",
+  "train_end": "20250331",
+  "pred_date": "20250409",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "600343.SH",
+      "stock_code": "600343",
+      "stock_name": "航天动力",
+      "lgb_score": 99.18,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "600798.SH",
+      "stock_code": "600798",
+      "stock_name": "宁波海运",
+      "lgb_score": 97.01,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "002307.SZ",
+      "stock_code": "002307",
+      "stock_name": "北新路桥",
+      "lgb_score": 96.02,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 95.07,
+      "raw_score": 0.1
+    }
+  ]
+}

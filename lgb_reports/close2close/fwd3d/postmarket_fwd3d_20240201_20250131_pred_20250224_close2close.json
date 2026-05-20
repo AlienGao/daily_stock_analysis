@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240201",
+  "train_end": "20250131",
+  "pred_date": "20250224",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000816.SZ",
+      "stock_code": "000816",
+      "stock_name": "智慧农业",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "300842.SZ",
+      "stock_code": "300842",
+      "stock_name": "帝科股份",
+      "lgb_score": 97.8,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "301196.SZ",
+      "stock_code": "301196",
+      "stock_name": "唯科科技",
+      "lgb_score": 89.94,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "688388.SH",
+      "stock_code": "688388",
+      "stock_name": "嘉元科技",
+      "lgb_score": 88.61,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "002580.SZ",
+      "stock_code": "002580",
+      "stock_name": "圣阳股份",
+      "lgb_score": 88.21,
+      "raw_score": 0.09
+    }
+  ]
+}

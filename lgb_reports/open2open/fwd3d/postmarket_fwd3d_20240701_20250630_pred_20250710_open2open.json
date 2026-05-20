@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240701",
+  "train_end": "20250630",
+  "pred_date": "20250710",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "603801.SH",
+      "stock_code": "603801",
+      "stock_name": "志邦家居",
+      "lgb_score": 100.0,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "002353.SZ",
+      "stock_code": "002353",
+      "stock_name": "杰瑞股份",
+      "lgb_score": 99.88,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 97.59,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "002444.SZ",
+      "stock_code": "002444",
+      "stock_name": "巨星科技",
+      "lgb_score": 97.36,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "000987.SZ",
+      "stock_code": "000987",
+      "stock_name": "越秀资本",
+      "lgb_score": 93.38,
+      "raw_score": 0.08
+    }
+  ]
+}

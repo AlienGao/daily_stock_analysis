@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20240301",
+  "train_end": "20250228",
+  "pred_date": "20250312",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 2,
+      "ts_code": "688316.SH",
+      "stock_code": "688316",
+      "stock_name": "青云科技-U",
+      "lgb_score": 97.36,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 3,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 86.63,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 4,
+      "ts_code": "301021.SZ",
+      "stock_code": "301021",
+      "stock_name": "英诺激光",
+      "lgb_score": 86.6,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 5,
+      "ts_code": "688071.SH",
+      "stock_code": "688071",
+      "stock_name": "华依科技",
+      "lgb_score": 86.11,
+      "raw_score": 0.11
+    }
+  ]
+}

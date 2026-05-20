@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20250401",
+  "train_end": "20260331",
+  "pred_date": "20260410",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "601869.SH",
+      "stock_code": "601869",
+      "stock_name": "长飞光纤",
+      "lgb_score": 100.0,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 2,
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
+      "lgb_score": 97.81,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 3,
+      "ts_code": "688195.SH",
+      "stock_code": "688195",
+      "stock_name": "腾景科技",
+      "lgb_score": 95.23,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 4,
+      "ts_code": "603788.SH",
+      "stock_code": "603788",
+      "stock_name": "宁波高发",
+      "lgb_score": 92.59,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 5,
+      "ts_code": "603320.SH",
+      "stock_code": "603320",
+      "stock_name": "迪贝电气",
+      "lgb_score": 92.04,
+      "raw_score": 0.11
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20240101",
+  "train_end": "20241231",
+  "pred_date": "20250114",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300612.SZ",
+      "stock_code": "300612",
+      "stock_name": "宣亚国际",
+      "lgb_score": 100.0,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 2,
+      "ts_code": "002291.SZ",
+      "stock_code": "002291",
+      "stock_name": "遥望科技",
+      "lgb_score": 96.22,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "002600.SZ",
+      "stock_code": "002600",
+      "stock_name": "领益智造",
+      "lgb_score": 92.4,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "300007.SZ",
+      "stock_code": "300007",
+      "stock_name": "汉威科技",
+      "lgb_score": 90.29,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "002164.SZ",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 90.03,
+      "raw_score": 0.08
+    }
+  ]
+}
