@@ -11,7 +11,7 @@ from typing import Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-from src.discovery.factors.base import BaseFactor
+from src.discovery.factors.base import BaseFactor, apply_hfq_to_prices
 
 logger = logging.getLogger(__name__)
 
@@ -95,8 +95,22 @@ class BuybackFactor(BaseFactor):
                 if code not in price_map:
                     price_map[code] = close
 
+            # 后复权修正
+            from src.storage import StockAdjFactor
+            adj_max = {}
+            with db.get_session() as s2:
+                adj_rows = s2.query(StockAdjFactor.code, StockAdjFactor.adj_factor).filter(
+                    StockAdjFactor.code.in_(bare_codes),
+                ).order_by(StockAdjFactor.trade_date.desc()).all()
+                for code, adj in adj_rows:
+                    if code not in adj_max:
+                        adj_max[code] = float(adj)
+
             return pd.Series(
-                [price_map.get(str(c)[:6], float("nan")) for c in index],
+                [
+                    price_map.get(str(c)[:6], float("nan")) * adj_max.get(str(c)[:6], 1.0)
+                    for c in index
+                ],
                 index=index,
             )
         except Exception as e:

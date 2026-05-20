@@ -31,7 +31,7 @@ from api.v1.schemas.research import (
     LGBBacktestSimAvailableResponse,
 )
 from src.discovery.ml.lgb_trainer import LGBTrainer
-from src.storage import DatabaseManager, FactorScoreSnapshot, StockDaily
+from src.storage import DatabaseManager, FactorScoreSnapshot, StockAdjFactor, StockDaily
 
 router = APIRouter()
 
@@ -625,6 +625,19 @@ def lgb_backtest_sim(
             "pct_chg": float(r.pct_chg) if r.pct_chg else 0.0,
         }
 
+    # Build adj_factor lookup: {(code, YYYYMMDD): adj_factor}
+    adj_map: Dict[tuple, float] = {}
+    with db.get_session() as session:
+        adj_rows = session.query(StockAdjFactor).filter(
+            StockAdjFactor.code.in_(list(all_codes)),
+            StockAdjFactor.trade_date.in_(
+                [f"{d[:4]}-{d[4:6]}-{d[6:8]}" for d in all_date_strs]
+            ),
+        ).all()
+    for r in adj_rows:
+        d = r.trade_date.strftime("%Y%m%d") if hasattr(r.trade_date, "strftime") else str(r.trade_date).replace("-", "")[:8]
+        adj_map[(str(r.code).split(".")[0].zfill(6), d)] = float(r.adj_factor)
+
     # 5. Simulate trades with rolling position sizing
     # initial_capital = 100w, each slot uses 1/forward_days of total portfolio
     INITIAL_CAPITAL = 1_000_000.0
@@ -812,7 +825,10 @@ def lgb_backtest_sim(
                     sell_price = actual_sell_price
                     skipped = False
 
-                ret = round((sell_price - buy_price) / buy_price, 6)
+                adj_b = adj_map.get((code, buy_date), 1.0)
+                adj_s = adj_map.get((code, actual_sell_date), 1.0)
+                raw_ret = (sell_price - buy_price) / buy_price
+                ret = round((1.0 + raw_ret) * (adj_b / adj_s) - 1.0, 6)
                 slot_trades.append({
                     "code": code, "ts_code": ts_code, "stock_name": stock_name,
                     "rank": rank, "buy_price": buy_price, "sell_price": sell_price,
@@ -912,7 +928,7 @@ def lgb_backtest_sim_available():
         base = _os.path.join(reports_dir, dir_name)
         if not _os.path.isdir(base):
             continue
-        for fwd in [1, 3, 5]:
+        for fwd in [3, 5, 10]:
             fwd_dir = _os.path.join(base, f"fwd{fwd}d")
             if _os.path.isdir(fwd_dir):
                 json_count = len(_glob.glob(_os.path.join(fwd_dir, "*.json")))
@@ -926,12 +942,12 @@ def _warmup_backtest_cache():
     import logging
     _log = logging.getLogger(__name__)
     common_combos = [
-        (1, 5, "open"),
-        (1, 5, "close"),
         (3, 5, "open"),
         (3, 5, "close"),
         (5, 5, "open"),
         (5, 5, "close"),
+        (10, 5, "open"),
+        (10, 5, "close"),
     ]
     for fwd, tn, em in common_combos:
         key = f"fwd{fwd}_top{tn}_{em}"

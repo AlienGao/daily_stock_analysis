@@ -46,7 +46,7 @@ const LightGBMPage: React.FC = () => {
   const [backtestSim, setBacktestSim] = useState<LGBBacktestSimResponse | null>(null);
   const [backtestSimLoading, setBacktestSimLoading] = useState(false);
   const [backtestSimAvailable, setBacktestSimAvailable] = useState<LGBBacktestSimAvailableResponse | null>(null);
-  const [backtestFwd, setBacktestFwd] = useState(1);
+  const [backtestFwd, setBacktestFwd] = useState(3);
   const [backtestTopN, setBacktestTopN] = useState(1);
 
   /* ── Derived per-mode bounds ── */
@@ -552,7 +552,7 @@ const LightGBMPage: React.FC = () => {
                     ? (trainExecMode === 'open'
                       ? backtestSimAvailable.open
                       : backtestSimAvailable.close)
-                    : [1, 3]
+                    : [3, 5, 10]
                   ).map((d) => ({ label: `${d} 日`, value: String(d) }))}
                 />
               </div>

@@ -57,6 +57,75 @@ def pct_rank(series: pd.Series, index: pd.Index) -> pd.Series:
     return ranks.reindex(index).fillna(50.0)
 
 
+def apply_hfq_to_prices(db, df: pd.DataFrame) -> pd.DataFrame:
+    """后复权修正 stock_daily 价格列 (in-place)。
+
+    hfq_price = raw_price × adj_max / adj_t
+    df 需包含 code、date 列以及需要修正的价格列 (open/high/low/close)。
+    缺失 adj_factor 的行保持原价不变。
+    """
+    if df.empty:
+        return df
+    if "code" not in df.columns or "date" not in df.columns:
+        return df
+
+    codes = df["code"].astype(str).str.strip().str.zfill(6).unique().tolist()
+    date_strs = df["date"].astype(str).str.strip().str[:8].unique().tolist()
+
+    try:
+        from datetime import date as _date_cls
+        from src.storage import DatabaseManager as _DBM, StockAdjFactor
+        dm = db if isinstance(db, _DBM) else _DBM.get_instance()
+
+        do = []
+        for d in date_strs:
+            try:
+                do.append(_date_cls(int(d[:4]), int(d[4:6]), int(d[6:8])))
+            except (ValueError, IndexError):
+                pass
+        if not do:
+            return df
+
+        adj_map: Dict[str, float] = {}       # code|date_str → adj_factor
+        adj_max: Dict[str, float] = {}       # code → max adj_factor
+
+        with dm.get_session() as s:
+            rows = s.query(StockAdjFactor).filter(
+                StockAdjFactor.code.in_(codes),
+                StockAdjFactor.trade_date.in_(do),
+            ).all()
+            for r in rows:
+                ds = r.trade_date.strftime("%Y%m%d")
+                key = f"{r.code}|{ds}"
+                val = float(r.adj_factor)
+                adj_map[key] = val
+                if val > adj_max.get(r.code, 0.0):
+                    adj_max[r.code] = val
+
+        if not adj_map:
+            return df
+
+        price_cols = [c for c in ["open", "high", "low", "close"] if c in df.columns]
+        if not price_cols:
+            return df
+
+        for idx, row in df.iterrows():
+            code = str(row["code"]).strip().zfill(6)
+            ds = str(row["date"]).strip()[:8]
+            adj_t = adj_map.get(f"{code}|{ds}")
+            am = adj_max.get(code)
+            if adj_t and adj_t > 0 and am and am > 0:
+                factor = am / adj_t
+                for pc in price_cols:
+                    v = row[pc]
+                    if v is not None and pd.notna(v):
+                        df.at[idx, pc] = float(v) * factor
+    except Exception as e:
+        logger.debug("[hfq] 复权修正跳过: %s", e)
+
+    return df
+
+
 def safe_ratio(series: pd.Series, mv: pd.Series) -> pd.Series:
     """计算 值/市值 比率, 市值缺失或为 0 时返回 NaN."""
     mv_safe = mv.replace(0, np.nan)

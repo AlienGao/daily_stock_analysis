@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 from sqlalchemy import text
 
-from src.discovery.factors.base import BaseFactor
+from src.discovery.factors.base import BaseFactor, apply_hfq_to_prices
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +85,7 @@ class GapReversalFactor(BaseFactor):
         df = pd.DataFrame(rows, columns=["code", "date", "open", "close"])
         df = df.drop_duplicates(subset=["code", "date"], keep="last")
         df["code"] = df["code"].astype(str).str.strip().str.zfill(6)
+        apply_hfq_to_prices(db, df)
 
         dates_sorted = sorted(df["date"].unique(), reverse=True)
 

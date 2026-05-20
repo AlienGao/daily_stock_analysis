@@ -231,7 +231,7 @@ class LGBTrainer:
         exec_mode="open":  buy at next-trading-day open, sell at N days later open
 
         使用 stock_adj_factor 表后复权，消除除权除息影响：
-        adj_return = (1 + unadj_return) × (adj_sell / adj_buy) - 1
+        adj_return = (1 + unadj_return) × (adj_buy / adj_sell) - 1
         """
         from src.storage import StockAdjFactor, StockDaily
         from sqlalchemy import func
@@ -315,7 +315,7 @@ class LGBTrainer:
                         adj_buy = adj_map.get((bare, buy_date), 1.0)
                         adj_sell = adj_map.get((bare, sell_date), 1.0)
                         if adj_buy > 0 and adj_sell > 0:
-                            results[(td, code)] = (1.0 + unadj_ret) * (adj_sell / adj_buy) - 1.0
+                            results[(td, code)] = (1.0 + unadj_ret) * (adj_buy / adj_sell) - 1.0
             return pd.Series(results, name=f"fwd_{self.forward_days}d")
 
         # ── Close-to-close ──
@@ -348,7 +348,7 @@ class LGBTrainer:
                     adj_buy = adj_map.get((bare, td), 1.0)
                     adj_sell = adj_map.get((bare, sell_date), 1.0)
                     if adj_buy > 0 and adj_sell > 0:
-                        results[(td, code)] = (1.0 + unadj_ret) * (adj_sell / adj_buy) - 1.0
+                        results[(td, code)] = (1.0 + unadj_ret) * (adj_buy / adj_sell) - 1.0
         return pd.Series(results, name=f"fwd_{self.forward_days}d")
 
     # ------------------------------------------------------------------
@@ -738,17 +738,23 @@ class LGBTrainer:
             elif d == sell_date:
                 sell_map[str(r.code)] = float(r.close)
 
+        adj_map = _load_adj_factors(db, bare, {td, sell_date})
+
         rets = []
         for c in bare:
             bp = buy_map.get(c)
             sp = sell_map.get(c)
             if bp and sp and bp > 0:
-                rets.append((sp - bp) / bp)
+                raw_ret = (sp - bp) / bp
+                adj_b = adj_map.get((c, td), 1.0)
+                adj_s = adj_map.get((c, sell_date), 1.0)
+                if adj_b > 0 and adj_s > 0:
+                    rets.append((1.0 + raw_ret) * (adj_b / adj_s) - 1.0)
 
         return float(np.mean(rets)) if rets else None
 
     def _calc_benchmark_return(self, db, td: str, sell_date: str) -> Optional[float]:
-        """计算等权全市场基准收益。"""
+        """计算等权全市场基准收益"""
         from src.storage import StockDaily
 
         with db.get_session() as session:
@@ -758,20 +764,32 @@ class LGBTrainer:
 
         buy_map: Dict[str, float] = {}
         sell_map: Dict[str, float] = {}
+        all_bare: set = set()
         for r in rows:
             d = r.date.strftime("%Y%m%d")
+            c = str(r.code).split(".")[0]
             if d == td:
-                buy_map[str(r.code)] = float(r.close)
+                buy_map[c] = float(r.close)
             elif d == sell_date:
-                sell_map[str(r.code)] = float(r.close)
+                sell_map[c] = float(r.close)
+            all_bare.add(c)
 
         common = set(buy_map) & set(sell_map)
         if not common:
             return None
-        rets = [
-            (sell_map[c] - buy_map[c]) / buy_map[c]
-            for c in common if buy_map[c] > 0
-        ]
+
+        adj_map = _load_adj_factors(db, sorted(common), {td, sell_date})
+
+        rets = []
+        for c in common:
+            bp = buy_map.get(c)
+            sp = sell_map.get(c)
+            if bp and sp and bp > 0:
+                raw_ret = (sp - bp) / bp
+                adj_b = adj_map.get((c, td), 1.0)
+                adj_s = adj_map.get((c, sell_date), 1.0)
+                if adj_b > 0 and adj_s > 0:
+                    rets.append((1.0 + raw_ret) * (adj_b / adj_s) - 1.0)
         return float(np.mean(rets)) if rets else None
 
     @staticmethod

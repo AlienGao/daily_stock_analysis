@@ -9,15 +9,27 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 
 
+def _get_env_value(key: str) -> str:
+    """读取环境变量，优先 os.environ，其次 main.py 的 .env 解析缓存。"""
+    val = os.getenv(key)
+    if val is not None:
+        return val
+    try:
+        from main import _ACTIVE_ENV_FILE_VALUES
+        return _ACTIVE_ENV_FILE_VALUES.get(key, "")
+    except Exception:
+        return ""
+
+
 def _env_bool(key: str, default: bool = False) -> bool:
-    val = os.getenv(key, "").strip().lower()
+    val = _get_env_value(key).strip().lower()
     if not val:
         return default
     return val in ("true", "1", "yes", "on")
 
 
 def _env_float(key: str, default: float) -> float:
-    val = os.getenv(key, "").strip()
+    val = _get_env_value(key).strip()
     if not val:
         return default
     try:
@@ -27,7 +39,7 @@ def _env_float(key: str, default: float) -> float:
 
 
 def _env_int(key: str, default: int) -> int:
-    val = os.getenv(key, "").strip()
+    val = _get_env_value(key).strip()
     if not val:
         return default
     try:
@@ -177,17 +189,17 @@ class DiscoveryConfig:
 
     # --- 通知 ---
     feishu_webhook_url: str = field(
-        default_factory=lambda: os.getenv("FEISHU_WEBHOOK_URL", "").strip()
+        default_factory=lambda: _get_env_value("FEISHU_WEBHOOK_URL").strip()
     )
     feishu_webhook_secret: str = field(
-        default_factory=lambda: os.getenv("FEISHU_WEBHOOK_SECRET", "").strip()
+        default_factory=lambda: _get_env_value("FEISHU_WEBHOOK_SECRET").strip()
     )
 
     # --- 股票白名单 ---
     discover_whitelist: set = field(
         default_factory=lambda: set(
             c.strip()
-            for c in os.getenv("DISCOVERY_STOCK_WHITELIST", "").split(",")
+            for c in _get_env_value("DISCOVERY_STOCK_WHITELIST").split(",")
             if c.strip()
         )
     )
@@ -197,16 +209,15 @@ class DiscoveryConfig:
 
     # --- 扫描范围：full_market / whitelist / broker_gold（盘中/盘后独立） ---
     intraday_scan_universe: str = field(
-        default_factory=lambda: os.getenv("DISCOVERY_INTRADAY_SCAN_UNIVERSE",
-                                  os.getenv("DISCOVERY_SCAN_UNIVERSE", "full_market")).strip()
+        default_factory=lambda: (_get_env_value("DISCOVERY_INTRADAY_SCAN_UNIVERSE") or _get_env_value("DISCOVERY_SCAN_UNIVERSE") or "full_market").strip()
     )
     postmarket_scan_universe: str = field(
-        default_factory=lambda: os.getenv("DISCOVERY_POSTMARKET_SCAN_UNIVERSE",
-                                  os.getenv("DISCOVERY_SCAN_UNIVERSE", "full_market")).strip()
+        default_factory=lambda: (_get_env_value("DISCOVERY_POSTMARKET_SCAN_UNIVERSE")
+                                 or _get_env_value("DISCOVERY_SCAN_UNIVERSE") or "full_market").strip()
     )
     # 兼容旧配置（盘中/盘后共用时用此值作为默认）
     scan_universe: str = field(
-        default_factory=lambda: os.getenv("DISCOVERY_SCAN_UNIVERSE", "full_market").strip()
+        default_factory=lambda: _get_env_value("DISCOVERY_SCAN_UNIVERSE") or "full_market".strip()
     )
 
     # --- StockScorer 多维技术评分 ---
@@ -228,7 +239,7 @@ class DiscoveryConfig:
         """盘中管线开关（运行时覆盖 > 环境变量 > enable_discovery_pipeline）。"""
         if self._intraday_pipeline_enabled is not None:
             return self._intraday_pipeline_enabled
-        val = os.getenv("DISCOVERY_INTRADAY_PIPELINE_ENABLED", "").strip().lower()
+        val = _get_env_value("DISCOVERY_INTRADAY_PIPELINE_ENABLED").strip().lower()
         if val:
             return val in ("true", "1", "yes", "on")
         return self.enable_discovery_pipeline
@@ -242,7 +253,7 @@ class DiscoveryConfig:
         """盘后管线开关（运行时覆盖 > 环境变量 > enable_discovery_pipeline）。"""
         if self._postmarket_pipeline_enabled is not None:
             return self._postmarket_pipeline_enabled
-        val = os.getenv("DISCOVERY_POSTMARKET_PIPELINE_ENABLED", "").strip().lower()
+        val = _get_env_value("DISCOVERY_POSTMARKET_PIPELINE_ENABLED").strip().lower()
         if val:
             return val in ("true", "1", "yes", "on")
         return self.enable_discovery_pipeline

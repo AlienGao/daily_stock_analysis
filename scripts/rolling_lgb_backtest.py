@@ -32,7 +32,7 @@ TRAIN_START = "20240101"
 TRAIN_END = "20260430"
 PRED_START = "20250101"
 PRED_END = "20260519"
-FORWARD_DAYS_LIST = [1, 3, 5]
+FORWARD_DAYS_LIST = [3, 5, 10]
 MODE = "postmarket"
 EXEC_MODE_LIST = ["open", "close"]  # "open" = open→open labels, "close" = close→close labels
 TOP_N = 5
@@ -200,7 +200,7 @@ def main():
     print(f"训练起点: {TRAIN_START} ~ {TRAIN_END} (逐月右移)")
     print(f"预测范围: {PRED_START} ~ {PRED_END}")
     print(f"窗口数: {len(windows)} | Forward: {FORWARD_DAYS_LIST}")
-    print(f"报告目录: {REPORTS_ROOT}/{{open2open,close2close}}/{{fwd1d,fwd3d,fwd5d}}")
+    print(f"报告目录: {REPORTS_ROOT}/{{open2open,close2close}}/{{fwd3d,fwd5d,fwd10d}}")
     print("=" * 64)
 
     grand_total_ok = 0
@@ -266,7 +266,7 @@ def cleanup_old_models():
 
     # Group by (forward_days, exec_mode), keep only the latest per group
     keep: set = set()
-    for fwd in [1, 3]:
+    for fwd in [3, 5, 10]:
         for suffix in ["open2open", "close2close"]:
             group = sorted(
                 [m for m in models if f"fwd{fwd}d" in m and suffix in m],

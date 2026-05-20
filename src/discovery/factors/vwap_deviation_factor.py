@@ -20,7 +20,7 @@ import numpy as np
 import pandas as pd
 from sqlalchemy import text
 
-from src.discovery.factors.base import BaseFactor
+from src.discovery.factors.base import BaseFactor, apply_hfq_to_prices
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +63,9 @@ class VwapDeviationFactor(BaseFactor):
 
         df = pd.DataFrame(rows, columns=["code", "close", "amount", "volume"])
         df["code"] = df["code"].astype(str).str.strip().str.zfill(6)
+        df["date"] = target_dt
+        apply_hfq_to_prices(db, df)
+        df = df.drop(columns=["date"])
         df = df.set_index("code")
         df.index.name = "ts_code"
 

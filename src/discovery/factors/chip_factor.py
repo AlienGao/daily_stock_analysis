@@ -11,7 +11,7 @@ from typing import Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-from src.discovery.factors.base import BaseFactor, safe_pct_change, pct_rank
+from src.discovery.factors.base import BaseFactor, safe_pct_change, pct_rank, apply_hfq_to_prices
 
 logger = logging.getLogger(__name__)
 
@@ -154,6 +154,7 @@ class ChipFactor(BaseFactor):
                     rows, columns=["code", "date", "high", "low", "close"]
                 )
                 sd_df["code"] = sd_df["code"].astype(str)
+                apply_hfq_to_prices(db2, sd_df)
 
                 # 4a. 提取当日收盘价
                 today = sd_df[pd.to_datetime(sd_df["date"]).dt.strftime("%Y-%m-%d") == date_fmt]

@@ -1209,35 +1209,50 @@ def refresh_tech_indicator_postmarket(tushare_fetcher) -> int:
 def refresh_adj_factor_postmarket(tushare_fetcher) -> int:
     """盘后增量更新复权因子表 (stock_adj_factor)。
 
-    逐只拉取 Tushare adj_factor，只拉取最近交易日的数据做增量 upsert。
-    若 DB 中尚无数据（首次），则拉取全量历史（从 20200101 起）。
+    已有数据的股票只拉取最新交易日；新股票拉取全量历史（从 20200101 起）。
     """
     try:
         from src.storage import DatabaseManager, StockAdjFactor
 
         db = DatabaseManager.get_instance()
-
-        # 检查是否已有数据
-        with db.get_session() as session:
-            has_existing = session.query(StockAdjFactor).first() is not None
+        from sqlalchemy import func
 
         today = tushare_fetcher.get_trade_time(early_time="18:01", late_time="04:59")
         if not today:
             logger.warning("[Scanner] adj_factor 刷新: 无法获取交易日")
             return 0
 
-        start_date = today if has_existing else "20200101"
         codes = _get_adj_factor_stock_codes(db)
         if not codes:
             logger.warning("[Scanner] adj_factor 刷新: 无股票代码")
             return 0
 
-        logger.info(
-            "[Scanner] adj_factor 刷新: %d 只股票, %s → %s (首次=%s)",
-            len(codes), start_date, today, not has_existing,
-        )
-        saved = tushare_fetcher.fetch_and_save_adj_factors(codes, start_date, today)
-        logger.info("[Scanner] adj_factor 刷新完成: %d 条", saved)
+        # 区分已有数据的股票（增量）和新股票（全量）
+        with db.get_session() as session:
+            existing = set(
+                r[0] for r in session.query(StockAdjFactor.code)
+                .filter(StockAdjFactor.code.in_(codes))
+                .distinct().all()
+            )
+        new_codes = [c for c in codes if c not in existing]
+
+        total_saved = 0
+        if new_codes:
+            logger.info(
+                "[Scanner] adj_factor 新股票 %d 只: 全量拉取 20200101 → %s",
+                len(new_codes), today,
+            )
+            total_saved += tushare_fetcher.fetch_and_save_adj_factors(new_codes, "20200101", today)
+
+        if existing:
+            logger.info(
+                "[Scanner] adj_factor 已有股票 %d 只: 增量拉取 %s",
+                len(existing), today,
+            )
+            total_saved += tushare_fetcher.fetch_and_save_adj_factors(sorted(existing), today, today)
+
+        logger.info("[Scanner] adj_factor 刷新完成: %d 条 (新 %d 只, 已有 %d 只)",
+                     total_saved, len(new_codes), len(existing))
 
         # 清理超 5 年数据
         from datetime import date as _date_cls, timedelta
@@ -1265,9 +1280,9 @@ def _get_adj_factor_stock_codes(db: "DatabaseManager") -> list:
         with db.get_session() as session:
             from sqlalchemy import distinct as _distinct
             from src.storage import StockDaily
-            rows = session.query(_distinct(StockDaily.code)).limit(5000).all()
+            rows = session.query(_distinct(StockDaily.code)).all()
             for r in rows:
-                codes.add(str(r[0]).strip().zfill(6))
+                codes.add(str(r[0]).split(".")[0].strip().zfill(6))
     except Exception:
         pass
     return sorted(codes)

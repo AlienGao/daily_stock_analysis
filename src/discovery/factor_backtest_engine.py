@@ -124,6 +124,8 @@ class FactorBacktestEngine:
     def __init__(self, tushare_fetcher=None):
         self._fetcher = tushare_fetcher
         self._price_cache: Dict[str, Dict[str, Dict[str, float]]] = {}
+        self._adj_cache: Dict[str, Dict[str, float]] = {}
+        self._adj_max: Dict[str, float] = {}
         self._sector_cache: Dict[str, str] = {}
         self._stock_names: Dict[str, str] = {}
         self._market_mult_cache: Dict[str, Dict[str, float]] = {}
@@ -332,6 +334,8 @@ class FactorBacktestEngine:
         sh = self._calc_sharpe(drs, risk_free_rate) if drs else 0
         # 主循环已结束，价格缓存不再需要（IC/quantile 用预计算的 fw_returns）
         self._price_cache.clear()
+        self._adj_cache.clear()
+        self._adj_max.clear()
         if progress_cb:
             progress_cb("计算 IC / 分位数中…")
         ric: Dict[str, Dict[str, float]] = {}
@@ -628,6 +632,8 @@ class FactorBacktestEngine:
 
             optimizer = FactorOptimizer(tushare_fetcher=self._fetcher)
             optimizer._engine._price_cache = self._price_cache
+            optimizer._engine._adj_cache = self._adj_cache
+            optimizer._engine._adj_max = self._adj_max
             optimizer._engine._stock_names = self._stock_names
 
             opt_result = optimizer.optimize(
@@ -816,6 +822,8 @@ class FactorBacktestEngine:
         wr_dynamic = sum(1 for t in dt_closed if t.return_pct > 0) / len(dt_closed) if dt_closed else 0
 
         self._price_cache.clear()
+        self._adj_cache.clear()
+        self._adj_max.clear()
 
         if progress_cb:
             progress_cb("计算 IC / 分位数中…")
@@ -1511,9 +1519,40 @@ class FactorBacktestEngine:
             return base_weights
         return {k: v * multipliers.get(k, 1.0) for k, v in base_weights.items()}
 
+    def _prefetch_adj_factors(self, codes, tds):
+        """预取复权因子用于后复权价格计算。
+
+        hfq_price = raw_price × adj_max / adj_t
+        """
+        if not codes or not tds:
+            return
+        need = [c for c in codes if c not in self._adj_max]
+        if not need and all(
+            c in self._adj_cache.get(d, {}) for d in tds for c in codes
+        ):
+            return
+        try:
+            from src.storage import DatabaseManager, StockAdjFactor
+            db = DatabaseManager()
+            do = [datetime.strptime(d, "%Y%m%d").date() for d in tds]
+            with db.get_session() as s:
+                rows = s.query(StockAdjFactor).filter(
+                    StockAdjFactor.code.in_(codes),
+                    StockAdjFactor.trade_date.in_(do),
+                ).order_by(StockAdjFactor.trade_date.desc()).all()
+                for r in rows:
+                    ds = r.trade_date.strftime("%Y%m%d") if isinstance(r.trade_date, date) else str(r.trade_date)[:8]
+                    self._adj_cache.setdefault(ds, {})[r.code] = float(r.adj_factor)
+                    cur = self._adj_max.get(r.code, 0.0)
+                    if float(r.adj_factor) > cur:
+                        self._adj_max[r.code] = float(r.adj_factor)
+        except Exception as e:
+            logger.debug("[FactorBacktest] adj_factor prefetch: %s", e)
+
     def _prefetch_prices(self, codes, tds):
         if not codes or not tds:
             return
+        self._prefetch_adj_factors(codes, tds)
         dbcs = set()
         try:
             from src.storage import DatabaseManager, StockDaily
@@ -1753,7 +1792,12 @@ class FactorBacktestEngine:
     def _get_price(self, code, ds, field):
         v = (self._price_cache.get(ds, {}).get(code) or {}).get(field)
         if v is not None:
-            return float(v)
+            raw = float(v)
+            adj_t = self._adj_cache.get(ds, {}).get(code)
+            adj_max = self._adj_max.get(code)
+            if adj_t and adj_t > 0 and adj_max and adj_max > 0:
+                return raw * adj_max / adj_t
+            return raw
 
         # Fallback：当天非 close 字段（open/high/low）未命中缓存时，
         # 优先用当天 close（实时价）作为近似值，避免盘中静默丢弃未平仓交易。

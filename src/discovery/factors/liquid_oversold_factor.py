@@ -20,7 +20,7 @@ import numpy as np
 import pandas as pd
 from sqlalchemy import text
 
-from src.discovery.factors.base import BaseFactor
+from src.discovery.factors.base import BaseFactor, apply_hfq_to_prices
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +83,9 @@ class LiquidOversoldFactor(BaseFactor):
                 columns=["code", "pct_chg", "high", "close", "amount", "volume"],
             )
             today["code"] = today["code"].astype(str).str.strip().str.zfill(6)
+            today["date"] = trading_dates[0]
+            apply_hfq_to_prices(db, today)
+            today = today.drop(columns=["date"])
             today = today.set_index("code")
 
             placeholders = ",".join(f":d{i}" for i in range(len(trading_dates)))

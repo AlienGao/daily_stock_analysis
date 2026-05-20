@@ -1,18 +1,19 @@
 {
-  "mode": "postmarket",
-  "timestamp": "2026-05-20T01:54:29.391214",
+  "mode": "intraday",
+  "timestamp": "2026-05-20T21:10:55.047193",
   "deltas": {
-    "alpha042": -4.0,
-    "money_flow": 1.0,
-    "performance": 1.0,
-    "profit_forecast": -2.0
+    "ma_entry": 1.0,
+    "momentum": -3.0,
+    "sector": -19.0,
+    "popularity": -1.0,
+    "ranking_momentum": -1.0
   },
   "recommendation": {
-    "alpha042": 6,
-    "money_flow": 23,
-    "performance": 27,
-    "profit_forecast": 30,
-    "concept_heat": 5
+    "ma_entry": 29,
+    "momentum": 10,
+    "sector": 14,
+    "popularity": 33,
+    "ranking_momentum": 16
   },
   "applied": true
 }
