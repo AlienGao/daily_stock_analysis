@@ -28,6 +28,7 @@ from api.v1.schemas.research import (
     LGBBacktestSimResponse,
     LGBBacktestSimMetrics,
     LGBBacktestTradeItem,
+    LGBBacktestSimAvailableResponse,
 )
 from src.discovery.ml.lgb_trainer import LGBTrainer
 from src.storage import DatabaseManager, FactorScoreSnapshot, StockDaily
@@ -504,12 +505,13 @@ def lgb_backtest_sim(
 
     # 1. Scan prediction files (filtered by exec_mode suffix)
     exec_suffix = "open2open" if exec_mode == "open" else "close2close"
+    fwd_dir = f"fwd{forward_days}d"
     pattern = f"*_fwd{forward_days}d_*_pred_*.json"
-    search_dir = _os.path.join(reports_dir, exec_suffix)
+    search_dir = _os.path.join(reports_dir, exec_suffix, fwd_dir)
     json_files = sorted(_glob.glob(_os.path.join(search_dir, pattern)))
-    # Fallback: also check root reports_dir for legacy files
+    # Fallback: also check exec_suffix dir without fwd subdir for legacy files
     if not json_files:
-        json_files = sorted(_glob.glob(_os.path.join(reports_dir, pattern)))
+        json_files = sorted(_glob.glob(_os.path.join(reports_dir, exec_suffix, pattern)))
     if not json_files:
         raise HTTPException(status_code=404, detail=f"No {exec_suffix} prediction files found for forward_days={forward_days}")
 
@@ -896,6 +898,29 @@ def lgb_backtest_sim(
     return result
 
 
+@router.get(
+    "/lgb/backtest-sim/available",
+    response_model=LGBBacktestSimAvailableResponse,
+    summary="可用回测模拟的 forward_days（基于本地 lgb_reports 目录）",
+)
+def lgb_backtest_sim_available():
+    """扫描 lgb_reports/ 返回每个 exec_mode 下实际可用的 forward_days。"""
+    project_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
+    reports_dir = _os.path.join(project_root, "lgb_reports")
+    result = {"open": [], "close": []}
+    for exec_key, dir_name in [("open", "open2open"), ("close", "close2close")]:
+        base = _os.path.join(reports_dir, dir_name)
+        if not _os.path.isdir(base):
+            continue
+        for fwd in [1, 3, 5]:
+            fwd_dir = _os.path.join(base, f"fwd{fwd}d")
+            if _os.path.isdir(fwd_dir):
+                json_count = len(_glob.glob(_os.path.join(fwd_dir, "*.json")))
+                if json_count > 0:
+                    result[exec_key].append(fwd)
+    return result
+
+
 def _warmup_backtest_cache():
     """Pre-warm backtest-sim cache in background to avoid first-request timeout."""
     import logging
@@ -905,6 +930,8 @@ def _warmup_backtest_cache():
         (1, 5, "close"),
         (3, 5, "open"),
         (3, 5, "close"),
+        (5, 5, "open"),
+        (5, 5, "close"),
     ]
     for fwd, tn, em in common_combos:
         key = f"fwd{fwd}_top{tn}_{em}"

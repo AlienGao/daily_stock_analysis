@@ -7,7 +7,7 @@ import {
 import { DatePicker, Segmented, Table, InputNumber, Button, Select, Input } from 'antd';
 import { Brain, Play, Loader2, Search } from 'lucide-react';
 import { AppPage, Card, StatCard, EmptyState, ApiErrorAlert } from '../components/common';
-import { researchApi, type LGBTaskStatusResponse, type LGBPredictionItem, type LGBBacktestCompareResponse, type LGBModelInfo, type LGBDateRangeResponse, type LGBStockLookupItem, type LGBBacktestSimResponse } from '../api/research';
+import { researchApi, type LGBTaskStatusResponse, type LGBPredictionItem, type LGBBacktestCompareResponse, type LGBModelInfo, type LGBDateRangeResponse, type LGBStockLookupItem, type LGBBacktestSimResponse, type LGBBacktestSimAvailableResponse } from '../api/research';
 import type { ParsedApiError } from '../api/error';
 import { getParsedApiError } from '../api/error';
 import dayjs from 'dayjs';
@@ -45,6 +45,7 @@ const LightGBMPage: React.FC = () => {
   const [lookupError, setLookupError] = useState('');
   const [backtestSim, setBacktestSim] = useState<LGBBacktestSimResponse | null>(null);
   const [backtestSimLoading, setBacktestSimLoading] = useState(false);
+  const [backtestSimAvailable, setBacktestSimAvailable] = useState<LGBBacktestSimAvailableResponse | null>(null);
   const [backtestFwd, setBacktestFwd] = useState(1);
   const [backtestTopN, setBacktestTopN] = useState(1);
 
@@ -227,6 +228,21 @@ const LightGBMPage: React.FC = () => {
       setBacktestSimLoading(false);
     }
   }, []);
+
+  /* ── Fetch available backtest-sim options ── */
+  const fetchBacktestSimAvailable = useCallback(async () => {
+    try {
+      const data = await researchApi.getBacktestSimAvailable();
+      setBacktestSimAvailable(data);
+      const avail = trainExecMode === 'open' ? data.open : data.close;
+      if (avail.length > 0) {
+        setBacktestFwd((prev) => avail.includes(prev) ? prev : avail[0]);
+      }
+    } catch { /* ignore */ }
+  }, [trainExecMode]);
+
+  useEffect(() => { fetchBacktestSimAvailable(); }, []); // mount
+  useEffect(() => { fetchBacktestSimAvailable(); }, [trainExecMode]);
 
   useEffect(() => { fetchBacktestSim(backtestFwd, trainExecMode, backtestTopN); }, [fetchBacktestSim, trainExecMode, backtestTopN]);
 
@@ -532,10 +548,12 @@ const LightGBMPage: React.FC = () => {
                     setBacktestFwd(fwd);
                     fetchBacktestSim(fwd, trainExecMode, backtestTopN);
                   }}
-                  options={[
-                    { label: '1 日', value: '1' },
-                    { label: '3 日', value: '3' },
-                  ]}
+                  options={(backtestSimAvailable
+                    ? (trainExecMode === 'open'
+                      ? backtestSimAvailable.open
+                      : backtestSimAvailable.close)
+                    : [1, 3]
+                  ).map((d) => ({ label: `${d} 日`, value: String(d) }))}
                 />
               </div>
             </div>

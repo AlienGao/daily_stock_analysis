@@ -115,6 +115,7 @@ from api.v1.schemas.research import (
     LGBModelInfo,
     LGBModelListResponse,
     LGBDateRangeResponse,
+    LGBBacktestSimAvailableResponse,
 )
 
 __all__ = [
@@ -217,4 +218,5 @@ __all__ = [
     "LGBModelInfo",
     "LGBModelListResponse",
     "LGBDateRangeResponse",
+    "LGBBacktestSimAvailableResponse",
 ]

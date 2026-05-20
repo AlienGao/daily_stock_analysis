@@ -2414,6 +2414,116 @@ class TushareFetcher(BaseFetcher):
         except Exception as e:
             logger.debug(f"[全量技术面缓存] 写入失败（fail-open）: {e}")
 
+    def get_adj_factor_history(
+        self, ts_code: str, start_date: Optional[str] = None, end_date: Optional[str] = None
+    ) -> Optional[pd.DataFrame]:
+        """获取单只股票的复权因子历史 (Tushare adj_factor)。
+
+        返回 DataFrame with columns: ts_code, trade_date, adj_factor。
+        adj_factor: 前复权因子，qfq_price = unadj_price × adj_factor。
+        """
+        if self._api is None:
+            return None
+
+        try:
+            kwargs = {"ts_code": ts_code}
+            if start_date:
+                kwargs["start_date"] = start_date
+            if end_date:
+                kwargs["end_date"] = end_date
+            df = self._call_api_with_rate_limit("adj_factor", **kwargs)
+            if df is not None and not df.empty:
+                df["adj_factor"] = pd.to_numeric(df["adj_factor"], errors="coerce")
+                logger.debug(f"[复权因子] {ts_code}: {len(df)} 条 ({start_date}~{end_date})")
+                return df
+            return None
+        except Exception as e:
+            logger.warning(f"[Tushare] 获取复权因子失败 {ts_code}: {e}")
+            return None
+
+    def fetch_and_save_adj_factors(
+        self, stock_codes: list, start_date: str, end_date: str
+    ) -> int:
+        """全市场拉取复权因子（逐日批量，不传 ts_code）。
+
+        对 start_date ~ end_date 区间内的每个交易日，调用一次
+        pro.query('adj_factor', trade_date=...) 全量拉取，upsert 入库。
+        stock_codes 参数保留接口兼容，实际未使用（全市场拉取）。
+        """
+        from src.storage import DatabaseManager
+
+        db = DatabaseManager.get_instance()
+
+        trade_dates = self._get_adj_trade_dates(start_date, end_date)
+        if not trade_dates:
+            logger.warning("[复权因子] 无交易日 %s ~ %s", start_date, end_date)
+            return 0
+
+        total = 0
+        for i, td in enumerate(trade_dates):
+            try:
+                df = self.get_adj_factor_by_date(td)
+                if df is None or df.empty:
+                    logger.warning("[复权因子] %s 无数据，跳过", td)
+                    continue
+
+                out = df[["trade_date", "adj_factor"]].copy()
+                out["ts_code"] = df.get("ts_code", pd.Series(dtype=str))
+                out["code"] = out["ts_code"].astype(str).str[:6].str.strip().str.zfill(6)
+                saved = db.upsert_adj_factors(out)
+                total += saved
+
+                if (i + 1) % 50 == 0 or i == 0:
+                    logger.info("[复权因子] 进度: %d/%d (%s), 累计 %d 条", i + 1, len(trade_dates), td, total)
+            except Exception as e:
+                logger.warning("[复权因子] %s 失败: %s", td, e)
+                continue
+
+        logger.info("[复权因子] 完成: %d 天, 累计写入 %d 条", len(trade_dates), total)
+        return total
+
+    def _get_adj_trade_dates(self, start_date: str, end_date: str) -> list:
+        """获取 start_date ~ end_date 之间的交易日列表。"""
+        try:
+            df = self._call_api_with_rate_limit(
+                "trade_cal", exchange="SSE", start_date=start_date, end_date=end_date,
+                is_open="1", fields="cal_date"
+            )
+            if df is not None and not df.empty:
+                return sorted(df["cal_date"].astype(str).tolist())
+        except Exception:
+            pass
+
+        from datetime import date as _date_cls, timedelta
+        d0 = _date_cls(int(start_date[:4]), int(start_date[4:6]), int(start_date[6:8]))
+        d1 = _date_cls(int(end_date[:4]), int(end_date[4:6]), int(end_date[6:8]))
+        dates = []
+        d = d0
+        while d <= d1:
+            if d.weekday() < 5:
+                dates.append(d.strftime("%Y%m%d"))
+            d += timedelta(days=1)
+        return dates
+
+    def get_adj_factor_by_date(self, trade_date: str) -> Optional[pd.DataFrame]:
+        """获取全市场某日的复权因子 (Tushare adj_factor，不传 ts_code)。
+
+        返回 DataFrame with columns: ts_code, trade_date, adj_factor。
+        """
+        if self._api is None:
+            return None
+
+        try:
+            df = self._call_api_with_rate_limit("adj_factor", trade_date=trade_date)
+            if df is not None and not df.empty:
+                df["adj_factor"] = pd.to_numeric(df["adj_factor"], errors="coerce")
+                logger.debug("[复权因子] %s: %d 条", trade_date, len(df))
+                return df
+            return None
+        except Exception as e:
+            logger.warning("[Tushare] 获取全市场复权因子失败 %s: %s", trade_date, e)
+            return None
+
     def get_sector_constituents(self, index_code: str) -> Optional[pd.DataFrame]:
         """获取板块/行业成分股 (Tushare index_member)。
 

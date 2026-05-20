@@ -122,6 +122,11 @@ export type LGBBacktestSimResponse = {
   trades: LGBBacktestTradeItem[];
 };
 
+export type LGBBacktestSimAvailableResponse = {
+  open: number[];
+  close: number[];
+};
+
 /* ── API ── */
 
 export const researchApi = {
@@ -185,6 +190,11 @@ export const researchApi = {
     exec_mode?: string;
   }): Promise<LGBBacktestSimResponse> {
     const resp = await apiClient.get('/api/v1/research/lgb/backtest-sim', { params, timeout: 300000 });
+    return resp.data;
+  },
+
+  async getBacktestSimAvailable(): Promise<LGBBacktestSimAvailableResponse> {
+    const resp = await apiClient.get('/api/v1/research/lgb/backtest-sim/available');
     return resp.data;
   },
 };

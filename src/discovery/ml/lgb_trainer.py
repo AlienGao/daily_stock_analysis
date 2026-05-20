@@ -39,6 +39,54 @@ def mode_label(mode: str) -> str:
     return "盘后" if mode == "postmarket" else "盘中"
 
 
+def _load_adj_factors(db, bare_codes, needed_dates):
+    """Load adj_factor map for given stocks and dates.
+
+    Returns Dict[(code, date_str), adj_factor] — code is bare (no exchange suffix).
+    Missing entries default to 1.0 at call sites.
+    """
+    from src.storage import StockAdjFactor
+
+    if not bare_codes or not needed_dates:
+        return {}
+
+    date_objs = []
+    for d in needed_dates:
+        try:
+            date_objs.append(
+                date(int(d[:4]), int(d[4:6]), int(d[6:8]))
+                if isinstance(d, str) and len(d) >= 8
+                else d
+            )
+        except (ValueError, IndexError):
+            pass
+
+    if not date_objs:
+        return {}
+
+    adj_map = {}
+    with db.get_session() as session:
+        rows = (
+            session.query(StockAdjFactor)
+            .filter(
+                StockAdjFactor.code.in_(bare_codes),
+                StockAdjFactor.trade_date.in_(date_objs),
+            )
+            .all()
+        )
+
+    for r in rows:
+        code_str = str(r.code).split(".")[0].zfill(6)
+        d = (
+            r.trade_date.strftime("%Y%m%d")
+            if hasattr(r.trade_date, "strftime")
+            else str(r.trade_date).replace("-", "")[:8]
+        )
+        adj_map[(code_str, d)] = float(r.adj_factor)
+
+    return adj_map
+
+
 class LGBTrainer:
     """LightGBM 因子收益预测器。
 
@@ -177,12 +225,15 @@ class LGBTrainer:
         self, db: DatabaseManager, X: pd.DataFrame,
         _start: Optional[str], _end: Optional[str],
     ) -> pd.Series:
-        """计算每只股票在每个交易日的 forward N-day 收益。
+        """计算每只股票在每个交易日的 forward N-day 收益（后复权）。
 
-        exec_mode="close": buy at td close, sell at (td+N) close（当前默认）
+        exec_mode="close": buy at td close, sell at (td+N) close
         exec_mode="open":  buy at next-trading-day open, sell at N days later open
+
+        使用 stock_adj_factor 表后复权，消除除权除息影响：
+        adj_return = (1 + unadj_return) × (adj_sell / adj_buy) - 1
         """
-        from src.storage import StockDaily
+        from src.storage import StockAdjFactor, StockDaily
         from sqlalchemy import func
 
         trading_dates = sorted(X["trade_date"].unique())
@@ -190,7 +241,7 @@ class LGBTrainer:
         bare_codes = [c.split(".")[0] for c in all_codes]
 
         if self.exec_mode == "open":
-            # ── Open-to-open: need full trading day list for date navigation ──
+            # ── Open-to-open ──
             with db.get_session() as session:
                 dates_raw = (
                     session.query(StockDaily.date)
@@ -204,12 +255,10 @@ class LGBTrainer:
                 for d in dates_raw
             )
 
-            # Collect all needed buy/sell dates
             needed_dates: set = set(trading_dates)
             buy_dates_by_td: Dict[str, Optional[str]] = {}
             sell_dates_by_td: Dict[str, Optional[str]] = {}
             for td in trading_dates:
-                # Find next trading day after td (buy date)
                 buy_date = None
                 for d in trading_days_all:
                     if d > td:
@@ -218,10 +267,9 @@ class LGBTrainer:
                 buy_dates_by_td[td] = buy_date
                 if buy_date:
                     needed_dates.add(buy_date)
-                    # Find Nth trading day after buy_date (sell date)
                     try:
                         buy_idx = trading_days_all.index(buy_date)
-                        sell_idx = buy_idx + (self.forward_days - 1)  # -1 because buy is day 1
+                        sell_idx = buy_idx + self.forward_days
                         if sell_idx < len(trading_days_all):
                             sell_date = trading_days_all[sell_idx]
                             sell_dates_by_td[td] = sell_date
@@ -233,7 +281,7 @@ class LGBTrainer:
                 else:
                     sell_dates_by_td[td] = None
 
-            # Fetch prices for all needed dates
+            # ── Fetch prices & adj_factors ──
             with db.get_session() as session:
                 rows = session.query(StockDaily).filter(
                     StockDaily.date.in_([pd.Timestamp(f"{d[:4]}-{d[4:6]}-{d[6:8]}") for d in needed_dates]),
@@ -249,6 +297,8 @@ class LGBTrainer:
                     "close": float(r.close) if r.close else 0.0,
                 }
 
+            adj_map = _load_adj_factors(db, bare_codes, needed_dates)
+
             results = {}
             for td in trading_dates:
                 buy_date = buy_dates_by_td.get(td)
@@ -261,10 +311,14 @@ class LGBTrainer:
                     buy_entry = price_map.get((buy_date, bare))
                     sell_entry = price_map.get((sell_date, bare))
                     if buy_entry and sell_entry and buy_entry["open"] > 0 and sell_entry["open"] > 0:
-                        results[(td, code)] = (sell_entry["open"] - buy_entry["open"]) / buy_entry["open"]
+                        unadj_ret = (sell_entry["open"] - buy_entry["open"]) / buy_entry["open"]
+                        adj_buy = adj_map.get((bare, buy_date), 1.0)
+                        adj_sell = adj_map.get((bare, sell_date), 1.0)
+                        if adj_buy > 0 and adj_sell > 0:
+                            results[(td, code)] = (1.0 + unadj_ret) * (adj_sell / adj_buy) - 1.0
             return pd.Series(results, name=f"fwd_{self.forward_days}d")
 
-        # ── Close-to-close (original behavior) ──
+        # ── Close-to-close ──
         with db.get_session() as session:
             rows = session.query(StockDaily).filter(
                 StockDaily.date.in_([pd.Timestamp(d) for d in trading_dates]),
@@ -275,6 +329,8 @@ class LGBTrainer:
         for r in rows:
             code_str = str(r.code).split(".")[0]
             price_map[(r.date.strftime("%Y%m%d"), code_str)] = float(r.close)
+
+        adj_map = _load_adj_factors(db, bare_codes, set(trading_dates))
 
         results = {}
         for i, td in enumerate(trading_dates):
@@ -288,7 +344,11 @@ class LGBTrainer:
                 bp = price_map.get((td, bare))
                 sp = price_map.get((sell_date, bare))
                 if bp and sp and bp > 0:
-                    results[(td, code)] = (sp - bp) / bp
+                    unadj_ret = (sp - bp) / bp
+                    adj_buy = adj_map.get((bare, td), 1.0)
+                    adj_sell = adj_map.get((bare, sell_date), 1.0)
+                    if adj_buy > 0 and adj_sell > 0:
+                        results[(td, code)] = (1.0 + unadj_ret) * (adj_sell / adj_buy) - 1.0
         return pd.Series(results, name=f"fwd_{self.forward_days}d")
 
     # ------------------------------------------------------------------
@@ -761,7 +821,7 @@ class LGBTrainer:
             name = f"lgb_{self.mode}_fwd{self.forward_days}d_{sd}_{ed}_{exec_suffix}"
 
         # Delete old models with the same (mode, forward_days, exec_mode)
-        _cleanup_same_config_models(name)
+        self._cleanup_same_config_models(name)
 
         model_path = os.path.join(MODEL_DIR, f"{name}.joblib")
         meta = {
@@ -825,8 +885,9 @@ class LGBTrainer:
         sd = str(sd).replace("-", "")[:8]
         ed = str(ed).replace("-", "")[:8]
         exec_suffix = "open2open" if self.exec_mode == "open" else "close2close"
+        fwd_dir = f"fwd{self.forward_days}d"
         base = f"{self.mode}_fwd{self.forward_days}d_{sd}_{ed}_{exec_suffix}"
-        report_dir = os.path.join(_REPORTS_DIR, exec_suffix)
+        report_dir = os.path.join(_REPORTS_DIR, exec_suffix, fwd_dir)
         md_path = os.path.join(report_dir, f"{base}.md")
         json_path = os.path.join(report_dir, f"{base}.json")
         os.makedirs(report_dir, exist_ok=True)

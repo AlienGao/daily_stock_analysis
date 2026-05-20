@@ -1206,6 +1206,73 @@ def refresh_tech_indicator_postmarket(tushare_fetcher) -> int:
     return count
 
 
+def refresh_adj_factor_postmarket(tushare_fetcher) -> int:
+    """盘后增量更新复权因子表 (stock_adj_factor)。
+
+    逐只拉取 Tushare adj_factor，只拉取最近交易日的数据做增量 upsert。
+    若 DB 中尚无数据（首次），则拉取全量历史（从 20200101 起）。
+    """
+    try:
+        from src.storage import DatabaseManager, StockAdjFactor
+
+        db = DatabaseManager.get_instance()
+
+        # 检查是否已有数据
+        with db.get_session() as session:
+            has_existing = session.query(StockAdjFactor).first() is not None
+
+        today = tushare_fetcher.get_trade_time(early_time="18:01", late_time="04:59")
+        if not today:
+            logger.warning("[Scanner] adj_factor 刷新: 无法获取交易日")
+            return 0
+
+        start_date = today if has_existing else "20200101"
+        codes = _get_adj_factor_stock_codes(db)
+        if not codes:
+            logger.warning("[Scanner] adj_factor 刷新: 无股票代码")
+            return 0
+
+        logger.info(
+            "[Scanner] adj_factor 刷新: %d 只股票, %s → %s (首次=%s)",
+            len(codes), start_date, today, not has_existing,
+        )
+        saved = tushare_fetcher.fetch_and_save_adj_factors(codes, start_date, today)
+        logger.info("[Scanner] adj_factor 刷新完成: %d 条", saved)
+
+        # 清理超 5 年数据
+        from datetime import date as _date_cls, timedelta
+        cutoff = (_date_cls.today() - timedelta(days=365 * 5 + 2)).strftime("%Y%m%d")
+        with db.get_session() as session:
+            from sqlalchemy import text as _text
+            deleted = session.execute(
+                _text("DELETE FROM stock_adj_factor WHERE trade_date < :cutoff"),
+                {"cutoff": cutoff},
+            ).rowcount
+            session.commit()
+        if deleted:
+            logger.info("[Scanner] stock_adj_factor 清理超 5 年数据: %d 条 (早于 %s)", deleted, cutoff)
+
+        return saved
+    except Exception as e:
+        logger.warning("[Scanner] adj_factor 刷新失败: %s", e)
+        return 0
+
+
+def _get_adj_factor_stock_codes(db: "DatabaseManager") -> list:
+    """获取需要拉取复权因子的股票代码列表。"""
+    codes = set()
+    try:
+        with db.get_session() as session:
+            from sqlalchemy import distinct as _distinct
+            from src.storage import StockDaily
+            rows = session.query(_distinct(StockDaily.code)).limit(5000).all()
+            for r in rows:
+                codes.add(str(r[0]).strip().zfill(6))
+    except Exception:
+        pass
+    return sorted(codes)
+
+
 def refresh_cyq_perf_postmarket(tushare_fetcher) -> int:
     """盘后用 Tushare cyq_perf 全量刷新筹码胜率表。
 
@@ -1958,6 +2025,7 @@ def ensure_postmarket_scan(
         ("hm_detail", lambda: refresh_hm_detail_postmarket(tushare_fetcher)),
         ("popularity", lambda: refresh_popularity_postmarket(tushare_fetcher)),
         ("tech_indicator", lambda: refresh_tech_indicator_postmarket(tushare_fetcher)),
+        ("adj_factor", lambda: refresh_adj_factor_postmarket(tushare_fetcher)),
     ]
     refresher_counts: Dict[str, int] = {}
     integrity_warnings: List[str] = []

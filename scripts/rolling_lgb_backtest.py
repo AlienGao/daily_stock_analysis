@@ -83,8 +83,9 @@ def save_daily_report(trainer: LGBTrainer, pred_date: str) -> str:
     ed = _ymd(getattr(trainer, "_train_end", ""))
 
     exec_suffix = "open2open" if getattr(trainer, "exec_mode", "close") == "open" else "close2close"
+    fwd_dir = f"fwd{trainer.forward_days}d"
     base = f"{trainer.mode}_fwd{trainer.forward_days}d_{sd}_{ed}_pred_{pred_date}_{exec_suffix}"
-    report_dir = os.path.join(REPORTS_ROOT, exec_suffix)
+    report_dir = os.path.join(REPORTS_ROOT, exec_suffix, fwd_dir)
     os.makedirs(report_dir, exist_ok=True)
     md_path = os.path.join(report_dir, f"{base}.md")
     json_path = os.path.join(report_dir, f"{base}.json")
@@ -126,17 +127,26 @@ def save_daily_report(trainer: LGBTrainer, pred_date: str) -> str:
 
 
 def generate_monthly_windows():
-    """Yield (train_start, train_end, pred_start, pred_end) YYYYMMDD tuples."""
+    """Yield (train_start, train_end, pred_start, pred_end) YYYYMMDD tuples.
+
+    Training window ends the day before prediction starts, and slides
+    forward monthly along with the prediction window.
+    """
     train_s = datetime.strptime(TRAIN_START, "%Y%m%d")
-    train_e = datetime.strptime(TRAIN_END, "%Y%m%d")
     pred_s = datetime.strptime(PRED_START, "%Y%m%d")
     final_pred_e = datetime.strptime(PRED_END, "%Y%m%d")
+    final_train_e = datetime.strptime(TRAIN_END, "%Y%m%d")
 
     windows = []
     while pred_s < final_pred_e:
         pred_e = pred_s + relativedelta(months=1) - timedelta(days=1)
         if pred_e > final_pred_e:
             pred_e = final_pred_e
+
+        train_e = pred_s - timedelta(days=1)
+        # Cap training end to TRAIN_END to avoid running into prediction period
+        if train_e > final_train_e:
+            train_e = final_train_e
 
         windows.append((
             train_s.strftime("%Y%m%d"),
@@ -146,7 +156,6 @@ def generate_monthly_windows():
         ))
 
         train_s += relativedelta(months=1)
-        train_e += relativedelta(months=1)
         pred_s = pred_e + timedelta(days=1)
 
     return windows
@@ -191,7 +200,7 @@ def main():
     print(f"训练起点: {TRAIN_START} ~ {TRAIN_END} (逐月右移)")
     print(f"预测范围: {PRED_START} ~ {PRED_END}")
     print(f"窗口数: {len(windows)} | Forward: {FORWARD_DAYS_LIST}")
-    print(f"报告目录: {REPORTS_ROOT}/{{open2open,close2close}}")
+    print(f"报告目录: {REPORTS_ROOT}/{{open2open,close2close}}/{{fwd1d,fwd3d,fwd5d}}")
     print("=" * 64)
 
     grand_total_ok = 0

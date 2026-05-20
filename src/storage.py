@@ -157,6 +157,30 @@ class StockDaily(Base):
         }
 
 
+class StockAdjFactor(Base):
+    """复权因子表（Tushare adj_factor），用于后复权价格计算。
+
+    前复权价格 = 未复权价格 × adj_factor
+    后复权价格 = 未复权价格 × adj_factor[latest] / adj_factor[date]
+    """
+
+    __tablename__ = "stock_adj_factor"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(10), nullable=False, index=True)
+    trade_date = Column(Date, nullable=False, index=True)
+    adj_factor = Column(Float, nullable=False)
+    created_at = Column(DateTime, default=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint("code", "trade_date", name="uix_adj_factor_code_date"),
+        Index("ix_adj_factor_code_date", "code", "trade_date"),
+    )
+
+    def __repr__(self):
+        return f"<StockAdjFactor(code={self.code}, date={self.trade_date}, factor={self.adj_factor})>"
+
+
 class NewsIntel(Base):
     """
     新闻情报数据模型
@@ -4516,6 +4540,94 @@ class DatabaseManager:
             return saved
         except Exception as e:
             logger.error("[DB] upsert_daily_basic 失败: %s", e)
+            raise
+
+    def upsert_adj_factors(self, df: pd.DataFrame) -> int:
+        """批量 upsert 复权因子 (stock_adj_factor)。
+
+        df 需包含列: code, trade_date, adj_factor。
+        按 (code, trade_date) 去重 upsert。
+        """
+        if df is None or df.empty:
+            return 0
+
+        now = datetime.now()
+        from datetime import date as _date_cls
+        records = []
+        for _, row in df.iterrows():
+            td = row.get("trade_date", "")
+            if td is None or (isinstance(td, str) and not td.strip()):
+                continue
+            if isinstance(td, str):
+                td = td.strip()
+                td = _date_cls(int(td[:4]), int(td[4:6]), int(td[6:8]))
+            records.append({
+                "code": str(row.get("code", "")).strip().zfill(6),
+                "trade_date": td,
+                "adj_factor": float(row.get("adj_factor", 0.0)),
+                "created_at": now,
+            })
+
+        if not records:
+            return 0
+
+        def _write(session: Session) -> int:
+            if self._is_sqlite_engine:
+                _CHUNK = 500
+                for i in range(0, len(records), _CHUNK):
+                    chunk = records[i : i + _CHUNK]
+                    stmt = sqlite_insert(StockAdjFactor).values(chunk)
+                    excluded = stmt.excluded
+                    session.execute(
+                        stmt.on_conflict_do_update(
+                            index_elements=["code", "trade_date"],
+                            set_={
+                                "adj_factor": excluded.adj_factor,
+                                "created_at": excluded.created_at,
+                            },
+                        )
+                    )
+                return len(records)
+            else:
+                codes = [r["code"] for r in records]
+                dates = [r["trade_date"] for r in records]
+                existing = {}
+                _CHUNK = 500
+                for j in range(0, len(dates), _CHUNK):
+                    chunk_codes = codes[j : j + _CHUNK]
+                    chunk_dates = dates[j : j + _CHUNK]
+                    for row_o in session.execute(
+                        select(StockAdjFactor).where(
+                            and_(
+                                StockAdjFactor.code.in_(chunk_codes),
+                                StockAdjFactor.trade_date.in_(chunk_dates),
+                            )
+                        )
+                    ).scalars().all():
+                        existing[(row_o.code, str(row_o.trade_date))] = row_o
+                new_count = 0
+                for rec in records:
+                    td = rec["trade_date"]
+                    if isinstance(td, str):
+                        from datetime import date as _d
+                        td = _d(int(td[:4]), int(td[4:6]), int(td[6:8]))
+                        rec["trade_date"] = td
+                    key = (rec["code"], str(td))
+                    ent = existing.get(key)
+                    if ent:
+                        ent.adj_factor = rec["adj_factor"]
+                        ent.created_at = now
+                    else:
+                        session.add(StockAdjFactor(**rec))
+                        new_count += 1
+                return new_count
+
+        try:
+            saved = self._run_write_transaction("upsert_adj_factors", _write)
+            logger.debug("[DB] upsert_adj_factors: %d 条", saved)
+            return saved
+        except Exception as e:
+            logger.error("[DB] upsert_adj_factors 失败: %s", e)
             raise
 
     def get_daily_basic(self, trade_date: str,

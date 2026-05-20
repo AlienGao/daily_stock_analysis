@@ -118,3 +118,8 @@ class LGBBacktestSimResponse(BaseModel):
     metrics: LGBBacktestSimMetrics
     capital_curve: List[Dict] = Field(default_factory=list)
     trades: List[LGBBacktestTradeItem] = Field(default_factory=list)
+
+
+class LGBBacktestSimAvailableResponse(BaseModel):
+    open: List[int] = Field(default_factory=list)
+    close: List[int] = Field(default_factory=list)
