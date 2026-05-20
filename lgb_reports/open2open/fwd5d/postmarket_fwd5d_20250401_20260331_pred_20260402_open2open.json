@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688498.SH",
-      "stock_code": "688498",
-      "stock_name": "源杰科技",
+      "ts_code": "301383.SZ",
+      "stock_code": "301383",
+      "stock_name": "天键股份",
       "lgb_score": 100.0,
-      "raw_score": 0.11
+      "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "688048.SH",
-      "stock_code": "688048",
-      "stock_name": "长光华芯",
-      "lgb_score": 94.63,
+      "ts_code": "688061.SH",
+      "stock_code": "688061",
+      "stock_name": "灿瑞科技",
+      "lgb_score": 83.64,
       "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "688693.SH",
-      "stock_code": "688693",
-      "stock_name": "锴威特",
-      "lgb_score": 90.53,
+      "ts_code": "920125.BJ",
+      "stock_code": "920125.BJ",
+      "stock_name": "",
+      "lgb_score": 82.24,
       "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "603344.SH",
-      "stock_code": "603344",
-      "stock_name": "星德胜",
-      "lgb_score": 84.7,
-      "raw_score": 0.08
+      "ts_code": "688381.SH",
+      "stock_code": "688381",
+      "stock_name": "帝奥微",
+      "lgb_score": 81.03,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "000657.SZ",
-      "stock_code": "000657",
-      "stock_name": "中钨高新",
-      "lgb_score": 84.62,
-      "raw_score": 0.08
+      "ts_code": "301022.SZ",
+      "stock_code": "301022",
+      "stock_name": "海泰科",
+      "lgb_score": 79.43,
+      "raw_score": 0.09
     }
   ]
 }

@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688693",
-      "stock_code": "688693",
-      "stock_name": "锴威特",
+      "ts_code": "300476",
+      "stock_code": "300476",
+      "stock_name": "胜宏科技",
       "lgb_score": 100.0,
-      "raw_score": 0.11
+      "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "300661",
-      "stock_code": "300661",
-      "stock_name": "圣邦股份",
-      "lgb_score": 97.53,
-      "raw_score": 0.1
-    },
-    {
-      "rank": 3,
       "ts_code": "300395",
       "stock_code": "300395",
       "stock_name": "菲利华",
-      "lgb_score": 97.24,
-      "raw_score": 0.1
+      "lgb_score": 98.92,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 3,
+      "ts_code": "301396",
+      "stock_code": "301396",
+      "stock_name": "宏景科技",
+      "lgb_score": 93.31,
+      "raw_score": 0.12
     },
     {
       "rank": 4,
       "ts_code": "301205",
       "stock_code": "301205",
       "stock_name": "联特科技",
-      "lgb_score": 97.1,
-      "raw_score": 0.1
+      "lgb_score": 93.07,
+      "raw_score": 0.12
     },
     {
       "rank": 5,
-      "ts_code": "688766",
-      "stock_code": "688766",
-      "stock_name": "普冉股份",
-      "lgb_score": 95.17,
-      "raw_score": 0.1
+      "ts_code": "688205",
+      "stock_code": "688205",
+      "stock_name": "德科立",
+      "lgb_score": 89.82,
+      "raw_score": 0.11
     }
   ]
 }

@@ -11,39 +11,39 @@
       "stock_code": "002445",
       "stock_name": "中南文化",
       "lgb_score": 100.0,
-      "raw_score": 0.18
+      "raw_score": 0.2
     },
     {
       "rank": 2,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 90.65,
-      "raw_score": 0.14
+      "ts_code": "000159.SZ",
+      "stock_code": "000159",
+      "stock_name": "国际实业",
+      "lgb_score": 80.44,
+      "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "000601.SZ",
-      "stock_code": "000601",
-      "stock_name": "韶能股份",
-      "lgb_score": 81.91,
-      "raw_score": 0.11
-    },
-    {
-      "rank": 4,
-      "ts_code": "000936.SZ",
-      "stock_code": "000936",
-      "stock_name": "华西股份",
-      "lgb_score": 80.07,
-      "raw_score": 0.11
-    },
-    {
-      "rank": 5,
       "ts_code": "300429.SZ",
       "stock_code": "300429",
       "stock_name": "强力新材",
-      "lgb_score": 79.95,
-      "raw_score": 0.11
+      "lgb_score": 80.29,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 4,
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 80.03,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 5,
+      "ts_code": "600151.SH",
+      "stock_code": "600151",
+      "stock_name": "航天机电",
+      "lgb_score": 78.97,
+      "raw_score": 0.13
     }
   ]
 }

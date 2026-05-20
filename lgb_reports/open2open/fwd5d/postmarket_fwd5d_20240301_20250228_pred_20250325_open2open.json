@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688316.SH",
-      "stock_code": "688316",
-      "stock_name": "青云科技-U",
+      "ts_code": "688108.SH",
+      "stock_code": "688108",
+      "stock_name": "赛诺医疗",
       "lgb_score": 100.0,
-      "raw_score": 0.16
-    },
-    {
-      "rank": 2,
-      "ts_code": "301633.SZ",
-      "stock_code": "301633",
-      "stock_name": "港迪技术",
-      "lgb_score": 96.69,
-      "raw_score": 0.15
-    },
-    {
-      "rank": 3,
-      "ts_code": "001282.SZ",
-      "stock_code": "001282",
-      "stock_name": "三联锻造",
-      "lgb_score": 90.74,
       "raw_score": 0.13
     },
     {
+      "rank": 2,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 94.23,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "688316.SH",
+      "stock_code": "688316",
+      "stock_name": "青云科技-U",
+      "lgb_score": 92.07,
+      "raw_score": 0.11
+    },
+    {
       "rank": 4,
-      "ts_code": "000915.SZ",
-      "stock_code": "000915",
-      "stock_name": "华特达因",
-      "lgb_score": 90.29,
-      "raw_score": 0.12
+      "ts_code": "301538.SZ",
+      "stock_code": "301538",
+      "stock_name": "骏鼎达",
+      "lgb_score": 90.85,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "301489.SZ",
-      "stock_code": "301489",
-      "stock_name": "思泉新材",
-      "lgb_score": 90.18,
-      "raw_score": 0.12
+      "ts_code": "603893.SH",
+      "stock_code": "603893",
+      "stock_name": "瑞芯微",
+      "lgb_score": 90.05,
+      "raw_score": 0.1
     }
   ]
 }

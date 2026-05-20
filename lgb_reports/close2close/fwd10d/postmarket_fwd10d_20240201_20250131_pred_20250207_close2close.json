@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300166.SZ",
-      "stock_code": "300166",
-      "stock_name": "东方国信",
-      "lgb_score": 100.0,
-      "raw_score": 0.22
-    },
-    {
-      "rank": 2,
-      "ts_code": "002617.SZ",
-      "stock_code": "002617",
-      "stock_name": "露笑科技",
-      "lgb_score": 95.11,
-      "raw_score": 0.2
-    },
-    {
-      "rank": 3,
-      "ts_code": "300612.SZ",
-      "stock_code": "300612",
-      "stock_name": "宣亚国际",
-      "lgb_score": 92.21,
-      "raw_score": 0.19
-    },
-    {
-      "rank": 4,
-      "ts_code": "688135.SH",
-      "stock_code": "688135",
-      "stock_name": "利扬芯片",
-      "lgb_score": 90.96,
-      "raw_score": 0.19
-    },
-    {
-      "rank": 5,
       "ts_code": "301205.SZ",
       "stock_code": "301205",
       "stock_name": "联特科技",
-      "lgb_score": 89.42,
-      "raw_score": 0.18
+      "lgb_score": 100.0,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 2,
+      "ts_code": "688368.SH",
+      "stock_code": "688368",
+      "stock_name": "晶丰明源",
+      "lgb_score": 94.87,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 3,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 89.32,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 4,
+      "ts_code": "603120.SH",
+      "stock_code": "603120",
+      "stock_name": "肯特催化",
+      "lgb_score": 87.58,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 5,
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 83.94,
+      "raw_score": 0.2
     }
   ]
 }

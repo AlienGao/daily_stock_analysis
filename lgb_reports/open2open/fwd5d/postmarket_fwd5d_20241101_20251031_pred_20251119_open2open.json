@@ -11,38 +11,38 @@
       "stock_code": "000859",
       "stock_name": "国风新材",
       "lgb_score": 100.0,
-      "raw_score": 0.2
+      "raw_score": 0.16
     },
     {
       "rank": 2,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 95.01,
-      "raw_score": 0.18
+      "ts_code": "301633.SZ",
+      "stock_code": "301633",
+      "stock_name": "港迪技术",
+      "lgb_score": 99.77,
+      "raw_score": 0.16
     },
     {
       "rank": 3,
-      "ts_code": "002009.SZ",
-      "stock_code": "002009",
-      "stock_name": "天奇股份",
-      "lgb_score": 87.97,
-      "raw_score": 0.16
-    },
-    {
-      "rank": 4,
       "ts_code": "600802.SH",
       "stock_code": "600802",
       "stock_name": "福建水泥",
-      "lgb_score": 87.96,
-      "raw_score": 0.16
+      "lgb_score": 96.24,
+      "raw_score": 0.15
     },
     {
-      "rank": 5,
+      "rank": 4,
       "ts_code": "688458.SH",
       "stock_code": "688458",
       "stock_name": "美芯晟",
-      "lgb_score": 85.97,
+      "lgb_score": 96.06,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 5,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 95.9,
       "raw_score": 0.15
     }
   ]

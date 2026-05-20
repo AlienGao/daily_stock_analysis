@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000968.SZ",
-      "stock_code": "000968",
-      "stock_name": "蓝焰控股",
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
       "lgb_score": 100.0,
-      "raw_score": 0.15
+      "raw_score": 0.22
     },
     {
       "rank": 2,
-      "ts_code": "300857.SZ",
-      "stock_code": "300857",
-      "stock_name": "协创数据",
-      "lgb_score": 93.68,
-      "raw_score": 0.13
+      "ts_code": "300870.SZ",
+      "stock_code": "300870",
+      "stock_name": "欧陆通",
+      "lgb_score": 99.51,
+      "raw_score": 0.22
     },
     {
       "rank": 3,
-      "ts_code": "000001.SH.SZ",
-      "stock_code": "000001",
-      "stock_name": "平安银行",
-      "lgb_score": 91.56,
-      "raw_score": 0.12
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
+      "lgb_score": 86.41,
+      "raw_score": 0.17
     },
     {
       "rank": 4,
-      "ts_code": "000830.SZ",
-      "stock_code": "000830",
-      "stock_name": "鲁西化工",
-      "lgb_score": 90.83,
-      "raw_score": 0.12
+      "ts_code": "300757.SZ",
+      "stock_code": "300757",
+      "stock_name": "罗博特科",
+      "lgb_score": 84.42,
+      "raw_score": 0.17
     },
     {
       "rank": 5,
-      "ts_code": "000617.SZ",
-      "stock_code": "000617",
-      "stock_name": "中油资本",
-      "lgb_score": 89.92,
-      "raw_score": 0.12
+      "ts_code": "300857.SZ",
+      "stock_code": "300857",
+      "stock_name": "协创数据",
+      "lgb_score": 82.12,
+      "raw_score": 0.16
     }
   ]
 }

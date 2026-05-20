@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
+      "ts_code": "002274.SZ",
+      "stock_code": "002274",
+      "stock_name": "华昌化工",
       "lgb_score": 100.0,
-      "raw_score": 0.12
+      "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "002291.SZ",
-      "stock_code": "002291",
-      "stock_name": "遥望科技",
-      "lgb_score": 92.09,
-      "raw_score": 0.1
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 98.47,
+      "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "603018.SH",
-      "stock_code": "603018",
-      "stock_name": "华设集团",
-      "lgb_score": 91.44,
-      "raw_score": 0.1
+      "ts_code": "000159.SZ",
+      "stock_code": "000159",
+      "stock_name": "国际实业",
+      "lgb_score": 96.88,
+      "raw_score": 0.12
     },
     {
       "rank": 4,
-      "ts_code": "688012.SH",
-      "stock_code": "688012",
-      "stock_name": "中微公司",
-      "lgb_score": 90.95,
-      "raw_score": 0.1
+      "ts_code": "688019.SH",
+      "stock_code": "688019",
+      "stock_name": "安集科技",
+      "lgb_score": 95.8,
+      "raw_score": 0.12
     },
     {
       "rank": 5,
-      "ts_code": "600386.SH",
-      "stock_code": "600386",
-      "stock_name": "北巴传媒",
-      "lgb_score": 90.47,
-      "raw_score": 0.1
+      "ts_code": "603120.SH",
+      "stock_code": "603120",
+      "stock_name": "肯特催化",
+      "lgb_score": 95.7,
+      "raw_score": 0.12
     }
   ]
 }

@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301589.SZ",
-      "stock_code": "301589",
-      "stock_name": "诺瓦星云",
-      "lgb_score": 97.97,
-      "raw_score": 0.2
+      "ts_code": "688693.SH",
+      "stock_code": "688693",
+      "stock_name": "锴威特",
+      "lgb_score": 100.0,
+      "raw_score": 0.29
     },
     {
       "rank": 2,
-      "ts_code": "301022.SZ",
-      "stock_code": "301022",
-      "stock_name": "海泰科",
-      "lgb_score": 93.12,
-      "raw_score": 0.18
-    },
-    {
-      "rank": 3,
-      "ts_code": "688256.SH",
-      "stock_code": "688256",
-      "stock_name": "寒武纪",
-      "lgb_score": 92.89,
-      "raw_score": 0.18
-    },
-    {
-      "rank": 4,
-      "ts_code": "688048.SH",
-      "stock_code": "688048",
-      "stock_name": "长光华芯",
-      "lgb_score": 92.2,
-      "raw_score": 0.18
-    },
-    {
-      "rank": 5,
       "ts_code": "002234.SZ",
       "stock_code": "002234",
       "stock_name": "民和股份",
-      "lgb_score": 91.33,
-      "raw_score": 0.17
+      "lgb_score": 97.86,
+      "raw_score": 0.28
+    },
+    {
+      "rank": 3,
+      "ts_code": "688458.SH",
+      "stock_code": "688458",
+      "stock_name": "美芯晟",
+      "lgb_score": 88.93,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 4,
+      "ts_code": "920580.BJ",
+      "stock_code": "920580.BJ",
+      "stock_name": "",
+      "lgb_score": 88.48,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 5,
+      "ts_code": "001325.SZ",
+      "stock_code": "001325",
+      "stock_name": "元创股份",
+      "lgb_score": 86.99,
+      "raw_score": 0.24
     }
   ]
 }

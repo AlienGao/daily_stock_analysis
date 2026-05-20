@@ -11,39 +11,39 @@
       "stock_code": "300885",
       "stock_name": "海昌新材",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.11
     },
     {
       "rank": 2,
-      "ts_code": "301372.SZ",
-      "stock_code": "301372",
-      "stock_name": "科净源",
-      "lgb_score": 87.34,
+      "ts_code": "300907.SZ",
+      "stock_code": "300907",
+      "stock_name": "康平科技",
+      "lgb_score": 97.29,
       "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 85.63,
-      "raw_score": 0.1
+      "ts_code": "600551.SH",
+      "stock_code": "600551",
+      "stock_name": "时代出版",
+      "lgb_score": 91.88,
+      "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "300128.SZ",
-      "stock_code": "300128",
-      "stock_name": "锦富技术",
-      "lgb_score": 79.92,
+      "ts_code": "002859.SZ",
+      "stock_code": "002859",
+      "stock_name": "洁美科技",
+      "lgb_score": 91.45,
       "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "600486.SH",
-      "stock_code": "600486",
-      "stock_name": "扬农化工",
-      "lgb_score": 78.72,
-      "raw_score": 0.08
+      "ts_code": "301372.SZ",
+      "stock_code": "301372",
+      "stock_name": "科净源",
+      "lgb_score": 90.91,
+      "raw_score": 0.09
     }
   ]
 }

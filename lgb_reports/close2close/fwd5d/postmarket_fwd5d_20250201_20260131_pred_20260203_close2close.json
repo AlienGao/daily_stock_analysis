@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "001368.SZ",
-      "stock_code": "001368",
-      "stock_name": "通达创智",
+      "ts_code": "603507.SH",
+      "stock_code": "603507",
+      "stock_name": "振江股份",
       "lgb_score": 100.0,
-      "raw_score": 0.12
+      "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "001387.SZ",
-      "stock_code": "001387",
-      "stock_name": "雪祺电气",
-      "lgb_score": 99.52,
-      "raw_score": 0.12
+      "ts_code": "603861.SH",
+      "stock_code": "603861",
+      "stock_name": "白云电器",
+      "lgb_score": 99.48,
+      "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 98.91,
-      "raw_score": 0.12
+      "ts_code": "301222.SZ",
+      "stock_code": "301222",
+      "stock_name": "浙江恒威",
+      "lgb_score": 98.46,
+      "raw_score": 0.13
     },
     {
       "rank": 4,
-      "ts_code": "000811.SZ",
-      "stock_code": "000811",
-      "stock_name": "冰轮环境",
-      "lgb_score": 98.2,
-      "raw_score": 0.12
+      "ts_code": "001387.SZ",
+      "stock_code": "001387",
+      "stock_name": "雪祺电气",
+      "lgb_score": 98.45,
+      "raw_score": 0.13
     },
     {
       "rank": 5,
-      "ts_code": "000589.SZ",
-      "stock_code": "000589",
-      "stock_name": "贵州轮胎",
-      "lgb_score": 97.1,
-      "raw_score": 0.11
+      "ts_code": "603306.SH",
+      "stock_code": "603306",
+      "stock_name": "华懋科技",
+      "lgb_score": 97.05,
+      "raw_score": 0.12
     }
   ]
 }

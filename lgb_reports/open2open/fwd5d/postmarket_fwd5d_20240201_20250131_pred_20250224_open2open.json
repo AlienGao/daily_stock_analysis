@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688316.SH",
-      "stock_code": "688316",
-      "stock_name": "青云科技-U",
+      "ts_code": "300842.SZ",
+      "stock_code": "300842",
+      "stock_name": "帝科股份",
       "lgb_score": 100.0,
-      "raw_score": 0.12
+      "raw_score": 0.14
     },
     {
       "rank": 2,
-      "ts_code": "301413.SZ",
-      "stock_code": "301413",
-      "stock_name": "安培龙",
-      "lgb_score": 99.77,
+      "ts_code": "300970.SZ",
+      "stock_code": "300970",
+      "stock_name": "华绿生物",
+      "lgb_score": 94.54,
       "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
-      "lgb_score": 99.44,
+      "ts_code": "301413.SZ",
+      "stock_code": "301413",
+      "stock_name": "安培龙",
+      "lgb_score": 93.61,
       "raw_score": 0.12
     },
     {
       "rank": 4,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 99.31,
+      "ts_code": "003021.SZ",
+      "stock_code": "003021",
+      "stock_name": "兆威机电",
+      "lgb_score": 93.25,
       "raw_score": 0.12
     },
     {
       "rank": 5,
-      "ts_code": "300842.SZ",
-      "stock_code": "300842",
-      "stock_name": "帝科股份",
-      "lgb_score": 96.65,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 89.23,
       "raw_score": 0.11
     }
   ]

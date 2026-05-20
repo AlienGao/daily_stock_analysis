@@ -11,39 +11,39 @@
       "stock_code": "688108",
       "stock_name": "赛诺医疗",
       "lgb_score": 100.0,
-      "raw_score": 0.15
+      "raw_score": 0.12
     },
     {
       "rank": 2,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
-      "lgb_score": 95.81,
-      "raw_score": 0.14
+      "ts_code": "300007.SZ",
+      "stock_code": "300007",
+      "stock_name": "汉威科技",
+      "lgb_score": 99.83,
+      "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "300031.SZ",
-      "stock_code": "300031",
-      "stock_name": "宝通科技",
-      "lgb_score": 95.07,
-      "raw_score": 0.14
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 98.97,
+      "raw_score": 0.12
     },
     {
       "rank": 4,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
-      "lgb_score": 92.93,
-      "raw_score": 0.13
+      "ts_code": "301022.SZ",
+      "stock_code": "301022",
+      "stock_name": "海泰科",
+      "lgb_score": 96.0,
+      "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "002234.SZ",
-      "stock_code": "002234",
-      "stock_name": "民和股份",
-      "lgb_score": 88.32,
-      "raw_score": 0.12
+      "ts_code": "300031.SZ",
+      "stock_code": "300031",
+      "stock_name": "宝通科技",
+      "lgb_score": 92.12,
+      "raw_score": 0.1
     }
   ]
 }

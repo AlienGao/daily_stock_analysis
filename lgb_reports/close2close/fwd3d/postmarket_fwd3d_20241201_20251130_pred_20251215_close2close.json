@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002438.SZ",
-      "stock_code": "002438",
-      "stock_name": "江苏神通",
-      "lgb_score": 100.0,
-      "raw_score": 0.09
+      "ts_code": "601828.SH",
+      "stock_code": "601828",
+      "stock_name": "美凯龙",
+      "lgb_score": 96.34,
+      "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "000620.SZ",
-      "stock_code": "000620",
-      "stock_name": "盈新发展",
-      "lgb_score": 99.39,
+      "ts_code": "301383.SZ",
+      "stock_code": "301383",
+      "stock_name": "天键股份",
+      "lgb_score": 90.44,
       "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "601828.SH",
-      "stock_code": "601828",
-      "stock_name": "美凯龙",
-      "lgb_score": 97.99,
-      "raw_score": 0.09
+      "ts_code": "000825.SZ",
+      "stock_code": "000825",
+      "stock_name": "太钢不锈",
+      "lgb_score": 88.93,
+      "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "600192.SH",
-      "stock_code": "600192",
-      "stock_name": "长城电工",
-      "lgb_score": 96.2,
-      "raw_score": 0.09
+      "ts_code": "000620.SZ",
+      "stock_code": "000620",
+      "stock_name": "盈新发展",
+      "lgb_score": 86.38,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "000850.SZ",
-      "stock_code": "000850",
-      "stock_name": "华茂股份",
-      "lgb_score": 94.52,
+      "ts_code": "000001.SH.SZ",
+      "stock_code": "000001",
+      "stock_name": "平安银行",
+      "lgb_score": 85.74,
       "raw_score": 0.08
     }
   ]

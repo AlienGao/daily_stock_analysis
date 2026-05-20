@@ -11,39 +11,39 @@
       "stock_code": "002445",
       "stock_name": "中南文化",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.12
     },
     {
       "rank": 2,
       "ts_code": "000554.SZ",
       "stock_code": "000554",
       "stock_name": "泰山石油",
-      "lgb_score": 92.61,
-      "raw_score": 0.11
+      "lgb_score": 94.01,
+      "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "301040.SZ",
-      "stock_code": "301040",
-      "stock_name": "中环海陆",
-      "lgb_score": 91.59,
-      "raw_score": 0.11
+      "ts_code": "688367.SH",
+      "stock_code": "688367",
+      "stock_name": "工大高科",
+      "lgb_score": 92.14,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "000859.SZ",
-      "stock_code": "000859",
-      "stock_name": "国风新材",
-      "lgb_score": 89.97,
-      "raw_score": 0.1
+      "ts_code": "300825.SZ",
+      "stock_code": "300825",
+      "stock_name": "阿尔特",
+      "lgb_score": 89.24,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "002274.SZ",
-      "stock_code": "002274",
-      "stock_name": "华昌化工",
-      "lgb_score": 89.07,
-      "raw_score": 0.1
+      "ts_code": "603368.SH",
+      "stock_code": "603368",
+      "stock_name": "柳药集团",
+      "lgb_score": 88.93,
+      "raw_score": 0.09
     }
   ]
 }

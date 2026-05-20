@@ -10,7 +10,7 @@
       "ts_code": "000545.SZ",
       "stock_code": "000545",
       "stock_name": "金浦钛业",
-      "lgb_score": 85.87,
+      "lgb_score": 85.5,
       "raw_score": 0.12
     },
     {
@@ -18,32 +18,32 @@
       "ts_code": "600227.SH",
       "stock_code": "600227",
       "stock_name": "赤天化",
-      "lgb_score": 83.35,
-      "raw_score": 0.11
+      "lgb_score": 78.81,
+      "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "002285.SZ",
-      "stock_code": "002285",
-      "stock_name": "世联行",
-      "lgb_score": 77.3,
+      "ts_code": "002792.SZ",
+      "stock_code": "002792",
+      "stock_name": "通宇通讯",
+      "lgb_score": 77.64,
       "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "002565.SZ",
-      "stock_code": "002565",
-      "stock_name": "顺灏股份",
-      "lgb_score": 74.91,
-      "raw_score": 0.09
+      "ts_code": "002285.SZ",
+      "stock_code": "002285",
+      "stock_name": "世联行",
+      "lgb_score": 76.43,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "600981.SH",
-      "stock_code": "600981",
-      "stock_name": "苏豪汇鸿",
-      "lgb_score": 74.44,
-      "raw_score": 0.09
+      "ts_code": "002277.SZ",
+      "stock_code": "002277",
+      "stock_name": "友阿股份",
+      "lgb_score": 76.41,
+      "raw_score": 0.1
     }
   ]
 }

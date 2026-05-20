@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600062.SH",
-      "stock_code": "600062",
-      "stock_name": "华润双鹤",
+      "ts_code": "300907.SZ",
+      "stock_code": "300907",
+      "stock_name": "康平科技",
       "lgb_score": 100.0,
       "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "300907.SZ",
-      "stock_code": "300907",
-      "stock_name": "康平科技",
-      "lgb_score": 99.8,
-      "raw_score": 0.1
+      "ts_code": "603601.SH",
+      "stock_code": "603601",
+      "stock_name": "再升科技",
+      "lgb_score": 96.14,
+      "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "300410.SZ",
-      "stock_code": "300410",
-      "stock_name": "正业科技",
-      "lgb_score": 91.16,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 91.24,
       "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "688502.SH",
-      "stock_code": "688502",
-      "stock_name": "茂莱光学",
-      "lgb_score": 89.18,
+      "ts_code": "600062.SH",
+      "stock_code": "600062",
+      "stock_name": "华润双鹤",
+      "lgb_score": 90.34,
       "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 86.72,
-      "raw_score": 0.08
+      "ts_code": "002837.SZ",
+      "stock_code": "002837",
+      "stock_name": "英维克",
+      "lgb_score": 85.24,
+      "raw_score": 0.07
     }
   ]
 }

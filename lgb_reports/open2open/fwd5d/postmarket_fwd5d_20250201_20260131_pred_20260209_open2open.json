@@ -7,26 +7,26 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301071.SZ",
-      "stock_code": "301071",
-      "stock_name": "力量钻石",
-      "lgb_score": 100.0,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 2,
       "ts_code": "002274.SZ",
       "stock_code": "002274",
       "stock_name": "华昌化工",
-      "lgb_score": 99.57,
+      "lgb_score": 100.0,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 2,
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 93.18,
       "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "300166.SZ",
-      "stock_code": "300166",
-      "stock_name": "东方国信",
-      "lgb_score": 98.56,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 92.8,
       "raw_score": 0.13
     },
     {
@@ -34,16 +34,16 @@
       "ts_code": "000554.SZ",
       "stock_code": "000554",
       "stock_name": "泰山石油",
-      "lgb_score": 94.81,
+      "lgb_score": 89.86,
       "raw_score": 0.12
     },
     {
       "rank": 5,
-      "ts_code": "002283.SZ",
-      "stock_code": "002283",
-      "stock_name": "天润工业",
-      "lgb_score": 90.66,
-      "raw_score": 0.1
+      "ts_code": "002929.SZ",
+      "stock_code": "002929",
+      "stock_name": "润建股份",
+      "lgb_score": 87.41,
+      "raw_score": 0.12
     }
   ]
 }

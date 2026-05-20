@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "603893.SH",
-      "stock_code": "603893",
-      "stock_name": "瑞芯微",
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
       "lgb_score": 100.0,
       "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "300263.SZ",
-      "stock_code": "300263",
-      "stock_name": "隆华科技",
-      "lgb_score": 95.82,
-      "raw_score": 0.12
-    },
-    {
-      "rank": 3,
-      "ts_code": "688181.SH",
-      "stock_code": "688181",
-      "stock_name": "八亿时空",
-      "lgb_score": 95.23,
-      "raw_score": 0.11
-    },
-    {
-      "rank": 4,
       "ts_code": "600308.SH",
       "stock_code": "600308",
       "stock_name": "华泰股份",
-      "lgb_score": 95.2,
-      "raw_score": 0.11
+      "lgb_score": 99.25,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 3,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 98.08,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 4,
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 95.01,
+      "raw_score": 0.12
     },
     {
       "rank": 5,
-      "ts_code": "000859.SZ",
-      "stock_code": "000859",
-      "stock_name": "国风新材",
-      "lgb_score": 91.27,
-      "raw_score": 0.1
+      "ts_code": "301209.SZ",
+      "stock_code": "301209",
+      "stock_name": "联合化学",
+      "lgb_score": 94.88,
+      "raw_score": 0.12
     }
   ]
 }

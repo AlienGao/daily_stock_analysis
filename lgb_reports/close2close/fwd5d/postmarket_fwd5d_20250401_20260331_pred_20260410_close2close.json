@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "603933.SH",
-      "stock_code": "603933",
-      "stock_name": "睿能科技",
+      "ts_code": "000962.SZ",
+      "stock_code": "000962",
+      "stock_name": "东方钽业",
       "lgb_score": 100.0,
-      "raw_score": 0.1
+      "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "000589.SZ",
-      "stock_code": "000589",
-      "stock_name": "贵州轮胎",
-      "lgb_score": 89.58,
+      "ts_code": "603370.SH",
+      "stock_code": "603370",
+      "stock_name": "华新精科",
+      "lgb_score": 93.56,
       "raw_score": 0.08
     },
     {
       "rank": 3,
-      "ts_code": "688195.SH",
-      "stock_code": "688195",
-      "stock_name": "腾景科技",
-      "lgb_score": 88.02,
+      "ts_code": "603889.SH",
+      "stock_code": "603889",
+      "stock_name": "新澳股份",
+      "lgb_score": 90.47,
       "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "600601.SH",
-      "stock_code": "600601",
-      "stock_name": "方正科技",
-      "lgb_score": 85.98,
-      "raw_score": 0.07
+      "ts_code": "000823.SZ",
+      "stock_code": "000823",
+      "stock_name": "超声电子",
+      "lgb_score": 89.76,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "002617.SZ",
-      "stock_code": "002617",
-      "stock_name": "露笑科技",
-      "lgb_score": 85.87,
-      "raw_score": 0.07
+      "ts_code": "300616.SZ",
+      "stock_code": "300616",
+      "stock_name": "尚品宅配",
+      "lgb_score": 89.74,
+      "raw_score": 0.08
     }
   ]
 }

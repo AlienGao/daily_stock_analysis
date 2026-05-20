@@ -7,18 +7,18 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300612.SZ",
-      "stock_code": "300612",
-      "stock_name": "宣亚国际",
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
       "lgb_score": 100.0,
       "raw_score": 0.3
     },
     {
       "rank": 2,
-      "ts_code": "301117.SZ",
-      "stock_code": "301117",
-      "stock_name": "佳缘科技",
-      "lgb_score": 99.73,
+      "ts_code": "300612.SZ",
+      "stock_code": "300612",
+      "stock_name": "宣亚国际",
+      "lgb_score": 98.17,
       "raw_score": 0.3
     },
     {
@@ -26,24 +26,24 @@
       "ts_code": "300017.SZ",
       "stock_code": "300017",
       "stock_name": "网宿科技",
-      "lgb_score": 90.79,
-      "raw_score": 0.25
+      "lgb_score": 95.56,
+      "raw_score": 0.28
     },
     {
       "rank": 4,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
-      "lgb_score": 89.44,
-      "raw_score": 0.24
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 91.87,
+      "raw_score": 0.26
     },
     {
       "rank": 5,
-      "ts_code": "920985.BJ",
-      "stock_code": "920985.BJ",
-      "stock_name": "",
-      "lgb_score": 86.82,
-      "raw_score": 0.23
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 91.48,
+      "raw_score": 0.26
     }
   ]
 }

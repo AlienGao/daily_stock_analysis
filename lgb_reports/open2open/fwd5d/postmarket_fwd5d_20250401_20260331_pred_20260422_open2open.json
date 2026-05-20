@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300857.SZ",
-      "stock_code": "300857",
-      "stock_name": "协创数据",
+      "ts_code": "603507.SH",
+      "stock_code": "603507",
+      "stock_name": "振江股份",
       "lgb_score": 100.0,
-      "raw_score": 0.09
+      "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "688498.SH",
-      "stock_code": "688498",
-      "stock_name": "源杰科技",
-      "lgb_score": 98.73,
-      "raw_score": 0.09
+      "ts_code": "301022.SZ",
+      "stock_code": "301022",
+      "stock_name": "海泰科",
+      "lgb_score": 95.9,
+      "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "688679.SH",
-      "stock_code": "688679",
-      "stock_name": "通源环境",
-      "lgb_score": 97.52,
-      "raw_score": 0.08
+      "ts_code": "300870.SZ",
+      "stock_code": "300870",
+      "stock_name": "欧陆通",
+      "lgb_score": 82.51,
+      "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "000968.SZ",
-      "stock_code": "000968",
-      "stock_name": "蓝焰控股",
-      "lgb_score": 95.82,
-      "raw_score": 0.08
+      "ts_code": "920125.BJ",
+      "stock_code": "920125.BJ",
+      "stock_name": "",
+      "lgb_score": 82.49,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "688331.SH.SH",
-      "stock_code": "688331",
-      "stock_name": "荣昌生物",
-      "lgb_score": 94.24,
-      "raw_score": 0.08
+      "ts_code": "000404.SZ",
+      "stock_code": "000404",
+      "stock_name": "长虹华意",
+      "lgb_score": 80.51,
+      "raw_score": 0.09
     }
   ]
 }

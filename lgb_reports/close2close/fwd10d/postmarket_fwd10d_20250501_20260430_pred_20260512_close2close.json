@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300083.SZ",
-      "stock_code": "300083",
-      "stock_name": "创世纪",
+      "ts_code": "000968.SZ",
+      "stock_code": "000968",
+      "stock_name": "蓝焰控股",
       "lgb_score": 100.0,
-      "raw_score": 0.22
+      "raw_score": 0.25
     },
     {
       "rank": 2,
       "ts_code": "601678.SH",
       "stock_code": "601678",
       "stock_name": "滨化股份",
-      "lgb_score": 93.61,
-      "raw_score": 0.19
+      "lgb_score": 98.64,
+      "raw_score": 0.24
     },
     {
       "rank": 3,
-      "ts_code": "688549.SH",
-      "stock_code": "688549",
-      "stock_name": "中巨芯-U",
-      "lgb_score": 91.4,
-      "raw_score": 0.19
+      "ts_code": "300083.SZ",
+      "stock_code": "300083",
+      "stock_name": "创世纪",
+      "lgb_score": 91.05,
+      "raw_score": 0.21
     },
     {
       "rank": 4,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 90.98,
-      "raw_score": 0.18
+      "ts_code": "002374.SZ",
+      "stock_code": "002374",
+      "stock_name": "中锐股份",
+      "lgb_score": 89.99,
+      "raw_score": 0.21
     },
     {
       "rank": 5,
-      "ts_code": "002915.SZ",
-      "stock_code": "002915",
-      "stock_name": "中欣氟材",
-      "lgb_score": 90.62,
-      "raw_score": 0.18
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 89.98,
+      "raw_score": 0.21
     }
   ]
 }

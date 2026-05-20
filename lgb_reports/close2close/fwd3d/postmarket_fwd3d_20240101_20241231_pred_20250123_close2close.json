@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
       "lgb_score": 100.0,
-      "raw_score": 0.08
+      "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "301322.SZ",
-      "stock_code": "301322",
-      "stock_name": "绿通科技",
-      "lgb_score": 98.11,
+      "ts_code": "300975.SZ",
+      "stock_code": "300975",
+      "stock_name": "商络电子",
+      "lgb_score": 99.44,
       "raw_score": 0.08
     },
     {
       "rank": 3,
-      "ts_code": "002929.SZ",
-      "stock_code": "002929",
-      "stock_name": "润建股份",
-      "lgb_score": 98.07,
+      "ts_code": "300883.SZ",
+      "stock_code": "300883",
+      "stock_name": "龙利得",
+      "lgb_score": 96.45,
       "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 96.35,
-      "raw_score": 0.07
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 95.49,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "002407.SZ",
-      "stock_code": "002407",
-      "stock_name": "多氟多",
-      "lgb_score": 96.16,
-      "raw_score": 0.07
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 94.32,
+      "raw_score": 0.08
     }
   ]
 }

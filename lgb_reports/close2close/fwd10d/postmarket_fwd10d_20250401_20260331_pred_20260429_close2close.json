@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688048.SH",
-      "stock_code": "688048",
-      "stock_name": "长光华芯",
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
       "lgb_score": 100.0,
-      "raw_score": 0.16
+      "raw_score": 0.25
     },
     {
       "rank": 2,
-      "ts_code": "600183.SH",
-      "stock_code": "600183",
-      "stock_name": "生益科技",
-      "lgb_score": 91.18,
-      "raw_score": 0.13
+      "ts_code": "688048.SH",
+      "stock_code": "688048",
+      "stock_name": "长光华芯",
+      "lgb_score": 93.93,
+      "raw_score": 0.23
     },
     {
       "rank": 3,
-      "ts_code": "000001.SH.SZ",
-      "stock_code": "000001",
-      "stock_name": "平安银行",
-      "lgb_score": 89.57,
-      "raw_score": 0.13
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
+      "lgb_score": 76.73,
+      "raw_score": 0.16
     },
     {
       "rank": 4,
-      "ts_code": "002658.SZ",
-      "stock_code": "002658",
-      "stock_name": "雪迪龙",
-      "lgb_score": 88.43,
-      "raw_score": 0.12
+      "ts_code": "688268.SH",
+      "stock_code": "688268",
+      "stock_name": "华特气体",
+      "lgb_score": 72.64,
+      "raw_score": 0.15
     },
     {
       "rank": 5,
-      "ts_code": "002647.SZ",
-      "stock_code": "002647",
-      "stock_name": "仁东控股",
-      "lgb_score": 88.12,
-      "raw_score": 0.12
+      "ts_code": "301345.SZ",
+      "stock_code": "301345",
+      "stock_name": "涛涛车业",
+      "lgb_score": 72.48,
+      "raw_score": 0.15
     }
   ]
 }

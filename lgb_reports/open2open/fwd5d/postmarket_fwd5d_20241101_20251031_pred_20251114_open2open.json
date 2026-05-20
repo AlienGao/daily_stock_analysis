@@ -11,39 +11,39 @@
       "stock_code": "002438",
       "stock_name": "江苏神通",
       "lgb_score": 100.0,
-      "raw_score": 0.21
+      "raw_score": 0.2
     },
     {
       "rank": 2,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 89.68,
-      "raw_score": 0.18
-    },
-    {
-      "rank": 3,
       "ts_code": "002234.SZ",
       "stock_code": "002234",
       "stock_name": "民和股份",
-      "lgb_score": 87.35,
-      "raw_score": 0.17
+      "lgb_score": 87.01,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 3,
+      "ts_code": "301633.SZ",
+      "stock_code": "301633",
+      "stock_name": "港迪技术",
+      "lgb_score": 86.91,
+      "raw_score": 0.16
     },
     {
       "rank": 4,
-      "ts_code": "688458.SH",
-      "stock_code": "688458",
-      "stock_name": "美芯晟",
-      "lgb_score": 81.94,
-      "raw_score": 0.15
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 86.07,
+      "raw_score": 0.16
     },
     {
       "rank": 5,
-      "ts_code": "000159.SZ",
-      "stock_code": "000159",
-      "stock_name": "国际实业",
-      "lgb_score": 81.25,
-      "raw_score": 0.15
+      "ts_code": "301590.SZ",
+      "stock_code": "301590",
+      "stock_name": "优优绿能",
+      "lgb_score": 84.48,
+      "raw_score": 0.16
     }
   ]
 }

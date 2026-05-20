@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
       "lgb_score": 100.0,
-      "raw_score": 0.32
+      "raw_score": 0.28
     },
     {
       "rank": 2,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
-      "lgb_score": 98.01,
-      "raw_score": 0.31
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 99.35,
+      "raw_score": 0.27
     },
     {
       "rank": 3,
-      "ts_code": "300612.SZ",
-      "stock_code": "300612",
-      "stock_name": "宣亚国际",
-      "lgb_score": 95.95,
-      "raw_score": 0.3
-    },
-    {
-      "rank": 4,
       "ts_code": "688135.SH",
       "stock_code": "688135",
       "stock_name": "利扬芯片",
-      "lgb_score": 92.85,
-      "raw_score": 0.29
+      "lgb_score": 97.61,
+      "raw_score": 0.27
+    },
+    {
+      "rank": 4,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 97.02,
+      "raw_score": 0.26
     },
     {
       "rank": 5,
-      "ts_code": "688316.SH",
-      "stock_code": "688316",
-      "stock_name": "青云科技-U",
-      "lgb_score": 92.21,
-      "raw_score": 0.28
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 96.71,
+      "raw_score": 0.26
     }
   ]
 }

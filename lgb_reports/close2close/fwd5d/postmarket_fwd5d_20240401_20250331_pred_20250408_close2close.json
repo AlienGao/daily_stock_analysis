@@ -15,35 +15,35 @@
     },
     {
       "rank": 2,
-      "ts_code": "002029.SZ",
-      "stock_code": "002029",
-      "stock_name": "七 匹 狼",
-      "lgb_score": 90.72,
-      "raw_score": 0.11
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 99.47,
+      "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "000159.SZ",
-      "stock_code": "000159",
-      "stock_name": "国际实业",
-      "lgb_score": 90.12,
-      "raw_score": 0.1
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 96.48,
+      "raw_score": 0.12
     },
     {
       "rank": 4,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 87.94,
-      "raw_score": 0.1
+      "ts_code": "000159.SZ",
+      "stock_code": "000159",
+      "stock_name": "国际实业",
+      "lgb_score": 95.79,
+      "raw_score": 0.12
     },
     {
       "rank": 5,
-      "ts_code": "920375.BJ",
-      "stock_code": "920375.BJ",
-      "stock_name": "",
-      "lgb_score": 87.82,
-      "raw_score": 0.1
+      "ts_code": "002274.SZ",
+      "stock_code": "002274",
+      "stock_name": "华昌化工",
+      "lgb_score": 95.52,
+      "raw_score": 0.12
     }
   ]
 }

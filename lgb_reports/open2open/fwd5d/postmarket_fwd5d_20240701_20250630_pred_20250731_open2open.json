@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
+      "ts_code": "300429.SZ",
+      "stock_code": "300429",
+      "stock_name": "强力新材",
       "lgb_score": 100.0,
-      "raw_score": 0.14
-    },
-    {
-      "rank": 2,
-      "ts_code": "688181.SH",
-      "stock_code": "688181",
-      "stock_name": "八亿时空",
-      "lgb_score": 98.65,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 3,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 96.58,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 4,
-      "ts_code": "688502.SH",
-      "stock_code": "688502",
-      "stock_name": "茂莱光学",
-      "lgb_score": 94.98,
       "raw_score": 0.12
     },
     {
+      "rank": 2,
+      "ts_code": "000001.SH.SZ",
+      "stock_code": "000001",
+      "stock_name": "平安银行",
+      "lgb_score": 97.93,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "688012.SH",
+      "stock_code": "688012",
+      "stock_name": "中微公司",
+      "lgb_score": 97.87,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 4,
+      "ts_code": "001226.SZ",
+      "stock_code": "001226",
+      "stock_name": "拓山重工",
+      "lgb_score": 97.61,
+      "raw_score": 0.11
+    },
+    {
       "rank": 5,
-      "ts_code": "600527.SH",
-      "stock_code": "600527",
-      "stock_name": "江南高纤",
-      "lgb_score": 92.34,
+      "ts_code": "688502.SH",
+      "stock_code": "688502",
+      "stock_name": "茂莱光学",
+      "lgb_score": 97.44,
       "raw_score": 0.11
     }
   ]

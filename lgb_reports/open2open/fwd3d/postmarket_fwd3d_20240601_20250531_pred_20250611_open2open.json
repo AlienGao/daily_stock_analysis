@@ -7,18 +7,18 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600076.SH",
-      "stock_code": "600076",
-      "stock_name": "康欣新材",
-      "lgb_score": 100.0,
-      "raw_score": 0.11
-    },
-    {
-      "rank": 2,
       "ts_code": "300230.SZ",
       "stock_code": "300230",
       "stock_name": "永利股份",
-      "lgb_score": 95.57,
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "603381.SH",
+      "stock_code": "603381",
+      "stock_name": "永臻股份",
+      "lgb_score": 92.19,
       "raw_score": 0.1
     },
     {
@@ -26,24 +26,24 @@
       "ts_code": "002546.SZ",
       "stock_code": "002546",
       "stock_name": "新联电子",
-      "lgb_score": 91.0,
-      "raw_score": 0.09
+      "lgb_score": 87.09,
+      "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "002343.SZ",
-      "stock_code": "002343",
-      "stock_name": "慈文传媒",
-      "lgb_score": 90.04,
-      "raw_score": 0.09
+      "ts_code": "920351.BJ",
+      "stock_code": "920351.BJ",
+      "stock_name": "",
+      "lgb_score": 85.12,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "002291.SZ",
-      "stock_code": "002291",
-      "stock_name": "遥望科技",
-      "lgb_score": 90.01,
-      "raw_score": 0.09
+      "ts_code": "300158.SZ",
+      "stock_code": "300158",
+      "stock_name": "振东制药",
+      "lgb_score": 84.14,
+      "raw_score": 0.08
     }
   ]
 }

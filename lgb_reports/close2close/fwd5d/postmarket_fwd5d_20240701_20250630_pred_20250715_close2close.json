@@ -11,39 +11,39 @@
       "stock_code": "300502",
       "stock_name": "新易盛",
       "lgb_score": 100.0,
-      "raw_score": 0.11
+      "raw_score": 0.16
     },
     {
       "rank": 2,
-      "ts_code": "002511.SZ",
-      "stock_code": "002511",
-      "stock_name": "中顺洁柔",
-      "lgb_score": 92.04,
-      "raw_score": 0.09
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 86.79,
+      "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "000652.SZ",
-      "stock_code": "000652",
-      "stock_name": "泰达股份",
-      "lgb_score": 89.64,
-      "raw_score": 0.09
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
+      "lgb_score": 86.26,
+      "raw_score": 0.12
     },
     {
       "rank": 4,
-      "ts_code": "002009.SZ",
-      "stock_code": "002009",
-      "stock_name": "天奇股份",
-      "lgb_score": 89.54,
-      "raw_score": 0.09
+      "ts_code": "300975.SZ",
+      "stock_code": "300975",
+      "stock_name": "商络电子",
+      "lgb_score": 84.78,
+      "raw_score": 0.12
     },
     {
       "rank": 5,
-      "ts_code": "002121.SZ",
-      "stock_code": "002121",
-      "stock_name": "科陆电子",
-      "lgb_score": 89.52,
-      "raw_score": 0.09
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 84.75,
+      "raw_score": 0.12
     }
   ]
 }

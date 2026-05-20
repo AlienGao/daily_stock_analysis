@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "601138.SH",
-      "stock_code": "601138",
-      "stock_name": "工业富联",
-      "lgb_score": 100.0,
-      "raw_score": 0.12
-    },
-    {
-      "rank": 2,
       "ts_code": "688108.SH",
       "stock_code": "688108",
       "stock_name": "赛诺医疗",
-      "lgb_score": 97.25,
-      "raw_score": 0.11
+      "lgb_score": 100.0,
+      "raw_score": 0.1
     },
     {
-      "rank": 3,
+      "rank": 2,
       "ts_code": "002377.SZ",
       "stock_code": "002377",
       "stock_name": "国创高新",
-      "lgb_score": 90.92,
+      "lgb_score": 99.86,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 3,
+      "ts_code": "002331.SZ",
+      "stock_code": "002331",
+      "stock_name": "皖通科技",
+      "lgb_score": 99.09,
       "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 84.92,
-      "raw_score": 0.09
+      "ts_code": "600366.SH",
+      "stock_code": "600366",
+      "stock_name": "宁波韵升",
+      "lgb_score": 96.83,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "002716.SZ",
-      "stock_code": "002716",
-      "stock_name": "湖南白银",
-      "lgb_score": 84.35,
-      "raw_score": 0.08
+      "ts_code": "601138.SH",
+      "stock_code": "601138",
+      "stock_name": "工业富联",
+      "lgb_score": 95.92,
+      "raw_score": 0.1
     }
   ]
 }

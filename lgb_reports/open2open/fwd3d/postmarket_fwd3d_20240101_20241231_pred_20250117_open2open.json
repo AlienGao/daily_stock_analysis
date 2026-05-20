@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002165.SZ",
-      "stock_code": "002165",
-      "stock_name": "红 宝 丽",
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
       "lgb_score": 100.0,
       "raw_score": 0.11
     },
     {
       "rank": 2,
-      "ts_code": "000159.SZ",
-      "stock_code": "000159",
-      "stock_name": "国际实业",
-      "lgb_score": 92.84,
-      "raw_score": 0.09
-    },
-    {
-      "rank": 3,
       "ts_code": "300166.SZ",
       "stock_code": "300166",
       "stock_name": "东方国信",
-      "lgb_score": 92.05,
-      "raw_score": 0.09
+      "lgb_score": 99.43,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 98.22,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 91.72,
+      "ts_code": "600367.SH",
+      "stock_code": "600367",
+      "stock_name": "红星发展",
+      "lgb_score": 93.1,
       "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "600199.SH",
-      "stock_code": "600199",
-      "stock_name": "金种子酒",
-      "lgb_score": 84.98,
-      "raw_score": 0.07
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 88.33,
+      "raw_score": 0.08
     }
   ]
 }

@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301633.SZ",
-      "stock_code": "301633",
-      "stock_name": "港迪技术",
-      "lgb_score": 100.0,
-      "raw_score": 0.17
-    },
-    {
-      "rank": 2,
       "ts_code": "688316.SH",
       "stock_code": "688316",
       "stock_name": "青云科技-U",
-      "lgb_score": 96.06,
-      "raw_score": 0.16
+      "lgb_score": 100.0,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 2,
+      "ts_code": "301633.SZ",
+      "stock_code": "301633",
+      "stock_name": "港迪技术",
+      "lgb_score": 98.74,
+      "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "301022.SZ",
-      "stock_code": "301022",
-      "stock_name": "海泰科",
-      "lgb_score": 92.55,
-      "raw_score": 0.15
+      "ts_code": "688108.SH",
+      "stock_code": "688108",
+      "stock_name": "赛诺医疗",
+      "lgb_score": 94.51,
+      "raw_score": 0.11
     },
     {
       "rank": 4,
-      "ts_code": "920123.BJ",
-      "stock_code": "920123.BJ",
+      "ts_code": "920106.BJ",
+      "stock_code": "920106.BJ",
       "stock_name": "",
-      "lgb_score": 84.25,
-      "raw_score": 0.12
+      "lgb_score": 92.07,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "688135.SH",
-      "stock_code": "688135",
-      "stock_name": "利扬芯片",
-      "lgb_score": 83.44,
-      "raw_score": 0.12
+      "ts_code": "688652.SH",
+      "stock_code": "688652",
+      "stock_name": "京仪装备",
+      "lgb_score": 91.97,
+      "raw_score": 0.1
     }
   ]
 }

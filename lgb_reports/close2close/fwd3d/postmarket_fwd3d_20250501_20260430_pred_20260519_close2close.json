@@ -11,39 +11,39 @@
       "stock_code": "301205",
       "stock_name": "联特科技",
       "lgb_score": 100.0,
-      "raw_score": 0.1
+      "raw_score": 0.07
     },
     {
       "rank": 2,
       "ts_code": "603056",
       "stock_code": "603056",
       "stock_name": "",
-      "lgb_score": 90.37,
-      "raw_score": 0.08
+      "lgb_score": 99.17,
+      "raw_score": 0.07
     },
     {
       "rank": 3,
-      "ts_code": "920058",
-      "stock_code": "920058",
-      "stock_name": "华洋赛车",
-      "lgb_score": 84.63,
-      "raw_score": 0.07
+      "ts_code": "920005",
+      "stock_code": "920005",
+      "stock_name": "鼎佳精密",
+      "lgb_score": 88.76,
+      "raw_score": 0.05
     },
     {
       "rank": 4,
-      "ts_code": "920374",
-      "stock_code": "920374",
-      "stock_name": "云里物里",
-      "lgb_score": 82.75,
-      "raw_score": 0.07
+      "ts_code": "920924",
+      "stock_code": "920924",
+      "stock_name": "广脉科技",
+      "lgb_score": 88.17,
+      "raw_score": 0.05
     },
     {
       "rank": 5,
-      "ts_code": "300476",
-      "stock_code": "300476",
-      "stock_name": "胜宏科技",
-      "lgb_score": 82.08,
-      "raw_score": 0.07
+      "ts_code": "920058",
+      "stock_code": "920058",
+      "stock_name": "华洋赛车",
+      "lgb_score": 87.98,
+      "raw_score": 0.05
     }
   ]
 }

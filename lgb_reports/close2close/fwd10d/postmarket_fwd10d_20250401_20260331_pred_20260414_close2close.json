@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300757.SZ",
-      "stock_code": "300757",
-      "stock_name": "罗博特科",
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
       "lgb_score": 100.0,
-      "raw_score": 0.17
+      "raw_score": 0.2
     },
     {
       "rank": 2,
       "ts_code": "688525.SH",
       "stock_code": "688525",
       "stock_name": "佰维存储",
-      "lgb_score": 99.93,
-      "raw_score": 0.17
+      "lgb_score": 96.47,
+      "raw_score": 0.19
     },
     {
       "rank": 3,
-      "ts_code": "300502.SZ.SZ",
-      "stock_code": "300502",
-      "stock_name": "新易盛",
-      "lgb_score": 91.71,
-      "raw_score": 0.14
+      "ts_code": "000959.SZ",
+      "stock_code": "000959",
+      "stock_name": "首钢股份",
+      "lgb_score": 94.65,
+      "raw_score": 0.18
     },
     {
       "rank": 4,
-      "ts_code": "688498.SH",
-      "stock_code": "688498",
-      "stock_name": "源杰科技",
-      "lgb_score": 87.5,
-      "raw_score": 0.13
+      "ts_code": "603738.SH",
+      "stock_code": "603738",
+      "stock_name": "泰晶科技",
+      "lgb_score": 87.57,
+      "raw_score": 0.16
     },
     {
       "rank": 5,
-      "ts_code": "600232.SH",
-      "stock_code": "600232",
-      "stock_name": "金鹰股份",
-      "lgb_score": 84.13,
-      "raw_score": 0.12
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 86.08,
+      "raw_score": 0.15
     }
   ]
 }

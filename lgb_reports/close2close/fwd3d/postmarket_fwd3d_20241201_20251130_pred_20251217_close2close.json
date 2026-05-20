@@ -10,7 +10,7 @@
       "ts_code": "002188.SZ",
       "stock_code": "002188",
       "stock_name": "中天服务",
-      "lgb_score": 97.27,
+      "lgb_score": 100.0,
       "raw_score": 0.11
     },
     {
@@ -18,31 +18,31 @@
       "ts_code": "000546.SZ",
       "stock_code": "000546",
       "stock_name": "金圆股份",
-      "lgb_score": 90.78,
-      "raw_score": 0.09
+      "lgb_score": 92.52,
+      "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "002969.SZ",
-      "stock_code": "002969",
-      "stock_name": "嘉美包装",
-      "lgb_score": 87.76,
+      "ts_code": "002735.SZ",
+      "stock_code": "002735",
+      "stock_name": "王子新材",
+      "lgb_score": 86.56,
       "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "603703.SH",
-      "stock_code": "603703",
-      "stock_name": "盛洋科技",
-      "lgb_score": 85.81,
+      "ts_code": "002536.SZ",
+      "stock_code": "002536",
+      "stock_name": "飞龙股份",
+      "lgb_score": 83.97,
       "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "603915.SH",
-      "stock_code": "603915",
-      "stock_name": "国茂股份",
-      "lgb_score": 83.79,
+      "ts_code": "603703.SH",
+      "stock_code": "603703",
+      "stock_name": "盛洋科技",
+      "lgb_score": 79.8,
       "raw_score": 0.08
     }
   ]

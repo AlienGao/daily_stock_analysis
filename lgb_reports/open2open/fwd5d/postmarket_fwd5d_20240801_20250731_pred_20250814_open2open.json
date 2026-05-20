@@ -11,39 +11,39 @@
       "stock_code": "600151",
       "stock_name": "航天机电",
       "lgb_score": 100.0,
-      "raw_score": 0.18
+      "raw_score": 0.2
     },
     {
       "rank": 2,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 87.65,
-      "raw_score": 0.13
+      "ts_code": "600509.SH",
+      "stock_code": "600509",
+      "stock_name": "天富能源",
+      "lgb_score": 92.18,
+      "raw_score": 0.17
     },
     {
       "rank": 3,
-      "ts_code": "300429.SZ",
-      "stock_code": "300429",
-      "stock_name": "强力新材",
-      "lgb_score": 87.43,
-      "raw_score": 0.13
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 90.5,
+      "raw_score": 0.17
     },
     {
       "rank": 4,
-      "ts_code": "002590.SZ",
-      "stock_code": "002590",
-      "stock_name": "万安科技",
-      "lgb_score": 87.33,
-      "raw_score": 0.13
+      "ts_code": "600386.SH",
+      "stock_code": "600386",
+      "stock_name": "北巴传媒",
+      "lgb_score": 89.99,
+      "raw_score": 0.17
     },
     {
       "rank": 5,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
-      "lgb_score": 86.63,
-      "raw_score": 0.13
+      "ts_code": "002407.SZ",
+      "stock_code": "002407",
+      "stock_name": "多氟多",
+      "lgb_score": 89.94,
+      "raw_score": 0.17
     }
   ]
 }

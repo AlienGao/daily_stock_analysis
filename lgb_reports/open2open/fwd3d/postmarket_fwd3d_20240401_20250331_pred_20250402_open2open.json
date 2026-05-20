@@ -11,39 +11,39 @@
       "stock_code": "000859",
       "stock_name": "国风新材",
       "lgb_score": 100.0,
-      "raw_score": 0.11
+      "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "300263.SZ",
-      "stock_code": "300263",
-      "stock_name": "隆华科技",
-      "lgb_score": 97.27,
-      "raw_score": 0.1
+      "ts_code": "688401.SH",
+      "stock_code": "688401",
+      "stock_name": "路维光电",
+      "lgb_score": 92.24,
+      "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "002121.SZ",
-      "stock_code": "002121",
-      "stock_name": "科陆电子",
-      "lgb_score": 96.65,
-      "raw_score": 0.1
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 90.05,
+      "raw_score": 0.11
     },
     {
       "rank": 4,
-      "ts_code": "000554.SZ",
-      "stock_code": "000554",
-      "stock_name": "泰山石油",
-      "lgb_score": 95.78,
+      "ts_code": "300439.SZ",
+      "stock_code": "300439",
+      "stock_name": "美康生物",
+      "lgb_score": 87.74,
       "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "001332.SZ",
-      "stock_code": "001332",
-      "stock_name": "锡装股份",
-      "lgb_score": 95.24,
-      "raw_score": 0.1
+      "ts_code": "600509.SH",
+      "stock_code": "600509",
+      "stock_name": "天富能源",
+      "lgb_score": 85.62,
+      "raw_score": 0.09
     }
   ]
 }

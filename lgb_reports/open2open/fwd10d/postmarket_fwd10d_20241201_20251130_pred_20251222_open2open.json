@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002291.SZ",
-      "stock_code": "002291",
-      "stock_name": "遥望科技",
+      "ts_code": "600512.SH",
+      "stock_code": "600512",
+      "stock_name": "腾达建设",
       "lgb_score": 100.0,
       "raw_score": 0.28
     },
     {
       "rank": 2,
-      "ts_code": "600802.SH",
-      "stock_code": "600802",
-      "stock_name": "福建水泥",
-      "lgb_score": 98.9,
+      "ts_code": "600798.SH",
+      "stock_code": "600798",
+      "stock_name": "宁波海运",
+      "lgb_score": 97.64,
       "raw_score": 0.27
     },
     {
       "rank": 3,
-      "ts_code": "600798.SH",
-      "stock_code": "600798",
-      "stock_name": "宁波海运",
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
       "lgb_score": 97.54,
-      "raw_score": 0.26
+      "raw_score": 0.27
     },
     {
       "rank": 4,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 96.2,
+      "ts_code": "002291.SZ",
+      "stock_code": "002291",
+      "stock_name": "遥望科技",
+      "lgb_score": 96.6,
       "raw_score": 0.26
     },
     {
       "rank": 5,
-      "ts_code": "600481.SH",
-      "stock_code": "600481",
-      "stock_name": "双良节能",
-      "lgb_score": 95.97,
+      "ts_code": "000681.SZ",
+      "stock_code": "000681",
+      "stock_name": "视觉中国",
+      "lgb_score": 95.24,
       "raw_score": 0.26
     }
   ]

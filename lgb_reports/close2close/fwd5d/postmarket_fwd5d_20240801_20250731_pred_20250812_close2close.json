@@ -15,35 +15,35 @@
     },
     {
       "rank": 2,
-      "ts_code": "688316.SH",
-      "stock_code": "688316",
-      "stock_name": "青云科技-U",
-      "lgb_score": 98.64,
+      "ts_code": "002617.SZ",
+      "stock_code": "002617",
+      "stock_name": "露笑科技",
+      "lgb_score": 99.14,
       "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "000859.SZ",
-      "stock_code": "000859",
-      "stock_name": "国风新材",
-      "lgb_score": 97.5,
-      "raw_score": 0.12
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 97.97,
+      "raw_score": 0.13
     },
     {
       "rank": 4,
-      "ts_code": "688401.SH",
-      "stock_code": "688401",
-      "stock_name": "路维光电",
-      "lgb_score": 96.84,
-      "raw_score": 0.12
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 97.91,
+      "raw_score": 0.13
     },
     {
       "rank": 5,
-      "ts_code": "300655.SZ",
-      "stock_code": "300655",
-      "stock_name": "晶瑞电材",
-      "lgb_score": 95.81,
-      "raw_score": 0.12
+      "ts_code": "301110.SZ",
+      "stock_code": "301110",
+      "stock_name": "青木科技",
+      "lgb_score": 97.23,
+      "raw_score": 0.13
     }
   ]
 }

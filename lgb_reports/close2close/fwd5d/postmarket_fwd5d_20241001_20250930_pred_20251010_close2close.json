@@ -11,39 +11,39 @@
       "stock_code": "002274",
       "stock_name": "华昌化工",
       "lgb_score": 100.0,
-      "raw_score": 0.14
+      "raw_score": 0.15
     },
     {
       "rank": 2,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 98.24,
-      "raw_score": 0.13
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 96.78,
+      "raw_score": 0.14
     },
     {
       "rank": 3,
-      "ts_code": "601500.SH",
-      "stock_code": "601500",
-      "stock_name": "通用股份",
-      "lgb_score": 93.23,
-      "raw_score": 0.12
+      "ts_code": "688135.SH",
+      "stock_code": "688135",
+      "stock_name": "利扬芯片",
+      "lgb_score": 95.23,
+      "raw_score": 0.14
     },
     {
       "rank": 4,
-      "ts_code": "000001.SH.SZ",
-      "stock_code": "000001",
-      "stock_name": "平安银行",
-      "lgb_score": 90.82,
-      "raw_score": 0.11
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 94.65,
+      "raw_score": 0.13
     },
     {
       "rank": 5,
-      "ts_code": "603018.SH",
-      "stock_code": "603018",
-      "stock_name": "华设集团",
-      "lgb_score": 90.81,
-      "raw_score": 0.11
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 93.81,
+      "raw_score": 0.13
     }
   ]
 }

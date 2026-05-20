@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
-      "lgb_score": 100.0,
-      "raw_score": 0.1
-    },
-    {
-      "rank": 2,
       "ts_code": "600410.SH",
       "stock_code": "600410",
       "stock_name": "华胜天成",
-      "lgb_score": 97.48,
-      "raw_score": 0.1
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 89.63,
+      "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "000159.SZ",
-      "stock_code": "000159",
-      "stock_name": "国际实业",
-      "lgb_score": 92.44,
+      "ts_code": "920088.BJ",
+      "stock_code": "920088.BJ",
+      "stock_name": "",
+      "lgb_score": 84.82,
       "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
-      "lgb_score": 91.37,
+      "ts_code": "300975.SZ",
+      "stock_code": "300975",
+      "stock_name": "商络电子",
+      "lgb_score": 84.2,
       "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 90.41,
-      "raw_score": 0.08
+      "ts_code": "000159.SZ",
+      "stock_code": "000159",
+      "stock_name": "国际实业",
+      "lgb_score": 82.98,
+      "raw_score": 0.07
     }
   ]
 }

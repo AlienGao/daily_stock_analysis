@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301022.SZ",
-      "stock_code": "301022",
-      "stock_name": "海泰科",
-      "lgb_score": 100.0,
-      "raw_score": 0.17
-    },
-    {
-      "rank": 2,
       "ts_code": "688108.SH",
       "stock_code": "688108",
       "stock_name": "赛诺医疗",
-      "lgb_score": 97.34,
-      "raw_score": 0.16
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "301231.SZ",
+      "stock_code": "301231",
+      "stock_name": "荣信文化",
+      "lgb_score": 97.23,
+      "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "002580.SZ",
-      "stock_code": "002580",
-      "stock_name": "圣阳股份",
-      "lgb_score": 91.92,
-      "raw_score": 0.14
+      "ts_code": "301022.SZ",
+      "stock_code": "301022",
+      "stock_name": "海泰科",
+      "lgb_score": 96.75,
+      "raw_score": 0.11
     },
     {
       "rank": 4,
-      "ts_code": "001282.SZ",
-      "stock_code": "001282",
-      "stock_name": "三联锻造",
-      "lgb_score": 91.73,
-      "raw_score": 0.14
-    },
-    {
-      "rank": 5,
       "ts_code": "920436.BJ",
       "stock_code": "920436.BJ",
       "stock_name": "",
-      "lgb_score": 89.29,
-      "raw_score": 0.13
+      "lgb_score": 96.42,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 5,
+      "ts_code": "001282.SZ",
+      "stock_code": "001282",
+      "stock_name": "三联锻造",
+      "lgb_score": 96.16,
+      "raw_score": 0.11
     }
   ]
 }

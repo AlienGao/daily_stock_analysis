@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002248.SZ",
-      "stock_code": "002248",
-      "stock_name": "华东数控",
-      "lgb_score": 100.0,
-      "raw_score": 0.12
-    },
-    {
-      "rank": 2,
       "ts_code": "600103.SH",
       "stock_code": "600103",
       "stock_name": "青山纸业",
-      "lgb_score": 95.6,
+      "lgb_score": 100.0,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 2,
+      "ts_code": "300883.SZ",
+      "stock_code": "300883",
+      "stock_name": "龙利得",
+      "lgb_score": 90.43,
       "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "300476.SZ",
-      "stock_code": "300476",
-      "stock_name": "胜宏科技",
-      "lgb_score": 86.39,
-      "raw_score": 0.09
+      "ts_code": "600386.SH",
+      "stock_code": "600386",
+      "stock_name": "北巴传媒",
+      "lgb_score": 89.01,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "300484.SZ",
-      "stock_code": "300484",
-      "stock_name": "蓝海华腾",
-      "lgb_score": 83.84,
-      "raw_score": 0.09
+      "ts_code": "600367.SH",
+      "stock_code": "600367",
+      "stock_name": "红星发展",
+      "lgb_score": 88.94,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "300166.SZ",
-      "stock_code": "300166",
-      "stock_name": "东方国信",
-      "lgb_score": 82.98,
-      "raw_score": 0.09
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 87.48,
+      "raw_score": 0.1
     }
   ]
 }

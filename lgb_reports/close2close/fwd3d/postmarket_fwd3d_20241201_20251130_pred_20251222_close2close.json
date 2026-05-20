@@ -11,39 +11,39 @@
       "stock_code": "000981",
       "stock_name": "山子高科",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.14
     },
     {
       "rank": 2,
       "ts_code": "002228.SZ",
       "stock_code": "002228",
       "stock_name": "合兴包装",
-      "lgb_score": 90.31,
+      "lgb_score": 83.02,
       "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "600076.SH",
-      "stock_code": "600076",
-      "stock_name": "康欣新材",
-      "lgb_score": 85.72,
+      "ts_code": "601106.SH",
+      "stock_code": "601106",
+      "stock_name": "中国一重",
+      "lgb_score": 78.89,
       "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "002666.SZ",
-      "stock_code": "002666",
-      "stock_name": "德联集团",
-      "lgb_score": 85.03,
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 77.26,
       "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "000523.SZ",
-      "stock_code": "000523",
-      "stock_name": "红棉股份",
-      "lgb_score": 83.86,
-      "raw_score": 0.09
+      "ts_code": "002523.SZ",
+      "stock_code": "002523",
+      "stock_name": "天桥起重",
+      "lgb_score": 75.23,
+      "raw_score": 0.1
     }
   ]
 }

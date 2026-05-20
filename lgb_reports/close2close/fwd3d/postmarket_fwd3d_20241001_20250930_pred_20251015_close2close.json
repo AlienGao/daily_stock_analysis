@@ -11,22 +11,22 @@
       "stock_code": "600162",
       "stock_name": "香江控股",
       "lgb_score": 100.0,
-      "raw_score": 0.14
+      "raw_score": 0.13
     },
     {
       "rank": 2,
       "ts_code": "603778.SH",
       "stock_code": "603778",
       "stock_name": "国晟科技",
-      "lgb_score": 99.75,
-      "raw_score": 0.14
+      "lgb_score": 95.68,
+      "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "600617.SH",
-      "stock_code": "600617",
-      "stock_name": "国新能源",
-      "lgb_score": 88.82,
+      "ts_code": "600748.SH",
+      "stock_code": "600748",
+      "stock_name": "上实发展",
+      "lgb_score": 91.55,
       "raw_score": 0.11
     },
     {
@@ -34,15 +34,15 @@
       "ts_code": "600496.SH",
       "stock_code": "600496",
       "stock_name": "精工钢构",
-      "lgb_score": 88.31,
+      "lgb_score": 91.24,
       "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "000626.SZ",
-      "stock_code": "000626",
-      "stock_name": "远大控股",
-      "lgb_score": 85.73,
+      "ts_code": "600481.SH",
+      "stock_code": "600481",
+      "stock_name": "双良节能",
+      "lgb_score": 90.35,
       "raw_score": 0.11
     }
   ]

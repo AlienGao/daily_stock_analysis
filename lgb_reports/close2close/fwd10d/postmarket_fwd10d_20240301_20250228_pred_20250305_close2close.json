@@ -11,39 +11,39 @@
       "stock_code": "920436.BJ",
       "stock_name": "",
       "lgb_score": 100.0,
-      "raw_score": 0.22
+      "raw_score": 0.27
     },
     {
       "rank": 2,
       "ts_code": "301022.SZ",
       "stock_code": "301022",
       "stock_name": "海泰科",
-      "lgb_score": 98.84,
-      "raw_score": 0.22
+      "lgb_score": 98.28,
+      "raw_score": 0.26
     },
     {
       "rank": 3,
-      "ts_code": "002029.SZ",
-      "stock_code": "002029",
-      "stock_name": "七 匹 狼",
-      "lgb_score": 91.48,
-      "raw_score": 0.18
+      "ts_code": "001282.SZ",
+      "stock_code": "001282",
+      "stock_name": "三联锻造",
+      "lgb_score": 89.63,
+      "raw_score": 0.23
     },
     {
       "rank": 4,
-      "ts_code": "600509.SH",
-      "stock_code": "600509",
-      "stock_name": "天富能源",
-      "lgb_score": 88.81,
-      "raw_score": 0.17
+      "ts_code": "301696.SZ",
+      "stock_code": "301696",
+      "stock_name": "三瑞智能",
+      "lgb_score": 86.41,
+      "raw_score": 0.21
     },
     {
       "rank": 5,
-      "ts_code": "920100.BJ",
-      "stock_code": "920100.BJ",
-      "stock_name": "",
-      "lgb_score": 88.71,
-      "raw_score": 0.17
+      "ts_code": "001325.SZ",
+      "stock_code": "001325",
+      "stock_name": "元创股份",
+      "lgb_score": 86.41,
+      "raw_score": 0.21
     }
   ]
 }

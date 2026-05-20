@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 100.0,
-      "raw_score": 0.17
-    },
-    {
-      "rank": 2,
-      "ts_code": "002374.SZ",
-      "stock_code": "002374",
-      "stock_name": "中锐股份",
-      "lgb_score": 98.71,
-      "raw_score": 0.17
-    },
-    {
-      "rank": 3,
       "ts_code": "002229.SZ",
       "stock_code": "002229",
       "stock_name": "鸿博股份",
-      "lgb_score": 98.12,
-      "raw_score": 0.17
+      "lgb_score": 100.0,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 2,
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
+      "lgb_score": 98.85,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 3,
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 98.82,
+      "raw_score": 0.14
     },
     {
       "rank": 4,
-      "ts_code": "300045.SZ",
-      "stock_code": "300045",
-      "stock_name": "华力创通",
-      "lgb_score": 95.88,
-      "raw_score": 0.16
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 98.02,
+      "raw_score": 0.14
     },
     {
       "rank": 5,
-      "ts_code": "000859.SZ",
-      "stock_code": "000859",
-      "stock_name": "国风新材",
-      "lgb_score": 95.38,
-      "raw_score": 0.16
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 97.34,
+      "raw_score": 0.14
     }
   ]
 }

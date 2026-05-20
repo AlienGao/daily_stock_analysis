@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002438.SZ",
-      "stock_code": "002438",
-      "stock_name": "江苏神通",
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
       "lgb_score": 100.0,
       "raw_score": 0.14
     },
     {
       "rank": 2,
-      "ts_code": "002291.SZ",
-      "stock_code": "002291",
-      "stock_name": "遥望科技",
-      "lgb_score": 95.84,
+      "ts_code": "000936.SZ",
+      "stock_code": "000936",
+      "stock_name": "华西股份",
+      "lgb_score": 96.1,
       "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "603248.SH",
-      "stock_code": "603248",
-      "stock_name": "锡华科技",
-      "lgb_score": 90.84,
-      "raw_score": 0.12
+      "ts_code": "002438.SZ",
+      "stock_code": "002438",
+      "stock_name": "江苏神通",
+      "lgb_score": 92.41,
+      "raw_score": 0.13
     },
     {
       "rank": 4,
-      "ts_code": "000159.SZ",
-      "stock_code": "000159",
-      "stock_name": "国际实业",
-      "lgb_score": 90.55,
-      "raw_score": 0.12
+      "ts_code": "301022.SZ",
+      "stock_code": "301022",
+      "stock_name": "海泰科",
+      "lgb_score": 85.06,
+      "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "300263.SZ",
-      "stock_code": "300263",
-      "stock_name": "隆华科技",
-      "lgb_score": 90.01,
-      "raw_score": 0.12
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 84.41,
+      "raw_score": 0.11
     }
   ]
 }

@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600551.SH",
-      "stock_code": "600551",
-      "stock_name": "时代出版",
+      "ts_code": "000949.SZ",
+      "stock_code": "000949",
+      "stock_name": "新乡化纤",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.14
     },
     {
       "rank": 2,
-      "ts_code": "000589.SZ",
-      "stock_code": "000589",
-      "stock_name": "贵州轮胎",
-      "lgb_score": 100.0,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 3,
-      "ts_code": "002458.SZ",
-      "stock_code": "002458",
-      "stock_name": "益生股份",
-      "lgb_score": 98.35,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 4,
       "ts_code": "603018.SH",
       "stock_code": "603018",
       "stock_name": "华设集团",
-      "lgb_score": 96.65,
-      "raw_score": 0.12
+      "lgb_score": 89.4,
+      "raw_score": 0.11
     },
     {
-      "rank": 5,
+      "rank": 3,
+      "ts_code": "000589.SZ",
+      "stock_code": "000589",
+      "stock_name": "贵州轮胎",
+      "lgb_score": 89.18,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 4,
       "ts_code": "300930.SZ",
       "stock_code": "300930",
       "stock_name": "屹通新材",
-      "lgb_score": 94.55,
-      "raw_score": 0.12
+      "lgb_score": 87.16,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 5,
+      "ts_code": "002458.SZ",
+      "stock_code": "002458",
+      "stock_name": "益生股份",
+      "lgb_score": 86.36,
+      "raw_score": 0.11
     }
   ]
 }

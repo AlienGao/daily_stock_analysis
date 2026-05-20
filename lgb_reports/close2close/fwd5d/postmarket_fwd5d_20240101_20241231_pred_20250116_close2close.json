@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
+      "ts_code": "002031.SZ",
+      "stock_code": "002031",
+      "stock_name": "巨轮智能",
       "lgb_score": 100.0,
       "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "002165.SZ",
-      "stock_code": "002165",
-      "stock_name": "红 宝 丽",
-      "lgb_score": 97.88,
-      "raw_score": 0.12
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 99.86,
+      "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "688711.SH",
-      "stock_code": "688711",
-      "stock_name": "宏微科技",
-      "lgb_score": 95.55,
-      "raw_score": 0.12
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 98.34,
+      "raw_score": 0.13
     },
     {
       "rank": 4,
-      "ts_code": "688526.SH",
-      "stock_code": "688526",
-      "stock_name": "科前生物",
-      "lgb_score": 95.16,
-      "raw_score": 0.11
+      "ts_code": "300612.SZ",
+      "stock_code": "300612",
+      "stock_name": "宣亚国际",
+      "lgb_score": 97.3,
+      "raw_score": 0.13
     },
     {
       "rank": 5,
-      "ts_code": "002031.SZ",
-      "stock_code": "002031",
-      "stock_name": "巨轮智能",
-      "lgb_score": 94.07,
-      "raw_score": 0.11
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 96.86,
+      "raw_score": 0.12
     }
   ]
 }

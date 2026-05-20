@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000959.SZ",
-      "stock_code": "000959",
-      "stock_name": "首钢股份",
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
       "lgb_score": 100.0,
-      "raw_score": 0.17
+      "raw_score": 0.24
     },
     {
       "rank": 2,
-      "ts_code": "688048.SH",
-      "stock_code": "688048",
-      "stock_name": "长光华芯",
-      "lgb_score": 94.46,
-      "raw_score": 0.15
+      "ts_code": "688813.SH",
+      "stock_code": "688813",
+      "stock_name": "泰金新能",
+      "lgb_score": 90.58,
+      "raw_score": 0.21
     },
     {
       "rank": 3,
-      "ts_code": "688061.SH",
-      "stock_code": "688061",
-      "stock_name": "灿瑞科技",
-      "lgb_score": 93.58,
-      "raw_score": 0.15
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
+      "lgb_score": 84.91,
+      "raw_score": 0.19
     },
     {
       "rank": 4,
-      "ts_code": "301306.SZ",
-      "stock_code": "301306",
-      "stock_name": "西测测试",
-      "lgb_score": 90.46,
-      "raw_score": 0.14
+      "ts_code": "301071.SZ",
+      "stock_code": "301071",
+      "stock_name": "力量钻石",
+      "lgb_score": 82.9,
+      "raw_score": 0.18
     },
     {
       "rank": 5,
-      "ts_code": "688693.SH",
-      "stock_code": "688693",
-      "stock_name": "锴威特",
-      "lgb_score": 88.43,
-      "raw_score": 0.13
+      "ts_code": "688411.SH",
+      "stock_code": "688411",
+      "stock_name": "海博思创",
+      "lgb_score": 77.9,
+      "raw_score": 0.16
     }
   ]
 }

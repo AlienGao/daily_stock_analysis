@@ -11,39 +11,39 @@
       "stock_code": "002445",
       "stock_name": "中南文化",
       "lgb_score": 100.0,
-      "raw_score": 0.11
+      "raw_score": 0.12
     },
     {
       "rank": 2,
       "ts_code": "301117.SZ",
       "stock_code": "301117",
       "stock_name": "佳缘科技",
-      "lgb_score": 98.34,
-      "raw_score": 0.1
+      "lgb_score": 96.87,
+      "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "301222.SZ",
-      "stock_code": "301222",
-      "stock_name": "浙江恒威",
-      "lgb_score": 95.94,
-      "raw_score": 0.1
+      "ts_code": "600151.SH",
+      "stock_code": "600151",
+      "stock_name": "航天机电",
+      "lgb_score": 94.88,
+      "raw_score": 0.11
     },
     {
       "rank": 4,
-      "ts_code": "002407.SZ",
-      "stock_code": "002407",
-      "stock_name": "多氟多",
-      "lgb_score": 94.48,
-      "raw_score": 0.09
+      "ts_code": "600509.SH",
+      "stock_code": "600509",
+      "stock_name": "天富能源",
+      "lgb_score": 92.09,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "601388.SH",
-      "stock_code": "601388",
-      "stock_name": "怡球资源",
-      "lgb_score": 92.65,
-      "raw_score": 0.09
+      "ts_code": "300429.SZ",
+      "stock_code": "300429",
+      "stock_name": "强力新材",
+      "lgb_score": 89.91,
+      "raw_score": 0.1
     }
   ]
 }

@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "603077.SH",
-      "stock_code": "603077",
-      "stock_name": "和邦生物",
-      "lgb_score": 100.0,
-      "raw_score": 0.08
-    },
-    {
-      "rank": 2,
       "ts_code": "000949.SZ",
       "stock_code": "000949",
       "stock_name": "新乡化纤",
-      "lgb_score": 98.79,
-      "raw_score": 0.07
+      "lgb_score": 100.0,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "300308.SZ",
+      "stock_code": "300308",
+      "stock_name": "中际旭创",
+      "lgb_score": 92.93,
+      "raw_score": 0.08
     },
     {
       "rank": 3,
       "ts_code": "002084.SZ",
       "stock_code": "002084",
       "stock_name": "海鸥住工",
-      "lgb_score": 98.1,
+      "lgb_score": 89.96,
       "raw_score": 0.07
     },
     {
       "rank": 4,
-      "ts_code": "688012.SH",
-      "stock_code": "688012",
-      "stock_name": "中微公司",
-      "lgb_score": 97.47,
+      "ts_code": "603077.SH",
+      "stock_code": "603077",
+      "stock_name": "和邦生物",
+      "lgb_score": 88.52,
       "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "002307.SZ",
-      "stock_code": "002307",
-      "stock_name": "北新路桥",
-      "lgb_score": 96.1,
+      "ts_code": "000757.SZ",
+      "stock_code": "000757",
+      "stock_name": "浩物股份",
+      "lgb_score": 88.22,
       "raw_score": 0.07
     }
   ]

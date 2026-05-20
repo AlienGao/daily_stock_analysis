@@ -11,39 +11,39 @@
       "stock_code": "000936",
       "stock_name": "华西股份",
       "lgb_score": 100.0,
-      "raw_score": 0.12
+      "raw_score": 0.14
     },
     {
       "rank": 2,
-      "ts_code": "002716.SZ",
-      "stock_code": "002716",
-      "stock_name": "湖南白银",
-      "lgb_score": 90.69,
-      "raw_score": 0.1
+      "ts_code": "603601.SH",
+      "stock_code": "603601",
+      "stock_name": "再升科技",
+      "lgb_score": 90.72,
+      "raw_score": 0.11
     },
     {
       "rank": 3,
       "ts_code": "688135.SH",
       "stock_code": "688135",
       "stock_name": "利扬芯片",
-      "lgb_score": 90.2,
-      "raw_score": 0.1
+      "lgb_score": 90.31,
+      "raw_score": 0.11
     },
     {
       "rank": 4,
-      "ts_code": "002476.SZ",
-      "stock_code": "002476",
-      "stock_name": "宝莫股份",
-      "lgb_score": 87.86,
-      "raw_score": 0.1
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 88.14,
+      "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "300166.SZ",
-      "stock_code": "300166",
-      "stock_name": "东方国信",
-      "lgb_score": 87.72,
-      "raw_score": 0.09
+      "ts_code": "600386.SH",
+      "stock_code": "600386",
+      "stock_name": "北巴传媒",
+      "lgb_score": 87.94,
+      "raw_score": 0.11
     }
   ]
 }

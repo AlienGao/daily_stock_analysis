@@ -11,38 +11,38 @@
       "stock_code": "002445",
       "stock_name": "中南文化",
       "lgb_score": 100.0,
-      "raw_score": 0.19
+      "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "000589.SZ",
-      "stock_code": "000589",
-      "stock_name": "贵州轮胎",
-      "lgb_score": 78.54,
-      "raw_score": 0.13
+      "ts_code": "301633.SZ",
+      "stock_code": "301633",
+      "stock_name": "港迪技术",
+      "lgb_score": 98.22,
+      "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "002843.SZ",
-      "stock_code": "002843",
-      "stock_name": "泰嘉股份",
-      "lgb_score": 77.57,
-      "raw_score": 0.13
+      "ts_code": "002929.SZ",
+      "stock_code": "002929",
+      "stock_name": "润建股份",
+      "lgb_score": 95.99,
+      "raw_score": 0.12
     },
     {
       "rank": 4,
-      "ts_code": "002274.SZ",
-      "stock_code": "002274",
-      "stock_name": "华昌化工",
-      "lgb_score": 76.87,
+      "ts_code": "001325.SZ",
+      "stock_code": "001325",
+      "stock_name": "元创股份",
+      "lgb_score": 95.4,
       "raw_score": 0.12
     },
     {
       "rank": 5,
-      "ts_code": "002234.SZ",
-      "stock_code": "002234",
-      "stock_name": "民和股份",
-      "lgb_score": 76.79,
+      "ts_code": "301071.SZ",
+      "stock_code": "301071",
+      "stock_name": "力量钻石",
+      "lgb_score": 95.32,
       "raw_score": 0.12
     }
   ]

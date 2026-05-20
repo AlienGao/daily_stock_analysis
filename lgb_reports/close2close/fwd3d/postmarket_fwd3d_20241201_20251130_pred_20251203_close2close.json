@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600151.SH",
-      "stock_code": "600151",
-      "stock_name": "航天机电",
+      "ts_code": "002589.SZ",
+      "stock_code": "002589",
+      "stock_name": "瑞康医药",
       "lgb_score": 100.0,
       "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "000692.SZ",
-      "stock_code": "000692",
-      "stock_name": "惠天热电",
-      "lgb_score": 98.16,
+      "ts_code": "920701.BJ",
+      "stock_code": "920701.BJ",
+      "stock_name": "",
+      "lgb_score": 96.55,
       "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "600802.SH",
-      "stock_code": "600802",
-      "stock_name": "福建水泥",
-      "lgb_score": 96.99,
-      "raw_score": 0.1
+      "ts_code": "600151.SH",
+      "stock_code": "600151",
+      "stock_name": "航天机电",
+      "lgb_score": 87.37,
+      "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "002589.SZ",
-      "stock_code": "002589",
-      "stock_name": "瑞康医药",
-      "lgb_score": 94.15,
-      "raw_score": 0.09
+      "ts_code": "002084.SZ",
+      "stock_code": "002084",
+      "stock_name": "海鸥住工",
+      "lgb_score": 85.65,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "920701.BJ",
-      "stock_code": "920701.BJ",
-      "stock_name": "",
-      "lgb_score": 92.98,
-      "raw_score": 0.09
+      "ts_code": "301589.SZ",
+      "stock_code": "301589",
+      "stock_name": "诺瓦星云",
+      "lgb_score": 83.88,
+      "raw_score": 0.08
     }
   ]
 }

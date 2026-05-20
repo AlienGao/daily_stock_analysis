@@ -15,35 +15,35 @@
     },
     {
       "rank": 2,
-      "ts_code": "688332.SH",
-      "stock_code": "688332",
-      "stock_name": "中科蓝讯",
-      "lgb_score": 97.58,
-      "raw_score": 0.09
+      "ts_code": "000915.SZ",
+      "stock_code": "000915",
+      "stock_name": "华特达因",
+      "lgb_score": 93.46,
+      "raw_score": 0.08
     },
     {
       "rank": 3,
-      "ts_code": "300166.SZ",
-      "stock_code": "300166",
-      "stock_name": "东方国信",
-      "lgb_score": 97.25,
-      "raw_score": 0.09
+      "ts_code": "301633.SZ",
+      "stock_code": "301633",
+      "stock_name": "港迪技术",
+      "lgb_score": 92.42,
+      "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 96.66,
-      "raw_score": 0.09
+      "ts_code": "301022.SZ",
+      "stock_code": "301022",
+      "stock_name": "海泰科",
+      "lgb_score": 91.73,
+      "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "002121.SZ",
-      "stock_code": "002121",
-      "stock_name": "科陆电子",
-      "lgb_score": 94.46,
-      "raw_score": 0.08
+      "ts_code": "688766.SH",
+      "stock_code": "688766",
+      "stock_name": "普冉股份",
+      "lgb_score": 91.47,
+      "raw_score": 0.07
     }
   ]
 }

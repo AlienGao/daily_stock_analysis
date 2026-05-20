@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300976.SZ",
-      "stock_code": "300976",
-      "stock_name": "达瑞电子",
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
       "lgb_score": 100.0,
-      "raw_score": 0.16
+      "raw_score": 0.2
     },
     {
       "rank": 2,
-      "ts_code": "600549.SH",
-      "stock_code": "600549",
-      "stock_name": "厦门钨业",
-      "lgb_score": 89.78,
-      "raw_score": 0.13
+      "ts_code": "688025.SH",
+      "stock_code": "688025",
+      "stock_name": "杰普特",
+      "lgb_score": 91.54,
+      "raw_score": 0.17
     },
     {
       "rank": 3,
-      "ts_code": "600183.SH",
-      "stock_code": "600183",
-      "stock_name": "生益科技",
-      "lgb_score": 88.96,
-      "raw_score": 0.13
+      "ts_code": "301345.SZ",
+      "stock_code": "301345",
+      "stock_name": "涛涛车业",
+      "lgb_score": 91.25,
+      "raw_score": 0.17
     },
     {
       "rank": 4,
-      "ts_code": "000636.SZ",
-      "stock_code": "000636",
-      "stock_name": "风华高科",
-      "lgb_score": 87.69,
-      "raw_score": 0.13
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 87.05,
+      "raw_score": 0.16
     },
     {
       "rank": 5,
-      "ts_code": "000001.SH.SZ",
-      "stock_code": "000001",
-      "stock_name": "平安银行",
-      "lgb_score": 86.86,
-      "raw_score": 0.13
+      "ts_code": "688048.SH",
+      "stock_code": "688048",
+      "stock_name": "长光华芯",
+      "lgb_score": 85.16,
+      "raw_score": 0.15
     }
   ]
 }

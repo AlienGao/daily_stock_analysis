@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688458.SH",
-      "stock_code": "688458",
-      "stock_name": "美芯晟",
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
       "lgb_score": 100.0,
-      "raw_score": 0.17
+      "raw_score": 0.22
     },
     {
       "rank": 2,
-      "ts_code": "002407.SZ",
-      "stock_code": "002407",
-      "stock_name": "多氟多",
-      "lgb_score": 95.7,
-      "raw_score": 0.16
+      "ts_code": "688458.SH",
+      "stock_code": "688458",
+      "stock_name": "美芯晟",
+      "lgb_score": 92.37,
+      "raw_score": 0.2
     },
     {
       "rank": 3,
       "ts_code": "002445.SZ",
       "stock_code": "002445",
       "stock_name": "中南文化",
-      "lgb_score": 91.77,
-      "raw_score": 0.15
+      "lgb_score": 82.1,
+      "raw_score": 0.16
     },
     {
       "rank": 4,
-      "ts_code": "000159.SZ",
-      "stock_code": "000159",
-      "stock_name": "国际实业",
-      "lgb_score": 91.44,
-      "raw_score": 0.14
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
+      "lgb_score": 81.78,
+      "raw_score": 0.16
     },
     {
       "rank": 5,
-      "ts_code": "300166.SZ",
-      "stock_code": "300166",
-      "stock_name": "东方国信",
-      "lgb_score": 90.98,
-      "raw_score": 0.14
+      "ts_code": "002009.SZ",
+      "stock_code": "002009",
+      "stock_name": "天奇股份",
+      "lgb_score": 81.52,
+      "raw_score": 0.16
     }
   ]
 }

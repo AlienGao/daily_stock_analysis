@@ -15,35 +15,35 @@
     },
     {
       "rank": 2,
-      "ts_code": "301205",
-      "stock_code": "301205",
-      "stock_name": "联特科技",
-      "lgb_score": 88.53,
-      "raw_score": 0.24
-    },
-    {
-      "rank": 3,
-      "ts_code": "300476",
-      "stock_code": "300476",
-      "stock_name": "胜宏科技",
-      "lgb_score": 87.12,
-      "raw_score": 0.23
-    },
-    {
-      "rank": 4,
-      "ts_code": "688766",
-      "stock_code": "688766",
-      "stock_name": "普冉股份",
-      "lgb_score": 86.11,
-      "raw_score": 0.22
-    },
-    {
-      "rank": 5,
       "ts_code": "688808",
       "stock_code": "688808",
       "stock_name": "联讯仪器",
-      "lgb_score": 85.05,
-      "raw_score": 0.22
+      "lgb_score": 95.14,
+      "raw_score": 0.28
+    },
+    {
+      "rank": 3,
+      "ts_code": "688766",
+      "stock_code": "688766",
+      "stock_name": "普冉股份",
+      "lgb_score": 91.37,
+      "raw_score": 0.27
+    },
+    {
+      "rank": 4,
+      "ts_code": "301205",
+      "stock_code": "301205",
+      "stock_name": "联特科技",
+      "lgb_score": 86.32,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 5,
+      "ts_code": "688193",
+      "stock_code": "688193",
+      "stock_name": "仁度生物",
+      "lgb_score": 83.15,
+      "raw_score": 0.23
     }
   ]
 }

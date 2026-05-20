@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600800.SH",
-      "stock_code": "600800",
-      "stock_name": "渤海化学",
+      "ts_code": "600844.SH",
+      "stock_code": "600844",
+      "stock_name": "金煤科技",
       "lgb_score": 100.0,
       "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "300995.SZ",
-      "stock_code": "300995",
-      "stock_name": "奇德新材",
-      "lgb_score": 97.98,
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 98.38,
       "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "300870.SZ",
-      "stock_code": "300870",
-      "stock_name": "欧陆通",
-      "lgb_score": 97.69,
-      "raw_score": 0.1
+      "ts_code": "600800.SH",
+      "stock_code": "600800",
+      "stock_name": "渤海化学",
+      "lgb_score": 96.04,
+      "raw_score": 0.09
     },
     {
       "rank": 4,
       "ts_code": "300166.SZ",
       "stock_code": "300166",
       "stock_name": "东方国信",
-      "lgb_score": 97.35,
-      "raw_score": 0.09
+      "lgb_score": 92.7,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "300885.SZ",
-      "stock_code": "300885",
-      "stock_name": "海昌新材",
-      "lgb_score": 96.53,
-      "raw_score": 0.09
+      "ts_code": "002688.SZ",
+      "stock_code": "002688",
+      "stock_name": "金河生物",
+      "lgb_score": 92.32,
+      "raw_score": 0.08
     }
   ]
 }

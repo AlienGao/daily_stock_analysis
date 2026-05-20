@@ -18,15 +18,15 @@
       "ts_code": "000981.SZ",
       "stock_code": "000981",
       "stock_name": "山子高科",
-      "lgb_score": 98.19,
-      "raw_score": 0.13
+      "lgb_score": 99.36,
+      "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "002790.SZ",
-      "stock_code": "002790",
-      "stock_name": "瑞尔特",
-      "lgb_score": 93.86,
+      "ts_code": "002016.SZ",
+      "stock_code": "002016",
+      "stock_name": "世荣兆业",
+      "lgb_score": 94.7,
       "raw_score": 0.11
     },
     {
@@ -34,7 +34,7 @@
       "ts_code": "002160.SZ",
       "stock_code": "002160",
       "stock_name": "常铝股份",
-      "lgb_score": 90.34,
+      "lgb_score": 90.98,
       "raw_score": 0.1
     },
     {
@@ -42,7 +42,7 @@
       "ts_code": "000567.SZ",
       "stock_code": "000567",
       "stock_name": "海德股份",
-      "lgb_score": 88.73,
+      "lgb_score": 90.31,
       "raw_score": 0.1
     }
   ]

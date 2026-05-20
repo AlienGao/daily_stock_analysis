@@ -11,38 +11,38 @@
       "stock_code": "000554",
       "stock_name": "泰山石油",
       "lgb_score": 100.0,
-      "raw_score": 0.09
+      "raw_score": 0.08
     },
     {
       "rank": 2,
-      "ts_code": "600704.SH",
-      "stock_code": "600704",
-      "stock_name": "物产中大",
-      "lgb_score": 92.44,
-      "raw_score": 0.08
+      "ts_code": "000070.SZ",
+      "stock_code": "000070",
+      "stock_name": "特发信息",
+      "lgb_score": 91.37,
+      "raw_score": 0.06
     },
     {
       "rank": 3,
       "ts_code": "000589.SZ",
       "stock_code": "000589",
       "stock_name": "贵州轮胎",
-      "lgb_score": 91.2,
-      "raw_score": 0.07
+      "lgb_score": 91.31,
+      "raw_score": 0.06
     },
     {
       "rank": 4,
-      "ts_code": "301232.SZ",
-      "stock_code": "301232",
-      "stock_name": "飞沃科技",
-      "lgb_score": 87.77,
-      "raw_score": 0.07
+      "ts_code": "300457.SZ",
+      "stock_code": "300457",
+      "stock_name": "赢合科技",
+      "lgb_score": 89.36,
+      "raw_score": 0.06
     },
     {
       "rank": 5,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 82.05,
+      "ts_code": "300825.SZ",
+      "stock_code": "300825",
+      "stock_name": "阿尔特",
+      "lgb_score": 88.07,
       "raw_score": 0.06
     }
   ]

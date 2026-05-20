@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "603077.SH",
-      "stock_code": "603077",
-      "stock_name": "和邦生物",
+      "ts_code": "002519.SZ",
+      "stock_code": "002519",
+      "stock_name": "银河电子",
       "lgb_score": 100.0,
-      "raw_score": 0.12
+      "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "600151.SH",
-      "stock_code": "600151",
-      "stock_name": "航天机电",
-      "lgb_score": 92.78,
-      "raw_score": 0.11
+      "ts_code": "000727.SZ",
+      "stock_code": "000727",
+      "stock_name": "冠捷科技",
+      "lgb_score": 99.1,
+      "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "002578.SZ",
-      "stock_code": "002578",
-      "stock_name": "闽发铝业",
-      "lgb_score": 90.1,
+      "ts_code": "603077.SH",
+      "stock_code": "603077",
+      "stock_name": "和邦生物",
+      "lgb_score": 97.37,
       "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "600222.SH",
-      "stock_code": "600222",
-      "stock_name": "太龙药业",
-      "lgb_score": 87.07,
-      "raw_score": 0.09
+      "ts_code": "002578.SZ",
+      "stock_code": "002578",
+      "stock_name": "闽发铝业",
+      "lgb_score": 96.94,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "000036.SZ",
-      "stock_code": "000036",
-      "stock_name": "华联控股",
-      "lgb_score": 86.62,
-      "raw_score": 0.09
+      "ts_code": "000816.SZ",
+      "stock_code": "000816",
+      "stock_name": "智慧农业",
+      "lgb_score": 96.77,
+      "raw_score": 0.1
     }
   ]
 }

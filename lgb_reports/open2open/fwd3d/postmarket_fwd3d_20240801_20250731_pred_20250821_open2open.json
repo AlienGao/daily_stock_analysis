@@ -15,34 +15,34 @@
     },
     {
       "rank": 2,
-      "ts_code": "002722.SZ",
-      "stock_code": "002722",
-      "stock_name": "物产金轮",
-      "lgb_score": 98.14,
+      "ts_code": "000400.SZ",
+      "stock_code": "000400",
+      "stock_name": "许继电气",
+      "lgb_score": 96.75,
       "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 96.52,
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 96.23,
       "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "300484.SZ",
-      "stock_code": "300484",
-      "stock_name": "蓝海华腾",
-      "lgb_score": 95.76,
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 95.85,
       "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "002164.SZ",
-      "stock_code": "002164",
-      "stock_name": "宁波东力",
-      "lgb_score": 94.75,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 95.07,
       "raw_score": 0.1
     }
   ]

@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002395.SZ",
-      "stock_code": "002395",
-      "stock_name": "双象股份",
+      "ts_code": "001325.SZ",
+      "stock_code": "001325",
+      "stock_name": "元创股份",
       "lgb_score": 100.0,
-      "raw_score": 0.14
+      "raw_score": 0.15
     },
     {
       "rank": 2,
       "ts_code": "603915.SH",
       "stock_code": "603915",
       "stock_name": "国茂股份",
-      "lgb_score": 97.47,
+      "lgb_score": 95.42,
       "raw_score": 0.14
     },
     {
       "rank": 3,
-      "ts_code": "002617.SZ",
-      "stock_code": "002617",
-      "stock_name": "露笑科技",
-      "lgb_score": 95.28,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 4,
-      "ts_code": "688360.SH",
-      "stock_code": "688360",
-      "stock_name": "德马科技",
-      "lgb_score": 91.51,
+      "ts_code": "301023.SZ",
+      "stock_code": "301023",
+      "stock_name": "奕帆传动",
+      "lgb_score": 84.66,
       "raw_score": 0.12
     },
     {
+      "rank": 4,
+      "ts_code": "688090.SH",
+      "stock_code": "688090",
+      "stock_name": "瑞松科技",
+      "lgb_score": 83.47,
+      "raw_score": 0.11
+    },
+    {
       "rank": 5,
-      "ts_code": "001325.SZ",
-      "stock_code": "001325",
-      "stock_name": "元创股份",
-      "lgb_score": 90.24,
+      "ts_code": "603507.SH",
+      "stock_code": "603507",
+      "stock_name": "振江股份",
+      "lgb_score": 82.39,
       "raw_score": 0.11
     }
   ]

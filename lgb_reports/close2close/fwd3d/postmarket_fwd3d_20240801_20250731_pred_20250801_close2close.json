@@ -11,38 +11,38 @@
       "stock_code": "603757",
       "stock_name": "大元泵业",
       "lgb_score": 100.0,
-      "raw_score": 0.11
+      "raw_score": 0.12
     },
     {
       "rank": 2,
       "ts_code": "002907.SZ",
       "stock_code": "002907",
       "stock_name": "华森制药",
-      "lgb_score": 99.77,
-      "raw_score": 0.11
+      "lgb_score": 91.64,
+      "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "002775.SZ",
-      "stock_code": "002775",
-      "stock_name": "文科股份",
-      "lgb_score": 92.04,
-      "raw_score": 0.09
-    },
-    {
-      "rank": 4,
       "ts_code": "000032.SZ",
       "stock_code": "000032",
       "stock_name": "深桑达Ａ",
-      "lgb_score": 87.87,
-      "raw_score": 0.08
+      "lgb_score": 89.22,
+      "raw_score": 0.1
     },
     {
-      "rank": 5,
+      "rank": 4,
       "ts_code": "301022.SZ",
       "stock_code": "301022",
       "stock_name": "海泰科",
-      "lgb_score": 87.38,
+      "lgb_score": 88.17,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "002775.SZ",
+      "stock_code": "002775",
+      "stock_name": "文科股份",
+      "lgb_score": 83.75,
       "raw_score": 0.08
     }
   ]

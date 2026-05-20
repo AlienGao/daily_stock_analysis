@@ -11,39 +11,39 @@
       "stock_code": "688256",
       "stock_name": "寒武纪",
       "lgb_score": 100.0,
-      "raw_score": 0.23
+      "raw_score": 0.31
     },
     {
       "rank": 2,
-      "ts_code": "000554.SZ",
-      "stock_code": "000554",
-      "stock_name": "泰山石油",
-      "lgb_score": 91.93,
-      "raw_score": 0.2
-    },
-    {
-      "rank": 3,
       "ts_code": "300757.SZ",
       "stock_code": "300757",
       "stock_name": "罗博特科",
-      "lgb_score": 90.63,
-      "raw_score": 0.19
+      "lgb_score": 89.0,
+      "raw_score": 0.27
+    },
+    {
+      "rank": 3,
+      "ts_code": "920168.BJ",
+      "stock_code": "920168.BJ",
+      "stock_name": "",
+      "lgb_score": 82.73,
+      "raw_score": 0.24
     },
     {
       "rank": 4,
-      "ts_code": "601678.SH",
-      "stock_code": "601678",
-      "stock_name": "滨化股份",
-      "lgb_score": 88.86,
-      "raw_score": 0.18
+      "ts_code": "300870.SZ",
+      "stock_code": "300870",
+      "stock_name": "欧陆通",
+      "lgb_score": 80.95,
+      "raw_score": 0.23
     },
     {
       "rank": 5,
-      "ts_code": "002458.SZ",
-      "stock_code": "002458",
-      "stock_name": "益生股份",
-      "lgb_score": 84.49,
-      "raw_score": 0.17
+      "ts_code": "301696.SZ",
+      "stock_code": "301696",
+      "stock_name": "三瑞智能",
+      "lgb_score": 80.68,
+      "raw_score": 0.23
     }
   ]
 }

@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000915.SZ",
-      "stock_code": "000915",
-      "stock_name": "华特达因",
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
       "lgb_score": 100.0,
-      "raw_score": 0.12
+      "raw_score": 0.14
     },
     {
       "rank": 2,
-      "ts_code": "601500.SH",
-      "stock_code": "601500",
-      "stock_name": "通用股份",
-      "lgb_score": 99.75,
-      "raw_score": 0.12
+      "ts_code": "000936.SZ",
+      "stock_code": "000936",
+      "stock_name": "华西股份",
+      "lgb_score": 97.1,
+      "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 99.51,
-      "raw_score": 0.12
+      "ts_code": "002274.SZ",
+      "stock_code": "002274",
+      "stock_name": "华昌化工",
+      "lgb_score": 96.13,
+      "raw_score": 0.13
     },
     {
       "rank": 4,
-      "ts_code": "688627.SH",
-      "stock_code": "688627",
-      "stock_name": "精智达",
-      "lgb_score": 96.76,
-      "raw_score": 0.11
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 95.04,
+      "raw_score": 0.13
     },
     {
       "rank": 5,
-      "ts_code": "688135.SH",
-      "stock_code": "688135",
-      "stock_name": "利扬芯片",
-      "lgb_score": 96.31,
-      "raw_score": 0.11
+      "ts_code": "002438.SZ",
+      "stock_code": "002438",
+      "stock_name": "江苏神通",
+      "lgb_score": 94.95,
+      "raw_score": 0.13
     }
   ]
 }

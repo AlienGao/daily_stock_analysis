@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600802.SH",
-      "stock_code": "600802",
-      "stock_name": "福建水泥",
-      "lgb_score": 100.0,
-      "raw_score": 0.2
+      "ts_code": "301071.SZ",
+      "stock_code": "301071",
+      "stock_name": "力量钻石",
+      "lgb_score": 86.96,
+      "raw_score": 0.12
     },
     {
       "rank": 2,
-      "ts_code": "600798.SH",
-      "stock_code": "600798",
-      "stock_name": "宁波海运",
-      "lgb_score": 86.75,
-      "raw_score": 0.16
+      "ts_code": "002839.SZ",
+      "stock_code": "002839",
+      "stock_name": "张家港行",
+      "lgb_score": 85.93,
+      "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 83.07,
-      "raw_score": 0.15
+      "ts_code": "601996.SH",
+      "stock_code": "601996",
+      "stock_name": "丰林集团",
+      "lgb_score": 84.53,
+      "raw_score": 0.11
     },
     {
       "rank": 4,
-      "ts_code": "000665.SZ",
-      "stock_code": "000665",
-      "stock_name": "湖北广电",
-      "lgb_score": 82.6,
-      "raw_score": 0.15
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 83.22,
+      "raw_score": 0.11
     },
     {
       "rank": 5,
       "ts_code": "301590.SZ",
       "stock_code": "301590",
       "stock_name": "优优绿能",
-      "lgb_score": 80.58,
-      "raw_score": 0.14
+      "lgb_score": 82.09,
+      "raw_score": 0.11
     }
   ]
 }

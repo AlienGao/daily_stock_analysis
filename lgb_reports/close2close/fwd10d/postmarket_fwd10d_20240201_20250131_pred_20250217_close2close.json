@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300042.SZ",
-      "stock_code": "300042",
-      "stock_name": "朗科科技",
+      "ts_code": "920088.BJ",
+      "stock_code": "920088.BJ",
+      "stock_name": "",
       "lgb_score": 100.0,
-      "raw_score": 0.23
+      "raw_score": 0.25
     },
     {
       "rank": 2,
-      "ts_code": "300166.SZ",
-      "stock_code": "300166",
-      "stock_name": "东方国信",
-      "lgb_score": 99.77,
-      "raw_score": 0.23
+      "ts_code": "301205.SZ",
+      "stock_code": "301205",
+      "stock_name": "联特科技",
+      "lgb_score": 97.82,
+      "raw_score": 0.24
     },
     {
       "rank": 3,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
-      "lgb_score": 99.4,
+      "ts_code": "301372.SZ",
+      "stock_code": "301372",
+      "stock_name": "科净源",
+      "lgb_score": 94.12,
       "raw_score": 0.22
     },
     {
       "rank": 4,
-      "ts_code": "301117.SZ",
-      "stock_code": "301117",
-      "stock_name": "佳缘科技",
-      "lgb_score": 97.54,
+      "ts_code": "300046.SZ",
+      "stock_code": "300046",
+      "stock_name": "台基股份",
+      "lgb_score": 91.61,
       "raw_score": 0.22
     },
     {
       "rank": 5,
-      "ts_code": "688135.SH",
-      "stock_code": "688135",
-      "stock_name": "利扬芯片",
-      "lgb_score": 96.79,
-      "raw_score": 0.22
+      "ts_code": "603120.SH",
+      "stock_code": "603120",
+      "stock_name": "肯特催化",
+      "lgb_score": 90.98,
+      "raw_score": 0.21
     }
   ]
 }

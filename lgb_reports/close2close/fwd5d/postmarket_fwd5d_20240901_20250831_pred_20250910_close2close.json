@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688411.SH",
-      "stock_code": "688411",
-      "stock_name": "海博思创",
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
       "lgb_score": 100.0,
       "raw_score": 0.15
     },
     {
       "rank": 2,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 98.91,
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 98.59,
       "raw_score": 0.15
     },
     {
       "rank": 3,
-      "ts_code": "600545.SH",
-      "stock_code": "600545",
-      "stock_name": "卓郎智能",
-      "lgb_score": 94.1,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 92.42,
       "raw_score": 0.13
     },
     {
       "rank": 4,
-      "ts_code": "688506.SH",
-      "stock_code": "688506",
-      "stock_name": "百利天恒",
-      "lgb_score": 88.49,
-      "raw_score": 0.11
+      "ts_code": "600545.SH",
+      "stock_code": "600545",
+      "stock_name": "卓郎智能",
+      "lgb_score": 91.86,
+      "raw_score": 0.13
     },
     {
       "rank": 5,
-      "ts_code": "002164.SZ",
-      "stock_code": "002164",
-      "stock_name": "宁波东力",
-      "lgb_score": 87.43,
-      "raw_score": 0.11
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 91.58,
+      "raw_score": 0.13
     }
   ]
 }

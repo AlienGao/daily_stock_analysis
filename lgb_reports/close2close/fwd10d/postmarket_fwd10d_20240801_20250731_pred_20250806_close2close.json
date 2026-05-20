@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "601138.SH",
-      "stock_code": "601138",
-      "stock_name": "工业富联",
-      "lgb_score": 100.0,
-      "raw_score": 0.24
-    },
-    {
-      "rank": 2,
-      "ts_code": "688181.SH",
-      "stock_code": "688181",
-      "stock_name": "八亿时空",
-      "lgb_score": 96.27,
-      "raw_score": 0.22
-    },
-    {
-      "rank": 3,
       "ts_code": "600308.SH",
       "stock_code": "600308",
       "stock_name": "华泰股份",
-      "lgb_score": 93.28,
-      "raw_score": 0.21
+      "lgb_score": 100.0,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 2,
+      "ts_code": "301110.SZ",
+      "stock_code": "301110",
+      "stock_name": "青木科技",
+      "lgb_score": 95.13,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 3,
+      "ts_code": "688181.SH",
+      "stock_code": "688181",
+      "stock_name": "八亿时空",
+      "lgb_score": 91.59,
+      "raw_score": 0.22
     },
     {
       "rank": 4,
-      "ts_code": "301131.SZ",
-      "stock_code": "301131",
-      "stock_name": "聚赛龙",
-      "lgb_score": 88.65,
-      "raw_score": 0.18
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 90.25,
+      "raw_score": 0.22
     },
     {
       "rank": 5,
-      "ts_code": "002121.SZ",
-      "stock_code": "002121",
-      "stock_name": "科陆电子",
-      "lgb_score": 88.17,
-      "raw_score": 0.18
+      "ts_code": "600756.SH",
+      "stock_code": "600756",
+      "stock_name": "浪潮软件",
+      "lgb_score": 88.0,
+      "raw_score": 0.21
     }
   ]
 }

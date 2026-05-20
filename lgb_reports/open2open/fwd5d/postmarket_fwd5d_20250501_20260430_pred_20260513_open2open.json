@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301511.SZ",
-      "stock_code": "301511",
-      "stock_name": "德福科技",
-      "lgb_score": 100.0,
-      "raw_score": 0.17
-    },
-    {
-      "rank": 2,
       "ts_code": "688455.SH",
       "stock_code": "688455",
       "stock_name": "科捷智能",
-      "lgb_score": 90.85,
+      "lgb_score": 100.0,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 2,
+      "ts_code": "301511.SZ",
+      "stock_code": "301511",
+      "stock_name": "德福科技",
+      "lgb_score": 98.02,
       "raw_score": 0.14
     },
     {
       "rank": 3,
-      "ts_code": "002150.SZ",
-      "stock_code": "002150",
-      "stock_name": "正泰电源",
-      "lgb_score": 83.56,
-      "raw_score": 0.11
-    },
-    {
-      "rank": 4,
       "ts_code": "688808.SH",
       "stock_code": "688808",
       "stock_name": "联讯仪器",
-      "lgb_score": 80.87,
-      "raw_score": 0.1
+      "lgb_score": 90.54,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 4,
+      "ts_code": "002150.SZ",
+      "stock_code": "002150",
+      "stock_name": "正泰电源",
+      "lgb_score": 88.89,
+      "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "603056.SH",
-      "stock_code": "603056",
-      "stock_name": "",
-      "lgb_score": 78.15,
-      "raw_score": 0.1
+      "ts_code": "688048.SH",
+      "stock_code": "688048",
+      "stock_name": "长光华芯",
+      "lgb_score": 80.7,
+      "raw_score": 0.09
     }
   ]
 }

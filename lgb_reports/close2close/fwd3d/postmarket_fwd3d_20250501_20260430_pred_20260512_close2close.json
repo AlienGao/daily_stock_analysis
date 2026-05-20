@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300394.SZ.SZ",
-      "stock_code": "300394",
-      "stock_name": "天孚通信",
-      "lgb_score": 100.0,
-      "raw_score": 0.08
-    },
-    {
-      "rank": 2,
       "ts_code": "603056.SH",
       "stock_code": "603056",
       "stock_name": "",
-      "lgb_score": 99.01,
-      "raw_score": 0.08
+      "lgb_score": 100.0,
+      "raw_score": 0.07
     },
     {
-      "rank": 3,
-      "ts_code": "603629.SH",
-      "stock_code": "603629",
-      "stock_name": "利通电子",
-      "lgb_score": 98.09,
-      "raw_score": 0.08
-    },
-    {
-      "rank": 4,
+      "rank": 2,
       "ts_code": "688048.SH",
       "stock_code": "688048",
       "stock_name": "长光华芯",
+      "lgb_score": 92.18,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 3,
+      "ts_code": "688313.SH",
+      "stock_code": "688313",
+      "stock_name": "仕佳光子",
       "lgb_score": 91.57,
-      "raw_score": 0.07
+      "raw_score": 0.06
+    },
+    {
+      "rank": 4,
+      "ts_code": "688677.SH",
+      "stock_code": "688677",
+      "stock_name": "海泰新光",
+      "lgb_score": 89.43,
+      "raw_score": 0.05
     },
     {
       "rank": 5,
-      "ts_code": "301129.SZ",
-      "stock_code": "301129",
-      "stock_name": "瑞纳智能",
-      "lgb_score": 91.23,
-      "raw_score": 0.07
+      "ts_code": "688195.SH",
+      "stock_code": "688195",
+      "stock_name": "腾景科技",
+      "lgb_score": 88.13,
+      "raw_score": 0.05
     }
   ]
 }

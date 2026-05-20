@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002009.SZ",
-      "stock_code": "002009",
-      "stock_name": "天奇股份",
-      "lgb_score": 100.0,
-      "raw_score": 0.23
-    },
-    {
-      "rank": 2,
       "ts_code": "688368.SH",
       "stock_code": "688368",
       "stock_name": "晶丰明源",
-      "lgb_score": 97.72,
-      "raw_score": 0.23
+      "lgb_score": 100.0,
+      "raw_score": 0.3
+    },
+    {
+      "rank": 2,
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 86.65,
+      "raw_score": 0.24
     },
     {
       "rank": 3,
-      "ts_code": "600076.SH",
-      "stock_code": "600076",
-      "stock_name": "康欣新材",
-      "lgb_score": 95.56,
-      "raw_score": 0.22
+      "ts_code": "688181.SH",
+      "stock_code": "688181",
+      "stock_name": "八亿时空",
+      "lgb_score": 82.6,
+      "raw_score": 0.23
     },
     {
       "rank": 4,
-      "ts_code": "300042.SZ",
-      "stock_code": "300042",
-      "stock_name": "朗科科技",
-      "lgb_score": 93.25,
-      "raw_score": 0.21
+      "ts_code": "300007.SZ",
+      "stock_code": "300007",
+      "stock_name": "汉威科技",
+      "lgb_score": 81.43,
+      "raw_score": 0.22
     },
     {
       "rank": 5,
-      "ts_code": "300046.SZ",
-      "stock_code": "300046",
-      "stock_name": "台基股份",
-      "lgb_score": 90.51,
-      "raw_score": 0.2
+      "ts_code": "300995.SZ",
+      "stock_code": "300995",
+      "stock_name": "奇德新材",
+      "lgb_score": 81.24,
+      "raw_score": 0.22
     }
   ]
 }

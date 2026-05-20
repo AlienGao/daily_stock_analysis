@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000589.SZ",
-      "stock_code": "000589",
-      "stock_name": "贵州轮胎",
-      "lgb_score": 100.0,
-      "raw_score": 0.1
-    },
-    {
-      "rank": 2,
       "ts_code": "600449.SH",
       "stock_code": "600449",
       "stock_name": "宁夏建材",
-      "lgb_score": 99.22,
-      "raw_score": 0.1
+      "lgb_score": 100.0,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 2,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 90.96,
+      "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "002311.SZ",
-      "stock_code": "002311",
-      "stock_name": "海大集团",
-      "lgb_score": 96.85,
-      "raw_score": 0.09
+      "ts_code": "000589.SZ",
+      "stock_code": "000589",
+      "stock_name": "贵州轮胎",
+      "lgb_score": 88.48,
+      "raw_score": 0.12
     },
     {
       "rank": 4,
-      "ts_code": "002029.SZ",
-      "stock_code": "002029",
-      "stock_name": "七 匹 狼",
-      "lgb_score": 96.19,
-      "raw_score": 0.09
+      "ts_code": "002374.SZ",
+      "stock_code": "002374",
+      "stock_name": "中锐股份",
+      "lgb_score": 86.41,
+      "raw_score": 0.12
     },
     {
       "rank": 5,
-      "ts_code": "000338.SZ",
-      "stock_code": "000338",
-      "stock_name": "潍柴动力",
-      "lgb_score": 93.89,
-      "raw_score": 0.09
+      "ts_code": "000151.SZ",
+      "stock_code": "000151",
+      "stock_name": "中成股份",
+      "lgb_score": 82.7,
+      "raw_score": 0.11
     }
   ]
 }

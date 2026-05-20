@@ -11,39 +11,39 @@
       "stock_code": "300738",
       "stock_name": "奥飞数据",
       "lgb_score": 100.0,
-      "raw_score": 0.12
+      "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "688716.SH",
-      "stock_code": "688716",
-      "stock_name": "中研股份",
-      "lgb_score": 81.98,
-      "raw_score": 0.09
+      "ts_code": "002369.SZ",
+      "stock_code": "002369",
+      "stock_name": "卓翼科技",
+      "lgb_score": 91.07,
+      "raw_score": 0.08
     },
     {
       "rank": 3,
       "ts_code": "002577.SZ",
       "stock_code": "002577",
       "stock_name": "雷柏科技",
-      "lgb_score": 81.65,
+      "lgb_score": 89.65,
       "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "301413.SZ",
-      "stock_code": "301413",
-      "stock_name": "安培龙",
-      "lgb_score": 79.33,
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 88.03,
       "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "301550.SZ",
-      "stock_code": "301550",
-      "stock_name": "斯菱智驱",
-      "lgb_score": 79.19,
-      "raw_score": 0.08
+      "ts_code": "603915.SH",
+      "stock_code": "603915",
+      "stock_name": "国茂股份",
+      "lgb_score": 87.83,
+      "raw_score": 0.07
     }
   ]
 }

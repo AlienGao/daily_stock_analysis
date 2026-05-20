@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
+      "ts_code": "002617.SZ",
+      "stock_code": "002617",
+      "stock_name": "露笑科技",
       "lgb_score": 100.0,
-      "raw_score": 0.15
+      "raw_score": 0.11
     },
     {
       "rank": 2,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 94.68,
-      "raw_score": 0.14
+      "ts_code": "301396.SZ",
+      "stock_code": "301396",
+      "stock_name": "宏景科技",
+      "lgb_score": 98.57,
+      "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "002274.SZ",
-      "stock_code": "002274",
-      "stock_name": "华昌化工",
-      "lgb_score": 92.45,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 4,
       "ts_code": "000859.SZ",
       "stock_code": "000859",
       "stock_name": "国风新材",
-      "lgb_score": 90.94,
-      "raw_score": 0.13
+      "lgb_score": 98.57,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 94.42,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
-      "lgb_score": 89.61,
-      "raw_score": 0.12
+      "ts_code": "601996.SH",
+      "stock_code": "601996",
+      "stock_name": "丰林集团",
+      "lgb_score": 94.12,
+      "raw_score": 0.09
     }
   ]
 }

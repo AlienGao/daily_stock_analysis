@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "601138.SH",
-      "stock_code": "601138",
-      "stock_name": "工业富联",
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
       "lgb_score": 100.0,
-      "raw_score": 0.22
+      "raw_score": 0.26
     },
     {
       "rank": 2,
-      "ts_code": "002029.SZ",
-      "stock_code": "002029",
-      "stock_name": "七 匹 狼",
-      "lgb_score": 99.61,
-      "raw_score": 0.22
+      "ts_code": "603915.SH",
+      "stock_code": "603915",
+      "stock_name": "国茂股份",
+      "lgb_score": 96.99,
+      "raw_score": 0.25
     },
     {
       "rank": 3,
       "ts_code": "000601.SZ",
       "stock_code": "000601",
       "stock_name": "韶能股份",
-      "lgb_score": 96.58,
-      "raw_score": 0.2
+      "lgb_score": 96.33,
+      "raw_score": 0.25
     },
     {
       "rank": 4,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 95.05,
-      "raw_score": 0.2
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 96.07,
+      "raw_score": 0.25
     },
     {
       "rank": 5,
-      "ts_code": "300300.SZ",
-      "stock_code": "300300",
-      "stock_name": "海峡创新",
-      "lgb_score": 94.91,
-      "raw_score": 0.2
+      "ts_code": "600756.SH",
+      "stock_code": "600756",
+      "stock_name": "浪潮软件",
+      "lgb_score": 87.85,
+      "raw_score": 0.22
     }
   ]
 }

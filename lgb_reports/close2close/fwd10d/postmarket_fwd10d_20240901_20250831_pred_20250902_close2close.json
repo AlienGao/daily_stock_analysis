@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "603915.SH",
-      "stock_code": "603915",
-      "stock_name": "国茂股份",
-      "lgb_score": 100.0,
-      "raw_score": 0.21
-    },
-    {
-      "rank": 2,
-      "ts_code": "301117.SZ",
-      "stock_code": "301117",
-      "stock_name": "佳缘科技",
-      "lgb_score": 97.81,
-      "raw_score": 0.2
-    },
-    {
-      "rank": 3,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 96.45,
-      "raw_score": 0.2
-    },
-    {
-      "rank": 4,
-      "ts_code": "300046.SZ",
-      "stock_code": "300046",
-      "stock_name": "台基股份",
-      "lgb_score": 95.44,
-      "raw_score": 0.19
-    },
-    {
-      "rank": 5,
       "ts_code": "300429.SZ",
       "stock_code": "300429",
       "stock_name": "强力新材",
-      "lgb_score": 95.04,
-      "raw_score": 0.19
+      "lgb_score": 100.0,
+      "raw_score": 0.28
+    },
+    {
+      "rank": 2,
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 87.07,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 3,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 86.74,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 4,
+      "ts_code": "600151.SH",
+      "stock_code": "600151",
+      "stock_name": "航天机电",
+      "lgb_score": 83.72,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 5,
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 82.71,
+      "raw_score": 0.21
     }
   ]
 }

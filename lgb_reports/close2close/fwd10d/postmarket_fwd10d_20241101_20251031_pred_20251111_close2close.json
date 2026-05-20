@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002438.SZ",
-      "stock_code": "002438",
-      "stock_name": "江苏神通",
-      "lgb_score": 100.0,
-      "raw_score": 0.37
-    },
-    {
-      "rank": 2,
-      "ts_code": "300045.SZ",
-      "stock_code": "300045",
-      "stock_name": "华力创通",
-      "lgb_score": 98.14,
-      "raw_score": 0.36
-    },
-    {
-      "rank": 3,
       "ts_code": "300017.SZ",
       "stock_code": "300017",
       "stock_name": "网宿科技",
-      "lgb_score": 97.74,
+      "lgb_score": 100.0,
       "raw_score": 0.35
     },
     {
+      "rank": 2,
+      "ts_code": "920491.BJ",
+      "stock_code": "920491.BJ",
+      "stock_name": "",
+      "lgb_score": 90.42,
+      "raw_score": 0.3
+    },
+    {
+      "rank": 3,
+      "ts_code": "002438.SZ",
+      "stock_code": "002438",
+      "stock_name": "江苏神通",
+      "lgb_score": 89.13,
+      "raw_score": 0.3
+    },
+    {
       "rank": 4,
-      "ts_code": "301633.SZ",
-      "stock_code": "301633",
-      "stock_name": "港迪技术",
-      "lgb_score": 94.54,
-      "raw_score": 0.33
+      "ts_code": "688135.SH",
+      "stock_code": "688135",
+      "stock_name": "利扬芯片",
+      "lgb_score": 86.7,
+      "raw_score": 0.29
     },
     {
       "rank": 5,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 94.44,
-      "raw_score": 0.33
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 86.65,
+      "raw_score": 0.29
     }
   ]
 }

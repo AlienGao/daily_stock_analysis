@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
       "lgb_score": 100.0,
       "raw_score": 0.08
     },
     {
       "rank": 2,
-      "ts_code": "002164.SZ",
-      "stock_code": "002164",
-      "stock_name": "宁波东力",
-      "lgb_score": 99.6,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 98.39,
       "raw_score": 0.08
     },
     {
       "rank": 3,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
-      "lgb_score": 97.59,
-      "raw_score": 0.08
+      "ts_code": "301589.SZ",
+      "stock_code": "301589",
+      "stock_name": "诺瓦星云",
+      "lgb_score": 96.63,
+      "raw_score": 0.07
     },
     {
       "rank": 4,
-      "ts_code": "002029.SZ",
-      "stock_code": "002029",
-      "stock_name": "七 匹 狼",
-      "lgb_score": 95.35,
+      "ts_code": "300128.SZ",
+      "stock_code": "300128",
+      "stock_name": "锦富技术",
+      "lgb_score": 95.43,
       "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "003021.SZ",
-      "stock_code": "003021",
-      "stock_name": "兆威机电",
-      "lgb_score": 93.43,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 95.12,
       "raw_score": 0.07
     }
   ]

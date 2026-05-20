@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 100.0,
-      "raw_score": 0.15
-    },
-    {
-      "rank": 2,
       "ts_code": "002165.SZ",
       "stock_code": "002165",
       "stock_name": "红 宝 丽",
-      "lgb_score": 97.84,
-      "raw_score": 0.15
+      "lgb_score": 100.0,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 2,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 84.68,
+      "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "300157.SZ",
-      "stock_code": "300157",
-      "stock_name": "新锦动力",
-      "lgb_score": 95.4,
-      "raw_score": 0.14
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 81.06,
+      "raw_score": 0.12
     },
     {
       "rank": 4,
       "ts_code": "300166.SZ",
       "stock_code": "300166",
       "stock_name": "东方国信",
-      "lgb_score": 87.75,
-      "raw_score": 0.12
+      "lgb_score": 78.67,
+      "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "600802.SH",
-      "stock_code": "600802",
-      "stock_name": "福建水泥",
-      "lgb_score": 83.06,
+      "ts_code": "300046.SZ",
+      "stock_code": "300046",
+      "stock_name": "台基股份",
+      "lgb_score": 76.63,
       "raw_score": 0.11
     }
   ]

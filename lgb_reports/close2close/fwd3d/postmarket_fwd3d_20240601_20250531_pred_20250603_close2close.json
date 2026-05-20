@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600757.SH",
-      "stock_code": "600757",
-      "stock_name": "长江传媒",
-      "lgb_score": 100.0,
-      "raw_score": 0.09
-    },
-    {
-      "rank": 2,
-      "ts_code": "600682.SH",
-      "stock_code": "600682",
-      "stock_name": "南京新百",
-      "lgb_score": 99.18,
-      "raw_score": 0.09
-    },
-    {
-      "rank": 3,
-      "ts_code": "600076.SH",
-      "stock_code": "600076",
-      "stock_name": "康欣新材",
-      "lgb_score": 96.91,
-      "raw_score": 0.09
-    },
-    {
-      "rank": 4,
       "ts_code": "603518.SH",
       "stock_code": "603518",
       "stock_name": "锦泓集团",
-      "lgb_score": 95.36,
-      "raw_score": 0.08
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "002878.SZ",
+      "stock_code": "002878",
+      "stock_name": "元隆雅图",
+      "lgb_score": 99.75,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
+      "ts_code": "300865.SZ",
+      "stock_code": "300865",
+      "stock_name": "大宏立",
+      "lgb_score": 97.07,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 4,
+      "ts_code": "301633.SZ",
+      "stock_code": "301633",
+      "stock_name": "港迪技术",
+      "lgb_score": 92.44,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "002987.SZ",
-      "stock_code": "002987",
-      "stock_name": "京北方",
-      "lgb_score": 94.31,
-      "raw_score": 0.08
+      "ts_code": "600682.SH",
+      "stock_code": "600682",
+      "stock_name": "南京新百",
+      "lgb_score": 91.28,
+      "raw_score": 0.1
     }
   ]
 }

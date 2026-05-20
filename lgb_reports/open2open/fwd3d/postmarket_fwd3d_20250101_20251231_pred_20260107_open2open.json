@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301590.SZ",
-      "stock_code": "301590",
-      "stock_name": "优优绿能",
+      "ts_code": "300912.SZ",
+      "stock_code": "300912",
+      "stock_name": "凯龙高科",
       "lgb_score": 100.0,
-      "raw_score": 0.1
+      "raw_score": 0.06
     },
     {
       "rank": 2,
-      "ts_code": "603887.SH",
-      "stock_code": "603887",
-      "stock_name": "城地香江",
-      "lgb_score": 84.42,
-      "raw_score": 0.07
+      "ts_code": "301222.SZ",
+      "stock_code": "301222",
+      "stock_name": "浙江恒威",
+      "lgb_score": 98.82,
+      "raw_score": 0.06
     },
     {
       "rank": 3,
-      "ts_code": "603619.SH",
-      "stock_code": "603619",
-      "stock_name": "中曼石油",
-      "lgb_score": 81.42,
-      "raw_score": 0.07
+      "ts_code": "603588.SH",
+      "stock_code": "603588",
+      "stock_name": "高能环境",
+      "lgb_score": 98.8,
+      "raw_score": 0.06
     },
     {
       "rank": 4,
-      "ts_code": "002395.SZ",
-      "stock_code": "002395",
-      "stock_name": "双象股份",
-      "lgb_score": 80.64,
-      "raw_score": 0.07
+      "ts_code": "002283.SZ",
+      "stock_code": "002283",
+      "stock_name": "天润工业",
+      "lgb_score": 93.78,
+      "raw_score": 0.05
     },
     {
       "rank": 5,
-      "ts_code": "002929.SZ",
-      "stock_code": "002929",
-      "stock_name": "润建股份",
-      "lgb_score": 78.3,
-      "raw_score": 0.06
+      "ts_code": "301232.SZ",
+      "stock_code": "301232",
+      "stock_name": "飞沃科技",
+      "lgb_score": 88.32,
+      "raw_score": 0.05
     }
   ]
 }

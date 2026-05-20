@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "605020.SH",
-      "stock_code": "605020",
-      "stock_name": "永和股份",
+      "ts_code": "002234.SZ",
+      "stock_code": "002234",
+      "stock_name": "民和股份",
       "lgb_score": 100.0,
-      "raw_score": 0.11
+      "raw_score": 0.12
     },
     {
       "rank": 2,
-      "ts_code": "600449.SH",
-      "stock_code": "600449",
-      "stock_name": "宁夏建材",
-      "lgb_score": 94.81,
-      "raw_score": 0.1
+      "ts_code": "002580.SZ",
+      "stock_code": "002580",
+      "stock_name": "圣阳股份",
+      "lgb_score": 99.3,
+      "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "000601.SZ",
-      "stock_code": "000601",
-      "stock_name": "韶能股份",
-      "lgb_score": 94.29,
-      "raw_score": 0.1
+      "ts_code": "920015.BJ",
+      "stock_code": "920015.BJ",
+      "stock_name": "",
+      "lgb_score": 99.21,
+      "raw_score": 0.12
     },
     {
       "rank": 4,
-      "ts_code": "301589.SZ",
-      "stock_code": "301589",
-      "stock_name": "诺瓦星云",
-      "lgb_score": 94.18,
-      "raw_score": 0.1
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 96.76,
+      "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "603018.SH",
-      "stock_code": "603018",
-      "stock_name": "华设集团",
-      "lgb_score": 91.02,
-      "raw_score": 0.09
+      "ts_code": "001387.SZ",
+      "stock_code": "001387",
+      "stock_name": "雪祺电气",
+      "lgb_score": 94.93,
+      "raw_score": 0.11
     }
   ]
 }

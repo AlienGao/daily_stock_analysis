@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301388.SZ",
-      "stock_code": "301388",
-      "stock_name": "欣灵电气",
+      "ts_code": "002401.SZ",
+      "stock_code": "002401",
+      "stock_name": "中远海科",
       "lgb_score": 100.0,
       "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "002401.SZ",
-      "stock_code": "002401",
-      "stock_name": "中远海科",
-      "lgb_score": 97.19,
-      "raw_score": 0.08
+      "ts_code": "688658.SH",
+      "stock_code": "688658",
+      "stock_name": "悦康药业",
+      "lgb_score": 96.6,
+      "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 94.97,
-      "raw_score": 0.08
+      "ts_code": "002513.SZ",
+      "stock_code": "002513",
+      "stock_name": "蓝丰生化",
+      "lgb_score": 96.57,
+      "raw_score": 0.09
     },
     {
       "rank": 4,
       "ts_code": "002915.SZ",
       "stock_code": "002915",
       "stock_name": "中欣氟材",
-      "lgb_score": 94.86,
+      "lgb_score": 94.55,
       "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "002513.SZ",
-      "stock_code": "002513",
-      "stock_name": "蓝丰生化",
-      "lgb_score": 94.7,
+      "ts_code": "603856.SH",
+      "stock_code": "603856",
+      "stock_name": "东宏股份",
+      "lgb_score": 94.19,
       "raw_score": 0.08
     }
   ]

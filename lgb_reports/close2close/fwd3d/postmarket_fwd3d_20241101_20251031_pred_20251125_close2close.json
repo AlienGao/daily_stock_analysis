@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000859.SZ",
-      "stock_code": "000859",
-      "stock_name": "国风新材",
-      "lgb_score": 100.0,
-      "raw_score": 0.09
-    },
-    {
-      "rank": 2,
       "ts_code": "000620.SZ",
       "stock_code": "000620",
       "stock_name": "盈新发展",
-      "lgb_score": 98.48,
-      "raw_score": 0.09
+      "lgb_score": 100.0,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 2,
+      "ts_code": "000797.SZ",
+      "stock_code": "000797",
+      "stock_name": "中国武夷",
+      "lgb_score": 98.03,
+      "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "600828.SH",
-      "stock_code": "600828",
-      "stock_name": "茂业商业",
-      "lgb_score": 97.54,
+      "ts_code": "600033.SH",
+      "stock_code": "600033",
+      "stock_name": "福建高速",
+      "lgb_score": 94.08,
       "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "002264.SZ",
-      "stock_code": "002264",
-      "stock_name": "新 华 都",
-      "lgb_score": 94.76,
-      "raw_score": 0.08
+      "ts_code": "002413.SZ",
+      "stock_code": "002413",
+      "stock_name": "雷科防务",
+      "lgb_score": 92.78,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "688627.SH",
-      "stock_code": "688627",
-      "stock_name": "精智达",
-      "lgb_score": 93.26,
-      "raw_score": 0.08
+      "ts_code": "301590.SZ",
+      "stock_code": "301590",
+      "stock_name": "优优绿能",
+      "lgb_score": 91.56,
+      "raw_score": 0.09
     }
   ]
 }

@@ -11,39 +11,39 @@
       "stock_code": "002165",
       "stock_name": "红 宝 丽",
       "lgb_score": 100.0,
-      "raw_score": 0.18
+      "raw_score": 0.16
     },
     {
       "rank": 2,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 98.67,
-      "raw_score": 0.17
-    },
-    {
-      "rank": 3,
       "ts_code": "600308.SH",
       "stock_code": "600308",
       "stock_name": "华泰股份",
-      "lgb_score": 96.59,
-      "raw_score": 0.17
+      "lgb_score": 90.16,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 3,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 89.69,
+      "raw_score": 0.13
     },
     {
       "rank": 4,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 88.32,
-      "raw_score": 0.14
+      "ts_code": "002009.SZ",
+      "stock_code": "002009",
+      "stock_name": "天奇股份",
+      "lgb_score": 86.88,
+      "raw_score": 0.13
     },
     {
       "rank": 5,
-      "ts_code": "600798.SH",
-      "stock_code": "600798",
-      "stock_name": "宁波海运",
-      "lgb_score": 88.05,
-      "raw_score": 0.14
+      "ts_code": "300042.SZ",
+      "stock_code": "300042",
+      "stock_name": "朗科科技",
+      "lgb_score": 86.38,
+      "raw_score": 0.12
     }
   ]
 }

@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
       "lgb_score": 100.0,
-      "raw_score": 0.22
+      "raw_score": 0.29
     },
     {
       "rank": 2,
-      "ts_code": "688320.SH",
-      "stock_code": "688320",
-      "stock_name": "禾川科技",
-      "lgb_score": 99.06,
-      "raw_score": 0.22
-    },
-    {
-      "rank": 3,
       "ts_code": "600410.SH",
       "stock_code": "600410",
       "stock_name": "华胜天成",
-      "lgb_score": 98.05,
-      "raw_score": 0.21
+      "lgb_score": 87.01,
+      "raw_score": 0.23
     },
     {
-      "rank": 4,
+      "rank": 3,
       "ts_code": "301117.SZ",
       "stock_code": "301117",
       "stock_name": "佳缘科技",
-      "lgb_score": 98.04,
-      "raw_score": 0.21
+      "lgb_score": 86.63,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 4,
+      "ts_code": "002234.SZ",
+      "stock_code": "002234",
+      "stock_name": "民和股份",
+      "lgb_score": 86.22,
+      "raw_score": 0.23
     },
     {
       "rank": 5,
-      "ts_code": "002165.SZ",
-      "stock_code": "002165",
-      "stock_name": "红 宝 丽",
-      "lgb_score": 97.01,
-      "raw_score": 0.21
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 84.78,
+      "raw_score": 0.22
     }
   ]
 }

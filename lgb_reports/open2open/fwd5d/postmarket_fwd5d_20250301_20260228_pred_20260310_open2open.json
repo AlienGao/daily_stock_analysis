@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002458.SZ",
-      "stock_code": "002458",
-      "stock_name": "益生股份",
+      "ts_code": "301309.SZ",
+      "stock_code": "301309",
+      "stock_name": "万得凯",
       "lgb_score": 100.0,
       "raw_score": 0.12
     },
     {
       "rank": 2,
-      "ts_code": "603018.SH",
-      "stock_code": "603018",
-      "stock_name": "华设集团",
-      "lgb_score": 99.45,
+      "ts_code": "002458.SZ",
+      "stock_code": "002458",
+      "stock_name": "益生股份",
+      "lgb_score": 97.23,
       "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "301022.SZ",
-      "stock_code": "301022",
-      "stock_name": "海泰科",
-      "lgb_score": 97.19,
+      "ts_code": "301633.SZ",
+      "stock_code": "301633",
+      "stock_name": "港迪技术",
+      "lgb_score": 96.3,
       "raw_score": 0.11
     },
     {
       "rank": 4,
-      "ts_code": "301633.SZ",
-      "stock_code": "301633",
-      "stock_name": "港迪技术",
-      "lgb_score": 96.89,
+      "ts_code": "000589.SZ",
+      "stock_code": "000589",
+      "stock_name": "贵州轮胎",
+      "lgb_score": 95.06,
       "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "300883.SZ",
-      "stock_code": "300883",
-      "stock_name": "龙利得",
-      "lgb_score": 94.15,
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
+      "lgb_score": 94.47,
       "raw_score": 0.11
     }
   ]

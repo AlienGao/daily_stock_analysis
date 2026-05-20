@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300429.SZ",
-      "stock_code": "300429",
-      "stock_name": "强力新材",
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
       "lgb_score": 100.0,
-      "raw_score": 0.2
+      "raw_score": 0.25
     },
     {
       "rank": 2,
-      "ts_code": "603915.SH",
-      "stock_code": "603915",
-      "stock_name": "国茂股份",
-      "lgb_score": 99.36,
-      "raw_score": 0.2
+      "ts_code": "300429.SZ",
+      "stock_code": "300429",
+      "stock_name": "强力新材",
+      "lgb_score": 98.9,
+      "raw_score": 0.24
     },
     {
       "rank": 3,
       "ts_code": "603619.SH",
       "stock_code": "603619",
       "stock_name": "中曼石油",
-      "lgb_score": 98.84,
-      "raw_score": 0.2
+      "lgb_score": 93.31,
+      "raw_score": 0.22
     },
     {
       "rank": 4,
-      "ts_code": "688181.SH",
-      "stock_code": "688181",
-      "stock_name": "八亿时空",
-      "lgb_score": 95.08,
-      "raw_score": 0.18
+      "ts_code": "300232.SZ",
+      "stock_code": "300232",
+      "stock_name": "洲明科技",
+      "lgb_score": 93.04,
+      "raw_score": 0.22
     },
     {
       "rank": 5,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 94.69,
-      "raw_score": 0.18
+      "ts_code": "603915.SH",
+      "stock_code": "603915",
+      "stock_name": "国茂股份",
+      "lgb_score": 91.05,
+      "raw_score": 0.21
     }
   ]
 }

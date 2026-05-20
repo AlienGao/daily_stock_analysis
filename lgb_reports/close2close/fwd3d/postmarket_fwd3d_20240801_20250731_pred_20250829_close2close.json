@@ -11,38 +11,38 @@
       "stock_code": "688775",
       "stock_name": "影石创新",
       "lgb_score": 100.0,
-      "raw_score": 0.09
+      "raw_score": 0.11
     },
     {
       "rank": 2,
       "ts_code": "600545.SH",
       "stock_code": "600545",
       "stock_name": "卓郎智能",
-      "lgb_score": 98.1,
+      "lgb_score": 91.97,
       "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "300757.SZ",
-      "stock_code": "300757",
-      "stock_name": "罗博特科",
-      "lgb_score": 97.56,
+      "ts_code": "600980.SH",
+      "stock_code": "600980",
+      "stock_name": "北矿科技",
+      "lgb_score": 87.95,
       "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "000796.SZ",
-      "stock_code": "000796",
-      "stock_name": "凯撒旅业",
-      "lgb_score": 96.27,
+      "ts_code": "300757.SZ",
+      "stock_code": "300757",
+      "stock_name": "罗博特科",
+      "lgb_score": 86.55,
       "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "605298.SH",
-      "stock_code": "605298",
-      "stock_name": "必得科技",
-      "lgb_score": 94.56,
+      "ts_code": "000796.SZ",
+      "stock_code": "000796",
+      "stock_name": "凯撒旅业",
+      "lgb_score": 86.05,
       "raw_score": 0.08
     }
   ]

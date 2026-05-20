@@ -15,35 +15,35 @@
     },
     {
       "rank": 2,
-      "ts_code": "300885.SZ",
-      "stock_code": "300885",
-      "stock_name": "海昌新材",
-      "lgb_score": 97.32,
+      "ts_code": "301372.SZ",
+      "stock_code": "301372",
+      "stock_name": "科净源",
+      "lgb_score": 96.56,
       "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "002029.SZ",
-      "stock_code": "002029",
-      "stock_name": "七 匹 狼",
-      "lgb_score": 95.77,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 95.31,
       "raw_score": 0.13
     },
     {
       "rank": 4,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 94.02,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 94.85,
       "raw_score": 0.13
     },
     {
       "rank": 5,
-      "ts_code": "301372.SZ",
-      "stock_code": "301372",
-      "stock_name": "科净源",
-      "lgb_score": 93.8,
-      "raw_score": 0.12
+      "ts_code": "688181.SH",
+      "stock_code": "688181",
+      "stock_name": "八亿时空",
+      "lgb_score": 93.38,
+      "raw_score": 0.13
     }
   ]
 }

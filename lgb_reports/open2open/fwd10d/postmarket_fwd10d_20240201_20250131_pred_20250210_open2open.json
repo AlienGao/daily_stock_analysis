@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301008.SZ",
-      "stock_code": "301008",
-      "stock_name": "宏昌科技",
+      "ts_code": "688583.SH",
+      "stock_code": "688583",
+      "stock_name": "思看科技",
       "lgb_score": 100.0,
-      "raw_score": 0.17
+      "raw_score": 0.18
     },
     {
       "rank": 2,
-      "ts_code": "300885.SZ",
-      "stock_code": "300885",
-      "stock_name": "海昌新材",
-      "lgb_score": 99.38,
-      "raw_score": 0.17
+      "ts_code": "300007.SZ",
+      "stock_code": "300007",
+      "stock_name": "汉威科技",
+      "lgb_score": 99.55,
+      "raw_score": 0.18
     },
     {
       "rank": 3,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
-      "lgb_score": 96.22,
-      "raw_score": 0.16
-    },
-    {
-      "rank": 4,
       "ts_code": "002029.SZ",
       "stock_code": "002029",
       "stock_name": "七 匹 狼",
-      "lgb_score": 93.01,
-      "raw_score": 0.15
+      "lgb_score": 99.26,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 4,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 99.21,
+      "raw_score": 0.18
     },
     {
       "rank": 5,
-      "ts_code": "688320.SH",
-      "stock_code": "688320",
-      "stock_name": "禾川科技",
-      "lgb_score": 91.38,
-      "raw_score": 0.14
+      "ts_code": "688368.SH",
+      "stock_code": "688368",
+      "stock_name": "晶丰明源",
+      "lgb_score": 95.58,
+      "raw_score": 0.17
     }
   ]
 }

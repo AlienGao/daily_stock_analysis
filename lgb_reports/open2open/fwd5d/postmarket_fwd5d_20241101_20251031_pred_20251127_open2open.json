@@ -11,38 +11,38 @@
       "stock_code": "301633",
       "stock_name": "港迪技术",
       "lgb_score": 100.0,
-      "raw_score": 0.18
+      "raw_score": 0.2
     },
     {
       "rank": 2,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 94.6,
+      "ts_code": "920491.BJ",
+      "stock_code": "920491.BJ",
+      "stock_name": "",
+      "lgb_score": 89.09,
       "raw_score": 0.17
     },
     {
       "rank": 3,
-      "ts_code": "603960.SH",
-      "stock_code": "603960",
-      "stock_name": "克来机电",
-      "lgb_score": 94.41,
-      "raw_score": 0.17
+      "ts_code": "920580.BJ",
+      "stock_code": "920580.BJ",
+      "stock_name": "",
+      "lgb_score": 83.11,
+      "raw_score": 0.15
     },
     {
       "rank": 4,
       "ts_code": "301590.SZ",
       "stock_code": "301590",
       "stock_name": "优优绿能",
-      "lgb_score": 90.46,
+      "lgb_score": 81.91,
       "raw_score": 0.15
     },
     {
       "rank": 5,
-      "ts_code": "920491.BJ",
-      "stock_code": "920491.BJ",
+      "ts_code": "920100.BJ",
+      "stock_code": "920100.BJ",
       "stock_name": "",
-      "lgb_score": 89.56,
+      "lgb_score": 80.57,
       "raw_score": 0.15
     }
   ]

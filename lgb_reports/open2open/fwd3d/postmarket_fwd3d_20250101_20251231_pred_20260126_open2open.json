@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "603248.SH",
-      "stock_code": "603248",
-      "stock_name": "锡华科技",
-      "lgb_score": 100.0,
-      "raw_score": 0.11
-    },
-    {
-      "rank": 2,
-      "ts_code": "002458.SZ",
-      "stock_code": "002458",
-      "stock_name": "益生股份",
-      "lgb_score": 96.51,
-      "raw_score": 0.1
-    },
-    {
-      "rank": 3,
       "ts_code": "002929.SZ",
       "stock_code": "002929",
       "stock_name": "润建股份",
-      "lgb_score": 91.57,
+      "lgb_score": 100.0,
       "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "300976.SZ",
+      "stock_code": "300976",
+      "stock_name": "达瑞电子",
+      "lgb_score": 98.23,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "603588.SH",
+      "stock_code": "603588",
+      "stock_name": "高能环境",
+      "lgb_score": 97.01,
+      "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "300757.SZ",
-      "stock_code": "300757",
-      "stock_name": "罗博特科",
-      "lgb_score": 89.26,
-      "raw_score": 0.09
+      "ts_code": "301629.SZ",
+      "stock_code": "301629",
+      "stock_name": "矽电股份",
+      "lgb_score": 96.98,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "002937.SZ",
-      "stock_code": "002937",
-      "stock_name": "兴瑞科技",
-      "lgb_score": 86.83,
-      "raw_score": 0.08
+      "ts_code": "002283.SZ",
+      "stock_code": "002283",
+      "stock_name": "天润工业",
+      "lgb_score": 89.78,
+      "raw_score": 0.07
     }
   ]
 }

@@ -11,39 +11,39 @@
       "stock_code": "300017",
       "stock_name": "网宿科技",
       "lgb_score": 100.0,
-      "raw_score": 0.28
+      "raw_score": 0.3
     },
     {
       "rank": 2,
-      "ts_code": "300263.SZ",
-      "stock_code": "300263",
-      "stock_name": "隆华科技",
-      "lgb_score": 95.02,
+      "ts_code": "300045.SZ",
+      "stock_code": "300045",
+      "stock_name": "华力创通",
+      "lgb_score": 90.33,
       "raw_score": 0.26
     },
     {
       "rank": 3,
-      "ts_code": "601500.SH",
-      "stock_code": "601500",
-      "stock_name": "通用股份",
-      "lgb_score": 89.94,
-      "raw_score": 0.24
+      "ts_code": "300612.SZ",
+      "stock_code": "300612",
+      "stock_name": "宣亚国际",
+      "lgb_score": 89.99,
+      "raw_score": 0.26
     },
     {
       "rank": 4,
-      "ts_code": "301117.SZ",
-      "stock_code": "301117",
-      "stock_name": "佳缘科技",
-      "lgb_score": 88.2,
-      "raw_score": 0.23
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 87.59,
+      "raw_score": 0.24
     },
     {
       "rank": 5,
-      "ts_code": "603018.SH",
-      "stock_code": "603018",
-      "stock_name": "华设集团",
-      "lgb_score": 87.97,
-      "raw_score": 0.23
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 87.49,
+      "raw_score": 0.24
     }
   ]
 }

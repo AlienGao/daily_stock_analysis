@@ -11,39 +11,39 @@
       "stock_code": "002217",
       "stock_name": "合力泰",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.14
     },
     {
       "rank": 2,
-      "ts_code": "600408.SH",
-      "stock_code": "600408",
-      "stock_name": "安泰集团",
-      "lgb_score": 89.1,
+      "ts_code": "601326.SH",
+      "stock_code": "601326",
+      "stock_name": "秦港股份",
+      "lgb_score": 85.64,
       "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "601326.SH",
-      "stock_code": "601326",
-      "stock_name": "秦港股份",
-      "lgb_score": 87.08,
-      "raw_score": 0.09
-    },
-    {
-      "rank": 4,
       "ts_code": "600815.SH",
       "stock_code": "600815",
       "stock_name": "厦工股份",
-      "lgb_score": 84.97,
-      "raw_score": 0.09
+      "lgb_score": 85.34,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "600408.SH",
+      "stock_code": "600408",
+      "stock_name": "安泰集团",
+      "lgb_score": 84.57,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
       "ts_code": "688135.SH",
       "stock_code": "688135",
       "stock_name": "利扬芯片",
-      "lgb_score": 83.94,
-      "raw_score": 0.09
+      "lgb_score": 75.01,
+      "raw_score": 0.07
     }
   ]
 }

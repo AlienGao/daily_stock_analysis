@@ -15,35 +15,35 @@
     },
     {
       "rank": 2,
-      "ts_code": "300629.SZ",
-      "stock_code": "300629",
-      "stock_name": "新劲刚",
-      "lgb_score": 84.2,
-      "raw_score": 0.1
-    },
-    {
-      "rank": 3,
       "ts_code": "600076.SH",
       "stock_code": "600076",
       "stock_name": "康欣新材",
-      "lgb_score": 83.33,
+      "lgb_score": 91.81,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 84.89,
       "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "603926.SH",
-      "stock_code": "603926",
-      "stock_name": "铁流股份",
-      "lgb_score": 82.23,
-      "raw_score": 0.09
+      "ts_code": "000936.SZ",
+      "stock_code": "000936",
+      "stock_name": "华西股份",
+      "lgb_score": 84.25,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
       "ts_code": "002331.SZ",
       "stock_code": "002331",
       "stock_name": "皖通科技",
-      "lgb_score": 81.88,
-      "raw_score": 0.09
+      "lgb_score": 84.1,
+      "raw_score": 0.1
     }
   ]
 }

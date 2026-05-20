@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000554.SZ",
-      "stock_code": "000554",
-      "stock_name": "泰山石油",
+      "ts_code": "301309.SZ",
+      "stock_code": "301309",
+      "stock_name": "万得凯",
       "lgb_score": 100.0,
-      "raw_score": 0.12
+      "raw_score": 0.15
     },
     {
       "rank": 2,
-      "ts_code": "002458.SZ",
-      "stock_code": "002458",
-      "stock_name": "益生股份",
-      "lgb_score": 98.56,
-      "raw_score": 0.12
+      "ts_code": "001387.SZ",
+      "stock_code": "001387",
+      "stock_name": "雪祺电气",
+      "lgb_score": 96.69,
+      "raw_score": 0.14
     },
     {
       "rank": 3,
-      "ts_code": "301589.SZ",
-      "stock_code": "301589",
-      "stock_name": "诺瓦星云",
-      "lgb_score": 92.7,
-      "raw_score": 0.1
+      "ts_code": "002274.SZ",
+      "stock_code": "002274",
+      "stock_name": "华昌化工",
+      "lgb_score": 95.54,
+      "raw_score": 0.14
     },
     {
       "rank": 4,
-      "ts_code": "002234.SZ",
-      "stock_code": "002234",
-      "stock_name": "民和股份",
-      "lgb_score": 90.53,
-      "raw_score": 0.1
+      "ts_code": "301589.SZ",
+      "stock_code": "301589",
+      "stock_name": "诺瓦星云",
+      "lgb_score": 93.37,
+      "raw_score": 0.13
     },
     {
       "rank": 5,
-      "ts_code": "603283.SH",
-      "stock_code": "603283",
-      "stock_name": "赛腾股份",
-      "lgb_score": 88.09,
-      "raw_score": 0.09
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
+      "lgb_score": 92.28,
+      "raw_score": 0.13
     }
   ]
 }

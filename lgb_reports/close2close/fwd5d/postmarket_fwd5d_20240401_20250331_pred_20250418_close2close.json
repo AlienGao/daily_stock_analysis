@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301633.SZ",
-      "stock_code": "301633",
-      "stock_name": "港迪技术",
-      "lgb_score": 100.0,
-      "raw_score": 0.11
-    },
-    {
-      "rank": 2,
       "ts_code": "688316.SH",
       "stock_code": "688316",
       "stock_name": "青云科技-U",
-      "lgb_score": 99.2,
-      "raw_score": 0.11
+      "lgb_score": 100.0,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 2,
+      "ts_code": "301633.SZ",
+      "stock_code": "301633",
+      "stock_name": "港迪技术",
+      "lgb_score": 96.19,
+      "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "301117.SZ",
-      "stock_code": "301117",
-      "stock_name": "佳缘科技",
-      "lgb_score": 97.97,
-      "raw_score": 0.11
-    },
-    {
-      "rank": 4,
       "ts_code": "002177.SZ",
       "stock_code": "002177",
       "stock_name": "御银股份",
-      "lgb_score": 95.21,
-      "raw_score": 0.1
+      "lgb_score": 95.07,
+      "raw_score": 0.12
     },
     {
-      "rank": 5,
+      "rank": 4,
       "ts_code": "002446.SZ",
       "stock_code": "002446",
       "stock_name": "盛路通信",
-      "lgb_score": 94.03,
-      "raw_score": 0.1
+      "lgb_score": 94.22,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 5,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 91.84,
+      "raw_score": 0.11
     }
   ]
 }

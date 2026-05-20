@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000001.SH.SZ",
-      "stock_code": "000001",
-      "stock_name": "平安银行",
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.15
     },
     {
       "rank": 2,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 99.94,
-      "raw_score": 0.13
+      "ts_code": "000936.SZ",
+      "stock_code": "000936",
+      "stock_name": "华西股份",
+      "lgb_score": 98.25,
+      "raw_score": 0.14
     },
     {
       "rank": 3,
-      "ts_code": "300263.SZ",
-      "stock_code": "300263",
-      "stock_name": "隆华科技",
-      "lgb_score": 97.11,
-      "raw_score": 0.12
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 98.12,
+      "raw_score": 0.14
     },
     {
       "rank": 4,
-      "ts_code": "600076.SH",
-      "stock_code": "600076",
-      "stock_name": "康欣新材",
-      "lgb_score": 96.66,
-      "raw_score": 0.12
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 97.7,
+      "raw_score": 0.14
     },
     {
       "rank": 5,
-      "ts_code": "601500.SH",
-      "stock_code": "601500",
-      "stock_name": "通用股份",
-      "lgb_score": 95.06,
-      "raw_score": 0.12
+      "ts_code": "000159.SZ",
+      "stock_code": "000159",
+      "stock_name": "国际实业",
+      "lgb_score": 96.68,
+      "raw_score": 0.14
     }
   ]
 }

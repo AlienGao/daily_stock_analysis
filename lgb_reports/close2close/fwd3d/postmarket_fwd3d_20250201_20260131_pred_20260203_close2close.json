@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000554.SZ",
-      "stock_code": "000554",
-      "stock_name": "泰山石油",
+      "ts_code": "603306.SH",
+      "stock_code": "603306",
+      "stock_name": "华懋科技",
       "lgb_score": 100.0,
-      "raw_score": 0.09
+      "raw_score": 0.08
     },
     {
       "rank": 2,
-      "ts_code": "002112.SZ",
-      "stock_code": "002112",
-      "stock_name": "三变科技",
-      "lgb_score": 94.63,
+      "ts_code": "600330.SH",
+      "stock_code": "600330",
+      "stock_name": "天通股份",
+      "lgb_score": 97.86,
       "raw_score": 0.08
     },
     {
       "rank": 3,
-      "ts_code": "000589.SZ",
-      "stock_code": "000589",
-      "stock_name": "贵州轮胎",
-      "lgb_score": 91.04,
+      "ts_code": "688455.SH",
+      "stock_code": "688455",
+      "stock_name": "科捷智能",
+      "lgb_score": 94.98,
       "raw_score": 0.07
     },
     {
       "rank": 4,
-      "ts_code": "000534.SZ",
-      "stock_code": "000534",
-      "stock_name": "万泽股份",
-      "lgb_score": 90.85,
+      "ts_code": "001387.SZ",
+      "stock_code": "001387",
+      "stock_name": "雪祺电气",
+      "lgb_score": 94.57,
       "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "603306.SH",
-      "stock_code": "603306",
-      "stock_name": "华懋科技",
-      "lgb_score": 89.99,
+      "ts_code": "000856.SZ",
+      "stock_code": "000856",
+      "stock_name": "冀东装备",
+      "lgb_score": 89.58,
       "raw_score": 0.07
     }
   ]

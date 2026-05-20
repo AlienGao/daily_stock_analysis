@@ -11,39 +11,39 @@
       "stock_code": "000530",
       "stock_name": "冰山冷热",
       "lgb_score": 100.0,
-      "raw_score": 0.16
+      "raw_score": 0.14
     },
     {
       "rank": 2,
       "ts_code": "001338.SZ",
       "stock_code": "001338",
       "stock_name": "永顺泰",
-      "lgb_score": 87.9,
-      "raw_score": 0.13
+      "lgb_score": 99.38,
+      "raw_score": 0.14
     },
     {
       "rank": 3,
-      "ts_code": "603711.SH",
-      "stock_code": "603711",
-      "stock_name": "香飘飘",
-      "lgb_score": 78.06,
-      "raw_score": 0.1
+      "ts_code": "603518.SH",
+      "stock_code": "603518",
+      "stock_name": "锦泓集团",
+      "lgb_score": 91.54,
+      "raw_score": 0.12
     },
     {
       "rank": 4,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 73.42,
-      "raw_score": 0.09
+      "ts_code": "002546.SZ",
+      "stock_code": "002546",
+      "stock_name": "新联电子",
+      "lgb_score": 88.55,
+      "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "603392.SH",
-      "stock_code": "603392",
-      "stock_name": "万泰生物",
-      "lgb_score": 73.04,
-      "raw_score": 0.09
+      "ts_code": "603711.SH",
+      "stock_code": "603711",
+      "stock_name": "香飘飘",
+      "lgb_score": 83.49,
+      "raw_score": 0.1
     }
   ]
 }

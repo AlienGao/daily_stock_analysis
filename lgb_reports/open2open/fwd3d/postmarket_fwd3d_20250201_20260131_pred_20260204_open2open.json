@@ -11,39 +11,39 @@
       "stock_code": "600410",
       "stock_name": "华胜天成",
       "lgb_score": 100.0,
-      "raw_score": 0.09
+      "raw_score": 0.12
     },
     {
       "rank": 2,
-      "ts_code": "603306.SH",
-      "stock_code": "603306",
-      "stock_name": "华懋科技",
-      "lgb_score": 92.52,
-      "raw_score": 0.08
+      "ts_code": "301309.SZ",
+      "stock_code": "301309",
+      "stock_name": "万得凯",
+      "lgb_score": 87.31,
+      "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "300190.SZ",
-      "stock_code": "300190",
-      "stock_name": "维尔利",
-      "lgb_score": 85.07,
-      "raw_score": 0.06
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 80.21,
+      "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "002311.SZ",
-      "stock_code": "002311",
-      "stock_name": "海大集团",
-      "lgb_score": 84.42,
-      "raw_score": 0.06
+      "ts_code": "301232.SZ",
+      "stock_code": "301232",
+      "stock_name": "飞沃科技",
+      "lgb_score": 79.48,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "601880.SH",
-      "stock_code": "601880",
-      "stock_name": "辽港股份",
-      "lgb_score": 83.92,
-      "raw_score": 0.06
+      "ts_code": "301222.SZ",
+      "stock_code": "301222",
+      "stock_name": "浙江恒威",
+      "lgb_score": 79.28,
+      "raw_score": 0.08
     }
   ]
 }

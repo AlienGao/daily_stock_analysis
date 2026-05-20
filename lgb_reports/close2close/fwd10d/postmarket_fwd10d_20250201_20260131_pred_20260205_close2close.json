@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002311.SZ",
-      "stock_code": "002311",
-      "stock_name": "海大集团",
-      "lgb_score": 100.0,
-      "raw_score": 0.21
-    },
-    {
-      "rank": 2,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 86.95,
-      "raw_score": 0.15
-    },
-    {
-      "rank": 3,
       "ts_code": "600449.SH",
       "stock_code": "600449",
       "stock_name": "宁夏建材",
-      "lgb_score": 85.89,
-      "raw_score": 0.15
+      "lgb_score": 100.0,
+      "raw_score": 0.27
+    },
+    {
+      "rank": 2,
+      "ts_code": "000151.SZ",
+      "stock_code": "000151",
+      "stock_name": "中成股份",
+      "lgb_score": 81.73,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 3,
+      "ts_code": "000589.SZ",
+      "stock_code": "000589",
+      "stock_name": "贵州轮胎",
+      "lgb_score": 80.85,
+      "raw_score": 0.2
     },
     {
       "rank": 4,
-      "ts_code": "688339.SH",
-      "stock_code": "688339",
-      "stock_name": "亿华通-U",
-      "lgb_score": 85.36,
-      "raw_score": 0.15
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 79.69,
+      "raw_score": 0.2
     },
     {
       "rank": 5,
-      "ts_code": "601678.SH",
-      "stock_code": "601678",
-      "stock_name": "滨化股份",
-      "lgb_score": 83.69,
-      "raw_score": 0.14
+      "ts_code": "688809.SH",
+      "stock_code": "688809",
+      "stock_name": "强一股份",
+      "lgb_score": 79.0,
+      "raw_score": 0.2
     }
   ]
 }

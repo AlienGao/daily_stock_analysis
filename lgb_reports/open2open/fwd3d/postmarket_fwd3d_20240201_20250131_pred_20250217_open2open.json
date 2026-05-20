@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300166.SZ",
-      "stock_code": "300166",
-      "stock_name": "东方国信",
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "688316.SH",
-      "stock_code": "688316",
-      "stock_name": "青云科技-U",
-      "lgb_score": 91.46,
-      "raw_score": 0.11
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 97.77,
+      "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "688135.SH",
-      "stock_code": "688135",
-      "stock_name": "利扬芯片",
-      "lgb_score": 89.9,
-      "raw_score": 0.11
-    },
-    {
-      "rank": 4,
       "ts_code": "600151.SH",
       "stock_code": "600151",
       "stock_name": "航天机电",
-      "lgb_score": 87.28,
-      "raw_score": 0.1
+      "lgb_score": 96.03,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "002439.SZ",
+      "stock_code": "002439",
+      "stock_name": "启明星辰",
+      "lgb_score": 95.3,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "301550.SZ",
-      "stock_code": "301550",
-      "stock_name": "斯菱智驱",
-      "lgb_score": 86.14,
-      "raw_score": 0.1
+      "ts_code": "000159.SZ",
+      "stock_code": "000159",
+      "stock_name": "国际实业",
+      "lgb_score": 94.04,
+      "raw_score": 0.09
     }
   ]
 }

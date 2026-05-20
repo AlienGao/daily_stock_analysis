@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688525.SH",
-      "stock_code": "688525",
-      "stock_name": "佰维存储",
-      "lgb_score": 100.0,
-      "raw_score": 0.14
-    },
-    {
-      "rank": 2,
-      "ts_code": "002658.SZ",
-      "stock_code": "002658",
-      "stock_name": "雪迪龙",
-      "lgb_score": 94.45,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 3,
-      "ts_code": "000830.SZ",
-      "stock_code": "000830",
-      "stock_name": "鲁西化工",
-      "lgb_score": 94.07,
-      "raw_score": 0.12
-    },
-    {
-      "rank": 4,
-      "ts_code": "000968.SZ",
-      "stock_code": "000968",
-      "stock_name": "蓝焰控股",
-      "lgb_score": 92.09,
-      "raw_score": 0.12
-    },
-    {
-      "rank": 5,
       "ts_code": "688048.SH",
       "stock_code": "688048",
       "stock_name": "长光华芯",
-      "lgb_score": 92.08,
-      "raw_score": 0.12
+      "lgb_score": 100.0,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 2,
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
+      "lgb_score": 98.42,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 3,
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
+      "lgb_score": 88.86,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 4,
+      "ts_code": "688808.SH",
+      "stock_code": "688808",
+      "stock_name": "联讯仪器",
+      "lgb_score": 85.88,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 5,
+      "ts_code": "301666.SZ",
+      "stock_code": "301666",
+      "stock_name": "大普微-UW",
+      "lgb_score": 85.47,
+      "raw_score": 0.14
     }
   ]
 }

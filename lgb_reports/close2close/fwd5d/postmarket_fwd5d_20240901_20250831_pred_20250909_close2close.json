@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300308.SZ.SZ",
-      "stock_code": "300308",
-      "stock_name": "中际旭创",
-      "lgb_score": 100.0,
-      "raw_score": 0.14
-    },
-    {
-      "rank": 2,
       "ts_code": "002031.SZ",
       "stock_code": "002031",
       "stock_name": "巨轮智能",
-      "lgb_score": 99.88,
+      "lgb_score": 100.0,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 2,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 91.03,
       "raw_score": 0.14
     },
     {
       "rank": 3,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 99.21,
-      "raw_score": 0.14
+      "ts_code": "002274.SZ",
+      "stock_code": "002274",
+      "stock_name": "华昌化工",
+      "lgb_score": 87.88,
+      "raw_score": 0.13
     },
     {
       "rank": 4,
-      "ts_code": "688506.SH",
-      "stock_code": "688506",
-      "stock_name": "百利天恒",
-      "lgb_score": 91.76,
-      "raw_score": 0.12
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
+      "lgb_score": 86.32,
+      "raw_score": 0.13
     },
     {
       "rank": 5,
-      "ts_code": "301110.SZ",
-      "stock_code": "301110",
-      "stock_name": "青木科技",
-      "lgb_score": 91.75,
-      "raw_score": 0.12
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 85.94,
+      "raw_score": 0.13
     }
   ]
 }

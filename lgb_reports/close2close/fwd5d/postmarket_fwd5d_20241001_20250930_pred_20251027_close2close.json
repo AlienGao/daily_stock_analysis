@@ -7,18 +7,18 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600076.SH",
-      "stock_code": "600076",
-      "stock_name": "康欣新材",
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
       "lgb_score": 100.0,
       "raw_score": 0.14
     },
     {
       "rank": 2,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
-      "lgb_score": 99.47,
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 99.89,
       "raw_score": 0.13
     },
     {
@@ -26,24 +26,24 @@
       "ts_code": "002274.SZ",
       "stock_code": "002274",
       "stock_name": "华昌化工",
-      "lgb_score": 95.0,
-      "raw_score": 0.12
+      "lgb_score": 99.44,
+      "raw_score": 0.13
     },
     {
       "rank": 4,
-      "ts_code": "601500.SH",
-      "stock_code": "601500",
-      "stock_name": "通用股份",
-      "lgb_score": 94.6,
-      "raw_score": 0.12
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 99.17,
+      "raw_score": 0.13
     },
     {
       "rank": 5,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 94.4,
-      "raw_score": 0.12
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 98.64,
+      "raw_score": 0.13
     }
   ]
 }

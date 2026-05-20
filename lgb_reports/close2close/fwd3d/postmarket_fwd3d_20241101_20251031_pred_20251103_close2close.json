@@ -10,40 +10,40 @@
       "ts_code": "002554.SZ",
       "stock_code": "002554",
       "stock_name": "惠博普",
-      "lgb_score": 100.0,
+      "lgb_score": 96.21,
       "raw_score": 0.12
     },
     {
       "rank": 2,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
-      "lgb_score": 91.44,
+      "ts_code": "002418.SZ",
+      "stock_code": "002418",
+      "stock_name": "康盛股份",
+      "lgb_score": 88.07,
       "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "000554.SZ",
-      "stock_code": "000554",
-      "stock_name": "泰山石油",
-      "lgb_score": 88.41,
-      "raw_score": 0.09
+      "ts_code": "603030.SH",
+      "stock_code": "603030",
+      "stock_name": "全筑股份",
+      "lgb_score": 87.61,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "002418.SZ",
-      "stock_code": "002418",
-      "stock_name": "康盛股份",
-      "lgb_score": 86.54,
-      "raw_score": 0.09
+      "ts_code": "600681.SH",
+      "stock_code": "600681",
+      "stock_name": "百川能源",
+      "lgb_score": 86.62,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "002009.SZ",
-      "stock_code": "002009",
-      "stock_name": "天奇股份",
-      "lgb_score": 85.81,
-      "raw_score": 0.09
+      "ts_code": "300402.SZ",
+      "stock_code": "300402",
+      "stock_name": "宝色股份",
+      "lgb_score": 86.19,
+      "raw_score": 0.1
     }
   ]
 }

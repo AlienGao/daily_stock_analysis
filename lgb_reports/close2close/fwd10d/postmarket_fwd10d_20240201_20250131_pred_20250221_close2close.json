@@ -7,34 +7,34 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688316.SH",
-      "stock_code": "688316",
-      "stock_name": "青云科技-U",
-      "lgb_score": 100.0,
-      "raw_score": 0.25
-    },
-    {
-      "rank": 2,
-      "ts_code": "300612.SZ",
-      "stock_code": "300612",
-      "stock_name": "宣亚国际",
-      "lgb_score": 96.08,
-      "raw_score": 0.24
-    },
-    {
-      "rank": 3,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
-      "lgb_score": 91.0,
-      "raw_score": 0.22
-    },
-    {
-      "rank": 4,
       "ts_code": "301205.SZ",
       "stock_code": "301205",
       "stock_name": "联特科技",
-      "lgb_score": 89.25,
+      "lgb_score": 100.0,
+      "raw_score": 0.29
+    },
+    {
+      "rank": 2,
+      "ts_code": "688368.SH",
+      "stock_code": "688368",
+      "stock_name": "晶丰明源",
+      "lgb_score": 86.07,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 3,
+      "ts_code": "603120.SH",
+      "stock_code": "603120",
+      "stock_name": "肯特催化",
+      "lgb_score": 81.31,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 4,
+      "ts_code": "301372.SZ",
+      "stock_code": "301372",
+      "stock_name": "科净源",
+      "lgb_score": 80.41,
       "raw_score": 0.21
     },
     {
@@ -42,8 +42,8 @@
       "ts_code": "301117.SZ",
       "stock_code": "301117",
       "stock_name": "佳缘科技",
-      "lgb_score": 87.17,
-      "raw_score": 0.2
+      "lgb_score": 79.94,
+      "raw_score": 0.21
     }
   ]
 }

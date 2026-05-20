@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688401.SH",
-      "stock_code": "688401",
-      "stock_name": "路维光电",
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
       "lgb_score": 100.0,
-      "raw_score": 0.09
+      "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "603915.SH",
-      "stock_code": "603915",
-      "stock_name": "国茂股份",
-      "lgb_score": 98.15,
-      "raw_score": 0.09
+      "ts_code": "002164.SZ",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 99.59,
+      "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "000159.SZ",
-      "stock_code": "000159",
-      "stock_name": "国际实业",
-      "lgb_score": 97.77,
-      "raw_score": 0.09
+      "ts_code": "600231.SH",
+      "stock_code": "600231",
+      "stock_name": "凌钢股份",
+      "lgb_score": 98.59,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 97.54,
+      "ts_code": "000159.SZ",
+      "stock_code": "000159",
+      "stock_name": "国际实业",
+      "lgb_score": 97.29,
       "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "688039.SH",
-      "stock_code": "688039",
-      "stock_name": "当虹科技",
-      "lgb_score": 97.13,
-      "raw_score": 0.08
+      "ts_code": "688401.SH",
+      "stock_code": "688401",
+      "stock_name": "路维光电",
+      "lgb_score": 95.0,
+      "raw_score": 0.09
     }
   ]
 }

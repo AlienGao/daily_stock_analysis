@@ -11,38 +11,38 @@
       "stock_code": "301633",
       "stock_name": "港迪技术",
       "lgb_score": 100.0,
-      "raw_score": 0.14
+      "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "688316.SH",
-      "stock_code": "688316",
-      "stock_name": "青云科技-U",
-      "lgb_score": 89.71,
-      "raw_score": 0.11
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 96.39,
+      "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 88.29,
+      "ts_code": "603893.SH",
+      "stock_code": "603893",
+      "stock_name": "瑞芯微",
+      "lgb_score": 91.33,
       "raw_score": 0.11
     },
     {
       "rank": 4,
-      "ts_code": "603893.SH",
-      "stock_code": "603893",
-      "stock_name": "瑞芯微",
-      "lgb_score": 88.25,
+      "ts_code": "688108.SH",
+      "stock_code": "688108",
+      "stock_name": "赛诺医疗",
+      "lgb_score": 90.7,
       "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "301110.SZ",
-      "stock_code": "301110",
-      "stock_name": "青木科技",
-      "lgb_score": 86.87,
+      "ts_code": "688652.SH",
+      "stock_code": "688652",
+      "stock_name": "京仪装备",
+      "lgb_score": 88.72,
       "raw_score": 0.1
     }
   ]

@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002915.SZ",
-      "stock_code": "002915",
-      "stock_name": "中欣氟材",
+      "ts_code": "301131.SZ",
+      "stock_code": "301131",
+      "stock_name": "聚赛龙",
       "lgb_score": 100.0,
-      "raw_score": 0.14
+      "raw_score": 0.1
     },
     {
       "rank": 2,
       "ts_code": "600410.SH",
       "stock_code": "600410",
       "stock_name": "华胜天成",
-      "lgb_score": 89.73,
-      "raw_score": 0.11
+      "lgb_score": 98.35,
+      "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "301486.SZ",
-      "stock_code": "301486",
-      "stock_name": "致尚科技",
-      "lgb_score": 83.99,
-      "raw_score": 0.1
+      "ts_code": "600281.SH",
+      "stock_code": "600281",
+      "stock_name": "华阳新材",
+      "lgb_score": 96.54,
+      "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "002009.SZ",
-      "stock_code": "002009",
-      "stock_name": "天奇股份",
-      "lgb_score": 82.61,
-      "raw_score": 0.09
+      "ts_code": "002382.SZ",
+      "stock_code": "002382",
+      "stock_name": "蓝帆医疗",
+      "lgb_score": 92.52,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "002121.SZ",
-      "stock_code": "002121",
-      "stock_name": "科陆电子",
-      "lgb_score": 80.31,
-      "raw_score": 0.09
+      "ts_code": "301486.SZ",
+      "stock_code": "301486",
+      "stock_name": "致尚科技",
+      "lgb_score": 90.81,
+      "raw_score": 0.08
     }
   ]
 }

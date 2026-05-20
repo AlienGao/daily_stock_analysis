@@ -11,39 +11,39 @@
       "stock_code": "301071",
       "stock_name": "力量钻石",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.15
     },
     {
       "rank": 2,
-      "ts_code": "000665.SZ",
-      "stock_code": "000665",
-      "stock_name": "湖北广电",
-      "lgb_score": 99.76,
-      "raw_score": 0.13
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 99.5,
+      "raw_score": 0.15
     },
     {
       "rank": 3,
-      "ts_code": "601500.SH",
-      "stock_code": "601500",
-      "stock_name": "通用股份",
-      "lgb_score": 98.83,
-      "raw_score": 0.13
+      "ts_code": "002274.SZ",
+      "stock_code": "002274",
+      "stock_name": "华昌化工",
+      "lgb_score": 96.89,
+      "raw_score": 0.14
     },
     {
       "rank": 4,
-      "ts_code": "002278.SZ",
-      "stock_code": "002278",
-      "stock_name": "神开股份",
-      "lgb_score": 97.79,
-      "raw_score": 0.13
+      "ts_code": "002438.SZ",
+      "stock_code": "002438",
+      "stock_name": "江苏神通",
+      "lgb_score": 96.31,
+      "raw_score": 0.14
     },
     {
       "rank": 5,
-      "ts_code": "002523.SZ",
-      "stock_code": "002523",
-      "stock_name": "天桥起重",
-      "lgb_score": 97.68,
-      "raw_score": 0.13
+      "ts_code": "002169.SZ",
+      "stock_code": "002169",
+      "stock_name": "智光电气",
+      "lgb_score": 96.07,
+      "raw_score": 0.14
     }
   ]
 }

@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.15
     },
     {
       "rank": 2,
-      "ts_code": "301117.SZ",
-      "stock_code": "301117",
-      "stock_name": "佳缘科技",
-      "lgb_score": 99.97,
-      "raw_score": 0.13
+      "ts_code": "300045.SZ",
+      "stock_code": "300045",
+      "stock_name": "华力创通",
+      "lgb_score": 95.58,
+      "raw_score": 0.14
     },
     {
       "rank": 3,
-      "ts_code": "300842.SZ",
-      "stock_code": "300842",
-      "stock_name": "帝科股份",
-      "lgb_score": 99.6,
-      "raw_score": 0.13
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 94.94,
+      "raw_score": 0.14
     },
     {
       "rank": 4,
       "ts_code": "300263.SZ",
       "stock_code": "300263",
       "stock_name": "隆华科技",
-      "lgb_score": 98.51,
-      "raw_score": 0.13
+      "lgb_score": 94.78,
+      "raw_score": 0.14
     },
     {
       "rank": 5,
-      "ts_code": "002438.SZ",
-      "stock_code": "002438",
-      "stock_name": "江苏神通",
-      "lgb_score": 98.47,
+      "ts_code": "300185.SZ",
+      "stock_code": "300185",
+      "stock_name": "通裕重工",
+      "lgb_score": 94.12,
       "raw_score": 0.13
     }
   ]

@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688135.SH",
-      "stock_code": "688135",
-      "stock_name": "利扬芯片",
-      "lgb_score": 100.0,
-      "raw_score": 0.14
-    },
-    {
-      "rank": 2,
-      "ts_code": "603915.SH",
-      "stock_code": "603915",
-      "stock_name": "国茂股份",
-      "lgb_score": 99.94,
-      "raw_score": 0.14
-    },
-    {
-      "rank": 3,
       "ts_code": "002009.SZ",
       "stock_code": "002009",
       "stock_name": "天奇股份",
-      "lgb_score": 99.81,
-      "raw_score": 0.14
+      "lgb_score": 100.0,
+      "raw_score": 0.12
     },
     {
-      "rank": 4,
+      "rank": 2,
+      "ts_code": "688135.SH",
+      "stock_code": "688135",
+      "stock_name": "利扬芯片",
+      "lgb_score": 98.52,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
       "ts_code": "002229.SZ",
       "stock_code": "002229",
       "stock_name": "鸿博股份",
-      "lgb_score": 95.22,
+      "lgb_score": 97.87,
       "raw_score": 0.12
     },
     {
-      "rank": 5,
+      "rank": 4,
       "ts_code": "002445.SZ",
       "stock_code": "002445",
       "stock_name": "中南文化",
-      "lgb_score": 94.76,
-      "raw_score": 0.12
+      "lgb_score": 97.6,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 5,
+      "ts_code": "301002.SZ",
+      "stock_code": "301002",
+      "stock_name": "崧盛股份",
+      "lgb_score": 97.38,
+      "raw_score": 0.11
     }
   ]
 }

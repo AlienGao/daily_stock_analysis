@@ -7,9 +7,9 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002605.SZ",
-      "stock_code": "002605",
-      "stock_name": "姚记科技",
+      "ts_code": "300128.SZ",
+      "stock_code": "300128",
+      "stock_name": "锦富技术",
       "lgb_score": 100.0,
       "raw_score": 0.09
     },
@@ -18,32 +18,32 @@
       "ts_code": "300952.SZ",
       "stock_code": "300952",
       "stock_name": "恒辉安防",
-      "lgb_score": 95.25,
+      "lgb_score": 97.42,
       "raw_score": 0.08
     },
     {
       "rank": 3,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 93.29,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 97.11,
       "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "301231.SZ",
-      "stock_code": "301231",
-      "stock_name": "荣信文化",
-      "lgb_score": 93.15,
+      "ts_code": "002031.SZ",
+      "stock_code": "002031",
+      "stock_name": "巨轮智能",
+      "lgb_score": 96.41,
       "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 90.03,
-      "raw_score": 0.07
+      "ts_code": "300825.SZ",
+      "stock_code": "300825",
+      "stock_name": "阿尔特",
+      "lgb_score": 95.25,
+      "raw_score": 0.08
     }
   ]
 }

@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "001309.SZ",
-      "stock_code": "001309",
-      "stock_name": "德明利",
-      "lgb_score": 100.0,
-      "raw_score": 0.18
-    },
-    {
-      "rank": 2,
       "ts_code": "688016.SH",
       "stock_code": "688016",
       "stock_name": "心脉医疗",
-      "lgb_score": 95.35,
-      "raw_score": 0.16
+      "lgb_score": 100.0,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 2,
+      "ts_code": "001309.SZ",
+      "stock_code": "001309",
+      "stock_name": "德明利",
+      "lgb_score": 85.32,
+      "raw_score": 0.19
     },
     {
       "rank": 3,
-      "ts_code": "601678.SH",
-      "stock_code": "601678",
-      "stock_name": "滨化股份",
-      "lgb_score": 88.24,
-      "raw_score": 0.14
+      "ts_code": "688228.SH",
+      "stock_code": "688228",
+      "stock_name": "开普云",
+      "lgb_score": 79.79,
+      "raw_score": 0.17
     },
     {
       "rank": 4,
-      "ts_code": "600704.SH",
-      "stock_code": "600704",
-      "stock_name": "物产中大",
-      "lgb_score": 87.03,
-      "raw_score": 0.14
-    },
-    {
-      "rank": 5,
       "ts_code": "301306.SZ",
       "stock_code": "301306",
       "stock_name": "西测测试",
-      "lgb_score": 86.93,
-      "raw_score": 0.13
+      "lgb_score": 77.17,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 5,
+      "ts_code": "002580.SZ",
+      "stock_code": "002580",
+      "stock_name": "圣阳股份",
+      "lgb_score": 76.87,
+      "raw_score": 0.16
     }
   ]
 }

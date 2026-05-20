@@ -11,39 +11,39 @@
       "stock_code": "688498",
       "stock_name": "源杰科技",
       "lgb_score": 100.0,
-      "raw_score": 0.19
+      "raw_score": 0.25
     },
     {
       "rank": 2,
-      "ts_code": "688205.SH",
-      "stock_code": "688205",
-      "stock_name": "德科立",
-      "lgb_score": 93.48,
-      "raw_score": 0.16
-    },
-    {
-      "rank": 3,
-      "ts_code": "688035.SH",
-      "stock_code": "688035",
-      "stock_name": "德邦科技",
-      "lgb_score": 90.21,
-      "raw_score": 0.15
-    },
-    {
-      "rank": 4,
       "ts_code": "688808.SH",
       "stock_code": "688808",
       "stock_name": "联讯仪器",
-      "lgb_score": 89.21,
-      "raw_score": 0.14
+      "lgb_score": 82.23,
+      "raw_score": 0.18
     },
     {
-      "rank": 5,
+      "rank": 3,
+      "ts_code": "002716.SZ",
+      "stock_code": "002716",
+      "stock_name": "湖南白银",
+      "lgb_score": 82.06,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 4,
       "ts_code": "688811.SH",
       "stock_code": "688811",
       "stock_name": "有研复材",
-      "lgb_score": 87.03,
-      "raw_score": 0.14
+      "lgb_score": 76.49,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 5,
+      "ts_code": "301599.SZ",
+      "stock_code": "301599",
+      "stock_name": "理奇智能",
+      "lgb_score": 75.35,
+      "raw_score": 0.16
     }
   ]
 }

@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000554.SZ",
-      "stock_code": "000554",
-      "stock_name": "泰山石油",
-      "lgb_score": 100.0,
-      "raw_score": 0.09
-    },
-    {
-      "rank": 2,
-      "ts_code": "301231.SZ",
-      "stock_code": "301231",
-      "stock_name": "荣信文化",
-      "lgb_score": 97.98,
-      "raw_score": 0.09
-    },
-    {
-      "rank": 3,
       "ts_code": "301589.SZ",
       "stock_code": "301589",
       "stock_name": "诺瓦星云",
-      "lgb_score": 90.52,
-      "raw_score": 0.08
-    },
-    {
-      "rank": 4,
-      "ts_code": "301071.SZ",
-      "stock_code": "301071",
-      "stock_name": "力量钻石",
-      "lgb_score": 83.24,
+      "lgb_score": 100.0,
       "raw_score": 0.07
     },
     {
+      "rank": 2,
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
+      "lgb_score": 97.55,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 3,
+      "ts_code": "301231.SZ",
+      "stock_code": "301231",
+      "stock_name": "荣信文化",
+      "lgb_score": 93.36,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 4,
+      "ts_code": "301232.SZ",
+      "stock_code": "301232",
+      "stock_name": "飞沃科技",
+      "lgb_score": 89.54,
+      "raw_score": 0.06
+    },
+    {
       "rank": 5,
-      "ts_code": "000589.SZ",
-      "stock_code": "000589",
-      "stock_name": "贵州轮胎",
-      "lgb_score": 81.26,
+      "ts_code": "301222.SZ",
+      "stock_code": "301222",
+      "stock_name": "浙江恒威",
+      "lgb_score": 88.85,
       "raw_score": 0.06
     }
   ]

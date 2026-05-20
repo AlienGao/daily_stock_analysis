@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000959.SZ",
-      "stock_code": "000959",
-      "stock_name": "首钢股份",
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
       "lgb_score": 100.0,
-      "raw_score": 0.16
+      "raw_score": 0.22
     },
     {
       "rank": 2,
-      "ts_code": "300976.SZ",
-      "stock_code": "300976",
-      "stock_name": "达瑞电子",
-      "lgb_score": 94.06,
-      "raw_score": 0.14
+      "ts_code": "301683.SZ",
+      "stock_code": "301683",
+      "stock_name": "慧谷新材",
+      "lgb_score": 95.46,
+      "raw_score": 0.2
     },
     {
       "rank": 3,
       "ts_code": "688813.SH",
       "stock_code": "688813",
       "stock_name": "泰金新能",
-      "lgb_score": 91.62,
-      "raw_score": 0.14
+      "lgb_score": 89.02,
+      "raw_score": 0.18
     },
     {
       "rank": 4,
-      "ts_code": "301683.SZ",
-      "stock_code": "301683",
-      "stock_name": "慧谷新材",
-      "lgb_score": 90.51,
-      "raw_score": 0.13
+      "ts_code": "920580.BJ",
+      "stock_code": "920580.BJ",
+      "stock_name": "",
+      "lgb_score": 83.59,
+      "raw_score": 0.16
     },
     {
       "rank": 5,
-      "ts_code": "688498.SH",
-      "stock_code": "688498",
-      "stock_name": "源杰科技",
-      "lgb_score": 88.97,
-      "raw_score": 0.13
+      "ts_code": "002234.SZ",
+      "stock_code": "002234",
+      "stock_name": "民和股份",
+      "lgb_score": 80.86,
+      "raw_score": 0.15
     }
   ]
 }

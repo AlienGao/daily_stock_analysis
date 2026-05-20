@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 100.0,
-      "raw_score": 0.11
-    },
-    {
-      "rank": 2,
       "ts_code": "600151.SH",
       "stock_code": "600151",
       "stock_name": "航天机电",
-      "lgb_score": 96.55,
-      "raw_score": 0.1
+      "lgb_score": 100.0,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 2,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 95.81,
+      "raw_score": 0.13
     },
     {
       "rank": 3,
       "ts_code": "300017.SZ",
       "stock_code": "300017",
       "stock_name": "网宿科技",
-      "lgb_score": 96.33,
-      "raw_score": 0.1
+      "lgb_score": 93.28,
+      "raw_score": 0.13
     },
     {
       "rank": 4,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
-      "lgb_score": 96.25,
-      "raw_score": 0.1
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
+      "lgb_score": 90.87,
+      "raw_score": 0.12
     },
     {
       "rank": 5,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
-      "lgb_score": 95.98,
-      "raw_score": 0.1
+      "ts_code": "000936.SZ",
+      "stock_code": "000936",
+      "stock_name": "华西股份",
+      "lgb_score": 90.01,
+      "raw_score": 0.12
     }
   ]
 }

@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600510.SH",
-      "stock_code": "600510",
-      "stock_name": "黑牡丹",
+      "ts_code": "003021.SZ",
+      "stock_code": "003021",
+      "stock_name": "兆威机电",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.12
     },
     {
       "rank": 2,
-      "ts_code": "301205.SZ",
-      "stock_code": "301205",
-      "stock_name": "联特科技",
-      "lgb_score": 99.94,
-      "raw_score": 0.13
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 99.8,
+      "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "300263.SZ",
-      "stock_code": "300263",
-      "stock_name": "隆华科技",
-      "lgb_score": 99.87,
-      "raw_score": 0.13
+      "ts_code": "600510.SH",
+      "stock_code": "600510",
+      "stock_name": "黑牡丹",
+      "lgb_score": 97.92,
+      "raw_score": 0.12
     },
     {
       "rank": 4,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 97.0,
+      "ts_code": "301205.SZ",
+      "stock_code": "301205",
+      "stock_name": "联特科技",
+      "lgb_score": 97.8,
       "raw_score": 0.12
     },
     {
       "rank": 5,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 94.78,
-      "raw_score": 0.12
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 95.11,
+      "raw_score": 0.11
     }
   ]
 }

@@ -7,18 +7,18 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000665.SZ",
-      "stock_code": "000665",
-      "stock_name": "湖北广电",
+      "ts_code": "000036.SZ",
+      "stock_code": "000036",
+      "stock_name": "华联控股",
       "lgb_score": 100.0,
       "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "600327.SH",
-      "stock_code": "600327",
-      "stock_name": "大东方",
-      "lgb_score": 99.22,
+      "ts_code": "000620.SZ",
+      "stock_code": "000620",
+      "stock_name": "盈新发展",
+      "lgb_score": 99.29,
       "raw_score": 0.1
     },
     {
@@ -26,23 +26,23 @@
       "ts_code": "600410.SH",
       "stock_code": "600410",
       "stock_name": "华胜天成",
-      "lgb_score": 99.04,
-      "raw_score": 0.09
+      "lgb_score": 98.68,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
       "ts_code": "002438.SZ",
       "stock_code": "002438",
       "stock_name": "江苏神通",
-      "lgb_score": 97.36,
+      "lgb_score": 93.95,
       "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "601113.SH",
-      "stock_code": "601113",
-      "stock_name": "华鼎股份",
-      "lgb_score": 95.01,
+      "ts_code": "002593.SZ",
+      "stock_code": "002593",
+      "stock_name": "日上集团",
+      "lgb_score": 93.64,
       "raw_score": 0.09
     }
   ]

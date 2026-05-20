@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002401.SZ",
-      "stock_code": "002401",
-      "stock_name": "中远海科",
-      "lgb_score": 100.0,
-      "raw_score": 0.11
-    },
-    {
-      "rank": 2,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
-      "lgb_score": 92.76,
-      "raw_score": 0.09
-    },
-    {
-      "rank": 3,
-      "ts_code": "600076.SH",
-      "stock_code": "600076",
-      "stock_name": "康欣新材",
-      "lgb_score": 91.73,
-      "raw_score": 0.09
-    },
-    {
-      "rank": 4,
       "ts_code": "300650.SZ",
       "stock_code": "300650",
       "stock_name": "太龙股份",
-      "lgb_score": 91.61,
-      "raw_score": 0.09
+      "lgb_score": 100.0,
+      "raw_score": 0.14
     },
     {
-      "rank": 5,
+      "rank": 2,
+      "ts_code": "002401.SZ",
+      "stock_code": "002401",
+      "stock_name": "中远海科",
+      "lgb_score": 94.59,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
       "ts_code": "603601.SH",
       "stock_code": "603601",
       "stock_name": "再升科技",
-      "lgb_score": 91.23,
+      "lgb_score": 85.47,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 82.72,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "000981.SZ",
+      "stock_code": "000981",
+      "stock_name": "山子高科",
+      "lgb_score": 82.08,
       "raw_score": 0.09
     }
   ]

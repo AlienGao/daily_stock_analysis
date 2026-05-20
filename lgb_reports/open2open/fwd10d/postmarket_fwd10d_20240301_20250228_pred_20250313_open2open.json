@@ -11,39 +11,39 @@
       "stock_code": "920689.BJ",
       "stock_name": "",
       "lgb_score": 100.0,
-      "raw_score": 0.23
+      "raw_score": 0.24
     },
     {
       "rank": 2,
-      "ts_code": "920579.BJ",
-      "stock_code": "920579.BJ",
-      "stock_name": "",
-      "lgb_score": 98.35,
-      "raw_score": 0.22
+      "ts_code": "688652.SH",
+      "stock_code": "688652",
+      "stock_name": "京仪装备",
+      "lgb_score": 92.02,
+      "raw_score": 0.21
     },
     {
       "rank": 3,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
-      "lgb_score": 95.4,
-      "raw_score": 0.2
+      "ts_code": "688368.SH",
+      "stock_code": "688368",
+      "stock_name": "晶丰明源",
+      "lgb_score": 91.63,
+      "raw_score": 0.21
     },
     {
       "rank": 4,
-      "ts_code": "002029.SZ",
-      "stock_code": "002029",
-      "stock_name": "七 匹 狼",
-      "lgb_score": 95.06,
+      "ts_code": "688072.SH",
+      "stock_code": "688072",
+      "stock_name": "拓荆科技",
+      "lgb_score": 88.09,
       "raw_score": 0.2
     },
     {
       "rank": 5,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
-      "lgb_score": 94.3,
-      "raw_score": 0.2
+      "ts_code": "600509.SH",
+      "stock_code": "600509",
+      "stock_name": "天富能源",
+      "lgb_score": 87.8,
+      "raw_score": 0.19
     }
   ]
 }

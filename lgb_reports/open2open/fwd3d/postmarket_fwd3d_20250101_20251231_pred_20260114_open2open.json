@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "001387.SZ",
-      "stock_code": "001387",
-      "stock_name": "雪祺电气",
+      "ts_code": "301023.SZ",
+      "stock_code": "301023",
+      "stock_name": "奕帆传动",
       "lgb_score": 100.0,
-      "raw_score": 0.09
+      "raw_score": 0.08
     },
     {
       "rank": 2,
       "ts_code": "301302.SZ",
       "stock_code": "301302",
       "stock_name": "华如科技",
-      "lgb_score": 95.72,
-      "raw_score": 0.08
+      "lgb_score": 96.26,
+      "raw_score": 0.07
     },
     {
       "rank": 3,
-      "ts_code": "301235.SZ",
-      "stock_code": "301235",
-      "stock_name": "华康洁净",
-      "lgb_score": 95.2,
-      "raw_score": 0.08
+      "ts_code": "600459.SH",
+      "stock_code": "600459",
+      "stock_name": "贵研铂业",
+      "lgb_score": 91.72,
+      "raw_score": 0.07
     },
     {
       "rank": 4,
-      "ts_code": "300970.SZ",
-      "stock_code": "300970",
-      "stock_name": "华绿生物",
-      "lgb_score": 91.29,
-      "raw_score": 0.07
+      "ts_code": "300751.SZ",
+      "stock_code": "300751",
+      "stock_name": "迈为股份",
+      "lgb_score": 91.09,
+      "raw_score": 0.06
     },
     {
       "rank": 5,
-      "ts_code": "301023.SZ",
-      "stock_code": "301023",
-      "stock_name": "奕帆传动",
-      "lgb_score": 91.25,
-      "raw_score": 0.07
+      "ts_code": "301383.SZ",
+      "stock_code": "301383",
+      "stock_name": "天键股份",
+      "lgb_score": 90.73,
+      "raw_score": 0.06
     }
   ]
 }

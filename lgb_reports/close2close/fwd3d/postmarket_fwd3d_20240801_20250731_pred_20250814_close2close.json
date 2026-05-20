@@ -7,26 +7,26 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "603893.SH",
-      "stock_code": "603893",
-      "stock_name": "瑞芯微",
-      "lgb_score": 100.0,
-      "raw_score": 0.12
-    },
-    {
-      "rank": 2,
       "ts_code": "002229.SZ",
       "stock_code": "002229",
       "stock_name": "鸿博股份",
-      "lgb_score": 92.36,
-      "raw_score": 0.1
+      "lgb_score": 100.0,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "002562.SZ",
+      "stock_code": "002562",
+      "stock_name": "兄弟科技",
+      "lgb_score": 98.04,
+      "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "603350.SH",
-      "stock_code": "603350",
-      "stock_name": "XD安乃达",
-      "lgb_score": 83.52,
+      "ts_code": "600386.SH",
+      "stock_code": "600386",
+      "stock_name": "北巴传媒",
+      "lgb_score": 92.19,
       "raw_score": 0.08
     },
     {
@@ -34,15 +34,15 @@
       "ts_code": "002259.SZ",
       "stock_code": "002259",
       "stock_name": "升达林业",
-      "lgb_score": 80.38,
+      "lgb_score": 90.75,
       "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "688135.SH",
-      "stock_code": "688135",
-      "stock_name": "利扬芯片",
-      "lgb_score": 80.27,
+      "ts_code": "300429.SZ",
+      "stock_code": "300429",
+      "stock_name": "强力新材",
+      "lgb_score": 87.53,
       "raw_score": 0.07
     }
   ]

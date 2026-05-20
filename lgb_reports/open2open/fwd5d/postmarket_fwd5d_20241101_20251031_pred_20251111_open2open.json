@@ -11,39 +11,39 @@
       "stock_code": "300681",
       "stock_name": "英搏尔",
       "lgb_score": 100.0,
-      "raw_score": 0.21
+      "raw_score": 0.19
     },
     {
       "rank": 2,
-      "ts_code": "300970.SZ",
-      "stock_code": "300970",
-      "stock_name": "华绿生物",
-      "lgb_score": 86.48,
-      "raw_score": 0.16
+      "ts_code": "301071.SZ",
+      "stock_code": "301071",
+      "stock_name": "力量钻石",
+      "lgb_score": 86.67,
+      "raw_score": 0.15
     },
     {
       "rank": 3,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 84.91,
-      "raw_score": 0.16
+      "ts_code": "301590.SZ",
+      "stock_code": "301590",
+      "stock_name": "优优绿能",
+      "lgb_score": 85.34,
+      "raw_score": 0.15
     },
     {
       "rank": 4,
-      "ts_code": "002438.SZ",
-      "stock_code": "002438",
-      "stock_name": "江苏神通",
-      "lgb_score": 82.35,
-      "raw_score": 0.15
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 84.3,
+      "raw_score": 0.14
     },
     {
       "rank": 5,
-      "ts_code": "301022.SZ",
-      "stock_code": "301022",
-      "stock_name": "海泰科",
-      "lgb_score": 82.05,
-      "raw_score": 0.15
+      "ts_code": "300970.SZ",
+      "stock_code": "300970",
+      "stock_name": "华绿生物",
+      "lgb_score": 82.73,
+      "raw_score": 0.14
     }
   ]
 }

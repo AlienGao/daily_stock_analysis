@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301128.SZ",
-      "stock_code": "301128",
-      "stock_name": "强瑞技术",
+      "ts_code": "600704.SH",
+      "stock_code": "600704",
+      "stock_name": "物产中大",
       "lgb_score": 100.0,
       "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "603056.SH",
-      "stock_code": "603056",
-      "stock_name": "",
-      "lgb_score": 92.57,
-      "raw_score": 0.08
+      "ts_code": "301589.SZ",
+      "stock_code": "301589",
+      "stock_name": "诺瓦星云",
+      "lgb_score": 92.85,
+      "raw_score": 0.07
     },
     {
       "rank": 3,
-      "ts_code": "301666.SZ",
-      "stock_code": "301666",
-      "stock_name": "大普微-UW",
-      "lgb_score": 92.2,
-      "raw_score": 0.08
+      "ts_code": "603056.SH",
+      "stock_code": "603056",
+      "stock_name": "",
+      "lgb_score": 89.84,
+      "raw_score": 0.07
     },
     {
       "rank": 4,
-      "ts_code": "600704.SH",
-      "stock_code": "600704",
-      "stock_name": "物产中大",
-      "lgb_score": 91.78,
-      "raw_score": 0.08
+      "ts_code": "301129.SZ",
+      "stock_code": "301129",
+      "stock_name": "瑞纳智能",
+      "lgb_score": 87.18,
+      "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "300868.SZ",
-      "stock_code": "300868",
-      "stock_name": "杰美特",
-      "lgb_score": 88.57,
-      "raw_score": 0.08
+      "ts_code": "600477.SH",
+      "stock_code": "600477",
+      "stock_name": "杭萧钢构",
+      "lgb_score": 86.07,
+      "raw_score": 0.06
     }
   ]
 }

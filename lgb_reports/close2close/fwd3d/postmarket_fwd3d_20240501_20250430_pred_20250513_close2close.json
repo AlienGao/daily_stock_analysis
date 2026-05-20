@@ -7,9 +7,9 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600500.SH",
-      "stock_code": "600500",
-      "stock_name": "中化国际",
+      "ts_code": "600798.SH",
+      "stock_code": "600798",
+      "stock_name": "宁波海运",
       "lgb_score": 100.0,
       "raw_score": 0.13
     },
@@ -18,32 +18,32 @@
       "ts_code": "002009.SZ",
       "stock_code": "002009",
       "stock_name": "天奇股份",
-      "lgb_score": 95.66,
+      "lgb_score": 95.98,
       "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 94.97,
-      "raw_score": 0.12
+      "ts_code": "600500.SH",
+      "stock_code": "600500",
+      "stock_name": "中化国际",
+      "lgb_score": 89.74,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "600798.SH",
-      "stock_code": "600798",
-      "stock_name": "宁波海运",
-      "lgb_score": 93.43,
-      "raw_score": 0.12
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 86.36,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "300975.SZ",
-      "stock_code": "300975",
-      "stock_name": "商络电子",
-      "lgb_score": 88.97,
-      "raw_score": 0.11
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 86.13,
+      "raw_score": 0.1
     }
   ]
 }

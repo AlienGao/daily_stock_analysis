@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
       "lgb_score": 100.0,
-      "raw_score": 0.25
+      "raw_score": 0.29
     },
     {
       "rank": 2,
-      "ts_code": "603915.SH",
-      "stock_code": "603915",
-      "stock_name": "国茂股份",
-      "lgb_score": 96.97,
-      "raw_score": 0.23
+      "ts_code": "300429.SZ",
+      "stock_code": "300429",
+      "stock_name": "强力新材",
+      "lgb_score": 99.98,
+      "raw_score": 0.29
     },
     {
       "rank": 3,
       "ts_code": "002121.SZ",
       "stock_code": "002121",
       "stock_name": "科陆电子",
-      "lgb_score": 91.66,
-      "raw_score": 0.2
+      "lgb_score": 91.9,
+      "raw_score": 0.25
     },
     {
       "rank": 4,
-      "ts_code": "300429.SZ",
-      "stock_code": "300429",
-      "stock_name": "强力新材",
-      "lgb_score": 91.03,
-      "raw_score": 0.2
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 90.38,
+      "raw_score": 0.25
     },
     {
       "rank": 5,
-      "ts_code": "301117.SZ",
-      "stock_code": "301117",
-      "stock_name": "佳缘科技",
-      "lgb_score": 90.19,
-      "raw_score": 0.2
+      "ts_code": "300883.SZ",
+      "stock_code": "300883",
+      "stock_name": "龙利得",
+      "lgb_score": 89.31,
+      "raw_score": 0.24
     }
   ]
 }

@@ -11,39 +11,39 @@
       "stock_code": "920689.BJ",
       "stock_name": "",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.18
     },
     {
       "rank": 2,
       "ts_code": "600802.SH",
       "stock_code": "600802",
       "stock_name": "福建水泥",
-      "lgb_score": 94.92,
-      "raw_score": 0.12
+      "lgb_score": 84.49,
+      "raw_score": 0.14
     },
     {
       "rank": 3,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
-      "lgb_score": 93.83,
-      "raw_score": 0.11
-    },
-    {
-      "rank": 4,
       "ts_code": "002229.SZ",
       "stock_code": "002229",
       "stock_name": "鸿博股份",
-      "lgb_score": 92.04,
-      "raw_score": 0.11
+      "lgb_score": 82.89,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 4,
+      "ts_code": "300436.SZ",
+      "stock_code": "300436",
+      "stock_name": "广生堂",
+      "lgb_score": 81.45,
+      "raw_score": 0.13
     },
     {
       "rank": 5,
-      "ts_code": "002029.SZ",
-      "stock_code": "002029",
-      "stock_name": "七 匹 狼",
-      "lgb_score": 91.33,
-      "raw_score": 0.11
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 80.83,
+      "raw_score": 0.13
     }
   ]
 }

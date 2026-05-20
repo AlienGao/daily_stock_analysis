@@ -11,38 +11,38 @@
       "stock_code": "002395",
       "stock_name": "双象股份",
       "lgb_score": 100.0,
-      "raw_score": 0.14
+      "raw_score": 0.12
     },
     {
       "rank": 2,
-      "ts_code": "300335.SZ",
-      "stock_code": "300335",
-      "stock_name": "迪森股份",
-      "lgb_score": 80.06,
+      "ts_code": "001296.SZ",
+      "stock_code": "001296",
+      "stock_name": "长江材料",
+      "lgb_score": 86.48,
       "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 78.48,
-      "raw_score": 0.08
+      "ts_code": "000987.SZ",
+      "stock_code": "000987",
+      "stock_name": "越秀资本",
+      "lgb_score": 86.01,
+      "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "002121.SZ",
-      "stock_code": "002121",
-      "stock_name": "科陆电子",
-      "lgb_score": 77.71,
-      "raw_score": 0.08
+      "ts_code": "601138.SH",
+      "stock_code": "601138",
+      "stock_name": "工业富联",
+      "lgb_score": 85.24,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "600802.SH",
-      "stock_code": "600802",
-      "stock_name": "福建水泥",
-      "lgb_score": 76.1,
+      "ts_code": "000920.SZ",
+      "stock_code": "000920",
+      "stock_name": "沃顿科技",
+      "lgb_score": 82.63,
       "raw_score": 0.08
     }
   ]

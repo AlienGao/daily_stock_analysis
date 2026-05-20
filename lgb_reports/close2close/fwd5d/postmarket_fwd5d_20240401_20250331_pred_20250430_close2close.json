@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "603893.SH",
-      "stock_code": "603893",
-      "stock_name": "瑞芯微",
+      "ts_code": "000665.SZ",
+      "stock_code": "000665",
+      "stock_name": "湖北广电",
       "lgb_score": 100.0,
-      "raw_score": 0.12
+      "raw_score": 0.15
     },
     {
       "rank": 2,
       "ts_code": "300007.SZ",
       "stock_code": "300007",
       "stock_name": "汉威科技",
-      "lgb_score": 98.3,
-      "raw_score": 0.11
+      "lgb_score": 97.43,
+      "raw_score": 0.14
     },
     {
       "rank": 3,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 96.17,
-      "raw_score": 0.11
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 91.19,
+      "raw_score": 0.12
     },
     {
       "rank": 4,
-      "ts_code": "002029.SZ",
-      "stock_code": "002029",
-      "stock_name": "七 匹 狼",
-      "lgb_score": 95.83,
-      "raw_score": 0.11
+      "ts_code": "603893.SH",
+      "stock_code": "603893",
+      "stock_name": "瑞芯微",
+      "lgb_score": 89.65,
+      "raw_score": 0.12
     },
     {
       "rank": 5,
-      "ts_code": "002438.SZ",
-      "stock_code": "002438",
-      "stock_name": "江苏神通",
-      "lgb_score": 95.79,
-      "raw_score": 0.11
+      "ts_code": "301022.SZ",
+      "stock_code": "301022",
+      "stock_name": "海泰科",
+      "lgb_score": 89.1,
+      "raw_score": 0.12
     }
   ]
 }

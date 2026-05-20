@@ -15,34 +15,34 @@
     },
     {
       "rank": 2,
-      "ts_code": "002108.SZ",
-      "stock_code": "002108",
-      "stock_name": "沧州明珠",
-      "lgb_score": 89.85,
+      "ts_code": "002149.SZ",
+      "stock_code": "002149",
+      "stock_name": "西部材料",
+      "lgb_score": 92.49,
       "raw_score": 0.07
     },
     {
       "rank": 3,
-      "ts_code": "688599.SH",
-      "stock_code": "688599",
-      "stock_name": "天合光能",
-      "lgb_score": 89.34,
+      "ts_code": "300975.SZ",
+      "stock_code": "300975",
+      "stock_name": "商络电子",
+      "lgb_score": 87.9,
       "raw_score": 0.07
     },
     {
       "rank": 4,
-      "ts_code": "001368.SZ",
-      "stock_code": "001368",
-      "stock_name": "通达创智",
-      "lgb_score": 89.09,
+      "ts_code": "688599.SH",
+      "stock_code": "688599",
+      "stock_name": "天合光能",
+      "lgb_score": 87.76,
       "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "003011.SZ",
-      "stock_code": "003011",
-      "stock_name": "海象新材",
-      "lgb_score": 88.9,
+      "ts_code": "688676.SH",
+      "stock_code": "688676",
+      "stock_name": "金盘科技",
+      "lgb_score": 87.67,
       "raw_score": 0.07
     }
   ]

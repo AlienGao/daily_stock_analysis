@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002938.SZ",
-      "stock_code": "002938",
-      "stock_name": "鹏鼎控股",
+      "ts_code": "002020.SZ",
+      "stock_code": "002020",
+      "stock_name": "京新药业",
       "lgb_score": 100.0,
-      "raw_score": 0.09
+      "raw_score": 0.11
     },
     {
       "rank": 2,
-      "ts_code": "002555.SZ",
-      "stock_code": "002555",
-      "stock_name": "三七互娱",
-      "lgb_score": 97.83,
-      "raw_score": 0.09
-    },
-    {
-      "rank": 3,
-      "ts_code": "603601.SH",
-      "stock_code": "603601",
-      "stock_name": "再升科技",
-      "lgb_score": 97.25,
-      "raw_score": 0.09
-    },
-    {
-      "rank": 4,
       "ts_code": "000756.SZ",
       "stock_code": "000756",
       "stock_name": "新华制药",
-      "lgb_score": 96.13,
-      "raw_score": 0.08
+      "lgb_score": 96.94,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 3,
+      "ts_code": "600807.SH",
+      "stock_code": "600807",
+      "stock_name": "济高发展",
+      "lgb_score": 94.45,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "688553.SH",
+      "stock_code": "688553",
+      "stock_name": "汇宇制药-W",
+      "lgb_score": 93.26,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "000811.SZ",
-      "stock_code": "000811",
-      "stock_name": "冰轮环境",
-      "lgb_score": 92.31,
-      "raw_score": 0.07
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 93.13,
+      "raw_score": 0.09
     }
   ]
 }

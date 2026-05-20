@@ -11,39 +11,39 @@
       "stock_code": "300751",
       "stock_name": "迈为股份",
       "lgb_score": 100.0,
-      "raw_score": 0.1
+      "raw_score": 0.14
     },
     {
       "rank": 2,
-      "ts_code": "603248.SH",
-      "stock_code": "603248",
-      "stock_name": "锡华科技",
-      "lgb_score": 97.38,
-      "raw_score": 0.1
+      "ts_code": "301302.SZ",
+      "stock_code": "301302",
+      "stock_name": "华如科技",
+      "lgb_score": 87.88,
+      "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "301022.SZ",
-      "stock_code": "301022",
-      "stock_name": "海泰科",
-      "lgb_score": 96.99,
-      "raw_score": 0.09
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 86.77,
+      "raw_score": 0.11
     },
     {
       "rank": 4,
-      "ts_code": "688256.SH",
-      "stock_code": "688256",
-      "stock_name": "寒武纪",
-      "lgb_score": 96.75,
-      "raw_score": 0.09
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 85.72,
+      "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "001325.SZ",
-      "stock_code": "001325",
-      "stock_name": "元创股份",
-      "lgb_score": 96.6,
-      "raw_score": 0.09
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 84.54,
+      "raw_score": 0.11
     }
   ]
 }

@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000859.SZ",
-      "stock_code": "000859",
-      "stock_name": "国风新材",
+      "ts_code": "002031.SZ",
+      "stock_code": "002031",
+      "stock_name": "巨轮智能",
       "lgb_score": 100.0,
       "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "301633.SZ",
-      "stock_code": "301633",
-      "stock_name": "港迪技术",
-      "lgb_score": 94.75,
-      "raw_score": 0.09
-    },
-    {
-      "rank": 3,
-      "ts_code": "300970.SZ",
-      "stock_code": "300970",
-      "stock_name": "华绿生物",
-      "lgb_score": 93.09,
-      "raw_score": 0.09
-    },
-    {
-      "rank": 4,
       "ts_code": "002009.SZ",
       "stock_code": "002009",
       "stock_name": "天奇股份",
-      "lgb_score": 92.67,
-      "raw_score": 0.09
+      "lgb_score": 98.54,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 3,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 98.09,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "002374.SZ",
+      "stock_code": "002374",
+      "stock_name": "中锐股份",
+      "lgb_score": 97.84,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "000936.SZ",
-      "stock_code": "000936",
-      "stock_name": "华西股份",
-      "lgb_score": 92.24,
-      "raw_score": 0.09
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 89.88,
+      "raw_score": 0.08
     }
   ]
 }

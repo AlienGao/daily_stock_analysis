@@ -15,35 +15,35 @@
     },
     {
       "rank": 2,
-      "ts_code": "002820.SZ",
-      "stock_code": "002820",
-      "stock_name": "桂发祥",
-      "lgb_score": 97.45,
+      "ts_code": "301618.SZ",
+      "stock_code": "301618",
+      "stock_name": "长联科技",
+      "lgb_score": 98.45,
       "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "688316.SH",
-      "stock_code": "688316",
-      "stock_name": "青云科技-U",
-      "lgb_score": 96.17,
+      "ts_code": "002040.SZ",
+      "stock_code": "002040",
+      "stock_name": "南 京 港",
+      "lgb_score": 97.86,
       "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "002121.SZ",
-      "stock_code": "002121",
-      "stock_name": "科陆电子",
-      "lgb_score": 95.68,
+      "ts_code": "002820.SZ",
+      "stock_code": "002820",
+      "stock_name": "桂发祥",
+      "lgb_score": 97.63,
       "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 95.62,
-      "raw_score": 0.09
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 95.67,
+      "raw_score": 0.08
     }
   ]
 }

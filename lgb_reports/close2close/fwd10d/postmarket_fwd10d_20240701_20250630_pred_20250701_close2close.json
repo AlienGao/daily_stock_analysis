@@ -15,35 +15,35 @@
     },
     {
       "rank": 2,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 86.55,
-      "raw_score": 0.22
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 92.17,
+      "raw_score": 0.24
     },
     {
       "rank": 3,
-      "ts_code": "688181.SH",
-      "stock_code": "688181",
-      "stock_name": "八亿时空",
-      "lgb_score": 85.0,
-      "raw_score": 0.21
-    },
-    {
-      "rank": 4,
       "ts_code": "301117.SZ",
       "stock_code": "301117",
       "stock_name": "佳缘科技",
-      "lgb_score": 82.72,
-      "raw_score": 0.2
+      "lgb_score": 87.98,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 4,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 87.23,
+      "raw_score": 0.22
     },
     {
       "rank": 5,
-      "ts_code": "002847.SZ",
-      "stock_code": "002847",
-      "stock_name": "盐津铺子",
-      "lgb_score": 81.37,
-      "raw_score": 0.2
+      "ts_code": "688181.SH",
+      "stock_code": "688181",
+      "stock_name": "八亿时空",
+      "lgb_score": 84.55,
+      "raw_score": 0.21
     }
   ]
 }

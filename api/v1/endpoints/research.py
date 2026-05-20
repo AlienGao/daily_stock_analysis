@@ -552,24 +552,18 @@ def lgb_backtest_sim(
 
     # 3. Collect all needed stock codes and date pairs
     all_codes: set = set()
-    date_pairs: list = []  # (pred_date, buy_date, sell_date)
+    date_pairs: list = []  # (pred_date, buy_date, sell_date) — sell_date None = holding
     for pred_date, preds in sorted(preds_by_date.items()):
         if exec_mode == "close":
-            # Close mode: pred_date must be a trading day, buy at pred_date's close
             if pred_date not in trading_days_set:
                 continue
             sell_date = _find_nth_trading_day(pred_date, forward_days, trading_days_sorted)
-            if not sell_date:
-                continue
             date_pairs.append((pred_date, pred_date, sell_date))
         else:
-            # Open mode: buy at next trading day's open
             buy_date = _find_next_trading_day(pred_date, trading_days_set, trading_days_sorted)
             if not buy_date:
                 continue
             sell_date = _find_nth_trading_day(buy_date, forward_days, trading_days_sorted)
-            if not sell_date:
-                continue
             date_pairs.append((pred_date, buy_date, sell_date))
         for p in preds:
             all_codes.add(p["stock_code"])
@@ -579,9 +573,14 @@ def lgb_backtest_sim(
 
     # 4. Batch fetch all price data in one query
     all_date_strs: set = set()
+    latest_td = trading_days_sorted[-1] if trading_days_sorted else None
+    has_holding = any(sd is None for _, _, sd in date_pairs)
     for _, bd, sd in date_pairs:
         all_date_strs.add(bd)
-        all_date_strs.add(sd)
+        if sd is not None:
+            all_date_strs.add(sd)
+    if has_holding and latest_td:
+        all_date_strs.add(latest_td)
 
     if exec_mode == "open":
         # Need pre_close (previous trading day close) for limit-up/down checks
@@ -673,12 +672,42 @@ def lgb_backtest_sim(
         for pred_date, sell_date in pairs_by_buy[buy_date]:
             preds = preds_by_date.get(pred_date, [])
             slot_trades: list = []
+            is_holding = sell_date is None
+            eff_sell_date = sell_date if sell_date is not None else latest_td
 
             for p in preds:
                 code = p["stock_code"]
                 ts_code = p["ts_code"]
                 stock_name = p["stock_name"]
                 rank = p["rank"]
+
+                if is_holding:
+                    # ── Holding trade (sell date not yet reached) ──
+                    buy_entry = price_map.get((code, buy_date))
+                    if not buy_entry:
+                        continue
+                    if exec_mode == "close":
+                        if buy_entry["close"] <= 0:
+                            continue
+                        buy_price = buy_entry["close"]
+                        sell_price_raw = price_map.get((code, latest_td), {}).get("close", buy_entry["close"])
+                    else:
+                        if buy_entry["open"] <= 0:
+                            continue
+                        buy_price = buy_entry["open"]
+                        sell_price_raw = price_map.get((code, latest_td), {}).get("open", buy_entry["open"])
+                    adj_b = adj_map.get((code, buy_date), 1.0)
+                    adj_s = adj_map.get((code, latest_td), 1.0)
+                    raw_ret = (sell_price_raw - buy_price) / buy_price if buy_price > 0 else 0.0
+                    ret = round((1.0 + raw_ret) * (adj_s / adj_b) - 1.0, 6) if adj_s > 0 else 0.0
+                    trades.append(LGBBacktestTradeItem(
+                        pred_date=pred_date, stock_code=code, ts_code=ts_code,
+                        stock_name=stock_name, rank=rank,
+                        buy_date=buy_date, buy_price=buy_price,
+                        sell_date="", sell_price=sell_price_raw,
+                        return_pct=ret, skipped=False,
+                    ))
+                    continue
 
                 if exec_mode == "close":
                     buy_entry = price_map.get((code, buy_date))
@@ -828,7 +857,7 @@ def lgb_backtest_sim(
                 adj_b = adj_map.get((code, buy_date), 1.0)
                 adj_s = adj_map.get((code, actual_sell_date), 1.0)
                 raw_ret = (sell_price - buy_price) / buy_price
-                ret = round((1.0 + raw_ret) * (adj_b / adj_s) - 1.0, 6)
+                ret = round((1.0 + raw_ret) * (adj_s / adj_b) - 1.0, 6)
                 slot_trades.append({
                     "code": code, "ts_code": ts_code, "stock_name": stock_name,
                     "rank": rank, "buy_price": buy_price, "sell_price": sell_price,
@@ -874,9 +903,10 @@ def lgb_backtest_sim(
                                   - (capital_curve[-1]["capital"] - 1.0 if capital_curve else 0), 4),
         })
 
-    # 6. Compute metrics on a per-trade basis
-    completed_trades = [t for t in trades if not t.skipped]
-    skipped_count = len(trades) - len(completed_trades)
+    # 6. Compute metrics on a per-trade basis (holding trades excluded)
+    completed_trades = [t for t in trades if not t.skipped and t.sell_date != ""]
+    skipped_count = sum(1 for t in trades if t.skipped)
+    holding_count = sum(1 for t in trades if not t.skipped and t.sell_date == "")
     win_count = sum(1 for t in completed_trades if t.return_pct > 0)
     total_count = len(completed_trades)
 

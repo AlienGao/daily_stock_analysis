@@ -11,39 +11,39 @@
       "stock_code": "300936",
       "stock_name": "中英科技",
       "lgb_score": 100.0,
-      "raw_score": 0.08
+      "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "000426.SZ",
-      "stock_code": "000426",
-      "stock_name": "兴业银锡",
-      "lgb_score": 99.98,
+      "ts_code": "600509.SH",
+      "stock_code": "600509",
+      "stock_name": "天富能源",
+      "lgb_score": 95.77,
       "raw_score": 0.08
     },
     {
       "rank": 3,
-      "ts_code": "600151.SH",
-      "stock_code": "600151",
-      "stock_name": "航天机电",
-      "lgb_score": 98.9,
-      "raw_score": 0.08
+      "ts_code": "301600.SZ",
+      "stock_code": "301600",
+      "stock_name": "慧翰股份",
+      "lgb_score": 95.08,
+      "raw_score": 0.07
     },
     {
       "rank": 4,
-      "ts_code": "600967.SH",
-      "stock_code": "600967",
-      "stock_name": "内蒙一机",
-      "lgb_score": 98.7,
-      "raw_score": 0.08
+      "ts_code": "600429.SH",
+      "stock_code": "600429",
+      "stock_name": "三元股份",
+      "lgb_score": 93.94,
+      "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "300263.SZ",
-      "stock_code": "300263",
-      "stock_name": "隆华科技",
-      "lgb_score": 98.4,
-      "raw_score": 0.08
+      "ts_code": "301633.SZ",
+      "stock_code": "301633",
+      "stock_name": "港迪技术",
+      "lgb_score": 93.48,
+      "raw_score": 0.07
     }
   ]
 }

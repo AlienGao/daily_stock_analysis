@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "001325.SZ",
-      "stock_code": "001325",
-      "stock_name": "元创股份",
+      "ts_code": "300429.SZ",
+      "stock_code": "300429",
+      "stock_name": "强力新材",
       "lgb_score": 100.0,
       "raw_score": 0.06
     },
     {
       "rank": 2,
-      "ts_code": "300484.SZ",
-      "stock_code": "300484",
-      "stock_name": "蓝海华腾",
-      "lgb_score": 96.58,
+      "ts_code": "300912.SZ",
+      "stock_code": "300912",
+      "stock_name": "凯龙高科",
+      "lgb_score": 99.42,
       "raw_score": 0.06
     },
     {
       "rank": 3,
-      "ts_code": "300429.SZ",
-      "stock_code": "300429",
-      "stock_name": "强力新材",
-      "lgb_score": 91.63,
-      "raw_score": 0.05
-    },
-    {
-      "rank": 4,
       "ts_code": "301235.SZ",
       "stock_code": "301235",
       "stock_name": "华康洁净",
-      "lgb_score": 90.36,
-      "raw_score": 0.05
+      "lgb_score": 98.3,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 4,
+      "ts_code": "688035.SH",
+      "stock_code": "688035",
+      "stock_name": "德邦科技",
+      "lgb_score": 94.84,
+      "raw_score": 0.06
     },
     {
       "rank": 5,
-      "ts_code": "000915.SZ",
-      "stock_code": "000915",
-      "stock_name": "华特达因",
-      "lgb_score": 89.91,
-      "raw_score": 0.05
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
+      "lgb_score": 94.69,
+      "raw_score": 0.06
     }
   ]
 }

@@ -11,22 +11,22 @@
       "stock_code": "920689.BJ",
       "stock_name": "",
       "lgb_score": 100.0,
-      "raw_score": 0.28
+      "raw_score": 0.3
     },
     {
       "rank": 2,
-      "ts_code": "300885.SZ",
-      "stock_code": "300885",
-      "stock_name": "海昌新材",
-      "lgb_score": 97.04,
-      "raw_score": 0.27
+      "ts_code": "920088.BJ",
+      "stock_code": "920088.BJ",
+      "stock_name": "",
+      "lgb_score": 88.57,
+      "raw_score": 0.25
     },
     {
       "rank": 3,
       "ts_code": "002229.SZ",
       "stock_code": "002229",
       "stock_name": "鸿博股份",
-      "lgb_score": 90.02,
+      "lgb_score": 84.94,
       "raw_score": 0.23
     },
     {
@@ -34,15 +34,15 @@
       "ts_code": "688072.SH",
       "stock_code": "688072",
       "stock_name": "拓荆科技",
-      "lgb_score": 88.24,
+      "lgb_score": 82.73,
       "raw_score": 0.22
     },
     {
       "rank": 5,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
-      "lgb_score": 88.18,
+      "ts_code": "688316.SH",
+      "stock_code": "688316",
+      "stock_name": "青云科技-U",
+      "lgb_score": 81.45,
       "raw_score": 0.22
     }
   ]

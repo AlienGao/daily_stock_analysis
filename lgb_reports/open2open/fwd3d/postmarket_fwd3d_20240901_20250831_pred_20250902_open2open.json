@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000936.SZ",
-      "stock_code": "000936",
-      "stock_name": "华西股份",
-      "lgb_score": 100.0,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 2,
       "ts_code": "002229.SZ",
       "stock_code": "002229",
       "stock_name": "鸿博股份",
-      "lgb_score": 98.44,
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "002374.SZ",
+      "stock_code": "002374",
+      "stock_name": "中锐股份",
+      "lgb_score": 98.35,
       "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "002407.SZ",
-      "stock_code": "002407",
-      "stock_name": "多氟多",
-      "lgb_score": 95.46,
-      "raw_score": 0.12
-    },
-    {
-      "rank": 4,
       "ts_code": "002165.SZ",
       "stock_code": "002165",
       "stock_name": "红 宝 丽",
-      "lgb_score": 95.13,
+      "lgb_score": 95.85,
       "raw_score": 0.11
     },
     {
+      "rank": 4,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 92.75,
+      "raw_score": 0.1
+    },
+    {
       "rank": 5,
-      "ts_code": "000859.SZ",
-      "stock_code": "000859",
-      "stock_name": "国风新材",
-      "lgb_score": 92.78,
-      "raw_score": 0.11
+      "ts_code": "300128.SZ",
+      "stock_code": "300128",
+      "stock_name": "锦富技术",
+      "lgb_score": 91.74,
+      "raw_score": 0.1
     }
   ]
 }

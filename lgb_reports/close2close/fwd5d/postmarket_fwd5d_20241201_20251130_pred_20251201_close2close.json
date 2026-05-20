@@ -15,34 +15,34 @@
     },
     {
       "rank": 2,
-      "ts_code": "600802.SH",
-      "stock_code": "600802",
-      "stock_name": "福建水泥",
-      "lgb_score": 93.26,
-      "raw_score": 0.16
+      "ts_code": "920491.BJ",
+      "stock_code": "920491.BJ",
+      "stock_name": "",
+      "lgb_score": 95.97,
+      "raw_score": 0.18
     },
     {
       "rank": 3,
-      "ts_code": "300612.SZ",
-      "stock_code": "300612",
-      "stock_name": "宣亚国际",
-      "lgb_score": 91.03,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 88.27,
       "raw_score": 0.16
     },
     {
       "rank": 4,
-      "ts_code": "000981.SZ",
-      "stock_code": "000981",
-      "stock_name": "山子高科",
-      "lgb_score": 89.8,
+      "ts_code": "688458.SH",
+      "stock_code": "688458",
+      "stock_name": "美芯晟",
+      "lgb_score": 84.61,
       "raw_score": 0.15
     },
     {
       "rank": 5,
-      "ts_code": "600704.SH",
-      "stock_code": "600704",
-      "stock_name": "物产中大",
-      "lgb_score": 87.83,
+      "ts_code": "301167.SZ",
+      "stock_code": "301167",
+      "stock_name": "建研设计",
+      "lgb_score": 83.79,
       "raw_score": 0.15
     }
   ]

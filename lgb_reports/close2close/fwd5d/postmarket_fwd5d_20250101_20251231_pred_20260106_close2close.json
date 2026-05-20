@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300484.SZ",
-      "stock_code": "300484",
-      "stock_name": "蓝海华腾",
+      "ts_code": "301589.SZ",
+      "stock_code": "301589",
+      "stock_name": "诺瓦星云",
       "lgb_score": 100.0,
-      "raw_score": 0.15
+      "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "301383.SZ",
-      "stock_code": "301383",
-      "stock_name": "天键股份",
-      "lgb_score": 98.31,
-      "raw_score": 0.14
+      "ts_code": "301235.SZ",
+      "stock_code": "301235",
+      "stock_name": "华康洁净",
+      "lgb_score": 98.73,
+      "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "000936.SZ",
-      "stock_code": "000936",
-      "stock_name": "华西股份",
-      "lgb_score": 97.23,
-      "raw_score": 0.14
+      "ts_code": "601678.SH",
+      "stock_code": "601678",
+      "stock_name": "滨化股份",
+      "lgb_score": 95.26,
+      "raw_score": 0.12
     },
     {
       "rank": 4,
-      "ts_code": "002029.SZ",
-      "stock_code": "002029",
-      "stock_name": "七 匹 狼",
-      "lgb_score": 94.47,
-      "raw_score": 0.13
+      "ts_code": "300912.SZ",
+      "stock_code": "300912",
+      "stock_name": "凯龙高科",
+      "lgb_score": 94.9,
+      "raw_score": 0.12
     },
     {
       "rank": 5,
-      "ts_code": "603018.SH",
-      "stock_code": "603018",
-      "stock_name": "华设集团",
-      "lgb_score": 92.65,
-      "raw_score": 0.13
+      "ts_code": "301383.SZ",
+      "stock_code": "301383",
+      "stock_name": "天键股份",
+      "lgb_score": 94.46,
+      "raw_score": 0.12
     }
   ]
 }

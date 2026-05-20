@@ -15,35 +15,35 @@
     },
     {
       "rank": 2,
-      "ts_code": "301117.SZ",
-      "stock_code": "301117",
-      "stock_name": "佳缘科技",
-      "lgb_score": 96.69,
+      "ts_code": "603120.SH",
+      "stock_code": "603120",
+      "stock_name": "肯特催化",
+      "lgb_score": 95.93,
       "raw_score": 0.25
     },
     {
       "rank": 3,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 96.22,
-      "raw_score": 0.25
+      "ts_code": "600757.SH",
+      "stock_code": "600757",
+      "stock_name": "长江传媒",
+      "lgb_score": 93.9,
+      "raw_score": 0.24
     },
     {
       "rank": 4,
-      "ts_code": "688181.SH",
-      "stock_code": "688181",
-      "stock_name": "八亿时空",
-      "lgb_score": 93.07,
+      "ts_code": "300612.SZ",
+      "stock_code": "300612",
+      "stock_name": "宣亚国际",
+      "lgb_score": 93.42,
       "raw_score": 0.24
     },
     {
       "rank": 5,
-      "ts_code": "301372.SZ",
-      "stock_code": "301372",
-      "stock_name": "科净源",
-      "lgb_score": 89.88,
-      "raw_score": 0.22
+      "ts_code": "300045.SZ",
+      "stock_code": "300045",
+      "stock_name": "华力创通",
+      "lgb_score": 91.05,
+      "raw_score": 0.23
     }
   ]
 }

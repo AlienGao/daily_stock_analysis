@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300885.SZ",
-      "stock_code": "300885",
-      "stock_name": "海昌新材",
-      "lgb_score": 100.0,
-      "raw_score": 0.27
-    },
-    {
-      "rank": 2,
       "ts_code": "300017.SZ",
       "stock_code": "300017",
       "stock_name": "网宿科技",
-      "lgb_score": 96.25,
-      "raw_score": 0.25
+      "lgb_score": 100.0,
+      "raw_score": 0.28
     },
     {
-      "rank": 3,
-      "ts_code": "002009.SZ",
-      "stock_code": "002009",
-      "stock_name": "天奇股份",
-      "lgb_score": 94.39,
+      "rank": 2,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 89.99,
       "raw_score": 0.24
     },
     {
+      "rank": 3,
+      "ts_code": "301008.SZ",
+      "stock_code": "301008",
+      "stock_name": "宏昌科技",
+      "lgb_score": 86.85,
+      "raw_score": 0.22
+    },
+    {
       "rank": 4,
-      "ts_code": "300674.SZ",
-      "stock_code": "300674",
-      "stock_name": "宇信科技",
-      "lgb_score": 87.72,
+      "ts_code": "300042.SZ",
+      "stock_code": "300042",
+      "stock_name": "朗科科技",
+      "lgb_score": 83.9,
       "raw_score": 0.21
     },
     {
       "rank": 5,
-      "ts_code": "300045.SZ",
-      "stock_code": "300045",
-      "stock_name": "华力创通",
-      "lgb_score": 86.38,
-      "raw_score": 0.21
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 82.94,
+      "raw_score": 0.2
     }
   ]
 }

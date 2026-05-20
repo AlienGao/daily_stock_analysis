@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
+      "ts_code": "301629.SZ",
+      "stock_code": "301629",
+      "stock_name": "矽电股份",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.16
     },
     {
       "rank": 2,
-      "ts_code": "002929.SZ",
-      "stock_code": "002929",
-      "stock_name": "润建股份",
-      "lgb_score": 99.65,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 89.89,
       "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "301629.SZ",
-      "stock_code": "301629",
-      "stock_name": "矽电股份",
-      "lgb_score": 95.08,
-      "raw_score": 0.12
+      "ts_code": "002929.SZ",
+      "stock_code": "002929",
+      "stock_name": "润建股份",
+      "lgb_score": 89.06,
+      "raw_score": 0.13
     },
     {
       "rank": 4,
-      "ts_code": "000554.SZ",
-      "stock_code": "000554",
-      "stock_name": "泰山石油",
-      "lgb_score": 94.87,
-      "raw_score": 0.12
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 86.91,
+      "raw_score": 0.13
     },
     {
       "rank": 5,
-      "ts_code": "301110.SZ",
-      "stock_code": "301110",
-      "stock_name": "青木科技",
-      "lgb_score": 94.2,
+      "ts_code": "603248.SH",
+      "stock_code": "603248",
+      "stock_name": "锡华科技",
+      "lgb_score": 84.89,
       "raw_score": 0.12
     }
   ]

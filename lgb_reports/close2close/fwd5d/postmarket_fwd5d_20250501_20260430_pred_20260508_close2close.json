@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000554.SZ",
-      "stock_code": "000554",
-      "stock_name": "泰山石油",
+      "ts_code": "688068.SH",
+      "stock_code": "688068",
+      "stock_name": "热景生物",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.12
     },
     {
       "rank": 2,
-      "ts_code": "600039.SH",
-      "stock_code": "600039",
-      "stock_name": "四川路桥",
-      "lgb_score": 94.12,
+      "ts_code": "603590.SH",
+      "stock_code": "603590",
+      "stock_name": "康辰药业",
+      "lgb_score": 97.8,
       "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "000601.SZ",
-      "stock_code": "000601",
-      "stock_name": "韶能股份",
-      "lgb_score": 93.89,
+      "ts_code": "000012.SZ",
+      "stock_code": "000012",
+      "stock_name": "南  玻Ａ",
+      "lgb_score": 96.99,
       "raw_score": 0.12
     },
     {
       "rank": 4,
-      "ts_code": "301087.SZ",
-      "stock_code": "301087",
-      "stock_name": "可孚医疗",
-      "lgb_score": 90.9,
-      "raw_score": 0.11
+      "ts_code": "002164.SZ",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 96.45,
+      "raw_score": 0.12
     },
     {
       "rank": 5,
-      "ts_code": "688506.SH",
-      "stock_code": "688506",
-      "stock_name": "百利天恒",
-      "lgb_score": 90.77,
+      "ts_code": "603360.SH",
+      "stock_code": "603360",
+      "stock_name": "百傲化学",
+      "lgb_score": 95.85,
       "raw_score": 0.11
     }
   ]

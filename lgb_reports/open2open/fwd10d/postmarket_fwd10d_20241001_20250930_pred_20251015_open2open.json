@@ -11,39 +11,39 @@
       "stock_code": "300017",
       "stock_name": "网宿科技",
       "lgb_score": 100.0,
-      "raw_score": 0.28
+      "raw_score": 0.31
     },
     {
       "rank": 2,
-      "ts_code": "301117.SZ",
-      "stock_code": "301117",
-      "stock_name": "佳缘科技",
-      "lgb_score": 87.48,
-      "raw_score": 0.23
+      "ts_code": "300612.SZ",
+      "stock_code": "300612",
+      "stock_name": "宣亚国际",
+      "lgb_score": 89.25,
+      "raw_score": 0.26
     },
     {
       "rank": 3,
       "ts_code": "600308.SH",
       "stock_code": "600308",
       "stock_name": "华泰股份",
-      "lgb_score": 87.48,
-      "raw_score": 0.23
+      "lgb_score": 87.61,
+      "raw_score": 0.25
     },
     {
       "rank": 4,
-      "ts_code": "601500.SH",
-      "stock_code": "601500",
-      "stock_name": "通用股份",
-      "lgb_score": 84.87,
-      "raw_score": 0.22
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 86.87,
+      "raw_score": 0.25
     },
     {
       "rank": 5,
-      "ts_code": "001387.SZ",
-      "stock_code": "001387",
-      "stock_name": "雪祺电气",
-      "lgb_score": 84.36,
-      "raw_score": 0.21
+      "ts_code": "300045.SZ",
+      "stock_code": "300045",
+      "stock_name": "华力创通",
+      "lgb_score": 86.72,
+      "raw_score": 0.25
     }
   ]
 }

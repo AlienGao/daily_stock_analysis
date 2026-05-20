@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
+      "ts_code": "001309.SZ",
+      "stock_code": "001309",
+      "stock_name": "德明利",
       "lgb_score": 100.0,
-      "raw_score": 0.19
+      "raw_score": 0.25
     },
     {
       "rank": 2,
-      "ts_code": "300391.SZ",
-      "stock_code": "300391",
-      "stock_name": "长药退",
-      "lgb_score": 90.93,
-      "raw_score": 0.16
+      "ts_code": "301696.SZ",
+      "stock_code": "301696",
+      "stock_name": "三瑞智能",
+      "lgb_score": 95.94,
+      "raw_score": 0.23
     },
     {
       "rank": 3,
-      "ts_code": "300083.SZ",
-      "stock_code": "300083",
-      "stock_name": "创世纪",
-      "lgb_score": 88.52,
-      "raw_score": 0.16
+      "ts_code": "920078.BJ",
+      "stock_code": "920078.BJ",
+      "stock_name": "",
+      "lgb_score": 87.08,
+      "raw_score": 0.2
     },
     {
       "rank": 4,
-      "ts_code": "600519.SH",
-      "stock_code": "600519",
-      "stock_name": "贵州茅台",
-      "lgb_score": 85.37,
-      "raw_score": 0.15
+      "ts_code": "301306.SZ",
+      "stock_code": "301306",
+      "stock_name": "西测测试",
+      "lgb_score": 83.45,
+      "raw_score": 0.19
     },
     {
       "rank": 5,
-      "ts_code": "000001.SH.SZ",
-      "stock_code": "000001",
-      "stock_name": "平安银行",
-      "lgb_score": 84.85,
-      "raw_score": 0.14
+      "ts_code": "688048.SH",
+      "stock_code": "688048",
+      "stock_name": "长光华芯",
+      "lgb_score": 82.87,
+      "raw_score": 0.19
     }
   ]
 }

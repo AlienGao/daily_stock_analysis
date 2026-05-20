@@ -7,9 +7,9 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300885.SZ",
-      "stock_code": "300885",
-      "stock_name": "海昌新材",
+      "ts_code": "300007.SZ",
+      "stock_code": "300007",
+      "stock_name": "汉威科技",
       "lgb_score": 100.0,
       "raw_score": 0.25
     },
@@ -18,32 +18,32 @@
       "ts_code": "002029.SZ",
       "stock_code": "002029",
       "stock_name": "七 匹 狼",
-      "lgb_score": 94.3,
-      "raw_score": 0.23
+      "lgb_score": 97.98,
+      "raw_score": 0.25
     },
     {
       "rank": 3,
       "ts_code": "688181.SH",
       "stock_code": "688181",
       "stock_name": "八亿时空",
-      "lgb_score": 88.69,
-      "raw_score": 0.2
+      "lgb_score": 97.7,
+      "raw_score": 0.24
     },
     {
       "rank": 4,
-      "ts_code": "300975.SZ",
-      "stock_code": "300975",
-      "stock_name": "商络电子",
-      "lgb_score": 88.4,
-      "raw_score": 0.2
+      "ts_code": "301022.SZ",
+      "stock_code": "301022",
+      "stock_name": "海泰科",
+      "lgb_score": 92.75,
+      "raw_score": 0.22
     },
     {
       "rank": 5,
-      "ts_code": "000159.SZ",
-      "stock_code": "000159",
-      "stock_name": "国际实业",
-      "lgb_score": 86.79,
-      "raw_score": 0.2
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 89.89,
+      "raw_score": 0.21
     }
   ]
 }

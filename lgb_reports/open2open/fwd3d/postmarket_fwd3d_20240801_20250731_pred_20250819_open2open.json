@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301151.SZ",
-      "stock_code": "301151",
-      "stock_name": "冠龙节能",
-      "lgb_score": 100.0,
-      "raw_score": 0.1
-    },
-    {
-      "rank": 2,
-      "ts_code": "300429.SZ",
-      "stock_code": "300429",
-      "stock_name": "强力新材",
-      "lgb_score": 97.99,
-      "raw_score": 0.1
-    },
-    {
-      "rank": 3,
-      "ts_code": "000034.SZ",
-      "stock_code": "000034",
-      "stock_name": "神州数码",
-      "lgb_score": 94.59,
-      "raw_score": 0.09
-    },
-    {
-      "rank": 4,
       "ts_code": "002236.SZ",
       "stock_code": "002236",
       "stock_name": "大华股份",
-      "lgb_score": 94.29,
-      "raw_score": 0.09
+      "lgb_score": 100.0,
+      "raw_score": 0.11
     },
     {
-      "rank": 5,
+      "rank": 2,
+      "ts_code": "920089.BJ",
+      "stock_code": "920089.BJ",
+      "stock_name": "",
+      "lgb_score": 99.16,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "301589.SZ",
+      "stock_code": "301589",
+      "stock_name": "诺瓦星云",
+      "lgb_score": 97.48,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
       "ts_code": "688016.SH",
       "stock_code": "688016",
       "stock_name": "心脉医疗",
-      "lgb_score": 93.72,
-      "raw_score": 0.09
+      "lgb_score": 97.15,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 97.02,
+      "raw_score": 0.1
     }
   ]
 }

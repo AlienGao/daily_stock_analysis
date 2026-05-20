@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000601.SZ",
-      "stock_code": "000601",
-      "stock_name": "韶能股份",
+      "ts_code": "301157.SZ",
+      "stock_code": "301157",
+      "stock_name": "华塑科技",
       "lgb_score": 100.0,
       "raw_score": 0.08
     },
     {
       "rank": 2,
-      "ts_code": "605006.SH",
-      "stock_code": "605006",
-      "stock_name": "山东玻纤",
-      "lgb_score": 99.17,
+      "ts_code": "603757.SH",
+      "stock_code": "603757",
+      "stock_name": "大元泵业",
+      "lgb_score": 94.24,
       "raw_score": 0.07
     },
     {
       "rank": 3,
-      "ts_code": "603757.SH",
-      "stock_code": "603757",
-      "stock_name": "大元泵业",
-      "lgb_score": 98.75,
+      "ts_code": "688628.SH",
+      "stock_code": "688628",
+      "stock_name": "优利德",
+      "lgb_score": 91.47,
       "raw_score": 0.07
     },
     {
       "rank": 4,
-      "ts_code": "301157.SZ",
-      "stock_code": "301157",
-      "stock_name": "华塑科技",
-      "lgb_score": 98.15,
+      "ts_code": "600960.SH",
+      "stock_code": "600960",
+      "stock_name": "渤海汽车",
+      "lgb_score": 90.57,
       "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "002108.SZ",
-      "stock_code": "002108",
-      "stock_name": "沧州明珠",
-      "lgb_score": 98.12,
-      "raw_score": 0.07
+      "ts_code": "603162.SH",
+      "stock_code": "603162",
+      "stock_name": "DR海通发",
+      "lgb_score": 88.33,
+      "raw_score": 0.06
     }
   ]
 }

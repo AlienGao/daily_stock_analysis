@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000859.SZ",
-      "stock_code": "000859",
-      "stock_name": "国风新材",
+      "ts_code": "300191.SZ",
+      "stock_code": "300191",
+      "stock_name": "潜能恒信",
       "lgb_score": 100.0,
       "raw_score": 0.08
     },
     {
       "rank": 2,
-      "ts_code": "300166.SZ",
-      "stock_code": "300166",
-      "stock_name": "东方国信",
-      "lgb_score": 99.46,
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 95.23,
       "raw_score": 0.07
     },
     {
       "rank": 3,
-      "ts_code": "600151.SH",
-      "stock_code": "600151",
-      "stock_name": "航天机电",
-      "lgb_score": 96.57,
+      "ts_code": "300691.SZ",
+      "stock_code": "300691",
+      "stock_name": "联合光电",
+      "lgb_score": 92.22,
       "raw_score": 0.07
     },
     {
       "rank": 4,
-      "ts_code": "300612.SZ",
-      "stock_code": "300612",
-      "stock_name": "宣亚国际",
-      "lgb_score": 95.24,
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 92.06,
       "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 93.45,
-      "raw_score": 0.07
+      "ts_code": "300883.SZ",
+      "stock_code": "300883",
+      "stock_name": "龙利得",
+      "lgb_score": 90.89,
+      "raw_score": 0.06
     }
   ]
 }

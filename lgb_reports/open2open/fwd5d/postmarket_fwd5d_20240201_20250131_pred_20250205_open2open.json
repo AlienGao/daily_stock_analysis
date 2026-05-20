@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301205.SZ",
-      "stock_code": "301205",
-      "stock_name": "联特科技",
+      "ts_code": "688401.SH",
+      "stock_code": "688401",
+      "stock_name": "路维光电",
       "lgb_score": 100.0,
-      "raw_score": 0.17
+      "raw_score": 0.14
     },
     {
       "rank": 2,
-      "ts_code": "300263.SZ",
-      "stock_code": "300263",
-      "stock_name": "隆华科技",
-      "lgb_score": 88.74,
-      "raw_score": 0.13
+      "ts_code": "301205.SZ",
+      "stock_code": "301205",
+      "stock_name": "联特科技",
+      "lgb_score": 97.86,
+      "raw_score": 0.14
     },
     {
       "rank": 3,
-      "ts_code": "688458.SH",
-      "stock_code": "688458",
-      "stock_name": "美芯晟",
-      "lgb_score": 85.79,
-      "raw_score": 0.13
+      "ts_code": "600509.SH",
+      "stock_code": "600509",
+      "stock_name": "天富能源",
+      "lgb_score": 89.82,
+      "raw_score": 0.12
     },
     {
       "rank": 4,
-      "ts_code": "002165.SZ",
-      "stock_code": "002165",
-      "stock_name": "红 宝 丽",
-      "lgb_score": 82.52,
+      "ts_code": "603915.SH",
+      "stock_code": "603915",
+      "stock_name": "国茂股份",
+      "lgb_score": 89.24,
       "raw_score": 0.12
     },
     {
       "rank": 5,
-      "ts_code": "301550.SZ",
-      "stock_code": "301550",
-      "stock_name": "斯菱智驱",
-      "lgb_score": 79.08,
-      "raw_score": 0.11
+      "ts_code": "002929.SZ",
+      "stock_code": "002929",
+      "stock_name": "润建股份",
+      "lgb_score": 84.47,
+      "raw_score": 0.1
     }
   ]
 }

@@ -15,35 +15,35 @@
     },
     {
       "rank": 2,
-      "ts_code": "002458.SZ",
-      "stock_code": "002458",
-      "stock_name": "益生股份",
-      "lgb_score": 82.7,
-      "raw_score": 0.2
+      "ts_code": "002274.SZ",
+      "stock_code": "002274",
+      "stock_name": "华昌化工",
+      "lgb_score": 94.23,
+      "raw_score": 0.25
     },
     {
       "rank": 3,
-      "ts_code": "002510.SZ",
-      "stock_code": "002510",
-      "stock_name": "天汽模",
-      "lgb_score": 81.67,
-      "raw_score": 0.19
+      "ts_code": "002234.SZ",
+      "stock_code": "002234",
+      "stock_name": "民和股份",
+      "lgb_score": 94.05,
+      "raw_score": 0.25
     },
     {
       "rank": 4,
-      "ts_code": "002617.SZ",
-      "stock_code": "002617",
-      "stock_name": "露笑科技",
-      "lgb_score": 80.6,
-      "raw_score": 0.19
+      "ts_code": "301309.SZ",
+      "stock_code": "301309",
+      "stock_name": "万得凯",
+      "lgb_score": 92.5,
+      "raw_score": 0.24
     },
     {
       "rank": 5,
-      "ts_code": "002311.SZ",
-      "stock_code": "002311",
-      "stock_name": "海大集团",
-      "lgb_score": 79.13,
-      "raw_score": 0.18
+      "ts_code": "001387.SZ",
+      "stock_code": "001387",
+      "stock_name": "雪祺电气",
+      "lgb_score": 92.34,
+      "raw_score": 0.24
     }
   ]
 }

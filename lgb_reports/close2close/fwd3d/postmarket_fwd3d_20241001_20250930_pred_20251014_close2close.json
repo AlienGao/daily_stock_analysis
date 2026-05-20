@@ -11,14 +11,14 @@
       "stock_code": "600617",
       "stock_name": "国新能源",
       "lgb_score": 100.0,
-      "raw_score": 0.11
+      "raw_score": 0.1
     },
     {
       "rank": 2,
       "ts_code": "600868.SH",
       "stock_code": "600868",
       "stock_name": "梅雁吉祥",
-      "lgb_score": 97.19,
+      "lgb_score": 99.2,
       "raw_score": 0.1
     },
     {
@@ -26,24 +26,24 @@
       "ts_code": "600067.SH",
       "stock_code": "600067",
       "stock_name": "冠城新材",
-      "lgb_score": 90.57,
+      "lgb_score": 95.25,
       "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "001309.SZ",
-      "stock_code": "001309",
-      "stock_name": "德明利",
-      "lgb_score": 88.77,
+      "ts_code": "688411.SH",
+      "stock_code": "688411",
+      "stock_name": "海博思创",
+      "lgb_score": 87.39,
       "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "301205.SZ",
-      "stock_code": "301205",
-      "stock_name": "联特科技",
-      "lgb_score": 87.54,
-      "raw_score": 0.08
+      "ts_code": "000572.SZ",
+      "stock_code": "000572",
+      "stock_name": "海马汽车",
+      "lgb_score": 86.05,
+      "raw_score": 0.07
     }
   ]
 }

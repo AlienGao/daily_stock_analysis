@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688498.SH",
-      "stock_code": "688498",
-      "stock_name": "源杰科技",
+      "ts_code": "300976.SZ",
+      "stock_code": "300976",
+      "stock_name": "达瑞电子",
       "lgb_score": 100.0,
       "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "300757.SZ",
-      "stock_code": "300757",
-      "stock_name": "罗博特科",
-      "lgb_score": 97.61,
-      "raw_score": 0.1
+      "ts_code": "920125.BJ",
+      "stock_code": "920125.BJ",
+      "stock_name": "",
+      "lgb_score": 98.1,
+      "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "601138.SH",
-      "stock_code": "601138",
-      "stock_name": "工业富联",
-      "lgb_score": 95.73,
-      "raw_score": 0.09
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
+      "lgb_score": 90.25,
+      "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "300976.SZ",
-      "stock_code": "300976",
-      "stock_name": "达瑞电子",
-      "lgb_score": 95.54,
-      "raw_score": 0.09
+      "ts_code": "301633.SZ",
+      "stock_code": "301633",
+      "stock_name": "港迪技术",
+      "lgb_score": 90.21,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "001267.SZ",
-      "stock_code": "001267",
-      "stock_name": "汇绿生态",
-      "lgb_score": 88.8,
+      "ts_code": "000589.SZ",
+      "stock_code": "000589",
+      "stock_name": "贵州轮胎",
+      "lgb_score": 88.69,
       "raw_score": 0.08
     }
   ]

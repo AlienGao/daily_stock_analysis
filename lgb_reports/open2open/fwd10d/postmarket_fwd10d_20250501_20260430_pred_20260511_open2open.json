@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301232.SZ",
-      "stock_code": "301232",
-      "stock_name": "飞沃科技",
+      "ts_code": "301531.SZ",
+      "stock_code": "301531",
+      "stock_name": "春光集团",
       "lgb_score": 100.0,
-      "raw_score": 0.25
+      "raw_score": 0.29
     },
     {
       "rank": 2,
-      "ts_code": "301511.SZ",
-      "stock_code": "301511",
-      "stock_name": "德福科技",
-      "lgb_score": 99.34,
-      "raw_score": 0.24
+      "ts_code": "001309.SZ",
+      "stock_code": "001309",
+      "stock_name": "德明利",
+      "lgb_score": 94.17,
+      "raw_score": 0.26
     },
     {
       "rank": 3,
-      "ts_code": "688455.SH",
-      "stock_code": "688455",
-      "stock_name": "科捷智能",
-      "lgb_score": 97.84,
+      "ts_code": "301232.SZ",
+      "stock_code": "301232",
+      "stock_name": "飞沃科技",
+      "lgb_score": 89.85,
       "raw_score": 0.24
     },
     {
       "rank": 4,
-      "ts_code": "301531.SZ",
-      "stock_code": "301531",
-      "stock_name": "春光集团",
-      "lgb_score": 96.83,
-      "raw_score": 0.23
+      "ts_code": "002374.SZ",
+      "stock_code": "002374",
+      "stock_name": "中锐股份",
+      "lgb_score": 87.91,
+      "raw_score": 0.24
     },
     {
       "rank": 5,
-      "ts_code": "300857.SZ",
-      "stock_code": "300857",
-      "stock_name": "协创数据",
-      "lgb_score": 96.33,
+      "ts_code": "688808.SH",
+      "stock_code": "688808",
+      "stock_name": "联讯仪器",
+      "lgb_score": 86.54,
       "raw_score": 0.23
     }
   ]

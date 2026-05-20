@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
+      "ts_code": "000598.SZ",
+      "stock_code": "000598",
+      "stock_name": "兴蓉环境",
       "lgb_score": 100.0,
-      "raw_score": 0.16
+      "raw_score": 0.11
     },
     {
       "rank": 2,
-      "ts_code": "600802.SH",
-      "stock_code": "600802",
-      "stock_name": "福建水泥",
-      "lgb_score": 99.05,
-      "raw_score": 0.16
-    },
-    {
-      "rank": 3,
-      "ts_code": "600798.SH",
-      "stock_code": "600798",
-      "stock_name": "宁波海运",
-      "lgb_score": 95.53,
-      "raw_score": 0.15
-    },
-    {
-      "rank": 4,
       "ts_code": "600076.SH",
       "stock_code": "600076",
       "stock_name": "康欣新材",
-      "lgb_score": 93.67,
-      "raw_score": 0.15
+      "lgb_score": 99.35,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "300045.SZ",
+      "stock_code": "300045",
+      "stock_name": "华力创通",
+      "lgb_score": 99.08,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 4,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 97.69,
+      "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "002291.SZ",
-      "stock_code": "002291",
-      "stock_name": "遥望科技",
-      "lgb_score": 92.95,
-      "raw_score": 0.14
+      "ts_code": "601515.SH",
+      "stock_code": "601515",
+      "stock_name": "衢州东峰",
+      "lgb_score": 94.63,
+      "raw_score": 0.1
     }
   ]
 }

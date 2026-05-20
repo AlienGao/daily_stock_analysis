@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
+      "ts_code": "300995.SZ",
+      "stock_code": "300995",
+      "stock_name": "奇德新材",
       "lgb_score": 100.0,
-      "raw_score": 0.17
+      "raw_score": 0.16
     },
     {
       "rank": 2,
-      "ts_code": "000601.SZ",
-      "stock_code": "000601",
-      "stock_name": "韶能股份",
-      "lgb_score": 91.69,
-      "raw_score": 0.15
-    },
-    {
-      "rank": 3,
       "ts_code": "300885.SZ",
       "stock_code": "300885",
       "stock_name": "海昌新材",
-      "lgb_score": 91.4,
-      "raw_score": 0.15
+      "lgb_score": 91.05,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 3,
+      "ts_code": "920088.BJ",
+      "stock_code": "920088.BJ",
+      "stock_name": "",
+      "lgb_score": 90.32,
+      "raw_score": 0.13
     },
     {
       "rank": 4,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
-      "lgb_score": 86.38,
-      "raw_score": 0.13
+      "ts_code": "600345.SH",
+      "stock_code": "600345",
+      "stock_name": "长江通信",
+      "lgb_score": 86.58,
+      "raw_score": 0.12
     },
     {
       "rank": 5,
-      "ts_code": "688316.SH",
-      "stock_code": "688316",
-      "stock_name": "青云科技-U",
-      "lgb_score": 86.2,
-      "raw_score": 0.13
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 86.51,
+      "raw_score": 0.12
     }
   ]
 }

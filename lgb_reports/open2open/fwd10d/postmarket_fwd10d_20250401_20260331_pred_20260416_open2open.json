@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688525.SH",
-      "stock_code": "688525",
-      "stock_name": "佰维存储",
-      "lgb_score": 100.0,
-      "raw_score": 0.19
-    },
-    {
-      "rank": 2,
-      "ts_code": "300757.SZ",
-      "stock_code": "300757",
-      "stock_name": "罗博特科",
-      "lgb_score": 100.0,
-      "raw_score": 0.19
-    },
-    {
-      "rank": 3,
-      "ts_code": "002371.SZ",
-      "stock_code": "002371",
-      "stock_name": "北方华创",
-      "lgb_score": 93.61,
-      "raw_score": 0.16
-    },
-    {
-      "rank": 4,
       "ts_code": "688125.SH",
       "stock_code": "688125",
       "stock_name": "安达智能",
-      "lgb_score": 92.37,
-      "raw_score": 0.16
+      "lgb_score": 100.0,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 2,
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
+      "lgb_score": 97.15,
+      "raw_score": 0.2
+    },
+    {
+      "rank": 3,
+      "ts_code": "688525.SH",
+      "stock_code": "688525",
+      "stock_name": "佰维存储",
+      "lgb_score": 95.81,
+      "raw_score": 0.2
+    },
+    {
+      "rank": 4,
+      "ts_code": "300757.SZ",
+      "stock_code": "300757",
+      "stock_name": "罗博特科",
+      "lgb_score": 94.34,
+      "raw_score": 0.19
     },
     {
       "rank": 5,
-      "ts_code": "920012.BJ",
-      "stock_code": "920012.BJ",
-      "stock_name": "",
-      "lgb_score": 92.31,
-      "raw_score": 0.15
+      "ts_code": "688808.SH",
+      "stock_code": "688808",
+      "stock_name": "联讯仪器",
+      "lgb_score": 91.47,
+      "raw_score": 0.18
     }
   ]
 }

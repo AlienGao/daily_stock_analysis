@@ -11,39 +11,39 @@
       "stock_code": "000859",
       "stock_name": "国风新材",
       "lgb_score": 100.0,
-      "raw_score": 0.27
+      "raw_score": 0.31
     },
     {
       "rank": 2,
-      "ts_code": "688063.SH",
-      "stock_code": "688063",
-      "stock_name": "派能科技",
-      "lgb_score": 90.84,
-      "raw_score": 0.23
-    },
-    {
-      "rank": 3,
       "ts_code": "300484.SZ",
       "stock_code": "300484",
       "stock_name": "蓝海华腾",
-      "lgb_score": 88.52,
-      "raw_score": 0.22
+      "lgb_score": 92.25,
+      "raw_score": 0.27
+    },
+    {
+      "rank": 3,
+      "ts_code": "603915.SH",
+      "stock_code": "603915",
+      "stock_name": "国茂股份",
+      "lgb_score": 85.51,
+      "raw_score": 0.25
     },
     {
       "rank": 4,
-      "ts_code": "300263.SZ",
-      "stock_code": "300263",
-      "stock_name": "隆华科技",
-      "lgb_score": 87.71,
-      "raw_score": 0.22
+      "ts_code": "002617.SZ",
+      "stock_code": "002617",
+      "stock_name": "露笑科技",
+      "lgb_score": 82.89,
+      "raw_score": 0.23
     },
     {
       "rank": 5,
-      "ts_code": "000955.SZ",
-      "stock_code": "000955",
-      "stock_name": "欣龙控股",
-      "lgb_score": 85.61,
-      "raw_score": 0.21
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 81.72,
+      "raw_score": 0.23
     }
   ]
 }

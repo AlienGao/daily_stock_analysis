@@ -15,35 +15,35 @@
     },
     {
       "rank": 2,
-      "ts_code": "002021.SZ",
-      "stock_code": "002021",
-      "stock_name": "中捷资源",
-      "lgb_score": 95.92,
+      "ts_code": "300128.SZ",
+      "stock_code": "300128",
+      "stock_name": "锦富技术",
+      "lgb_score": 95.05,
       "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "002164.SZ",
-      "stock_code": "002164",
-      "stock_name": "宁波东力",
-      "lgb_score": 89.64,
-      "raw_score": 0.1
-    },
-    {
-      "rank": 4,
       "ts_code": "600802.SH",
       "stock_code": "600802",
       "stock_name": "福建水泥",
-      "lgb_score": 89.47,
+      "lgb_score": 95.01,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 4,
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 92.66,
       "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "300128.SZ",
-      "stock_code": "300128",
-      "stock_name": "锦富技术",
-      "lgb_score": 87.23,
-      "raw_score": 0.09
+      "ts_code": "688367.SH",
+      "stock_code": "688367",
+      "stock_name": "工大高科",
+      "lgb_score": 91.98,
+      "raw_score": 0.1
     }
   ]
 }

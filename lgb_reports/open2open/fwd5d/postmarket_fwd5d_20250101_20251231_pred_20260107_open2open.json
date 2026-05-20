@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "001387.SZ",
-      "stock_code": "001387",
-      "stock_name": "雪祺电气",
+      "ts_code": "688627.SH",
+      "stock_code": "688627",
+      "stock_name": "精智达",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.12
     },
     {
       "rank": 2,
-      "ts_code": "001325.SZ",
-      "stock_code": "001325",
-      "stock_name": "元创股份",
-      "lgb_score": 91.76,
-      "raw_score": 0.11
-    },
-    {
-      "rank": 3,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 91.61,
-      "raw_score": 0.11
-    },
-    {
-      "rank": 4,
       "ts_code": "300263.SZ",
       "stock_code": "300263",
       "stock_name": "隆华科技",
-      "lgb_score": 91.07,
+      "lgb_score": 96.26,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 95.89,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 4,
+      "ts_code": "688720.SH",
+      "stock_code": "688720",
+      "stock_name": "艾森股份",
+      "lgb_score": 90.59,
       "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "600704.SH",
-      "stock_code": "600704",
-      "stock_name": "物产中大",
-      "lgb_score": 90.89,
-      "raw_score": 0.11
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 89.44,
+      "raw_score": 0.1
     }
   ]
 }

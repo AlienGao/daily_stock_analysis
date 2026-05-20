@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688693.SH",
-      "stock_code": "688693",
-      "stock_name": "锴威特",
+      "ts_code": "000657.SZ",
+      "stock_code": "000657",
+      "stock_name": "中钨高新",
       "lgb_score": 100.0,
-      "raw_score": 0.1
+      "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "300083.SZ",
-      "stock_code": "300083",
-      "stock_name": "创世纪",
-      "lgb_score": 97.31,
-      "raw_score": 0.09
+      "ts_code": "688813.SH",
+      "stock_code": "688813",
+      "stock_name": "泰金新能",
+      "lgb_score": 98.46,
+      "raw_score": 0.08
     },
     {
       "rank": 3,
-      "ts_code": "688498.SH",
-      "stock_code": "688498",
-      "stock_name": "源杰科技",
-      "lgb_score": 95.24,
-      "raw_score": 0.09
+      "ts_code": "301383.SZ",
+      "stock_code": "301383",
+      "stock_name": "天键股份",
+      "lgb_score": 98.38,
+      "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "688455.SH",
-      "stock_code": "688455",
-      "stock_name": "科捷智能",
-      "lgb_score": 93.81,
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
+      "lgb_score": 97.31,
       "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "688219.SH",
-      "stock_code": "688219",
-      "stock_name": "会通股份",
-      "lgb_score": 92.94,
+      "ts_code": "301633.SZ",
+      "stock_code": "301633",
+      "stock_name": "港迪技术",
+      "lgb_score": 96.88,
       "raw_score": 0.08
     }
   ]

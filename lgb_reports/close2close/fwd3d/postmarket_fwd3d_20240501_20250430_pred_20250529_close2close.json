@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301209.SZ",
-      "stock_code": "301209",
-      "stock_name": "联合化学",
+      "ts_code": "603797.SH",
+      "stock_code": "603797",
+      "stock_name": "联泰环保",
       "lgb_score": 100.0,
       "raw_score": 0.12
     },
     {
       "rank": 2,
-      "ts_code": "600386.SH",
-      "stock_code": "600386",
-      "stock_name": "北巴传媒",
-      "lgb_score": 95.19,
+      "ts_code": "301209.SZ",
+      "stock_code": "301209",
+      "stock_name": "联合化学",
+      "lgb_score": 98.39,
       "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "300883.SZ",
-      "stock_code": "300883",
-      "stock_name": "龙利得",
-      "lgb_score": 94.58,
-      "raw_score": 0.11
+      "ts_code": "600869.SH",
+      "stock_code": "600869",
+      "stock_name": "远东股份",
+      "lgb_score": 95.06,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "000159.SZ",
-      "stock_code": "000159",
-      "stock_name": "国际实业",
-      "lgb_score": 94.24,
-      "raw_score": 0.11
+      "ts_code": "600676.SH",
+      "stock_code": "600676",
+      "stock_name": "交运股份",
+      "lgb_score": 94.58,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "002161.SZ",
-      "stock_code": "002161",
-      "stock_name": "远 望 谷",
-      "lgb_score": 92.9,
+      "ts_code": "600212.SH",
+      "stock_code": "600212",
+      "stock_name": "绿能慧充",
+      "lgb_score": 92.42,
       "raw_score": 0.1
     }
   ]

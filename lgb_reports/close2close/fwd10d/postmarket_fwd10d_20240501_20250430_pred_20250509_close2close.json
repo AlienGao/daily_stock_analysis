@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
       "lgb_score": 100.0,
-      "raw_score": 0.25
+      "raw_score": 0.27
     },
     {
       "rank": 2,
-      "ts_code": "300885.SZ",
-      "stock_code": "300885",
-      "stock_name": "海昌新材",
-      "lgb_score": 98.6,
-      "raw_score": 0.24
-    },
-    {
-      "rank": 3,
-      "ts_code": "300975.SZ",
-      "stock_code": "300975",
-      "stock_name": "商络电子",
-      "lgb_score": 96.92,
-      "raw_score": 0.24
-    },
-    {
-      "rank": 4,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 96.3,
-      "raw_score": 0.23
-    },
-    {
-      "rank": 5,
       "ts_code": "300007.SZ",
       "stock_code": "300007",
       "stock_name": "汉威科技",
-      "lgb_score": 96.02,
+      "lgb_score": 99.01,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 3,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 97.22,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 4,
+      "ts_code": "603893.SH",
+      "stock_code": "603893",
+      "stock_name": "瑞芯微",
+      "lgb_score": 92.12,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 5,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 91.78,
       "raw_score": 0.23
     }
   ]

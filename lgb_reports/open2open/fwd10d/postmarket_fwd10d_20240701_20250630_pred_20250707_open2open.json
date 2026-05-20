@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301008.SZ",
-      "stock_code": "301008",
-      "stock_name": "宏昌科技",
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
       "lgb_score": 100.0,
-      "raw_score": 0.24
+      "raw_score": 0.26
     },
     {
       "rank": 2,
-      "ts_code": "600802.SH",
-      "stock_code": "600802",
-      "stock_name": "福建水泥",
-      "lgb_score": 91.42,
-      "raw_score": 0.21
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 97.04,
+      "raw_score": 0.25
     },
     {
       "rank": 3,
-      "ts_code": "002165.SZ",
-      "stock_code": "002165",
-      "stock_name": "红 宝 丽",
-      "lgb_score": 91.18,
-      "raw_score": 0.2
+      "ts_code": "301008.SZ",
+      "stock_code": "301008",
+      "stock_name": "宏昌科技",
+      "lgb_score": 89.77,
+      "raw_score": 0.22
     },
     {
       "rank": 4,
-      "ts_code": "300263.SZ",
-      "stock_code": "300263",
-      "stock_name": "隆华科技",
-      "lgb_score": 89.9,
-      "raw_score": 0.2
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 88.18,
+      "raw_score": 0.21
     },
     {
       "rank": 5,
-      "ts_code": "688500.SH",
-      "stock_code": "688500",
-      "stock_name": "慧辰股份",
-      "lgb_score": 89.74,
-      "raw_score": 0.2
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 87.16,
+      "raw_score": 0.21
     }
   ]
 }

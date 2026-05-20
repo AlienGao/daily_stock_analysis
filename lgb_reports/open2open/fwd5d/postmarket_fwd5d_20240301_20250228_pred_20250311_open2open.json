@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688316.SH",
-      "stock_code": "688316",
-      "stock_name": "青云科技-U",
-      "lgb_score": 100.0,
-      "raw_score": 0.17
-    },
-    {
-      "rank": 2,
       "ts_code": "600308.SH",
       "stock_code": "600308",
       "stock_name": "华泰股份",
-      "lgb_score": 98.49,
-      "raw_score": 0.16
+      "lgb_score": 100.0,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 2,
+      "ts_code": "003021.SZ",
+      "stock_code": "003021",
+      "stock_name": "兆威机电",
+      "lgb_score": 91.73,
+      "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "301633.SZ",
-      "stock_code": "301633",
-      "stock_name": "港迪技术",
-      "lgb_score": 94.91,
-      "raw_score": 0.15
+      "ts_code": "688275.SH",
+      "stock_code": "688275",
+      "stock_name": "万润新能",
+      "lgb_score": 89.79,
+      "raw_score": 0.11
     },
     {
       "rank": 4,
-      "ts_code": "600509.SH",
-      "stock_code": "600509",
-      "stock_name": "天富能源",
-      "lgb_score": 89.13,
-      "raw_score": 0.13
+      "ts_code": "688316.SH",
+      "stock_code": "688316",
+      "stock_name": "青云科技-U",
+      "lgb_score": 88.86,
+      "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "920123.BJ",
-      "stock_code": "920123.BJ",
-      "stock_name": "",
-      "lgb_score": 86.62,
-      "raw_score": 0.12
+      "ts_code": "600509.SH",
+      "stock_code": "600509",
+      "stock_name": "天富能源",
+      "lgb_score": 88.53,
+      "raw_score": 0.11
     }
   ]
 }

@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
       "lgb_score": 100.0,
       "raw_score": 0.14
     },
     {
       "rank": 2,
-      "ts_code": "688108.SH",
-      "stock_code": "688108",
-      "stock_name": "赛诺医疗",
-      "lgb_score": 90.61,
-      "raw_score": 0.11
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 97.08,
+      "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "301633.SZ",
-      "stock_code": "301633",
-      "stock_name": "港迪技术",
-      "lgb_score": 88.19,
-      "raw_score": 0.11
-    },
-    {
-      "rank": 4,
       "ts_code": "002029.SZ",
       "stock_code": "002029",
       "stock_name": "七 匹 狼",
-      "lgb_score": 88.17,
-      "raw_score": 0.11
+      "lgb_score": 95.63,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 4,
+      "ts_code": "603619.SH",
+      "stock_code": "603619",
+      "stock_name": "中曼石油",
+      "lgb_score": 94.3,
+      "raw_score": 0.12
     },
     {
       "rank": 5,
-      "ts_code": "000554.SZ",
-      "stock_code": "000554",
-      "stock_name": "泰山石油",
-      "lgb_score": 86.18,
-      "raw_score": 0.1
+      "ts_code": "002940.SZ.SZ",
+      "stock_code": "002940",
+      "stock_name": "昂利康",
+      "lgb_score": 93.26,
+      "raw_score": 0.12
     }
   ]
 }

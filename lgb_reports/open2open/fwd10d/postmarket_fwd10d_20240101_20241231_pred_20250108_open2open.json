@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300042.SZ",
-      "stock_code": "300042",
-      "stock_name": "朗科科技",
-      "lgb_score": 100.0,
-      "raw_score": 0.25
-    },
-    {
-      "rank": 2,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 84.84,
-      "raw_score": 0.19
-    },
-    {
-      "rank": 3,
-      "ts_code": "688320.SH",
-      "stock_code": "688320",
-      "stock_name": "禾川科技",
-      "lgb_score": 84.27,
-      "raw_score": 0.19
-    },
-    {
-      "rank": 4,
       "ts_code": "002009.SZ",
       "stock_code": "002009",
       "stock_name": "天奇股份",
-      "lgb_score": 81.12,
+      "lgb_score": 100.0,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 2,
+      "ts_code": "300042.SZ",
+      "stock_code": "300042",
+      "stock_name": "朗科科技",
+      "lgb_score": 98.97,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 3,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 95.16,
+      "raw_score": 0.2
+    },
+    {
+      "rank": 4,
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 88.27,
       "raw_score": 0.18
     },
     {
       "rank": 5,
-      "ts_code": "300691.SZ",
-      "stock_code": "300691",
-      "stock_name": "联合光电",
-      "lgb_score": 80.44,
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 85.61,
       "raw_score": 0.17
     }
   ]

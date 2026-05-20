@@ -11,39 +11,39 @@
       "stock_code": "002291",
       "stock_name": "遥望科技",
       "lgb_score": 100.0,
-      "raw_score": 0.34
+      "raw_score": 0.24
     },
     {
       "rank": 2,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 87.35,
-      "raw_score": 0.27
+      "ts_code": "301208.SZ",
+      "stock_code": "301208",
+      "stock_name": "中亦科技",
+      "lgb_score": 99.38,
+      "raw_score": 0.24
     },
     {
       "rank": 3,
-      "ts_code": "600802.SH",
-      "stock_code": "600802",
-      "stock_name": "福建水泥",
-      "lgb_score": 85.58,
-      "raw_score": 0.27
+      "ts_code": "002402.SZ",
+      "stock_code": "002402",
+      "stock_name": "和而泰",
+      "lgb_score": 93.66,
+      "raw_score": 0.22
     },
     {
       "rank": 4,
-      "ts_code": "688212.SH",
-      "stock_code": "688212",
-      "stock_name": "澳华内镜",
-      "lgb_score": 81.92,
-      "raw_score": 0.25
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 93.07,
+      "raw_score": 0.22
     },
     {
       "rank": 5,
-      "ts_code": "600704.SH",
-      "stock_code": "600704",
-      "stock_name": "物产中大",
-      "lgb_score": 80.4,
-      "raw_score": 0.24
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 92.19,
+      "raw_score": 0.21
     }
   ]
 }

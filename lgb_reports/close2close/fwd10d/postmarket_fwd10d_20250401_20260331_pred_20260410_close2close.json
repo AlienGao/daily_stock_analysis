@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "601869.SH",
-      "stock_code": "601869",
-      "stock_name": "长飞光纤",
-      "lgb_score": 100.0,
-      "raw_score": 0.14
-    },
-    {
-      "rank": 2,
       "ts_code": "688498.SH",
       "stock_code": "688498",
       "stock_name": "源杰科技",
-      "lgb_score": 97.81,
-      "raw_score": 0.13
+      "lgb_score": 100.0,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 2,
+      "ts_code": "002234.SZ",
+      "stock_code": "002234",
+      "stock_name": "民和股份",
+      "lgb_score": 90.95,
+      "raw_score": 0.19
     },
     {
       "rank": 3,
-      "ts_code": "688195.SH",
-      "stock_code": "688195",
-      "stock_name": "腾景科技",
-      "lgb_score": 95.23,
-      "raw_score": 0.12
+      "ts_code": "300757.SZ",
+      "stock_code": "300757",
+      "stock_name": "罗博特科",
+      "lgb_score": 85.51,
+      "raw_score": 0.17
     },
     {
       "rank": 4,
-      "ts_code": "603788.SH",
-      "stock_code": "603788",
-      "stock_name": "宁波高发",
-      "lgb_score": 92.59,
-      "raw_score": 0.12
+      "ts_code": "601138.SH",
+      "stock_code": "601138",
+      "stock_name": "工业富联",
+      "lgb_score": 81.06,
+      "raw_score": 0.15
     },
     {
       "rank": 5,
-      "ts_code": "603320.SH",
-      "stock_code": "603320",
-      "stock_name": "迪贝电气",
-      "lgb_score": 92.04,
-      "raw_score": 0.11
+      "ts_code": "301513.SZ",
+      "stock_code": "301513",
+      "stock_name": "尚水智能",
+      "lgb_score": 79.69,
+      "raw_score": 0.15
     }
   ]
 }

@@ -10,40 +10,40 @@
       "ts_code": "002255.SZ",
       "stock_code": "002255",
       "stock_name": "海陆重工",
-      "lgb_score": 91.77,
+      "lgb_score": 100.0,
       "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "002009.SZ",
-      "stock_code": "002009",
-      "stock_name": "天奇股份",
-      "lgb_score": 90.71,
-      "raw_score": 0.09
-    },
-    {
-      "rank": 3,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 90.66,
-      "raw_score": 0.09
-    },
-    {
-      "rank": 4,
-      "ts_code": "600151.SH",
-      "stock_code": "600151",
-      "stock_name": "航天机电",
-      "lgb_score": 89.29,
-      "raw_score": 0.09
-    },
-    {
-      "rank": 5,
       "ts_code": "002165.SZ",
       "stock_code": "002165",
       "stock_name": "红 宝 丽",
-      "lgb_score": 88.74,
+      "lgb_score": 94.98,
       "raw_score": 0.08
+    },
+    {
+      "rank": 3,
+      "ts_code": "002009.SZ",
+      "stock_code": "002009",
+      "stock_name": "天奇股份",
+      "lgb_score": 94.59,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 94.36,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "688316.SH",
+      "stock_code": "688316",
+      "stock_name": "青云科技-U",
+      "lgb_score": 92.32,
+      "raw_score": 0.07
     }
   ]
 }

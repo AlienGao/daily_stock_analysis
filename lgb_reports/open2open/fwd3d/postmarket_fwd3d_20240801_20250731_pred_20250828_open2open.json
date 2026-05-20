@@ -11,39 +11,39 @@
       "stock_code": "001296",
       "stock_name": "长江材料",
       "lgb_score": 100.0,
-      "raw_score": 0.11
+      "raw_score": 0.13
     },
     {
       "rank": 2,
       "ts_code": "300045.SZ",
       "stock_code": "300045",
       "stock_name": "华力创通",
-      "lgb_score": 97.62,
-      "raw_score": 0.1
+      "lgb_score": 99.65,
+      "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "300150.SZ",
-      "stock_code": "300150",
-      "stock_name": "世纪瑞尔",
-      "lgb_score": 96.43,
+      "ts_code": "603020.SH",
+      "stock_code": "603020",
+      "stock_name": "爱普股份",
+      "lgb_score": 91.74,
       "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "000063.SZ",
-      "stock_code": "000063",
-      "stock_name": "中兴通讯",
-      "lgb_score": 91.44,
-      "raw_score": 0.08
+      "ts_code": "600386.SH",
+      "stock_code": "600386",
+      "stock_name": "北巴传媒",
+      "lgb_score": 90.32,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "601678.SH",
-      "stock_code": "601678",
-      "stock_name": "滨化股份",
-      "lgb_score": 91.13,
-      "raw_score": 0.08
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 89.5,
+      "raw_score": 0.1
     }
   ]
 }

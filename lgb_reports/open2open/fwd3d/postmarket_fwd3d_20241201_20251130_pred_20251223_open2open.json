@@ -11,38 +11,38 @@
       "stock_code": "600076",
       "stock_name": "康欣新材",
       "lgb_score": 100.0,
-      "raw_score": 0.15
+      "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "600802.SH",
-      "stock_code": "600802",
-      "stock_name": "福建水泥",
-      "lgb_score": 78.58,
-      "raw_score": 0.1
+      "ts_code": "300179.SZ",
+      "stock_code": "300179",
+      "stock_name": "四方达",
+      "lgb_score": 81.64,
+      "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "301309.SZ",
-      "stock_code": "301309",
-      "stock_name": "万得凯",
-      "lgb_score": 75.82,
-      "raw_score": 0.09
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 77.51,
+      "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "000936.SZ",
-      "stock_code": "000936",
-      "stock_name": "华西股份",
-      "lgb_score": 74.9,
-      "raw_score": 0.09
+      "ts_code": "688458.SH",
+      "stock_code": "688458",
+      "stock_name": "美芯晟",
+      "lgb_score": 75.28,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "002438.SZ",
-      "stock_code": "002438",
-      "stock_name": "江苏神通",
-      "lgb_score": 74.29,
+      "ts_code": "301590.SZ",
+      "stock_code": "301590",
+      "stock_name": "优优绿能",
+      "lgb_score": 73.97,
       "raw_score": 0.08
     }
   ]

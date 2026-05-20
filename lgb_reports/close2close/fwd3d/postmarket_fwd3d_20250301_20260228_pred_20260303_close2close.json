@@ -15,26 +15,26 @@
     },
     {
       "rank": 2,
-      "ts_code": "688458.SH",
-      "stock_code": "688458",
-      "stock_name": "美芯晟",
-      "lgb_score": 93.64,
-      "raw_score": 0.08
+      "ts_code": "002911.SZ",
+      "stock_code": "002911",
+      "stock_name": "佛燃能源",
+      "lgb_score": 88.72,
+      "raw_score": 0.07
     },
     {
       "rank": 3,
-      "ts_code": "603738.SH",
-      "stock_code": "603738",
-      "stock_name": "泰晶科技",
-      "lgb_score": 90.85,
+      "ts_code": "601975.SH",
+      "stock_code": "601975",
+      "stock_name": "招商南油",
+      "lgb_score": 84.76,
       "raw_score": 0.07
     },
     {
       "rank": 4,
-      "ts_code": "301302.SZ",
-      "stock_code": "301302",
-      "stock_name": "华如科技",
-      "lgb_score": 89.34,
+      "ts_code": "000001.SH.SZ",
+      "stock_code": "000001",
+      "stock_name": "平安银行",
+      "lgb_score": 83.67,
       "raw_score": 0.07
     },
     {
@@ -42,8 +42,8 @@
       "ts_code": "688016.SH",
       "stock_code": "688016",
       "stock_name": "心脉医疗",
-      "lgb_score": 82.54,
-      "raw_score": 0.06
+      "lgb_score": 83.12,
+      "raw_score": 0.07
     }
   ]
 }

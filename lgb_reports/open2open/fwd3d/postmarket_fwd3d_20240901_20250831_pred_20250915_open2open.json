@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002407.SZ",
-      "stock_code": "002407",
-      "stock_name": "多氟多",
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
       "lgb_score": 100.0,
       "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 98.62,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 3,
-      "ts_code": "600076.SH",
-      "stock_code": "600076",
-      "stock_name": "康欣新材",
-      "lgb_score": 98.6,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 4,
       "ts_code": "688381.SH",
       "stock_code": "688381",
       "stock_name": "帝奥微",
-      "lgb_score": 97.6,
+      "lgb_score": 96.59,
       "raw_score": 0.12
     },
     {
-      "rank": 5,
+      "rank": 3,
       "ts_code": "300885.SZ",
       "stock_code": "300885",
       "stock_name": "海昌新材",
-      "lgb_score": 94.13,
+      "lgb_score": 92.88,
       "raw_score": 0.11
+    },
+    {
+      "rank": 4,
+      "ts_code": "300975.SZ",
+      "stock_code": "300975",
+      "stock_name": "商络电子",
+      "lgb_score": 91.12,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "300328.SZ",
+      "stock_code": "300328",
+      "stock_name": "宜安科技",
+      "lgb_score": 90.33,
+      "raw_score": 0.1
     }
   ]
 }

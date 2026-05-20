@@ -7,9 +7,9 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301345.SZ",
-      "stock_code": "301345",
-      "stock_name": "涛涛车业",
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
       "lgb_score": 100.0,
       "raw_score": 0.21
     },
@@ -18,32 +18,32 @@
       "ts_code": "688195.SH",
       "stock_code": "688195",
       "stock_name": "腾景科技",
-      "lgb_score": 97.23,
-      "raw_score": 0.2
+      "lgb_score": 99.55,
+      "raw_score": 0.21
     },
     {
       "rank": 3,
-      "ts_code": "300757.SZ",
-      "stock_code": "300757",
-      "stock_name": "罗博特科",
-      "lgb_score": 95.91,
-      "raw_score": 0.19
+      "ts_code": "301345.SZ",
+      "stock_code": "301345",
+      "stock_name": "涛涛车业",
+      "lgb_score": 98.74,
+      "raw_score": 0.21
     },
     {
       "rank": 4,
-      "ts_code": "688498.SH",
-      "stock_code": "688498",
-      "stock_name": "源杰科技",
-      "lgb_score": 90.23,
-      "raw_score": 0.17
+      "ts_code": "688048.SH",
+      "stock_code": "688048",
+      "stock_name": "长光华芯",
+      "lgb_score": 90.82,
+      "raw_score": 0.18
     },
     {
       "rank": 5,
-      "ts_code": "688025.SH",
-      "stock_code": "688025",
-      "stock_name": "杰普特",
-      "lgb_score": 90.05,
-      "raw_score": 0.17
+      "ts_code": "300757.SZ",
+      "stock_code": "300757",
+      "stock_name": "罗博特科",
+      "lgb_score": 88.93,
+      "raw_score": 0.18
     }
   ]
 }

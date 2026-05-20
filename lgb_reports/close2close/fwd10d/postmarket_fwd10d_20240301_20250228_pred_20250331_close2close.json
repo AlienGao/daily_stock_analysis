@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
-      "lgb_score": 100.0,
-      "raw_score": 0.18
-    },
-    {
-      "rank": 2,
       "ts_code": "301137.SZ",
       "stock_code": "301137",
       "stock_name": "哈焊华通",
-      "lgb_score": 99.0,
-      "raw_score": 0.18
+      "lgb_score": 100.0,
+      "raw_score": 0.27
+    },
+    {
+      "rank": 2,
+      "ts_code": "301538.SZ",
+      "stock_code": "301538",
+      "stock_name": "骏鼎达",
+      "lgb_score": 89.86,
+      "raw_score": 0.23
     },
     {
       "rank": 3,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
-      "lgb_score": 98.2,
-      "raw_score": 0.18
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
+      "lgb_score": 88.31,
+      "raw_score": 0.22
     },
     {
       "rank": 4,
-      "ts_code": "300885.SZ",
-      "stock_code": "300885",
-      "stock_name": "海昌新材",
-      "lgb_score": 98.15,
-      "raw_score": 0.18
+      "ts_code": "001325.SZ",
+      "stock_code": "001325",
+      "stock_name": "元创股份",
+      "lgb_score": 86.86,
+      "raw_score": 0.21
     },
     {
       "rank": 5,
-      "ts_code": "300378.SZ",
-      "stock_code": "300378",
-      "stock_name": "鼎捷数智",
-      "lgb_score": 96.84,
-      "raw_score": 0.17
+      "ts_code": "301696.SZ",
+      "stock_code": "301696",
+      "stock_name": "三瑞智能",
+      "lgb_score": 86.86,
+      "raw_score": 0.21
     }
   ]
 }

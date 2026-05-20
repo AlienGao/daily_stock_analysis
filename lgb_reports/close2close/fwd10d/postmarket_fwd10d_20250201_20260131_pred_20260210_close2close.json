@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "601678.SH",
-      "stock_code": "601678",
-      "stock_name": "滨化股份",
-      "lgb_score": 100.0,
-      "raw_score": 0.23
-    },
-    {
-      "rank": 2,
-      "ts_code": "002311.SZ",
-      "stock_code": "002311",
-      "stock_name": "海大集团",
-      "lgb_score": 93.34,
-      "raw_score": 0.2
-    },
-    {
-      "rank": 3,
       "ts_code": "688256.SH",
       "stock_code": "688256",
       "stock_name": "寒武纪",
-      "lgb_score": 85.72,
-      "raw_score": 0.18
+      "lgb_score": 100.0,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 2,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 96.71,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 3,
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 93.49,
+      "raw_score": 0.23
     },
     {
       "rank": 4,
-      "ts_code": "002458.SZ",
-      "stock_code": "002458",
-      "stock_name": "益生股份",
-      "lgb_score": 81.89,
-      "raw_score": 0.16
-    },
-    {
-      "rank": 5,
       "ts_code": "300179.SZ",
       "stock_code": "300179",
       "stock_name": "四方达",
-      "lgb_score": 81.79,
-      "raw_score": 0.16
+      "lgb_score": 93.35,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 5,
+      "ts_code": "601678.SH",
+      "stock_code": "601678",
+      "stock_name": "滨化股份",
+      "lgb_score": 91.83,
+      "raw_score": 0.22
     }
   ]
 }

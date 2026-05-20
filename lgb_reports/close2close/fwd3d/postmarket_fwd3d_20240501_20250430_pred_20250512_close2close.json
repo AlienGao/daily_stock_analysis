@@ -11,39 +11,39 @@
       "stock_code": "600110",
       "stock_name": "诺德股份",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.11
     },
     {
       "rank": 2,
-      "ts_code": "300263.SZ",
-      "stock_code": "300263",
-      "stock_name": "隆华科技",
-      "lgb_score": 92.64,
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 99.37,
       "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "301117.SZ",
-      "stock_code": "301117",
-      "stock_name": "佳缘科技",
-      "lgb_score": 92.62,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 98.79,
       "raw_score": 0.11
     },
     {
       "rank": 4,
-      "ts_code": "002274.SZ",
-      "stock_code": "002274",
-      "stock_name": "华昌化工",
-      "lgb_score": 92.5,
-      "raw_score": 0.11
+      "ts_code": "301550.SZ",
+      "stock_code": "301550",
+      "stock_name": "斯菱智驱",
+      "lgb_score": 94.88,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
       "ts_code": "300975.SZ",
       "stock_code": "300975",
       "stock_name": "商络电子",
-      "lgb_score": 90.0,
-      "raw_score": 0.1
+      "lgb_score": 91.24,
+      "raw_score": 0.09
     }
   ]
 }

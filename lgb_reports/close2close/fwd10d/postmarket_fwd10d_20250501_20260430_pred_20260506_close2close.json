@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "603344.SH",
-      "stock_code": "603344",
-      "stock_name": "星德胜",
-      "lgb_score": 100.0,
-      "raw_score": 0.2
-    },
-    {
-      "rank": 2,
-      "ts_code": "301232.SZ",
-      "stock_code": "301232",
-      "stock_name": "飞沃科技",
-      "lgb_score": 99.97,
-      "raw_score": 0.2
-    },
-    {
-      "rank": 3,
       "ts_code": "300179.SZ",
       "stock_code": "300179",
       "stock_name": "四方达",
-      "lgb_score": 99.82,
+      "lgb_score": 100.0,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 2,
+      "ts_code": "002374.SZ",
+      "stock_code": "002374",
+      "stock_name": "中锐股份",
+      "lgb_score": 94.95,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 3,
+      "ts_code": "000968.SZ",
+      "stock_code": "000968",
+      "stock_name": "蓝焰控股",
+      "lgb_score": 89.94,
       "raw_score": 0.2
     },
     {
       "rank": 4,
-      "ts_code": "300083.SZ",
-      "stock_code": "300083",
-      "stock_name": "创世纪",
-      "lgb_score": 98.76,
-      "raw_score": 0.19
+      "ts_code": "301118.SZ",
+      "stock_code": "301118",
+      "stock_name": "恒光股份",
+      "lgb_score": 87.8,
+      "raw_score": 0.2
     },
     {
       "rank": 5,
-      "ts_code": "688693.SH",
-      "stock_code": "688693",
-      "stock_name": "锴威特",
-      "lgb_score": 96.08,
-      "raw_score": 0.18
+      "ts_code": "688202.SH",
+      "stock_code": "688202",
+      "stock_name": "美迪西",
+      "lgb_score": 86.17,
+      "raw_score": 0.19
     }
   ]
 }

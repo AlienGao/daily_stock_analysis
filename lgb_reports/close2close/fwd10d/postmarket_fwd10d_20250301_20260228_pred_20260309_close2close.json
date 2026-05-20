@@ -11,39 +11,39 @@
       "stock_code": "002234",
       "stock_name": "民和股份",
       "lgb_score": 100.0,
-      "raw_score": 0.23
+      "raw_score": 0.33
     },
     {
       "rank": 2,
       "ts_code": "002580.SZ",
       "stock_code": "002580",
       "stock_name": "圣阳股份",
-      "lgb_score": 94.48,
-      "raw_score": 0.21
+      "lgb_score": 83.39,
+      "raw_score": 0.26
     },
     {
       "rank": 3,
       "ts_code": "600449.SH",
       "stock_code": "600449",
       "stock_name": "宁夏建材",
-      "lgb_score": 92.38,
-      "raw_score": 0.2
+      "lgb_score": 81.22,
+      "raw_score": 0.25
     },
     {
       "rank": 4,
-      "ts_code": "601678.SH",
-      "stock_code": "601678",
-      "stock_name": "滨化股份",
-      "lgb_score": 90.19,
-      "raw_score": 0.19
+      "ts_code": "688458.SH",
+      "stock_code": "688458",
+      "stock_name": "美芯晟",
+      "lgb_score": 81.07,
+      "raw_score": 0.25
     },
     {
       "rank": 5,
-      "ts_code": "603121.SH",
-      "stock_code": "603121",
-      "stock_name": "华培动力",
-      "lgb_score": 89.41,
-      "raw_score": 0.18
+      "ts_code": "300612.SZ",
+      "stock_code": "300612",
+      "stock_name": "宣亚国际",
+      "lgb_score": 80.76,
+      "raw_score": 0.25
     }
   ]
 }

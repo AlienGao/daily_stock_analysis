@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688627.SH",
-      "stock_code": "688627",
-      "stock_name": "精智达",
-      "lgb_score": 100.0,
-      "raw_score": 0.1
-    },
-    {
-      "rank": 2,
       "ts_code": "002219.SZ",
       "stock_code": "002219",
       "stock_name": "新里程",
-      "lgb_score": 83.31,
-      "raw_score": 0.06
+      "lgb_score": 100.0,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 2,
+      "ts_code": "688627.SH",
+      "stock_code": "688627",
+      "stock_name": "精智达",
+      "lgb_score": 93.3,
+      "raw_score": 0.07
     },
     {
       "rank": 3,
-      "ts_code": "688401.SH",
-      "stock_code": "688401",
-      "stock_name": "路维光电",
-      "lgb_score": 81.29,
-      "raw_score": 0.06
+      "ts_code": "603516.SH",
+      "stock_code": "603516",
+      "stock_name": "淳中科技",
+      "lgb_score": 92.93,
+      "raw_score": 0.07
     },
     {
       "rank": 4,
-      "ts_code": "688320.SH",
-      "stock_code": "688320",
-      "stock_name": "禾川科技",
-      "lgb_score": 79.81,
+      "ts_code": "688347.SH",
+      "stock_code": "688347",
+      "stock_name": "华虹公司",
+      "lgb_score": 90.06,
       "raw_score": 0.06
     },
     {
       "rank": 5,
-      "ts_code": "601500.SH",
-      "stock_code": "601500",
-      "stock_name": "通用股份",
-      "lgb_score": 79.69,
+      "ts_code": "688320.SH",
+      "stock_code": "688320",
+      "stock_name": "禾川科技",
+      "lgb_score": 88.37,
       "raw_score": 0.06
     }
   ]

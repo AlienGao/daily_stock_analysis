@@ -11,39 +11,39 @@
       "stock_code": "300885",
       "stock_name": "海昌新材",
       "lgb_score": 100.0,
-      "raw_score": 0.16
+      "raw_score": 0.18
     },
     {
       "rank": 2,
-      "ts_code": "300263.SZ",
-      "stock_code": "300263",
-      "stock_name": "隆华科技",
-      "lgb_score": 91.86,
-      "raw_score": 0.13
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 89.23,
+      "raw_score": 0.14
     },
     {
       "rank": 3,
-      "ts_code": "301633.SZ",
-      "stock_code": "301633",
-      "stock_name": "港迪技术",
-      "lgb_score": 88.3,
-      "raw_score": 0.12
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 88.08,
+      "raw_score": 0.14
     },
     {
       "rank": 4,
-      "ts_code": "000063.SZ",
-      "stock_code": "000063",
-      "stock_name": "中兴通讯",
-      "lgb_score": 87.79,
-      "raw_score": 0.12
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 87.32,
+      "raw_score": 0.14
     },
     {
       "rank": 5,
-      "ts_code": "603915.SH",
-      "stock_code": "603915",
-      "stock_name": "国茂股份",
-      "lgb_score": 87.26,
-      "raw_score": 0.12
+      "ts_code": "600151.SH",
+      "stock_code": "600151",
+      "stock_name": "航天机电",
+      "lgb_score": 86.79,
+      "raw_score": 0.14
     }
   ]
 }

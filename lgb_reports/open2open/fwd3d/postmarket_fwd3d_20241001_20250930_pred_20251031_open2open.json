@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002108.SZ",
-      "stock_code": "002108",
-      "stock_name": "沧州明珠",
-      "lgb_score": 100.0,
-      "raw_score": 0.08
-    },
-    {
-      "rank": 2,
-      "ts_code": "300857.SZ",
-      "stock_code": "300857",
-      "stock_name": "协创数据",
-      "lgb_score": 96.87,
-      "raw_score": 0.08
-    },
-    {
-      "rank": 3,
       "ts_code": "688012.SH",
       "stock_code": "688012",
       "stock_name": "中微公司",
-      "lgb_score": 95.32,
-      "raw_score": 0.08
+      "lgb_score": 100.0,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 2,
+      "ts_code": "002108.SZ",
+      "stock_code": "002108",
+      "stock_name": "沧州明珠",
+      "lgb_score": 97.46,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 3,
+      "ts_code": "002611.SZ",
+      "stock_code": "002611",
+      "stock_name": "东方精工",
+      "lgb_score": 91.42,
+      "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "600064.SH",
-      "stock_code": "600064",
-      "stock_name": "南京高科",
-      "lgb_score": 94.25,
-      "raw_score": 0.07
+      "ts_code": "300857.SZ",
+      "stock_code": "300857",
+      "stock_name": "协创数据",
+      "lgb_score": 90.2,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "600666.SH",
-      "stock_code": "600666",
-      "stock_name": "奥瑞德",
-      "lgb_score": 93.83,
-      "raw_score": 0.07
+      "ts_code": "001301.SZ",
+      "stock_code": "001301",
+      "stock_name": "尚太科技",
+      "lgb_score": 88.74,
+      "raw_score": 0.08
     }
   ]
 }

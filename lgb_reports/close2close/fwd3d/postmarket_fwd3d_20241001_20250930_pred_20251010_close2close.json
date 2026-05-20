@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "601992.SH",
-      "stock_code": "601992",
-      "stock_name": "金隅集团",
-      "lgb_score": 100.0,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 2,
       "ts_code": "600545.SH",
       "stock_code": "600545",
       "stock_name": "卓郎智能",
-      "lgb_score": 99.98,
-      "raw_score": 0.13
+      "lgb_score": 100.0,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 2,
+      "ts_code": "601992.SH",
+      "stock_code": "601992",
+      "stock_name": "金隅集团",
+      "lgb_score": 93.83,
+      "raw_score": 0.12
     },
     {
       "rank": 3,
       "ts_code": "600382.SH",
       "stock_code": "600382",
       "stock_name": "广东明珠",
-      "lgb_score": 98.93,
+      "lgb_score": 92.16,
       "raw_score": 0.12
     },
     {
       "rank": 4,
-      "ts_code": "600322.SH",
-      "stock_code": "600322",
-      "stock_name": "津投城开",
-      "lgb_score": 98.52,
-      "raw_score": 0.12
+      "ts_code": "601279.SH",
+      "stock_code": "601279",
+      "stock_name": "英利汽车",
+      "lgb_score": 89.97,
+      "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "002084.SZ",
-      "stock_code": "002084",
-      "stock_name": "海鸥住工",
-      "lgb_score": 93.52,
+      "ts_code": "601011.SH",
+      "stock_code": "601011",
+      "stock_name": "宝泰隆",
+      "lgb_score": 88.48,
       "raw_score": 0.11
     }
   ]

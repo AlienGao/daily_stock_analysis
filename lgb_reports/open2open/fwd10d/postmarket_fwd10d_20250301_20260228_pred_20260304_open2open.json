@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688031.SH",
-      "stock_code": "688031",
-      "stock_name": "星环科技-U",
+      "ts_code": "688228.SH",
+      "stock_code": "688228",
+      "stock_name": "开普云",
       "lgb_score": 100.0,
-      "raw_score": 0.19
+      "raw_score": 0.23
     },
     {
       "rank": 2,
-      "ts_code": "688256.SH",
-      "stock_code": "688256",
-      "stock_name": "寒武纪",
-      "lgb_score": 99.89,
-      "raw_score": 0.19
+      "ts_code": "688025.SH",
+      "stock_code": "688025",
+      "stock_name": "杰普特",
+      "lgb_score": 81.68,
+      "raw_score": 0.17
     },
     {
       "rank": 3,
-      "ts_code": "601678.SH",
-      "stock_code": "601678",
-      "stock_name": "滨化股份",
-      "lgb_score": 86.97,
-      "raw_score": 0.14
+      "ts_code": "688129.SH",
+      "stock_code": "688129",
+      "stock_name": "东来技术",
+      "lgb_score": 80.97,
+      "raw_score": 0.16
     },
     {
       "rank": 4,
-      "ts_code": "600704.SH",
-      "stock_code": "600704",
-      "stock_name": "物产中大",
-      "lgb_score": 85.78,
-      "raw_score": 0.14
+      "ts_code": "688256.SH",
+      "stock_code": "688256",
+      "stock_name": "寒武纪",
+      "lgb_score": 80.23,
+      "raw_score": 0.16
     },
     {
       "rank": 5,
-      "ts_code": "603368.SH",
-      "stock_code": "603368",
-      "stock_name": "柳药集团",
-      "lgb_score": 84.75,
-      "raw_score": 0.14
+      "ts_code": "600704.SH",
+      "stock_code": "600704",
+      "stock_name": "物产中大",
+      "lgb_score": 79.93,
+      "raw_score": 0.16
     }
   ]
 }

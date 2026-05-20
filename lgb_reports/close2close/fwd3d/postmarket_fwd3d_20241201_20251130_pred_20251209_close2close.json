@@ -11,39 +11,39 @@
       "stock_code": "002445",
       "stock_name": "中南文化",
       "lgb_score": 100.0,
-      "raw_score": 0.11
+      "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "002029.SZ",
-      "stock_code": "002029",
-      "stock_name": "七 匹 狼",
-      "lgb_score": 95.57,
+      "ts_code": "601828.SH",
+      "stock_code": "601828",
+      "stock_name": "美凯龙",
+      "lgb_score": 96.6,
       "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "601828.SH",
-      "stock_code": "601828",
-      "stock_name": "美凯龙",
-      "lgb_score": 94.06,
-      "raw_score": 0.1
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 86.44,
+      "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "600222.SH",
-      "stock_code": "600222",
-      "stock_name": "太龙药业",
-      "lgb_score": 84.49,
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 84.0,
       "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "001360.SZ",
-      "stock_code": "001360",
-      "stock_name": "南矿集团",
-      "lgb_score": 83.1,
-      "raw_score": 0.08
+      "ts_code": "301222.SZ",
+      "stock_code": "301222",
+      "stock_name": "浙江恒威",
+      "lgb_score": 77.38,
+      "raw_score": 0.07
     }
   ]
 }

@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300263.SZ",
-      "stock_code": "300263",
-      "stock_name": "隆华科技",
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
       "lgb_score": 100.0,
-      "raw_score": 0.14
+      "raw_score": 0.17
     },
     {
       "rank": 2,
       "ts_code": "002617.SZ",
       "stock_code": "002617",
       "stock_name": "露笑科技",
-      "lgb_score": 93.14,
-      "raw_score": 0.12
+      "lgb_score": 96.13,
+      "raw_score": 0.16
     },
     {
       "rank": 3,
-      "ts_code": "002165.SZ",
-      "stock_code": "002165",
-      "stock_name": "红 宝 丽",
-      "lgb_score": 89.81,
-      "raw_score": 0.11
+      "ts_code": "300883.SZ",
+      "stock_code": "300883",
+      "stock_name": "龙利得",
+      "lgb_score": 95.66,
+      "raw_score": 0.16
     },
     {
       "rank": 4,
-      "ts_code": "000601.SZ",
-      "stock_code": "000601",
-      "stock_name": "韶能股份",
-      "lgb_score": 89.77,
-      "raw_score": 0.11
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 92.33,
+      "raw_score": 0.15
     },
     {
       "rank": 5,
-      "ts_code": "002590.SZ",
-      "stock_code": "002590",
-      "stock_name": "万安科技",
-      "lgb_score": 88.54,
-      "raw_score": 0.11
+      "ts_code": "603619.SH",
+      "stock_code": "603619",
+      "stock_name": "中曼石油",
+      "lgb_score": 91.04,
+      "raw_score": 0.14
     }
   ]
 }

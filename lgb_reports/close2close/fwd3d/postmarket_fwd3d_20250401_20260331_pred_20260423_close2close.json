@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000900.SZ",
-      "stock_code": "000900",
-      "stock_name": "现代投资",
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
       "lgb_score": 100.0,
-      "raw_score": 0.07
+      "raw_score": 0.09
     },
     {
       "rank": 2,
       "ts_code": "688016.SH",
       "stock_code": "688016",
       "stock_name": "心脉医疗",
-      "lgb_score": 98.29,
-      "raw_score": 0.07
+      "lgb_score": 95.01,
+      "raw_score": 0.08
     },
     {
       "rank": 3,
-      "ts_code": "000601.SZ",
-      "stock_code": "000601",
-      "stock_name": "韶能股份",
-      "lgb_score": 95.33,
-      "raw_score": 0.06
+      "ts_code": "301513.SZ",
+      "stock_code": "301513",
+      "stock_name": "尚水智能",
+      "lgb_score": 91.03,
+      "raw_score": 0.07
     },
     {
       "rank": 4,
-      "ts_code": "920375.BJ",
-      "stock_code": "920375.BJ",
-      "stock_name": "",
-      "lgb_score": 91.64,
-      "raw_score": 0.06
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 88.52,
+      "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "603310.SH",
-      "stock_code": "603310",
-      "stock_name": "巍华新材",
-      "lgb_score": 89.97,
+      "ts_code": "000900.SZ",
+      "stock_code": "000900",
+      "stock_name": "现代投资",
+      "lgb_score": 86.07,
       "raw_score": 0.06
     }
   ]

@@ -11,39 +11,39 @@
       "stock_code": "688048",
       "stock_name": "长光华芯",
       "lgb_score": 100.0,
-      "raw_score": 0.25
+      "raw_score": 0.26
     },
     {
       "rank": 2,
       "ts_code": "301345.SZ",
       "stock_code": "301345",
       "stock_name": "涛涛车业",
-      "lgb_score": 81.5,
-      "raw_score": 0.17
+      "lgb_score": 82.59,
+      "raw_score": 0.2
     },
     {
       "rank": 3,
       "ts_code": "688498.SH",
       "stock_code": "688498",
       "stock_name": "源杰科技",
-      "lgb_score": 74.72,
-      "raw_score": 0.14
+      "lgb_score": 82.54,
+      "raw_score": 0.2
     },
     {
       "rank": 4,
-      "ts_code": "002371.SZ",
-      "stock_code": "002371",
-      "stock_name": "北方华创",
-      "lgb_score": 74.38,
-      "raw_score": 0.14
+      "ts_code": "301629.SZ",
+      "stock_code": "301629",
+      "stock_name": "矽电股份",
+      "lgb_score": 73.91,
+      "raw_score": 0.17
     },
     {
       "rank": 5,
-      "ts_code": "688455.SH",
-      "stock_code": "688455",
-      "stock_name": "科捷智能",
-      "lgb_score": 72.82,
-      "raw_score": 0.14
+      "ts_code": "301599.SZ",
+      "stock_code": "301599",
+      "stock_name": "理奇智能",
+      "lgb_score": 71.71,
+      "raw_score": 0.16
     }
   ]
 }

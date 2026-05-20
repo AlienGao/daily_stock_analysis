@@ -15,35 +15,35 @@
     },
     {
       "rank": 2,
-      "ts_code": "601678.SH",
-      "stock_code": "601678",
-      "stock_name": "滨化股份",
-      "lgb_score": 94.15,
-      "raw_score": 0.21
+      "ts_code": "002234.SZ",
+      "stock_code": "002234",
+      "stock_name": "民和股份",
+      "lgb_score": 98.27,
+      "raw_score": 0.22
     },
     {
       "rank": 3,
-      "ts_code": "000601.SZ",
-      "stock_code": "000601",
-      "stock_name": "韶能股份",
-      "lgb_score": 89.46,
-      "raw_score": 0.19
+      "ts_code": "300394.SZ.SZ",
+      "stock_code": "300394",
+      "stock_name": "天孚通信",
+      "lgb_score": 94.18,
+      "raw_score": 0.21
     },
     {
       "rank": 4,
-      "ts_code": "002407.SZ",
-      "stock_code": "002407",
-      "stock_name": "多氟多",
-      "lgb_score": 88.22,
-      "raw_score": 0.19
+      "ts_code": "688802.SH",
+      "stock_code": "688802",
+      "stock_name": "沐曦股份-U",
+      "lgb_score": 94.1,
+      "raw_score": 0.21
     },
     {
       "rank": 5,
-      "ts_code": "920100.BJ",
-      "stock_code": "920100.BJ",
+      "ts_code": "920179.BJ",
+      "stock_code": "920179.BJ",
       "stock_name": "",
-      "lgb_score": 87.94,
-      "raw_score": 0.19
+      "lgb_score": 92.27,
+      "raw_score": 0.2
     }
   ]
 }

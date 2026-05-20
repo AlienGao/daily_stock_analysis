@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
+      "ts_code": "000915.SZ",
+      "stock_code": "000915",
+      "stock_name": "华特达因",
       "lgb_score": 100.0,
-      "raw_score": 0.22
+      "raw_score": 0.26
     },
     {
       "rank": 2,
-      "ts_code": "002565.SZ",
-      "stock_code": "002565",
-      "stock_name": "顺灏股份",
-      "lgb_score": 94.72,
-      "raw_score": 0.19
+      "ts_code": "301633.SZ",
+      "stock_code": "301633",
+      "stock_name": "港迪技术",
+      "lgb_score": 97.16,
+      "raw_score": 0.25
     },
     {
       "rank": 3,
-      "ts_code": "603893.SH",
-      "stock_code": "603893",
-      "stock_name": "瑞芯微",
-      "lgb_score": 93.26,
-      "raw_score": 0.19
+      "ts_code": "300042.SZ",
+      "stock_code": "300042",
+      "stock_name": "朗科科技",
+      "lgb_score": 97.13,
+      "raw_score": 0.25
     },
     {
       "rank": 4,
       "ts_code": "300007.SZ",
       "stock_code": "300007",
       "stock_name": "汉威科技",
-      "lgb_score": 93.12,
-      "raw_score": 0.19
+      "lgb_score": 96.79,
+      "raw_score": 0.25
     },
     {
       "rank": 5,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
-      "lgb_score": 92.14,
-      "raw_score": 0.18
+      "ts_code": "920110.BJ",
+      "stock_code": "920110.BJ",
+      "stock_name": "",
+      "lgb_score": 93.02,
+      "raw_score": 0.23
     }
   ]
 }

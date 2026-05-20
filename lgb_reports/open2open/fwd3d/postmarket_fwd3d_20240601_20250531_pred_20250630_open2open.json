@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "601890.SH",
-      "stock_code": "601890",
-      "stock_name": "亚星锚链",
-      "lgb_score": 100.0,
-      "raw_score": 0.12
-    },
-    {
-      "rank": 2,
       "ts_code": "002226.SZ",
       "stock_code": "002226",
       "stock_name": "江南化工",
-      "lgb_score": 99.84,
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "601890.SH",
+      "stock_code": "601890",
+      "stock_name": "亚星锚链",
+      "lgb_score": 99.4,
       "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 96.56,
-      "raw_score": 0.11
+      "ts_code": "300650.SZ",
+      "stock_code": "300650",
+      "stock_name": "太龙股份",
+      "lgb_score": 89.27,
+      "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
-      "lgb_score": 92.11,
+      "ts_code": "600711.SH",
+      "stock_code": "600711",
+      "stock_name": "盛屯矿业",
+      "lgb_score": 89.09,
       "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "688135.SH",
-      "stock_code": "688135",
-      "stock_name": "利扬芯片",
-      "lgb_score": 90.81,
-      "raw_score": 0.09
+      "ts_code": "000738.SZ",
+      "stock_code": "000738",
+      "stock_name": "航发控制",
+      "lgb_score": 87.98,
+      "raw_score": 0.08
     }
   ]
 }

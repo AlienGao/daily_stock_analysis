@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002426.SZ",
-      "stock_code": "002426",
-      "stock_name": "胜利精密",
-      "lgb_score": 100.0,
-      "raw_score": 0.12
-    },
-    {
-      "rank": 2,
       "ts_code": "002108.SZ",
       "stock_code": "002108",
       "stock_name": "沧州明珠",
-      "lgb_score": 99.49,
+      "lgb_score": 100.0,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 2,
+      "ts_code": "002682.SZ",
+      "stock_code": "002682",
+      "stock_name": "龙洲股份",
+      "lgb_score": 96.9,
       "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "002682.SZ",
-      "stock_code": "002682",
-      "stock_name": "龙洲股份",
-      "lgb_score": 98.65,
-      "raw_score": 0.11
+      "ts_code": "002228.SZ",
+      "stock_code": "002228",
+      "stock_name": "合兴包装",
+      "lgb_score": 95.18,
+      "raw_score": 0.12
     },
     {
       "rank": 4,
       "ts_code": "000797.SZ",
       "stock_code": "000797",
       "stock_name": "中国武夷",
-      "lgb_score": 96.15,
+      "lgb_score": 91.29,
       "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "002578.SZ",
-      "stock_code": "002578",
-      "stock_name": "闽发铝业",
-      "lgb_score": 94.63,
-      "raw_score": 0.1
+      "ts_code": "600807.SH",
+      "stock_code": "600807",
+      "stock_name": "济高发展",
+      "lgb_score": 89.49,
+      "raw_score": 0.11
     }
   ]
 }

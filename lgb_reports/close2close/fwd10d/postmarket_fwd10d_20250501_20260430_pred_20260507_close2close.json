@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "603344.SH",
-      "stock_code": "603344",
-      "stock_name": "星德胜",
+      "ts_code": "002374.SZ",
+      "stock_code": "002374",
+      "stock_name": "中锐股份",
       "lgb_score": 100.0,
-      "raw_score": 0.2
+      "raw_score": 0.23
     },
     {
       "rank": 2,
-      "ts_code": "601678.SH",
-      "stock_code": "601678",
-      "stock_name": "滨化股份",
-      "lgb_score": 99.72,
-      "raw_score": 0.2
-    },
-    {
-      "rank": 3,
       "ts_code": "688323.SH",
       "stock_code": "688323",
       "stock_name": "瑞华泰",
-      "lgb_score": 96.55,
-      "raw_score": 0.19
+      "lgb_score": 99.15,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 3,
+      "ts_code": "002150.SZ",
+      "stock_code": "002150",
+      "stock_name": "正泰电源",
+      "lgb_score": 95.96,
+      "raw_score": 0.21
     },
     {
       "rank": 4,
-      "ts_code": "688693.SH",
-      "stock_code": "688693",
-      "stock_name": "锴威特",
-      "lgb_score": 95.24,
-      "raw_score": 0.19
+      "ts_code": "301118.SZ",
+      "stock_code": "301118",
+      "stock_name": "恒光股份",
+      "lgb_score": 94.73,
+      "raw_score": 0.21
     },
     {
       "rank": 5,
-      "ts_code": "600284.SH",
-      "stock_code": "600284",
-      "stock_name": "浦东建设",
-      "lgb_score": 93.29,
-      "raw_score": 0.18
+      "ts_code": "688367.SH",
+      "stock_code": "688367",
+      "stock_name": "工大高科",
+      "lgb_score": 92.32,
+      "raw_score": 0.2
     }
   ]
 }

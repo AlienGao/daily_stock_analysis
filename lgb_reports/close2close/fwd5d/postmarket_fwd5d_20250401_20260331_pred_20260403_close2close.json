@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688498.SH",
-      "stock_code": "688498",
-      "stock_name": "源杰科技",
+      "ts_code": "000657.SZ",
+      "stock_code": "000657",
+      "stock_name": "中钨高新",
       "lgb_score": 100.0,
-      "raw_score": 0.1
+      "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "300083.SZ",
-      "stock_code": "300083",
-      "stock_name": "创世纪",
-      "lgb_score": 97.17,
+      "ts_code": "605303.SH",
+      "stock_code": "605303",
+      "stock_name": "园林股份",
+      "lgb_score": 98.63,
       "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "300976.SZ",
-      "stock_code": "300976",
-      "stock_name": "达瑞电子",
-      "lgb_score": 96.4,
+      "ts_code": "002234.SZ",
+      "stock_code": "002234",
+      "stock_name": "民和股份",
+      "lgb_score": 97.03,
       "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "688813.SH",
-      "stock_code": "688813",
-      "stock_name": "泰金新能",
-      "lgb_score": 93.75,
-      "raw_score": 0.08
+      "ts_code": "603663.SH",
+      "stock_code": "603663",
+      "stock_name": "三祥新材",
+      "lgb_score": 96.16,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "605303.SH",
-      "stock_code": "605303",
-      "stock_name": "园林股份",
-      "lgb_score": 92.42,
-      "raw_score": 0.08
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 94.94,
+      "raw_score": 0.09
     }
   ]
 }

@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 100.0,
-      "raw_score": 0.16
-    },
-    {
-      "rank": 2,
       "ts_code": "301117.SZ",
       "stock_code": "301117",
       "stock_name": "佳缘科技",
-      "lgb_score": 97.47,
-      "raw_score": 0.15
+      "lgb_score": 100.0,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 2,
+      "ts_code": "688768.SH",
+      "stock_code": "688768",
+      "stock_name": "容知日新",
+      "lgb_score": 97.78,
+      "raw_score": 0.17
     },
     {
       "rank": 3,
-      "ts_code": "603018.SH",
-      "stock_code": "603018",
-      "stock_name": "华设集团",
-      "lgb_score": 95.6,
-      "raw_score": 0.15
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 96.51,
+      "raw_score": 0.17
     },
     {
       "rank": 4,
       "ts_code": "300263.SZ",
       "stock_code": "300263",
       "stock_name": "隆华科技",
-      "lgb_score": 94.88,
-      "raw_score": 0.14
+      "lgb_score": 94.5,
+      "raw_score": 0.16
     },
     {
       "rank": 5,
       "ts_code": "000533.SZ",
       "stock_code": "000533",
       "stock_name": "顺钠股份",
-      "lgb_score": 94.21,
-      "raw_score": 0.14
+      "lgb_score": 92.16,
+      "raw_score": 0.16
     }
   ]
 }

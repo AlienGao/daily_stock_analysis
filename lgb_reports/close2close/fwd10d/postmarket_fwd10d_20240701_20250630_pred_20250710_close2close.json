@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688181.SH",
-      "stock_code": "688181",
-      "stock_name": "八亿时空",
-      "lgb_score": 100.0,
-      "raw_score": 0.23
-    },
-    {
-      "rank": 2,
-      "ts_code": "300885.SZ",
-      "stock_code": "300885",
-      "stock_name": "海昌新材",
-      "lgb_score": 94.54,
-      "raw_score": 0.21
-    },
-    {
-      "rank": 3,
-      "ts_code": "002112.SZ",
-      "stock_code": "002112",
-      "stock_name": "三变科技",
-      "lgb_score": 94.09,
-      "raw_score": 0.21
-    },
-    {
-      "rank": 4,
       "ts_code": "600802.SH",
       "stock_code": "600802",
       "stock_name": "福建水泥",
-      "lgb_score": 91.43,
-      "raw_score": 0.2
+      "lgb_score": 100.0,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 2,
+      "ts_code": "688181.SH",
+      "stock_code": "688181",
+      "stock_name": "八亿时空",
+      "lgb_score": 99.13,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 3,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 92.69,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 4,
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 88.73,
+      "raw_score": 0.21
     },
     {
       "rank": 5,
       "ts_code": "300017.SZ",
       "stock_code": "300017",
       "stock_name": "网宿科技",
-      "lgb_score": 87.71,
-      "raw_score": 0.18
+      "lgb_score": 88.72,
+      "raw_score": 0.21
     }
   ]
 }

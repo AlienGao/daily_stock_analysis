@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
+      "ts_code": "000159.SZ",
+      "stock_code": "000159",
+      "stock_name": "国际实业",
       "lgb_score": 100.0,
-      "raw_score": 0.12
+      "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "600076.SH",
-      "stock_code": "600076",
-      "stock_name": "康欣新材",
-      "lgb_score": 97.18,
-      "raw_score": 0.11
+      "ts_code": "002274.SZ",
+      "stock_code": "002274",
+      "stock_name": "华昌化工",
+      "lgb_score": 97.12,
+      "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "300263.SZ",
-      "stock_code": "300263",
-      "stock_name": "隆华科技",
-      "lgb_score": 96.64,
-      "raw_score": 0.11
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 96.08,
+      "raw_score": 0.12
     },
     {
       "rank": 4,
       "ts_code": "002445.SZ",
       "stock_code": "002445",
       "stock_name": "中南文化",
-      "lgb_score": 95.71,
-      "raw_score": 0.11
+      "lgb_score": 95.21,
+      "raw_score": 0.12
     },
     {
       "rank": 5,
-      "ts_code": "002274.SZ",
-      "stock_code": "002274",
-      "stock_name": "华昌化工",
-      "lgb_score": 95.39,
-      "raw_score": 0.11
+      "ts_code": "688135.SH",
+      "stock_code": "688135",
+      "stock_name": "利扬芯片",
+      "lgb_score": 94.84,
+      "raw_score": 0.12
     }
   ]
 }

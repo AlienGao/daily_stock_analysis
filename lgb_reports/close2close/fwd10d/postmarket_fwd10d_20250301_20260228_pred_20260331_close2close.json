@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301589.SZ",
-      "stock_code": "301589",
-      "stock_name": "诺瓦星云",
+      "ts_code": "688693.SH",
+      "stock_code": "688693",
+      "stock_name": "锴威特",
       "lgb_score": 100.0,
-      "raw_score": 0.21
+      "raw_score": 0.27
     },
     {
       "rank": 2,
-      "ts_code": "688256.SH",
-      "stock_code": "688256",
-      "stock_name": "寒武纪",
-      "lgb_score": 99.97,
-      "raw_score": 0.21
-    },
-    {
-      "rank": 3,
       "ts_code": "002234.SZ",
       "stock_code": "002234",
       "stock_name": "民和股份",
-      "lgb_score": 96.26,
-      "raw_score": 0.2
+      "lgb_score": 98.67,
+      "raw_score": 0.27
+    },
+    {
+      "rank": 3,
+      "ts_code": "688256.SH",
+      "stock_code": "688256",
+      "stock_name": "寒武纪",
+      "lgb_score": 95.61,
+      "raw_score": 0.26
     },
     {
       "rank": 4,
-      "ts_code": "603061.SH",
-      "stock_code": "603061",
-      "stock_name": "金海通",
-      "lgb_score": 95.25,
-      "raw_score": 0.2
+      "ts_code": "301292.SZ",
+      "stock_code": "301292",
+      "stock_name": "海科新源",
+      "lgb_score": 92.13,
+      "raw_score": 0.24
     },
     {
       "rank": 5,
       "ts_code": "301633.SZ",
       "stock_code": "301633",
       "stock_name": "港迪技术",
-      "lgb_score": 95.11,
-      "raw_score": 0.2
+      "lgb_score": 91.53,
+      "raw_score": 0.24
     }
   ]
 }

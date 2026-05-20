@@ -11,38 +11,38 @@
       "stock_code": "301117",
       "stock_name": "佳缘科技",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.15
     },
     {
       "rank": 2,
       "ts_code": "300519.SZ",
       "stock_code": "300519",
       "stock_name": "新光药业",
-      "lgb_score": 87.63,
+      "lgb_score": 80.07,
       "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "002651.SZ",
-      "stock_code": "002651",
-      "stock_name": "利君股份",
-      "lgb_score": 87.37,
-      "raw_score": 0.1
+      "ts_code": "300612.SZ",
+      "stock_code": "300612",
+      "stock_name": "宣亚国际",
+      "lgb_score": 75.66,
+      "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "002248.SZ",
-      "stock_code": "002248",
-      "stock_name": "华东数控",
-      "lgb_score": 87.14,
-      "raw_score": 0.1
+      "ts_code": "002651.SZ",
+      "stock_code": "002651",
+      "stock_name": "利君股份",
+      "lgb_score": 75.53,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "600192.SH",
-      "stock_code": "600192",
-      "stock_name": "长城电工",
-      "lgb_score": 83.74,
+      "ts_code": "002026.SZ",
+      "stock_code": "002026",
+      "stock_name": "山东威达",
+      "lgb_score": 75.47,
       "raw_score": 0.09
     }
   ]

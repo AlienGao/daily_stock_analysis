@@ -11,38 +11,38 @@
       "stock_code": "300017",
       "stock_name": "网宿科技",
       "lgb_score": 100.0,
-      "raw_score": 0.24
+      "raw_score": 0.29
     },
     {
       "rank": 2,
-      "ts_code": "000859.SZ",
-      "stock_code": "000859",
-      "stock_name": "国风新材",
-      "lgb_score": 95.07,
-      "raw_score": 0.21
-    },
-    {
-      "rank": 3,
-      "ts_code": "300166.SZ",
-      "stock_code": "300166",
-      "stock_name": "东方国信",
-      "lgb_score": 91.03,
-      "raw_score": 0.2
-    },
-    {
-      "rank": 4,
-      "ts_code": "920100.BJ",
-      "stock_code": "920100.BJ",
-      "stock_name": "",
-      "lgb_score": 90.64,
-      "raw_score": 0.2
-    },
-    {
-      "rank": 5,
       "ts_code": "600802.SH",
       "stock_code": "600802",
       "stock_name": "福建水泥",
-      "lgb_score": 90.49,
+      "lgb_score": 89.5,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 3,
+      "ts_code": "300042.SZ",
+      "stock_code": "300042",
+      "stock_name": "朗科科技",
+      "lgb_score": 87.54,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 4,
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 82.09,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 5,
+      "ts_code": "002234.SZ",
+      "stock_code": "002234",
+      "stock_name": "民和股份",
+      "lgb_score": 79.1,
       "raw_score": 0.2
     }
   ]

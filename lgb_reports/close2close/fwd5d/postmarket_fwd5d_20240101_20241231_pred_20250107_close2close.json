@@ -11,38 +11,38 @@
       "stock_code": "002165",
       "stock_name": "红 宝 丽",
       "lgb_score": 100.0,
-      "raw_score": 0.14
+      "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "300263.SZ",
-      "stock_code": "300263",
-      "stock_name": "隆华科技",
-      "lgb_score": 96.34,
+      "ts_code": "920493.BJ",
+      "stock_code": "920493.BJ",
+      "stock_name": "",
+      "lgb_score": 99.85,
       "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "300157.SZ",
-      "stock_code": "300157",
-      "stock_name": "新锦动力",
-      "lgb_score": 95.66,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 98.8,
       "raw_score": 0.12
     },
     {
       "rank": 4,
-      "ts_code": "000859.SZ",
-      "stock_code": "000859",
-      "stock_name": "国风新材",
-      "lgb_score": 88.22,
-      "raw_score": 0.11
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 96.12,
+      "raw_score": 0.12
     },
     {
       "rank": 5,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
-      "lgb_score": 88.01,
+      "ts_code": "300691.SZ",
+      "stock_code": "300691",
+      "stock_name": "联合光电",
+      "lgb_score": 95.18,
       "raw_score": 0.11
     }
   ]

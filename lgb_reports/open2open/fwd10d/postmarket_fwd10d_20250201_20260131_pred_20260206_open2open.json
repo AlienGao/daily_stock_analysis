@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "601678.SH",
-      "stock_code": "601678",
-      "stock_name": "滨化股份",
+      "ts_code": "002274.SZ",
+      "stock_code": "002274",
+      "stock_name": "华昌化工",
       "lgb_score": 100.0,
       "raw_score": 0.22
     },
     {
       "rank": 2,
-      "ts_code": "000554.SZ",
-      "stock_code": "000554",
-      "stock_name": "泰山石油",
-      "lgb_score": 98.88,
-      "raw_score": 0.22
+      "ts_code": "000151.SZ",
+      "stock_code": "000151",
+      "stock_name": "中成股份",
+      "lgb_score": 97.89,
+      "raw_score": 0.21
     },
     {
       "rank": 3,
-      "ts_code": "002407.SZ",
-      "stock_code": "002407",
-      "stock_name": "多氟多",
-      "lgb_score": 95.08,
-      "raw_score": 0.2
+      "ts_code": "002234.SZ",
+      "stock_code": "002234",
+      "stock_name": "民和股份",
+      "lgb_score": 97.67,
+      "raw_score": 0.21
     },
     {
       "rank": 4,
-      "ts_code": "301589.SZ",
-      "stock_code": "301589",
-      "stock_name": "诺瓦星云",
-      "lgb_score": 92.69,
-      "raw_score": 0.19
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
+      "lgb_score": 93.05,
+      "raw_score": 0.2
     },
     {
       "rank": 5,
-      "ts_code": "000589.SZ",
-      "stock_code": "000589",
-      "stock_name": "贵州轮胎",
-      "lgb_score": 91.52,
-      "raw_score": 0.19
+      "ts_code": "001220.SZ",
+      "stock_code": "001220",
+      "stock_name": "世盟股份",
+      "lgb_score": 92.66,
+      "raw_score": 0.2
     }
   ]
 }

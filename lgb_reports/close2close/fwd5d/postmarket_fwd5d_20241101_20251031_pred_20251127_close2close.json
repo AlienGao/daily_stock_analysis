@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
+      "ts_code": "301633.SZ",
+      "stock_code": "301633",
+      "stock_name": "港迪技术",
       "lgb_score": 100.0,
-      "raw_score": 0.16
+      "raw_score": 0.2
     },
     {
       "rank": 2,
       "ts_code": "301590.SZ",
       "stock_code": "301590",
       "stock_name": "优优绿能",
-      "lgb_score": 99.32,
-      "raw_score": 0.16
+      "lgb_score": 96.2,
+      "raw_score": 0.19
     },
     {
       "rank": 3,
-      "ts_code": "301633.SZ",
-      "stock_code": "301633",
-      "stock_name": "港迪技术",
-      "lgb_score": 98.48,
-      "raw_score": 0.16
+      "ts_code": "920580.BJ",
+      "stock_code": "920580.BJ",
+      "stock_name": "",
+      "lgb_score": 90.82,
+      "raw_score": 0.17
     },
     {
       "rank": 4,
-      "ts_code": "603960.SH",
-      "stock_code": "603960",
-      "stock_name": "克来机电",
-      "lgb_score": 98.11,
-      "raw_score": 0.16
+      "ts_code": "920491.BJ",
+      "stock_code": "920491.BJ",
+      "stock_name": "",
+      "lgb_score": 89.34,
+      "raw_score": 0.17
     },
     {
       "rank": 5,
-      "ts_code": "600076.SH",
-      "stock_code": "600076",
-      "stock_name": "康欣新材",
-      "lgb_score": 98.08,
-      "raw_score": 0.16
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 88.55,
+      "raw_score": 0.17
     }
   ]
 }

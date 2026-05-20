@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "601678.SH",
-      "stock_code": "601678",
-      "stock_name": "滨化股份",
+      "ts_code": "300757.SZ",
+      "stock_code": "300757",
+      "stock_name": "罗博特科",
       "lgb_score": 100.0,
       "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "002458.SZ",
-      "stock_code": "002458",
-      "stock_name": "益生股份",
-      "lgb_score": 99.79,
-      "raw_score": 0.09
+      "ts_code": "601678.SH",
+      "stock_code": "601678",
+      "stock_name": "滨化股份",
+      "lgb_score": 92.35,
+      "raw_score": 0.08
     },
     {
       "rank": 3,
-      "ts_code": "603248.SH",
-      "stock_code": "603248",
-      "stock_name": "锡华科技",
-      "lgb_score": 91.86,
+      "ts_code": "300751.SZ",
+      "stock_code": "300751",
+      "stock_name": "迈为股份",
+      "lgb_score": 90.11,
       "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 89.0,
+      "ts_code": "301629.SZ",
+      "stock_code": "301629",
+      "stock_name": "矽电股份",
+      "lgb_score": 88.02,
       "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "000629.SZ",
-      "stock_code": "000629",
-      "stock_name": "钒钛股份",
-      "lgb_score": 86.49,
+      "ts_code": "603887.SH",
+      "stock_code": "603887",
+      "stock_name": "城地香江",
+      "lgb_score": 87.55,
       "raw_score": 0.08
     }
   ]

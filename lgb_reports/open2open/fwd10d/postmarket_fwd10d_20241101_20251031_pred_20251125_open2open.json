@@ -15,35 +15,35 @@
     },
     {
       "rank": 2,
-      "ts_code": "300045.SZ",
-      "stock_code": "300045",
-      "stock_name": "华力创通",
-      "lgb_score": 90.95,
-      "raw_score": 0.32
+      "ts_code": "301590.SZ",
+      "stock_code": "301590",
+      "stock_name": "优优绿能",
+      "lgb_score": 96.47,
+      "raw_score": 0.36
     },
     {
       "rank": 3,
-      "ts_code": "300263.SZ",
-      "stock_code": "300263",
-      "stock_name": "隆华科技",
-      "lgb_score": 90.18,
-      "raw_score": 0.32
-    },
-    {
-      "rank": 4,
       "ts_code": "300612.SZ",
       "stock_code": "300612",
       "stock_name": "宣亚国际",
-      "lgb_score": 87.71,
-      "raw_score": 0.31
+      "lgb_score": 91.39,
+      "raw_score": 0.34
+    },
+    {
+      "rank": 4,
+      "ts_code": "002438.SZ",
+      "stock_code": "002438",
+      "stock_name": "江苏神通",
+      "lgb_score": 90.51,
+      "raw_score": 0.33
     },
     {
       "rank": 5,
-      "ts_code": "002274.SZ",
-      "stock_code": "002274",
-      "stock_name": "华昌化工",
-      "lgb_score": 85.82,
-      "raw_score": 0.29
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 90.28,
+      "raw_score": 0.33
     }
   ]
 }

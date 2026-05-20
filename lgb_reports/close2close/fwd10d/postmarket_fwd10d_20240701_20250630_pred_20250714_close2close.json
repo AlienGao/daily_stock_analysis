@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "603350.SH",
-      "stock_code": "603350",
-      "stock_name": "XD安乃达",
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
       "lgb_score": 100.0,
-      "raw_score": 0.25
+      "raw_score": 0.24
     },
     {
       "rank": 2,
-      "ts_code": "688181.SH",
-      "stock_code": "688181",
-      "stock_name": "八亿时空",
-      "lgb_score": 93.12,
-      "raw_score": 0.22
+      "ts_code": "603350.SH",
+      "stock_code": "603350",
+      "stock_name": "XD安乃达",
+      "lgb_score": 96.62,
+      "raw_score": 0.23
     },
     {
       "rank": 3,
-      "ts_code": "300885.SZ",
-      "stock_code": "300885",
-      "stock_name": "海昌新材",
-      "lgb_score": 90.57,
-      "raw_score": 0.21
+      "ts_code": "688181.SH",
+      "stock_code": "688181",
+      "stock_name": "八亿时空",
+      "lgb_score": 96.13,
+      "raw_score": 0.23
     },
     {
       "rank": 4,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 90.05,
-      "raw_score": 0.21
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 93.11,
+      "raw_score": 0.22
     },
     {
       "rank": 5,
       "ts_code": "002600.SZ",
       "stock_code": "002600",
       "stock_name": "领益智造",
-      "lgb_score": 87.91,
-      "raw_score": 0.2
+      "lgb_score": 92.55,
+      "raw_score": 0.22
     }
   ]
 }

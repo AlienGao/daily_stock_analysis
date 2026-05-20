@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300612.SZ",
-      "stock_code": "300612",
-      "stock_name": "宣亚国际",
-      "lgb_score": 100.0,
-      "raw_score": 0.36
-    },
-    {
-      "rank": 2,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 99.24,
-      "raw_score": 0.35
-    },
-    {
-      "rank": 3,
       "ts_code": "002438.SZ",
       "stock_code": "002438",
       "stock_name": "江苏神通",
-      "lgb_score": 97.97,
-      "raw_score": 0.35
+      "lgb_score": 100.0,
+      "raw_score": 0.34
     },
     {
-      "rank": 4,
+      "rank": 2,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 98.71,
+      "raw_score": 0.33
+    },
+    {
+      "rank": 3,
       "ts_code": "002234.SZ",
       "stock_code": "002234",
       "stock_name": "民和股份",
-      "lgb_score": 94.89,
+      "lgb_score": 97.52,
       "raw_score": 0.33
     },
     {
+      "rank": 4,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 94.76,
+      "raw_score": 0.32
+    },
+    {
       "rank": 5,
-      "ts_code": "000936.SZ",
-      "stock_code": "000936",
-      "stock_name": "华西股份",
-      "lgb_score": 94.8,
-      "raw_score": 0.33
+      "ts_code": "000915.SZ",
+      "stock_code": "000915",
+      "stock_name": "华特达因",
+      "lgb_score": 94.15,
+      "raw_score": 0.31
     }
   ]
 }

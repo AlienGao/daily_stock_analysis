@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 100.0,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 2,
-      "ts_code": "002590.SZ",
-      "stock_code": "002590",
-      "stock_name": "万安科技",
-      "lgb_score": 99.06,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 3,
-      "ts_code": "688702.SH",
-      "stock_code": "688702",
-      "stock_name": "盛科通信-U",
-      "lgb_score": 93.69,
-      "raw_score": 0.11
-    },
-    {
-      "rank": 4,
       "ts_code": "002617.SZ",
       "stock_code": "002617",
       "stock_name": "露笑科技",
-      "lgb_score": 93.6,
-      "raw_score": 0.11
+      "lgb_score": 100.0,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 2,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 98.49,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 3,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 97.99,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 4,
+      "ts_code": "002590.SZ",
+      "stock_code": "002590",
+      "stock_name": "万安科技",
+      "lgb_score": 95.21,
+      "raw_score": 0.16
     },
     {
       "rank": 5,
-      "ts_code": "002029.SZ",
-      "stock_code": "002029",
-      "stock_name": "七 匹 狼",
-      "lgb_score": 92.93,
-      "raw_score": 0.11
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 94.65,
+      "raw_score": 0.16
     }
   ]
 }

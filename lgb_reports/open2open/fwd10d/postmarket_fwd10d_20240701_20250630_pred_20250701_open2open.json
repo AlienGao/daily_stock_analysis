@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002009.SZ",
-      "stock_code": "002009",
-      "stock_name": "天奇股份",
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
       "lgb_score": 100.0,
       "raw_score": 0.27
     },
     {
       "rank": 2,
-      "ts_code": "300166.SZ",
-      "stock_code": "300166",
-      "stock_name": "东方国信",
-      "lgb_score": 90.48,
-      "raw_score": 0.23
-    },
-    {
-      "rank": 3,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 89.54,
-      "raw_score": 0.22
-    },
-    {
-      "rank": 4,
       "ts_code": "301117.SZ",
       "stock_code": "301117",
       "stock_name": "佳缘科技",
-      "lgb_score": 88.23,
-      "raw_score": 0.22
+      "lgb_score": 99.17,
+      "raw_score": 0.27
+    },
+    {
+      "rank": 3,
+      "ts_code": "300007.SZ",
+      "stock_code": "300007",
+      "stock_name": "汉威科技",
+      "lgb_score": 98.11,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 4,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 90.97,
+      "raw_score": 0.23
     },
     {
       "rank": 5,
-      "ts_code": "300750.SZ",
-      "stock_code": "300750",
-      "stock_name": "宁德时代",
-      "lgb_score": 86.36,
-      "raw_score": 0.21
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 88.61,
+      "raw_score": 0.22
     }
   ]
 }

@@ -15,35 +15,35 @@
     },
     {
       "rank": 2,
-      "ts_code": "000665.SZ",
-      "stock_code": "000665",
-      "stock_name": "湖北广电",
-      "lgb_score": 87.82,
-      "raw_score": 0.09
-    },
-    {
-      "rank": 3,
       "ts_code": "601958.SH",
       "stock_code": "601958",
       "stock_name": "金钼股份",
-      "lgb_score": 83.54,
-      "raw_score": 0.09
+      "lgb_score": 95.51,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "600114.SH",
+      "stock_code": "600114",
+      "stock_name": "东睦股份",
+      "lgb_score": 90.26,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "688071.SH",
-      "stock_code": "688071",
-      "stock_name": "华依科技",
-      "lgb_score": 82.53,
-      "raw_score": 0.08
+      "ts_code": "688691.SH",
+      "stock_code": "688691",
+      "stock_name": "灿芯股份",
+      "lgb_score": 89.11,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "300482.SZ",
-      "stock_code": "300482",
-      "stock_name": "万孚生物",
-      "lgb_score": 82.13,
-      "raw_score": 0.08
+      "ts_code": "002161.SZ",
+      "stock_code": "002161",
+      "stock_name": "远 望 谷",
+      "lgb_score": 88.46,
+      "raw_score": 0.1
     }
   ]
 }

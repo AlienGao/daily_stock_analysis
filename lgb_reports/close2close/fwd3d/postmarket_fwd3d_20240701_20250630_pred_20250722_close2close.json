@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600802.SH",
-      "stock_code": "600802",
-      "stock_name": "福建水泥",
+      "ts_code": "600820.SH",
+      "stock_code": "600820",
+      "stock_name": "隧道股份",
       "lgb_score": 100.0,
-      "raw_score": 0.1
+      "raw_score": 0.11
     },
     {
       "rank": 2,
-      "ts_code": "600408.SH",
-      "stock_code": "600408",
-      "stock_name": "安泰集团",
-      "lgb_score": 99.0,
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
+      "lgb_score": 94.31,
       "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "300885.SZ",
-      "stock_code": "300885",
-      "stock_name": "海昌新材",
-      "lgb_score": 96.35,
-      "raw_score": 0.09
+      "ts_code": "301633.SZ",
+      "stock_code": "301633",
+      "stock_name": "港迪技术",
+      "lgb_score": 92.58,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "002307.SZ",
-      "stock_code": "002307",
-      "stock_name": "北新路桥",
-      "lgb_score": 95.87,
-      "raw_score": 0.09
-    },
-    {
-      "rank": 5,
       "ts_code": "688212.SH",
       "stock_code": "688212",
       "stock_name": "澳华内镜",
-      "lgb_score": 94.54,
+      "lgb_score": 91.99,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "600853.SH",
+      "stock_code": "600853",
+      "stock_name": "龙建股份",
+      "lgb_score": 89.68,
       "raw_score": 0.09
     }
   ]

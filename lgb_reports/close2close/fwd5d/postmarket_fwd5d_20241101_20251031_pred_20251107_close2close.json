@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "603018.SH",
-      "stock_code": "603018",
-      "stock_name": "华设集团",
+      "ts_code": "603960.SH",
+      "stock_code": "603960",
+      "stock_name": "克来机电",
       "lgb_score": 100.0,
-      "raw_score": 0.15
+      "raw_score": 0.2
     },
     {
       "rank": 2,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 99.87,
-      "raw_score": 0.15
+      "ts_code": "301590.SZ",
+      "stock_code": "301590",
+      "stock_name": "优优绿能",
+      "lgb_score": 89.41,
+      "raw_score": 0.17
     },
     {
       "rank": 3,
-      "ts_code": "301117.SZ",
-      "stock_code": "301117",
-      "stock_name": "佳缘科技",
-      "lgb_score": 99.67,
-      "raw_score": 0.15
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 88.79,
+      "raw_score": 0.17
     },
     {
       "rank": 4,
-      "ts_code": "300681.SZ",
-      "stock_code": "300681",
-      "stock_name": "英搏尔",
-      "lgb_score": 99.64,
-      "raw_score": 0.15
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 87.39,
+      "raw_score": 0.17
     },
     {
       "rank": 5,
-      "ts_code": "000001.SH.SZ",
-      "stock_code": "000001",
-      "stock_name": "平安银行",
-      "lgb_score": 99.16,
-      "raw_score": 0.15
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 84.44,
+      "raw_score": 0.16
     }
   ]
 }

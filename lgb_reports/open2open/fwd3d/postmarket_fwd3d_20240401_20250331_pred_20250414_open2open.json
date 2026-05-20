@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300433.SZ",
-      "stock_code": "300433",
-      "stock_name": "蓝思科技",
+      "ts_code": "300612.SZ",
+      "stock_code": "300612",
+      "stock_name": "宣亚国际",
       "lgb_score": 100.0,
       "raw_score": 0.14
     },
     {
       "rank": 2,
-      "ts_code": "002048.SZ",
-      "stock_code": "002048",
-      "stock_name": "宁波华翔",
-      "lgb_score": 90.84,
-      "raw_score": 0.12
+      "ts_code": "300433.SZ",
+      "stock_code": "300433",
+      "stock_name": "蓝思科技",
+      "lgb_score": 95.58,
+      "raw_score": 0.13
     },
     {
       "rank": 3,
       "ts_code": "002241.SZ",
       "stock_code": "002241",
       "stock_name": "歌尔股份",
-      "lgb_score": 87.39,
-      "raw_score": 0.11
+      "lgb_score": 92.66,
+      "raw_score": 0.12
     },
     {
       "rank": 4,
-      "ts_code": "000601.SZ",
-      "stock_code": "000601",
-      "stock_name": "韶能股份",
-      "lgb_score": 86.96,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 89.85,
       "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "300612.SZ",
-      "stock_code": "300612",
-      "stock_name": "宣亚国际",
-      "lgb_score": 86.01,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 87.65,
       "raw_score": 0.1
     }
   ]

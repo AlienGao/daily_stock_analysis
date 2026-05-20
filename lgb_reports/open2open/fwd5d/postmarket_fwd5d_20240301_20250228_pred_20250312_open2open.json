@@ -11,39 +11,39 @@
       "stock_code": "600308",
       "stock_name": "华泰股份",
       "lgb_score": 100.0,
-      "raw_score": 0.15
+      "raw_score": 0.17
     },
     {
       "rank": 2,
-      "ts_code": "688316.SH",
-      "stock_code": "688316",
-      "stock_name": "青云科技-U",
-      "lgb_score": 97.36,
-      "raw_score": 0.14
+      "ts_code": "688108.SH",
+      "stock_code": "688108",
+      "stock_name": "赛诺医疗",
+      "lgb_score": 81.61,
+      "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "600802.SH",
-      "stock_code": "600802",
-      "stock_name": "福建水泥",
-      "lgb_score": 86.63,
-      "raw_score": 0.11
+      "ts_code": "003021.SZ",
+      "stock_code": "003021",
+      "stock_name": "兆威机电",
+      "lgb_score": 80.32,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "301021.SZ",
-      "stock_code": "301021",
-      "stock_name": "英诺激光",
-      "lgb_score": 86.6,
-      "raw_score": 0.11
+      "ts_code": "688787.SH",
+      "stock_code": "688787",
+      "stock_name": "海天瑞声",
+      "lgb_score": 78.4,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "688071.SH",
-      "stock_code": "688071",
-      "stock_name": "华依科技",
-      "lgb_score": 86.11,
-      "raw_score": 0.11
+      "ts_code": "301413.SZ",
+      "stock_code": "301413",
+      "stock_name": "安培龙",
+      "lgb_score": 77.98,
+      "raw_score": 0.1
     }
   ]
 }

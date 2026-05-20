@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
       "lgb_score": 100.0,
       "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "002165.SZ",
-      "stock_code": "002165",
-      "stock_name": "红 宝 丽",
-      "lgb_score": 98.54,
-      "raw_score": 0.09
-    },
-    {
-      "rank": 3,
       "ts_code": "002445.SZ",
       "stock_code": "002445",
       "stock_name": "中南文化",
-      "lgb_score": 98.48,
-      "raw_score": 0.09
+      "lgb_score": 97.95,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 3,
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 97.69,
+      "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "300157.SZ",
-      "stock_code": "300157",
-      "stock_name": "新锦动力",
-      "lgb_score": 97.2,
+      "ts_code": "301486.SZ",
+      "stock_code": "301486",
+      "stock_name": "致尚科技",
+      "lgb_score": 96.04,
       "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "000159.SZ",
-      "stock_code": "000159",
-      "stock_name": "国际实业",
-      "lgb_score": 96.52,
+      "ts_code": "300963.SZ",
+      "stock_code": "300963",
+      "stock_name": "中洲特材",
+      "lgb_score": 94.77,
       "raw_score": 0.08
     }
   ]

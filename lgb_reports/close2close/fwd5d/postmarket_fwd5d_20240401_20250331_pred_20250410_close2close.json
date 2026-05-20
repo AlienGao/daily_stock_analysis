@@ -11,38 +11,38 @@
       "stock_code": "600798",
       "stock_name": "宁波海运",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.16
     },
     {
       "rank": 2,
-      "ts_code": "002048.SZ",
-      "stock_code": "002048",
-      "stock_name": "宁波华翔",
-      "lgb_score": 99.69,
+      "ts_code": "300046.SZ",
+      "stock_code": "300046",
+      "stock_name": "台基股份",
+      "lgb_score": 90.38,
       "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "002029.SZ",
-      "stock_code": "002029",
-      "stock_name": "七 匹 狼",
-      "lgb_score": 99.59,
-      "raw_score": 0.13
+      "ts_code": "300612.SZ",
+      "stock_code": "300612",
+      "stock_name": "宣亚国际",
+      "lgb_score": 88.82,
+      "raw_score": 0.12
     },
     {
       "rank": 4,
       "ts_code": "301117.SZ",
       "stock_code": "301117",
       "stock_name": "佳缘科技",
-      "lgb_score": 99.19,
-      "raw_score": 0.13
+      "lgb_score": 87.15,
+      "raw_score": 0.12
     },
     {
       "rank": 5,
-      "ts_code": "920415.BJ",
-      "stock_code": "920415.BJ",
+      "ts_code": "920689.BJ",
+      "stock_code": "920689.BJ",
       "stock_name": "",
-      "lgb_score": 93.3,
+      "lgb_score": 83.91,
       "raw_score": 0.11
     }
   ]

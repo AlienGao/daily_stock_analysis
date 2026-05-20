@@ -7,18 +7,18 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002276.SZ",
-      "stock_code": "002276",
-      "stock_name": "万马股份",
-      "lgb_score": 100.0,
-      "raw_score": 0.1
-    },
-    {
-      "rank": 2,
       "ts_code": "600076.SH",
       "stock_code": "600076",
       "stock_name": "康欣新材",
-      "lgb_score": 94.0,
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "600761.SH",
+      "stock_code": "600761",
+      "stock_name": "安徽合力",
+      "lgb_score": 81.67,
       "raw_score": 0.09
     },
     {
@@ -26,23 +26,23 @@
       "ts_code": "688499.SH",
       "stock_code": "688499",
       "stock_name": "利元亨",
-      "lgb_score": 89.84,
+      "lgb_score": 80.87,
       "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "000981.SZ",
-      "stock_code": "000981",
-      "stock_name": "山子高科",
-      "lgb_score": 88.62,
+      "ts_code": "000761.SZ",
+      "stock_code": "000761",
+      "stock_name": "本钢板材",
+      "lgb_score": 78.96,
       "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "600192.SH",
-      "stock_code": "600192",
-      "stock_name": "长城电工",
-      "lgb_score": 87.51,
+      "ts_code": "600231.SH",
+      "stock_code": "600231",
+      "stock_name": "凌钢股份",
+      "lgb_score": 77.93,
       "raw_score": 0.08
     }
   ]

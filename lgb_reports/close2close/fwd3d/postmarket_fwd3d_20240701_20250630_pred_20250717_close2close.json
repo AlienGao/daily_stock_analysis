@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300878.SZ",
-      "stock_code": "300878",
-      "stock_name": "维康药业",
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
-      "lgb_score": 87.97,
+      "ts_code": "688500.SH",
+      "stock_code": "688500",
+      "stock_name": "慧辰股份",
+      "lgb_score": 97.9,
       "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "688500.SH",
-      "stock_code": "688500",
-      "stock_name": "慧辰股份",
-      "lgb_score": 86.88,
-      "raw_score": 0.1
+      "ts_code": "300878.SZ",
+      "stock_code": "300878",
+      "stock_name": "维康药业",
+      "lgb_score": 93.2,
+      "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 78.96,
-      "raw_score": 0.08
+      "ts_code": "603617.SH",
+      "stock_code": "603617",
+      "stock_name": "君禾股份",
+      "lgb_score": 92.19,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "301538.SZ",
-      "stock_code": "301538",
-      "stock_name": "骏鼎达",
-      "lgb_score": 78.62,
+      "ts_code": "600850.SH",
+      "stock_code": "600850",
+      "stock_name": "电科数字",
+      "lgb_score": 89.89,
       "raw_score": 0.08
     }
   ]

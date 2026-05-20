@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 100.0,
-      "raw_score": 0.28
-    },
-    {
-      "rank": 2,
-      "ts_code": "002291.SZ",
-      "stock_code": "002291",
-      "stock_name": "遥望科技",
-      "lgb_score": 96.46,
-      "raw_score": 0.27
-    },
-    {
-      "rank": 3,
       "ts_code": "600802.SH",
       "stock_code": "600802",
       "stock_name": "福建水泥",
-      "lgb_score": 92.66,
-      "raw_score": 0.25
+      "lgb_score": 100.0,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 2,
+      "ts_code": "002839.SZ",
+      "stock_code": "002839",
+      "stock_name": "张家港行",
+      "lgb_score": 85.68,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 3,
+      "ts_code": "688521.SH",
+      "stock_code": "688521",
+      "stock_name": "芯原股份",
+      "lgb_score": 83.57,
+      "raw_score": 0.2
     },
     {
       "rank": 4,
-      "ts_code": "300612.SZ",
-      "stock_code": "300612",
-      "stock_name": "宣亚国际",
-      "lgb_score": 91.61,
-      "raw_score": 0.25
+      "ts_code": "301023.SZ",
+      "stock_code": "301023",
+      "stock_name": "奕帆传动",
+      "lgb_score": 82.26,
+      "raw_score": 0.2
     },
     {
       "rank": 5,
-      "ts_code": "688212.SH",
-      "stock_code": "688212",
-      "stock_name": "澳华内镜",
-      "lgb_score": 87.62,
-      "raw_score": 0.23
+      "ts_code": "300612.SZ",
+      "stock_code": "300612",
+      "stock_name": "宣亚国际",
+      "lgb_score": 81.17,
+      "raw_score": 0.19
     }
   ]
 }

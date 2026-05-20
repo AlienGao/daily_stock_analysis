@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000980.SZ",
-      "stock_code": "000980",
-      "stock_name": "众泰汽车",
-      "lgb_score": 100.0,
-      "raw_score": 0.12
-    },
-    {
-      "rank": 2,
       "ts_code": "002701.SZ",
       "stock_code": "002701",
       "stock_name": "奥瑞金",
-      "lgb_score": 96.81,
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "000980.SZ",
+      "stock_code": "000980",
+      "stock_name": "众泰汽车",
+      "lgb_score": 98.06,
       "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "603690.SH",
-      "stock_code": "603690",
-      "stock_name": "至纯科技",
-      "lgb_score": 94.07,
+      "ts_code": "600868.SH",
+      "stock_code": "600868",
+      "stock_name": "梅雁吉祥",
+      "lgb_score": 93.97,
       "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "600868.SH",
-      "stock_code": "600868",
-      "stock_name": "梅雁吉祥",
-      "lgb_score": 90.8,
+      "ts_code": "000417.SZ",
+      "stock_code": "000417",
+      "stock_name": "合百集团",
+      "lgb_score": 90.29,
       "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "002474.SZ",
-      "stock_code": "002474",
-      "stock_name": "榕基软件",
-      "lgb_score": 90.28,
-      "raw_score": 0.09
+      "ts_code": "600010.SH",
+      "stock_code": "600010",
+      "stock_name": "包钢股份",
+      "lgb_score": 85.24,
+      "raw_score": 0.08
     }
   ]
 }

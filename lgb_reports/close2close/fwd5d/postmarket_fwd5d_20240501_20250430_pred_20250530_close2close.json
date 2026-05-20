@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600509.SH",
-      "stock_code": "600509",
-      "stock_name": "天富能源",
-      "lgb_score": 100.0,
-      "raw_score": 0.15
-    },
-    {
-      "rank": 2,
-      "ts_code": "300970.SZ",
-      "stock_code": "300970",
-      "stock_name": "华绿生物",
-      "lgb_score": 95.04,
-      "raw_score": 0.14
-    },
-    {
-      "rank": 3,
       "ts_code": "300885.SZ",
       "stock_code": "300885",
       "stock_name": "海昌新材",
-      "lgb_score": 93.76,
-      "raw_score": 0.13
+      "lgb_score": 100.0,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 2,
+      "ts_code": "603120.SH",
+      "stock_code": "603120",
+      "stock_name": "肯特催化",
+      "lgb_score": 98.46,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 3,
+      "ts_code": "301538.SZ",
+      "stock_code": "301538",
+      "stock_name": "骏鼎达",
+      "lgb_score": 94.15,
+      "raw_score": 0.14
     },
     {
       "rank": 4,
       "ts_code": "002229.SZ",
       "stock_code": "002229",
       "stock_name": "鸿博股份",
-      "lgb_score": 93.43,
-      "raw_score": 0.13
+      "lgb_score": 92.59,
+      "raw_score": 0.14
     },
     {
       "rank": 5,
-      "ts_code": "603120.SH",
-      "stock_code": "603120",
-      "stock_name": "肯特催化",
-      "lgb_score": 92.59,
-      "raw_score": 0.13
+      "ts_code": "301137.SZ",
+      "stock_code": "301137",
+      "stock_name": "哈焊华通",
+      "lgb_score": 92.3,
+      "raw_score": 0.14
     }
   ]
 }

@@ -11,39 +11,39 @@
       "stock_code": "301205",
       "stock_name": "联特科技",
       "lgb_score": 100.0,
-      "raw_score": 0.24
+      "raw_score": 0.27
     },
     {
       "rank": 2,
-      "ts_code": "300612.SZ",
-      "stock_code": "300612",
-      "stock_name": "宣亚国际",
-      "lgb_score": 95.15,
-      "raw_score": 0.22
+      "ts_code": "603120.SH",
+      "stock_code": "603120",
+      "stock_name": "肯特催化",
+      "lgb_score": 84.72,
+      "raw_score": 0.21
     },
     {
       "rank": 3,
-      "ts_code": "002617.SZ",
-      "stock_code": "002617",
-      "stock_name": "露笑科技",
-      "lgb_score": 93.09,
+      "ts_code": "688368.SH",
+      "stock_code": "688368",
+      "stock_name": "晶丰明源",
+      "lgb_score": 82.88,
       "raw_score": 0.21
     },
     {
       "rank": 4,
-      "ts_code": "600076.SH",
-      "stock_code": "600076",
-      "stock_name": "康欣新材",
-      "lgb_score": 87.82,
-      "raw_score": 0.19
+      "ts_code": "301372.SZ",
+      "stock_code": "301372",
+      "stock_name": "科净源",
+      "lgb_score": 82.26,
+      "raw_score": 0.2
     },
     {
       "rank": 5,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
-      "lgb_score": 87.54,
-      "raw_score": 0.19
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 80.39,
+      "raw_score": 0.2
     }
   ]
 }

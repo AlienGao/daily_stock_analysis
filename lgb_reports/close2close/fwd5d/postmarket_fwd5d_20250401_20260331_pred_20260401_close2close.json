@@ -7,18 +7,18 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688693.SH",
-      "stock_code": "688693",
-      "stock_name": "锴威特",
+      "ts_code": "301590.SZ",
+      "stock_code": "301590",
+      "stock_name": "优优绿能",
       "lgb_score": 100.0,
-      "raw_score": 0.09
+      "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "688813.SH",
-      "stock_code": "688813",
-      "stock_name": "泰金新能",
-      "lgb_score": 99.54,
+      "ts_code": "002821.SZ",
+      "stock_code": "002821",
+      "stock_name": "凯莱英",
+      "lgb_score": 95.46,
       "raw_score": 0.09
     },
     {
@@ -26,23 +26,23 @@
       "ts_code": "688498.SH",
       "stock_code": "688498",
       "stock_name": "源杰科技",
-      "lgb_score": 99.47,
+      "lgb_score": 95.2,
       "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "688068.SH",
-      "stock_code": "688068",
-      "stock_name": "热景生物",
-      "lgb_score": 95.55,
-      "raw_score": 0.08
+      "ts_code": "688813.SH",
+      "stock_code": "688813",
+      "stock_name": "泰金新能",
+      "lgb_score": 94.83,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "301118.SZ",
-      "stock_code": "301118",
-      "stock_name": "恒光股份",
-      "lgb_score": 94.26,
+      "ts_code": "603158.SH",
+      "stock_code": "603158",
+      "stock_name": "腾龙股份",
+      "lgb_score": 91.79,
       "raw_score": 0.08
     }
   ]

@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300166.SZ",
-      "stock_code": "300166",
-      "stock_name": "东方国信",
+      "ts_code": "301208.SZ",
+      "stock_code": "301208",
+      "stock_name": "中亦科技",
       "lgb_score": 100.0,
-      "raw_score": 0.1
+      "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "300428.SZ",
-      "stock_code": "300428",
-      "stock_name": "立中集团",
-      "lgb_score": 96.42,
+      "ts_code": "300612.SZ",
+      "stock_code": "300612",
+      "stock_name": "宣亚国际",
+      "lgb_score": 98.82,
       "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "688507.SH",
-      "stock_code": "688507",
-      "stock_name": "索辰科技",
-      "lgb_score": 95.69,
+      "ts_code": "300230.SZ",
+      "stock_code": "300230",
+      "stock_name": "永利股份",
+      "lgb_score": 98.14,
       "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "300230.SZ",
-      "stock_code": "300230",
-      "stock_name": "永利股份",
-      "lgb_score": 95.01,
-      "raw_score": 0.09
+      "ts_code": "600888.SH",
+      "stock_code": "600888",
+      "stock_name": "新疆众和",
+      "lgb_score": 97.38,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
-      "lgb_score": 94.42,
-      "raw_score": 0.09
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 96.33,
+      "raw_score": 0.08
     }
   ]
 }

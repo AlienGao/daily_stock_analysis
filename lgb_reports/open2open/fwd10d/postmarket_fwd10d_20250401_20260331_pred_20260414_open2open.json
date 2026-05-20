@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688525.SH",
-      "stock_code": "688525",
-      "stock_name": "佰维存储",
+      "ts_code": "601020.SH",
+      "stock_code": "601020",
+      "stock_name": "华钰矿业",
       "lgb_score": 100.0,
       "raw_score": 0.22
     },
     {
       "rank": 2,
-      "ts_code": "300757.SZ",
-      "stock_code": "300757",
-      "stock_name": "罗博特科",
-      "lgb_score": 93.45,
-      "raw_score": 0.2
-    },
-    {
-      "rank": 3,
       "ts_code": "688195.SH",
       "stock_code": "688195",
       "stock_name": "腾景科技",
-      "lgb_score": 93.32,
-      "raw_score": 0.19
+      "lgb_score": 99.73,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 3,
+      "ts_code": "688525.SH",
+      "stock_code": "688525",
+      "stock_name": "佰维存储",
+      "lgb_score": 99.68,
+      "raw_score": 0.22
     },
     {
       "rank": 4,
       "ts_code": "688498.SH",
       "stock_code": "688498",
       "stock_name": "源杰科技",
-      "lgb_score": 83.05,
-      "raw_score": 0.15
+      "lgb_score": 98.0,
+      "raw_score": 0.21
     },
     {
       "rank": 5,
       "ts_code": "688125.SH",
       "stock_code": "688125",
       "stock_name": "安达智能",
-      "lgb_score": 82.83,
-      "raw_score": 0.15
+      "lgb_score": 96.15,
+      "raw_score": 0.21
     }
   ]
 }

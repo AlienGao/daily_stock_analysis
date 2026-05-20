@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "603986.SH",
-      "stock_code": "603986",
-      "stock_name": "兆易创新",
+      "ts_code": "688025.SH",
+      "stock_code": "688025",
+      "stock_name": "杰普特",
       "lgb_score": 100.0,
-      "raw_score": 0.17
+      "raw_score": 0.21
     },
     {
       "rank": 2,
-      "ts_code": "688693.SH",
-      "stock_code": "688693",
-      "stock_name": "锴威特",
-      "lgb_score": 90.41,
-      "raw_score": 0.14
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
+      "lgb_score": 99.4,
+      "raw_score": 0.21
     },
     {
       "rank": 3,
-      "ts_code": "300502.SZ.SZ",
-      "stock_code": "300502",
-      "stock_name": "新易盛",
-      "lgb_score": 88.95,
-      "raw_score": 0.13
+      "ts_code": "301345.SZ",
+      "stock_code": "301345",
+      "stock_name": "涛涛车业",
+      "lgb_score": 94.96,
+      "raw_score": 0.19
     },
     {
       "rank": 4,
       "ts_code": "300757.SZ",
       "stock_code": "300757",
       "stock_name": "罗博特科",
-      "lgb_score": 88.34,
-      "raw_score": 0.13
+      "lgb_score": 92.0,
+      "raw_score": 0.18
     },
     {
       "rank": 5,
-      "ts_code": "603320.SH",
-      "stock_code": "603320",
-      "stock_name": "迪贝电气",
-      "lgb_score": 85.06,
-      "raw_score": 0.12
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 88.54,
+      "raw_score": 0.17
     }
   ]
 }

@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "603306.SH",
-      "stock_code": "603306",
-      "stock_name": "华懋科技",
+      "ts_code": "000968.SZ",
+      "stock_code": "000968",
+      "stock_name": "蓝焰控股",
       "lgb_score": 100.0,
-      "raw_score": 0.2
+      "raw_score": 0.24
     },
     {
       "rank": 2,
-      "ts_code": "002311.SZ",
-      "stock_code": "002311",
-      "stock_name": "海大集团",
-      "lgb_score": 97.79,
-      "raw_score": 0.19
+      "ts_code": "301309.SZ",
+      "stock_code": "301309",
+      "stock_name": "万得凯",
+      "lgb_score": 99.94,
+      "raw_score": 0.24
     },
     {
       "rank": 3,
-      "ts_code": "000159.SZ",
-      "stock_code": "000159",
-      "stock_name": "国际实业",
-      "lgb_score": 93.41,
-      "raw_score": 0.17
+      "ts_code": "002274.SZ",
+      "stock_code": "002274",
+      "stock_name": "华昌化工",
+      "lgb_score": 99.93,
+      "raw_score": 0.24
     },
     {
       "rank": 4,
-      "ts_code": "000404.SZ",
-      "stock_code": "000404",
-      "stock_name": "长虹华意",
-      "lgb_score": 91.83,
-      "raw_score": 0.16
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 96.59,
+      "raw_score": 0.23
     },
     {
       "rank": 5,
-      "ts_code": "301071.SZ",
-      "stock_code": "301071",
-      "stock_name": "力量钻石",
-      "lgb_score": 91.29,
-      "raw_score": 0.16
+      "ts_code": "301222.SZ",
+      "stock_code": "301222",
+      "stock_name": "浙江恒威",
+      "lgb_score": 95.43,
+      "raw_score": 0.23
     }
   ]
 }

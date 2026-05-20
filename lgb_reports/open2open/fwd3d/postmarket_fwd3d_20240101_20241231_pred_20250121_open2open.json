@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000002.SZ",
-      "stock_code": "000002",
-      "stock_name": "万  科Ａ",
+      "ts_code": "301589.SZ",
+      "stock_code": "301589",
+      "stock_name": "诺瓦星云",
       "lgb_score": 100.0,
-      "raw_score": 0.1
+      "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "300263.SZ",
-      "stock_code": "300263",
-      "stock_name": "隆华科技",
-      "lgb_score": 90.61,
+      "ts_code": "000002.SZ",
+      "stock_code": "000002",
+      "stock_name": "万  科Ａ",
+      "lgb_score": 98.92,
       "raw_score": 0.08
     },
     {
       "rank": 3,
-      "ts_code": "002165.SZ",
-      "stock_code": "002165",
-      "stock_name": "红 宝 丽",
-      "lgb_score": 89.9,
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 98.21,
       "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "002274.SZ",
-      "stock_code": "002274",
-      "stock_name": "华昌化工",
-      "lgb_score": 88.8,
-      "raw_score": 0.07
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 97.76,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 87.91,
-      "raw_score": 0.07
+      "ts_code": "000159.SZ",
+      "stock_code": "000159",
+      "stock_name": "国际实业",
+      "lgb_score": 96.55,
+      "raw_score": 0.08
     }
   ]
 }

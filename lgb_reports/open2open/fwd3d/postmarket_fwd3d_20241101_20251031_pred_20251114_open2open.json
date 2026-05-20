@@ -7,34 +7,34 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002438.SZ",
-      "stock_code": "002438",
-      "stock_name": "江苏神通",
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
       "lgb_score": 100.0,
-      "raw_score": 0.1
+      "raw_score": 0.11
     },
     {
       "rank": 2,
-      "ts_code": "600157.SH",
-      "stock_code": "600157",
-      "stock_name": "永泰能源",
-      "lgb_score": 93.14,
-      "raw_score": 0.09
+      "ts_code": "002438.SZ",
+      "stock_code": "002438",
+      "stock_name": "江苏神通",
+      "lgb_score": 97.39,
+      "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "600076.SH",
-      "stock_code": "600076",
-      "stock_name": "康欣新材",
-      "lgb_score": 91.94,
+      "ts_code": "000159.SZ",
+      "stock_code": "000159",
+      "stock_name": "国际实业",
+      "lgb_score": 90.71,
       "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "002146.SZ",
-      "stock_code": "002146",
-      "stock_name": "荣盛发展",
-      "lgb_score": 91.79,
+      "ts_code": "688320.SH",
+      "stock_code": "688320",
+      "stock_name": "禾川科技",
+      "lgb_score": 89.53,
       "raw_score": 0.09
     },
     {
@@ -42,7 +42,7 @@
       "ts_code": "301633.SZ",
       "stock_code": "301633",
       "stock_name": "港迪技术",
-      "lgb_score": 90.25,
+      "lgb_score": 86.82,
       "raw_score": 0.08
     }
   ]

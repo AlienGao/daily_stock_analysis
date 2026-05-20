@@ -11,39 +11,39 @@
       "stock_code": "600076",
       "stock_name": "康欣新材",
       "lgb_score": 100.0,
-      "raw_score": 0.2
+      "raw_score": 0.18
     },
     {
       "rank": 2,
-      "ts_code": "600798.SH",
-      "stock_code": "600798",
-      "stock_name": "宁波海运",
-      "lgb_score": 97.91,
-      "raw_score": 0.2
-    },
-    {
-      "rank": 3,
-      "ts_code": "301167.SZ",
-      "stock_code": "301167",
-      "stock_name": "建研设计",
-      "lgb_score": 82.6,
+      "ts_code": "600545.SH",
+      "stock_code": "600545",
+      "stock_name": "卓郎智能",
+      "lgb_score": 86.78,
       "raw_score": 0.15
     },
     {
+      "rank": 3,
+      "ts_code": "600467.SH",
+      "stock_code": "600467",
+      "stock_name": "好当家",
+      "lgb_score": 85.99,
+      "raw_score": 0.14
+    },
+    {
       "rank": 4,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 81.1,
+      "ts_code": "600130.SH",
+      "stock_code": "600130",
+      "stock_name": "波导股份",
+      "lgb_score": 84.54,
       "raw_score": 0.14
     },
     {
       "rank": 5,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 80.18,
-      "raw_score": 0.14
+      "ts_code": "601996.SH",
+      "stock_code": "601996",
+      "stock_name": "丰林集团",
+      "lgb_score": 80.51,
+      "raw_score": 0.13
     }
   ]
 }

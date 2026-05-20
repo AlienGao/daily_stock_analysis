@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301071.SZ",
-      "stock_code": "301071",
-      "stock_name": "力量钻石",
+      "ts_code": "688195.SH",
+      "stock_code": "688195",
+      "stock_name": "腾景科技",
       "lgb_score": 100.0,
       "raw_score": 0.07
     },
     {
       "rank": 2,
-      "ts_code": "002281.SZ",
-      "stock_code": "002281",
-      "stock_name": "光迅科技",
-      "lgb_score": 95.7,
-      "raw_score": 0.06
+      "ts_code": "603906.SH",
+      "stock_code": "603906",
+      "stock_name": "龙蟠科技",
+      "lgb_score": 95.5,
+      "raw_score": 0.07
     },
     {
       "rank": 3,
       "ts_code": "300308.SZ.SZ",
       "stock_code": "300308",
       "stock_name": "中际旭创",
-      "lgb_score": 95.51,
+      "lgb_score": 91.92,
       "raw_score": 0.06
     },
     {
       "rank": 4,
-      "ts_code": "603738.SH",
-      "stock_code": "603738",
-      "stock_name": "泰晶科技",
-      "lgb_score": 95.38,
+      "ts_code": "000001.SH.SZ",
+      "stock_code": "000001",
+      "stock_name": "平安银行",
+      "lgb_score": 91.91,
       "raw_score": 0.06
     },
     {
       "rank": 5,
-      "ts_code": "300394.SZ.SZ",
-      "stock_code": "300394",
-      "stock_name": "天孚通信",
-      "lgb_score": 91.61,
+      "ts_code": "603738.SH",
+      "stock_code": "603738",
+      "stock_name": "泰晶科技",
+      "lgb_score": 91.68,
       "raw_score": 0.06
     }
   ]

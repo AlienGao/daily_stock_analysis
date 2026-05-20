@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "603738.SH",
-      "stock_code": "603738",
-      "stock_name": "泰晶科技",
+      "ts_code": "601126.SH",
+      "stock_code": "601126",
+      "stock_name": "四方股份",
       "lgb_score": 100.0,
-      "raw_score": 0.07
+      "raw_score": 0.06
     },
     {
       "rank": 2,
-      "ts_code": "301071.SZ",
-      "stock_code": "301071",
-      "stock_name": "力量钻石",
-      "lgb_score": 95.41,
-      "raw_score": 0.07
+      "ts_code": "301322.SZ",
+      "stock_code": "301322",
+      "stock_name": "绿通科技",
+      "lgb_score": 99.47,
+      "raw_score": 0.06
     },
     {
       "rank": 3,
-      "ts_code": "301589.SZ",
-      "stock_code": "301589",
-      "stock_name": "诺瓦星云",
-      "lgb_score": 93.48,
+      "ts_code": "301023.SZ",
+      "stock_code": "301023",
+      "stock_name": "奕帆传动",
+      "lgb_score": 96.48,
       "raw_score": 0.06
     },
     {
       "rank": 4,
-      "ts_code": "688500.SH",
-      "stock_code": "688500",
-      "stock_name": "慧辰股份",
-      "lgb_score": 86.54,
-      "raw_score": 0.05
+      "ts_code": "301008.SZ",
+      "stock_code": "301008",
+      "stock_name": "宏昌科技",
+      "lgb_score": 96.19,
+      "raw_score": 0.06
     },
     {
       "rank": 5,
-      "ts_code": "603344.SH",
-      "stock_code": "603344",
-      "stock_name": "星德胜",
-      "lgb_score": 86.13,
-      "raw_score": 0.05
+      "ts_code": "001267.SZ",
+      "stock_code": "001267",
+      "stock_name": "汇绿生态",
+      "lgb_score": 95.37,
+      "raw_score": 0.06
     }
   ]
 }

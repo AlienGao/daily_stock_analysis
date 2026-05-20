@@ -15,10 +15,10 @@
     },
     {
       "rank": 2,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 99.27,
+      "ts_code": "600512.SH",
+      "stock_code": "600512",
+      "stock_name": "腾达建设",
+      "lgb_score": 98.69,
       "raw_score": 0.28
     },
     {
@@ -26,24 +26,24 @@
       "ts_code": "002291.SZ",
       "stock_code": "002291",
       "stock_name": "遥望科技",
-      "lgb_score": 95.01,
+      "lgb_score": 92.56,
       "raw_score": 0.26
     },
     {
       "rank": 4,
-      "ts_code": "300045.SZ",
-      "stock_code": "300045",
-      "stock_name": "华力创通",
-      "lgb_score": 94.03,
-      "raw_score": 0.25
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 92.49,
+      "raw_score": 0.26
     },
     {
       "rank": 5,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 91.01,
-      "raw_score": 0.24
+      "ts_code": "300045.SZ",
+      "stock_code": "300045",
+      "stock_name": "华力创通",
+      "lgb_score": 92.01,
+      "raw_score": 0.25
     }
   ]
 }

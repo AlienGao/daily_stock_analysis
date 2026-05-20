@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 100.0,
-      "raw_score": 0.26
-    },
-    {
-      "rank": 2,
-      "ts_code": "300484.SZ",
-      "stock_code": "300484",
-      "stock_name": "蓝海华腾",
-      "lgb_score": 88.89,
-      "raw_score": 0.2
-    },
-    {
-      "rank": 3,
       "ts_code": "300429.SZ",
       "stock_code": "300429",
       "stock_name": "强力新材",
-      "lgb_score": 88.6,
-      "raw_score": 0.2
+      "lgb_score": 100.0,
+      "raw_score": 0.27
+    },
+    {
+      "rank": 2,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 96.33,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 3,
+      "ts_code": "300484.SZ",
+      "stock_code": "300484",
+      "stock_name": "蓝海华腾",
+      "lgb_score": 94.88,
+      "raw_score": 0.25
     },
     {
       "rank": 4,
-      "ts_code": "300046.SZ",
-      "stock_code": "300046",
-      "stock_name": "台基股份",
-      "lgb_score": 88.35,
-      "raw_score": 0.2
+      "ts_code": "002617.SZ",
+      "stock_code": "002617",
+      "stock_name": "露笑科技",
+      "lgb_score": 90.75,
+      "raw_score": 0.23
     },
     {
       "rank": 5,
-      "ts_code": "301117.SZ",
-      "stock_code": "301117",
-      "stock_name": "佳缘科技",
-      "lgb_score": 86.86,
-      "raw_score": 0.19
+      "ts_code": "600509.SH",
+      "stock_code": "600509",
+      "stock_name": "天富能源",
+      "lgb_score": 88.64,
+      "raw_score": 0.22
     }
   ]
 }

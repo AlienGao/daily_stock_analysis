@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002546.SZ",
-      "stock_code": "002546",
-      "stock_name": "新联电子",
-      "lgb_score": 100.0,
-      "raw_score": 0.1
-    },
-    {
-      "rank": 2,
       "ts_code": "603801.SH",
       "stock_code": "603801",
       "stock_name": "志邦家居",
-      "lgb_score": 97.01,
-      "raw_score": 0.09
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "002546.SZ",
+      "stock_code": "002546",
+      "stock_name": "新联电子",
+      "lgb_score": 99.11,
+      "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "000987.SZ",
-      "stock_code": "000987",
-      "stock_name": "越秀资本",
-      "lgb_score": 96.53,
-      "raw_score": 0.09
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 94.95,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "001296.SZ",
-      "stock_code": "001296",
-      "stock_name": "长江材料",
-      "lgb_score": 96.28,
+      "ts_code": "301205.SZ",
+      "stock_code": "301205",
+      "stock_name": "联特科技",
+      "lgb_score": 92.63,
       "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "002396.SZ",
-      "stock_code": "002396",
-      "stock_name": "星网锐捷",
-      "lgb_score": 95.09,
+      "ts_code": "000987.SZ",
+      "stock_code": "000987",
+      "stock_name": "越秀资本",
+      "lgb_score": 92.34,
       "raw_score": 0.09
     }
   ]

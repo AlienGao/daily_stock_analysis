@@ -15,34 +15,34 @@
     },
     {
       "rank": 2,
-      "ts_code": "301117.SZ",
-      "stock_code": "301117",
-      "stock_name": "佳缘科技",
-      "lgb_score": 97.67,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 3,
       "ts_code": "300017.SZ",
       "stock_code": "300017",
       "stock_name": "网宿科技",
-      "lgb_score": 95.92,
-      "raw_score": 0.13
+      "lgb_score": 92.06,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 91.98,
+      "raw_score": 0.12
     },
     {
       "rank": 4,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 92.87,
+      "ts_code": "688360.SH",
+      "stock_code": "688360",
+      "stock_name": "德马科技",
+      "lgb_score": 91.42,
       "raw_score": 0.12
     },
     {
       "rank": 5,
-      "ts_code": "688360.SH",
-      "stock_code": "688360",
-      "stock_name": "德马科技",
-      "lgb_score": 92.1,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 91.4,
       "raw_score": 0.12
     }
   ]

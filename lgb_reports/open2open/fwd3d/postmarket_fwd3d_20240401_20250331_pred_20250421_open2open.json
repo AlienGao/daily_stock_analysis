@@ -7,34 +7,34 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
+      "ts_code": "600510.SH",
+      "stock_code": "600510",
+      "stock_name": "黑牡丹",
       "lgb_score": 100.0,
-      "raw_score": 0.12
+      "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "002381.SZ",
-      "stock_code": "002381",
-      "stock_name": "双箭股份",
-      "lgb_score": 95.28,
-      "raw_score": 0.1
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 91.16,
+      "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "002274.SZ",
-      "stock_code": "002274",
-      "stock_name": "华昌化工",
-      "lgb_score": 92.19,
+      "ts_code": "300883.SZ",
+      "stock_code": "300883",
+      "stock_name": "龙利得",
+      "lgb_score": 85.76,
       "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "600510.SH",
-      "stock_code": "600510",
-      "stock_name": "黑牡丹",
-      "lgb_score": 91.0,
+      "ts_code": "600509.SH",
+      "stock_code": "600509",
+      "stock_name": "天富能源",
+      "lgb_score": 83.72,
       "raw_score": 0.09
     },
     {
@@ -42,8 +42,8 @@
       "ts_code": "600883.SH",
       "stock_code": "600883",
       "stock_name": "博闻科技",
-      "lgb_score": 90.82,
-      "raw_score": 0.09
+      "lgb_score": 83.04,
+      "raw_score": 0.08
     }
   ]
 }

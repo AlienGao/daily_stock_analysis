@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
+      "ts_code": "688108.SH",
+      "stock_code": "688108",
+      "stock_name": "赛诺医疗",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.12
     },
     {
       "rank": 2,
       "ts_code": "603893.SH",
       "stock_code": "603893",
       "stock_name": "瑞芯微",
-      "lgb_score": 96.08,
-      "raw_score": 0.12
+      "lgb_score": 97.47,
+      "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "688108.SH",
-      "stock_code": "688108",
-      "stock_name": "赛诺医疗",
-      "lgb_score": 95.01,
-      "raw_score": 0.12
-    },
-    {
-      "rank": 4,
       "ts_code": "600308.SH",
       "stock_code": "600308",
       "stock_name": "华泰股份",
-      "lgb_score": 91.75,
+      "lgb_score": 96.86,
       "raw_score": 0.11
     },
     {
+      "rank": 4,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 93.18,
+      "raw_score": 0.1
+    },
+    {
       "rank": 5,
-      "ts_code": "300970.SZ",
-      "stock_code": "300970",
-      "stock_name": "华绿生物",
-      "lgb_score": 91.54,
-      "raw_score": 0.11
+      "ts_code": "002241.SZ",
+      "stock_code": "002241",
+      "stock_name": "歌尔股份",
+      "lgb_score": 91.44,
+      "raw_score": 0.09
     }
   ]
 }

@@ -11,39 +11,39 @@
       "stock_code": "301531",
       "stock_name": "春光集团",
       "lgb_score": 100.0,
-      "raw_score": 0.23
+      "raw_score": 0.29
     },
     {
       "rank": 2,
-      "ts_code": "002371.SZ",
-      "stock_code": "002371",
-      "stock_name": "北方华创",
-      "lgb_score": 99.91,
-      "raw_score": 0.23
+      "ts_code": "600481.SH",
+      "stock_code": "600481",
+      "stock_name": "双良节能",
+      "lgb_score": 90.65,
+      "raw_score": 0.25
     },
     {
       "rank": 3,
-      "ts_code": "688455.SH",
-      "stock_code": "688455",
-      "stock_name": "科捷智能",
-      "lgb_score": 98.1,
-      "raw_score": 0.22
+      "ts_code": "001309.SZ",
+      "stock_code": "001309",
+      "stock_name": "德明利",
+      "lgb_score": 89.99,
+      "raw_score": 0.25
     },
     {
       "rank": 4,
-      "ts_code": "301511.SZ",
-      "stock_code": "301511",
-      "stock_name": "德福科技",
-      "lgb_score": 97.49,
-      "raw_score": 0.22
-    },
-    {
-      "rank": 5,
       "ts_code": "688808.SH",
       "stock_code": "688808",
       "stock_name": "联讯仪器",
-      "lgb_score": 96.52,
-      "raw_score": 0.21
+      "lgb_score": 87.39,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 5,
+      "ts_code": "002395.SZ",
+      "stock_code": "002395",
+      "stock_name": "双象股份",
+      "lgb_score": 85.35,
+      "raw_score": 0.23
     }
   ]
 }

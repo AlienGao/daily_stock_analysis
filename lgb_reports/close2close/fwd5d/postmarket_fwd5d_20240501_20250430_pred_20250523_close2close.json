@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688135.SH",
-      "stock_code": "688135",
-      "stock_name": "利扬芯片",
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
       "lgb_score": 100.0,
-      "raw_score": 0.19
+      "raw_score": 0.17
     },
     {
       "rank": 2,
       "ts_code": "688368.SH",
       "stock_code": "688368",
       "stock_name": "晶丰明源",
-      "lgb_score": 90.13,
-      "raw_score": 0.16
+      "lgb_score": 87.94,
+      "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "300885.SZ",
-      "stock_code": "300885",
-      "stock_name": "海昌新材",
-      "lgb_score": 88.86,
-      "raw_score": 0.16
-    },
-    {
-      "rank": 4,
-      "ts_code": "301488.SZ",
-      "stock_code": "301488",
-      "stock_name": "豪恩汽电",
-      "lgb_score": 85.56,
-      "raw_score": 0.14
-    },
-    {
-      "rank": 5,
       "ts_code": "600509.SH",
       "stock_code": "600509",
       "stock_name": "天富能源",
-      "lgb_score": 84.07,
-      "raw_score": 0.14
+      "lgb_score": 87.65,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 4,
+      "ts_code": "301022.SZ",
+      "stock_code": "301022",
+      "stock_name": "海泰科",
+      "lgb_score": 86.72,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 5,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 86.38,
+      "raw_score": 0.13
     }
   ]
 }

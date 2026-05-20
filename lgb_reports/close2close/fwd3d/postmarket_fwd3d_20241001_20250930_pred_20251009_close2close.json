@@ -7,18 +7,18 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002310.SZ",
-      "stock_code": "002310",
-      "stock_name": "东方新能",
-      "lgb_score": 100.0,
-      "raw_score": 0.14
-    },
-    {
-      "rank": 2,
       "ts_code": "002084.SZ",
       "stock_code": "002084",
       "stock_name": "海鸥住工",
-      "lgb_score": 93.06,
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "002310.SZ",
+      "stock_code": "002310",
+      "stock_name": "东方新能",
+      "lgb_score": 99.73,
       "raw_score": 0.12
     },
     {
@@ -26,24 +26,24 @@
       "ts_code": "000757.SZ",
       "stock_code": "000757",
       "stock_name": "浩物股份",
-      "lgb_score": 91.92,
-      "raw_score": 0.12
+      "lgb_score": 96.56,
+      "raw_score": 0.11
     },
     {
       "rank": 4,
       "ts_code": "002307.SZ",
       "stock_code": "002307",
       "stock_name": "北新路桥",
-      "lgb_score": 90.35,
-      "raw_score": 0.11
+      "lgb_score": 93.17,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
       "ts_code": "603030.SH",
       "stock_code": "603030",
       "stock_name": "全筑股份",
-      "lgb_score": 89.71,
-      "raw_score": 0.11
+      "lgb_score": 92.92,
+      "raw_score": 0.1
     }
   ]
 }

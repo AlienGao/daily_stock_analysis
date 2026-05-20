@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600704.SH",
-      "stock_code": "600704",
-      "stock_name": "物产中大",
-      "lgb_score": 100.0,
-      "raw_score": 0.24
-    },
-    {
-      "rank": 2,
       "ts_code": "600802.SH",
       "stock_code": "600802",
       "stock_name": "福建水泥",
-      "lgb_score": 97.92,
-      "raw_score": 0.23
+      "lgb_score": 100.0,
+      "raw_score": 0.28
+    },
+    {
+      "rank": 2,
+      "ts_code": "688217.SH",
+      "stock_code": "688217",
+      "stock_name": "睿昂基因",
+      "lgb_score": 95.31,
+      "raw_score": 0.26
     },
     {
       "rank": 3,
       "ts_code": "600076.SH",
       "stock_code": "600076",
       "stock_name": "康欣新材",
-      "lgb_score": 97.83,
-      "raw_score": 0.23
+      "lgb_score": 94.37,
+      "raw_score": 0.26
     },
     {
       "rank": 4,
-      "ts_code": "002291.SZ",
-      "stock_code": "002291",
-      "stock_name": "遥望科技",
-      "lgb_score": 93.77,
-      "raw_score": 0.22
+      "ts_code": "001325.SZ",
+      "stock_code": "001325",
+      "stock_name": "元创股份",
+      "lgb_score": 91.29,
+      "raw_score": 0.25
     },
     {
       "rank": 5,
-      "ts_code": "301023.SZ",
-      "stock_code": "301023",
-      "stock_name": "奕帆传动",
-      "lgb_score": 92.83,
-      "raw_score": 0.21
+      "ts_code": "600798.SH",
+      "stock_code": "600798",
+      "stock_name": "宁波海运",
+      "lgb_score": 89.75,
+      "raw_score": 0.24
     }
   ]
 }

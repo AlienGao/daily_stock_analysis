@@ -7,34 +7,34 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300885.SZ",
-      "stock_code": "300885",
-      "stock_name": "海昌新材",
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
       "lgb_score": 100.0,
       "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "300228.SZ",
-      "stock_code": "300228",
-      "stock_name": "富瑞特装",
-      "lgb_score": 97.49,
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 95.01,
       "raw_score": 0.08
     },
     {
       "rank": 3,
-      "ts_code": "300166.SZ",
-      "stock_code": "300166",
-      "stock_name": "东方国信",
-      "lgb_score": 94.75,
-      "raw_score": 0.08
+      "ts_code": "600509.SH",
+      "stock_code": "600509",
+      "stock_name": "天富能源",
+      "lgb_score": 88.52,
+      "raw_score": 0.07
     },
     {
       "rank": 4,
-      "ts_code": "600888.SH",
-      "stock_code": "600888",
-      "stock_name": "新疆众和",
-      "lgb_score": 90.5,
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 87.89,
       "raw_score": 0.07
     },
     {
@@ -42,8 +42,8 @@
       "ts_code": "002255.SZ",
       "stock_code": "002255",
       "stock_name": "海陆重工",
-      "lgb_score": 88.85,
-      "raw_score": 0.07
+      "lgb_score": 87.35,
+      "raw_score": 0.06
     }
   ]
 }

@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002291.SZ",
-      "stock_code": "002291",
-      "stock_name": "遥望科技",
-      "lgb_score": 100.0,
-      "raw_score": 0.24
-    },
-    {
-      "rank": 2,
-      "ts_code": "600704.SH",
-      "stock_code": "600704",
-      "stock_name": "物产中大",
-      "lgb_score": 99.37,
-      "raw_score": 0.24
-    },
-    {
-      "rank": 3,
-      "ts_code": "603368.SH",
-      "stock_code": "603368",
-      "stock_name": "柳药集团",
-      "lgb_score": 93.38,
-      "raw_score": 0.21
-    },
-    {
-      "rank": 4,
       "ts_code": "002234.SZ",
       "stock_code": "002234",
       "stock_name": "民和股份",
-      "lgb_score": 91.62,
-      "raw_score": 0.21
+      "lgb_score": 100.0,
+      "raw_score": 0.34
+    },
+    {
+      "rank": 2,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 85.97,
+      "raw_score": 0.28
+    },
+    {
+      "rank": 3,
+      "ts_code": "301137.SZ",
+      "stock_code": "301137",
+      "stock_name": "哈焊华通",
+      "lgb_score": 85.44,
+      "raw_score": 0.28
+    },
+    {
+      "rank": 4,
+      "ts_code": "002291.SZ",
+      "stock_code": "002291",
+      "stock_name": "遥望科技",
+      "lgb_score": 79.68,
+      "raw_score": 0.25
     },
     {
       "rank": 5,
-      "ts_code": "688212.SH",
-      "stock_code": "688212",
-      "stock_name": "澳华内镜",
-      "lgb_score": 90.24,
-      "raw_score": 0.2
+      "ts_code": "300883.SZ",
+      "stock_code": "300883",
+      "stock_name": "龙利得",
+      "lgb_score": 79.17,
+      "raw_score": 0.25
     }
   ]
 }

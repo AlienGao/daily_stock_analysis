@@ -11,39 +11,39 @@
       "stock_code": "688016",
       "stock_name": "心脉医疗",
       "lgb_score": 100.0,
-      "raw_score": 0.25
+      "raw_score": 0.29
     },
     {
       "rank": 2,
-      "ts_code": "300953.SZ",
-      "stock_code": "300953",
-      "stock_name": "震裕科技",
-      "lgb_score": 99.26,
-      "raw_score": 0.24
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 95.54,
+      "raw_score": 0.27
     },
     {
       "rank": 3,
-      "ts_code": "300674.SZ",
-      "stock_code": "300674",
-      "stock_name": "宇信科技",
-      "lgb_score": 97.92,
+      "ts_code": "688181.SH",
+      "stock_code": "688181",
+      "stock_name": "八亿时空",
+      "lgb_score": 86.44,
       "raw_score": 0.24
     },
     {
       "rank": 4,
-      "ts_code": "002009.SZ",
-      "stock_code": "002009",
-      "stock_name": "天奇股份",
-      "lgb_score": 94.39,
-      "raw_score": 0.22
+      "ts_code": "002617.SZ",
+      "stock_code": "002617",
+      "stock_name": "露笑科技",
+      "lgb_score": 86.07,
+      "raw_score": 0.23
     },
     {
       "rank": 5,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 93.81,
-      "raw_score": 0.22
+      "ts_code": "300045.SZ",
+      "stock_code": "300045",
+      "stock_name": "华力创通",
+      "lgb_score": 84.3,
+      "raw_score": 0.23
     }
   ]
 }

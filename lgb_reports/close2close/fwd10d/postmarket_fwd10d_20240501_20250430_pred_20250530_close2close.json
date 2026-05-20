@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300612.SZ",
-      "stock_code": "300612",
-      "stock_name": "宣亚国际",
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
       "lgb_score": 100.0,
-      "raw_score": 0.25
+      "raw_score": 0.26
     },
     {
       "rank": 2,
-      "ts_code": "301117.SZ",
-      "stock_code": "301117",
-      "stock_name": "佳缘科技",
-      "lgb_score": 97.65,
-      "raw_score": 0.24
-    },
-    {
-      "rank": 3,
-      "ts_code": "603120.SH",
-      "stock_code": "603120",
-      "stock_name": "肯特催化",
-      "lgb_score": 97.18,
-      "raw_score": 0.23
-    },
-    {
-      "rank": 4,
       "ts_code": "301137.SZ",
       "stock_code": "301137",
       "stock_name": "哈焊华通",
-      "lgb_score": 94.97,
-      "raw_score": 0.22
+      "lgb_score": 98.97,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 3,
+      "ts_code": "301538.SZ",
+      "stock_code": "301538",
+      "stock_name": "骏鼎达",
+      "lgb_score": 89.42,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 4,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 89.15,
+      "raw_score": 0.21
     },
     {
       "rank": 5,
-      "ts_code": "000159.SZ",
-      "stock_code": "000159",
-      "stock_name": "国际实业",
-      "lgb_score": 94.63,
-      "raw_score": 0.22
+      "ts_code": "603120.SH",
+      "stock_code": "603120",
+      "stock_name": "肯特催化",
+      "lgb_score": 88.73,
+      "raw_score": 0.21
     }
   ]
 }

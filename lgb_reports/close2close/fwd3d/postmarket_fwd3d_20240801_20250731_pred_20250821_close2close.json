@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000650.SZ",
-      "stock_code": "000650",
-      "stock_name": "仁和药业",
+      "ts_code": "000420.SZ",
+      "stock_code": "000420",
+      "stock_name": "吉林化纤",
       "lgb_score": 100.0,
       "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "000420.SZ",
-      "stock_code": "000420",
-      "stock_name": "吉林化纤",
-      "lgb_score": 97.1,
-      "raw_score": 0.09
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 96.49,
+      "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "002212.SZ",
-      "stock_code": "002212",
-      "stock_name": "天融信",
-      "lgb_score": 94.25,
+      "ts_code": "000650.SZ",
+      "stock_code": "000650",
+      "stock_name": "仁和药业",
+      "lgb_score": 93.32,
       "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "688489.SH",
-      "stock_code": "688489",
-      "stock_name": "三未信安",
-      "lgb_score": 94.2,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 91.66,
       "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 90.65,
+      "ts_code": "002402.SZ",
+      "stock_code": "002402",
+      "stock_name": "和而泰",
+      "lgb_score": 90.82,
       "raw_score": 0.08
     }
   ]

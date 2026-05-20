@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688181.SH",
-      "stock_code": "688181",
-      "stock_name": "八亿时空",
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
       "lgb_score": 100.0,
-      "raw_score": 0.25
+      "raw_score": 0.31
     },
     {
       "rank": 2,
       "ts_code": "603120.SH",
       "stock_code": "603120",
       "stock_name": "肯特催化",
-      "lgb_score": 97.95,
-      "raw_score": 0.25
+      "lgb_score": 88.42,
+      "raw_score": 0.26
     },
     {
       "rank": 3,
-      "ts_code": "300042.SZ",
-      "stock_code": "300042",
-      "stock_name": "朗科科技",
-      "lgb_score": 97.24,
-      "raw_score": 0.24
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 86.86,
+      "raw_score": 0.25
     },
     {
       "rank": 4,
-      "ts_code": "300045.SZ",
-      "stock_code": "300045",
-      "stock_name": "华力创通",
-      "lgb_score": 95.45,
-      "raw_score": 0.24
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 85.94,
+      "raw_score": 0.25
     },
     {
       "rank": 5,
-      "ts_code": "603915.SH",
-      "stock_code": "603915",
-      "stock_name": "国茂股份",
-      "lgb_score": 94.5,
-      "raw_score": 0.23
+      "ts_code": "600481.SH",
+      "stock_code": "600481",
+      "stock_name": "双良节能",
+      "lgb_score": 85.41,
+      "raw_score": 0.24
     }
   ]
 }

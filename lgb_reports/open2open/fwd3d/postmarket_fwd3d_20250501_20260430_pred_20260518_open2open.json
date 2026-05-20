@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301488.SZ",
-      "stock_code": "301488",
-      "stock_name": "豪恩汽电",
+      "ts_code": "301362.SZ",
+      "stock_code": "301362",
+      "stock_name": "民爆光电",
       "lgb_score": 100.0,
-      "raw_score": 0.1
+      "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "301128.SZ",
-      "stock_code": "301128",
-      "stock_name": "强瑞技术",
-      "lgb_score": 93.97,
+      "ts_code": "301589.SZ",
+      "stock_code": "301589",
+      "stock_name": "诺瓦星云",
+      "lgb_score": 99.28,
       "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "300868.SZ",
-      "stock_code": "300868",
-      "stock_name": "杰美特",
-      "lgb_score": 92.66,
+      "ts_code": "002164.SZ",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 98.53,
       "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "002371.SZ",
-      "stock_code": "002371",
-      "stock_name": "北方华创",
-      "lgb_score": 86.61,
-      "raw_score": 0.08
+      "ts_code": "301633.SZ",
+      "stock_code": "301633",
+      "stock_name": "港迪技术",
+      "lgb_score": 95.86,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "301362.SZ",
-      "stock_code": "301362",
-      "stock_name": "民爆光电",
-      "lgb_score": 84.62,
-      "raw_score": 0.08
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 95.81,
+      "raw_score": 0.09
     }
   ]
 }

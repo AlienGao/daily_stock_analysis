@@ -11,39 +11,39 @@
       "stock_code": "000915",
       "stock_name": "华特达因",
       "lgb_score": 100.0,
-      "raw_score": 0.19
+      "raw_score": 0.15
     },
     {
       "rank": 2,
-      "ts_code": "301633.SZ",
-      "stock_code": "301633",
-      "stock_name": "港迪技术",
-      "lgb_score": 91.26,
-      "raw_score": 0.16
+      "ts_code": "688108.SH",
+      "stock_code": "688108",
+      "stock_name": "赛诺医疗",
+      "lgb_score": 94.55,
+      "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "300042.SZ",
-      "stock_code": "300042",
-      "stock_name": "朗科科技",
-      "lgb_score": 85.52,
-      "raw_score": 0.14
-    },
-    {
-      "rank": 4,
-      "ts_code": "300007.SZ",
-      "stock_code": "300007",
-      "stock_name": "汉威科技",
-      "lgb_score": 84.65,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 5,
       "ts_code": "300842.SZ",
       "stock_code": "300842",
       "stock_name": "帝科股份",
-      "lgb_score": 83.57,
-      "raw_score": 0.13
+      "lgb_score": 91.38,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 4,
+      "ts_code": "301633.SZ",
+      "stock_code": "301633",
+      "stock_name": "港迪技术",
+      "lgb_score": 90.73,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 5,
+      "ts_code": "300007.SZ",
+      "stock_code": "300007",
+      "stock_name": "汉威科技",
+      "lgb_score": 89.78,
+      "raw_score": 0.11
     }
   ]
 }

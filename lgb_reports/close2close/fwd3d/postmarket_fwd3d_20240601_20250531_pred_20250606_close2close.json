@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000530.SZ",
-      "stock_code": "000530",
-      "stock_name": "冰山冷热",
+      "ts_code": "002546.SZ",
+      "stock_code": "002546",
+      "stock_name": "新联电子",
       "lgb_score": 100.0,
-      "raw_score": 0.12
-    },
-    {
-      "rank": 2,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
-      "lgb_score": 89.56,
       "raw_score": 0.1
     },
     {
-      "rank": 3,
-      "ts_code": "600076.SH",
-      "stock_code": "600076",
-      "stock_name": "康欣新材",
-      "lgb_score": 87.53,
+      "rank": 2,
+      "ts_code": "000530.SZ",
+      "stock_code": "000530",
+      "stock_name": "冰山冷热",
+      "lgb_score": 95.07,
       "raw_score": 0.09
     },
     {
+      "rank": 3,
+      "ts_code": "600844.SH",
+      "stock_code": "600844",
+      "stock_name": "金煤科技",
+      "lgb_score": 90.9,
+      "raw_score": 0.08
+    },
+    {
       "rank": 4,
-      "ts_code": "002716.SZ",
-      "stock_code": "002716",
-      "stock_name": "湖南白银",
-      "lgb_score": 87.07,
-      "raw_score": 0.09
+      "ts_code": "300833.SZ",
+      "stock_code": "300833",
+      "stock_name": "浩洋股份",
+      "lgb_score": 90.46,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
       "ts_code": "002445.SZ",
       "stock_code": "002445",
       "stock_name": "中南文化",
-      "lgb_score": 86.94,
-      "raw_score": 0.09
+      "lgb_score": 90.21,
+      "raw_score": 0.08
     }
   ]
 }

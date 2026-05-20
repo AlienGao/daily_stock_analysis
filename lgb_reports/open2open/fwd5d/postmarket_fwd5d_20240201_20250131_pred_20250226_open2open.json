@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
+      "ts_code": "001309.SZ",
+      "stock_code": "001309",
+      "stock_name": "德明利",
       "lgb_score": 100.0,
-      "raw_score": 0.15
+      "raw_score": 0.13
     },
     {
       "rank": 2,
       "ts_code": "002445.SZ",
       "stock_code": "002445",
       "stock_name": "中南文化",
-      "lgb_score": 97.68,
-      "raw_score": 0.14
+      "lgb_score": 99.85,
+      "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "301550.SZ",
-      "stock_code": "301550",
-      "stock_name": "斯菱智驱",
-      "lgb_score": 91.56,
-      "raw_score": 0.12
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 88.57,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "603915.SH",
-      "stock_code": "603915",
-      "stock_name": "国茂股份",
-      "lgb_score": 90.94,
-      "raw_score": 0.12
+      "ts_code": "300007.SZ",
+      "stock_code": "300007",
+      "stock_name": "汉威科技",
+      "lgb_score": 84.47,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "301486.SZ",
-      "stock_code": "301486",
-      "stock_name": "致尚科技",
-      "lgb_score": 85.84,
-      "raw_score": 0.11
+      "ts_code": "301550.SZ",
+      "stock_code": "301550",
+      "stock_name": "斯菱智驱",
+      "lgb_score": 84.4,
+      "raw_score": 0.09
     }
   ]
 }

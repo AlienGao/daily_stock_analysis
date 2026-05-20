@@ -7,9 +7,9 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300259.SZ",
-      "stock_code": "300259",
-      "stock_name": "新天科技",
+      "ts_code": "600500.SH",
+      "stock_code": "600500",
+      "stock_name": "中化国际",
       "lgb_score": 100.0,
       "raw_score": 0.11
     },
@@ -18,32 +18,32 @@
       "ts_code": "000554.SZ",
       "stock_code": "000554",
       "stock_name": "泰山石油",
-      "lgb_score": 95.52,
-      "raw_score": 0.1
+      "lgb_score": 98.37,
+      "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 95.44,
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 96.97,
       "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "000601.SZ",
-      "stock_code": "000601",
-      "stock_name": "韶能股份",
-      "lgb_score": 92.54,
-      "raw_score": 0.09
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 93.85,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "601678.SH",
-      "stock_code": "601678",
-      "stock_name": "滨化股份",
-      "lgb_score": 92.48,
-      "raw_score": 0.09
+      "ts_code": "002915.SZ",
+      "stock_code": "002915",
+      "stock_name": "中欣氟材",
+      "lgb_score": 93.69,
+      "raw_score": 0.1
     }
   ]
 }

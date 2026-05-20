@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688525.SH",
-      "stock_code": "688525",
-      "stock_name": "佰维存储",
+      "ts_code": "301666.SZ",
+      "stock_code": "301666",
+      "stock_name": "大普微-UW",
       "lgb_score": 100.0,
-      "raw_score": 0.1
+      "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "603368.SH",
-      "stock_code": "603368",
-      "stock_name": "柳药集团",
-      "lgb_score": 94.33,
+      "ts_code": "605365.SH",
+      "stock_code": "605365",
+      "stock_name": "立达信",
+      "lgb_score": 97.27,
       "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 90.89,
+      "ts_code": "002395.SZ",
+      "stock_code": "002395",
+      "stock_name": "双象股份",
+      "lgb_score": 92.63,
       "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "605365.SH",
-      "stock_code": "605365",
-      "stock_name": "立达信",
-      "lgb_score": 88.9,
-      "raw_score": 0.08
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 89.01,
+      "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "301666.SZ",
-      "stock_code": "301666",
-      "stock_name": "大普微-UW",
+      "ts_code": "300559.SZ",
+      "stock_code": "300559",
+      "stock_name": "佳发教育",
       "lgb_score": 88.71,
-      "raw_score": 0.08
+      "raw_score": 0.07
     }
   ]
 }

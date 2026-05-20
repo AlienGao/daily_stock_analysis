@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600704.SH",
-      "stock_code": "600704",
-      "stock_name": "物产中大",
-      "lgb_score": 100.0,
-      "raw_score": 0.16
-    },
-    {
-      "rank": 2,
-      "ts_code": "600222.SH",
-      "stock_code": "600222",
-      "stock_name": "太龙药业",
-      "lgb_score": 97.67,
-      "raw_score": 0.16
-    },
-    {
-      "rank": 3,
-      "ts_code": "000936.SZ",
-      "stock_code": "000936",
-      "stock_name": "华西股份",
-      "lgb_score": 94.66,
-      "raw_score": 0.15
-    },
-    {
-      "rank": 4,
-      "ts_code": "600802.SH",
-      "stock_code": "600802",
-      "stock_name": "福建水泥",
-      "lgb_score": 92.37,
-      "raw_score": 0.14
-    },
-    {
-      "rank": 5,
       "ts_code": "688016.SH",
       "stock_code": "688016",
       "stock_name": "心脉医疗",
-      "lgb_score": 89.11,
+      "lgb_score": 100.0,
       "raw_score": 0.13
+    },
+    {
+      "rank": 2,
+      "ts_code": "300484.SZ",
+      "stock_code": "300484",
+      "stock_name": "蓝海华腾",
+      "lgb_score": 96.5,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
+      "ts_code": "688766.SH",
+      "stock_code": "688766",
+      "stock_name": "普冉股份",
+      "lgb_score": 94.7,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 4,
+      "ts_code": "301589.SZ",
+      "stock_code": "301589",
+      "stock_name": "诺瓦星云",
+      "lgb_score": 94.4,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 5,
+      "ts_code": "301209.SZ",
+      "stock_code": "301209",
+      "stock_name": "联合化学",
+      "lgb_score": 94.2,
+      "raw_score": 0.12
     }
   ]
 }

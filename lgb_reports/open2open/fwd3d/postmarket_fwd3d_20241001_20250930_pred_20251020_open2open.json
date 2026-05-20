@@ -18,31 +18,31 @@
       "ts_code": "688627.SH",
       "stock_code": "688627",
       "stock_name": "精智达",
-      "lgb_score": 96.07,
+      "lgb_score": 95.28,
       "raw_score": 0.07
     },
     {
       "rank": 3,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 88.98,
-      "raw_score": 0.06
+      "ts_code": "688190.SH",
+      "stock_code": "688190",
+      "stock_name": "云路股份",
+      "lgb_score": 91.67,
+      "raw_score": 0.07
     },
     {
       "rank": 4,
       "ts_code": "600103.SH",
       "stock_code": "600103",
       "stock_name": "青山纸业",
-      "lgb_score": 88.75,
+      "lgb_score": 90.09,
       "raw_score": 0.06
     },
     {
       "rank": 5,
-      "ts_code": "688190.SH",
-      "stock_code": "688190",
-      "stock_name": "云路股份",
-      "lgb_score": 87.61,
+      "ts_code": "600681.SH",
+      "stock_code": "600681",
+      "stock_name": "百川能源",
+      "lgb_score": 88.86,
       "raw_score": 0.06
     }
   ]

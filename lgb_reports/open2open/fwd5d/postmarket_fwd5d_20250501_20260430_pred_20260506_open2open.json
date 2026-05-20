@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301511.SZ",
-      "stock_code": "301511",
-      "stock_name": "德福科技",
-      "lgb_score": 100.0,
-      "raw_score": 0.17
-    },
-    {
-      "rank": 2,
       "ts_code": "688455.SH",
       "stock_code": "688455",
       "stock_name": "科捷智能",
-      "lgb_score": 94.97,
-      "raw_score": 0.15
-    },
-    {
-      "rank": 3,
-      "ts_code": "000812.SZ",
-      "stock_code": "000812",
-      "stock_name": "陕西金叶",
-      "lgb_score": 84.97,
+      "lgb_score": 100.0,
       "raw_score": 0.12
     },
     {
-      "rank": 4,
+      "rank": 2,
       "ts_code": "603368.SH",
       "stock_code": "603368",
       "stock_name": "柳药集团",
-      "lgb_score": 83.82,
+      "lgb_score": 98.57,
       "raw_score": 0.12
     },
     {
+      "rank": 3,
+      "ts_code": "002374.SZ",
+      "stock_code": "002374",
+      "stock_name": "中锐股份",
+      "lgb_score": 92.79,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "000404.SZ",
+      "stock_code": "000404",
+      "stock_name": "长虹华意",
+      "lgb_score": 92.32,
+      "raw_score": 0.1
+    },
+    {
       "rank": 5,
-      "ts_code": "002164.SZ",
-      "stock_code": "002164",
-      "stock_name": "宁波东力",
-      "lgb_score": 81.33,
-      "raw_score": 0.11
+      "ts_code": "603344.SH",
+      "stock_code": "603344",
+      "stock_name": "星德胜",
+      "lgb_score": 91.79,
+      "raw_score": 0.1
     }
   ]
 }

@@ -231,7 +231,7 @@ class LGBTrainer:
         exec_mode="open":  buy at next-trading-day open, sell at N days later open
 
         使用 stock_adj_factor 表后复权，消除除权除息影响：
-        adj_return = (1 + unadj_return) × (adj_buy / adj_sell) - 1
+        adj_return = (1 + unadj_return) × (adj_sell / adj_buy) - 1
         """
         from src.storage import StockAdjFactor, StockDaily
         from sqlalchemy import func
@@ -315,7 +315,7 @@ class LGBTrainer:
                         adj_buy = adj_map.get((bare, buy_date), 1.0)
                         adj_sell = adj_map.get((bare, sell_date), 1.0)
                         if adj_buy > 0 and adj_sell > 0:
-                            results[(td, code)] = (1.0 + unadj_ret) * (adj_buy / adj_sell) - 1.0
+                            results[(td, code)] = (1.0 + unadj_ret) * (adj_sell / adj_buy) - 1.0
             return pd.Series(results, name=f"fwd_{self.forward_days}d")
 
         # ── Close-to-close ──
@@ -348,7 +348,7 @@ class LGBTrainer:
                     adj_buy = adj_map.get((bare, td), 1.0)
                     adj_sell = adj_map.get((bare, sell_date), 1.0)
                     if adj_buy > 0 and adj_sell > 0:
-                        results[(td, code)] = (1.0 + unadj_ret) * (adj_buy / adj_sell) - 1.0
+                        results[(td, code)] = (1.0 + unadj_ret) * (adj_sell / adj_buy) - 1.0
         return pd.Series(results, name=f"fwd_{self.forward_days}d")
 
     # ------------------------------------------------------------------
@@ -749,7 +749,7 @@ class LGBTrainer:
                 adj_b = adj_map.get((c, td), 1.0)
                 adj_s = adj_map.get((c, sell_date), 1.0)
                 if adj_b > 0 and adj_s > 0:
-                    rets.append((1.0 + raw_ret) * (adj_b / adj_s) - 1.0)
+                    rets.append((1.0 + raw_ret) * (adj_s / adj_b) - 1.0)
 
         return float(np.mean(rets)) if rets else None
 
@@ -789,7 +789,7 @@ class LGBTrainer:
                 adj_b = adj_map.get((c, td), 1.0)
                 adj_s = adj_map.get((c, sell_date), 1.0)
                 if adj_b > 0 and adj_s > 0:
-                    rets.append((1.0 + raw_ret) * (adj_b / adj_s) - 1.0)
+                    rets.append((1.0 + raw_ret) * (adj_s / adj_b) - 1.0)
         return float(np.mean(rets)) if rets else None
 
     @staticmethod

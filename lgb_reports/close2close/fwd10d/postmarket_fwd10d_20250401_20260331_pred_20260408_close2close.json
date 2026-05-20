@@ -11,39 +11,39 @@
       "stock_code": "688498",
       "stock_name": "源杰科技",
       "lgb_score": 100.0,
-      "raw_score": 0.14
+      "raw_score": 0.24
     },
     {
       "rank": 2,
-      "ts_code": "603788.SH",
-      "stock_code": "603788",
-      "stock_name": "宁波高发",
-      "lgb_score": 95.54,
-      "raw_score": 0.13
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
+      "lgb_score": 76.89,
+      "raw_score": 0.15
     },
     {
       "rank": 3,
-      "ts_code": "688506.SH",
-      "stock_code": "688506",
-      "stock_name": "百利天恒",
-      "lgb_score": 93.36,
-      "raw_score": 0.12
+      "ts_code": "601138.SH",
+      "stock_code": "601138",
+      "stock_name": "工业富联",
+      "lgb_score": 76.06,
+      "raw_score": 0.15
     },
     {
       "rank": 4,
-      "ts_code": "603950.SH",
-      "stock_code": "603950",
-      "stock_name": "长源东谷",
-      "lgb_score": 92.8,
-      "raw_score": 0.12
+      "ts_code": "301513.SZ",
+      "stock_code": "301513",
+      "stock_name": "尚水智能",
+      "lgb_score": 75.75,
+      "raw_score": 0.15
     },
     {
       "rank": 5,
-      "ts_code": "601001.SH",
-      "stock_code": "601001",
-      "stock_name": "晋控煤业",
-      "lgb_score": 91.82,
-      "raw_score": 0.12
+      "ts_code": "920177.BJ",
+      "stock_code": "920177.BJ",
+      "stock_name": "",
+      "lgb_score": 75.31,
+      "raw_score": 0.15
     }
   ]
 }

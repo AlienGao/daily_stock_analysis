@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
-      "lgb_score": 100.0,
-      "raw_score": 0.17
-    },
-    {
-      "rank": 2,
       "ts_code": "002165.SZ",
       "stock_code": "002165",
       "stock_name": "红 宝 丽",
-      "lgb_score": 97.22,
-      "raw_score": 0.16
+      "lgb_score": 100.0,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 2,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 98.48,
+      "raw_score": 0.14
     },
     {
       "rank": 3,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 90.78,
+      "ts_code": "920493.BJ",
+      "stock_code": "920493.BJ",
+      "stock_name": "",
+      "lgb_score": 98.11,
       "raw_score": 0.14
     },
     {
       "rank": 4,
-      "ts_code": "300263.SZ",
-      "stock_code": "300263",
-      "stock_name": "隆华科技",
-      "lgb_score": 90.77,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 97.54,
       "raw_score": 0.14
     },
     {
       "rank": 5,
-      "ts_code": "300612.SZ",
-      "stock_code": "300612",
-      "stock_name": "宣亚国际",
-      "lgb_score": 88.29,
+      "ts_code": "300691.SZ",
+      "stock_code": "300691",
+      "stock_name": "联合光电",
+      "lgb_score": 95.62,
       "raw_score": 0.13
     }
   ]

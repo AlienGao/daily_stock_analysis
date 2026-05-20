@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000554.SZ",
-      "stock_code": "000554",
-      "stock_name": "泰山石油",
+      "ts_code": "688048.SH",
+      "stock_code": "688048",
+      "stock_name": "长光华芯",
       "lgb_score": 100.0,
-      "raw_score": 0.12
+      "raw_score": 0.11
     },
     {
       "rank": 2,
-      "ts_code": "000589.SZ",
-      "stock_code": "000589",
-      "stock_name": "贵州轮胎",
-      "lgb_score": 93.49,
+      "ts_code": "688313.SH",
+      "stock_code": "688313",
+      "stock_name": "仕佳光子",
+      "lgb_score": 98.11,
       "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "600704.SH",
-      "stock_code": "600704",
-      "stock_name": "物产中大",
-      "lgb_score": 91.01,
+      "ts_code": "002374.SZ",
+      "stock_code": "002374",
+      "stock_name": "中锐股份",
+      "lgb_score": 90.53,
       "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
-      "lgb_score": 88.14,
+      "ts_code": "688195.SH",
+      "stock_code": "688195",
+      "stock_name": "腾景科技",
+      "lgb_score": 88.2,
       "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "301511.SZ",
-      "stock_code": "301511",
-      "stock_name": "德福科技",
-      "lgb_score": 86.55,
+      "ts_code": "300083.SZ",
+      "stock_code": "300083",
+      "stock_name": "创世纪",
+      "lgb_score": 85.99,
       "raw_score": 0.09
     }
   ]

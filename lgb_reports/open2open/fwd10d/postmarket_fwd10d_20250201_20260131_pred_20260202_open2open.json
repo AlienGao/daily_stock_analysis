@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300263.SZ",
-      "stock_code": "300263",
-      "stock_name": "隆华科技",
+      "ts_code": "603444.SH",
+      "stock_code": "603444",
+      "stock_name": "吉比特",
       "lgb_score": 100.0,
-      "raw_score": 0.19
+      "raw_score": 0.22
     },
     {
       "rank": 2,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 97.62,
-      "raw_score": 0.18
+      "ts_code": "301309.SZ",
+      "stock_code": "301309",
+      "stock_name": "万得凯",
+      "lgb_score": 96.25,
+      "raw_score": 0.2
     },
     {
       "rank": 3,
-      "ts_code": "600704.SH",
-      "stock_code": "600704",
-      "stock_name": "物产中大",
-      "lgb_score": 97.48,
-      "raw_score": 0.18
+      "ts_code": "300308.SZ.SZ",
+      "stock_code": "300308",
+      "stock_name": "中际旭创",
+      "lgb_score": 96.23,
+      "raw_score": 0.2
     },
     {
       "rank": 4,
-      "ts_code": "000601.SZ",
-      "stock_code": "000601",
-      "stock_name": "韶能股份",
-      "lgb_score": 96.42,
-      "raw_score": 0.18
+      "ts_code": "002311.SZ",
+      "stock_code": "002311",
+      "stock_name": "海大集团",
+      "lgb_score": 92.22,
+      "raw_score": 0.19
     },
     {
       "rank": 5,
-      "ts_code": "600216.SH",
-      "stock_code": "600216",
-      "stock_name": "浙江医药",
-      "lgb_score": 95.58,
-      "raw_score": 0.18
+      "ts_code": "688702.SH.SH",
+      "stock_code": "688702",
+      "stock_name": "盛科通信-U",
+      "lgb_score": 91.57,
+      "raw_score": 0.19
     }
   ]
 }

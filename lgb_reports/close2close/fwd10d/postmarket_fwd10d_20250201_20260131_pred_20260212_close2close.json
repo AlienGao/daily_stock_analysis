@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002311.SZ",
-      "stock_code": "002311",
-      "stock_name": "海大集团",
-      "lgb_score": 100.0,
-      "raw_score": 0.21
-    },
-    {
-      "rank": 2,
       "ts_code": "688256.SH",
       "stock_code": "688256",
       "stock_name": "寒武纪",
-      "lgb_score": 98.02,
-      "raw_score": 0.2
+      "lgb_score": 100.0,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 2,
+      "ts_code": "301629.SZ",
+      "stock_code": "301629",
+      "stock_name": "矽电股份",
+      "lgb_score": 90.64,
+      "raw_score": 0.23
     },
     {
       "rank": 3,
-      "ts_code": "002510.SZ",
-      "stock_code": "002510",
-      "stock_name": "天汽模",
-      "lgb_score": 94.55,
-      "raw_score": 0.19
+      "ts_code": "605020.SH",
+      "stock_code": "605020",
+      "stock_name": "永和股份",
+      "lgb_score": 89.11,
+      "raw_score": 0.22
     },
     {
       "rank": 4,
-      "ts_code": "603018.SH",
-      "stock_code": "603018",
-      "stock_name": "华设集团",
-      "lgb_score": 91.94,
-      "raw_score": 0.18
+      "ts_code": "688628.SH",
+      "stock_code": "688628",
+      "stock_name": "优利德",
+      "lgb_score": 86.03,
+      "raw_score": 0.21
     },
     {
       "rank": 5,
-      "ts_code": "002458.SZ",
-      "stock_code": "002458",
-      "stock_name": "益生股份",
-      "lgb_score": 84.42,
-      "raw_score": 0.15
+      "ts_code": "002161.SZ",
+      "stock_code": "002161",
+      "stock_name": "远 望 谷",
+      "lgb_score": 85.61,
+      "raw_score": 0.21
     }
   ]
 }

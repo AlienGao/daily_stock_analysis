@@ -11,22 +11,22 @@
       "stock_code": "000589",
       "stock_name": "贵州轮胎",
       "lgb_score": 100.0,
-      "raw_score": 0.07
+      "raw_score": 0.08
     },
     {
       "rank": 2,
-      "ts_code": "000915.SZ",
-      "stock_code": "000915",
-      "stock_name": "华特达因",
-      "lgb_score": 99.16,
-      "raw_score": 0.07
-    },
-    {
-      "rank": 3,
       "ts_code": "688016.SH",
       "stock_code": "688016",
       "stock_name": "心脉医疗",
-      "lgb_score": 96.87,
+      "lgb_score": 97.09,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 3,
+      "ts_code": "000915.SZ",
+      "stock_code": "000915",
+      "stock_name": "华特达因",
+      "lgb_score": 90.18,
       "raw_score": 0.07
     },
     {
@@ -34,16 +34,16 @@
       "ts_code": "920375.BJ",
       "stock_code": "920375.BJ",
       "stock_name": "",
-      "lgb_score": 94.4,
-      "raw_score": 0.07
+      "lgb_score": 87.36,
+      "raw_score": 0.06
     },
     {
       "rank": 5,
-      "ts_code": "000001.SH.SZ",
-      "stock_code": "000001",
-      "stock_name": "平安银行",
-      "lgb_score": 89.97,
-      "raw_score": 0.06
+      "ts_code": "002990.SZ",
+      "stock_code": "002990",
+      "stock_name": "盛视科技",
+      "lgb_score": 79.57,
+      "raw_score": 0.05
     }
   ]
 }

@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "001325.SZ",
-      "stock_code": "001325",
-      "stock_name": "元创股份",
-      "lgb_score": 100.0,
-      "raw_score": 0.23
-    },
-    {
-      "rank": 2,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 94.83,
-      "raw_score": 0.21
-    },
-    {
-      "rank": 3,
-      "ts_code": "300751.SZ",
-      "stock_code": "300751",
-      "stock_name": "迈为股份",
-      "lgb_score": 92.28,
-      "raw_score": 0.2
-    },
-    {
-      "rank": 4,
       "ts_code": "300017.SZ",
       "stock_code": "300017",
       "stock_name": "网宿科技",
-      "lgb_score": 91.86,
-      "raw_score": 0.2
+      "lgb_score": 100.0,
+      "raw_score": 0.32
+    },
+    {
+      "rank": 2,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 96.64,
+      "raw_score": 0.31
+    },
+    {
+      "rank": 3,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 95.07,
+      "raw_score": 0.3
+    },
+    {
+      "rank": 4,
+      "ts_code": "600798.SH",
+      "stock_code": "600798",
+      "stock_name": "宁波海运",
+      "lgb_score": 88.88,
+      "raw_score": 0.27
     },
     {
       "rank": 5,
-      "ts_code": "600704.SH",
-      "stock_code": "600704",
-      "stock_name": "物产中大",
-      "lgb_score": 90.82,
-      "raw_score": 0.19
+      "ts_code": "002234.SZ",
+      "stock_code": "002234",
+      "stock_name": "民和股份",
+      "lgb_score": 82.17,
+      "raw_score": 0.25
     }
   ]
 }

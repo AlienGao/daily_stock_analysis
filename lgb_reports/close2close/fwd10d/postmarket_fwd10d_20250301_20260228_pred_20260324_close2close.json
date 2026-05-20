@@ -10,40 +10,40 @@
       "ts_code": "002445.SZ",
       "stock_code": "002445",
       "stock_name": "中南文化",
-      "lgb_score": 99.81,
-      "raw_score": 0.2
+      "lgb_score": 100.0,
+      "raw_score": 0.25
     },
     {
       "rank": 2,
-      "ts_code": "688320.SH",
-      "stock_code": "688320",
-      "stock_name": "禾川科技",
-      "lgb_score": 92.61,
-      "raw_score": 0.18
+      "ts_code": "301696.SZ",
+      "stock_code": "301696",
+      "stock_name": "三瑞智能",
+      "lgb_score": 95.09,
+      "raw_score": 0.23
     },
     {
       "rank": 3,
-      "ts_code": "301306.SZ",
-      "stock_code": "301306",
-      "stock_name": "西测测试",
-      "lgb_score": 90.01,
-      "raw_score": 0.17
+      "ts_code": "001309.SZ",
+      "stock_code": "001309",
+      "stock_name": "德明利",
+      "lgb_score": 93.73,
+      "raw_score": 0.23
     },
     {
       "rank": 4,
-      "ts_code": "300391.SZ",
-      "stock_code": "300391",
-      "stock_name": "长药退",
-      "lgb_score": 88.33,
-      "raw_score": 0.16
+      "ts_code": "301306.SZ",
+      "stock_code": "301306",
+      "stock_name": "西测测试",
+      "lgb_score": 89.27,
+      "raw_score": 0.21
     },
     {
       "rank": 5,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 86.69,
-      "raw_score": 0.16
+      "ts_code": "301516.SZ",
+      "stock_code": "301516",
+      "stock_name": "中远通",
+      "lgb_score": 86.34,
+      "raw_score": 0.2
     }
   ]
 }

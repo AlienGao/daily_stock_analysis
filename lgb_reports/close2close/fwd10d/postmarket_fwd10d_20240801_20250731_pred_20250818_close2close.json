@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300885.SZ",
-      "stock_code": "300885",
-      "stock_name": "海昌新材",
-      "lgb_score": 100.0,
-      "raw_score": 0.24
-    },
-    {
-      "rank": 2,
-      "ts_code": "603915.SH",
-      "stock_code": "603915",
-      "stock_name": "国茂股份",
-      "lgb_score": 99.03,
-      "raw_score": 0.23
-    },
-    {
-      "rank": 3,
-      "ts_code": "300429.SZ",
-      "stock_code": "300429",
-      "stock_name": "强力新材",
-      "lgb_score": 96.91,
-      "raw_score": 0.22
-    },
-    {
-      "rank": 4,
       "ts_code": "000859.SZ",
       "stock_code": "000859",
       "stock_name": "国风新材",
-      "lgb_score": 94.59,
-      "raw_score": 0.21
+      "lgb_score": 100.0,
+      "raw_score": 0.28
+    },
+    {
+      "rank": 2,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 91.29,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 3,
+      "ts_code": "603915.SH",
+      "stock_code": "603915",
+      "stock_name": "国茂股份",
+      "lgb_score": 89.87,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 4,
+      "ts_code": "300429.SZ",
+      "stock_code": "300429",
+      "stock_name": "强力新材",
+      "lgb_score": 89.06,
+      "raw_score": 0.24
     },
     {
       "rank": 5,
-      "ts_code": "002590.SZ",
-      "stock_code": "002590",
-      "stock_name": "万安科技",
-      "lgb_score": 89.16,
-      "raw_score": 0.19
+      "ts_code": "601366.SH",
+      "stock_code": "601366",
+      "stock_name": "利群股份",
+      "lgb_score": 84.04,
+      "raw_score": 0.22
     }
   ]
 }

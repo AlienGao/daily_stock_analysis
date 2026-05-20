@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
+      "ts_code": "301196.SZ",
+      "stock_code": "301196",
+      "stock_name": "唯科科技",
       "lgb_score": 100.0,
-      "raw_score": 0.18
+      "raw_score": 0.15
     },
     {
       "rank": 2,
-      "ts_code": "002438.SZ",
-      "stock_code": "002438",
-      "stock_name": "江苏神通",
-      "lgb_score": 96.84,
-      "raw_score": 0.17
+      "ts_code": "301633.SZ",
+      "stock_code": "301633",
+      "stock_name": "港迪技术",
+      "lgb_score": 96.9,
+      "raw_score": 0.14
     },
     {
       "rank": 3,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 95.8,
-      "raw_score": 0.17
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 96.42,
+      "raw_score": 0.14
     },
     {
       "rank": 4,
-      "ts_code": "300612.SZ",
-      "stock_code": "300612",
-      "stock_name": "宣亚国际",
-      "lgb_score": 95.71,
-      "raw_score": 0.17
+      "ts_code": "600467.SH",
+      "stock_code": "600467",
+      "stock_name": "好当家",
+      "lgb_score": 96.03,
+      "raw_score": 0.14
     },
     {
       "rank": 5,
-      "ts_code": "002291.SZ",
-      "stock_code": "002291",
-      "stock_name": "遥望科技",
-      "lgb_score": 90.74,
-      "raw_score": 0.15
+      "ts_code": "002506.SZ",
+      "stock_code": "002506",
+      "stock_name": "协鑫集成",
+      "lgb_score": 91.67,
+      "raw_score": 0.13
     }
   ]
 }

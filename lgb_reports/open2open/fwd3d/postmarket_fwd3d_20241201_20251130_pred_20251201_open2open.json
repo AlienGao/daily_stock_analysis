@@ -11,39 +11,39 @@
       "stock_code": "600151",
       "stock_name": "航天机电",
       "lgb_score": 100.0,
-      "raw_score": 0.12
+      "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "688498.SH",
-      "stock_code": "688498",
-      "stock_name": "源杰科技",
-      "lgb_score": 94.39,
-      "raw_score": 0.11
+      "ts_code": "300296.SZ",
+      "stock_code": "300296",
+      "stock_name": "利亚德",
+      "lgb_score": 99.61,
+      "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "002519.SZ",
-      "stock_code": "002519",
-      "stock_name": "银河电子",
-      "lgb_score": 89.75,
-      "raw_score": 0.1
+      "ts_code": "603915.SH",
+      "stock_code": "603915",
+      "stock_name": "国茂股份",
+      "lgb_score": 95.94,
+      "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "688605.SH",
-      "stock_code": "688605",
-      "stock_name": "先锋精科",
-      "lgb_score": 88.53,
-      "raw_score": 0.09
+      "ts_code": "603370.SH",
+      "stock_code": "603370",
+      "stock_name": "华新精科",
+      "lgb_score": 95.16,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "920491.BJ",
-      "stock_code": "920491.BJ",
-      "stock_name": "",
-      "lgb_score": 87.88,
-      "raw_score": 0.09
+      "ts_code": "000727.SZ",
+      "stock_code": "000727",
+      "stock_name": "冠捷科技",
+      "lgb_score": 95.14,
+      "raw_score": 0.08
     }
   ]
 }

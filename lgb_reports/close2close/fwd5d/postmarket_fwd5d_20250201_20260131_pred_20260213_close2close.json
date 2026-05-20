@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300166.SZ",
-      "stock_code": "300166",
-      "stock_name": "东方国信",
+      "ts_code": "688458.SH",
+      "stock_code": "688458",
+      "stock_name": "美芯晟",
       "lgb_score": 100.0,
-      "raw_score": 0.12
+      "raw_score": 0.14
     },
     {
       "rank": 2,
-      "ts_code": "002274.SZ",
-      "stock_code": "002274",
-      "stock_name": "华昌化工",
-      "lgb_score": 99.19,
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 87.02,
       "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "688458.SH",
-      "stock_code": "688458",
-      "stock_name": "美芯晟",
-      "lgb_score": 98.27,
+      "ts_code": "002254.SZ",
+      "stock_code": "002254",
+      "stock_name": "泰和新材",
+      "lgb_score": 86.43,
       "raw_score": 0.11
     },
     {
       "rank": 4,
-      "ts_code": "301008.SZ",
-      "stock_code": "301008",
-      "stock_name": "宏昌科技",
-      "lgb_score": 98.18,
+      "ts_code": "000915.SZ",
+      "stock_code": "000915",
+      "stock_name": "华特达因",
+      "lgb_score": 85.49,
       "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "000859.SZ",
-      "stock_code": "000859",
-      "stock_name": "国风新材",
-      "lgb_score": 97.02,
+      "ts_code": "688337.SH",
+      "stock_code": "688337",
+      "stock_name": "普源精电",
+      "lgb_score": 85.36,
       "raw_score": 0.11
     }
   ]

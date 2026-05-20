@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 100.0,
-      "raw_score": 0.22
-    },
-    {
-      "rank": 2,
       "ts_code": "300429.SZ",
       "stock_code": "300429",
       "stock_name": "强力新材",
-      "lgb_score": 98.39,
-      "raw_score": 0.22
+      "lgb_score": 100.0,
+      "raw_score": 0.35
     },
     {
-      "rank": 3,
-      "ts_code": "300502.SZ.SZ",
-      "stock_code": "300502",
-      "stock_name": "新易盛",
-      "lgb_score": 94.63,
-      "raw_score": 0.2
-    },
-    {
-      "rank": 4,
-      "ts_code": "000001.SH.SZ",
-      "stock_code": "000001",
-      "stock_name": "平安银行",
-      "lgb_score": 91.63,
-      "raw_score": 0.18
-    },
-    {
-      "rank": 5,
+      "rank": 2,
       "ts_code": "600386.SH",
       "stock_code": "600386",
       "stock_name": "北巴传媒",
-      "lgb_score": 91.17,
-      "raw_score": 0.18
+      "lgb_score": 80.88,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 3,
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 79.7,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 4,
+      "ts_code": "300484.SZ",
+      "stock_code": "300484",
+      "stock_name": "蓝海华腾",
+      "lgb_score": 79.45,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 5,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 78.69,
+      "raw_score": 0.25
     }
   ]
 }

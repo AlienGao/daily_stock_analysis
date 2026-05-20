@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 93.22,
-      "raw_score": 0.17
+      "ts_code": "301516.SZ",
+      "stock_code": "301516",
+      "stock_name": "中远通",
+      "lgb_score": 100.0,
+      "raw_score": 0.24
     },
     {
       "rank": 2,
-      "ts_code": "603301.SH",
-      "stock_code": "603301",
-      "stock_name": "振德医疗",
-      "lgb_score": 93.19,
-      "raw_score": 0.17
+      "ts_code": "301696.SZ",
+      "stock_code": "301696",
+      "stock_name": "三瑞智能",
+      "lgb_score": 99.18,
+      "raw_score": 0.23
     },
     {
       "rank": 3,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 92.04,
-      "raw_score": 0.17
+      "ts_code": "688195.SH",
+      "stock_code": "688195",
+      "stock_name": "腾景科技",
+      "lgb_score": 95.7,
+      "raw_score": 0.22
     },
     {
       "rank": 4,
-      "ts_code": "688458.SH",
-      "stock_code": "688458",
-      "stock_name": "美芯晟",
-      "lgb_score": 91.4,
-      "raw_score": 0.17
+      "ts_code": "301008.SZ",
+      "stock_code": "301008",
+      "stock_name": "宏昌科技",
+      "lgb_score": 93.46,
+      "raw_score": 0.22
     },
     {
       "rank": 5,
-      "ts_code": "000589.SZ",
-      "stock_code": "000589",
-      "stock_name": "贵州轮胎",
-      "lgb_score": 91.19,
-      "raw_score": 0.17
+      "ts_code": "301022.SZ",
+      "stock_code": "301022",
+      "stock_name": "海泰科",
+      "lgb_score": 93.3,
+      "raw_score": 0.22
     }
   ]
 }

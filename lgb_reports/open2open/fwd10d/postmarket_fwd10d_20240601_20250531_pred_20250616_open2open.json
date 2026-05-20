@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301117.SZ",
-      "stock_code": "301117",
-      "stock_name": "佳缘科技",
-      "lgb_score": 100.0,
-      "raw_score": 0.27
-    },
-    {
-      "rank": 2,
       "ts_code": "300017.SZ",
       "stock_code": "300017",
       "stock_name": "网宿科技",
-      "lgb_score": 95.97,
-      "raw_score": 0.25
+      "lgb_score": 100.0,
+      "raw_score": 0.3
+    },
+    {
+      "rank": 2,
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 95.2,
+      "raw_score": 0.27
     },
     {
       "rank": 3,
-      "ts_code": "301372.SZ",
-      "stock_code": "301372",
-      "stock_name": "科净源",
-      "lgb_score": 91.97,
-      "raw_score": 0.23
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 91.5,
+      "raw_score": 0.26
     },
     {
       "rank": 4,
-      "ts_code": "300885.SZ",
-      "stock_code": "300885",
-      "stock_name": "海昌新材",
-      "lgb_score": 91.47,
-      "raw_score": 0.23
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 86.96,
+      "raw_score": 0.24
     },
     {
       "rank": 5,
-      "ts_code": "000859.SZ",
-      "stock_code": "000859",
-      "stock_name": "国风新材",
-      "lgb_score": 91.12,
-      "raw_score": 0.23
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 86.32,
+      "raw_score": 0.24
     }
   ]
 }

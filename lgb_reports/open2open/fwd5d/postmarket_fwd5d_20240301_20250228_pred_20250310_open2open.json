@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688316.SH",
-      "stock_code": "688316",
-      "stock_name": "青云科技-U",
-      "lgb_score": 100.0,
-      "raw_score": 0.15
-    },
-    {
-      "rank": 2,
-      "ts_code": "301633.SZ",
-      "stock_code": "301633",
-      "stock_name": "港迪技术",
-      "lgb_score": 98.49,
-      "raw_score": 0.15
-    },
-    {
-      "rank": 3,
-      "ts_code": "301022.SZ",
-      "stock_code": "301022",
-      "stock_name": "海泰科",
-      "lgb_score": 97.72,
-      "raw_score": 0.15
-    },
-    {
-      "rank": 4,
       "ts_code": "688108.SH",
       "stock_code": "688108",
       "stock_name": "赛诺医疗",
-      "lgb_score": 94.65,
+      "lgb_score": 100.0,
       "raw_score": 0.14
     },
     {
+      "rank": 2,
+      "ts_code": "688316.SH",
+      "stock_code": "688316",
+      "stock_name": "青云科技-U",
+      "lgb_score": 95.44,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
+      "ts_code": "301550.SZ",
+      "stock_code": "301550",
+      "stock_name": "斯菱智驱",
+      "lgb_score": 90.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 4,
+      "ts_code": "301128.SZ",
+      "stock_code": "301128",
+      "stock_name": "强瑞技术",
+      "lgb_score": 88.59,
+      "raw_score": 0.1
+    },
+    {
       "rank": 5,
-      "ts_code": "300612.SZ",
-      "stock_code": "300612",
-      "stock_name": "宣亚国际",
-      "lgb_score": 93.23,
-      "raw_score": 0.13
+      "ts_code": "688071.SH",
+      "stock_code": "688071",
+      "stock_name": "华依科技",
+      "lgb_score": 88.14,
+      "raw_score": 0.1
     }
   ]
 }

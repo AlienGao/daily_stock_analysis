@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000965.SZ",
-      "stock_code": "000965",
-      "stock_name": "天保基建",
+      "ts_code": "301257.SZ",
+      "stock_code": "301257",
+      "stock_name": "普蕊斯",
       "lgb_score": 100.0,
-      "raw_score": 0.12
+      "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 85.01,
+      "ts_code": "000987.SZ",
+      "stock_code": "000987",
+      "stock_name": "越秀资本",
+      "lgb_score": 94.91,
       "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "002104.SZ",
-      "stock_code": "002104",
-      "stock_name": "恒宝股份",
-      "lgb_score": 83.83,
+      "ts_code": "000965.SZ",
+      "stock_code": "000965",
+      "stock_name": "天保基建",
+      "lgb_score": 90.75,
       "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "000987.SZ",
-      "stock_code": "000987",
-      "stock_name": "越秀资本",
-      "lgb_score": 76.58,
-      "raw_score": 0.07
+      "ts_code": "002513.SZ",
+      "stock_code": "002513",
+      "stock_name": "蓝丰生化",
+      "lgb_score": 87.46,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "301117.SZ",
-      "stock_code": "301117",
-      "stock_name": "佳缘科技",
-      "lgb_score": 76.48,
-      "raw_score": 0.07
+      "ts_code": "600281.SH",
+      "stock_code": "600281",
+      "stock_name": "华阳新材",
+      "lgb_score": 87.46,
+      "raw_score": 0.08
     }
   ]
 }

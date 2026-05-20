@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688316.SH",
-      "stock_code": "688316",
-      "stock_name": "青云科技-U",
-      "lgb_score": 100.0,
-      "raw_score": 0.16
-    },
-    {
-      "rank": 2,
       "ts_code": "688108.SH",
       "stock_code": "688108",
       "stock_name": "赛诺医疗",
-      "lgb_score": 95.55,
-      "raw_score": 0.14
-    },
-    {
-      "rank": 3,
-      "ts_code": "300963.SZ",
-      "stock_code": "300963",
-      "stock_name": "中洲特材",
-      "lgb_score": 91.89,
+      "lgb_score": 100.0,
       "raw_score": 0.13
     },
     {
+      "rank": 2,
+      "ts_code": "603893.SH",
+      "stock_code": "603893",
+      "stock_name": "瑞芯微",
+      "lgb_score": 98.78,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 3,
+      "ts_code": "301336.SZ",
+      "stock_code": "301336",
+      "stock_name": "趣睡科技",
+      "lgb_score": 96.61,
+      "raw_score": 0.12
+    },
+    {
       "rank": 4,
-      "ts_code": "920580.BJ",
-      "stock_code": "920580.BJ",
-      "stock_name": "",
-      "lgb_score": 89.97,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 95.4,
       "raw_score": 0.12
     },
     {
       "rank": 5,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
-      "lgb_score": 88.02,
-      "raw_score": 0.12
+      "ts_code": "301538.SZ",
+      "stock_code": "301538",
+      "stock_name": "骏鼎达",
+      "lgb_score": 91.28,
+      "raw_score": 0.11
     }
   ]
 }

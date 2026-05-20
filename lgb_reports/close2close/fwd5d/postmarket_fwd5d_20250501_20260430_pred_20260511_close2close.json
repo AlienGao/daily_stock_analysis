@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000554.SZ",
-      "stock_code": "000554",
-      "stock_name": "泰山石油",
+      "ts_code": "300976.SZ",
+      "stock_code": "300976",
+      "stock_name": "达瑞电子",
       "lgb_score": 100.0,
-      "raw_score": 0.15
+      "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "600039.SH",
-      "stock_code": "600039",
-      "stock_name": "四川路桥",
-      "lgb_score": 86.32,
-      "raw_score": 0.12
+      "ts_code": "601006.SH",
+      "stock_code": "601006",
+      "stock_name": "大秦铁路",
+      "lgb_score": 98.25,
+      "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "603590.SH",
-      "stock_code": "603590",
-      "stock_name": "康辰药业",
-      "lgb_score": 83.84,
-      "raw_score": 0.11
+      "ts_code": "000404.SZ",
+      "stock_code": "000404",
+      "stock_name": "长虹华意",
+      "lgb_score": 98.15,
+      "raw_score": 0.13
     },
     {
       "rank": 4,
-      "ts_code": "600704.SH",
-      "stock_code": "600704",
-      "stock_name": "物产中大",
-      "lgb_score": 81.06,
-      "raw_score": 0.1
+      "ts_code": "603590.SH",
+      "stock_code": "603590",
+      "stock_name": "康辰药业",
+      "lgb_score": 97.97,
+      "raw_score": 0.13
     },
     {
       "rank": 5,
-      "ts_code": "688458.SH",
-      "stock_code": "688458",
-      "stock_name": "美芯晟",
-      "lgb_score": 80.65,
-      "raw_score": 0.1
+      "ts_code": "002150.SZ",
+      "stock_code": "002150",
+      "stock_name": "正泰电源",
+      "lgb_score": 95.72,
+      "raw_score": 0.12
     }
   ]
 }

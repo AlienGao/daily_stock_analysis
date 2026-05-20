@@ -11,39 +11,39 @@
       "stock_code": "000859",
       "stock_name": "国风新材",
       "lgb_score": 100.0,
-      "raw_score": 0.11
+      "raw_score": 0.12
     },
     {
       "rank": 2,
-      "ts_code": "300612.SZ",
-      "stock_code": "300612",
-      "stock_name": "宣亚国际",
-      "lgb_score": 97.03,
-      "raw_score": 0.1
+      "ts_code": "000520.SZ",
+      "stock_code": "000520",
+      "stock_name": "凤凰航运",
+      "lgb_score": 93.36,
+      "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 95.24,
-      "raw_score": 0.1
-    },
-    {
-      "rank": 4,
       "ts_code": "000670.SZ",
       "stock_code": "000670",
       "stock_name": "盈方微",
-      "lgb_score": 94.43,
-      "raw_score": 0.1
+      "lgb_score": 86.83,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "000953.SZ",
+      "stock_code": "000953",
+      "stock_name": "河化股份",
+      "lgb_score": 86.35,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
       "ts_code": "300166.SZ",
       "stock_code": "300166",
       "stock_name": "东方国信",
-      "lgb_score": 93.78,
-      "raw_score": 0.1
+      "lgb_score": 85.97,
+      "raw_score": 0.09
     }
   ]
 }

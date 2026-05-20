@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "920491.BJ",
-      "stock_code": "920491.BJ",
-      "stock_name": "",
+      "ts_code": "300423.SZ",
+      "stock_code": "300423",
+      "stock_name": "昇辉科技",
       "lgb_score": 100.0,
-      "raw_score": 0.1
+      "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "601500.SH",
-      "stock_code": "601500",
-      "stock_name": "通用股份",
-      "lgb_score": 97.81,
-      "raw_score": 0.1
+      "ts_code": "603120.SH",
+      "stock_code": "603120",
+      "stock_name": "肯特催化",
+      "lgb_score": 92.76,
+      "raw_score": 0.08
     },
     {
       "rank": 3,
-      "ts_code": "300691.SZ",
-      "stock_code": "300691",
-      "stock_name": "联合光电",
-      "lgb_score": 90.07,
+      "ts_code": "603915.SH",
+      "stock_code": "603915",
+      "stock_name": "国茂股份",
+      "lgb_score": 91.04,
       "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "002607.SZ",
-      "stock_code": "002607",
-      "stock_name": "中公教育",
-      "lgb_score": 89.12,
+      "ts_code": "920491.BJ",
+      "stock_code": "920491.BJ",
+      "stock_name": "",
+      "lgb_score": 90.81,
       "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "603120.SH",
-      "stock_code": "603120",
-      "stock_name": "肯特催化",
-      "lgb_score": 88.86,
-      "raw_score": 0.08
+      "ts_code": "600192.SH",
+      "stock_code": "600192",
+      "stock_name": "长城电工",
+      "lgb_score": 90.33,
+      "raw_score": 0.07
     }
   ]
 }

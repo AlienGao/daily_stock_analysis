@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "603738.SH",
-      "stock_code": "603738",
-      "stock_name": "泰晶科技",
+      "ts_code": "600449.SH",
+      "stock_code": "600449",
+      "stock_name": "宁夏建材",
       "lgb_score": 100.0,
-      "raw_score": 0.06
+      "raw_score": 0.07
     },
     {
       "rank": 2,
-      "ts_code": "603301.SH",
-      "stock_code": "603301",
-      "stock_name": "振德医疗",
-      "lgb_score": 97.93,
-      "raw_score": 0.05
+      "ts_code": "688219.SH",
+      "stock_code": "688219",
+      "stock_name": "会通股份",
+      "lgb_score": 99.19,
+      "raw_score": 0.07
     },
     {
       "rank": 3,
-      "ts_code": "002969.SZ",
-      "stock_code": "002969",
-      "stock_name": "嘉美包装",
-      "lgb_score": 97.7,
-      "raw_score": 0.05
+      "ts_code": "301589.SZ",
+      "stock_code": "301589",
+      "stock_name": "诺瓦星云",
+      "lgb_score": 97.37,
+      "raw_score": 0.06
     },
     {
       "rank": 4,
-      "ts_code": "002218.SZ",
-      "stock_code": "002218",
-      "stock_name": "拓日新能",
-      "lgb_score": 96.77,
-      "raw_score": 0.05
+      "ts_code": "688320.SH",
+      "stock_code": "688320",
+      "stock_name": "禾川科技",
+      "lgb_score": 96.98,
+      "raw_score": 0.06
     },
     {
       "rank": 5,
       "ts_code": "002395.SZ",
       "stock_code": "002395",
       "stock_name": "双象股份",
-      "lgb_score": 96.15,
-      "raw_score": 0.05
+      "lgb_score": 96.08,
+      "raw_score": 0.06
     }
   ]
 }

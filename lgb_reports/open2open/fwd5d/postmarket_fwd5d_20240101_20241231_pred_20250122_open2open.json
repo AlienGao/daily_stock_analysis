@@ -11,38 +11,38 @@
       "stock_code": "300166",
       "stock_name": "东方国信",
       "lgb_score": 100.0,
-      "raw_score": 0.18
+      "raw_score": 0.17
     },
     {
       "rank": 2,
       "ts_code": "002165.SZ",
       "stock_code": "002165",
       "stock_name": "红 宝 丽",
-      "lgb_score": 96.48,
-      "raw_score": 0.16
+      "lgb_score": 92.65,
+      "raw_score": 0.15
     },
     {
       "rank": 3,
       "ts_code": "000859.SZ",
       "stock_code": "000859",
       "stock_name": "国风新材",
-      "lgb_score": 90.25,
-      "raw_score": 0.14
+      "lgb_score": 89.22,
+      "raw_score": 0.13
     },
     {
       "rank": 4,
-      "ts_code": "688320.SH",
-      "stock_code": "688320",
-      "stock_name": "禾川科技",
-      "lgb_score": 87.59,
-      "raw_score": 0.14
+      "ts_code": "002395.SZ",
+      "stock_code": "002395",
+      "stock_name": "双象股份",
+      "lgb_score": 87.43,
+      "raw_score": 0.13
     },
     {
       "rank": 5,
-      "ts_code": "688458.SH",
-      "stock_code": "688458",
-      "stock_name": "美芯晟",
-      "lgb_score": 86.69,
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 86.49,
       "raw_score": 0.13
     }
   ]

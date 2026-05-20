@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688167.SH",
-      "stock_code": "688167",
-      "stock_name": "炬光科技",
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
       "lgb_score": 100.0,
       "raw_score": 0.07
     },
     {
       "rank": 2,
-      "ts_code": "000159.SZ",
-      "stock_code": "000159",
-      "stock_name": "国际实业",
-      "lgb_score": 95.1,
-      "raw_score": 0.06
+      "ts_code": "300179.SZ",
+      "stock_code": "300179",
+      "stock_name": "四方达",
+      "lgb_score": 98.73,
+      "raw_score": 0.07
     },
     {
       "rank": 3,
-      "ts_code": "002274.SZ",
-      "stock_code": "002274",
-      "stock_name": "华昌化工",
-      "lgb_score": 93.86,
-      "raw_score": 0.06
+      "ts_code": "000159.SZ",
+      "stock_code": "000159",
+      "stock_name": "国际实业",
+      "lgb_score": 97.56,
+      "raw_score": 0.07
     },
     {
       "rank": 4,
-      "ts_code": "600704.SH",
-      "stock_code": "600704",
-      "stock_name": "物产中大",
-      "lgb_score": 92.7,
-      "raw_score": 0.06
+      "ts_code": "605060.SH",
+      "stock_code": "605060",
+      "stock_name": "联德股份",
+      "lgb_score": 96.0,
+      "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "601678.SH",
-      "stock_code": "601678",
-      "stock_name": "滨化股份",
-      "lgb_score": 89.98,
-      "raw_score": 0.05
+      "ts_code": "002458.SZ",
+      "stock_code": "002458",
+      "stock_name": "益生股份",
+      "lgb_score": 94.14,
+      "raw_score": 0.06
     }
   ]
 }

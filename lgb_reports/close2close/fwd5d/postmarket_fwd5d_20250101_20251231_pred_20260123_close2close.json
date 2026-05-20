@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "603619.SH",
-      "stock_code": "603619",
-      "stock_name": "中曼石油",
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.15
     },
     {
       "rank": 2,
-      "ts_code": "688047.SH",
-      "stock_code": "688047",
-      "stock_name": "龙芯中科",
-      "lgb_score": 99.48,
-      "raw_score": 0.13
+      "ts_code": "002438.SZ",
+      "stock_code": "002438",
+      "stock_name": "江苏神通",
+      "lgb_score": 97.07,
+      "raw_score": 0.15
     },
     {
       "rank": 3,
-      "ts_code": "300296.SZ",
-      "stock_code": "300296",
-      "stock_name": "利亚德",
-      "lgb_score": 97.68,
-      "raw_score": 0.12
-    },
-    {
-      "rank": 4,
       "ts_code": "300263.SZ",
       "stock_code": "300263",
       "stock_name": "隆华科技",
-      "lgb_score": 97.47,
-      "raw_score": 0.12
+      "lgb_score": 96.75,
+      "raw_score": 0.15
     },
     {
-      "rank": 5,
+      "rank": 4,
       "ts_code": "301589.SZ",
       "stock_code": "301589",
       "stock_name": "诺瓦星云",
-      "lgb_score": 97.11,
-      "raw_score": 0.12
+      "lgb_score": 93.6,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 5,
+      "ts_code": "603507.SH",
+      "stock_code": "603507",
+      "stock_name": "振江股份",
+      "lgb_score": 86.93,
+      "raw_score": 0.13
     }
   ]
 }

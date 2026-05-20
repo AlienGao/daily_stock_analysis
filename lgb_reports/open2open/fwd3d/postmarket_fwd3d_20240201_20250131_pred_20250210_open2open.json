@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301071.SZ",
-      "stock_code": "301071",
-      "stock_name": "力量钻石",
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
       "lgb_score": 100.0,
       "raw_score": 0.11
     },
     {
       "rank": 2,
-      "ts_code": "688072.SH",
-      "stock_code": "688072",
-      "stock_name": "拓荆科技",
-      "lgb_score": 95.74,
-      "raw_score": 0.1
+      "ts_code": "001278.SZ",
+      "stock_code": "001278",
+      "stock_name": "一彬科技",
+      "lgb_score": 99.47,
+      "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "301208.SZ",
-      "stock_code": "301208",
-      "stock_name": "中亦科技",
-      "lgb_score": 92.01,
-      "raw_score": 0.09
+      "ts_code": "002164.SZ",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 95.22,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "002165.SZ",
-      "stock_code": "002165",
-      "stock_name": "红 宝 丽",
-      "lgb_score": 91.76,
+      "ts_code": "688072.SH",
+      "stock_code": "688072",
+      "stock_name": "拓荆科技",
+      "lgb_score": 92.88,
       "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "603915.SH",
-      "stock_code": "603915",
-      "stock_name": "国茂股份",
-      "lgb_score": 91.22,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 92.64,
       "raw_score": 0.09
     }
   ]

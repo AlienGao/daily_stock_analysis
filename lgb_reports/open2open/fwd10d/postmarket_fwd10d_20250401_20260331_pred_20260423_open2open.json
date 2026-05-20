@@ -11,39 +11,39 @@
       "stock_code": "300757",
       "stock_name": "罗博特科",
       "lgb_score": 100.0,
-      "raw_score": 0.24
+      "raw_score": 0.21
     },
     {
       "rank": 2,
       "ts_code": "688498.SH",
       "stock_code": "688498",
       "stock_name": "源杰科技",
-      "lgb_score": 84.23,
-      "raw_score": 0.17
+      "lgb_score": 96.71,
+      "raw_score": 0.2
     },
     {
       "rank": 3,
-      "ts_code": "688048.SH",
-      "stock_code": "688048",
-      "stock_name": "长光华芯",
-      "lgb_score": 83.69,
-      "raw_score": 0.17
+      "ts_code": "001312.SZ",
+      "stock_code": "001312",
+      "stock_name": "福恩股份",
+      "lgb_score": 96.64,
+      "raw_score": 0.2
     },
     {
       "rank": 4,
-      "ts_code": "300857.SZ",
-      "stock_code": "300857",
-      "stock_name": "协创数据",
-      "lgb_score": 83.62,
-      "raw_score": 0.17
+      "ts_code": "688048.SH",
+      "stock_code": "688048",
+      "stock_name": "长光华芯",
+      "lgb_score": 96.43,
+      "raw_score": 0.2
     },
     {
       "rank": 5,
       "ts_code": "301345.SZ",
       "stock_code": "301345",
       "stock_name": "涛涛车业",
-      "lgb_score": 83.11,
-      "raw_score": 0.17
+      "lgb_score": 91.53,
+      "raw_score": 0.19
     }
   ]
 }

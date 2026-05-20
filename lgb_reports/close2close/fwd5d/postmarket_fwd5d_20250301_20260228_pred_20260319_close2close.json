@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002580.SZ",
-      "stock_code": "002580",
-      "stock_name": "圣阳股份",
-      "lgb_score": 100.0,
-      "raw_score": 0.17
-    },
-    {
-      "rank": 2,
-      "ts_code": "001387.SZ",
-      "stock_code": "001387",
-      "stock_name": "雪祺电气",
-      "lgb_score": 89.47,
-      "raw_score": 0.14
-    },
-    {
-      "rank": 3,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 88.02,
-      "raw_score": 0.14
-    },
-    {
-      "rank": 4,
-      "ts_code": "920924.BJ",
-      "stock_code": "920924.BJ",
-      "stock_name": "",
-      "lgb_score": 83.34,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 5,
       "ts_code": "000601.SZ",
       "stock_code": "000601",
       "stock_name": "韶能股份",
-      "lgb_score": 81.02,
+      "lgb_score": 100.0,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 2,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 86.5,
       "raw_score": 0.12
+    },
+    {
+      "rank": 3,
+      "ts_code": "002580.SZ",
+      "stock_code": "002580",
+      "stock_name": "圣阳股份",
+      "lgb_score": 86.32,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 4,
+      "ts_code": "688458.SH",
+      "stock_code": "688458",
+      "stock_name": "美芯晟",
+      "lgb_score": 84.01,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 5,
+      "ts_code": "920924.BJ",
+      "stock_code": "920924.BJ",
+      "stock_name": "",
+      "lgb_score": 79.95,
+      "raw_score": 0.1
     }
   ]
 }

@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688316.SH",
-      "stock_code": "688316",
-      "stock_name": "青云科技-U",
+      "ts_code": "300842.SZ",
+      "stock_code": "300842",
+      "stock_name": "帝科股份",
       "lgb_score": 100.0,
-      "raw_score": 0.2
+      "raw_score": 0.25
     },
     {
       "rank": 2,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
-      "lgb_score": 97.85,
-      "raw_score": 0.19
+      "ts_code": "688368.SH",
+      "stock_code": "688368",
+      "stock_name": "晶丰明源",
+      "lgb_score": 99.0,
+      "raw_score": 0.25
     },
     {
       "rank": 3,
-      "ts_code": "300963.SZ",
-      "stock_code": "300963",
-      "stock_name": "中洲特材",
-      "lgb_score": 97.31,
-      "raw_score": 0.19
+      "ts_code": "688316.SH",
+      "stock_code": "688316",
+      "stock_name": "青云科技-U",
+      "lgb_score": 96.17,
+      "raw_score": 0.24
     },
     {
       "rank": 4,
-      "ts_code": "300378.SZ",
-      "stock_code": "300378",
-      "stock_name": "鼎捷数智",
-      "lgb_score": 96.79,
-      "raw_score": 0.19
+      "ts_code": "688787.SH",
+      "stock_code": "688787",
+      "stock_name": "海天瑞声",
+      "lgb_score": 92.35,
+      "raw_score": 0.22
     },
     {
       "rank": 5,
-      "ts_code": "603893.SH",
-      "stock_code": "603893",
-      "stock_name": "瑞芯微",
-      "lgb_score": 95.85,
-      "raw_score": 0.18
+      "ts_code": "688072.SH",
+      "stock_code": "688072",
+      "stock_name": "拓荆科技",
+      "lgb_score": 92.31,
+      "raw_score": 0.22
     }
   ]
 }

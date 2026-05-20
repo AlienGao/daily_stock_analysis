@@ -11,39 +11,39 @@
       "stock_code": "300263",
       "stock_name": "隆华科技",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.15
     },
     {
       "rank": 2,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
-      "lgb_score": 96.24,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 91.22,
       "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 92.36,
-      "raw_score": 0.11
-    },
-    {
-      "rank": 4,
       "ts_code": "002274.SZ",
       "stock_code": "002274",
       "stock_name": "华昌化工",
-      "lgb_score": 90.65,
-      "raw_score": 0.11
+      "lgb_score": 90.3,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 4,
+      "ts_code": "002438.SZ",
+      "stock_code": "002438",
+      "stock_name": "江苏神通",
+      "lgb_score": 90.11,
+      "raw_score": 0.12
     },
     {
       "rank": 5,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 90.42,
-      "raw_score": 0.11
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 89.79,
+      "raw_score": 0.12
     }
   ]
 }

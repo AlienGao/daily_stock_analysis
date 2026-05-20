@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "601992.SH",
-      "stock_code": "601992",
-      "stock_name": "金隅集团",
-      "lgb_score": 93.74,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 2,
-      "ts_code": "600326.SH",
-      "stock_code": "600326",
-      "stock_name": "西藏天路",
-      "lgb_score": 91.67,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 3,
       "ts_code": "600802.SH",
       "stock_code": "600802",
       "stock_name": "福建水泥",
-      "lgb_score": 90.91,
+      "lgb_score": 92.8,
       "raw_score": 0.12
     },
     {
+      "rank": 2,
+      "ts_code": "601992.SH",
+      "stock_code": "601992",
+      "stock_name": "金隅集团",
+      "lgb_score": 90.35,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "300185.SZ",
+      "stock_code": "300185",
+      "stock_name": "通裕重工",
+      "lgb_score": 87.88,
+      "raw_score": 0.1
+    },
+    {
       "rank": 4,
-      "ts_code": "600425.SH",
-      "stock_code": "600425",
-      "stock_name": "青松建化",
-      "lgb_score": 82.36,
+      "ts_code": "600326.SH",
+      "stock_code": "600326",
+      "stock_name": "西藏天路",
+      "lgb_score": 86.64,
       "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "300185.SZ",
-      "stock_code": "300185",
-      "stock_name": "通裕重工",
-      "lgb_score": 80.23,
+      "ts_code": "603115.SH",
+      "stock_code": "603115",
+      "stock_name": "海星股份",
+      "lgb_score": 83.76,
       "raw_score": 0.1
     }
   ]

@@ -15,10 +15,10 @@
     },
     {
       "rank": 2,
-      "ts_code": "688727.SH",
-      "stock_code": "688727",
-      "stock_name": "恒坤新材",
-      "lgb_score": 96.65,
+      "ts_code": "300751.SZ",
+      "stock_code": "300751",
+      "stock_name": "迈为股份",
+      "lgb_score": 96.71,
       "raw_score": 0.07
     },
     {
@@ -26,24 +26,24 @@
       "ts_code": "301023.SZ",
       "stock_code": "301023",
       "stock_name": "奕帆传动",
-      "lgb_score": 95.16,
+      "lgb_score": 93.14,
       "raw_score": 0.07
     },
     {
       "rank": 4,
-      "ts_code": "002121.SZ",
-      "stock_code": "002121",
-      "stock_name": "科陆电子",
-      "lgb_score": 93.42,
-      "raw_score": 0.07
+      "ts_code": "603516.SH",
+      "stock_code": "603516",
+      "stock_name": "淳中科技",
+      "lgb_score": 91.67,
+      "raw_score": 0.06
     },
     {
       "rank": 5,
-      "ts_code": "688368.SH",
-      "stock_code": "688368",
-      "stock_name": "晶丰明源",
-      "lgb_score": 91.25,
-      "raw_score": 0.07
+      "ts_code": "300454.SZ",
+      "stock_code": "300454",
+      "stock_name": "深信服",
+      "lgb_score": 89.02,
+      "raw_score": 0.06
     }
   ]
 }

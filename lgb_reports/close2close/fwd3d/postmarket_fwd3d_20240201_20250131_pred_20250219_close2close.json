@@ -11,39 +11,39 @@
       "stock_code": "688401",
       "stock_name": "路维光电",
       "lgb_score": 100.0,
-      "raw_score": 0.12
+      "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "300674.SZ",
-      "stock_code": "300674",
-      "stock_name": "宇信科技",
-      "lgb_score": 84.14,
+      "ts_code": "301550.SZ",
+      "stock_code": "301550",
+      "stock_name": "斯菱智驱",
+      "lgb_score": 90.02,
       "raw_score": 0.08
     },
     {
       "rank": 3,
-      "ts_code": "920578.BJ",
-      "stock_code": "920578.BJ",
-      "stock_name": "",
-      "lgb_score": 81.86,
+      "ts_code": "301486.SZ",
+      "stock_code": "301486",
+      "stock_name": "致尚科技",
+      "lgb_score": 88.22,
       "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "002535.SZ",
-      "stock_code": "002535",
-      "stock_name": "林州重机",
-      "lgb_score": 81.69,
-      "raw_score": 0.08
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 80.73,
+      "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "301550.SZ",
-      "stock_code": "301550",
-      "stock_name": "斯菱智驱",
-      "lgb_score": 80.81,
-      "raw_score": 0.08
+      "ts_code": "688381.SH",
+      "stock_code": "688381",
+      "stock_name": "帝奥微",
+      "lgb_score": 80.71,
+      "raw_score": 0.07
     }
   ]
 }

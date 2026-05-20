@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002255.SZ",
-      "stock_code": "002255",
-      "stock_name": "海陆重工",
-      "lgb_score": 100.0,
-      "raw_score": 0.1
-    },
-    {
-      "rank": 2,
       "ts_code": "002234.SZ",
       "stock_code": "002234",
       "stock_name": "民和股份",
-      "lgb_score": 99.14,
-      "raw_score": 0.1
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "600982.SH",
+      "stock_code": "600982",
+      "stock_name": "宁波能源",
+      "lgb_score": 85.3,
+      "raw_score": 0.08
     },
     {
       "rank": 3,
-      "ts_code": "300328.SZ",
-      "stock_code": "300328",
-      "stock_name": "宜安科技",
-      "lgb_score": 91.86,
+      "ts_code": "002255.SZ",
+      "stock_code": "002255",
+      "stock_name": "海陆重工",
+      "lgb_score": 84.51,
       "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "300975.SZ",
-      "stock_code": "300975",
-      "stock_name": "商络电子",
-      "lgb_score": 91.67,
+      "ts_code": "000701.SZ",
+      "stock_code": "000701",
+      "stock_name": "厦门信达",
+      "lgb_score": 84.03,
       "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "002915.SZ",
-      "stock_code": "002915",
-      "stock_name": "中欣氟材",
-      "lgb_score": 90.08,
-      "raw_score": 0.08
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 81.44,
+      "raw_score": 0.07
     }
   ]
 }

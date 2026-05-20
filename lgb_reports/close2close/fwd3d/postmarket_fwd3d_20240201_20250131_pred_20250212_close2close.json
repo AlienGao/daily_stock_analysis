@@ -11,39 +11,39 @@
       "stock_code": "000880",
       "stock_name": "潍柴重机",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "688135.SH",
-      "stock_code": "688135",
-      "stock_name": "利扬芯片",
-      "lgb_score": 86.26,
-      "raw_score": 0.1
+      "ts_code": "600386.SH",
+      "stock_code": "600386",
+      "stock_name": "北巴传媒",
+      "lgb_score": 97.66,
+      "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "600797.SH",
-      "stock_code": "600797",
-      "stock_name": "浙大网新",
-      "lgb_score": 85.3,
-      "raw_score": 0.1
+      "ts_code": "003029.SZ",
+      "stock_code": "003029",
+      "stock_name": "吉大正元",
+      "lgb_score": 92.34,
+      "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "600327.SH",
-      "stock_code": "600327",
-      "stock_name": "大东方",
-      "lgb_score": 82.5,
-      "raw_score": 0.09
+      "ts_code": "688135.SH",
+      "stock_code": "688135",
+      "stock_name": "利扬芯片",
+      "lgb_score": 90.44,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "301486.SZ",
-      "stock_code": "301486",
-      "stock_name": "致尚科技",
-      "lgb_score": 81.06,
-      "raw_score": 0.09
+      "ts_code": "300046.SZ",
+      "stock_code": "300046",
+      "stock_name": "台基股份",
+      "lgb_score": 86.52,
+      "raw_score": 0.07
     }
   ]
 }

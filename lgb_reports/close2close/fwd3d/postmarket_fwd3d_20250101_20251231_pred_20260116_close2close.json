@@ -15,34 +15,34 @@
     },
     {
       "rank": 2,
-      "ts_code": "688787.SH",
-      "stock_code": "688787",
-      "stock_name": "海天瑞声",
-      "lgb_score": 94.79,
+      "ts_code": "300115.SZ",
+      "stock_code": "300115",
+      "stock_name": "长盈精密",
+      "lgb_score": 96.83,
       "raw_score": 0.07
     },
     {
       "rank": 3,
-      "ts_code": "300083.SZ",
-      "stock_code": "300083",
-      "stock_name": "创世纪",
-      "lgb_score": 93.74,
+      "ts_code": "603248.SH",
+      "stock_code": "603248",
+      "stock_name": "锡华科技",
+      "lgb_score": 96.33,
       "raw_score": 0.07
     },
     {
       "rank": 4,
-      "ts_code": "300042.SZ",
-      "stock_code": "300042",
-      "stock_name": "朗科科技",
-      "lgb_score": 91.81,
+      "ts_code": "002452.SZ",
+      "stock_code": "002452",
+      "stock_name": "长高电新",
+      "lgb_score": 95.25,
       "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "688458.SH",
-      "stock_code": "688458",
-      "stock_name": "美芯晟",
-      "lgb_score": 90.7,
+      "ts_code": "300976.SZ",
+      "stock_code": "300976",
+      "stock_name": "达瑞电子",
+      "lgb_score": 94.48,
       "raw_score": 0.07
     }
   ]

@@ -7,9 +7,9 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
       "lgb_score": 100.0,
       "raw_score": 0.13
     },
@@ -18,32 +18,32 @@
       "ts_code": "301372.SZ",
       "stock_code": "301372",
       "stock_name": "科净源",
-      "lgb_score": 96.88,
-      "raw_score": 0.12
+      "lgb_score": 99.57,
+      "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "002121.SZ",
-      "stock_code": "002121",
-      "stock_name": "科陆电子",
-      "lgb_score": 95.21,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 95.98,
       "raw_score": 0.12
     },
     {
       "rank": 4,
-      "ts_code": "300046.SZ",
-      "stock_code": "300046",
-      "stock_name": "台基股份",
-      "lgb_score": 91.17,
-      "raw_score": 0.11
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 94.94,
+      "raw_score": 0.12
     },
     {
       "rank": 5,
       "ts_code": "300970.SZ",
       "stock_code": "300970",
       "stock_name": "华绿生物",
-      "lgb_score": 90.21,
-      "raw_score": 0.1
+      "lgb_score": 94.33,
+      "raw_score": 0.12
     }
   ]
 }

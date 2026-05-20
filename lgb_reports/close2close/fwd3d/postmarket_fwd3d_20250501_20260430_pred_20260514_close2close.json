@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "603056.SH",
-      "stock_code": "603056",
-      "stock_name": "",
+      "ts_code": "688677.SH",
+      "stock_code": "688677",
+      "stock_name": "海泰新光",
       "lgb_score": 100.0,
-      "raw_score": 0.08
+      "raw_score": 0.07
     },
     {
       "rank": 2,
-      "ts_code": "300395.SZ",
-      "stock_code": "300395",
-      "stock_name": "菲利华",
-      "lgb_score": 99.72,
-      "raw_score": 0.08
+      "ts_code": "603056.SH",
+      "stock_code": "603056",
+      "stock_name": "",
+      "lgb_score": 98.15,
+      "raw_score": 0.07
     },
     {
       "rank": 3,
-      "ts_code": "601126.SH",
-      "stock_code": "601126",
-      "stock_name": "四方股份",
-      "lgb_score": 94.76,
-      "raw_score": 0.07
-    },
-    {
-      "rank": 4,
-      "ts_code": "603311.SH",
-      "stock_code": "603311",
-      "stock_name": "金海高科",
-      "lgb_score": 93.0,
-      "raw_score": 0.07
-    },
-    {
-      "rank": 5,
       "ts_code": "301129.SZ",
       "stock_code": "301129",
       "stock_name": "瑞纳智能",
-      "lgb_score": 92.35,
-      "raw_score": 0.07
+      "lgb_score": 94.95,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 4,
+      "ts_code": "002617.SZ",
+      "stock_code": "002617",
+      "stock_name": "露笑科技",
+      "lgb_score": 92.07,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 5,
+      "ts_code": "000589.SZ",
+      "stock_code": "000589",
+      "stock_name": "贵州轮胎",
+      "lgb_score": 90.71,
+      "raw_score": 0.06
     }
   ]
 }

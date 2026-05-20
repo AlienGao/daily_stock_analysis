@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000554.SZ",
-      "stock_code": "000554",
-      "stock_name": "泰山石油",
+      "ts_code": "300825.SZ",
+      "stock_code": "300825",
+      "stock_name": "阿尔特",
       "lgb_score": 100.0,
-      "raw_score": 0.12
+      "raw_score": 0.11
     },
     {
       "rank": 2,
       "ts_code": "002445.SZ",
       "stock_code": "002445",
       "stock_name": "中南文化",
-      "lgb_score": 99.45,
-      "raw_score": 0.12
+      "lgb_score": 98.22,
+      "raw_score": 0.11
     },
     {
       "rank": 3,
       "ts_code": "300166.SZ",
       "stock_code": "300166",
       "stock_name": "东方国信",
-      "lgb_score": 96.42,
-      "raw_score": 0.11
+      "lgb_score": 97.37,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "300825.SZ",
-      "stock_code": "300825",
-      "stock_name": "阿尔特",
-      "lgb_score": 96.09,
-      "raw_score": 0.11
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
+      "lgb_score": 93.27,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "300975.SZ",
-      "stock_code": "300975",
-      "stock_name": "商络电子",
-      "lgb_score": 95.69,
-      "raw_score": 0.11
+      "ts_code": "000981.SZ",
+      "stock_code": "000981",
+      "stock_name": "山子高科",
+      "lgb_score": 92.98,
+      "raw_score": 0.09
     }
   ]
 }

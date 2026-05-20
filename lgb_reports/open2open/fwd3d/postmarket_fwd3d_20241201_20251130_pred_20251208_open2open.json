@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600151.SH",
-      "stock_code": "600151",
-      "stock_name": "航天机电",
-      "lgb_score": 100.0,
-      "raw_score": 0.11
-    },
-    {
-      "rank": 2,
       "ts_code": "002164.SZ",
       "stock_code": "002164",
       "stock_name": "宁波东力",
-      "lgb_score": 96.54,
-      "raw_score": 0.1
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "603191.SH",
+      "stock_code": "603191",
+      "stock_name": "望变电气",
+      "lgb_score": 84.22,
+      "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "002438.SZ",
-      "stock_code": "002438",
-      "stock_name": "江苏神通",
-      "lgb_score": 89.93,
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
+      "lgb_score": 82.18,
       "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "603018.SH",
-      "stock_code": "603018",
-      "stock_name": "华设集团",
-      "lgb_score": 89.57,
-      "raw_score": 0.09
+      "ts_code": "300045.SZ",
+      "stock_code": "300045",
+      "stock_name": "华力创通",
+      "lgb_score": 81.25,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "300885.SZ",
-      "stock_code": "300885",
-      "stock_name": "海昌新材",
-      "lgb_score": 89.5,
-      "raw_score": 0.09
+      "ts_code": "300007.SZ",
+      "stock_code": "300007",
+      "stock_name": "汉威科技",
+      "lgb_score": 78.08,
+      "raw_score": 0.08
     }
   ]
 }

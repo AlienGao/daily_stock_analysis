@@ -11,39 +11,39 @@
       "stock_code": "002396",
       "stock_name": "星网锐捷",
       "lgb_score": 100.0,
-      "raw_score": 0.1
+      "raw_score": 0.11
     },
     {
       "rank": 2,
       "ts_code": "600076.SH",
       "stock_code": "600076",
       "stock_name": "康欣新材",
-      "lgb_score": 99.65,
-      "raw_score": 0.1
+      "lgb_score": 90.09,
+      "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
-      "lgb_score": 98.18,
-      "raw_score": 0.1
+      "ts_code": "002562.SZ",
+      "stock_code": "002562",
+      "stock_name": "兄弟科技",
+      "lgb_score": 89.14,
+      "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "000572.SZ",
-      "stock_code": "000572",
-      "stock_name": "海马汽车",
-      "lgb_score": 96.91,
+      "ts_code": "920227.BJ",
+      "stock_code": "920227.BJ",
+      "stock_name": "",
+      "lgb_score": 86.91,
       "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "002562.SZ",
-      "stock_code": "002562",
-      "stock_name": "兄弟科技",
-      "lgb_score": 95.23,
-      "raw_score": 0.09
+      "ts_code": "002374.SZ",
+      "stock_code": "002374",
+      "stock_name": "中锐股份",
+      "lgb_score": 85.98,
+      "raw_score": 0.08
     }
   ]
 }

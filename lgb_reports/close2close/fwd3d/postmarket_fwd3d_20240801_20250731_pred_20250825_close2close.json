@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "603716.SH",
-      "stock_code": "603716",
-      "stock_name": "塞力医疗",
+      "ts_code": "002402.SZ",
+      "stock_code": "002402",
+      "stock_name": "和而泰",
       "lgb_score": 100.0,
-      "raw_score": 0.11
+      "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "300045.SZ",
-      "stock_code": "300045",
-      "stock_name": "华力创通",
-      "lgb_score": 96.63,
-      "raw_score": 0.1
+      "ts_code": "002091.SZ",
+      "stock_code": "002091",
+      "stock_name": "江苏国泰",
+      "lgb_score": 96.43,
+      "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "600010.SH",
-      "stock_code": "600010",
-      "stock_name": "包钢股份",
-      "lgb_score": 95.52,
-      "raw_score": 0.1
+      "ts_code": "603716.SH",
+      "stock_code": "603716",
+      "stock_name": "塞力医疗",
+      "lgb_score": 96.39,
+      "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "002186.SZ",
-      "stock_code": "002186",
-      "stock_name": "全 聚 德",
-      "lgb_score": 93.88,
+      "ts_code": "300045.SZ",
+      "stock_code": "300045",
+      "stock_name": "华力创通",
+      "lgb_score": 96.1,
       "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "000877.SZ",
-      "stock_code": "000877",
-      "stock_name": "天山股份",
-      "lgb_score": 93.16,
+      "ts_code": "600010.SH",
+      "stock_code": "600010",
+      "stock_name": "包钢股份",
+      "lgb_score": 93.86,
       "raw_score": 0.09
     }
   ]

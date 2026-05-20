@@ -15,34 +15,34 @@
     },
     {
       "rank": 2,
-      "ts_code": "600076.SH",
-      "stock_code": "600076",
-      "stock_name": "康欣新材",
-      "lgb_score": 91.84,
+      "ts_code": "600223.SH",
+      "stock_code": "600223",
+      "stock_name": "福瑞达",
+      "lgb_score": 91.53,
       "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "000989.SZ",
-      "stock_code": "000989",
-      "stock_name": "九芝堂",
-      "lgb_score": 86.22,
-      "raw_score": 0.09
+      "ts_code": "301633.SZ",
+      "stock_code": "301633",
+      "stock_name": "港迪技术",
+      "lgb_score": 89.5,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "600110.SH",
-      "stock_code": "600110",
-      "stock_name": "诺德股份",
-      "lgb_score": 86.19,
-      "raw_score": 0.09
+      "ts_code": "603518.SH",
+      "stock_code": "603518",
+      "stock_name": "锦泓集团",
+      "lgb_score": 89.17,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "002448.SZ",
-      "stock_code": "002448",
-      "stock_name": "中原内配",
-      "lgb_score": 86.02,
+      "ts_code": "600110.SH",
+      "stock_code": "600110",
+      "stock_name": "诺德股份",
+      "lgb_score": 87.01,
       "raw_score": 0.09
     }
   ]

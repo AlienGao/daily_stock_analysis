@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300476.SZ",
-      "stock_code": "300476",
-      "stock_name": "胜宏科技",
-      "lgb_score": 100.0,
-      "raw_score": 0.22
-    },
-    {
-      "rank": 2,
-      "ts_code": "688808.SH",
-      "stock_code": "688808",
-      "stock_name": "联讯仪器",
-      "lgb_score": 98.48,
-      "raw_score": 0.22
-    },
-    {
-      "rank": 3,
-      "ts_code": "000988.SZ",
-      "stock_code": "000988",
-      "stock_name": "华工科技",
-      "lgb_score": 97.71,
-      "raw_score": 0.21
-    },
-    {
-      "rank": 4,
-      "ts_code": "688455.SH",
-      "stock_code": "688455",
-      "stock_name": "科捷智能",
-      "lgb_score": 96.52,
-      "raw_score": 0.21
-    },
-    {
-      "rank": 5,
       "ts_code": "001309.SZ",
       "stock_code": "001309",
       "stock_name": "德明利",
-      "lgb_score": 94.64,
-      "raw_score": 0.2
+      "lgb_score": 100.0,
+      "raw_score": 0.3
+    },
+    {
+      "rank": 2,
+      "ts_code": "301531.SZ",
+      "stock_code": "301531",
+      "stock_name": "春光集团",
+      "lgb_score": 94.4,
+      "raw_score": 0.28
+    },
+    {
+      "rank": 3,
+      "ts_code": "688808.SH",
+      "stock_code": "688808",
+      "stock_name": "联讯仪器",
+      "lgb_score": 90.62,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 4,
+      "ts_code": "688205.SH",
+      "stock_code": "688205",
+      "stock_name": "德科立",
+      "lgb_score": 83.33,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 5,
+      "ts_code": "300476.SZ",
+      "stock_code": "300476",
+      "stock_name": "胜宏科技",
+      "lgb_score": 79.15,
+      "raw_score": 0.21
     }
   ]
 }

@@ -11,39 +11,39 @@
       "stock_code": "300885",
       "stock_name": "海昌新材",
       "lgb_score": 100.0,
-      "raw_score": 0.22
+      "raw_score": 0.29
     },
     {
       "rank": 2,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 95.53,
-      "raw_score": 0.2
+      "ts_code": "688181.SH",
+      "stock_code": "688181",
+      "stock_name": "八亿时空",
+      "lgb_score": 85.08,
+      "raw_score": 0.22
     },
     {
       "rank": 3,
-      "ts_code": "600757.SH",
-      "stock_code": "600757",
-      "stock_name": "长江传媒",
-      "lgb_score": 91.1,
-      "raw_score": 0.19
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 84.09,
+      "raw_score": 0.22
     },
     {
       "rank": 4,
-      "ts_code": "002847.SZ",
-      "stock_code": "002847",
-      "stock_name": "盐津铺子",
-      "lgb_score": 89.41,
-      "raw_score": 0.18
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 79.21,
+      "raw_score": 0.2
     },
     {
       "rank": 5,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 87.38,
-      "raw_score": 0.18
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 78.85,
+      "raw_score": 0.2
     }
   ]
 }

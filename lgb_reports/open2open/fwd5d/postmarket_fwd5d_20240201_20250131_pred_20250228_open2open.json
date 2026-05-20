@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301486.SZ",
-      "stock_code": "301486",
-      "stock_name": "致尚科技",
-      "lgb_score": 100.0,
-      "raw_score": 0.16
-    },
-    {
-      "rank": 2,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
-      "lgb_score": 90.98,
-      "raw_score": 0.14
-    },
-    {
-      "rank": 3,
-      "ts_code": "300757.SZ",
-      "stock_code": "300757",
-      "stock_name": "罗博特科",
-      "lgb_score": 90.24,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 4,
-      "ts_code": "300970.SZ",
-      "stock_code": "300970",
-      "stock_name": "华绿生物",
-      "lgb_score": 89.76,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 5,
       "ts_code": "002445.SZ",
       "stock_code": "002445",
       "stock_name": "中南文化",
-      "lgb_score": 89.47,
-      "raw_score": 0.13
+      "lgb_score": 100.0,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 2,
+      "ts_code": "000159.SZ",
+      "stock_code": "000159",
+      "stock_name": "国际实业",
+      "lgb_score": 89.69,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
+      "ts_code": "300970.SZ",
+      "stock_code": "300970",
+      "stock_name": "华绿生物",
+      "lgb_score": 89.59,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 4,
+      "ts_code": "003021.SZ",
+      "stock_code": "003021",
+      "stock_name": "兆威机电",
+      "lgb_score": 88.32,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 5,
+      "ts_code": "300757.SZ",
+      "stock_code": "300757",
+      "stock_name": "罗博特科",
+      "lgb_score": 86.3,
+      "raw_score": 0.11
     }
   ]
 }

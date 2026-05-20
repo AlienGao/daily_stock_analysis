@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002458.SZ",
-      "stock_code": "002458",
-      "stock_name": "益生股份",
+      "ts_code": "301222.SZ",
+      "stock_code": "301222",
+      "stock_name": "浙江恒威",
       "lgb_score": 100.0,
-      "raw_score": 0.17
+      "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 86.71,
-      "raw_score": 0.14
+      "ts_code": "002458.SZ",
+      "stock_code": "002458",
+      "stock_name": "益生股份",
+      "lgb_score": 96.42,
+      "raw_score": 0.12
     },
     {
       "rank": 3,
       "ts_code": "001387.SZ",
       "stock_code": "001387",
       "stock_name": "雪祺电气",
-      "lgb_score": 85.61,
-      "raw_score": 0.14
+      "lgb_score": 94.78,
+      "raw_score": 0.12
     },
     {
       "rank": 4,
-      "ts_code": "603018.SH",
-      "stock_code": "603018",
-      "stock_name": "华设集团",
-      "lgb_score": 80.86,
-      "raw_score": 0.13
+      "ts_code": "688458.SH",
+      "stock_code": "688458",
+      "stock_name": "美芯晟",
+      "lgb_score": 90.66,
+      "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "000936.SZ",
-      "stock_code": "000936",
-      "stock_name": "华西股份",
-      "lgb_score": 79.29,
-      "raw_score": 0.12
+      "ts_code": "301309.SZ",
+      "stock_code": "301309",
+      "stock_name": "万得凯",
+      "lgb_score": 89.6,
+      "raw_score": 0.11
     }
   ]
 }

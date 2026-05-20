@@ -11,39 +11,39 @@
       "stock_code": "600062",
       "stock_name": "华润双鹤",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.14
     },
     {
       "rank": 2,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 95.9,
-      "raw_score": 0.12
-    },
-    {
-      "rank": 3,
       "ts_code": "600345.SH",
       "stock_code": "600345",
       "stock_name": "长江通信",
-      "lgb_score": 85.28,
-      "raw_score": 0.09
+      "lgb_score": 86.49,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 82.77,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "688502.SH",
-      "stock_code": "688502",
-      "stock_name": "茂莱光学",
-      "lgb_score": 79.75,
-      "raw_score": 0.07
+      "ts_code": "002915.SZ",
+      "stock_code": "002915",
+      "stock_name": "中欣氟材",
+      "lgb_score": 80.85,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 79.29,
-      "raw_score": 0.07
+      "ts_code": "300975.SZ",
+      "stock_code": "300975",
+      "stock_name": "商络电子",
+      "lgb_score": 79.86,
+      "raw_score": 0.09
     }
   ]
 }

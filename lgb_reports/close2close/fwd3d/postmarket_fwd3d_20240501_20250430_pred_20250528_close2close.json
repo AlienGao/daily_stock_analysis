@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002438.SZ",
-      "stock_code": "002438",
-      "stock_name": "江苏神通",
-      "lgb_score": 100.0,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 2,
       "ts_code": "600386.SH",
       "stock_code": "600386",
       "stock_name": "北巴传媒",
-      "lgb_score": 98.68,
+      "lgb_score": 100.0,
       "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "002438.SZ",
+      "stock_code": "002438",
+      "stock_name": "江苏神通",
+      "lgb_score": 96.05,
+      "raw_score": 0.11
     },
     {
       "rank": 3,
       "ts_code": "002165.SZ",
       "stock_code": "002165",
       "stock_name": "红 宝 丽",
-      "lgb_score": 95.07,
-      "raw_score": 0.11
+      "lgb_score": 90.91,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "300883.SZ",
-      "stock_code": "300883",
-      "stock_name": "龙利得",
-      "lgb_score": 92.86,
-      "raw_score": 0.11
+      "ts_code": "605123.SH",
+      "stock_code": "605123",
+      "stock_name": "派克新材",
+      "lgb_score": 87.38,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "000859.SZ",
-      "stock_code": "000859",
-      "stock_name": "国风新材",
-      "lgb_score": 92.24,
-      "raw_score": 0.11
+      "ts_code": "688323.SH",
+      "stock_code": "688323",
+      "stock_name": "瑞华泰",
+      "lgb_score": 86.33,
+      "raw_score": 0.09
     }
   ]
 }

@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688693.SH",
-      "stock_code": "688693",
-      "stock_name": "锴威特",
+      "ts_code": "600519.SH",
+      "stock_code": "600519",
+      "stock_name": "贵州茅台",
       "lgb_score": 100.0,
-      "raw_score": 0.16
-    },
-    {
-      "rank": 2,
-      "ts_code": "600076.SH",
-      "stock_code": "600076",
-      "stock_name": "康欣新材",
-      "lgb_score": 96.86,
       "raw_score": 0.15
     },
     {
+      "rank": 2,
+      "ts_code": "000936.SZ",
+      "stock_code": "000936",
+      "stock_name": "华西股份",
+      "lgb_score": 98.6,
+      "raw_score": 0.14
+    },
+    {
       "rank": 3,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 95.01,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 97.63,
       "raw_score": 0.14
     },
     {
       "rank": 4,
-      "ts_code": "301117.SZ",
-      "stock_code": "301117",
-      "stock_name": "佳缘科技",
-      "lgb_score": 93.87,
-      "raw_score": 0.14
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 94.87,
+      "raw_score": 0.13
     },
     {
       "rank": 5,
-      "ts_code": "000936.SZ",
-      "stock_code": "000936",
-      "stock_name": "华西股份",
-      "lgb_score": 92.87,
-      "raw_score": 0.14
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 89.28,
+      "raw_score": 0.11
     }
   ]
 }

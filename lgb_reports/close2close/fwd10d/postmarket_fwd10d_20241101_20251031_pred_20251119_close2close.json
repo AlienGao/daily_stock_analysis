@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002438.SZ",
-      "stock_code": "002438",
-      "stock_name": "江苏神通",
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
       "lgb_score": 100.0,
-      "raw_score": 0.37
+      "raw_score": 0.35
     },
     {
       "rank": 2,
-      "ts_code": "300045.SZ",
-      "stock_code": "300045",
-      "stock_name": "华力创通",
-      "lgb_score": 97.89,
-      "raw_score": 0.36
+      "ts_code": "300970.SZ",
+      "stock_code": "300970",
+      "stock_name": "华绿生物",
+      "lgb_score": 93.33,
+      "raw_score": 0.32
     },
     {
       "rank": 3,
       "ts_code": "920100.BJ",
       "stock_code": "920100.BJ",
       "stock_name": "",
-      "lgb_score": 97.58,
-      "raw_score": 0.36
+      "lgb_score": 92.47,
+      "raw_score": 0.31
     },
     {
       "rank": 4,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 95.55,
-      "raw_score": 0.35
+      "ts_code": "301071.SZ",
+      "stock_code": "301071",
+      "stock_name": "力量钻石",
+      "lgb_score": 90.85,
+      "raw_score": 0.31
     },
     {
       "rank": 5,
-      "ts_code": "600802.SH",
-      "stock_code": "600802",
-      "stock_name": "福建水泥",
-      "lgb_score": 95.13,
-      "raw_score": 0.35
+      "ts_code": "002438.SZ",
+      "stock_code": "002438",
+      "stock_name": "江苏神通",
+      "lgb_score": 90.72,
+      "raw_score": 0.31
     }
   ]
 }

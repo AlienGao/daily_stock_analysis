@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
+      "ts_code": "301633.SZ",
+      "stock_code": "301633",
+      "stock_name": "港迪技术",
       "lgb_score": 100.0,
-      "raw_score": 0.17
+      "raw_score": 0.16
     },
     {
       "rank": 2,
       "ts_code": "002036.SZ",
       "stock_code": "002036",
       "stock_name": "联创电子",
-      "lgb_score": 99.7,
-      "raw_score": 0.17
+      "lgb_score": 97.52,
+      "raw_score": 0.16
     },
     {
       "rank": 3,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 99.4,
-      "raw_score": 0.17
-    },
-    {
-      "rank": 4,
       "ts_code": "601500.SH",
       "stock_code": "601500",
       "stock_name": "通用股份",
-      "lgb_score": 98.87,
-      "raw_score": 0.17
+      "lgb_score": 85.63,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 4,
+      "ts_code": "600467.SH",
+      "stock_code": "600467",
+      "stock_name": "好当家",
+      "lgb_score": 82.02,
+      "raw_score": 0.12
     },
     {
       "rank": 5,
-      "ts_code": "301633.SZ",
-      "stock_code": "301633",
-      "stock_name": "港迪技术",
-      "lgb_score": 94.37,
-      "raw_score": 0.16
+      "ts_code": "301209.SZ",
+      "stock_code": "301209",
+      "stock_name": "联合化学",
+      "lgb_score": 81.74,
+      "raw_score": 0.12
     }
   ]
 }

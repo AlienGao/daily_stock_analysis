@@ -10,40 +10,40 @@
       "ts_code": "000859.SZ",
       "stock_code": "000859",
       "stock_name": "国风新材",
-      "lgb_score": 100.0,
-      "raw_score": 0.15
+      "lgb_score": 95.38,
+      "raw_score": 0.11
     },
     {
       "rank": 2,
-      "ts_code": "002565.SZ",
-      "stock_code": "002565",
-      "stock_name": "顺灏股份",
-      "lgb_score": 96.39,
-      "raw_score": 0.14
+      "ts_code": "600860.SH",
+      "stock_code": "600860",
+      "stock_name": "京城股份",
+      "lgb_score": 94.48,
+      "raw_score": 0.11
     },
     {
       "rank": 3,
       "ts_code": "600308.SH",
       "stock_code": "600308",
       "stock_name": "华泰股份",
-      "lgb_score": 90.0,
-      "raw_score": 0.12
+      "lgb_score": 94.23,
+      "raw_score": 0.11
     },
     {
       "rank": 4,
-      "ts_code": "002172.SZ",
-      "stock_code": "002172",
-      "stock_name": "澳洋健康",
-      "lgb_score": 89.78,
-      "raw_score": 0.12
+      "ts_code": "002565.SZ",
+      "stock_code": "002565",
+      "stock_name": "顺灏股份",
+      "lgb_score": 93.89,
+      "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "600505.SH",
-      "stock_code": "600505",
-      "stock_name": "西昌电力",
-      "lgb_score": 89.16,
-      "raw_score": 0.12
+      "ts_code": "002172.SZ",
+      "stock_code": "002172",
+      "stock_name": "澳洋健康",
+      "lgb_score": 93.05,
+      "raw_score": 0.1
     }
   ]
 }

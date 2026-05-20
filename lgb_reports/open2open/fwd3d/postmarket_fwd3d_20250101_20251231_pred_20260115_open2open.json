@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301302.SZ",
-      "stock_code": "301302",
-      "stock_name": "华如科技",
+      "ts_code": "300751.SZ",
+      "stock_code": "300751",
+      "stock_name": "迈为股份",
       "lgb_score": 100.0,
-      "raw_score": 0.08
+      "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "688727.SH",
-      "stock_code": "688727",
-      "stock_name": "恒坤新材",
-      "lgb_score": 90.13,
-      "raw_score": 0.06
+      "ts_code": "301302.SZ",
+      "stock_code": "301302",
+      "stock_name": "华如科技",
+      "lgb_score": 88.41,
+      "raw_score": 0.07
     },
     {
       "rank": 3,
-      "ts_code": "688181.SH",
-      "stock_code": "688181",
-      "stock_name": "八亿时空",
-      "lgb_score": 89.59,
+      "ts_code": "301538.SZ",
+      "stock_code": "301538",
+      "stock_name": "骏鼎达",
+      "lgb_score": 82.48,
       "raw_score": 0.06
     },
     {
       "rank": 4,
-      "ts_code": "301232.SZ",
-      "stock_code": "301232",
-      "stock_name": "飞沃科技",
-      "lgb_score": 89.18,
+      "ts_code": "603588.SH",
+      "stock_code": "603588",
+      "stock_name": "高能环境",
+      "lgb_score": 82.38,
       "raw_score": 0.06
     },
     {
       "rank": 5,
-      "ts_code": "301235.SZ",
-      "stock_code": "301235",
-      "stock_name": "华康洁净",
-      "lgb_score": 88.95,
+      "ts_code": "600459.SH",
+      "stock_code": "600459",
+      "stock_name": "贵研铂业",
+      "lgb_score": 80.72,
       "raw_score": 0.06
     }
   ]

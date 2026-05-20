@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688256.SH",
-      "stock_code": "688256",
-      "stock_name": "寒武纪",
-      "lgb_score": 100.0,
-      "raw_score": 0.23
-    },
-    {
-      "rank": 2,
-      "ts_code": "002458.SZ",
-      "stock_code": "002458",
-      "stock_name": "益生股份",
-      "lgb_score": 98.51,
-      "raw_score": 0.22
-    },
-    {
-      "rank": 3,
       "ts_code": "002234.SZ",
       "stock_code": "002234",
       "stock_name": "民和股份",
-      "lgb_score": 90.95,
-      "raw_score": 0.19
+      "lgb_score": 100.0,
+      "raw_score": 0.31
+    },
+    {
+      "rank": 2,
+      "ts_code": "688256.SH",
+      "stock_code": "688256",
+      "stock_name": "寒武纪",
+      "lgb_score": 91.22,
+      "raw_score": 0.28
+    },
+    {
+      "rank": 3,
+      "ts_code": "301022.SZ",
+      "stock_code": "301022",
+      "stock_name": "海泰科",
+      "lgb_score": 90.48,
+      "raw_score": 0.27
     },
     {
       "rank": 4,
-      "ts_code": "688025.SH",
-      "stock_code": "688025",
-      "stock_name": "杰普特",
-      "lgb_score": 88.69,
-      "raw_score": 0.18
+      "ts_code": "688458.SH",
+      "stock_code": "688458",
+      "stock_name": "美芯晟",
+      "lgb_score": 86.2,
+      "raw_score": 0.26
     },
     {
       "rank": 5,
-      "ts_code": "603507.SH",
-      "stock_code": "603507",
-      "stock_name": "振江股份",
-      "lgb_score": 88.61,
-      "raw_score": 0.18
+      "ts_code": "300612.SZ",
+      "stock_code": "300612",
+      "stock_name": "宣亚国际",
+      "lgb_score": 85.41,
+      "raw_score": 0.25
     }
   ]
 }

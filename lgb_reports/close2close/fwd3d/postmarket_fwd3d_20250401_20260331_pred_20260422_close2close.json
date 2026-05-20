@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300308.SZ.SZ",
-      "stock_code": "300308",
-      "stock_name": "中际旭创",
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
       "lgb_score": 100.0,
-      "raw_score": 0.07
+      "raw_score": 0.09
     },
     {
       "rank": 2,
       "ts_code": "301022.SZ",
       "stock_code": "301022",
       "stock_name": "海泰科",
-      "lgb_score": 98.4,
-      "raw_score": 0.06
+      "lgb_score": 98.9,
+      "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 97.14,
-      "raw_score": 0.06
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 94.94,
+      "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "301129.SZ",
-      "stock_code": "301129",
-      "stock_name": "瑞纳智能",
-      "lgb_score": 96.95,
-      "raw_score": 0.06
+      "ts_code": "605588.SH",
+      "stock_code": "605588",
+      "stock_name": "冠石科技",
+      "lgb_score": 87.57,
+      "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "300502.SZ.SZ",
-      "stock_code": "300502",
-      "stock_name": "新易盛",
-      "lgb_score": 96.16,
-      "raw_score": 0.06
+      "ts_code": "920375.BJ",
+      "stock_code": "920375.BJ",
+      "stock_name": "",
+      "lgb_score": 86.25,
+      "raw_score": 0.07
     }
   ]
 }

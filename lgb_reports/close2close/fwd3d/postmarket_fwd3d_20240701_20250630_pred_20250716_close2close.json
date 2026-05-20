@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300066.SZ",
-      "stock_code": "300066",
-      "stock_name": "三川智慧",
+      "ts_code": "002394.SZ",
+      "stock_code": "002394",
+      "stock_name": "联发股份",
       "lgb_score": 100.0,
-      "raw_score": 0.1
+      "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "301538.SZ",
-      "stock_code": "301538",
-      "stock_name": "骏鼎达",
-      "lgb_score": 98.05,
+      "ts_code": "002511.SZ",
+      "stock_code": "002511",
+      "stock_name": "中顺洁柔",
+      "lgb_score": 99.49,
       "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "603325.SH",
-      "stock_code": "603325",
-      "stock_name": "博隆技术",
-      "lgb_score": 92.03,
+      "ts_code": "301488.SZ",
+      "stock_code": "301488",
+      "stock_name": "豪恩汽电",
+      "lgb_score": 97.04,
       "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "300128.SZ",
-      "stock_code": "300128",
-      "stock_name": "锦富技术",
-      "lgb_score": 90.64,
+      "ts_code": "002161.SZ",
+      "stock_code": "002161",
+      "stock_name": "远 望 谷",
+      "lgb_score": 95.77,
       "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "002511.SZ",
-      "stock_code": "002511",
-      "stock_name": "中顺洁柔",
-      "lgb_score": 89.94,
-      "raw_score": 0.08
+      "ts_code": "301538.SZ",
+      "stock_code": "301538",
+      "stock_name": "骏鼎达",
+      "lgb_score": 92.16,
+      "raw_score": 0.07
     }
   ]
 }

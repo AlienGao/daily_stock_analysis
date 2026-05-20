@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002164.SZ",
-      "stock_code": "002164",
-      "stock_name": "宁波东力",
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
       "lgb_score": 100.0,
       "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "000601.SZ",
-      "stock_code": "000601",
-      "stock_name": "韶能股份",
-      "lgb_score": 96.2,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 98.75,
       "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "300128.SZ",
-      "stock_code": "300128",
-      "stock_name": "锦富技术",
-      "lgb_score": 94.93,
-      "raw_score": 0.08
+      "ts_code": "000882.SZ",
+      "stock_code": "000882",
+      "stock_name": "华联股份",
+      "lgb_score": 98.14,
+      "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "002666.SZ",
-      "stock_code": "002666",
-      "stock_name": "德联集团",
-      "lgb_score": 93.76,
-      "raw_score": 0.08
+      "ts_code": "605020.SH",
+      "stock_code": "605020",
+      "stock_name": "永和股份",
+      "lgb_score": 95.31,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
-      "lgb_score": 93.45,
+      "ts_code": "002164.SZ",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 93.21,
       "raw_score": 0.08
     }
   ]

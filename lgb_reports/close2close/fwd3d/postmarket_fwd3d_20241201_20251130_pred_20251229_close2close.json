@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002009.SZ",
-      "stock_code": "002009",
-      "stock_name": "天奇股份",
-      "lgb_score": 91.3,
+      "ts_code": "002146.SZ",
+      "stock_code": "002146",
+      "stock_name": "荣盛发展",
+      "lgb_score": 88.82,
       "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "002146.SZ",
-      "stock_code": "002146",
-      "stock_name": "荣盛发展",
-      "lgb_score": 89.96,
+      "ts_code": "601113.SH",
+      "stock_code": "601113",
+      "stock_name": "华鼎股份",
+      "lgb_score": 88.77,
       "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "300970.SZ",
-      "stock_code": "300970",
-      "stock_name": "华绿生物",
-      "lgb_score": 88.43,
-      "raw_score": 0.09
+      "ts_code": "002009.SZ",
+      "stock_code": "002009",
+      "stock_name": "天奇股份",
+      "lgb_score": 83.08,
+      "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "002036.SZ",
-      "stock_code": "002036",
-      "stock_name": "联创电子",
-      "lgb_score": 86.01,
+      "ts_code": "002187.SZ",
+      "stock_code": "002187",
+      "stock_name": "广百股份",
+      "lgb_score": 79.73,
       "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "688108.SH",
-      "stock_code": "688108",
-      "stock_name": "赛诺医疗",
-      "lgb_score": 84.4,
-      "raw_score": 0.08
+      "ts_code": "601700.SH",
+      "stock_code": "601700",
+      "stock_name": "风范股份",
+      "lgb_score": 76.62,
+      "raw_score": 0.07
     }
   ]
 }

@@ -11,39 +11,39 @@
       "stock_code": "688016",
       "stock_name": "心脉医疗",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.15
     },
     {
       "rank": 2,
-      "ts_code": "301538.SZ",
-      "stock_code": "301538",
-      "stock_name": "骏鼎达",
-      "lgb_score": 84.84,
-      "raw_score": 0.08
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 81.83,
+      "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 83.99,
-      "raw_score": 0.08
+      "ts_code": "002291.SZ",
+      "stock_code": "002291",
+      "stock_name": "遥望科技",
+      "lgb_score": 81.49,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "600682.SH",
-      "stock_code": "600682",
-      "stock_name": "南京新百",
-      "lgb_score": 82.17,
-      "raw_score": 0.08
-    },
-    {
-      "rank": 5,
       "ts_code": "301117.SZ",
       "stock_code": "301117",
       "stock_name": "佳缘科技",
-      "lgb_score": 81.45,
-      "raw_score": 0.08
+      "lgb_score": 80.74,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 80.36,
+      "raw_score": 0.09
     }
   ]
 }

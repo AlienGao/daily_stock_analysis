@@ -11,39 +11,39 @@
       "stock_code": "605376",
       "stock_name": "博迁新材",
       "lgb_score": 100.0,
-      "raw_score": 0.25
+      "raw_score": 0.27
     },
     {
       "rank": 2,
-      "ts_code": "688455.SH",
-      "stock_code": "688455",
-      "stock_name": "科捷智能",
-      "lgb_score": 96.48,
-      "raw_score": 0.24
+      "ts_code": "001309.SZ",
+      "stock_code": "001309",
+      "stock_name": "德明利",
+      "lgb_score": 98.48,
+      "raw_score": 0.27
     },
     {
       "rank": 3,
-      "ts_code": "301232.SZ",
-      "stock_code": "301232",
-      "stock_name": "飞沃科技",
-      "lgb_score": 92.67,
-      "raw_score": 0.22
+      "ts_code": "688808.SH",
+      "stock_code": "688808",
+      "stock_name": "联讯仪器",
+      "lgb_score": 96.45,
+      "raw_score": 0.26
     },
     {
       "rank": 4,
-      "ts_code": "301511.SZ",
-      "stock_code": "301511",
-      "stock_name": "德福科技",
-      "lgb_score": 92.61,
-      "raw_score": 0.22
+      "ts_code": "688025.SH",
+      "stock_code": "688025",
+      "stock_name": "杰普特",
+      "lgb_score": 90.7,
+      "raw_score": 0.23
     },
     {
       "rank": 5,
-      "ts_code": "688205.SH",
-      "stock_code": "688205",
-      "stock_name": "德科立",
-      "lgb_score": 88.21,
-      "raw_score": 0.19
+      "ts_code": "301599.SZ",
+      "stock_code": "301599",
+      "stock_name": "理奇智能",
+      "lgb_score": 89.79,
+      "raw_score": 0.23
     }
   ]
 }

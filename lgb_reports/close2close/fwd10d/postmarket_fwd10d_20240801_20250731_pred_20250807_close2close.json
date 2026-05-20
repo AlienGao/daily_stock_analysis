@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002029.SZ",
-      "stock_code": "002029",
-      "stock_name": "七 匹 狼",
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
       "lgb_score": 100.0,
-      "raw_score": 0.21
+      "raw_score": 0.24
     },
     {
       "rank": 2,
-      "ts_code": "601138.SH",
-      "stock_code": "601138",
-      "stock_name": "工业富联",
-      "lgb_score": 98.64,
-      "raw_score": 0.2
+      "ts_code": "600756.SH",
+      "stock_code": "600756",
+      "stock_name": "浪潮软件",
+      "lgb_score": 95.67,
+      "raw_score": 0.22
     },
     {
       "rank": 3,
       "ts_code": "688181.SH",
       "stock_code": "688181",
       "stock_name": "八亿时空",
-      "lgb_score": 97.92,
-      "raw_score": 0.2
+      "lgb_score": 94.39,
+      "raw_score": 0.22
     },
     {
       "rank": 4,
-      "ts_code": "002121.SZ",
-      "stock_code": "002121",
-      "stock_name": "科陆电子",
-      "lgb_score": 96.3,
-      "raw_score": 0.19
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 93.89,
+      "raw_score": 0.22
     },
     {
       "rank": 5,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 96.23,
-      "raw_score": 0.19
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 91.4,
+      "raw_score": 0.21
     }
   ]
 }

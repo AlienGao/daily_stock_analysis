@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301633.SZ",
-      "stock_code": "301633",
-      "stock_name": "港迪技术",
-      "lgb_score": 100.0,
-      "raw_score": 0.18
-    },
-    {
-      "rank": 2,
       "ts_code": "000915.SZ",
       "stock_code": "000915",
       "stock_name": "华特达因",
-      "lgb_score": 97.06,
-      "raw_score": 0.17
+      "lgb_score": 100.0,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 2,
+      "ts_code": "301633.SZ",
+      "stock_code": "301633",
+      "stock_name": "港迪技术",
+      "lgb_score": 99.87,
+      "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "001282.SZ",
-      "stock_code": "001282",
-      "stock_name": "三联锻造",
-      "lgb_score": 89.34,
-      "raw_score": 0.14
+      "ts_code": "300936.SZ",
+      "stock_code": "300936",
+      "stock_name": "中英科技",
+      "lgb_score": 98.36,
+      "raw_score": 0.12
     },
     {
       "rank": 4,
-      "ts_code": "002029.SZ",
-      "stock_code": "002029",
-      "stock_name": "七 匹 狼",
-      "lgb_score": 84.49,
-      "raw_score": 0.12
+      "ts_code": "301596.SZ",
+      "stock_code": "301596",
+      "stock_name": "瑞迪智驱",
+      "lgb_score": 90.51,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "000554.SZ",
-      "stock_code": "000554",
-      "stock_name": "泰山石油",
-      "lgb_score": 84.28,
-      "raw_score": 0.12
+      "ts_code": "300042.SZ",
+      "stock_code": "300042",
+      "stock_name": "朗科科技",
+      "lgb_score": 90.48,
+      "raw_score": 0.1
     }
   ]
 }

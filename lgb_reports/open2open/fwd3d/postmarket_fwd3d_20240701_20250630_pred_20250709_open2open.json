@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "601138.SH",
-      "stock_code": "601138",
-      "stock_name": "工业富联",
-      "lgb_score": 100.0,
-      "raw_score": 0.12
-    },
-    {
-      "rank": 2,
-      "ts_code": "600802.SH",
-      "stock_code": "600802",
-      "stock_name": "福建水泥",
-      "lgb_score": 98.4,
-      "raw_score": 0.11
-    },
-    {
-      "rank": 3,
-      "ts_code": "002395.SZ",
-      "stock_code": "002395",
-      "stock_name": "双象股份",
-      "lgb_score": 95.62,
-      "raw_score": 0.1
-    },
-    {
-      "rank": 4,
       "ts_code": "001296.SZ",
       "stock_code": "001296",
       "stock_name": "长江材料",
-      "lgb_score": 94.93,
-      "raw_score": 0.1
+      "lgb_score": 100.0,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 2,
+      "ts_code": "002395.SZ",
+      "stock_code": "002395",
+      "stock_name": "双象股份",
+      "lgb_score": 99.35,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 3,
+      "ts_code": "601138.SH",
+      "stock_code": "601138",
+      "stock_name": "工业富联",
+      "lgb_score": 95.99,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 4,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 95.11,
+      "raw_score": 0.12
     },
     {
       "rank": 5,
-      "ts_code": "603611.SH",
-      "stock_code": "603611",
-      "stock_name": "诺力股份",
-      "lgb_score": 94.06,
-      "raw_score": 0.1
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 91.21,
+      "raw_score": 0.11
     }
   ]
 }

@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301322.SZ",
-      "stock_code": "301322",
-      "stock_name": "绿通科技",
+      "ts_code": "300179.SZ",
+      "stock_code": "300179",
+      "stock_name": "四方达",
       "lgb_score": 100.0,
-      "raw_score": 0.08
+      "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "601678.SH",
-      "stock_code": "601678",
-      "stock_name": "滨化股份",
-      "lgb_score": 99.66,
-      "raw_score": 0.08
+      "ts_code": "301322.SZ",
+      "stock_code": "301322",
+      "stock_name": "绿通科技",
+      "lgb_score": 94.63,
+      "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "002937.SZ",
-      "stock_code": "002937",
-      "stock_name": "兴瑞科技",
-      "lgb_score": 98.36,
+      "ts_code": "301071.SZ",
+      "stock_code": "301071",
+      "stock_name": "力量钻石",
+      "lgb_score": 92.1,
       "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "600545.SH",
-      "stock_code": "600545",
-      "stock_name": "卓郎智能",
-      "lgb_score": 98.35,
+      "ts_code": "002937.SZ",
+      "stock_code": "002937",
+      "stock_name": "兴瑞科技",
+      "lgb_score": 90.66,
       "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "603082.SH",
-      "stock_code": "603082",
-      "stock_name": "北自科技",
-      "lgb_score": 94.38,
-      "raw_score": 0.07
+      "ts_code": "603370.SH",
+      "stock_code": "603370",
+      "stock_name": "华新精科",
+      "lgb_score": 88.85,
+      "raw_score": 0.08
     }
   ]
 }

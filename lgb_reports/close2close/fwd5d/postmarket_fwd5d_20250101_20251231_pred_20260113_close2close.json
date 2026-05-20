@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688768.SH",
-      "stock_code": "688768",
-      "stock_name": "容知日新",
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.12
     },
     {
       "rank": 2,
-      "ts_code": "300751.SZ",
-      "stock_code": "300751",
-      "stock_name": "迈为股份",
-      "lgb_score": 98.04,
-      "raw_score": 0.13
+      "ts_code": "301023.SZ",
+      "stock_code": "301023",
+      "stock_name": "奕帆传动",
+      "lgb_score": 99.25,
+      "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "002029.SZ",
-      "stock_code": "002029",
-      "stock_name": "七 匹 狼",
-      "lgb_score": 94.38,
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
+      "lgb_score": 97.79,
       "raw_score": 0.12
     },
     {
       "rank": 4,
-      "ts_code": "301275.SZ",
-      "stock_code": "301275",
-      "stock_name": "汉朔科技",
-      "lgb_score": 91.44,
+      "ts_code": "001387.SZ",
+      "stock_code": "001387",
+      "stock_name": "雪祺电气",
+      "lgb_score": 95.91,
       "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "688256.SH",
-      "stock_code": "688256",
-      "stock_name": "寒武纪",
-      "lgb_score": 90.71,
+      "ts_code": "300970.SZ",
+      "stock_code": "300970",
+      "stock_name": "华绿生物",
+      "lgb_score": 95.15,
       "raw_score": 0.11
     }
   ]

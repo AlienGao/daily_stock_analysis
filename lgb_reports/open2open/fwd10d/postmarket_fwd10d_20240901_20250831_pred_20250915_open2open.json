@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300885.SZ",
-      "stock_code": "300885",
-      "stock_name": "海昌新材",
+      "ts_code": "300484.SZ",
+      "stock_code": "300484",
+      "stock_name": "蓝海华腾",
       "lgb_score": 100.0,
-      "raw_score": 0.18
+      "raw_score": 0.3
     },
     {
       "rank": 2,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 99.28,
-      "raw_score": 0.18
-    },
-    {
-      "rank": 3,
       "ts_code": "600151.SH",
       "stock_code": "600151",
       "stock_name": "航天机电",
-      "lgb_score": 98.22,
-      "raw_score": 0.17
+      "lgb_score": 90.4,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 3,
+      "ts_code": "002009.SZ",
+      "stock_code": "002009",
+      "stock_name": "天奇股份",
+      "lgb_score": 88.4,
+      "raw_score": 0.25
     },
     {
       "rank": 4,
-      "ts_code": "300883.SZ",
-      "stock_code": "300883",
-      "stock_name": "龙利得",
-      "lgb_score": 98.03,
-      "raw_score": 0.17
+      "ts_code": "300429.SZ",
+      "stock_code": "300429",
+      "stock_name": "强力新材",
+      "lgb_score": 87.17,
+      "raw_score": 0.25
     },
     {
       "rank": 5,
-      "ts_code": "002234.SZ",
-      "stock_code": "002234",
-      "stock_name": "民和股份",
-      "lgb_score": 97.93,
-      "raw_score": 0.17
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 87.14,
+      "raw_score": 0.25
     }
   ]
 }

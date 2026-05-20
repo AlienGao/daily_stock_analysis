@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300308.SZ.SZ",
-      "stock_code": "300308",
-      "stock_name": "中际旭创",
-      "lgb_score": 100.0,
-      "raw_score": 0.12
-    },
-    {
-      "rank": 2,
       "ts_code": "000959.SZ",
       "stock_code": "000959",
       "stock_name": "首钢股份",
-      "lgb_score": 88.08,
-      "raw_score": 0.1
+      "lgb_score": 100.0,
+      "raw_score": 0.11
     },
     {
-      "rank": 3,
-      "ts_code": "000589.SZ",
-      "stock_code": "000589",
-      "stock_name": "贵州轮胎",
-      "lgb_score": 84.68,
+      "rank": 2,
+      "ts_code": "605365.SH",
+      "stock_code": "605365",
+      "stock_name": "立达信",
+      "lgb_score": 84.38,
       "raw_score": 0.09
     },
     {
+      "rank": 3,
+      "ts_code": "688287.SH",
+      "stock_code": "688287",
+      "stock_name": "退市观典",
+      "lgb_score": 83.01,
+      "raw_score": 0.08
+    },
+    {
       "rank": 4,
-      "ts_code": "688498.SH",
-      "stock_code": "688498",
-      "stock_name": "源杰科技",
-      "lgb_score": 82.11,
+      "ts_code": "605222.SH",
+      "stock_code": "605222",
+      "stock_name": "起帆电缆",
+      "lgb_score": 82.24,
       "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "688256.SH",
-      "stock_code": "688256",
-      "stock_name": "寒武纪",
-      "lgb_score": 81.16,
+      "ts_code": "300853.SZ",
+      "stock_code": "300853",
+      "stock_name": "申昊科技",
+      "lgb_score": 81.18,
       "raw_score": 0.08
     }
   ]

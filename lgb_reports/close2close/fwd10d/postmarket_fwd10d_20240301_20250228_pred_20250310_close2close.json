@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
+      "ts_code": "301022.SZ",
+      "stock_code": "301022",
+      "stock_name": "海泰科",
       "lgb_score": 100.0,
-      "raw_score": 0.22
+      "raw_score": 0.25
     },
     {
       "rank": 2,
-      "ts_code": "301120.SZ",
-      "stock_code": "301120",
-      "stock_name": "新特电气",
-      "lgb_score": 94.31,
-      "raw_score": 0.19
+      "ts_code": "688652.SH",
+      "stock_code": "688652",
+      "stock_name": "京仪装备",
+      "lgb_score": 92.01,
+      "raw_score": 0.22
     },
     {
       "rank": 3,
-      "ts_code": "002104.SZ",
-      "stock_code": "002104",
-      "stock_name": "恒宝股份",
-      "lgb_score": 92.77,
-      "raw_score": 0.19
+      "ts_code": "301696.SZ",
+      "stock_code": "301696",
+      "stock_name": "三瑞智能",
+      "lgb_score": 90.61,
+      "raw_score": 0.21
     },
     {
       "rank": 4,
-      "ts_code": "688316.SH",
-      "stock_code": "688316",
-      "stock_name": "青云科技-U",
-      "lgb_score": 90.77,
-      "raw_score": 0.18
+      "ts_code": "001325.SZ",
+      "stock_code": "001325",
+      "stock_name": "元创股份",
+      "lgb_score": 90.61,
+      "raw_score": 0.21
     },
     {
       "rank": 5,
-      "ts_code": "920100.BJ",
-      "stock_code": "920100.BJ",
+      "ts_code": "920112.BJ",
+      "stock_code": "920112.BJ",
       "stock_name": "",
-      "lgb_score": 89.01,
-      "raw_score": 0.17
+      "lgb_score": 90.58,
+      "raw_score": 0.21
     }
   ]
 }

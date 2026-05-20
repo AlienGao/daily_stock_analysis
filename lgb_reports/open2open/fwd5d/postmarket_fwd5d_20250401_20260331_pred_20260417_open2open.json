@@ -15,35 +15,35 @@
     },
     {
       "rank": 2,
-      "ts_code": "688498.SH",
-      "stock_code": "688498",
-      "stock_name": "源杰科技",
-      "lgb_score": 95.19,
+      "ts_code": "920125.BJ",
+      "stock_code": "920125.BJ",
+      "stock_name": "",
+      "lgb_score": 98.06,
       "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "002150.SZ",
-      "stock_code": "002150",
-      "stock_name": "正泰电源",
-      "lgb_score": 90.27,
-      "raw_score": 0.08
+      "ts_code": "001309.SZ",
+      "stock_code": "001309",
+      "stock_name": "德明利",
+      "lgb_score": 94.59,
+      "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "000001.SH.SZ",
-      "stock_code": "000001",
-      "stock_name": "平安银行",
-      "lgb_score": 89.19,
-      "raw_score": 0.08
+      "ts_code": "002395.SZ",
+      "stock_code": "002395",
+      "stock_name": "双象股份",
+      "lgb_score": 92.72,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "688525.SH",
-      "stock_code": "688525",
-      "stock_name": "佰维存储",
-      "lgb_score": 85.21,
-      "raw_score": 0.07
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
+      "lgb_score": 92.68,
+      "raw_score": 0.09
     }
   ]
 }

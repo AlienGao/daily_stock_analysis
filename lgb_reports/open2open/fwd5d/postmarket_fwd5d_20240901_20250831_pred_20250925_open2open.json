@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
+      "ts_code": "002291.SZ",
+      "stock_code": "002291",
+      "stock_name": "遥望科技",
       "lgb_score": 100.0,
       "raw_score": 0.15
     },
     {
       "rank": 2,
-      "ts_code": "000812.SZ",
-      "stock_code": "000812",
-      "stock_name": "陕西金叶",
-      "lgb_score": 98.37,
-      "raw_score": 0.15
-    },
-    {
-      "rank": 3,
       "ts_code": "002445.SZ",
       "stock_code": "002445",
       "stock_name": "中南文化",
-      "lgb_score": 92.73,
-      "raw_score": 0.13
+      "lgb_score": 97.37,
+      "raw_score": 0.14
     },
     {
-      "rank": 4,
+      "rank": 3,
       "ts_code": "300429.SZ",
       "stock_code": "300429",
       "stock_name": "强力新材",
-      "lgb_score": 92.63,
-      "raw_score": 0.13
+      "lgb_score": 96.76,
+      "raw_score": 0.14
     },
     {
-      "rank": 5,
+      "rank": 4,
       "ts_code": "688502.SH",
       "stock_code": "688502",
       "stock_name": "茂莱光学",
-      "lgb_score": 90.62,
-      "raw_score": 0.12
+      "lgb_score": 96.55,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 5,
+      "ts_code": "000159.SZ",
+      "stock_code": "000159",
+      "stock_name": "国际实业",
+      "lgb_score": 92.3,
+      "raw_score": 0.13
     }
   ]
 }

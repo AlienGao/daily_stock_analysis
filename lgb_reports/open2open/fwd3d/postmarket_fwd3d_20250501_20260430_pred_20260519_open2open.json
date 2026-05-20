@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301205",
-      "stock_code": "301205",
-      "stock_name": "联特科技",
+      "ts_code": "688693",
+      "stock_code": "688693",
+      "stock_name": "锴威特",
       "lgb_score": 100.0,
       "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "300476",
-      "stock_code": "300476",
-      "stock_name": "胜宏科技",
-      "lgb_score": 90.95,
+      "ts_code": "688630",
+      "stock_code": "688630",
+      "stock_name": "芯碁微装",
+      "lgb_score": 92.84,
       "raw_score": 0.08
     },
     {
       "rank": 3,
-      "ts_code": "301396",
-      "stock_code": "301396",
-      "stock_name": "宏景科技",
-      "lgb_score": 85.37,
+      "ts_code": "001389",
+      "stock_code": "001389",
+      "stock_name": "广合科技",
+      "lgb_score": 89.56,
       "raw_score": 0.07
     },
     {
       "rank": 4,
-      "ts_code": "688628",
-      "stock_code": "688628",
-      "stock_name": "优利德",
-      "lgb_score": 84.84,
+      "ts_code": "301205",
+      "stock_code": "301205",
+      "stock_name": "联特科技",
+      "lgb_score": 89.46,
       "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "300953",
-      "stock_code": "300953",
-      "stock_name": "震裕科技",
-      "lgb_score": 83.27,
-      "raw_score": 0.06
+      "ts_code": "688383",
+      "stock_code": "688383",
+      "stock_name": "新益昌",
+      "lgb_score": 87.12,
+      "raw_score": 0.07
     }
   ]
 }

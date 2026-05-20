@@ -15,35 +15,35 @@
     },
     {
       "rank": 2,
-      "ts_code": "002590.SZ",
-      "stock_code": "002590",
-      "stock_name": "万安科技",
-      "lgb_score": 84.82,
-      "raw_score": 0.23
+      "ts_code": "600386.SH",
+      "stock_code": "600386",
+      "stock_name": "北巴传媒",
+      "lgb_score": 95.09,
+      "raw_score": 0.29
     },
     {
       "rank": 3,
-      "ts_code": "000554.SZ",
-      "stock_code": "000554",
-      "stock_name": "泰山石油",
-      "lgb_score": 84.58,
-      "raw_score": 0.23
+      "ts_code": "603915.SH",
+      "stock_code": "603915",
+      "stock_name": "国茂股份",
+      "lgb_score": 91.86,
+      "raw_score": 0.27
     },
     {
       "rank": 4,
-      "ts_code": "300885.SZ",
-      "stock_code": "300885",
-      "stock_name": "海昌新材",
-      "lgb_score": 83.62,
-      "raw_score": 0.23
-    },
-    {
-      "rank": 5,
       "ts_code": "300429.SZ",
       "stock_code": "300429",
       "stock_name": "强力新材",
-      "lgb_score": 81.73,
-      "raw_score": 0.22
+      "lgb_score": 91.68,
+      "raw_score": 0.27
+    },
+    {
+      "rank": 5,
+      "ts_code": "002590.SZ",
+      "stock_code": "002590",
+      "stock_name": "万安科技",
+      "lgb_score": 85.63,
+      "raw_score": 0.24
     }
   ]
 }

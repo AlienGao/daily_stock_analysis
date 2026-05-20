@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "603778.SH",
-      "stock_code": "603778",
-      "stock_name": "国晟科技",
-      "lgb_score": 100.0,
-      "raw_score": 0.11
-    },
-    {
-      "rank": 2,
       "ts_code": "600429.SH",
       "stock_code": "600429",
       "stock_name": "三元股份",
-      "lgb_score": 99.77,
-      "raw_score": 0.1
+      "lgb_score": 100.0,
+      "raw_score": 0.13
     },
     {
-      "rank": 3,
+      "rank": 2,
       "ts_code": "600103.SH",
       "stock_code": "600103",
       "stock_name": "青山纸业",
-      "lgb_score": 98.13,
-      "raw_score": 0.1
+      "lgb_score": 92.72,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
+      "ts_code": "000949.SZ",
+      "stock_code": "000949",
+      "stock_name": "新乡化纤",
+      "lgb_score": 92.15,
+      "raw_score": 0.11
     },
     {
       "rank": 4,
-      "ts_code": "000069.SZ",
-      "stock_code": "000069",
-      "stock_name": "华侨城Ａ",
-      "lgb_score": 97.59,
+      "ts_code": "002426.SZ",
+      "stock_code": "002426",
+      "stock_name": "胜利精密",
+      "lgb_score": 87.02,
       "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "000949.SZ",
-      "stock_code": "000949",
-      "stock_name": "新乡化纤",
-      "lgb_score": 96.39,
+      "ts_code": "000069.SZ",
+      "stock_code": "000069",
+      "stock_name": "华侨城Ａ",
+      "lgb_score": 85.48,
       "raw_score": 0.1
     }
   ]

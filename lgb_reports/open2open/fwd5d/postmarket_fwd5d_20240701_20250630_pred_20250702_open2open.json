@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 100.0,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 2,
       "ts_code": "300885.SZ",
       "stock_code": "300885",
       "stock_name": "海昌新材",
-      "lgb_score": 98.58,
-      "raw_score": 0.12
+      "lgb_score": 100.0,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 2,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 95.28,
+      "raw_score": 0.15
     },
     {
       "rank": 3,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 95.48,
-      "raw_score": 0.12
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 90.29,
+      "raw_score": 0.13
     },
     {
       "rank": 4,
-      "ts_code": "688691.SH",
-      "stock_code": "688691",
-      "stock_name": "灿芯股份",
-      "lgb_score": 94.49,
-      "raw_score": 0.11
+      "ts_code": "300803.SZ",
+      "stock_code": "300803",
+      "stock_name": "指南针",
+      "lgb_score": 90.27,
+      "raw_score": 0.13
     },
     {
       "rank": 5,
-      "ts_code": "000601.SZ",
-      "stock_code": "000601",
-      "stock_name": "韶能股份",
-      "lgb_score": 93.19,
-      "raw_score": 0.11
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 85.99,
+      "raw_score": 0.12
     }
   ]
 }

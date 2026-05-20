@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301488.SZ",
-      "stock_code": "301488",
-      "stock_name": "豪恩汽电",
+      "ts_code": "002036.SZ",
+      "stock_code": "002036",
+      "stock_name": "联创电子",
       "lgb_score": 100.0,
-      "raw_score": 0.12
+      "raw_score": 0.11
     },
     {
       "rank": 2,
-      "ts_code": "600114.SH",
-      "stock_code": "600114",
-      "stock_name": "东睦股份",
-      "lgb_score": 98.13,
-      "raw_score": 0.11
+      "ts_code": "301488.SZ",
+      "stock_code": "301488",
+      "stock_name": "豪恩汽电",
+      "lgb_score": 96.15,
+      "raw_score": 0.1
     },
     {
       "rank": 3,
       "ts_code": "003021.SZ",
       "stock_code": "003021",
       "stock_name": "兆威机电",
-      "lgb_score": 95.48,
-      "raw_score": 0.11
+      "lgb_score": 92.62,
+      "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "002036.SZ",
-      "stock_code": "002036",
-      "stock_name": "联创电子",
-      "lgb_score": 93.18,
-      "raw_score": 0.1
+      "ts_code": "600186.SH",
+      "stock_code": "600186",
+      "stock_name": "莲花控股",
+      "lgb_score": 89.38,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "300691.SZ",
-      "stock_code": "300691",
-      "stock_name": "联合光电",
-      "lgb_score": 88.29,
-      "raw_score": 0.09
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 88.92,
+      "raw_score": 0.08
     }
   ]
 }

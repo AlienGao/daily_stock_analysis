@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "001215.SZ",
-      "stock_code": "001215",
-      "stock_name": "千味央厨",
+      "ts_code": "300179.SZ",
+      "stock_code": "300179",
+      "stock_name": "四方达",
       "lgb_score": 100.0,
-      "raw_score": 0.07
+      "raw_score": 0.09
     },
     {
       "rank": 2,
       "ts_code": "301322.SZ",
       "stock_code": "301322",
       "stock_name": "绿通科技",
-      "lgb_score": 98.1,
-      "raw_score": 0.06
+      "lgb_score": 92.65,
+      "raw_score": 0.08
     },
     {
       "rank": 3,
-      "ts_code": "600498.SH",
-      "stock_code": "600498",
-      "stock_name": "烽火通信",
-      "lgb_score": 96.83,
-      "raw_score": 0.06
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
+      "lgb_score": 90.87,
+      "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "600566.SH",
-      "stock_code": "600566",
-      "stock_name": "济川药业",
-      "lgb_score": 95.74,
-      "raw_score": 0.06
+      "ts_code": "301071.SZ",
+      "stock_code": "301071",
+      "stock_name": "力量钻石",
+      "lgb_score": 90.18,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "002407.SZ",
-      "stock_code": "002407",
-      "stock_name": "多氟多",
-      "lgb_score": 95.06,
-      "raw_score": 0.06
+      "ts_code": "301232.SZ",
+      "stock_code": "301232",
+      "stock_name": "飞沃科技",
+      "lgb_score": 86.89,
+      "raw_score": 0.07
     }
   ]
 }

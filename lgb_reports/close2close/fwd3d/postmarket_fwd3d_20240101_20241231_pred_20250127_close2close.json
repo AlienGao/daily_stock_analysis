@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002164.SZ",
-      "stock_code": "002164",
-      "stock_name": "宁波东力",
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
       "lgb_score": 100.0,
       "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "300166.SZ",
-      "stock_code": "300166",
-      "stock_name": "东方国信",
-      "lgb_score": 97.82,
+      "ts_code": "000818.SZ",
+      "stock_code": "000818",
+      "stock_name": "航锦科技",
+      "lgb_score": 95.55,
       "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "688381.SH",
-      "stock_code": "688381",
-      "stock_name": "帝奥微",
-      "lgb_score": 92.17,
+      "ts_code": "300975.SZ",
+      "stock_code": "300975",
+      "stock_name": "商络电子",
+      "lgb_score": 93.08,
       "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 91.59,
+      "ts_code": "002164.SZ",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 91.45,
       "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "002590.SZ",
-      "stock_code": "002590",
-      "stock_name": "万安科技",
-      "lgb_score": 90.26,
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 91.45,
       "raw_score": 0.08
     }
   ]

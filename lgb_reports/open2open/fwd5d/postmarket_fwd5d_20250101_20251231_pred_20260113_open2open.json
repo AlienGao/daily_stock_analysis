@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "001387.SZ",
-      "stock_code": "001387",
-      "stock_name": "雪祺电气",
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
       "lgb_score": 100.0,
       "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "600076.SH",
-      "stock_code": "600076",
-      "stock_name": "康欣新材",
-      "lgb_score": 94.92,
-      "raw_score": 0.12
+      "ts_code": "301023.SZ",
+      "stock_code": "301023",
+      "stock_name": "奕帆传动",
+      "lgb_score": 97.09,
+      "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 94.73,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 96.08,
       "raw_score": 0.12
     },
     {
       "rank": 4,
-      "ts_code": "301023.SZ",
-      "stock_code": "301023",
-      "stock_name": "奕帆传动",
-      "lgb_score": 94.09,
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 86.73,
       "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "300751.SZ",
-      "stock_code": "300751",
-      "stock_name": "迈为股份",
-      "lgb_score": 94.08,
-      "raw_score": 0.11
+      "ts_code": "001387.SZ",
+      "stock_code": "001387",
+      "stock_name": "雪祺电气",
+      "lgb_score": 85.89,
+      "raw_score": 0.1
     }
   ]
 }

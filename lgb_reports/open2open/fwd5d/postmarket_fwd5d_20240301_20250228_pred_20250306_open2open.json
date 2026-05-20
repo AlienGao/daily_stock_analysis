@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301022.SZ",
-      "stock_code": "301022",
-      "stock_name": "海泰科",
+      "ts_code": "003021.SZ",
+      "stock_code": "003021",
+      "stock_name": "兆威机电",
       "lgb_score": 100.0,
-      "raw_score": 0.16
+      "raw_score": 0.11
     },
     {
       "rank": 2,
-      "ts_code": "688316.SH",
-      "stock_code": "688316",
-      "stock_name": "青云科技-U",
-      "lgb_score": 94.26,
-      "raw_score": 0.14
+      "ts_code": "301022.SZ",
+      "stock_code": "301022",
+      "stock_name": "海泰科",
+      "lgb_score": 98.68,
+      "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "002407.SZ",
-      "stock_code": "002407",
-      "stock_name": "多氟多",
-      "lgb_score": 91.71,
-      "raw_score": 0.13
+      "ts_code": "688108.SH",
+      "stock_code": "688108",
+      "stock_name": "赛诺医疗",
+      "lgb_score": 98.19,
+      "raw_score": 0.11
     },
     {
       "rank": 4,
-      "ts_code": "688648.SH",
-      "stock_code": "688648",
-      "stock_name": "中邮科技",
-      "lgb_score": 89.0,
-      "raw_score": 0.12
-    },
-    {
-      "rank": 5,
       "ts_code": "688652.SH",
       "stock_code": "688652",
       "stock_name": "京仪装备",
-      "lgb_score": 87.66,
-      "raw_score": 0.12
+      "lgb_score": 96.93,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 96.88,
+      "raw_score": 0.1
     }
   ]
 }

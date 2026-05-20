@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
+      "ts_code": "300976.SZ",
+      "stock_code": "300976",
+      "stock_name": "达瑞电子",
       "lgb_score": 100.0,
-      "raw_score": 0.11
+      "raw_score": 0.12
     },
     {
       "rank": 2,
-      "ts_code": "301589.SZ",
-      "stock_code": "301589",
-      "stock_name": "诺瓦星云",
-      "lgb_score": 99.3,
-      "raw_score": 0.11
+      "ts_code": "001387.SZ",
+      "stock_code": "001387",
+      "stock_name": "雪祺电气",
+      "lgb_score": 96.94,
+      "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "300681.SZ",
-      "stock_code": "300681",
-      "stock_name": "英搏尔",
-      "lgb_score": 96.2,
-      "raw_score": 0.1
+      "ts_code": "601500.SH",
+      "stock_code": "601500",
+      "stock_name": "通用股份",
+      "lgb_score": 91.87,
+      "raw_score": 0.11
     },
     {
       "rank": 4,
-      "ts_code": "603197.SH",
-      "stock_code": "603197",
-      "stock_name": "保隆科技",
-      "lgb_score": 93.91,
-      "raw_score": 0.1
+      "ts_code": "300757.SZ",
+      "stock_code": "300757",
+      "stock_name": "罗博特科",
+      "lgb_score": 91.63,
+      "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "688320.SH",
-      "stock_code": "688320",
-      "stock_name": "禾川科技",
-      "lgb_score": 92.43,
-      "raw_score": 0.09
+      "ts_code": "600704.SH",
+      "stock_code": "600704",
+      "stock_name": "物产中大",
+      "lgb_score": 90.22,
+      "raw_score": 0.1
     }
   ]
 }

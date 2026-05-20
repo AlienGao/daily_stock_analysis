@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "920178.BJ",
-      "stock_code": "920178.BJ",
-      "stock_name": "",
-      "lgb_score": 100.0,
-      "raw_score": 0.23
-    },
-    {
-      "rank": 2,
       "ts_code": "001309.SZ",
       "stock_code": "001309",
       "stock_name": "德明利",
-      "lgb_score": 96.55,
-      "raw_score": 0.21
+      "lgb_score": 100.0,
+      "raw_score": 0.3
+    },
+    {
+      "rank": 2,
+      "ts_code": "920178.BJ",
+      "stock_code": "920178.BJ",
+      "stock_name": "",
+      "lgb_score": 92.58,
+      "raw_score": 0.26
     },
     {
       "rank": 3,
-      "ts_code": "300476.SZ",
-      "stock_code": "300476",
-      "stock_name": "胜宏科技",
-      "lgb_score": 94.75,
-      "raw_score": 0.2
+      "ts_code": "300757.SZ",
+      "stock_code": "300757",
+      "stock_name": "罗博特科",
+      "lgb_score": 89.34,
+      "raw_score": 0.25
     },
     {
       "rank": 4,
-      "ts_code": "300570.SZ",
-      "stock_code": "300570",
-      "stock_name": "太辰光",
-      "lgb_score": 94.54,
-      "raw_score": 0.2
+      "ts_code": "688808.SH",
+      "stock_code": "688808",
+      "stock_name": "联讯仪器",
+      "lgb_score": 88.98,
+      "raw_score": 0.25
     },
     {
       "rank": 5,
-      "ts_code": "301531.SZ",
-      "stock_code": "301531",
-      "stock_name": "春光集团",
-      "lgb_score": 94.5,
-      "raw_score": 0.2
+      "ts_code": "300959.SZ",
+      "stock_code": "300959",
+      "stock_name": "线上线下",
+      "lgb_score": 88.14,
+      "raw_score": 0.25
     }
   ]
 }

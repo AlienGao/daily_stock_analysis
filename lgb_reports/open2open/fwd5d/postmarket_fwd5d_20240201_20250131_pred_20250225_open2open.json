@@ -11,39 +11,39 @@
       "stock_code": "300970",
       "stock_name": "华绿生物",
       "lgb_score": 100.0,
-      "raw_score": 0.14
+      "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "688108.SH",
-      "stock_code": "688108",
-      "stock_name": "赛诺医疗",
-      "lgb_score": 92.41,
-      "raw_score": 0.12
-    },
-    {
-      "rank": 3,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
-      "lgb_score": 91.46,
-      "raw_score": 0.12
-    },
-    {
-      "rank": 4,
       "ts_code": "000601.SZ",
       "stock_code": "000601",
       "stock_name": "韶能股份",
-      "lgb_score": 90.06,
-      "raw_score": 0.12
+      "lgb_score": 92.03,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 3,
+      "ts_code": "002407.SZ",
+      "stock_code": "002407",
+      "stock_name": "多氟多",
+      "lgb_score": 90.08,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "300842.SZ",
+      "stock_code": "300842",
+      "stock_name": "帝科股份",
+      "lgb_score": 89.17,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "301413.SZ",
-      "stock_code": "301413",
-      "stock_name": "安培龙",
-      "lgb_score": 88.64,
-      "raw_score": 0.11
+      "ts_code": "003021.SZ",
+      "stock_code": "003021",
+      "stock_name": "兆威机电",
+      "lgb_score": 88.79,
+      "raw_score": 0.1
     }
   ]
 }

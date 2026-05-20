@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002307.SZ",
-      "stock_code": "002307",
-      "stock_name": "北新路桥",
+      "ts_code": "300753.SZ",
+      "stock_code": "300753",
+      "stock_name": "爱朋医疗",
       "lgb_score": 100.0,
-      "raw_score": 0.1
+      "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "000877.SZ",
-      "stock_code": "000877",
-      "stock_name": "天山股份",
-      "lgb_score": 94.33,
-      "raw_score": 0.08
+      "ts_code": "002307.SZ",
+      "stock_code": "002307",
+      "stock_name": "北新路桥",
+      "lgb_score": 98.74,
+      "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "301048.SZ",
-      "stock_code": "301048",
-      "stock_name": "金鹰重工",
-      "lgb_score": 91.45,
+      "ts_code": "002908.SZ",
+      "stock_code": "002908",
+      "stock_name": "德生科技",
+      "lgb_score": 93.11,
       "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "600503.SH",
-      "stock_code": "600503",
-      "stock_name": "华丽家族",
-      "lgb_score": 90.12,
-      "raw_score": 0.07
+      "ts_code": "000670.SZ",
+      "stock_code": "000670",
+      "stock_name": "盈方微",
+      "lgb_score": 91.96,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "001278.SZ",
-      "stock_code": "001278",
-      "stock_name": "一彬科技",
-      "lgb_score": 89.19,
-      "raw_score": 0.07
+      "ts_code": "601929.SH",
+      "stock_code": "601929",
+      "stock_name": "吉视传媒",
+      "lgb_score": 90.56,
+      "raw_score": 0.08
     }
   ]
 }

@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000859.SZ",
-      "stock_code": "000859",
-      "stock_name": "国风新材",
+      "ts_code": "603687.SH",
+      "stock_code": "603687",
+      "stock_name": "大胜达",
       "lgb_score": 100.0,
       "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "300263.SZ",
-      "stock_code": "300263",
-      "stock_name": "隆华科技",
-      "lgb_score": 98.6,
-      "raw_score": 0.08
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 99.37,
+      "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "601279.SH",
-      "stock_code": "601279",
-      "stock_name": "英利汽车",
-      "lgb_score": 96.91,
-      "raw_score": 0.08
+      "ts_code": "002255.SZ",
+      "stock_code": "002255",
+      "stock_name": "海陆重工",
+      "lgb_score": 97.94,
+      "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "002274.SZ",
-      "stock_code": "002274",
-      "stock_name": "华昌化工",
-      "lgb_score": 96.33,
+      "ts_code": "601279.SH",
+      "stock_code": "601279",
+      "stock_name": "英利汽车",
+      "lgb_score": 95.44,
       "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "300612.SZ",
-      "stock_code": "300612",
-      "stock_name": "宣亚国际",
-      "lgb_score": 95.49,
-      "raw_score": 0.08
+      "ts_code": "002164.SZ",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 91.71,
+      "raw_score": 0.07
     }
   ]
 }

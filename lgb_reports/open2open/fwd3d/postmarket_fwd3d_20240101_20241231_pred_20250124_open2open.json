@@ -15,26 +15,26 @@
     },
     {
       "rank": 2,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 99.93,
-      "raw_score": 0.09
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 95.99,
+      "raw_score": 0.08
     },
     {
       "rank": 3,
       "ts_code": "600308.SH",
       "stock_code": "600308",
       "stock_name": "华泰股份",
-      "lgb_score": 99.19,
-      "raw_score": 0.09
+      "lgb_score": 95.86,
+      "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "000159.SZ",
-      "stock_code": "000159",
-      "stock_name": "国际实业",
-      "lgb_score": 96.64,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 95.79,
       "raw_score": 0.08
     },
     {
@@ -42,7 +42,7 @@
       "ts_code": "688693.SH",
       "stock_code": "688693",
       "stock_name": "锴威特",
-      "lgb_score": 94.29,
+      "lgb_score": 94.35,
       "raw_score": 0.08
     }
   ]

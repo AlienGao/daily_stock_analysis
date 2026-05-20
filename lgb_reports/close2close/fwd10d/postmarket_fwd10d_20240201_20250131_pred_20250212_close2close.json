@@ -11,39 +11,39 @@
       "stock_code": "301205",
       "stock_name": "联特科技",
       "lgb_score": 100.0,
-      "raw_score": 0.22
+      "raw_score": 0.26
     },
     {
       "rank": 2,
-      "ts_code": "300842.SZ",
-      "stock_code": "300842",
-      "stock_name": "帝科股份",
-      "lgb_score": 98.96,
-      "raw_score": 0.21
+      "ts_code": "688368.SH",
+      "stock_code": "688368",
+      "stock_name": "晶丰明源",
+      "lgb_score": 99.18,
+      "raw_score": 0.26
     },
     {
       "rank": 3,
-      "ts_code": "300042.SZ",
-      "stock_code": "300042",
-      "stock_name": "朗科科技",
-      "lgb_score": 98.96,
-      "raw_score": 0.21
+      "ts_code": "301372.SZ",
+      "stock_code": "301372",
+      "stock_name": "科净源",
+      "lgb_score": 92.7,
+      "raw_score": 0.24
     },
     {
       "rank": 4,
-      "ts_code": "600076.SH",
-      "stock_code": "600076",
-      "stock_name": "康欣新材",
-      "lgb_score": 98.38,
-      "raw_score": 0.21
+      "ts_code": "300007.SZ",
+      "stock_code": "300007",
+      "stock_name": "汉威科技",
+      "lgb_score": 90.95,
+      "raw_score": 0.23
     },
     {
       "rank": 5,
-      "ts_code": "300995.SZ",
-      "stock_code": "300995",
-      "stock_name": "奇德新材",
-      "lgb_score": 94.05,
-      "raw_score": 0.2
+      "ts_code": "688181.SH",
+      "stock_code": "688181",
+      "stock_name": "八亿时空",
+      "lgb_score": 89.71,
+      "raw_score": 0.23
     }
   ]
 }

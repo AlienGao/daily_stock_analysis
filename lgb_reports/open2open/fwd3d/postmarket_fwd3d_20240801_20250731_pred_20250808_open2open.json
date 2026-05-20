@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301110.SZ",
-      "stock_code": "301110",
-      "stock_name": "青木科技",
+      "ts_code": "688507.SH",
+      "stock_code": "688507",
+      "stock_name": "索辰科技",
       "lgb_score": 100.0,
-      "raw_score": 0.09
+      "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
-      "lgb_score": 98.25,
-      "raw_score": 0.09
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 87.08,
+      "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "300772.SZ",
-      "stock_code": "300772",
-      "stock_name": "运达股份",
-      "lgb_score": 97.72,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 86.7,
       "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "002148.SZ",
-      "stock_code": "002148",
-      "stock_name": "北纬科技",
-      "lgb_score": 96.52,
-      "raw_score": 0.08
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 86.49,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "603915.SH",
-      "stock_code": "603915",
-      "stock_name": "国茂股份",
-      "lgb_score": 96.51,
-      "raw_score": 0.08
+      "ts_code": "300753.SZ",
+      "stock_code": "300753",
+      "stock_name": "爱朋医疗",
+      "lgb_score": 84.75,
+      "raw_score": 0.09
     }
   ]
 }

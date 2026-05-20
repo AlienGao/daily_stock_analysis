@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002237.SZ",
-      "stock_code": "002237",
-      "stock_name": "恒邦股份",
+      "ts_code": "603096.SH",
+      "stock_code": "603096",
+      "stock_name": "新经典",
       "lgb_score": 100.0,
-      "raw_score": 0.11
+      "raw_score": 0.12
     },
     {
       "rank": 2,
       "ts_code": "300875.SZ",
       "stock_code": "300875",
       "stock_name": "捷强装备",
-      "lgb_score": 99.37,
+      "lgb_score": 97.97,
       "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "301223.SZ",
-      "stock_code": "301223",
-      "stock_name": "中荣股份",
-      "lgb_score": 84.74,
-      "raw_score": 0.08
+      "ts_code": "920075.BJ",
+      "stock_code": "920075.BJ",
+      "stock_name": "",
+      "lgb_score": 96.89,
+      "raw_score": 0.11
     },
     {
       "rank": 4,
-      "ts_code": "002164.SZ",
-      "stock_code": "002164",
-      "stock_name": "宁波东力",
-      "lgb_score": 84.03,
-      "raw_score": 0.08
+      "ts_code": "002237.SZ",
+      "stock_code": "002237",
+      "stock_name": "恒邦股份",
+      "lgb_score": 96.05,
+      "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "301118.SZ",
-      "stock_code": "301118",
-      "stock_name": "恒光股份",
-      "lgb_score": 83.74,
-      "raw_score": 0.08
+      "ts_code": "301223.SZ",
+      "stock_code": "301223",
+      "stock_name": "中荣股份",
+      "lgb_score": 91.71,
+      "raw_score": 0.1
     }
   ]
 }

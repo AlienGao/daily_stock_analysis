@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300976.SZ",
-      "stock_code": "300976",
-      "stock_name": "达瑞电子",
+      "ts_code": "000959.SZ",
+      "stock_code": "000959",
+      "stock_name": "首钢股份",
       "lgb_score": 100.0,
       "raw_score": 0.11
     },
     {
       "rank": 2,
-      "ts_code": "000959.SZ",
-      "stock_code": "000959",
-      "stock_name": "首钢股份",
-      "lgb_score": 91.9,
-      "raw_score": 0.1
-    },
-    {
-      "rank": 3,
-      "ts_code": "000589.SZ",
-      "stock_code": "000589",
-      "stock_name": "贵州轮胎",
-      "lgb_score": 90.21,
-      "raw_score": 0.1
-    },
-    {
-      "rank": 4,
       "ts_code": "002421.SZ",
       "stock_code": "002421",
       "stock_name": "达实智能",
-      "lgb_score": 84.72,
+      "lgb_score": 89.13,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "600284.SH",
+      "stock_code": "600284",
+      "stock_name": "浦东建设",
+      "lgb_score": 83.22,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "001230.SZ",
+      "stock_code": "001230",
+      "stock_name": "劲旅环境",
+      "lgb_score": 81.38,
       "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "300163.SZ",
-      "stock_code": "300163",
-      "stock_name": "先锋新材",
-      "lgb_score": 84.47,
+      "ts_code": "300976.SZ",
+      "stock_code": "300976",
+      "stock_name": "达瑞电子",
+      "lgb_score": 80.16,
       "raw_score": 0.08
     }
   ]

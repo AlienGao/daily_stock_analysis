@@ -11,38 +11,38 @@
       "stock_code": "603283",
       "stock_name": "赛腾股份",
       "lgb_score": 100.0,
-      "raw_score": 0.12
+      "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "688256.SH",
-      "stock_code": "688256",
-      "stock_name": "寒武纪",
-      "lgb_score": 87.9,
+      "ts_code": "300187.SZ",
+      "stock_code": "300187",
+      "stock_name": "永清环保",
+      "lgb_score": 99.28,
       "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "301500.SZ",
-      "stock_code": "301500",
-      "stock_name": "飞南资源",
-      "lgb_score": 82.86,
+      "ts_code": "688256.SH",
+      "stock_code": "688256",
+      "stock_name": "寒武纪",
+      "lgb_score": 94.55,
       "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "688048.SH",
-      "stock_code": "688048",
-      "stock_name": "长光华芯",
-      "lgb_score": 81.42,
-      "raw_score": 0.08
-    },
-    {
-      "rank": 5,
       "ts_code": "600770.SH",
       "stock_code": "600770",
       "stock_name": "综艺股份",
-      "lgb_score": 78.63,
+      "lgb_score": 94.05,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "688048.SH",
+      "stock_code": "688048",
+      "stock_name": "长光华芯",
+      "lgb_score": 91.12,
       "raw_score": 0.08
     }
   ]

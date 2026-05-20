@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "001267.SZ",
-      "stock_code": "001267",
-      "stock_name": "汇绿生态",
-      "lgb_score": 100.0,
-      "raw_score": 0.06
-    },
-    {
-      "rank": 2,
       "ts_code": "300757.SZ",
       "stock_code": "300757",
       "stock_name": "罗博特科",
-      "lgb_score": 97.76,
-      "raw_score": 0.06
+      "lgb_score": 100.0,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 2,
+      "ts_code": "688228.SH",
+      "stock_code": "688228",
+      "stock_name": "开普云",
+      "lgb_score": 97.44,
+      "raw_score": 0.07
     },
     {
       "rank": 3,
-      "ts_code": "002438.SZ",
-      "stock_code": "002438",
-      "stock_name": "江苏神通",
-      "lgb_score": 91.8,
-      "raw_score": 0.05
+      "ts_code": "688521.SH",
+      "stock_code": "688521",
+      "stock_name": "芯原股份",
+      "lgb_score": 96.48,
+      "raw_score": 0.07
     },
     {
       "rank": 4,
-      "ts_code": "001387.SZ",
-      "stock_code": "001387",
-      "stock_name": "雪祺电气",
-      "lgb_score": 88.42,
-      "raw_score": 0.05
+      "ts_code": "001267.SZ",
+      "stock_code": "001267",
+      "stock_name": "汇绿生态",
+      "lgb_score": 93.09,
+      "raw_score": 0.06
     },
     {
       "rank": 5,
-      "ts_code": "300308.SZ.SZ",
+      "ts_code": "300308.SZ",
       "stock_code": "300308",
       "stock_name": "中际旭创",
-      "lgb_score": 87.93,
-      "raw_score": 0.05
+      "lgb_score": 92.21,
+      "raw_score": 0.06
     }
   ]
 }

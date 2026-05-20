@@ -11,38 +11,38 @@
       "stock_code": "603218",
       "stock_name": "日月股份",
       "lgb_score": 100.0,
-      "raw_score": 0.11
+      "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "002513.SZ",
-      "stock_code": "002513",
-      "stock_name": "蓝丰生化",
-      "lgb_score": 91.74,
+      "ts_code": "300016.SZ",
+      "stock_code": "300016",
+      "stock_name": "北陆药业",
+      "lgb_score": 94.78,
       "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 90.98,
-      "raw_score": 0.09
+      "ts_code": "600367.SH",
+      "stock_code": "600367",
+      "stock_name": "红星发展",
+      "lgb_score": 93.46,
+      "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "600727.SH",
-      "stock_code": "600727",
-      "stock_name": "鲁北化工",
-      "lgb_score": 90.17,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 92.79,
       "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "603915.SH",
-      "stock_code": "603915",
-      "stock_name": "国茂股份",
-      "lgb_score": 89.15,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 92.59,
       "raw_score": 0.08
     }
   ]

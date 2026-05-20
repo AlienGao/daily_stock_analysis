@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300545.SZ",
-      "stock_code": "300545",
-      "stock_name": "联得装备",
-      "lgb_score": 100.0,
-      "raw_score": 0.14
-    },
-    {
-      "rank": 2,
       "ts_code": "600210.SH",
       "stock_code": "600210",
       "stock_name": "紫江企业",
-      "lgb_score": 98.99,
-      "raw_score": 0.14
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "300545.SZ",
+      "stock_code": "300545",
+      "stock_name": "联得装备",
+      "lgb_score": 95.95,
+      "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "600076.SH",
-      "stock_code": "600076",
-      "stock_name": "康欣新材",
-      "lgb_score": 96.6,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 4,
       "ts_code": "002073.SZ",
       "stock_code": "002073",
       "stock_name": "软控股份",
-      "lgb_score": 87.0,
-      "raw_score": 0.1
+      "lgb_score": 88.19,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "600729.SH",
+      "stock_code": "600729",
+      "stock_name": "重百集团",
+      "lgb_score": 87.93,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "688693.SH",
-      "stock_code": "688693",
-      "stock_name": "锴威特",
-      "lgb_score": 81.55,
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 86.78,
       "raw_score": 0.09
     }
   ]

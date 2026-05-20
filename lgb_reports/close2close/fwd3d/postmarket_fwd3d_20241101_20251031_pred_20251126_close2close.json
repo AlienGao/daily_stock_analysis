@@ -10,23 +10,23 @@
       "ts_code": "002589.SZ",
       "stock_code": "002589",
       "stock_name": "瑞康医药",
-      "lgb_score": 91.11,
-      "raw_score": 0.12
+      "lgb_score": 98.48,
+      "raw_score": 0.14
     },
     {
       "rank": 2,
-      "ts_code": "600076.SH",
-      "stock_code": "600076",
-      "stock_name": "康欣新材",
-      "lgb_score": 89.43,
+      "ts_code": "600227.SH",
+      "stock_code": "600227",
+      "stock_name": "赤天化",
+      "lgb_score": 89.81,
       "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "600227.SH",
-      "stock_code": "600227",
-      "stock_name": "赤天化",
-      "lgb_score": 87.3,
+      "ts_code": "002486.SZ",
+      "stock_code": "002486",
+      "stock_name": "嘉麟杰",
+      "lgb_score": 86.6,
       "raw_score": 0.11
     },
     {
@@ -34,15 +34,15 @@
       "ts_code": "000785.SZ",
       "stock_code": "000785",
       "stock_name": "居然智家",
-      "lgb_score": 85.8,
-      "raw_score": 0.11
+      "lgb_score": 81.75,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "002486.SZ",
-      "stock_code": "002486",
-      "stock_name": "嘉麟杰",
-      "lgb_score": 82.82,
+      "ts_code": "000509.SZ",
+      "stock_code": "000509",
+      "stock_name": "华塑控股",
+      "lgb_score": 80.95,
       "raw_score": 0.1
     }
   ]

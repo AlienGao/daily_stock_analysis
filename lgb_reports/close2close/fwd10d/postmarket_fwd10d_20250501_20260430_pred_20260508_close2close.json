@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "001309.SZ",
-      "stock_code": "001309",
-      "stock_name": "德明利",
+      "ts_code": "002374.SZ",
+      "stock_code": "002374",
+      "stock_name": "中锐股份",
       "lgb_score": 100.0,
-      "raw_score": 0.21
+      "raw_score": 0.23
     },
     {
       "rank": 2,
-      "ts_code": "603344.SH",
-      "stock_code": "603344",
-      "stock_name": "星德胜",
-      "lgb_score": 99.25,
-      "raw_score": 0.2
+      "ts_code": "300179.SZ",
+      "stock_code": "300179",
+      "stock_name": "四方达",
+      "lgb_score": 99.96,
+      "raw_score": 0.23
     },
     {
       "rank": 3,
-      "ts_code": "601678.SH",
-      "stock_code": "601678",
-      "stock_name": "滨化股份",
-      "lgb_score": 96.42,
-      "raw_score": 0.19
+      "ts_code": "301118.SZ",
+      "stock_code": "301118",
+      "stock_name": "恒光股份",
+      "lgb_score": 97.07,
+      "raw_score": 0.22
     },
     {
       "rank": 4,
-      "ts_code": "688323.SH",
-      "stock_code": "688323",
-      "stock_name": "瑞华泰",
-      "lgb_score": 94.77,
-      "raw_score": 0.18
+      "ts_code": "688367.SH",
+      "stock_code": "688367",
+      "stock_name": "工大高科",
+      "lgb_score": 96.78,
+      "raw_score": 0.22
     },
     {
       "rank": 5,
-      "ts_code": "688808.SH",
-      "stock_code": "688808",
-      "stock_name": "联讯仪器",
-      "lgb_score": 93.01,
-      "raw_score": 0.18
+      "ts_code": "002150.SZ",
+      "stock_code": "002150",
+      "stock_name": "正泰电源",
+      "lgb_score": 93.69,
+      "raw_score": 0.21
     }
   ]
 }

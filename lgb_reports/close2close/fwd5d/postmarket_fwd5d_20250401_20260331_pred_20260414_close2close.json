@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "601020.SH",
-      "stock_code": "601020",
-      "stock_name": "华钰矿业",
+      "ts_code": "000959.SZ",
+      "stock_code": "000959",
+      "stock_name": "首钢股份",
       "lgb_score": 100.0,
-      "raw_score": 0.11
-    },
-    {
-      "rank": 2,
-      "ts_code": "300976.SZ",
-      "stock_code": "300976",
-      "stock_name": "达瑞电子",
-      "lgb_score": 92.31,
       "raw_score": 0.1
     },
     {
-      "rank": 3,
-      "ts_code": "688498.SH",
-      "stock_code": "688498",
-      "stock_name": "源杰科技",
-      "lgb_score": 91.32,
+      "rank": 2,
+      "ts_code": "000968.SZ",
+      "stock_code": "000968",
+      "stock_name": "蓝焰控股",
+      "lgb_score": 93.27,
       "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "601138.SH",
+      "stock_code": "601138",
+      "stock_name": "工业富联",
+      "lgb_score": 90.59,
+      "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "000589.SZ",
-      "stock_code": "000589",
-      "stock_name": "贵州轮胎",
-      "lgb_score": 89.45,
-      "raw_score": 0.09
+      "ts_code": "000823.SZ",
+      "stock_code": "000823",
+      "stock_name": "超声电子",
+      "lgb_score": 89.46,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "601133.SH",
-      "stock_code": "601133",
-      "stock_name": "柏诚股份",
-      "lgb_score": 82.55,
+      "ts_code": "600539.SH",
+      "stock_code": "600539",
+      "stock_name": "狮头股份",
+      "lgb_score": 86.72,
       "raw_score": 0.08
     }
   ]

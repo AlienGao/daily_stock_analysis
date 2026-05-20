@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 100.0,
-      "raw_score": 0.24
-    },
-    {
-      "rank": 2,
-      "ts_code": "688166.SH",
-      "stock_code": "688166",
-      "stock_name": "博瑞医药",
-      "lgb_score": 92.52,
-      "raw_score": 0.2
-    },
-    {
-      "rank": 3,
-      "ts_code": "000601.SZ",
-      "stock_code": "000601",
-      "stock_name": "韶能股份",
-      "lgb_score": 90.17,
-      "raw_score": 0.19
-    },
-    {
-      "rank": 4,
       "ts_code": "300429.SZ",
       "stock_code": "300429",
       "stock_name": "强力新材",
-      "lgb_score": 88.72,
-      "raw_score": 0.19
+      "lgb_score": 100.0,
+      "raw_score": 0.33
     },
     {
-      "rank": 5,
+      "rank": 2,
+      "ts_code": "300046.SZ",
+      "stock_code": "300046",
+      "stock_name": "台基股份",
+      "lgb_score": 90.5,
+      "raw_score": 0.29
+    },
+    {
+      "rank": 3,
       "ts_code": "002121.SZ",
       "stock_code": "002121",
       "stock_name": "科陆电子",
-      "lgb_score": 88.58,
-      "raw_score": 0.19
+      "lgb_score": 88.52,
+      "raw_score": 0.28
+    },
+    {
+      "rank": 4,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 88.49,
+      "raw_score": 0.28
+    },
+    {
+      "rank": 5,
+      "ts_code": "002009.SZ",
+      "stock_code": "002009",
+      "stock_name": "天奇股份",
+      "lgb_score": 87.6,
+      "raw_score": 0.27
     }
   ]
 }

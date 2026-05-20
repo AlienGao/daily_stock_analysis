@@ -11,38 +11,38 @@
       "stock_code": "600308",
       "stock_name": "华泰股份",
       "lgb_score": 100.0,
-      "raw_score": 0.15
+      "raw_score": 0.14
     },
     {
       "rank": 2,
-      "ts_code": "600227.SH",
-      "stock_code": "600227",
-      "stock_name": "赤天化",
-      "lgb_score": 83.93,
-      "raw_score": 0.1
+      "ts_code": "002094.SZ",
+      "stock_code": "002094",
+      "stock_name": "青岛金王",
+      "lgb_score": 88.82,
+      "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "300166.SZ",
-      "stock_code": "300166",
-      "stock_name": "东方国信",
-      "lgb_score": 83.28,
-      "raw_score": 0.1
+      "ts_code": "000617.SZ",
+      "stock_code": "000617",
+      "stock_name": "中油资本",
+      "lgb_score": 88.21,
+      "raw_score": 0.11
     },
     {
       "rank": 4,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 82.62,
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 86.16,
       "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "002121.SZ",
-      "stock_code": "002121",
-      "stock_name": "科陆电子",
-      "lgb_score": 81.81,
+      "ts_code": "600227.SH",
+      "stock_code": "600227",
+      "stock_name": "赤天化",
+      "lgb_score": 85.49,
       "raw_score": 0.1
     }
   ]

@@ -11,30 +11,30 @@
       "stock_code": "300017",
       "stock_name": "网宿科技",
       "lgb_score": 100.0,
-      "raw_score": 0.18
-    },
-    {
-      "rank": 2,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
-      "lgb_score": 99.15,
       "raw_score": 0.17
     },
     {
-      "rank": 3,
+      "rank": 2,
       "ts_code": "300429.SZ",
       "stock_code": "300429",
       "stock_name": "强力新材",
-      "lgb_score": 94.34,
+      "lgb_score": 96.38,
       "raw_score": 0.16
+    },
+    {
+      "rank": 3,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 92.0,
+      "raw_score": 0.15
     },
     {
       "rank": 4,
       "ts_code": "300166.SZ",
       "stock_code": "300166",
       "stock_name": "东方国信",
-      "lgb_score": 92.43,
+      "lgb_score": 91.96,
       "raw_score": 0.15
     },
     {
@@ -42,7 +42,7 @@
       "ts_code": "301110.SZ",
       "stock_code": "301110",
       "stock_name": "青木科技",
-      "lgb_score": 89.95,
+      "lgb_score": 89.08,
       "raw_score": 0.14
     }
   ]

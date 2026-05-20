@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300885.SZ",
-      "stock_code": "300885",
-      "stock_name": "海昌新材",
+      "ts_code": "603915.SH",
+      "stock_code": "603915",
+      "stock_name": "国茂股份",
       "lgb_score": 100.0,
-      "raw_score": 0.24
+      "raw_score": 0.28
     },
     {
       "rank": 2,
       "ts_code": "000601.SZ",
       "stock_code": "000601",
       "stock_name": "韶能股份",
-      "lgb_score": 96.56,
-      "raw_score": 0.23
+      "lgb_score": 96.19,
+      "raw_score": 0.26
     },
     {
       "rank": 3,
-      "ts_code": "603915.SH",
-      "stock_code": "603915",
-      "stock_name": "国茂股份",
-      "lgb_score": 93.41,
-      "raw_score": 0.21
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 94.07,
+      "raw_score": 0.25
     },
     {
       "rank": 4,
-      "ts_code": "000955.SZ",
-      "stock_code": "000955",
-      "stock_name": "欣龙控股",
-      "lgb_score": 92.21,
-      "raw_score": 0.21
+      "ts_code": "600509.SH",
+      "stock_code": "600509",
+      "stock_name": "天富能源",
+      "lgb_score": 89.47,
+      "raw_score": 0.24
     },
     {
       "rank": 5,
       "ts_code": "000859.SZ",
       "stock_code": "000859",
       "stock_name": "国风新材",
-      "lgb_score": 90.26,
-      "raw_score": 0.2
+      "lgb_score": 89.11,
+      "raw_score": 0.23
     }
   ]
 }

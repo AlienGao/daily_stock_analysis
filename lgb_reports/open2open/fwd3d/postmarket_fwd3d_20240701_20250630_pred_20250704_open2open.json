@@ -11,39 +11,39 @@
       "stock_code": "600802",
       "stock_name": "福建水泥",
       "lgb_score": 100.0,
-      "raw_score": 0.11
+      "raw_score": 0.12
     },
     {
       "rank": 2,
-      "ts_code": "002130.SZ",
-      "stock_code": "002130",
-      "stock_name": "沃尔核材",
-      "lgb_score": 92.39,
-      "raw_score": 0.09
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 93.45,
+      "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "300677.SZ",
-      "stock_code": "300677",
-      "stock_name": "英科医疗",
-      "lgb_score": 86.18,
-      "raw_score": 0.08
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 90.05,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "002871.SZ",
-      "stock_code": "002871",
-      "stock_name": "伟隆股份",
-      "lgb_score": 85.31,
-      "raw_score": 0.07
+      "ts_code": "301209.SZ",
+      "stock_code": "301209",
+      "stock_name": "联合化学",
+      "lgb_score": 88.3,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "300230.SZ",
-      "stock_code": "300230",
-      "stock_name": "永利股份",
-      "lgb_score": 85.01,
-      "raw_score": 0.07
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 87.55,
+      "raw_score": 0.09
     }
   ]
 }

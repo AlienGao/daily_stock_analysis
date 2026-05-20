@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002617.SZ",
-      "stock_code": "002617",
-      "stock_name": "露笑科技",
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
       "lgb_score": 100.0,
-      "raw_score": 0.12
+      "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "002269.SZ",
-      "stock_code": "002269",
-      "stock_name": "美邦服饰",
-      "lgb_score": 98.22,
-      "raw_score": 0.11
+      "ts_code": "002617.SZ",
+      "stock_code": "002617",
+      "stock_name": "露笑科技",
+      "lgb_score": 98.12,
+      "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "301600.SZ",
-      "stock_code": "301600",
-      "stock_name": "慧翰股份",
-      "lgb_score": 95.55,
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 90.56,
       "raw_score": 0.11
     },
     {
       "rank": 4,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
-      "lgb_score": 94.85,
-      "raw_score": 0.11
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 88.19,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "000936.SZ",
-      "stock_code": "000936",
-      "stock_name": "华西股份",
-      "lgb_score": 89.22,
+      "ts_code": "300429.SZ",
+      "stock_code": "300429",
+      "stock_name": "强力新材",
+      "lgb_score": 87.84,
       "raw_score": 0.1
     }
   ]

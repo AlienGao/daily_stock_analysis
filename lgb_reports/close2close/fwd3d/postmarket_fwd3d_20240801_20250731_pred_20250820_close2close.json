@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000536.SZ",
-      "stock_code": "000536",
-      "stock_name": "华映科技",
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
       "lgb_score": 100.0,
-      "raw_score": 0.09
+      "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "002722.SZ",
-      "stock_code": "002722",
-      "stock_name": "物产金轮",
-      "lgb_score": 95.03,
-      "raw_score": 0.08
+      "ts_code": "300810.SZ",
+      "stock_code": "300810",
+      "stock_name": "中科海讯",
+      "lgb_score": 98.52,
+      "raw_score": 0.1
     },
     {
       "rank": 3,
       "ts_code": "002445.SZ",
       "stock_code": "002445",
       "stock_name": "中南文化",
-      "lgb_score": 94.6,
-      "raw_score": 0.08
+      "lgb_score": 94.74,
+      "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "002114.SZ",
-      "stock_code": "002114",
-      "stock_name": "罗平锌电",
-      "lgb_score": 94.09,
-      "raw_score": 0.08
+      "ts_code": "603366.SH",
+      "stock_code": "603366",
+      "stock_name": "日出东方",
+      "lgb_score": 90.76,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "300263.SZ",
-      "stock_code": "300263",
-      "stock_name": "隆华科技",
-      "lgb_score": 93.65,
+      "ts_code": "600500.SH",
+      "stock_code": "600500",
+      "stock_name": "中化国际",
+      "lgb_score": 87.78,
       "raw_score": 0.08
     }
   ]

@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301137.SZ",
-      "stock_code": "301137",
-      "stock_name": "哈焊华通",
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
       "lgb_score": 100.0,
-      "raw_score": 0.27
+      "raw_score": 0.29
     },
     {
       "rank": 2,
       "ts_code": "688135.SH",
       "stock_code": "688135",
       "stock_name": "利扬芯片",
-      "lgb_score": 99.66,
-      "raw_score": 0.27
-    },
-    {
-      "rank": 3,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 96.02,
+      "lgb_score": 91.28,
       "raw_score": 0.25
     },
     {
+      "rank": 3,
+      "ts_code": "301209.SZ",
+      "stock_code": "301209",
+      "stock_name": "联合化学",
+      "lgb_score": 85.77,
+      "raw_score": 0.23
+    },
+    {
       "rank": 4,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 94.19,
-      "raw_score": 0.24
+      "ts_code": "600509.SH",
+      "stock_code": "600509",
+      "stock_name": "天富能源",
+      "lgb_score": 84.07,
+      "raw_score": 0.22
     },
     {
       "rank": 5,
-      "ts_code": "300046.SZ",
-      "stock_code": "300046",
-      "stock_name": "台基股份",
-      "lgb_score": 92.66,
-      "raw_score": 0.23
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 83.88,
+      "raw_score": 0.22
     }
   ]
 }

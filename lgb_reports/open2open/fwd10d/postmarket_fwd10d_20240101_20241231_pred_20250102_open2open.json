@@ -11,22 +11,22 @@
       "stock_code": "002121",
       "stock_name": "科陆电子",
       "lgb_score": 100.0,
-      "raw_score": 0.25
+      "raw_score": 0.26
     },
     {
       "rank": 2,
-      "ts_code": "002407.SZ",
-      "stock_code": "002407",
-      "stock_name": "多氟多",
-      "lgb_score": 98.53,
-      "raw_score": 0.24
+      "ts_code": "002009.SZ",
+      "stock_code": "002009",
+      "stock_name": "天奇股份",
+      "lgb_score": 99.55,
+      "raw_score": 0.26
     },
     {
       "rank": 3,
       "ts_code": "300046.SZ",
       "stock_code": "300046",
       "stock_name": "台基股份",
-      "lgb_score": 97.4,
+      "lgb_score": 94.16,
       "raw_score": 0.24
     },
     {
@@ -34,7 +34,7 @@
       "ts_code": "300042.SZ",
       "stock_code": "300042",
       "stock_name": "朗科科技",
-      "lgb_score": 96.39,
+      "lgb_score": 91.7,
       "raw_score": 0.23
     },
     {
@@ -42,8 +42,8 @@
       "ts_code": "300975.SZ",
       "stock_code": "300975",
       "stock_name": "商络电子",
-      "lgb_score": 93.58,
-      "raw_score": 0.22
+      "lgb_score": 91.45,
+      "raw_score": 0.23
     }
   ]
 }

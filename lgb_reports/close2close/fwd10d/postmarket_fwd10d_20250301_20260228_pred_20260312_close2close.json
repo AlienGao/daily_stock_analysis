@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688031.SH",
-      "stock_code": "688031",
-      "stock_name": "星环科技-U",
+      "ts_code": "301022.SZ",
+      "stock_code": "301022",
+      "stock_name": "海泰科",
       "lgb_score": 100.0,
-      "raw_score": 0.21
+      "raw_score": 0.27
     },
     {
       "rank": 2,
-      "ts_code": "002458.SZ",
-      "stock_code": "002458",
-      "stock_name": "益生股份",
-      "lgb_score": 97.64,
-      "raw_score": 0.2
+      "ts_code": "301696.SZ",
+      "stock_code": "301696",
+      "stock_name": "三瑞智能",
+      "lgb_score": 91.09,
+      "raw_score": 0.23
     },
     {
       "rank": 3,
-      "ts_code": "603018.SH",
-      "stock_code": "603018",
-      "stock_name": "华设集团",
-      "lgb_score": 95.58,
-      "raw_score": 0.2
+      "ts_code": "688458.SH",
+      "stock_code": "688458",
+      "stock_name": "美芯晟",
+      "lgb_score": 88.4,
+      "raw_score": 0.22
     },
     {
       "rank": 4,
-      "ts_code": "688027.SH",
-      "stock_code": "688027",
-      "stock_name": "国盾量子",
-      "lgb_score": 94.38,
-      "raw_score": 0.19
+      "ts_code": "301110.SZ",
+      "stock_code": "301110",
+      "stock_name": "青木科技",
+      "lgb_score": 88.32,
+      "raw_score": 0.22
     },
     {
       "rank": 5,
-      "ts_code": "688525.SH",
-      "stock_code": "688525",
-      "stock_name": "佰维存储",
-      "lgb_score": 90.19,
-      "raw_score": 0.17
+      "ts_code": "603120.SH",
+      "stock_code": "603120",
+      "stock_name": "肯特催化",
+      "lgb_score": 87.67,
+      "raw_score": 0.22
     }
   ]
 }

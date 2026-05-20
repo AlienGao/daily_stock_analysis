@@ -11,39 +11,39 @@
       "stock_code": "300885",
       "stock_name": "海昌新材",
       "lgb_score": 100.0,
-      "raw_score": 0.32
+      "raw_score": 0.27
     },
     {
       "rank": 2,
-      "ts_code": "603893.SH",
-      "stock_code": "603893",
-      "stock_name": "瑞芯微",
-      "lgb_score": 81.4,
-      "raw_score": 0.23
-    },
-    {
-      "rank": 3,
       "ts_code": "688181.SH",
       "stock_code": "688181",
       "stock_name": "八亿时空",
-      "lgb_score": 80.8,
-      "raw_score": 0.23
+      "lgb_score": 98.67,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 3,
+      "ts_code": "300007.SZ",
+      "stock_code": "300007",
+      "stock_name": "汉威科技",
+      "lgb_score": 98.22,
+      "raw_score": 0.26
     },
     {
       "rank": 4,
-      "ts_code": "002031.SZ",
-      "stock_code": "002031",
-      "stock_name": "巨轮智能",
-      "lgb_score": 80.23,
-      "raw_score": 0.22
+      "ts_code": "300042.SZ",
+      "stock_code": "300042",
+      "stock_name": "朗科科技",
+      "lgb_score": 92.2,
+      "raw_score": 0.23
     },
     {
       "rank": 5,
-      "ts_code": "002029.SZ",
-      "stock_code": "002029",
-      "stock_name": "七 匹 狼",
-      "lgb_score": 77.66,
-      "raw_score": 0.21
+      "ts_code": "688316.SH",
+      "stock_code": "688316",
+      "stock_name": "青云科技-U",
+      "lgb_score": 91.63,
+      "raw_score": 0.23
     }
   ]
 }

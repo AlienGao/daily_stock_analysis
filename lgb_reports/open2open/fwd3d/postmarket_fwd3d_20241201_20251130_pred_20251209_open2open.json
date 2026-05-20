@@ -11,38 +11,38 @@
       "stock_code": "002445",
       "stock_name": "中南文化",
       "lgb_score": 100.0,
-      "raw_score": 0.1
+      "raw_score": 0.12
     },
     {
       "rank": 2,
-      "ts_code": "002029.SZ",
-      "stock_code": "002029",
-      "stock_name": "七 匹 狼",
-      "lgb_score": 96.02,
-      "raw_score": 0.09
-    },
-    {
-      "rank": 3,
-      "ts_code": "002164.SZ",
-      "stock_code": "002164",
-      "stock_name": "宁波东力",
-      "lgb_score": 94.27,
-      "raw_score": 0.09
-    },
-    {
-      "rank": 4,
-      "ts_code": "301071.SZ",
-      "stock_code": "301071",
-      "stock_name": "力量钻石",
-      "lgb_score": 93.49,
-      "raw_score": 0.08
-    },
-    {
-      "rank": 5,
       "ts_code": "002217.SZ",
       "stock_code": "002217",
       "stock_name": "合力泰",
-      "lgb_score": 93.03,
+      "lgb_score": 98.43,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "300045.SZ",
+      "stock_code": "300045",
+      "stock_name": "华力创通",
+      "lgb_score": 88.5,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 85.3,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "301222.SZ",
+      "stock_code": "301222",
+      "stock_name": "浙江恒威",
+      "lgb_score": 81.42,
       "raw_score": 0.08
     }
   ]

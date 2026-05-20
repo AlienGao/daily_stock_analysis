@@ -11,39 +11,39 @@
       "stock_code": "688368",
       "stock_name": "晶丰明源",
       "lgb_score": 100.0,
-      "raw_score": 0.23
+      "raw_score": 0.24
     },
     {
       "rank": 2,
-      "ts_code": "600076.SH",
-      "stock_code": "600076",
-      "stock_name": "康欣新材",
-      "lgb_score": 87.79,
-      "raw_score": 0.19
+      "ts_code": "688181.SH",
+      "stock_code": "688181",
+      "stock_name": "八亿时空",
+      "lgb_score": 97.19,
+      "raw_score": 0.23
     },
     {
       "rank": 3,
-      "ts_code": "688458.SH",
-      "stock_code": "688458",
-      "stock_name": "美芯晟",
-      "lgb_score": 85.3,
-      "raw_score": 0.18
+      "ts_code": "300042.SZ",
+      "stock_code": "300042",
+      "stock_name": "朗科科技",
+      "lgb_score": 92.68,
+      "raw_score": 0.21
     },
     {
       "rank": 4,
       "ts_code": "002229.SZ",
       "stock_code": "002229",
       "stock_name": "鸿博股份",
-      "lgb_score": 85.07,
-      "raw_score": 0.18
+      "lgb_score": 91.4,
+      "raw_score": 0.2
     },
     {
       "rank": 5,
-      "ts_code": "300970.SZ",
-      "stock_code": "300970",
-      "stock_name": "华绿生物",
-      "lgb_score": 84.67,
-      "raw_score": 0.18
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 90.69,
+      "raw_score": 0.2
     }
   ]
 }

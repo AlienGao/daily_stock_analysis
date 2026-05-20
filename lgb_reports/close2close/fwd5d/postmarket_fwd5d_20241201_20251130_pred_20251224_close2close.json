@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002291.SZ",
-      "stock_code": "002291",
-      "stock_name": "遥望科技",
-      "lgb_score": 100.0,
-      "raw_score": 0.19
-    },
-    {
-      "rank": 2,
-      "ts_code": "603305.SH",
-      "stock_code": "603305",
-      "stock_name": "旭升集团",
-      "lgb_score": 99.9,
-      "raw_score": 0.19
-    },
-    {
-      "rank": 3,
       "ts_code": "002909.SZ",
       "stock_code": "002909",
       "stock_name": "集泰股份",
-      "lgb_score": 92.69,
-      "raw_score": 0.17
+      "lgb_score": 100.0,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 2,
+      "ts_code": "002291.SZ",
+      "stock_code": "002291",
+      "stock_name": "遥望科技",
+      "lgb_score": 97.43,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 3,
+      "ts_code": "688458.SH",
+      "stock_code": "688458",
+      "stock_name": "美芯晟",
+      "lgb_score": 94.52,
+      "raw_score": 0.15
     },
     {
       "rank": 4,
-      "ts_code": "600704.SH",
-      "stock_code": "600704",
-      "stock_name": "物产中大",
-      "lgb_score": 91.2,
-      "raw_score": 0.16
+      "ts_code": "688368.SH",
+      "stock_code": "688368",
+      "stock_name": "晶丰明源",
+      "lgb_score": 93.72,
+      "raw_score": 0.14
     },
     {
       "rank": 5,
-      "ts_code": "000936.SZ",
-      "stock_code": "000936",
-      "stock_name": "华西股份",
-      "lgb_score": 89.8,
-      "raw_score": 0.16
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 93.11,
+      "raw_score": 0.14
     }
   ]
 }

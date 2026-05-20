@@ -11,39 +11,39 @@
       "stock_code": "002229",
       "stock_name": "鸿博股份",
       "lgb_score": 100.0,
-      "raw_score": 0.15
+      "raw_score": 0.17
     },
     {
       "rank": 2,
-      "ts_code": "301071.SZ",
-      "stock_code": "301071",
-      "stock_name": "力量钻石",
-      "lgb_score": 99.89,
-      "raw_score": 0.15
+      "ts_code": "301137.SZ",
+      "stock_code": "301137",
+      "stock_name": "哈焊华通",
+      "lgb_score": 90.07,
+      "raw_score": 0.14
     },
     {
       "rank": 3,
-      "ts_code": "300429.SZ",
-      "stock_code": "300429",
-      "stock_name": "强力新材",
-      "lgb_score": 99.63,
-      "raw_score": 0.15
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 87.65,
+      "raw_score": 0.14
     },
     {
       "rank": 4,
-      "ts_code": "300612.SZ",
-      "stock_code": "300612",
-      "stock_name": "宣亚国际",
-      "lgb_score": 99.55,
-      "raw_score": 0.15
+      "ts_code": "000159.SZ",
+      "stock_code": "000159",
+      "stock_name": "国际实业",
+      "lgb_score": 86.72,
+      "raw_score": 0.13
     },
     {
       "rank": 5,
-      "ts_code": "002121.SZ",
-      "stock_code": "002121",
-      "stock_name": "科陆电子",
-      "lgb_score": 98.68,
-      "raw_score": 0.14
+      "ts_code": "002234.SZ",
+      "stock_code": "002234",
+      "stock_name": "民和股份",
+      "lgb_score": 86.54,
+      "raw_score": 0.13
     }
   ]
 }

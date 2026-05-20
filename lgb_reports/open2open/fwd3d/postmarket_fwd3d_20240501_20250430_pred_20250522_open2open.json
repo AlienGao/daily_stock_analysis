@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002121.SZ",
-      "stock_code": "002121",
-      "stock_name": "科陆电子",
-      "lgb_score": 100.0,
-      "raw_score": 0.15
-    },
-    {
-      "rank": 2,
-      "ts_code": "600151.SH",
-      "stock_code": "600151",
-      "stock_name": "航天机电",
-      "lgb_score": 92.73,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 3,
       "ts_code": "300885.SZ",
       "stock_code": "300885",
       "stock_name": "海昌新材",
-      "lgb_score": 89.25,
+      "lgb_score": 100.0,
       "raw_score": 0.12
     },
     {
-      "rank": 4,
-      "ts_code": "300975.SZ",
-      "stock_code": "300975",
-      "stock_name": "商络电子",
-      "lgb_score": 85.76,
-      "raw_score": 0.11
-    },
-    {
-      "rank": 5,
+      "rank": 2,
       "ts_code": "002165.SZ",
       "stock_code": "002165",
       "stock_name": "红 宝 丽",
-      "lgb_score": 84.86,
+      "lgb_score": 98.11,
       "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 96.47,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 4,
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 94.15,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 93.96,
+      "raw_score": 0.1
     }
   ]
 }

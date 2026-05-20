@@ -11,38 +11,38 @@
       "stock_code": "600410",
       "stock_name": "华胜天成",
       "lgb_score": 100.0,
-      "raw_score": 0.11
+      "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "000554.SZ",
-      "stock_code": "000554",
-      "stock_name": "泰山石油",
-      "lgb_score": 86.38,
+      "ts_code": "688275.SH",
+      "stock_code": "688275",
+      "stock_name": "万润新能",
+      "lgb_score": 89.84,
       "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "600704.SH",
-      "stock_code": "600704",
-      "stock_name": "物产中大",
-      "lgb_score": 85.84,
+      "ts_code": "301633.SZ",
+      "stock_code": "301633",
+      "stock_name": "港迪技术",
+      "lgb_score": 88.56,
       "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "002141.SZ",
-      "stock_code": "002141",
-      "stock_name": "贤丰控股",
-      "lgb_score": 84.8,
+      "ts_code": "002274.SZ",
+      "stock_code": "002274",
+      "stock_name": "华昌化工",
+      "lgb_score": 87.71,
       "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "002274.SZ",
-      "stock_code": "002274",
-      "stock_name": "华昌化工",
-      "lgb_score": 82.29,
+      "ts_code": "301008.SZ",
+      "stock_code": "301008",
+      "stock_name": "宏昌科技",
+      "lgb_score": 84.46,
       "raw_score": 0.08
     }
   ]

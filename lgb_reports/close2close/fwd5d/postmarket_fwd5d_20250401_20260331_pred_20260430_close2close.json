@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300083.SZ",
-      "stock_code": "300083",
-      "stock_name": "创世纪",
+      "ts_code": "603726.SH",
+      "stock_code": "603726",
+      "stock_name": "朗迪集团",
       "lgb_score": 100.0,
-      "raw_score": 0.1
+      "raw_score": 0.12
     },
     {
       "rank": 2,
-      "ts_code": "300976.SZ",
-      "stock_code": "300976",
-      "stock_name": "达瑞电子",
-      "lgb_score": 99.04,
+      "ts_code": "301516.SZ",
+      "stock_code": "301516",
+      "stock_name": "中远通",
+      "lgb_score": 91.72,
       "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "603726.SH",
-      "stock_code": "603726",
-      "stock_name": "朗迪集团",
-      "lgb_score": 96.0,
-      "raw_score": 0.09
+      "ts_code": "300083.SZ",
+      "stock_code": "300083",
+      "stock_name": "创世纪",
+      "lgb_score": 91.33,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
       "ts_code": "603360.SH",
       "stock_code": "603360",
       "stock_name": "百傲化学",
-      "lgb_score": 91.58,
-      "raw_score": 0.08
+      "lgb_score": 85.08,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "603906.SH",
-      "stock_code": "603906",
-      "stock_name": "龙蟠科技",
-      "lgb_score": 90.86,
+      "ts_code": "300853.SZ",
+      "stock_code": "300853",
+      "stock_name": "申昊科技",
+      "lgb_score": 81.93,
       "raw_score": 0.08
     }
   ]

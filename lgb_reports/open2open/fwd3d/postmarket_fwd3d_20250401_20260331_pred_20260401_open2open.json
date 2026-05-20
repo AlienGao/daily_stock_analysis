@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300179.SZ",
-      "stock_code": "300179",
-      "stock_name": "四方达",
+      "ts_code": "301596.SZ",
+      "stock_code": "301596",
+      "stock_name": "瑞迪智驱",
       "lgb_score": 100.0,
       "raw_score": 0.06
     },
     {
       "rank": 2,
-      "ts_code": "000001.SH.SZ",
-      "stock_code": "000001",
-      "stock_name": "平安银行",
-      "lgb_score": 98.27,
+      "ts_code": "300179.SZ",
+      "stock_code": "300179",
+      "stock_name": "四方达",
+      "lgb_score": 97.82,
       "raw_score": 0.06
     },
     {
       "rank": 3,
-      "ts_code": "000936.SZ",
-      "stock_code": "000936",
-      "stock_name": "华西股份",
-      "lgb_score": 98.14,
+      "ts_code": "000968.SZ",
+      "stock_code": "000968",
+      "stock_name": "蓝焰控股",
+      "lgb_score": 95.2,
       "raw_score": 0.06
     },
     {
       "rank": 4,
-      "ts_code": "603588.SH",
-      "stock_code": "603588",
-      "stock_name": "高能环境",
-      "lgb_score": 94.9,
-      "raw_score": 0.05
+      "ts_code": "000792.SZ.SZ",
+      "stock_code": "000792",
+      "stock_name": "盐湖股份",
+      "lgb_score": 94.38,
+      "raw_score": 0.06
     },
     {
       "rank": 5,
-      "ts_code": "300263.SZ",
-      "stock_code": "300263",
-      "stock_name": "隆华科技",
-      "lgb_score": 94.26,
+      "ts_code": "603906.SH",
+      "stock_code": "603906",
+      "stock_name": "龙蟠科技",
+      "lgb_score": 93.08,
       "raw_score": 0.05
     }
   ]

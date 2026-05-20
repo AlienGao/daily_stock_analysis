@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000001.SH.SZ",
-      "stock_code": "000001",
-      "stock_name": "平安银行",
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
       "lgb_score": 100.0,
       "raw_score": 0.16
     },
     {
       "rank": 2,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 96.54,
-      "raw_score": 0.15
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 97.33,
+      "raw_score": 0.16
     },
     {
       "rank": 3,
-      "ts_code": "002513.SZ",
-      "stock_code": "002513",
-      "stock_name": "蓝丰生化",
-      "lgb_score": 88.46,
-      "raw_score": 0.13
+      "ts_code": "000404.SZ",
+      "stock_code": "000404",
+      "stock_name": "长虹华意",
+      "lgb_score": 90.52,
+      "raw_score": 0.14
     },
     {
       "rank": 4,
       "ts_code": "600798.SH",
       "stock_code": "600798",
       "stock_name": "宁波海运",
-      "lgb_score": 86.45,
-      "raw_score": 0.12
+      "lgb_score": 89.24,
+      "raw_score": 0.13
     },
     {
       "rank": 5,
-      "ts_code": "301117.SZ",
-      "stock_code": "301117",
-      "stock_name": "佳缘科技",
-      "lgb_score": 86.45,
-      "raw_score": 0.12
+      "ts_code": "000001.SH.SZ",
+      "stock_code": "000001",
+      "stock_name": "平安银行",
+      "lgb_score": 88.55,
+      "raw_score": 0.13
     }
   ]
 }

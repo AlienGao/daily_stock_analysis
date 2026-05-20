@@ -11,38 +11,38 @@
       "stock_code": "300017",
       "stock_name": "网宿科技",
       "lgb_score": 100.0,
-      "raw_score": 0.2
+      "raw_score": 0.22
     },
     {
       "rank": 2,
       "ts_code": "600308.SH",
       "stock_code": "600308",
       "stock_name": "华泰股份",
-      "lgb_score": 97.96,
-      "raw_score": 0.19
+      "lgb_score": 94.63,
+      "raw_score": 0.2
     },
     {
       "rank": 3,
-      "ts_code": "300885.SZ",
-      "stock_code": "300885",
-      "stock_name": "海昌新材",
-      "lgb_score": 97.33,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 91.64,
       "raw_score": 0.19
     },
     {
       "rank": 4,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 97.14,
-      "raw_score": 0.19
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 89.86,
+      "raw_score": 0.18
     },
     {
       "rank": 5,
-      "ts_code": "002402.SZ",
-      "stock_code": "002402",
-      "stock_name": "和而泰",
-      "lgb_score": 95.54,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 89.76,
       "raw_score": 0.18
     }
   ]

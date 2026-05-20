@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002121.SZ",
-      "stock_code": "002121",
-      "stock_name": "科陆电子",
-      "lgb_score": 100.0,
-      "raw_score": 0.14
-    },
-    {
-      "rank": 2,
-      "ts_code": "600151.SH",
-      "stock_code": "600151",
-      "stock_name": "航天机电",
-      "lgb_score": 95.85,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 3,
       "ts_code": "603018.SH",
       "stock_code": "603018",
       "stock_name": "华设集团",
-      "lgb_score": 89.18,
+      "lgb_score": 100.0,
       "raw_score": 0.11
     },
     {
-      "rank": 4,
+      "rank": 2,
       "ts_code": "002161.SZ",
       "stock_code": "002161",
       "stock_name": "远 望 谷",
-      "lgb_score": 88.14,
+      "lgb_score": 98.78,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 3,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 97.74,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "002234.SZ",
+      "stock_code": "002234",
+      "stock_name": "民和股份",
+      "lgb_score": 96.53,
       "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "000910.SZ",
-      "stock_code": "000910",
-      "stock_name": "大亚圣象",
-      "lgb_score": 88.08,
-      "raw_score": 0.1
+      "ts_code": "000936.SZ",
+      "stock_code": "000936",
+      "stock_name": "华西股份",
+      "lgb_score": 95.01,
+      "raw_score": 0.09
     }
   ]
 }

@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002513.SZ",
-      "stock_code": "002513",
-      "stock_name": "蓝丰生化",
-      "lgb_score": 100.0,
-      "raw_score": 0.11
-    },
-    {
-      "rank": 2,
       "ts_code": "300230.SZ",
       "stock_code": "300230",
       "stock_name": "永利股份",
-      "lgb_score": 99.6,
-      "raw_score": 0.11
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "002513.SZ",
+      "stock_code": "002513",
+      "stock_name": "蓝丰生化",
+      "lgb_score": 99.02,
+      "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "600076.SH",
-      "stock_code": "600076",
-      "stock_name": "康欣新材",
-      "lgb_score": 97.98,
+      "ts_code": "300433.SZ",
+      "stock_code": "300433",
+      "stock_name": "蓝思科技",
+      "lgb_score": 96.14,
       "raw_score": 0.11
     },
     {
       "rank": 4,
-      "ts_code": "301137.SZ",
-      "stock_code": "301137",
-      "stock_name": "哈焊华通",
-      "lgb_score": 92.11,
-      "raw_score": 0.09
+      "ts_code": "002437.SZ",
+      "stock_code": "002437",
+      "stock_name": "誉衡药业",
+      "lgb_score": 91.84,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "000981.SZ",
-      "stock_code": "000981",
-      "stock_name": "山子高科",
-      "lgb_score": 88.18,
-      "raw_score": 0.08
+      "ts_code": "600881.SH",
+      "stock_code": "600881",
+      "stock_name": "亚泰集团",
+      "lgb_score": 91.28,
+      "raw_score": 0.1
     }
   ]
 }

@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002577.SZ",
-      "stock_code": "002577",
-      "stock_name": "雷柏科技",
+      "ts_code": "002369.SZ",
+      "stock_code": "002369",
+      "stock_name": "卓翼科技",
       "lgb_score": 100.0,
-      "raw_score": 0.09
+      "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "000520.SZ",
-      "stock_code": "000520",
-      "stock_name": "凤凰航运",
-      "lgb_score": 99.5,
+      "ts_code": "603716.SH",
+      "stock_code": "603716",
+      "stock_name": "塞力医疗",
+      "lgb_score": 98.69,
       "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "301076.SZ",
-      "stock_code": "301076",
-      "stock_name": "新瀚新材",
-      "lgb_score": 98.49,
+      "ts_code": "000761.SZ",
+      "stock_code": "000761",
+      "stock_name": "本钢板材",
+      "lgb_score": 98.17,
       "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "600114.SH",
-      "stock_code": "600114",
-      "stock_name": "东睦股份",
-      "lgb_score": 95.51,
+      "ts_code": "920580.BJ",
+      "stock_code": "920580.BJ",
+      "stock_name": "",
+      "lgb_score": 96.49,
       "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "002036.SZ",
-      "stock_code": "002036",
-      "stock_name": "联创电子",
-      "lgb_score": 94.97,
+      "ts_code": "300612.SZ",
+      "stock_code": "300612",
+      "stock_name": "宣亚国际",
+      "lgb_score": 91.47,
       "raw_score": 0.08
     }
   ]

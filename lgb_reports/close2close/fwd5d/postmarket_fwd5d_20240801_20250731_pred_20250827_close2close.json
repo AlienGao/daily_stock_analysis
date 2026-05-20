@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
+      "ts_code": "002617.SZ",
+      "stock_code": "002617",
+      "stock_name": "露笑科技",
       "lgb_score": 100.0,
-      "raw_score": 0.14
+      "raw_score": 0.15
     },
     {
       "rank": 2,
-      "ts_code": "603018.SH",
-      "stock_code": "603018",
-      "stock_name": "华设集团",
-      "lgb_score": 98.68,
-      "raw_score": 0.14
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 99.72,
+      "raw_score": 0.15
     },
     {
       "rank": 3,
-      "ts_code": "300885.SZ",
-      "stock_code": "300885",
-      "stock_name": "海昌新材",
-      "lgb_score": 97.17,
-      "raw_score": 0.13
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 97.47,
+      "raw_score": 0.14
     },
     {
       "rank": 4,
-      "ts_code": "688135.SH",
-      "stock_code": "688135",
-      "stock_name": "利扬芯片",
-      "lgb_score": 93.76,
-      "raw_score": 0.12
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 97.34,
+      "raw_score": 0.14
     },
     {
       "rank": 5,
-      "ts_code": "600114.SH",
-      "stock_code": "600114",
-      "stock_name": "东睦股份",
-      "lgb_score": 91.41,
-      "raw_score": 0.12
+      "ts_code": "688135.SH",
+      "stock_code": "688135",
+      "stock_name": "利扬芯片",
+      "lgb_score": 94.9,
+      "raw_score": 0.13
     }
   ]
 }

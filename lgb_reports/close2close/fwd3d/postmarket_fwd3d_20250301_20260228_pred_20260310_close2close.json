@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300757.SZ",
-      "stock_code": "300757",
-      "stock_name": "罗博特科",
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
       "lgb_score": 100.0,
       "raw_score": 0.08
     },
     {
       "rank": 2,
-      "ts_code": "000601.SZ",
-      "stock_code": "000601",
-      "stock_name": "韶能股份",
-      "lgb_score": 99.73,
-      "raw_score": 0.08
+      "ts_code": "688228.SH",
+      "stock_code": "688228",
+      "stock_name": "开普云",
+      "lgb_score": 95.98,
+      "raw_score": 0.07
     },
     {
       "rank": 3,
       "ts_code": "002986.SZ",
       "stock_code": "002986",
       "stock_name": "宇新股份",
-      "lgb_score": 96.14,
+      "lgb_score": 94.78,
       "raw_score": 0.07
     },
     {
       "rank": 4,
-      "ts_code": "002108.SZ",
-      "stock_code": "002108",
-      "stock_name": "沧州明珠",
-      "lgb_score": 95.48,
+      "ts_code": "300907.SZ",
+      "stock_code": "300907",
+      "stock_name": "康平科技",
+      "lgb_score": 91.86,
       "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "000001.SH.SZ",
-      "stock_code": "000001",
-      "stock_name": "平安银行",
-      "lgb_score": 95.34,
+      "ts_code": "002580.SZ",
+      "stock_code": "002580",
+      "stock_name": "圣阳股份",
+      "lgb_score": 91.36,
       "raw_score": 0.07
     }
   ]

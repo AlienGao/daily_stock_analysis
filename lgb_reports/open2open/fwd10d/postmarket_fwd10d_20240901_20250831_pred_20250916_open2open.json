@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002234.SZ",
-      "stock_code": "002234",
-      "stock_name": "民和股份",
-      "lgb_score": 100.0,
-      "raw_score": 0.19
-    },
-    {
-      "rank": 2,
-      "ts_code": "300883.SZ",
-      "stock_code": "300883",
-      "stock_name": "龙利得",
-      "lgb_score": 98.49,
-      "raw_score": 0.18
-    },
-    {
-      "rank": 3,
       "ts_code": "603619.SH",
       "stock_code": "603619",
       "stock_name": "中曼石油",
-      "lgb_score": 98.0,
-      "raw_score": 0.18
+      "lgb_score": 100.0,
+      "raw_score": 0.3
+    },
+    {
+      "rank": 2,
+      "ts_code": "002234.SZ",
+      "stock_code": "002234",
+      "stock_name": "民和股份",
+      "lgb_score": 94.68,
+      "raw_score": 0.28
+    },
+    {
+      "rank": 3,
+      "ts_code": "300484.SZ",
+      "stock_code": "300484",
+      "stock_name": "蓝海华腾",
+      "lgb_score": 91.13,
+      "raw_score": 0.26
     },
     {
       "rank": 4,
-      "ts_code": "000601.SZ",
-      "stock_code": "000601",
-      "stock_name": "韶能股份",
-      "lgb_score": 97.85,
-      "raw_score": 0.18
+      "ts_code": "300883.SZ",
+      "stock_code": "300883",
+      "stock_name": "龙利得",
+      "lgb_score": 90.21,
+      "raw_score": 0.26
     },
     {
       "rank": 5,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 95.3,
-      "raw_score": 0.17
+      "ts_code": "301209.SZ",
+      "stock_code": "301209",
+      "stock_name": "联合化学",
+      "lgb_score": 90.18,
+      "raw_score": 0.26
     }
   ]
 }

@@ -15,35 +15,35 @@
     },
     {
       "rank": 2,
-      "ts_code": "600076.SH",
-      "stock_code": "600076",
-      "stock_name": "康欣新材",
-      "lgb_score": 94.69,
+      "ts_code": "920351.BJ",
+      "stock_code": "920351.BJ",
+      "stock_name": "",
+      "lgb_score": 98.22,
       "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "688719.SH",
-      "stock_code": "688719",
-      "stock_name": "爱科赛博",
-      "lgb_score": 88.22,
-      "raw_score": 0.09
+      "ts_code": "002017.SZ",
+      "stock_code": "002017",
+      "stock_name": "东信和平",
+      "lgb_score": 97.49,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "603381.SH",
-      "stock_code": "603381",
-      "stock_name": "永臻股份",
-      "lgb_score": 87.79,
-      "raw_score": 0.09
-    },
-    {
-      "rank": 5,
       "ts_code": "002513.SZ",
       "stock_code": "002513",
       "stock_name": "蓝丰生化",
-      "lgb_score": 85.31,
-      "raw_score": 0.08
+      "lgb_score": 94.79,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "603381.SH",
+      "stock_code": "603381",
+      "stock_name": "永臻股份",
+      "lgb_score": 94.31,
+      "raw_score": 0.09
     }
   ]
 }

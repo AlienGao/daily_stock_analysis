@@ -11,30 +11,30 @@
       "stock_code": "603456",
       "stock_name": "九洲药业",
       "lgb_score": 100.0,
-      "raw_score": 0.1
+      "raw_score": 0.11
     },
     {
       "rank": 2,
-      "ts_code": "300263.SZ",
-      "stock_code": "300263",
-      "stock_name": "隆华科技",
-      "lgb_score": 98.89,
+      "ts_code": "301110.SZ",
+      "stock_code": "301110",
+      "stock_name": "青木科技",
+      "lgb_score": 96.08,
       "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "002164.SZ",
-      "stock_code": "002164",
-      "stock_name": "宁波东力",
-      "lgb_score": 97.69,
-      "raw_score": 0.09
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 94.37,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 96.98,
+      "ts_code": "002915.SZ",
+      "stock_code": "002915",
+      "stock_name": "中欣氟材",
+      "lgb_score": 89.8,
       "raw_score": 0.09
     },
     {
@@ -42,7 +42,7 @@
       "ts_code": "002029.SZ",
       "stock_code": "002029",
       "stock_name": "七 匹 狼",
-      "lgb_score": 96.34,
+      "lgb_score": 88.2,
       "raw_score": 0.09
     }
   ]

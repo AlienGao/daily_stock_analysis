@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000589.SZ",
-      "stock_code": "000589",
-      "stock_name": "贵州轮胎",
-      "lgb_score": 100.0,
-      "raw_score": 0.1
-    },
-    {
-      "rank": 2,
-      "ts_code": "603826.SH",
-      "stock_code": "603826",
-      "stock_name": "坤彩科技",
-      "lgb_score": 94.37,
-      "raw_score": 0.09
-    },
-    {
-      "rank": 3,
       "ts_code": "600814.SH",
       "stock_code": "600814",
       "stock_name": "杭州解百",
-      "lgb_score": 88.8,
+      "lgb_score": 100.0,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 2,
+      "ts_code": "002488.SZ",
+      "stock_code": "002488",
+      "stock_name": "金固股份",
+      "lgb_score": 95.98,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 3,
+      "ts_code": "603826.SH",
+      "stock_code": "603826",
+      "stock_name": "坤彩科技",
+      "lgb_score": 94.25,
       "raw_score": 0.07
     },
     {
       "rank": 4,
-      "ts_code": "688256.SH",
-      "stock_code": "688256",
-      "stock_name": "寒武纪",
-      "lgb_score": 88.12,
+      "ts_code": "002355.SZ",
+      "stock_code": "002355",
+      "stock_name": "兴民智通",
+      "lgb_score": 93.82,
       "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "002580.SZ",
-      "stock_code": "002580",
-      "stock_name": "圣阳股份",
-      "lgb_score": 87.55,
+      "ts_code": "600449.SH",
+      "stock_code": "600449",
+      "stock_name": "宁夏建材",
+      "lgb_score": 92.64,
       "raw_score": 0.07
     }
   ]

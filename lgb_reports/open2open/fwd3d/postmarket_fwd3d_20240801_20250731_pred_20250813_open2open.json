@@ -11,39 +11,39 @@
       "stock_code": "688016",
       "stock_name": "心脉医疗",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.12
     },
     {
       "rank": 2,
       "ts_code": "300429.SZ",
       "stock_code": "300429",
       "stock_name": "强力新材",
-      "lgb_score": 92.86,
+      "lgb_score": 98.34,
       "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "603158.SH",
-      "stock_code": "603158",
-      "stock_name": "腾龙股份",
-      "lgb_score": 83.25,
-      "raw_score": 0.08
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 92.91,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "601678.SH",
-      "stock_code": "601678",
-      "stock_name": "滨化股份",
-      "lgb_score": 81.65,
-      "raw_score": 0.08
-    },
-    {
-      "rank": 5,
       "ts_code": "300017.SZ",
       "stock_code": "300017",
       "stock_name": "网宿科技",
-      "lgb_score": 81.26,
-      "raw_score": 0.08
+      "lgb_score": 91.99,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 91.0,
+      "raw_score": 0.09
     }
   ]
 }

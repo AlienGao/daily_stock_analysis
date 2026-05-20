@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301008.SZ",
-      "stock_code": "301008",
-      "stock_name": "宏昌科技",
-      "lgb_score": 100.0,
-      "raw_score": 0.09
-    },
-    {
-      "rank": 2,
       "ts_code": "300045.SZ",
       "stock_code": "300045",
       "stock_name": "华力创通",
-      "lgb_score": 95.61,
-      "raw_score": 0.08
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "688108.SH",
+      "stock_code": "688108",
+      "stock_name": "赛诺医疗",
+      "lgb_score": 95.45,
+      "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "002909.SZ",
-      "stock_code": "002909",
-      "stock_name": "集泰股份",
-      "lgb_score": 94.18,
-      "raw_score": 0.07
+      "ts_code": "688320.SH",
+      "stock_code": "688320",
+      "stock_name": "禾川科技",
+      "lgb_score": 89.33,
+      "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "003012.SZ",
-      "stock_code": "003012",
-      "stock_name": "东鹏控股",
-      "lgb_score": 92.08,
-      "raw_score": 0.07
+      "ts_code": "002402.SZ",
+      "stock_code": "002402",
+      "stock_name": "和而泰",
+      "lgb_score": 86.47,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "603716.SH",
-      "stock_code": "603716",
-      "stock_name": "塞力医疗",
-      "lgb_score": 91.25,
-      "raw_score": 0.07
+      "ts_code": "301008.SZ",
+      "stock_code": "301008",
+      "stock_name": "宏昌科技",
+      "lgb_score": 85.47,
+      "raw_score": 0.08
     }
   ]
 }

@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000554.SZ",
-      "stock_code": "000554",
-      "stock_name": "泰山石油",
+      "ts_code": "301222.SZ",
+      "stock_code": "301222",
+      "stock_name": "浙江恒威",
       "lgb_score": 100.0,
-      "raw_score": 0.14
+      "raw_score": 0.12
     },
     {
       "rank": 2,
-      "ts_code": "002458.SZ",
-      "stock_code": "002458",
-      "stock_name": "益生股份",
-      "lgb_score": 98.09,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 3,
-      "ts_code": "603018.SH",
-      "stock_code": "603018",
-      "stock_name": "华设集团",
-      "lgb_score": 88.86,
-      "raw_score": 0.11
-    },
-    {
-      "rank": 4,
       "ts_code": "002395.SZ",
       "stock_code": "002395",
       "stock_name": "双象股份",
-      "lgb_score": 87.75,
-      "raw_score": 0.11
+      "lgb_score": 85.16,
+      "raw_score": 0.09
     },
     {
-      "rank": 5,
+      "rank": 3,
       "ts_code": "002291.SZ",
       "stock_code": "002291",
       "stock_name": "遥望科技",
-      "lgb_score": 87.43,
-      "raw_score": 0.11
+      "lgb_score": 81.79,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "000589.SZ",
+      "stock_code": "000589",
+      "stock_name": "贵州轮胎",
+      "lgb_score": 81.37,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "002458.SZ",
+      "stock_code": "002458",
+      "stock_name": "益生股份",
+      "lgb_score": 80.32,
+      "raw_score": 0.09
     }
   ]
 }

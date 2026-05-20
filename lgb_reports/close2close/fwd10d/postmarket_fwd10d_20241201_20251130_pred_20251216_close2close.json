@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002291.SZ",
-      "stock_code": "002291",
-      "stock_name": "遥望科技",
+      "ts_code": "002300.SZ",
+      "stock_code": "002300",
+      "stock_name": "太阳电缆",
       "lgb_score": 100.0,
-      "raw_score": 0.3
+      "raw_score": 0.23
     },
     {
       "rank": 2,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 95.25,
-      "raw_score": 0.28
+      "ts_code": "000533.SZ",
+      "stock_code": "000533",
+      "stock_name": "顺钠股份",
+      "lgb_score": 99.42,
+      "raw_score": 0.23
     },
     {
       "rank": 3,
-      "ts_code": "600802.SH",
-      "stock_code": "600802",
-      "stock_name": "福建水泥",
-      "lgb_score": 87.49,
-      "raw_score": 0.24
+      "ts_code": "603915.SH",
+      "stock_code": "603915",
+      "stock_name": "国茂股份",
+      "lgb_score": 98.53,
+      "raw_score": 0.23
     },
     {
       "rank": 4,
-      "ts_code": "688212.SH",
-      "stock_code": "688212",
-      "stock_name": "澳华内镜",
-      "lgb_score": 85.78,
-      "raw_score": 0.24
+      "ts_code": "002766.SZ",
+      "stock_code": "002766",
+      "stock_name": "索菱股份",
+      "lgb_score": 93.35,
+      "raw_score": 0.21
     },
     {
       "rank": 5,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 83.09,
-      "raw_score": 0.22
+      "ts_code": "002291.SZ",
+      "stock_code": "002291",
+      "stock_name": "遥望科技",
+      "lgb_score": 91.39,
+      "raw_score": 0.2
     }
   ]
 }

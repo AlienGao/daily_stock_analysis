@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
+      "ts_code": "002031.SZ",
+      "stock_code": "002031",
+      "stock_name": "巨轮智能",
       "lgb_score": 100.0,
       "raw_score": 0.15
     },
     {
       "rank": 2,
-      "ts_code": "300263.SZ",
-      "stock_code": "300263",
-      "stock_name": "隆华科技",
-      "lgb_score": 96.26,
-      "raw_score": 0.13
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 97.92,
+      "raw_score": 0.15
     },
     {
       "rank": 3,
-      "ts_code": "000001.SH.SZ",
-      "stock_code": "000001",
-      "stock_name": "平安银行",
-      "lgb_score": 90.72,
-      "raw_score": 0.12
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 96.56,
+      "raw_score": 0.14
     },
     {
       "rank": 4,
       "ts_code": "300308.SZ.SZ",
       "stock_code": "300308",
       "stock_name": "中际旭创",
-      "lgb_score": 85.87,
-      "raw_score": 0.1
+      "lgb_score": 92.86,
+      "raw_score": 0.13
     },
     {
       "rank": 5,
       "ts_code": "300502.SZ.SZ",
       "stock_code": "300502",
       "stock_name": "新易盛",
-      "lgb_score": 85.87,
-      "raw_score": 0.1
+      "lgb_score": 92.31,
+      "raw_score": 0.13
     }
   ]
 }

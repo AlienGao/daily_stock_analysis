@@ -11,38 +11,38 @@
       "stock_code": "002445",
       "stock_name": "中南文化",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.16
     },
     {
       "rank": 2,
-      "ts_code": "688181.SH",
-      "stock_code": "688181",
-      "stock_name": "八亿时空",
-      "lgb_score": 97.91,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 87.11,
       "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "920088.BJ",
-      "stock_code": "920088.BJ",
-      "stock_name": "",
-      "lgb_score": 97.84,
-      "raw_score": 0.12
+      "ts_code": "601138.SH",
+      "stock_code": "601138",
+      "stock_name": "工业富联",
+      "lgb_score": 85.92,
+      "raw_score": 0.11
     },
     {
       "rank": 4,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 96.86,
-      "raw_score": 0.12
+      "ts_code": "300502.SZ.SZ",
+      "stock_code": "300502",
+      "stock_name": "新易盛",
+      "lgb_score": 84.64,
+      "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "600076.SH",
-      "stock_code": "600076",
-      "stock_name": "康欣新材",
-      "lgb_score": 94.14,
+      "ts_code": "300394.SZ.SZ",
+      "stock_code": "300394",
+      "stock_name": "天孚通信",
+      "lgb_score": 84.55,
       "raw_score": 0.11
     }
   ]

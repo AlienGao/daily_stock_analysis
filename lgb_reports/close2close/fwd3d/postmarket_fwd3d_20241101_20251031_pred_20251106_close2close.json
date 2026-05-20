@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002300.SZ",
-      "stock_code": "002300",
-      "stock_name": "太阳电缆",
-      "lgb_score": 94.99,
-      "raw_score": 0.1
+      "ts_code": "600939.SH",
+      "stock_code": "600939",
+      "stock_name": "重庆建工",
+      "lgb_score": 90.36,
+      "raw_score": 0.11
     },
     {
       "rank": 2,
-      "ts_code": "002578.SZ",
-      "stock_code": "002578",
-      "stock_name": "闽发铝业",
-      "lgb_score": 94.62,
+      "ts_code": "002300.SZ",
+      "stock_code": "002300",
+      "stock_name": "太阳电缆",
+      "lgb_score": 85.62,
       "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "601015.SH",
-      "stock_code": "601015",
-      "stock_name": "陕西黑猫",
-      "lgb_score": 92.22,
-      "raw_score": 0.09
+      "ts_code": "002578.SZ",
+      "stock_code": "002578",
+      "stock_name": "闽发铝业",
+      "lgb_score": 83.96,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "600939.SH",
-      "stock_code": "600939",
-      "stock_name": "重庆建工",
-      "lgb_score": 92.02,
-      "raw_score": 0.09
+      "ts_code": "002451.SZ",
+      "stock_code": "002451",
+      "stock_name": "摩恩电气",
+      "lgb_score": 83.95,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "000514.SZ",
-      "stock_code": "000514",
-      "stock_name": "渝 开 发",
-      "lgb_score": 91.76,
-      "raw_score": 0.09
+      "ts_code": "600219.SH",
+      "stock_code": "600219",
+      "stock_name": "XD南山铝",
+      "lgb_score": 83.84,
+      "raw_score": 0.1
     }
   ]
 }

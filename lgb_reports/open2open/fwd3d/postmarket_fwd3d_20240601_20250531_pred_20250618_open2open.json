@@ -7,34 +7,34 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000554.SZ",
-      "stock_code": "000554",
-      "stock_name": "泰山石油",
+      "ts_code": "001296.SZ",
+      "stock_code": "001296",
+      "stock_name": "长江材料",
       "lgb_score": 100.0,
       "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "920227.BJ",
-      "stock_code": "920227.BJ",
-      "stock_name": "",
-      "lgb_score": 97.34,
-      "raw_score": 0.12
+      "ts_code": "000617.SZ",
+      "stock_code": "000617",
+      "stock_name": "中油资本",
+      "lgb_score": 90.25,
+      "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "001296.SZ",
-      "stock_code": "001296",
-      "stock_name": "长江材料",
-      "lgb_score": 94.91,
-      "raw_score": 0.12
+      "ts_code": "920227.BJ",
+      "stock_code": "920227.BJ",
+      "stock_name": "",
+      "lgb_score": 89.79,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
       "ts_code": "301330.SZ",
       "stock_code": "301330",
       "stock_name": "熵基科技",
-      "lgb_score": 87.73,
+      "lgb_score": 84.89,
       "raw_score": 0.09
     },
     {
@@ -42,8 +42,8 @@
       "ts_code": "002374.SZ",
       "stock_code": "002374",
       "stock_name": "中锐股份",
-      "lgb_score": 87.02,
-      "raw_score": 0.09
+      "lgb_score": 83.3,
+      "raw_score": 0.08
     }
   ]
 }

@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600545.SH",
-      "stock_code": "600545",
-      "stock_name": "卓郎智能",
-      "lgb_score": 100.0,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 2,
       "ts_code": "002407.SZ",
       "stock_code": "002407",
       "stock_name": "多氟多",
-      "lgb_score": 94.94,
-      "raw_score": 0.12
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "688135.SH",
+      "stock_code": "688135",
+      "stock_name": "利扬芯片",
+      "lgb_score": 98.25,
+      "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "002164.SZ",
-      "stock_code": "002164",
-      "stock_name": "宁波东力",
-      "lgb_score": 87.7,
+      "ts_code": "600545.SH",
+      "stock_code": "600545",
+      "stock_name": "卓郎智能",
+      "lgb_score": 97.75,
       "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "688411.SH",
-      "stock_code": "688411",
-      "stock_name": "海博思创",
-      "lgb_score": 87.44,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 95.93,
       "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "000718.SZ",
-      "stock_code": "000718",
-      "stock_name": "苏宁环球",
-      "lgb_score": 86.83,
+      "ts_code": "688403.SH",
+      "stock_code": "688403",
+      "stock_name": "XD汇成股",
+      "lgb_score": 95.55,
       "raw_score": 0.1
     }
   ]

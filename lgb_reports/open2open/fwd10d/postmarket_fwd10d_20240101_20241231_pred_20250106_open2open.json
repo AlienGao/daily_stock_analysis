@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002121.SZ",
-      "stock_code": "002121",
-      "stock_name": "科陆电子",
-      "lgb_score": 100.0,
-      "raw_score": 0.26
-    },
-    {
-      "rank": 2,
       "ts_code": "300042.SZ",
       "stock_code": "300042",
       "stock_name": "朗科科技",
-      "lgb_score": 98.03,
-      "raw_score": 0.26
+      "lgb_score": 100.0,
+      "raw_score": 0.27
+    },
+    {
+      "rank": 2,
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 95.24,
+      "raw_score": 0.25
     },
     {
       "rank": 3,
-      "ts_code": "688320.SH",
-      "stock_code": "688320",
-      "stock_name": "禾川科技",
-      "lgb_score": 92.55,
-      "raw_score": 0.24
+      "ts_code": "002009.SZ",
+      "stock_code": "002009",
+      "stock_name": "天奇股份",
+      "lgb_score": 90.96,
+      "raw_score": 0.23
     },
     {
       "rank": 4,
       "ts_code": "300975.SZ",
       "stock_code": "300975",
       "stock_name": "商络电子",
-      "lgb_score": 89.1,
-      "raw_score": 0.22
+      "lgb_score": 90.8,
+      "raw_score": 0.23
     },
     {
       "rank": 5,
-      "ts_code": "600151.SH",
-      "stock_code": "600151",
-      "stock_name": "航天机电",
-      "lgb_score": 88.01,
-      "raw_score": 0.22
+      "ts_code": "688135.SH",
+      "stock_code": "688135",
+      "stock_name": "利扬芯片",
+      "lgb_score": 90.58,
+      "raw_score": 0.23
     }
   ]
 }

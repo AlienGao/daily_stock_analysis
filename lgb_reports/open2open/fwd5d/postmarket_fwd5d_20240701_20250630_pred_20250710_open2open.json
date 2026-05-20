@@ -11,39 +11,39 @@
       "stock_code": "002445",
       "stock_name": "中南文化",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.16
     },
     {
       "rank": 2,
-      "ts_code": "688181.SH",
-      "stock_code": "688181",
-      "stock_name": "八亿时空",
-      "lgb_score": 99.19,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 3,
       "ts_code": "000601.SZ",
       "stock_code": "000601",
       "stock_name": "韶能股份",
-      "lgb_score": 97.23,
-      "raw_score": 0.12
+      "lgb_score": 94.73,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 3,
+      "ts_code": "002395.SZ",
+      "stock_code": "002395",
+      "stock_name": "双象股份",
+      "lgb_score": 92.11,
+      "raw_score": 0.13
     },
     {
       "rank": 4,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 96.67,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 89.14,
       "raw_score": 0.12
     },
     {
       "rank": 5,
-      "ts_code": "601138.SH",
-      "stock_code": "601138",
-      "stock_name": "工业富联",
-      "lgb_score": 95.08,
-      "raw_score": 0.11
+      "ts_code": "600509.SH",
+      "stock_code": "600509",
+      "stock_name": "天富能源",
+      "lgb_score": 88.31,
+      "raw_score": 0.12
     }
   ]
 }

@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301196.SZ",
-      "stock_code": "301196",
-      "stock_name": "唯科科技",
+      "ts_code": "300007.SZ",
+      "stock_code": "300007",
+      "stock_name": "汉威科技",
       "lgb_score": 100.0,
-      "raw_score": 0.11
+      "raw_score": 0.09
     },
     {
       "rank": 2,
       "ts_code": "301008.SZ",
       "stock_code": "301008",
       "stock_name": "宏昌科技",
-      "lgb_score": 90.68,
+      "lgb_score": 99.69,
       "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "003021.SZ",
-      "stock_code": "003021",
-      "stock_name": "兆威机电",
-      "lgb_score": 85.88,
+      "ts_code": "301196.SZ",
+      "stock_code": "301196",
+      "stock_name": "唯科科技",
+      "lgb_score": 96.19,
       "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "002165.SZ",
-      "stock_code": "002165",
-      "stock_name": "红 宝 丽",
-      "lgb_score": 78.91,
-      "raw_score": 0.06
+      "ts_code": "301205.SZ",
+      "stock_code": "301205",
+      "stock_name": "联特科技",
+      "lgb_score": 95.25,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
-      "lgb_score": 78.53,
-      "raw_score": 0.06
+      "ts_code": "603915.SH",
+      "stock_code": "603915",
+      "stock_name": "国茂股份",
+      "lgb_score": 90.18,
+      "raw_score": 0.07
     }
   ]
 }

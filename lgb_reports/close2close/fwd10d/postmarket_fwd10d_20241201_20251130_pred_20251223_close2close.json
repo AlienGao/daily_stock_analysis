@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002291.SZ",
-      "stock_code": "002291",
-      "stock_name": "遥望科技",
+      "ts_code": "002909.SZ",
+      "stock_code": "002909",
+      "stock_name": "集泰股份",
       "lgb_score": 100.0,
-      "raw_score": 0.33
+      "raw_score": 0.24
     },
     {
       "rank": 2,
-      "ts_code": "688212.SH",
-      "stock_code": "688212",
-      "stock_name": "澳华内镜",
-      "lgb_score": 86.74,
-      "raw_score": 0.26
-    },
-    {
-      "rank": 3,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 85.86,
-      "raw_score": 0.26
-    },
-    {
-      "rank": 4,
       "ts_code": "600802.SH",
       "stock_code": "600802",
       "stock_name": "福建水泥",
-      "lgb_score": 85.61,
-      "raw_score": 0.26
+      "lgb_score": 99.3,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 3,
+      "ts_code": "002291.SZ",
+      "stock_code": "002291",
+      "stock_name": "遥望科技",
+      "lgb_score": 96.45,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 4,
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 95.33,
+      "raw_score": 0.22
     },
     {
       "rank": 5,
-      "ts_code": "002067.SZ",
-      "stock_code": "002067",
-      "stock_name": "景兴纸业",
-      "lgb_score": 81.65,
-      "raw_score": 0.24
+      "ts_code": "603350.SH",
+      "stock_code": "603350",
+      "stock_name": "XD安乃达",
+      "lgb_score": 91.78,
+      "raw_score": 0.21
     }
   ]
 }

@@ -7,34 +7,34 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "920641.BJ",
-      "stock_code": "920641.BJ",
-      "stock_name": "",
-      "lgb_score": 100.0,
-      "raw_score": 0.15
-    },
-    {
-      "rank": 2,
       "ts_code": "688256.SH",
       "stock_code": "688256",
       "stock_name": "寒武纪",
-      "lgb_score": 97.86,
-      "raw_score": 0.14
+      "lgb_score": 100.0,
+      "raw_score": 0.16
     },
     {
-      "rank": 3,
+      "rank": 2,
       "ts_code": "300263.SZ",
       "stock_code": "300263",
       "stock_name": "隆华科技",
-      "lgb_score": 91.29,
+      "lgb_score": 88.35,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 3,
+      "ts_code": "301023.SZ",
+      "stock_code": "301023",
+      "stock_name": "奕帆传动",
+      "lgb_score": 87.21,
       "raw_score": 0.13
     },
     {
       "rank": 4,
-      "ts_code": "002029.SZ",
-      "stock_code": "002029",
-      "stock_name": "七 匹 狼",
-      "lgb_score": 89.42,
+      "ts_code": "603915.SH",
+      "stock_code": "603915",
+      "stock_name": "国茂股份",
+      "lgb_score": 85.47,
       "raw_score": 0.12
     },
     {
@@ -42,7 +42,7 @@
       "ts_code": "002458.SZ",
       "stock_code": "002458",
       "stock_name": "益生股份",
-      "lgb_score": 86.91,
+      "lgb_score": 82.72,
       "raw_score": 0.12
     }
   ]

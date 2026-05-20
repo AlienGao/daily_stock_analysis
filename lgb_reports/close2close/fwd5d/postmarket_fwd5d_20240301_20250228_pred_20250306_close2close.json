@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688108.SH",
-      "stock_code": "688108",
-      "stock_name": "赛诺医疗",
+      "ts_code": "300007.SZ",
+      "stock_code": "300007",
+      "stock_name": "汉威科技",
       "lgb_score": 100.0,
-      "raw_score": 0.12
+      "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
-      "lgb_score": 99.88,
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 95.7,
       "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "000665.SZ",
-      "stock_code": "000665",
-      "stock_name": "湖北广电",
-      "lgb_score": 97.46,
-      "raw_score": 0.12
+      "ts_code": "301022.SZ",
+      "stock_code": "301022",
+      "stock_name": "海泰科",
+      "lgb_score": 91.25,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "301231.SZ",
-      "stock_code": "301231",
-      "stock_name": "荣信文化",
-      "lgb_score": 97.26,
-      "raw_score": 0.12
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 89.44,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "300263.SZ",
-      "stock_code": "300263",
-      "stock_name": "隆华科技",
-      "lgb_score": 97.01,
-      "raw_score": 0.12
+      "ts_code": "301231.SZ",
+      "stock_code": "301231",
+      "stock_name": "荣信文化",
+      "lgb_score": 89.3,
+      "raw_score": 0.1
     }
   ]
 }

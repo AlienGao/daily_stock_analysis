@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300757.SZ",
-      "stock_code": "300757",
-      "stock_name": "罗博特科",
+      "ts_code": "688228.SH",
+      "stock_code": "688228",
+      "stock_name": "开普云",
       "lgb_score": 100.0,
-      "raw_score": 0.19
+      "raw_score": 0.2
     },
     {
       "rank": 2,
       "ts_code": "001309.SZ",
       "stock_code": "001309",
       "stock_name": "德明利",
-      "lgb_score": 88.75,
-      "raw_score": 0.15
+      "lgb_score": 91.87,
+      "raw_score": 0.17
     },
     {
       "rank": 3,
-      "ts_code": "688411.SH",
-      "stock_code": "688411",
-      "stock_name": "海博思创",
-      "lgb_score": 84.36,
-      "raw_score": 0.14
-    },
-    {
-      "rank": 4,
-      "ts_code": "603368.SH",
-      "stock_code": "603368",
-      "stock_name": "柳药集团",
-      "lgb_score": 84.15,
-      "raw_score": 0.14
-    },
-    {
-      "rank": 5,
       "ts_code": "600704.SH",
       "stock_code": "600704",
       "stock_name": "物产中大",
-      "lgb_score": 83.15,
-      "raw_score": 0.13
+      "lgb_score": 89.5,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 4,
+      "ts_code": "688048.SH",
+      "stock_code": "688048",
+      "stock_name": "长光华芯",
+      "lgb_score": 88.52,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 5,
+      "ts_code": "688317.SH",
+      "stock_code": "688317",
+      "stock_name": "之江生物",
+      "lgb_score": 85.8,
+      "raw_score": 0.15
     }
   ]
 }

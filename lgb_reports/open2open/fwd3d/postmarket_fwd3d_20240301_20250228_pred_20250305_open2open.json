@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002165.SZ",
-      "stock_code": "002165",
-      "stock_name": "红 宝 丽",
+      "ts_code": "002960.SZ",
+      "stock_code": "002960",
+      "stock_name": "青鸟智控",
       "lgb_score": 100.0,
-      "raw_score": 0.09
+      "raw_score": 0.07
     },
     {
       "rank": 2,
-      "ts_code": "300263.SZ",
-      "stock_code": "300263",
-      "stock_name": "隆华科技",
-      "lgb_score": 99.5,
-      "raw_score": 0.09
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 98.39,
+      "raw_score": 0.07
     },
     {
       "rank": 3,
-      "ts_code": "688108.SH",
-      "stock_code": "688108",
-      "stock_name": "赛诺医疗",
-      "lgb_score": 93.32,
-      "raw_score": 0.08
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 97.94,
+      "raw_score": 0.07
     },
     {
       "rank": 4,
-      "ts_code": "600510.SH",
-      "stock_code": "600510",
-      "stock_name": "黑牡丹",
-      "lgb_score": 92.03,
+      "ts_code": "600343.SH",
+      "stock_code": "600343",
+      "stock_name": "航天动力",
+      "lgb_score": 97.88,
       "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "600519.SH",
-      "stock_code": "600519",
-      "stock_name": "贵州茅台",
-      "lgb_score": 92.0,
-      "raw_score": 0.07
+      "ts_code": "002049.SZ",
+      "stock_code": "002049",
+      "stock_name": "紫光国微",
+      "lgb_score": 96.46,
+      "raw_score": 0.06
     }
   ]
 }

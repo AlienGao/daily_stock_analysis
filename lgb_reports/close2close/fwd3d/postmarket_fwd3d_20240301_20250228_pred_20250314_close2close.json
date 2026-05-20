@@ -7,34 +7,34 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000417.SZ",
-      "stock_code": "000417",
-      "stock_name": "合百集团",
+      "ts_code": "600774.SH",
+      "stock_code": "600774",
+      "stock_name": "汉商集团",
       "lgb_score": 100.0,
-      "raw_score": 0.11
+      "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "600429.SH",
-      "stock_code": "600429",
-      "stock_name": "三元股份",
-      "lgb_score": 96.81,
+      "ts_code": "300086.SZ",
+      "stock_code": "300086",
+      "stock_name": "康芝药业",
+      "lgb_score": 99.85,
       "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "002329.SZ",
-      "stock_code": "002329",
-      "stock_name": "皇氏集团",
-      "lgb_score": 95.63,
-      "raw_score": 0.1
+      "ts_code": "000417.SZ",
+      "stock_code": "000417",
+      "stock_name": "合百集团",
+      "lgb_score": 94.95,
+      "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "600774.SH",
-      "stock_code": "600774",
-      "stock_name": "汉商集团",
-      "lgb_score": 93.43,
+      "ts_code": "002329.SZ",
+      "stock_code": "002329",
+      "stock_name": "皇氏集团",
+      "lgb_score": 92.74,
       "raw_score": 0.09
     },
     {
@@ -42,7 +42,7 @@
       "ts_code": "600300.SH",
       "stock_code": "600300",
       "stock_name": "维维股份",
-      "lgb_score": 93.25,
+      "lgb_score": 91.32,
       "raw_score": 0.09
     }
   ]

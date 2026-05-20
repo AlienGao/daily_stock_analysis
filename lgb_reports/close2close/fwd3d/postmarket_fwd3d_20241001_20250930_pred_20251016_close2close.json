@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "603778.SH",
-      "stock_code": "603778",
-      "stock_name": "国晟科技",
+      "ts_code": "002219.SZ",
+      "stock_code": "002219",
+      "stock_name": "新里程",
       "lgb_score": 100.0,
-      "raw_score": 0.11
+      "raw_score": 0.09
     },
     {
       "rank": 2,
       "ts_code": "600408.SH",
       "stock_code": "600408",
       "stock_name": "安泰集团",
-      "lgb_score": 93.1,
+      "lgb_score": 98.74,
       "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "002219.SZ",
-      "stock_code": "002219",
-      "stock_name": "新里程",
-      "lgb_score": 86.1,
+      "ts_code": "603778.SH",
+      "stock_code": "603778",
+      "stock_name": "国晟科技",
+      "lgb_score": 91.78,
       "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "688627.SH",
-      "stock_code": "688627",
-      "stock_name": "精智达",
-      "lgb_score": 85.19,
-      "raw_score": 0.08
+      "ts_code": "300912.SZ",
+      "stock_code": "300912",
+      "stock_name": "凯龙高科",
+      "lgb_score": 84.98,
+      "raw_score": 0.06
     },
     {
       "rank": 5,
-      "ts_code": "688135.SH",
-      "stock_code": "688135",
-      "stock_name": "利扬芯片",
-      "lgb_score": 81.69,
-      "raw_score": 0.07
+      "ts_code": "688627.SH",
+      "stock_code": "688627",
+      "stock_name": "精智达",
+      "lgb_score": 83.83,
+      "raw_score": 0.06
     }
   ]
 }

@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002165.SZ",
-      "stock_code": "002165",
-      "stock_name": "红 宝 丽",
-      "lgb_score": 100.0,
-      "raw_score": 0.14
-    },
-    {
-      "rank": 2,
       "ts_code": "300263.SZ",
       "stock_code": "300263",
       "stock_name": "隆华科技",
-      "lgb_score": 99.99,
-      "raw_score": 0.14
+      "lgb_score": 100.0,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 2,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 95.97,
+      "raw_score": 0.15
     },
     {
       "rank": 3,
-      "ts_code": "603018.SH",
-      "stock_code": "603018",
-      "stock_name": "华设集团",
-      "lgb_score": 91.47,
-      "raw_score": 0.12
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 93.4,
+      "raw_score": 0.14
     },
     {
       "rank": 4,
-      "ts_code": "000981.SZ",
-      "stock_code": "000981",
-      "stock_name": "山子高科",
-      "lgb_score": 90.56,
-      "raw_score": 0.12
+      "ts_code": "000063.SZ",
+      "stock_code": "000063",
+      "stock_name": "中兴通讯",
+      "lgb_score": 93.32,
+      "raw_score": 0.14
     },
     {
       "rank": 5,
-      "ts_code": "601678.SH",
-      "stock_code": "601678",
-      "stock_name": "滨化股份",
-      "lgb_score": 90.12,
-      "raw_score": 0.12
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 92.99,
+      "raw_score": 0.14
     }
   ]
 }

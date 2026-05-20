@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000530.SZ",
-      "stock_code": "000530",
-      "stock_name": "冰山冷热",
-      "lgb_score": 96.06,
+      "ts_code": "000617.SZ",
+      "stock_code": "000617",
+      "stock_name": "中油资本",
+      "lgb_score": 100.0,
       "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "002218.SZ",
-      "stock_code": "002218",
-      "stock_name": "拓日新能",
-      "lgb_score": 95.47,
-      "raw_score": 0.09
+      "ts_code": "002803.SZ",
+      "stock_code": "002803",
+      "stock_name": "吉宏股份",
+      "lgb_score": 96.17,
+      "raw_score": 0.08
     },
     {
       "rank": 3,
-      "ts_code": "002314.SZ",
-      "stock_code": "002314",
-      "stock_name": "南山控股",
-      "lgb_score": 92.15,
+      "ts_code": "000530.SZ",
+      "stock_code": "000530",
+      "stock_name": "冰山冷热",
+      "lgb_score": 92.04,
       "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "300975.SZ",
-      "stock_code": "300975",
-      "stock_name": "商络电子",
-      "lgb_score": 89.77,
-      "raw_score": 0.08
+      "ts_code": "002218.SZ",
+      "stock_code": "002218",
+      "stock_name": "拓日新能",
+      "lgb_score": 91.81,
+      "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "301355.SZ",
-      "stock_code": "301355",
-      "stock_name": "南王科技",
-      "lgb_score": 89.72,
-      "raw_score": 0.08
+      "ts_code": "300930.SZ",
+      "stock_code": "300930",
+      "stock_name": "屹通新材",
+      "lgb_score": 91.47,
+      "raw_score": 0.07
     }
   ]
 }

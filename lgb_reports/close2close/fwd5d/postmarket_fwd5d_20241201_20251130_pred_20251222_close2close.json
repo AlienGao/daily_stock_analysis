@@ -11,39 +11,39 @@
       "stock_code": "600076",
       "stock_name": "康欣新材",
       "lgb_score": 100.0,
-      "raw_score": 0.21
+      "raw_score": 0.15
     },
     {
       "rank": 2,
       "ts_code": "000981.SZ",
       "stock_code": "000981",
       "stock_name": "山子高科",
-      "lgb_score": 90.73,
-      "raw_score": 0.18
+      "lgb_score": 99.09,
+      "raw_score": 0.15
     },
     {
       "rank": 3,
       "ts_code": "603018.SH",
       "stock_code": "603018",
       "stock_name": "华设集团",
-      "lgb_score": 89.34,
-      "raw_score": 0.17
+      "lgb_score": 97.38,
+      "raw_score": 0.15
     },
     {
       "rank": 4,
-      "ts_code": "600704.SH",
-      "stock_code": "600704",
-      "stock_name": "物产中大",
-      "lgb_score": 87.77,
-      "raw_score": 0.17
+      "ts_code": "002929.SZ",
+      "stock_code": "002929",
+      "stock_name": "润建股份",
+      "lgb_score": 96.0,
+      "raw_score": 0.15
     },
     {
       "rank": 5,
-      "ts_code": "002458.SZ",
-      "stock_code": "002458",
-      "stock_name": "益生股份",
-      "lgb_score": 85.46,
-      "raw_score": 0.16
+      "ts_code": "603915.SH",
+      "stock_code": "603915",
+      "stock_name": "国茂股份",
+      "lgb_score": 95.64,
+      "raw_score": 0.15
     }
   ]
 }

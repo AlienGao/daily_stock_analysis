@@ -7,26 +7,26 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301232.SZ",
-      "stock_code": "301232",
-      "stock_name": "飞沃科技",
-      "lgb_score": 100.0,
-      "raw_score": 0.3
-    },
-    {
-      "rank": 2,
       "ts_code": "688025.SH",
       "stock_code": "688025",
       "stock_name": "杰普特",
-      "lgb_score": 92.83,
+      "lgb_score": 100.0,
       "raw_score": 0.26
     },
     {
+      "rank": 2,
+      "ts_code": "688808.SH",
+      "stock_code": "688808",
+      "stock_name": "联讯仪器",
+      "lgb_score": 97.15,
+      "raw_score": 0.25
+    },
+    {
       "rank": 3,
-      "ts_code": "002281.SZ",
-      "stock_code": "002281",
-      "stock_name": "光迅科技",
-      "lgb_score": 91.06,
+      "ts_code": "301232.SZ",
+      "stock_code": "301232",
+      "stock_name": "飞沃科技",
+      "lgb_score": 96.9,
       "raw_score": 0.25
     },
     {
@@ -34,15 +34,15 @@
       "ts_code": "002371.SZ",
       "stock_code": "002371",
       "stock_name": "北方华创",
-      "lgb_score": 87.54,
-      "raw_score": 0.23
+      "lgb_score": 95.54,
+      "raw_score": 0.24
     },
     {
       "rank": 5,
-      "ts_code": "688455.SH",
-      "stock_code": "688455",
-      "stock_name": "科捷智能",
-      "lgb_score": 85.74,
+      "ts_code": "301599.SZ",
+      "stock_code": "301599",
+      "stock_name": "理奇智能",
+      "lgb_score": 92.12,
       "raw_score": 0.23
     }
   ]

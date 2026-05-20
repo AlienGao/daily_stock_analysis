@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "603986.SH",
-      "stock_code": "603986",
-      "stock_name": "兆易创新",
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
       "lgb_score": 100.0,
-      "raw_score": 0.16
+      "raw_score": 0.22
     },
     {
       "rank": 2,
-      "ts_code": "601001.SH",
-      "stock_code": "601001",
-      "stock_name": "晋控煤业",
-      "lgb_score": 87.53,
-      "raw_score": 0.12
+      "ts_code": "688048.SH",
+      "stock_code": "688048",
+      "stock_name": "长光华芯",
+      "lgb_score": 96.49,
+      "raw_score": 0.2
     },
     {
       "rank": 3,
-      "ts_code": "000830.SZ",
-      "stock_code": "000830",
-      "stock_name": "鲁西化工",
-      "lgb_score": 87.44,
-      "raw_score": 0.12
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
+      "lgb_score": 90.1,
+      "raw_score": 0.18
     },
     {
       "rank": 4,
-      "ts_code": "000968.SZ",
-      "stock_code": "000968",
-      "stock_name": "蓝焰控股",
-      "lgb_score": 86.44,
-      "raw_score": 0.12
+      "ts_code": "301666.SZ",
+      "stock_code": "301666",
+      "stock_name": "大普微-UW",
+      "lgb_score": 84.4,
+      "raw_score": 0.16
     },
     {
       "rank": 5,
-      "ts_code": "601330.SH",
-      "stock_code": "601330",
-      "stock_name": "绿色动力",
-      "lgb_score": 86.35,
-      "raw_score": 0.11
+      "ts_code": "300757.SZ",
+      "stock_code": "300757",
+      "stock_name": "罗博特科",
+      "lgb_score": 83.64,
+      "raw_score": 0.16
     }
   ]
 }

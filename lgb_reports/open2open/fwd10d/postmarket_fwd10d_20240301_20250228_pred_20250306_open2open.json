@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301022.SZ",
-      "stock_code": "301022",
-      "stock_name": "海泰科",
+      "ts_code": "920436.BJ",
+      "stock_code": "920436.BJ",
+      "stock_name": "",
       "lgb_score": 100.0,
-      "raw_score": 0.25
+      "raw_score": 0.21
     },
     {
       "rank": 2,
-      "ts_code": "002029.SZ",
-      "stock_code": "002029",
-      "stock_name": "七 匹 狼",
-      "lgb_score": 97.64,
-      "raw_score": 0.23
-    },
-    {
-      "rank": 3,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
-      "lgb_score": 94.31,
-      "raw_score": 0.22
-    },
-    {
-      "rank": 4,
-      "ts_code": "002407.SZ",
-      "stock_code": "002407",
-      "stock_name": "多氟多",
-      "lgb_score": 90.06,
+      "ts_code": "301022.SZ",
+      "stock_code": "301022",
+      "stock_name": "海泰科",
+      "lgb_score": 99.08,
       "raw_score": 0.2
     },
     {
-      "rank": 5,
+      "rank": 3,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 96.92,
+      "raw_score": 0.2
+    },
+    {
+      "rank": 4,
       "ts_code": "688316.SH",
       "stock_code": "688316",
       "stock_name": "青云科技-U",
-      "lgb_score": 87.55,
+      "lgb_score": 95.24,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 5,
+      "ts_code": "688401.SH",
+      "stock_code": "688401",
+      "stock_name": "路维光电",
+      "lgb_score": 91.06,
       "raw_score": 0.18
     }
   ]

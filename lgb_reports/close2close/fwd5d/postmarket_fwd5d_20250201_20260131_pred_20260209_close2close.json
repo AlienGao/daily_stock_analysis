@@ -11,39 +11,39 @@
       "stock_code": "300166",
       "stock_name": "东方国信",
       "lgb_score": 100.0,
-      "raw_score": 0.17
+      "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "002274.SZ",
-      "stock_code": "002274",
-      "stock_name": "华昌化工",
-      "lgb_score": 98.29,
-      "raw_score": 0.16
-    },
-    {
-      "rank": 3,
-      "ts_code": "002438.SZ",
-      "stock_code": "002438",
-      "stock_name": "江苏神通",
-      "lgb_score": 92.25,
-      "raw_score": 0.15
-    },
-    {
-      "rank": 4,
-      "ts_code": "002580.SZ",
-      "stock_code": "002580",
-      "stock_name": "圣阳股份",
-      "lgb_score": 87.47,
-      "raw_score": 0.14
-    },
-    {
-      "rank": 5,
       "ts_code": "603018.SH",
       "stock_code": "603018",
       "stock_name": "华设集团",
-      "lgb_score": 85.91,
+      "lgb_score": 99.12,
       "raw_score": 0.13
+    },
+    {
+      "rank": 3,
+      "ts_code": "002234.SZ",
+      "stock_code": "002234",
+      "stock_name": "民和股份",
+      "lgb_score": 96.63,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 4,
+      "ts_code": "002150.SZ",
+      "stock_code": "002150",
+      "stock_name": "正泰电源",
+      "lgb_score": 94.76,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 5,
+      "ts_code": "002929.SZ",
+      "stock_code": "002929",
+      "stock_name": "润建股份",
+      "lgb_score": 94.03,
+      "raw_score": 0.12
     }
   ]
 }

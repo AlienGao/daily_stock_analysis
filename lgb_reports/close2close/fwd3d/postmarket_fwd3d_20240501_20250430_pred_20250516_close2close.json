@@ -11,39 +11,39 @@
       "stock_code": "301488",
       "stock_name": "豪恩汽电",
       "lgb_score": 100.0,
-      "raw_score": 0.14
+      "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "002379.SZ",
-      "stock_code": "002379",
-      "stock_name": "宏桥控股",
-      "lgb_score": 86.17,
-      "raw_score": 0.11
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 84.46,
+      "raw_score": 0.1
     },
     {
       "rank": 3,
       "ts_code": "300975.SZ",
       "stock_code": "300975",
       "stock_name": "商络电子",
-      "lgb_score": 85.24,
+      "lgb_score": 83.98,
       "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "300883.SZ",
-      "stock_code": "300883",
-      "stock_name": "龙利得",
-      "lgb_score": 84.54,
-      "raw_score": 0.1
+      "ts_code": "002735.SZ",
+      "stock_code": "002735",
+      "stock_name": "王子新材",
+      "lgb_score": 82.96,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "000159.SZ",
-      "stock_code": "000159",
-      "stock_name": "国际实业",
-      "lgb_score": 84.38,
-      "raw_score": 0.1
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 81.65,
+      "raw_score": 0.09
     }
   ]
 }

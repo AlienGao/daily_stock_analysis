@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "601678.SH",
-      "stock_code": "601678",
-      "stock_name": "滨化股份",
-      "lgb_score": 100.0,
-      "raw_score": 0.25
-    },
-    {
-      "rank": 2,
-      "ts_code": "002311.SZ",
-      "stock_code": "002311",
-      "stock_name": "海大集团",
-      "lgb_score": 89.47,
-      "raw_score": 0.2
-    },
-    {
-      "rank": 3,
-      "ts_code": "688256.SH",
-      "stock_code": "688256",
-      "stock_name": "寒武纪",
-      "lgb_score": 85.83,
-      "raw_score": 0.19
-    },
-    {
-      "rank": 4,
-      "ts_code": "603018.SH",
-      "stock_code": "603018",
-      "stock_name": "华设集团",
-      "lgb_score": 83.32,
-      "raw_score": 0.18
-    },
-    {
-      "rank": 5,
       "ts_code": "002274.SZ",
       "stock_code": "002274",
       "stock_name": "华昌化工",
-      "lgb_score": 82.19,
-      "raw_score": 0.17
+      "lgb_score": 100.0,
+      "raw_score": 0.29
+    },
+    {
+      "rank": 2,
+      "ts_code": "601678.SH",
+      "stock_code": "601678",
+      "stock_name": "滨化股份",
+      "lgb_score": 90.14,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 3,
+      "ts_code": "920179.BJ",
+      "stock_code": "920179.BJ",
+      "stock_name": "",
+      "lgb_score": 88.71,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 4,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 85.48,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 5,
+      "ts_code": "688256.SH",
+      "stock_code": "688256",
+      "stock_name": "寒武纪",
+      "lgb_score": 83.91,
+      "raw_score": 0.23
     }
   ]
 }

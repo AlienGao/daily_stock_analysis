@@ -15,35 +15,35 @@
     },
     {
       "rank": 2,
-      "ts_code": "300045.SZ",
-      "stock_code": "300045",
-      "stock_name": "华力创通",
-      "lgb_score": 90.27,
-      "raw_score": 0.33
+      "ts_code": "920100.BJ",
+      "stock_code": "920100.BJ",
+      "stock_name": "",
+      "lgb_score": 98.47,
+      "raw_score": 0.37
     },
     {
       "rank": 3,
-      "ts_code": "002438.SZ",
-      "stock_code": "002438",
-      "stock_name": "江苏神通",
-      "lgb_score": 84.68,
-      "raw_score": 0.3
-    },
-    {
-      "rank": 4,
-      "ts_code": "600802.SH",
-      "stock_code": "600802",
-      "stock_name": "福建水泥",
-      "lgb_score": 83.38,
-      "raw_score": 0.3
-    },
-    {
-      "rank": 5,
       "ts_code": "300612.SZ",
       "stock_code": "300612",
       "stock_name": "宣亚国际",
-      "lgb_score": 83.18,
-      "raw_score": 0.29
+      "lgb_score": 96.33,
+      "raw_score": 0.36
+    },
+    {
+      "rank": 4,
+      "ts_code": "301633.SZ",
+      "stock_code": "301633",
+      "stock_name": "港迪技术",
+      "lgb_score": 90.72,
+      "raw_score": 0.33
+    },
+    {
+      "rank": 5,
+      "ts_code": "301590.SZ",
+      "stock_code": "301590",
+      "stock_name": "优优绿能",
+      "lgb_score": 89.05,
+      "raw_score": 0.32
     }
   ]
 }

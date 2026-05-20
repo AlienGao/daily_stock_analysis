@@ -11,38 +11,38 @@
       "stock_code": "688016",
       "stock_name": "心脉医疗",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.14
     },
     {
       "rank": 2,
-      "ts_code": "300429.SZ",
-      "stock_code": "300429",
-      "stock_name": "强力新材",
-      "lgb_score": 90.61,
+      "ts_code": "002458.SZ",
+      "stock_code": "002458",
+      "stock_name": "益生股份",
+      "lgb_score": 89.28,
       "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "301173.SZ",
-      "stock_code": "301173",
-      "stock_name": "毓恬冠佳",
-      "lgb_score": 86.49,
-      "raw_score": 0.09
+      "ts_code": "300429.SZ",
+      "stock_code": "300429",
+      "stock_name": "强力新材",
+      "lgb_score": 86.94,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "002164.SZ",
-      "stock_code": "002164",
-      "stock_name": "宁波东力",
-      "lgb_score": 84.46,
+      "ts_code": "002234.SZ",
+      "stock_code": "002234",
+      "stock_name": "民和股份",
+      "lgb_score": 84.79,
       "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "002841.SZ",
-      "stock_code": "002841",
-      "stock_name": "视源股份",
-      "lgb_score": 83.77,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 84.7,
       "raw_score": 0.09
     }
   ]

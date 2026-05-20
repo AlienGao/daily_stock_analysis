@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000959.SZ",
-      "stock_code": "000959",
-      "stock_name": "首钢股份",
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
       "lgb_score": 100.0,
-      "raw_score": 0.16
+      "raw_score": 0.21
     },
     {
       "rank": 2,
-      "ts_code": "601138.SH",
-      "stock_code": "601138",
-      "stock_name": "工业富联",
-      "lgb_score": 93.06,
-      "raw_score": 0.14
+      "ts_code": "301683.SZ",
+      "stock_code": "301683",
+      "stock_name": "慧谷新材",
+      "lgb_score": 92.95,
+      "raw_score": 0.18
     },
     {
       "rank": 3,
-      "ts_code": "688061.SH",
-      "stock_code": "688061",
-      "stock_name": "灿瑞科技",
-      "lgb_score": 91.54,
-      "raw_score": 0.13
+      "ts_code": "002234.SZ",
+      "stock_code": "002234",
+      "stock_name": "民和股份",
+      "lgb_score": 86.02,
+      "raw_score": 0.16
     },
     {
       "rank": 4,
-      "ts_code": "688048.SH",
-      "stock_code": "688048",
-      "stock_name": "长光华芯",
-      "lgb_score": 90.29,
-      "raw_score": 0.13
+      "ts_code": "000830.SZ",
+      "stock_code": "000830",
+      "stock_name": "鲁西化工",
+      "lgb_score": 85.95,
+      "raw_score": 0.16
     },
     {
       "rank": 5,
-      "ts_code": "688205.SH",
-      "stock_code": "688205",
-      "stock_name": "德科立",
-      "lgb_score": 89.6,
-      "raw_score": 0.13
+      "ts_code": "301513.SZ",
+      "stock_code": "301513",
+      "stock_name": "尚水智能",
+      "lgb_score": 81.91,
+      "raw_score": 0.15
     }
   ]
 }

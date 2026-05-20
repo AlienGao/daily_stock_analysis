@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000936.SZ",
-      "stock_code": "000936",
-      "stock_name": "华西股份",
+      "ts_code": "002049.SZ",
+      "stock_code": "002049",
+      "stock_name": "紫光国微",
       "lgb_score": 100.0,
-      "raw_score": 0.12
+      "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "001325.SZ",
-      "stock_code": "001325",
-      "stock_name": "元创股份",
-      "lgb_score": 96.67,
-      "raw_score": 0.11
+      "ts_code": "688627.SH",
+      "stock_code": "688627",
+      "stock_name": "精智达",
+      "lgb_score": 97.83,
+      "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "002234.SZ",
-      "stock_code": "002234",
-      "stock_name": "民和股份",
-      "lgb_score": 96.5,
-      "raw_score": 0.11
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
+      "lgb_score": 96.44,
+      "raw_score": 0.13
     },
     {
       "rank": 4,
       "ts_code": "301235.SZ",
       "stock_code": "301235",
       "stock_name": "华康洁净",
-      "lgb_score": 96.33,
+      "lgb_score": 91.46,
       "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "600704.SH",
-      "stock_code": "600704",
-      "stock_name": "物产中大",
-      "lgb_score": 94.8,
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 90.07,
       "raw_score": 0.11
     }
   ]

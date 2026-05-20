@@ -11,22 +11,22 @@
       "stock_code": "301205",
       "stock_name": "联特科技",
       "lgb_score": 100.0,
-      "raw_score": 0.22
+      "raw_score": 0.24
     },
     {
       "rank": 2,
-      "ts_code": "300157.SZ",
-      "stock_code": "300157",
-      "stock_name": "新锦动力",
-      "lgb_score": 92.68,
-      "raw_score": 0.19
-    },
-    {
-      "rank": 3,
       "ts_code": "600308.SH",
       "stock_code": "600308",
       "stock_name": "华泰股份",
-      "lgb_score": 90.46,
+      "lgb_score": 90.85,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 3,
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 82.42,
       "raw_score": 0.18
     },
     {
@@ -34,16 +34,16 @@
       "ts_code": "002229.SZ",
       "stock_code": "002229",
       "stock_name": "鸿博股份",
-      "lgb_score": 86.84,
+      "lgb_score": 80.54,
       "raw_score": 0.17
     },
     {
       "rank": 5,
-      "ts_code": "688316.SH",
-      "stock_code": "688316",
-      "stock_name": "青云科技-U",
-      "lgb_score": 86.48,
-      "raw_score": 0.16
+      "ts_code": "688368.SH",
+      "stock_code": "688368",
+      "stock_name": "晶丰明源",
+      "lgb_score": 79.34,
+      "raw_score": 0.17
     }
   ]
 }

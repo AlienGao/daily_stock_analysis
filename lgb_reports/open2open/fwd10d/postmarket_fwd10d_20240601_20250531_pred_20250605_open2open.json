@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300612.SZ",
-      "stock_code": "300612",
-      "stock_name": "宣亚国际",
-      "lgb_score": 100.0,
-      "raw_score": 0.24
-    },
-    {
-      "rank": 2,
       "ts_code": "300017.SZ",
       "stock_code": "300017",
       "stock_name": "网宿科技",
-      "lgb_score": 97.44,
-      "raw_score": 0.23
+      "lgb_score": 100.0,
+      "raw_score": 0.35
     },
     {
-      "rank": 3,
+      "rank": 2,
       "ts_code": "301117.SZ",
       "stock_code": "301117",
       "stock_name": "佳缘科技",
-      "lgb_score": 97.28,
-      "raw_score": 0.23
+      "lgb_score": 82.94,
+      "raw_score": 0.26
     },
     {
-      "rank": 4,
+      "rank": 3,
       "ts_code": "600410.SH",
       "stock_code": "600410",
       "stock_name": "华胜天成",
-      "lgb_score": 95.99,
-      "raw_score": 0.22
+      "lgb_score": 82.23,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 4,
+      "ts_code": "000936.SZ",
+      "stock_code": "000936",
+      "stock_name": "华西股份",
+      "lgb_score": 80.01,
+      "raw_score": 0.25
     },
     {
       "rank": 5,
       "ts_code": "300166.SZ",
       "stock_code": "300166",
       "stock_name": "东方国信",
-      "lgb_score": 94.67,
-      "raw_score": 0.22
+      "lgb_score": 79.4,
+      "raw_score": 0.25
     }
   ]
 }

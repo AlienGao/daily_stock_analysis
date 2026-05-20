@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "603518.SH",
-      "stock_code": "603518",
-      "stock_name": "锦泓集团",
+      "ts_code": "605058.SH",
+      "stock_code": "605058",
+      "stock_name": "澳弘电子",
       "lgb_score": 100.0,
       "raw_score": 0.11
     },
     {
       "rank": 2,
-      "ts_code": "605058.SH",
-      "stock_code": "605058",
-      "stock_name": "澳弘电子",
-      "lgb_score": 94.9,
-      "raw_score": 0.09
+      "ts_code": "002401.SZ",
+      "stock_code": "002401",
+      "stock_name": "中远海科",
+      "lgb_score": 96.86,
+      "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "600664.SH",
-      "stock_code": "600664",
-      "stock_name": "哈药股份",
-      "lgb_score": 90.25,
-      "raw_score": 0.08
+      "ts_code": "688181.SH",
+      "stock_code": "688181",
+      "stock_name": "八亿时空",
+      "lgb_score": 95.06,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "002073.SZ",
-      "stock_code": "002073",
-      "stock_name": "软控股份",
-      "lgb_score": 89.96,
-      "raw_score": 0.08
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 94.44,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "603613.SH",
-      "stock_code": "603613",
-      "stock_name": "国联股份",
-      "lgb_score": 89.08,
-      "raw_score": 0.08
+      "ts_code": "688691.SH",
+      "stock_code": "688691",
+      "stock_name": "灿芯股份",
+      "lgb_score": 93.97,
+      "raw_score": 0.1
     }
   ]
 }

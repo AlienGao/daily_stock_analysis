@@ -11,39 +11,39 @@
       "stock_code": "000563",
       "stock_name": "陕国投Ａ",
       "lgb_score": 100.0,
-      "raw_score": 0.12
+      "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "600076.SH",
-      "stock_code": "600076",
-      "stock_name": "康欣新材",
-      "lgb_score": 97.25,
-      "raw_score": 0.12
+      "ts_code": "300085.SZ",
+      "stock_code": "300085",
+      "stock_name": "银之杰",
+      "lgb_score": 89.34,
+      "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "600210.SH",
-      "stock_code": "600210",
-      "stock_name": "紫江企业",
-      "lgb_score": 96.95,
-      "raw_score": 0.12
+      "ts_code": "601890.SH",
+      "stock_code": "601890",
+      "stock_name": "亚星锚链",
+      "lgb_score": 88.45,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
-      "lgb_score": 96.49,
-      "raw_score": 0.12
+      "ts_code": "300442.SZ",
+      "stock_code": "300442",
+      "stock_name": "润泽科技",
+      "lgb_score": 85.93,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "688135.SH",
-      "stock_code": "688135",
-      "stock_name": "利扬芯片",
-      "lgb_score": 96.09,
-      "raw_score": 0.12
+      "ts_code": "600210.SH",
+      "stock_code": "600210",
+      "stock_name": "紫江企业",
+      "lgb_score": 84.16,
+      "raw_score": 0.09
     }
   ]
 }

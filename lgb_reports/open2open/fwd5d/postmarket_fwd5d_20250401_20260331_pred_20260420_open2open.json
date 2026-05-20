@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688525.SH",
-      "stock_code": "688525",
-      "stock_name": "佰维存储",
+      "ts_code": "920125.BJ",
+      "stock_code": "920125.BJ",
+      "stock_name": "",
       "lgb_score": 100.0,
-      "raw_score": 0.08
+      "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "688498.SH",
-      "stock_code": "688498",
-      "stock_name": "源杰科技",
-      "lgb_score": 98.98,
-      "raw_score": 0.08
-    },
-    {
-      "rank": 3,
       "ts_code": "301666.SZ",
       "stock_code": "301666",
       "stock_name": "大普微-UW",
-      "lgb_score": 97.55,
+      "lgb_score": 99.6,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "000404.SZ",
+      "stock_code": "000404",
+      "stock_name": "长虹华意",
+      "lgb_score": 90.8,
       "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "001267.SZ",
-      "stock_code": "001267",
-      "stock_name": "汇绿生态",
-      "lgb_score": 96.56,
+      "ts_code": "000589.SZ",
+      "stock_code": "000589",
+      "stock_name": "贵州轮胎",
+      "lgb_score": 89.64,
       "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "000762.SZ",
-      "stock_code": "000762",
-      "stock_name": "西藏矿业",
-      "lgb_score": 94.73,
-      "raw_score": 0.07
+      "ts_code": "300433.SZ",
+      "stock_code": "300433",
+      "stock_name": "蓝思科技",
+      "lgb_score": 89.46,
+      "raw_score": 0.08
     }
   ]
 }

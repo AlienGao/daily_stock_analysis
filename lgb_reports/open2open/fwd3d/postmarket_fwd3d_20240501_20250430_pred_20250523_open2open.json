@@ -15,35 +15,35 @@
     },
     {
       "rank": 2,
-      "ts_code": "600379.SH",
-      "stock_code": "600379",
-      "stock_name": "宝光股份",
-      "lgb_score": 98.48,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 3,
       "ts_code": "300885.SZ",
       "stock_code": "300885",
       "stock_name": "海昌新材",
-      "lgb_score": 97.95,
-      "raw_score": 0.13
+      "lgb_score": 96.93,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 91.64,
+      "raw_score": 0.11
     },
     {
       "rank": 4,
       "ts_code": "600802.SH",
       "stock_code": "600802",
       "stock_name": "福建水泥",
-      "lgb_score": 92.03,
+      "lgb_score": 90.98,
       "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "002165.SZ",
-      "stock_code": "002165",
-      "stock_name": "红 宝 丽",
-      "lgb_score": 91.61,
-      "raw_score": 0.11
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 89.94,
+      "raw_score": 0.1
     }
   ]
 }

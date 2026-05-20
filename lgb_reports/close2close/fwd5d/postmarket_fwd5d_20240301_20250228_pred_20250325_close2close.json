@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
+      "ts_code": "603893.SH",
+      "stock_code": "603893",
+      "stock_name": "瑞芯微",
       "lgb_score": 100.0,
-      "raw_score": 0.14
+      "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "688316.SH",
-      "stock_code": "688316",
-      "stock_name": "青云科技-U",
-      "lgb_score": 98.26,
-      "raw_score": 0.14
+      "ts_code": "300007.SZ",
+      "stock_code": "300007",
+      "stock_name": "汉威科技",
+      "lgb_score": 98.42,
+      "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "301633.SZ",
-      "stock_code": "301633",
-      "stock_name": "港迪技术",
-      "lgb_score": 96.58,
-      "raw_score": 0.13
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 95.07,
+      "raw_score": 0.11
     },
     {
       "rank": 4,
-      "ts_code": "301383.SZ",
-      "stock_code": "301383",
-      "stock_name": "天键股份",
-      "lgb_score": 95.7,
-      "raw_score": 0.13
+      "ts_code": "002164.SZ",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 90.64,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "688090.SH",
-      "stock_code": "688090",
-      "stock_name": "瑞松科技",
-      "lgb_score": 95.69,
-      "raw_score": 0.13
+      "ts_code": "300995.SZ",
+      "stock_code": "300995",
+      "stock_name": "奇德新材",
+      "lgb_score": 89.11,
+      "raw_score": 0.1
     }
   ]
 }

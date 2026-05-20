@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600397.SH",
-      "stock_code": "600397",
-      "stock_name": "江钨装备",
+      "ts_code": "300357.SZ",
+      "stock_code": "300357",
+      "stock_name": "我武生物",
       "lgb_score": 100.0,
-      "raw_score": 0.08
+      "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "600262.SH",
-      "stock_code": "600262",
-      "stock_name": "北方股份",
-      "lgb_score": 98.83,
-      "raw_score": 0.08
+      "ts_code": "600500.SH",
+      "stock_code": "600500",
+      "stock_name": "中化国际",
+      "lgb_score": 98.54,
+      "raw_score": 0.09
     },
     {
       "rank": 3,
       "ts_code": "600425.SH",
       "stock_code": "600425",
       "stock_name": "青松建化",
-      "lgb_score": 97.78,
-      "raw_score": 0.08
+      "lgb_score": 97.54,
+      "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "603111.SH",
-      "stock_code": "603111",
-      "stock_name": "康尼机电",
-      "lgb_score": 94.72,
-      "raw_score": 0.07
-    },
-    {
-      "rank": 5,
       "ts_code": "300955.SZ",
       "stock_code": "300955",
       "stock_name": "嘉亨家化",
-      "lgb_score": 94.02,
-      "raw_score": 0.07
+      "lgb_score": 96.7,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 96.04,
+      "raw_score": 0.09
     }
   ]
 }

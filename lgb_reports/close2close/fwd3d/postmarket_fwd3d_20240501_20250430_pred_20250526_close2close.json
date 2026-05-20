@@ -18,32 +18,32 @@
       "ts_code": "002438.SZ",
       "stock_code": "002438",
       "stock_name": "江苏神通",
-      "lgb_score": 79.05,
-      "raw_score": 0.1
+      "lgb_score": 85.75,
+      "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "300883.SZ",
-      "stock_code": "300883",
-      "stock_name": "龙利得",
-      "lgb_score": 77.97,
-      "raw_score": 0.1
+      "ts_code": "000910.SZ",
+      "stock_code": "000910",
+      "stock_name": "大亚圣象",
+      "lgb_score": 74.33,
+      "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "300263.SZ",
-      "stock_code": "300263",
-      "stock_name": "隆华科技",
-      "lgb_score": 76.73,
-      "raw_score": 0.1
+      "ts_code": "600192.SH",
+      "stock_code": "600192",
+      "stock_name": "长城电工",
+      "lgb_score": 73.53,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "600151.SH",
-      "stock_code": "600151",
-      "stock_name": "航天机电",
-      "lgb_score": 76.0,
-      "raw_score": 0.1
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 72.62,
+      "raw_score": 0.09
     }
   ]
 }

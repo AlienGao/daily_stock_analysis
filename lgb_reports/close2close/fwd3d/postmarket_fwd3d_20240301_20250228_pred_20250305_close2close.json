@@ -15,34 +15,34 @@
     },
     {
       "rank": 2,
-      "ts_code": "920578.BJ",
-      "stock_code": "920578.BJ",
-      "stock_name": "",
-      "lgb_score": 96.58,
-      "raw_score": 0.09
+      "ts_code": "603300.SH",
+      "stock_code": "603300",
+      "stock_name": "海南华铁",
+      "lgb_score": 98.1,
+      "raw_score": 0.08
     },
     {
       "rank": 3,
       "ts_code": "002526.SZ",
       "stock_code": "002526",
       "stock_name": "山东矿机",
-      "lgb_score": 96.46,
-      "raw_score": 0.09
+      "lgb_score": 97.04,
+      "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "000701.SZ",
-      "stock_code": "000701",
-      "stock_name": "厦门信达",
-      "lgb_score": 94.64,
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 94.59,
       "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "300447.SZ",
-      "stock_code": "300447",
-      "stock_name": "全信股份",
-      "lgb_score": 94.54,
+      "ts_code": "300328.SZ",
+      "stock_code": "300328",
+      "stock_name": "宜安科技",
+      "lgb_score": 94.53,
       "raw_score": 0.08
     }
   ]

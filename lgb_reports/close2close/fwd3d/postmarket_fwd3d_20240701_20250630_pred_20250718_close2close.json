@@ -11,22 +11,22 @@
       "stock_code": "688016",
       "stock_name": "心脉医疗",
       "lgb_score": 100.0,
-      "raw_score": 0.15
+      "raw_score": 0.16
     },
     {
       "rank": 2,
-      "ts_code": "600792.SH",
-      "stock_code": "600792",
-      "stock_name": "云煤能源",
-      "lgb_score": 79.04,
-      "raw_score": 0.09
+      "ts_code": "002475.SZ",
+      "stock_code": "002475",
+      "stock_name": "立讯精密",
+      "lgb_score": 75.86,
+      "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "002652.SZ",
-      "stock_code": "002652",
-      "stock_name": "扬子新材",
-      "lgb_score": 75.62,
+      "ts_code": "002394.SZ",
+      "stock_code": "002394",
+      "stock_name": "联发股份",
+      "lgb_score": 72.23,
       "raw_score": 0.09
     },
     {
@@ -34,15 +34,15 @@
       "ts_code": "688170.SH",
       "stock_code": "688170",
       "stock_name": "德龙激光",
-      "lgb_score": 73.43,
-      "raw_score": 0.08
+      "lgb_score": 71.72,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "688071.SH",
-      "stock_code": "688071",
-      "stock_name": "华依科技",
-      "lgb_score": 73.25,
+      "ts_code": "002652.SZ",
+      "stock_code": "002652",
+      "stock_name": "扬子新材",
+      "lgb_score": 64.94,
       "raw_score": 0.08
     }
   ]

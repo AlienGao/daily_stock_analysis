@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "001282.SZ",
-      "stock_code": "001282",
-      "stock_name": "三联锻造",
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
       "lgb_score": 100.0,
-      "raw_score": 0.15
+      "raw_score": 0.13
     },
     {
       "rank": 2,
       "ts_code": "600308.SH",
       "stock_code": "600308",
       "stock_name": "华泰股份",
-      "lgb_score": 99.5,
-      "raw_score": 0.15
+      "lgb_score": 98.53,
+      "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "002580.SZ",
-      "stock_code": "002580",
-      "stock_name": "圣阳股份",
-      "lgb_score": 97.17,
-      "raw_score": 0.14
+      "ts_code": "688766.SH",
+      "stock_code": "688766",
+      "stock_name": "普冉股份",
+      "lgb_score": 96.96,
+      "raw_score": 0.12
     },
     {
       "rank": 4,
-      "ts_code": "300031.SZ",
-      "stock_code": "300031",
-      "stock_name": "宝通科技",
-      "lgb_score": 91.89,
-      "raw_score": 0.12
+      "ts_code": "003021.SZ",
+      "stock_code": "003021",
+      "stock_name": "兆威机电",
+      "lgb_score": 95.55,
+      "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "000880.SZ",
-      "stock_code": "000880",
-      "stock_name": "潍柴重机",
-      "lgb_score": 91.79,
-      "raw_score": 0.12
+      "ts_code": "688108.SH",
+      "stock_code": "688108",
+      "stock_name": "赛诺医疗",
+      "lgb_score": 95.53,
+      "raw_score": 0.11
     }
   ]
 }

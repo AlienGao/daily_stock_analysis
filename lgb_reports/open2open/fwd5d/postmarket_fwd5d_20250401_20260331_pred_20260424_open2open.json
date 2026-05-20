@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300757.SZ",
-      "stock_code": "300757",
-      "stock_name": "罗博特科",
-      "lgb_score": 100.0,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 2,
       "ts_code": "300976.SZ",
       "stock_code": "300976",
       "stock_name": "达瑞电子",
-      "lgb_score": 91.94,
-      "raw_score": 0.12
+      "lgb_score": 100.0,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
+      "lgb_score": 98.32,
+      "raw_score": 0.08
     },
     {
       "rank": 3,
-      "ts_code": "300870.SZ",
-      "stock_code": "300870",
-      "stock_name": "欧陆通",
-      "lgb_score": 85.28,
-      "raw_score": 0.1
+      "ts_code": "002374.SZ",
+      "stock_code": "002374",
+      "stock_name": "中锐股份",
+      "lgb_score": 97.65,
+      "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "300394.SZ.SZ",
-      "stock_code": "300394",
-      "stock_name": "天孚通信",
-      "lgb_score": 81.62,
-      "raw_score": 0.09
+      "ts_code": "688090.SH",
+      "stock_code": "688090",
+      "stock_name": "瑞松科技",
+      "lgb_score": 97.53,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "601126.SH",
-      "stock_code": "601126",
-      "stock_name": "四方股份",
-      "lgb_score": 80.2,
-      "raw_score": 0.09
+      "ts_code": "001312.SZ",
+      "stock_code": "001312",
+      "stock_name": "福恩股份",
+      "lgb_score": 97.39,
+      "raw_score": 0.08
     }
   ]
 }

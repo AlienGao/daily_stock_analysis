@@ -18,32 +18,32 @@
       "ts_code": "002506.SZ",
       "stock_code": "002506",
       "stock_name": "协鑫集成",
-      "lgb_score": 96.17,
+      "lgb_score": 95.98,
       "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 95.89,
-      "raw_score": 0.09
+      "ts_code": "000659.SZ",
+      "stock_code": "000659",
+      "stock_name": "珠海中富",
+      "lgb_score": 90.88,
+      "raw_score": 0.08
     },
     {
       "rank": 4,
       "ts_code": "002081.SZ",
       "stock_code": "002081",
       "stock_name": "金 螳 螂",
-      "lgb_score": 94.62,
-      "raw_score": 0.09
+      "lgb_score": 86.78,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
       "ts_code": "603915.SH",
       "stock_code": "603915",
       "stock_name": "国茂股份",
-      "lgb_score": 94.61,
-      "raw_score": 0.09
+      "lgb_score": 85.97,
+      "raw_score": 0.08
     }
   ]
 }

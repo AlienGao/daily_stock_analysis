@@ -604,10 +604,14 @@ const LightGBMPage: React.FC = () => {
                   </ResponsiveContainer>
                 )}
 
-                {backtestSim.trades.length > 0 && (
+                {backtestSim.trades.length > 0 && (() => {
+                  const holding = backtestSim.trades.filter((t) => !t.skipped && !t.sell_date);
+                  const done = backtestSim.trades.filter((t) => !t.skipped && t.sell_date);
+                  const skipped = backtestSim.trades.filter((t) => t.skipped);
+                  return (
                   <details open>
                     <summary className="cursor-pointer text-xs text-tertiary-text mb-2 select-none">
-                      交易明细（{backtestSim.trades.filter((t) => !t.skipped).length} 笔，跳过 {backtestSim.metrics.skipped_trades} 笔涨停）
+                      交易明细（{done.length} 笔已平仓{holding.length > 0 ? `，${holding.length} 笔持仓中` : ''}{skipped.length > 0 ? `，${skipped.length} 笔涨停跳过` : ''}）
                     </summary>
                     <Table
                       size="small"
@@ -621,20 +625,25 @@ const LightGBMPage: React.FC = () => {
                         { title: '名称', dataIndex: 'stock_name', key: 'stock_name', width: 70 },
                         { title: '买入日', dataIndex: 'buy_date', key: 'buy_date', width: 85 },
                         { title: '买入价', dataIndex: 'buy_price', key: 'buy_price', width: 70, render: (_: unknown, r: typeof backtestSim.trades[0]) => r.buy_price.toFixed(2) },
-                        { title: '卖出日', dataIndex: 'sell_date', key: 'sell_date', width: 85 },
-                        { title: '卖出价', dataIndex: 'sell_price', key: 'sell_price', width: 70, render: (_: unknown, r: typeof backtestSim.trades[0]) => r.sell_price.toFixed(2) },
+                        { title: '卖出日', dataIndex: 'sell_date', key: 'sell_date', width: 85, render: (_: unknown, r: typeof backtestSim.trades[0]) => r.skipped ? '（涨停）' : (r.sell_date || '--') },
+                        { title: '卖出价', dataIndex: 'sell_price', key: 'sell_price', width: 70, render: (_: unknown, r: typeof backtestSim.trades[0]) => r.skipped ? '-' : (r.sell_date ? r.sell_price.toFixed(2) : r.sell_price.toFixed(2)) },
                         {
                           title: '收益', dataIndex: 'return_pct', key: 'return_pct', width: 70,
-                          render: (_: unknown, r: typeof backtestSim.trades[0]) => (
-                            <span className={r.return_pct >= 0 ? 'text-red-400' : 'text-green-400'}>
-                              {pctNum(r.return_pct)}
-                            </span>
-                          ),
+                          render: (_: unknown, r: typeof backtestSim.trades[0]) => {
+                            if (r.skipped) return <span className="text-tertiary-text">-</span>;
+                            const isHolding = !r.sell_date;
+                            return (
+                              <span className={r.return_pct >= 0 ? 'text-red-400' : 'text-green-400'}>
+                                {pctNum(r.return_pct)}{isHolding ? ' *' : ''}
+                              </span>
+                            );
+                          },
                         },
                       ]}
                     />
                   </details>
-                )}
+                  );
+                })()}
               </>
             )}
 

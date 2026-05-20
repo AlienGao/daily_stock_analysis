@@ -11,39 +11,39 @@
       "stock_code": "000915",
       "stock_name": "华特达因",
       "lgb_score": 100.0,
-      "raw_score": 0.26
+      "raw_score": 0.27
     },
     {
       "rank": 2,
       "ts_code": "300042.SZ",
       "stock_code": "300042",
       "stock_name": "朗科科技",
-      "lgb_score": 89.91,
-      "raw_score": 0.21
+      "lgb_score": 95.72,
+      "raw_score": 0.26
     },
     {
       "rank": 3,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
-      "lgb_score": 86.47,
-      "raw_score": 0.19
-    },
-    {
-      "rank": 4,
-      "ts_code": "688261.SH",
-      "stock_code": "688261",
-      "stock_name": "东微半导",
-      "lgb_score": 86.45,
-      "raw_score": 0.19
-    },
-    {
-      "rank": 5,
       "ts_code": "301633.SZ",
       "stock_code": "301633",
       "stock_name": "港迪技术",
-      "lgb_score": 84.37,
-      "raw_score": 0.18
+      "lgb_score": 94.17,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 4,
+      "ts_code": "001325.SZ",
+      "stock_code": "001325",
+      "stock_name": "元创股份",
+      "lgb_score": 85.68,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 5,
+      "ts_code": "301696.SZ",
+      "stock_code": "301696",
+      "stock_name": "三瑞智能",
+      "lgb_score": 85.68,
+      "raw_score": 0.21
     }
   ]
 }

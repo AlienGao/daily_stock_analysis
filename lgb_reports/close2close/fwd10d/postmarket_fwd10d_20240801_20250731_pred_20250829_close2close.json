@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600400.SH",
-      "stock_code": "600400",
-      "stock_name": "红豆股份",
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
       "lgb_score": 100.0,
-      "raw_score": 0.2
+      "raw_score": 0.23
     },
     {
       "rank": 2,
-      "ts_code": "002029.SZ",
-      "stock_code": "002029",
-      "stock_name": "七 匹 狼",
-      "lgb_score": 99.76,
-      "raw_score": 0.2
+      "ts_code": "300429.SZ",
+      "stock_code": "300429",
+      "stock_name": "强力新材",
+      "lgb_score": 98.4,
+      "raw_score": 0.23
     },
     {
       "rank": 3,
-      "ts_code": "300885.SZ",
-      "stock_code": "300885",
-      "stock_name": "海昌新材",
-      "lgb_score": 98.61,
-      "raw_score": 0.2
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 97.18,
+      "raw_score": 0.22
     },
     {
       "rank": 4,
-      "ts_code": "603915.SH",
-      "stock_code": "603915",
-      "stock_name": "国茂股份",
-      "lgb_score": 96.78,
-      "raw_score": 0.19
+      "ts_code": "600509.SH",
+      "stock_code": "600509",
+      "stock_name": "天富能源",
+      "lgb_score": 96.3,
+      "raw_score": 0.22
     },
     {
       "rank": 5,
-      "ts_code": "301372.SZ",
-      "stock_code": "301372",
-      "stock_name": "科净源",
-      "lgb_score": 95.4,
-      "raw_score": 0.18
+      "ts_code": "000936.SZ",
+      "stock_code": "000936",
+      "stock_name": "华西股份",
+      "lgb_score": 96.22,
+      "raw_score": 0.22
     }
   ]
 }

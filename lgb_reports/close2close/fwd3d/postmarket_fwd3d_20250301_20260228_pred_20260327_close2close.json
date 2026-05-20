@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688256.SH",
-      "stock_code": "688256",
-      "stock_name": "寒武纪",
+      "ts_code": "300308.SZ.SZ",
+      "stock_code": "300308",
+      "stock_name": "中际旭创",
       "lgb_score": 100.0,
       "raw_score": 0.08
     },
     {
       "rank": 2,
-      "ts_code": "600704.SH",
-      "stock_code": "600704",
-      "stock_name": "物产中大",
-      "lgb_score": 98.59,
-      "raw_score": 0.08
-    },
-    {
-      "rank": 3,
       "ts_code": "000589.SZ",
       "stock_code": "000589",
       "stock_name": "贵州轮胎",
-      "lgb_score": 90.96,
-      "raw_score": 0.07
+      "lgb_score": 89.73,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 3,
+      "ts_code": "600704.SH",
+      "stock_code": "600704",
+      "stock_name": "物产中大",
+      "lgb_score": 89.55,
+      "raw_score": 0.06
     },
     {
       "rank": 4,
-      "ts_code": "000554.SZ",
-      "stock_code": "000554",
-      "stock_name": "泰山石油",
-      "lgb_score": 87.02,
+      "ts_code": "600690.SH",
+      "stock_code": "600690",
+      "stock_name": "海尔智家",
+      "lgb_score": 87.12,
       "raw_score": 0.06
     },
     {
       "rank": 5,
-      "ts_code": "002108.SZ",
-      "stock_code": "002108",
-      "stock_name": "沧州明珠",
-      "lgb_score": 84.72,
+      "ts_code": "688068.SH",
+      "stock_code": "688068",
+      "stock_name": "热景生物",
+      "lgb_score": 87.11,
       "raw_score": 0.06
     }
   ]

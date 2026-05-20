@@ -15,35 +15,35 @@
     },
     {
       "rank": 2,
-      "ts_code": "600076.SH",
-      "stock_code": "600076",
-      "stock_name": "康欣新材",
-      "lgb_score": 97.31,
-      "raw_score": 0.1
+      "ts_code": "002915.SZ",
+      "stock_code": "002915",
+      "stock_name": "中欣氟材",
+      "lgb_score": 91.16,
+      "raw_score": 0.09
     },
     {
       "rank": 3,
       "ts_code": "300045.SZ",
       "stock_code": "300045",
       "stock_name": "华力创通",
-      "lgb_score": 91.69,
+      "lgb_score": 90.6,
       "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "601138.SH",
-      "stock_code": "601138",
-      "stock_name": "工业富联",
-      "lgb_score": 88.89,
-      "raw_score": 0.08
+      "ts_code": "300612.SZ",
+      "stock_code": "300612",
+      "stock_name": "宣亚国际",
+      "lgb_score": 90.18,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "000032.SZ",
-      "stock_code": "000032",
-      "stock_name": "深桑达Ａ",
-      "lgb_score": 88.78,
-      "raw_score": 0.08
+      "ts_code": "300519.SZ",
+      "stock_code": "300519",
+      "stock_name": "新光药业",
+      "lgb_score": 90.14,
+      "raw_score": 0.09
     }
   ]
 }

@@ -15,34 +15,34 @@
     },
     {
       "rank": 2,
-      "ts_code": "688325.SH",
-      "stock_code": "688325",
-      "stock_name": "赛微微电",
-      "lgb_score": 92.9,
-      "raw_score": 0.08
+      "ts_code": "002850.SZ",
+      "stock_code": "002850",
+      "stock_name": "科达利",
+      "lgb_score": 98.52,
+      "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "300857.SZ",
-      "stock_code": "300857",
-      "stock_name": "协创数据",
-      "lgb_score": 91.37,
-      "raw_score": 0.07
+      "ts_code": "601908.SH",
+      "stock_code": "601908",
+      "stock_name": "京运通",
+      "lgb_score": 96.72,
+      "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "688228.SH",
-      "stock_code": "688228",
-      "stock_name": "开普云",
-      "lgb_score": 89.87,
-      "raw_score": 0.07
+      "ts_code": "688325.SH",
+      "stock_code": "688325",
+      "stock_name": "赛微微电",
+      "lgb_score": 93.18,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "300115.SZ",
-      "stock_code": "300115",
-      "stock_name": "长盈精密",
-      "lgb_score": 88.14,
+      "ts_code": "688275.SH",
+      "stock_code": "688275",
+      "stock_name": "万润新能",
+      "lgb_score": 90.9,
       "raw_score": 0.07
     }
   ]

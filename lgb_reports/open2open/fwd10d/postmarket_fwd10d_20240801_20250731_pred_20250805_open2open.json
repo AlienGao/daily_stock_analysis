@@ -15,35 +15,35 @@
     },
     {
       "rank": 2,
-      "ts_code": "301110.SZ",
-      "stock_code": "301110",
-      "stock_name": "青木科技",
-      "lgb_score": 88.14,
-      "raw_score": 0.24
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 91.12,
+      "raw_score": 0.26
     },
     {
       "rank": 3,
-      "ts_code": "688181.SH",
-      "stock_code": "688181",
-      "stock_name": "八亿时空",
-      "lgb_score": 85.78,
-      "raw_score": 0.23
+      "ts_code": "603915.SH",
+      "stock_code": "603915",
+      "stock_name": "国茂股份",
+      "lgb_score": 87.91,
+      "raw_score": 0.25
     },
     {
       "rank": 4,
-      "ts_code": "000955.SZ",
-      "stock_code": "000955",
-      "stock_name": "欣龙控股",
-      "lgb_score": 82.79,
-      "raw_score": 0.22
+      "ts_code": "301110.SZ",
+      "stock_code": "301110",
+      "stock_name": "青木科技",
+      "lgb_score": 87.2,
+      "raw_score": 0.24
     },
     {
       "rank": 5,
-      "ts_code": "300612.SZ",
-      "stock_code": "300612",
-      "stock_name": "宣亚国际",
-      "lgb_score": 82.41,
-      "raw_score": 0.21
+      "ts_code": "002617.SZ",
+      "stock_code": "002617",
+      "stock_name": "露笑科技",
+      "lgb_score": 86.84,
+      "raw_score": 0.24
     }
   ]
 }

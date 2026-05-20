@@ -11,39 +11,39 @@
       "stock_code": "002445",
       "stock_name": "中南文化",
       "lgb_score": 100.0,
-      "raw_score": 0.14
+      "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "002165.SZ",
-      "stock_code": "002165",
-      "stock_name": "红 宝 丽",
-      "lgb_score": 92.62,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 90.73,
       "raw_score": 0.11
     },
     {
       "rank": 3,
-      "ts_code": "002407.SZ",
-      "stock_code": "002407",
-      "stock_name": "多氟多",
-      "lgb_score": 89.79,
-      "raw_score": 0.11
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 87.37,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "603681.SH",
-      "stock_code": "603681",
-      "stock_name": "永冠新材",
-      "lgb_score": 88.44,
-      "raw_score": 0.1
+      "ts_code": "000528.SZ",
+      "stock_code": "000528",
+      "stock_name": "柳    工",
+      "lgb_score": 85.72,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 87.79,
-      "raw_score": 0.1
+      "ts_code": "603681.SH",
+      "stock_code": "603681",
+      "stock_name": "永冠新材",
+      "lgb_score": 85.29,
+      "raw_score": 0.09
     }
   ]
 }

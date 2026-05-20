@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002164.SZ",
-      "stock_code": "002164",
-      "stock_name": "宁波东力",
-      "lgb_score": 100.0,
-      "raw_score": 0.09
-    },
-    {
-      "rank": 2,
       "ts_code": "600308.SH",
       "stock_code": "600308",
       "stock_name": "华泰股份",
-      "lgb_score": 95.1,
-      "raw_score": 0.08
+      "lgb_score": 100.0,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 2,
+      "ts_code": "002164.SZ",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 95.26,
+      "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "301322.SZ",
-      "stock_code": "301322",
-      "stock_name": "绿通科技",
-      "lgb_score": 92.13,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 86.34,
       "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "920363.BJ",
-      "stock_code": "920363.BJ",
-      "stock_name": "",
-      "lgb_score": 88.01,
-      "raw_score": 0.07
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 86.29,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "000601.SZ",
-      "stock_code": "000601",
-      "stock_name": "韶能股份",
-      "lgb_score": 87.7,
+      "ts_code": "002031.SZ",
+      "stock_code": "002031",
+      "stock_name": "巨轮智能",
+      "lgb_score": 85.85,
       "raw_score": 0.07
     }
   ]

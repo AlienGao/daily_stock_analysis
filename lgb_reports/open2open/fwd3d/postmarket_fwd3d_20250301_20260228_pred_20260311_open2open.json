@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000601.SZ",
-      "stock_code": "000601",
-      "stock_name": "韶能股份",
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
       "lgb_score": 100.0,
-      "raw_score": 0.07
+      "raw_score": 0.08
     },
     {
       "rank": 2,
-      "ts_code": "301589.SZ",
-      "stock_code": "301589",
-      "stock_name": "诺瓦星云",
-      "lgb_score": 93.91,
-      "raw_score": 0.06
-    },
-    {
-      "rank": 3,
       "ts_code": "002458.SZ",
       "stock_code": "002458",
       "stock_name": "益生股份",
-      "lgb_score": 91.66,
-      "raw_score": 0.06
+      "lgb_score": 98.56,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 3,
+      "ts_code": "301309.SZ",
+      "stock_code": "301309",
+      "stock_name": "万得凯",
+      "lgb_score": 96.06,
+      "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "002580.SZ",
-      "stock_code": "002580",
-      "stock_name": "圣阳股份",
-      "lgb_score": 86.99,
-      "raw_score": 0.05
+      "ts_code": "301589.SZ",
+      "stock_code": "301589",
+      "stock_name": "诺瓦星云",
+      "lgb_score": 94.63,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "300502.SZ.SZ",
-      "stock_code": "300502",
-      "stock_name": "新易盛",
-      "lgb_score": 85.84,
-      "raw_score": 0.05
+      "ts_code": "300992.SZ",
+      "stock_code": "300992",
+      "stock_name": "泰福泵业",
+      "lgb_score": 90.67,
+      "raw_score": 0.07
     }
   ]
 }

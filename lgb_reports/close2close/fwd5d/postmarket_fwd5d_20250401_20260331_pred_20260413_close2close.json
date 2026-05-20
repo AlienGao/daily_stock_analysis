@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000589.SZ",
-      "stock_code": "000589",
-      "stock_name": "贵州轮胎",
+      "ts_code": "000959.SZ",
+      "stock_code": "000959",
+      "stock_name": "首钢股份",
       "lgb_score": 100.0,
-      "raw_score": 0.1
+      "raw_score": 0.11
     },
     {
       "rank": 2,
-      "ts_code": "002439.SZ",
-      "stock_code": "002439",
-      "stock_name": "启明星辰",
-      "lgb_score": 95.87,
+      "ts_code": "603082.SH",
+      "stock_code": "603082",
+      "stock_name": "北自科技",
+      "lgb_score": 87.8,
       "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "002124.SZ",
-      "stock_code": "002124",
-      "stock_name": "天邦食品",
-      "lgb_score": 95.0,
-      "raw_score": 0.09
+      "ts_code": "301040.SZ",
+      "stock_code": "301040",
+      "stock_name": "中环海陆",
+      "lgb_score": 86.31,
+      "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "002515.SZ",
-      "stock_code": "002515",
-      "stock_name": "金字火腿",
-      "lgb_score": 94.51,
+      "ts_code": "000589.SZ",
+      "stock_code": "000589",
+      "stock_name": "贵州轮胎",
+      "lgb_score": 83.82,
       "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "000554.SZ",
-      "stock_code": "000554",
-      "stock_name": "泰山石油",
-      "lgb_score": 92.91,
+      "ts_code": "600527.SH",
+      "stock_code": "600527",
+      "stock_name": "江南高纤",
+      "lgb_score": 83.43,
       "raw_score": 0.08
     }
   ]

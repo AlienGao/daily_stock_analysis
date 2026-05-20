@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301600.SZ",
-      "stock_code": "301600",
-      "stock_name": "慧翰股份",
+      "ts_code": "600151.SH",
+      "stock_code": "600151",
+      "stock_name": "航天机电",
       "lgb_score": 100.0,
       "raw_score": 0.12
     },
     {
       "rank": 2,
-      "ts_code": "301008.SZ",
-      "stock_code": "301008",
-      "stock_name": "宏昌科技",
-      "lgb_score": 98.78,
-      "raw_score": 0.11
+      "ts_code": "002031.SZ",
+      "stock_code": "002031",
+      "stock_name": "巨轮智能",
+      "lgb_score": 96.85,
+      "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "002400.SZ",
-      "stock_code": "002400",
-      "stock_name": "省广集团",
-      "lgb_score": 96.24,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 91.67,
       "raw_score": 0.11
     },
     {
       "rank": 4,
-      "ts_code": "002067.SZ",
-      "stock_code": "002067",
-      "stock_name": "景兴纸业",
-      "lgb_score": 96.07,
-      "raw_score": 0.11
+      "ts_code": "002374.SZ",
+      "stock_code": "002374",
+      "stock_name": "中锐股份",
+      "lgb_score": 90.91,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "300975.SZ",
-      "stock_code": "300975",
-      "stock_name": "商络电子",
-      "lgb_score": 95.56,
-      "raw_score": 0.11
+      "ts_code": "301008.SZ",
+      "stock_code": "301008",
+      "stock_name": "宏昌科技",
+      "lgb_score": 90.63,
+      "raw_score": 0.1
     }
   ]
 }

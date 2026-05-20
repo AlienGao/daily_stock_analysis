@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000554.SZ",
-      "stock_code": "000554",
-      "stock_name": "泰山石油",
+      "ts_code": "001387.SZ",
+      "stock_code": "001387",
+      "stock_name": "雪祺电气",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.16
     },
     {
       "rank": 2,
-      "ts_code": "601678.SH",
-      "stock_code": "601678",
-      "stock_name": "滨化股份",
-      "lgb_score": 99.92,
-      "raw_score": 0.13
+      "ts_code": "002274.SZ",
+      "stock_code": "002274",
+      "stock_name": "华昌化工",
+      "lgb_score": 92.79,
+      "raw_score": 0.14
     },
     {
       "rank": 3,
-      "ts_code": "002395.SZ",
-      "stock_code": "002395",
-      "stock_name": "双象股份",
-      "lgb_score": 98.89,
-      "raw_score": 0.13
+      "ts_code": "002458.SZ",
+      "stock_code": "002458",
+      "stock_name": "益生股份",
+      "lgb_score": 92.58,
+      "raw_score": 0.14
     },
     {
       "rank": 4,
-      "ts_code": "000968.SZ",
-      "stock_code": "000968",
-      "stock_name": "蓝焰控股",
-      "lgb_score": 92.68,
-      "raw_score": 0.11
-    },
-    {
-      "rank": 5,
       "ts_code": "688458.SH",
       "stock_code": "688458",
       "stock_name": "美芯晟",
-      "lgb_score": 90.77,
-      "raw_score": 0.11
+      "lgb_score": 88.93,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 5,
+      "ts_code": "300975.SZ",
+      "stock_code": "300975",
+      "stock_name": "商络电子",
+      "lgb_score": 88.05,
+      "raw_score": 0.13
     }
   ]
 }

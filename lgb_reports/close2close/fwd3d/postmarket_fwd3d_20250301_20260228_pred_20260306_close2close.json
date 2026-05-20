@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000001.SH.SZ",
-      "stock_code": "000001",
-      "stock_name": "平安银行",
+      "ts_code": "301590.SZ",
+      "stock_code": "301590",
+      "stock_name": "优优绿能",
       "lgb_score": 100.0,
-      "raw_score": 0.08
+      "raw_score": 0.06
     },
     {
       "rank": 2,
-      "ts_code": "001387.SZ",
-      "stock_code": "001387",
-      "stock_name": "雪祺电气",
-      "lgb_score": 89.66,
+      "ts_code": "920375.BJ",
+      "stock_code": "920375.BJ",
+      "stock_name": "",
+      "lgb_score": 99.21,
       "raw_score": 0.06
     },
     {
       "rank": 3,
-      "ts_code": "000962.SZ",
-      "stock_code": "000962",
-      "stock_name": "东方钽业",
-      "lgb_score": 89.56,
+      "ts_code": "002580.SZ",
+      "stock_code": "002580",
+      "stock_name": "圣阳股份",
+      "lgb_score": 98.06,
       "raw_score": 0.06
     },
     {
       "rank": 4,
-      "ts_code": "920375.BJ",
-      "stock_code": "920375.BJ",
-      "stock_name": "",
-      "lgb_score": 89.32,
+      "ts_code": "300303.SZ",
+      "stock_code": "300303",
+      "stock_name": "聚飞光电",
+      "lgb_score": 97.55,
       "raw_score": 0.06
     },
     {
       "rank": 5,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 87.45,
+      "ts_code": "603082.SH",
+      "stock_code": "603082",
+      "stock_name": "北自科技",
+      "lgb_score": 96.51,
       "raw_score": 0.06
     }
   ]

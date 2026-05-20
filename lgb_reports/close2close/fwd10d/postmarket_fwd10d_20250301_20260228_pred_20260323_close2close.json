@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300394.SZ.SZ",
-      "stock_code": "300394",
-      "stock_name": "天孚通信",
-      "lgb_score": 85.11,
-      "raw_score": 0.16
+      "ts_code": "301696.SZ",
+      "stock_code": "301696",
+      "stock_name": "三瑞智能",
+      "lgb_score": 100.0,
+      "raw_score": 0.23
     },
     {
       "rank": 2,
-      "ts_code": "300391.SZ",
-      "stock_code": "300391",
-      "stock_name": "长药退",
-      "lgb_score": 84.39,
-      "raw_score": 0.15
+      "ts_code": "688048.SH",
+      "stock_code": "688048",
+      "stock_name": "长光华芯",
+      "lgb_score": 91.52,
+      "raw_score": 0.21
     },
     {
       "rank": 3,
-      "ts_code": "603986.SH.SH",
-      "stock_code": "603986",
-      "stock_name": "兆易创新",
-      "lgb_score": 84.15,
-      "raw_score": 0.15
+      "ts_code": "688768.SH",
+      "stock_code": "688768",
+      "stock_name": "容知日新",
+      "lgb_score": 90.02,
+      "raw_score": 0.2
     },
     {
       "rank": 4,
-      "ts_code": "920028.BJ",
-      "stock_code": "920028.BJ",
-      "stock_name": "",
-      "lgb_score": 84.06,
-      "raw_score": 0.15
+      "ts_code": "301306.SZ",
+      "stock_code": "301306",
+      "stock_name": "西测测试",
+      "lgb_score": 88.23,
+      "raw_score": 0.2
     },
     {
       "rank": 5,
-      "ts_code": "688693.SH",
-      "stock_code": "688693",
-      "stock_name": "锴威特",
-      "lgb_score": 83.23,
-      "raw_score": 0.15
+      "ts_code": "001309.SZ",
+      "stock_code": "001309",
+      "stock_name": "德明利",
+      "lgb_score": 87.96,
+      "raw_score": 0.2
     }
   ]
 }

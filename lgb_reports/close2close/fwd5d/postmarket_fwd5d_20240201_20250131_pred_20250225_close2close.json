@@ -15,34 +15,34 @@
     },
     {
       "rank": 2,
-      "ts_code": "002029.SZ",
-      "stock_code": "002029",
-      "stock_name": "七 匹 狼",
-      "lgb_score": 92.92,
-      "raw_score": 0.12
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 94.92,
+      "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "300046.SZ",
-      "stock_code": "300046",
-      "stock_name": "台基股份",
-      "lgb_score": 92.89,
-      "raw_score": 0.12
-    },
-    {
-      "rank": 4,
-      "ts_code": "301372.SZ",
-      "stock_code": "301372",
-      "stock_name": "科净源",
-      "lgb_score": 90.68,
-      "raw_score": 0.12
-    },
-    {
-      "rank": 5,
       "ts_code": "920088.BJ",
       "stock_code": "920088.BJ",
       "stock_name": "",
-      "lgb_score": 90.57,
+      "lgb_score": 94.66,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 4,
+      "ts_code": "301589.SZ",
+      "stock_code": "301589",
+      "stock_name": "诺瓦星云",
+      "lgb_score": 94.65,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 5,
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 93.69,
       "raw_score": 0.12
     }
   ]

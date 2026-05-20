@@ -7,9 +7,9 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688720.SH",
-      "stock_code": "688720",
-      "stock_name": "艾森股份",
+      "ts_code": "001325.SZ",
+      "stock_code": "001325",
+      "stock_name": "元创股份",
       "lgb_score": 100.0,
       "raw_score": 0.07
     },
@@ -18,32 +18,32 @@
       "ts_code": "603681.SH",
       "stock_code": "603681",
       "stock_name": "永冠新材",
-      "lgb_score": 91.48,
+      "lgb_score": 98.85,
       "raw_score": 0.06
     },
     {
       "rank": 3,
-      "ts_code": "603283.SH",
-      "stock_code": "603283",
-      "stock_name": "赛腾股份",
-      "lgb_score": 88.33,
-      "raw_score": 0.05
+      "ts_code": "688720.SH",
+      "stock_code": "688720",
+      "stock_name": "艾森股份",
+      "lgb_score": 97.54,
+      "raw_score": 0.06
     },
     {
       "rank": 4,
-      "ts_code": "603992.SH",
-      "stock_code": "603992",
-      "stock_name": "松霖科技",
-      "lgb_score": 88.17,
-      "raw_score": 0.05
+      "ts_code": "688458.SH",
+      "stock_code": "688458",
+      "stock_name": "美芯晟",
+      "lgb_score": 96.32,
+      "raw_score": 0.06
     },
     {
       "rank": 5,
-      "ts_code": "301071.SZ",
-      "stock_code": "301071",
-      "stock_name": "力量钻石",
-      "lgb_score": 86.84,
-      "raw_score": 0.05
+      "ts_code": "603368.SH",
+      "stock_code": "603368",
+      "stock_name": "柳药集团",
+      "lgb_score": 94.94,
+      "raw_score": 0.06
     }
   ]
 }

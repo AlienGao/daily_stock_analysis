@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002374.SZ",
-      "stock_code": "002374",
-      "stock_name": "中锐股份",
+      "ts_code": "601700.SH",
+      "stock_code": "601700",
+      "stock_name": "风范股份",
       "lgb_score": 100.0,
-      "raw_score": 0.11
+      "raw_score": 0.1
     },
     {
       "rank": 2,
       "ts_code": "002256.SZ",
       "stock_code": "002256",
       "stock_name": "兆新股份",
-      "lgb_score": 99.3,
-      "raw_score": 0.11
+      "lgb_score": 94.01,
+      "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "000936.SZ",
-      "stock_code": "000936",
-      "stock_name": "华西股份",
-      "lgb_score": 94.69,
-      "raw_score": 0.1
+      "ts_code": "000720.SZ",
+      "stock_code": "000720",
+      "stock_name": "新能泰山",
+      "lgb_score": 89.42,
+      "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "002438.SZ",
-      "stock_code": "002438",
-      "stock_name": "江苏神通",
-      "lgb_score": 92.08,
-      "raw_score": 0.1
+      "ts_code": "002478.SZ",
+      "stock_code": "002478",
+      "stock_name": "常宝股份",
+      "lgb_score": 88.26,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "601700.SH",
-      "stock_code": "601700",
-      "stock_name": "风范股份",
-      "lgb_score": 89.66,
-      "raw_score": 0.09
+      "ts_code": "002309.SZ",
+      "stock_code": "002309",
+      "stock_name": "中利集团",
+      "lgb_score": 86.33,
+      "raw_score": 0.08
     }
   ]
 }

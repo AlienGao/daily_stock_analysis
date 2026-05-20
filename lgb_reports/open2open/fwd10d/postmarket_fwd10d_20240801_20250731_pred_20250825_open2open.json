@@ -11,39 +11,39 @@
       "stock_code": "000859",
       "stock_name": "国风新材",
       "lgb_score": 100.0,
-      "raw_score": 0.29
+      "raw_score": 0.28
     },
     {
       "rank": 2,
       "ts_code": "000601.SZ",
       "stock_code": "000601",
       "stock_name": "韶能股份",
-      "lgb_score": 95.15,
-      "raw_score": 0.26
+      "lgb_score": 98.24,
+      "raw_score": 0.27
     },
     {
       "rank": 3,
-      "ts_code": "000955.SZ",
-      "stock_code": "000955",
-      "stock_name": "欣龙控股",
-      "lgb_score": 85.88,
-      "raw_score": 0.22
+      "ts_code": "603915.SH",
+      "stock_code": "603915",
+      "stock_name": "国茂股份",
+      "lgb_score": 96.77,
+      "raw_score": 0.26
     },
     {
       "rank": 4,
-      "ts_code": "688320.SH",
-      "stock_code": "688320",
-      "stock_name": "禾川科技",
-      "lgb_score": 84.89,
-      "raw_score": 0.22
+      "ts_code": "600386.SH",
+      "stock_code": "600386",
+      "stock_name": "北巴传媒",
+      "lgb_score": 95.8,
+      "raw_score": 0.26
     },
     {
       "rank": 5,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 83.61,
-      "raw_score": 0.21
+      "ts_code": "300429.SZ",
+      "stock_code": "300429",
+      "stock_name": "强力新材",
+      "lgb_score": 91.15,
+      "raw_score": 0.24
     }
   ]
 }

@@ -7,42 +7,42 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301322.SZ",
-      "stock_code": "301322",
-      "stock_name": "绿通科技",
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
       "lgb_score": 100.0,
       "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "600076.SH",
-      "stock_code": "600076",
-      "stock_name": "康欣新材",
-      "lgb_score": 97.86,
-      "raw_score": 0.09
+      "ts_code": "688455.SH",
+      "stock_code": "688455",
+      "stock_name": "科捷智能",
+      "lgb_score": 90.82,
+      "raw_score": 0.07
     },
     {
       "rank": 3,
       "ts_code": "000404.SZ",
       "stock_code": "000404",
       "stock_name": "长虹华意",
-      "lgb_score": 97.49,
-      "raw_score": 0.09
+      "lgb_score": 90.48,
+      "raw_score": 0.07
     },
     {
       "rank": 4,
-      "ts_code": "301225.SZ",
-      "stock_code": "301225",
-      "stock_name": "恒勃股份",
-      "lgb_score": 92.38,
-      "raw_score": 0.08
+      "ts_code": "002590.SZ",
+      "stock_code": "002590",
+      "stock_name": "万安科技",
+      "lgb_score": 90.08,
+      "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "301590.SZ",
-      "stock_code": "301590",
-      "stock_name": "优优绿能",
-      "lgb_score": 87.65,
+      "ts_code": "603915.SH",
+      "stock_code": "603915",
+      "stock_name": "国茂股份",
+      "lgb_score": 87.77,
       "raw_score": 0.07
     }
   ]

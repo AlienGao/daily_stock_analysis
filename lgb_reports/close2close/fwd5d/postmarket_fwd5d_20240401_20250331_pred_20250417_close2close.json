@@ -11,39 +11,39 @@
       "stock_code": "301633",
       "stock_name": "港迪技术",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.14
     },
     {
       "rank": 2,
-      "ts_code": "301110.SZ",
-      "stock_code": "301110",
-      "stock_name": "青木科技",
-      "lgb_score": 89.65,
-      "raw_score": 0.11
-    },
-    {
-      "rank": 3,
       "ts_code": "300885.SZ",
       "stock_code": "300885",
       "stock_name": "海昌新材",
-      "lgb_score": 88.8,
-      "raw_score": 0.1
+      "lgb_score": 90.86,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 89.9,
+      "raw_score": 0.11
     },
     {
       "rank": 4,
-      "ts_code": "688135.SH",
-      "stock_code": "688135",
-      "stock_name": "利扬芯片",
-      "lgb_score": 87.55,
-      "raw_score": 0.1
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 88.69,
+      "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "688316.SH",
-      "stock_code": "688316",
-      "stock_name": "青云科技-U",
-      "lgb_score": 86.28,
-      "raw_score": 0.1
+      "ts_code": "301596.SZ",
+      "stock_code": "301596",
+      "stock_name": "瑞迪智驱",
+      "lgb_score": 88.35,
+      "raw_score": 0.11
     }
   ]
 }

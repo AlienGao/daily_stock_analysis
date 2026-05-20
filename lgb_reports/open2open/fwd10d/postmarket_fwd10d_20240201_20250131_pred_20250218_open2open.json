@@ -18,32 +18,32 @@
       "ts_code": "688368.SH",
       "stock_code": "688368",
       "stock_name": "晶丰明源",
-      "lgb_score": 98.29,
-      "raw_score": 0.23
+      "lgb_score": 93.88,
+      "raw_score": 0.21
     },
     {
       "rank": 3,
-      "ts_code": "688135.SH",
-      "stock_code": "688135",
-      "stock_name": "利扬芯片",
-      "lgb_score": 91.11,
-      "raw_score": 0.2
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 93.53,
+      "raw_score": 0.21
     },
     {
       "rank": 4,
-      "ts_code": "300970.SZ",
-      "stock_code": "300970",
-      "stock_name": "华绿生物",
-      "lgb_score": 87.54,
-      "raw_score": 0.19
-    },
-    {
-      "rank": 5,
       "ts_code": "600308.SH",
       "stock_code": "600308",
       "stock_name": "华泰股份",
-      "lgb_score": 87.54,
-      "raw_score": 0.19
+      "lgb_score": 93.5,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 5,
+      "ts_code": "688135.SH",
+      "stock_code": "688135",
+      "stock_name": "利扬芯片",
+      "lgb_score": 91.0,
+      "raw_score": 0.2
     }
   ]
 }

@@ -11,7 +11,7 @@
       "stock_code": "301110",
       "stock_name": "青木科技",
       "lgb_score": 100.0,
-      "raw_score": 0.16
+      "raw_score": 0.17
     },
     {
       "rank": 2,
@@ -19,31 +19,31 @@
       "stock_code": "300263",
       "stock_name": "隆华科技",
       "lgb_score": 94.15,
-      "raw_score": 0.14
+      "raw_score": 0.15
     },
     {
       "rank": 3,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 91.26,
-      "raw_score": 0.13
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 91.6,
+      "raw_score": 0.14
     },
     {
       "rank": 4,
-      "ts_code": "002395.SZ",
-      "stock_code": "002395",
-      "stock_name": "双象股份",
-      "lgb_score": 88.06,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 85.63,
       "raw_score": 0.12
     },
     {
       "rank": 5,
-      "ts_code": "301008.SZ",
-      "stock_code": "301008",
-      "stock_name": "宏昌科技",
-      "lgb_score": 85.96,
-      "raw_score": 0.11
+      "ts_code": "000404.SZ",
+      "stock_code": "000404",
+      "stock_name": "长虹华意",
+      "lgb_score": 85.56,
+      "raw_score": 0.12
     }
   ]
 }

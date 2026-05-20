@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002165.SZ",
-      "stock_code": "002165",
-      "stock_name": "红 宝 丽",
+      "ts_code": "002255.SZ",
+      "stock_code": "002255",
+      "stock_name": "海陆重工",
       "lgb_score": 100.0,
       "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "002255.SZ",
-      "stock_code": "002255",
-      "stock_name": "海陆重工",
-      "lgb_score": 98.99,
-      "raw_score": 0.09
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 95.03,
+      "raw_score": 0.07
     },
     {
       "rank": 3,
-      "ts_code": "000159.SZ",
-      "stock_code": "000159",
-      "stock_name": "国际实业",
-      "lgb_score": 98.49,
-      "raw_score": 0.09
+      "ts_code": "002965.SZ",
+      "stock_code": "002965",
+      "stock_name": "祥鑫科技",
+      "lgb_score": 91.97,
+      "raw_score": 0.07
     },
     {
       "rank": 4,
-      "ts_code": "600151.SH",
-      "stock_code": "600151",
-      "stock_name": "航天机电",
-      "lgb_score": 95.86,
-      "raw_score": 0.08
+      "ts_code": "000733.SZ",
+      "stock_code": "000733",
+      "stock_name": "振华科技",
+      "lgb_score": 91.92,
+      "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "000859.SZ",
-      "stock_code": "000859",
-      "stock_name": "国风新材",
-      "lgb_score": 94.18,
-      "raw_score": 0.08
+      "ts_code": "002164.SZ",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 91.58,
+      "raw_score": 0.06
     }
   ]
 }

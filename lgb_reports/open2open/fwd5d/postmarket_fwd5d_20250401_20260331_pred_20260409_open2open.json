@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300757.SZ",
-      "stock_code": "300757",
-      "stock_name": "罗博特科",
+      "ts_code": "301023.SZ",
+      "stock_code": "301023",
+      "stock_name": "奕帆传动",
       "lgb_score": 100.0,
       "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "688381.SH",
-      "stock_code": "688381",
-      "stock_name": "帝奥微",
-      "lgb_score": 96.06,
-      "raw_score": 0.09
+      "ts_code": "301118.SZ",
+      "stock_code": "301118",
+      "stock_name": "恒光股份",
+      "lgb_score": 98.45,
+      "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "603344.SH",
-      "stock_code": "603344",
-      "stock_name": "星德胜",
-      "lgb_score": 90.37,
-      "raw_score": 0.08
+      "ts_code": "920125.BJ",
+      "stock_code": "920125.BJ",
+      "stock_name": "",
+      "lgb_score": 97.15,
+      "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "002940.SZ.SZ",
-      "stock_code": "002940",
-      "stock_name": "昂利康",
-      "lgb_score": 89.54,
-      "raw_score": 0.08
+      "ts_code": "301383.SZ",
+      "stock_code": "301383",
+      "stock_name": "天键股份",
+      "lgb_score": 96.39,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "688498.SH",
-      "stock_code": "688498",
-      "stock_name": "源杰科技",
-      "lgb_score": 88.42,
-      "raw_score": 0.08
+      "ts_code": "688228.SH",
+      "stock_code": "688228",
+      "stock_name": "开普云",
+      "lgb_score": 92.66,
+      "raw_score": 0.09
     }
   ]
 }

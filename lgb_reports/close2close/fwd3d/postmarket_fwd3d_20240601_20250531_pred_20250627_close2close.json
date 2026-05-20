@@ -7,34 +7,34 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000850.SZ",
-      "stock_code": "000850",
-      "stock_name": "华茂股份",
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
       "lgb_score": 100.0,
-      "raw_score": 0.09
+      "raw_score": 0.12
     },
     {
       "rank": 2,
-      "ts_code": "600076.SH",
-      "stock_code": "600076",
-      "stock_name": "康欣新材",
-      "lgb_score": 99.33,
+      "ts_code": "002104.SZ",
+      "stock_code": "002104",
+      "stock_name": "恒宝股份",
+      "lgb_score": 86.12,
       "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "688691.SH",
-      "stock_code": "688691",
-      "stock_name": "灿芯股份",
-      "lgb_score": 99.29,
+      "ts_code": "301022.SZ",
+      "stock_code": "301022",
+      "stock_name": "海泰科",
+      "lgb_score": 85.75,
       "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "300166.SZ",
-      "stock_code": "300166",
-      "stock_name": "东方国信",
-      "lgb_score": 97.73,
+      "ts_code": "688691.SH",
+      "stock_code": "688691",
+      "stock_name": "灿芯股份",
+      "lgb_score": 85.16,
       "raw_score": 0.09
     },
     {
@@ -42,8 +42,8 @@
       "ts_code": "002445.SZ",
       "stock_code": "002445",
       "stock_name": "中南文化",
-      "lgb_score": 95.26,
-      "raw_score": 0.09
+      "lgb_score": 83.16,
+      "raw_score": 0.08
     }
   ]
 }

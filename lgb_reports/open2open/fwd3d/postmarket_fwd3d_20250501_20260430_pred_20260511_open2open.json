@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "HK06160",
-      "stock_code": "HK06160",
-      "stock_name": "",
+      "ts_code": "002150.SZ",
+      "stock_code": "002150",
+      "stock_name": "正泰电源",
       "lgb_score": 100.0,
-      "raw_score": 0.05
+      "raw_score": 0.08
     },
     {
       "rank": 2,
-      "ts_code": "301511.SZ",
-      "stock_code": "301511",
-      "stock_name": "德福科技",
-      "lgb_score": 95.8,
-      "raw_score": 0.04
-    },
-    {
-      "rank": 3,
-      "ts_code": "002008.SZ",
-      "stock_code": "002008",
-      "stock_name": "大族激光",
-      "lgb_score": 86.7,
-      "raw_score": 0.03
-    },
-    {
-      "rank": 4,
-      "ts_code": "300308.SZ",
-      "stock_code": "300308",
-      "stock_name": "中际旭创",
-      "lgb_score": 84.58,
-      "raw_score": 0.03
-    },
-    {
-      "rank": 5,
       "ts_code": "300976.SZ",
       "stock_code": "300976",
       "stock_name": "达瑞电子",
-      "lgb_score": 82.03,
-      "raw_score": 0.02
+      "lgb_score": 96.76,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 3,
+      "ts_code": "301379.SZ",
+      "stock_code": "301379",
+      "stock_name": "天山电子",
+      "lgb_score": 90.07,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 4,
+      "ts_code": "301589.SZ",
+      "stock_code": "301589",
+      "stock_name": "诺瓦星云",
+      "lgb_score": 85.48,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 5,
+      "ts_code": "301513.SZ",
+      "stock_code": "301513",
+      "stock_name": "尚水智能",
+      "lgb_score": 83.58,
+      "raw_score": 0.05
     }
   ]
 }

@@ -11,38 +11,38 @@
       "stock_code": "301117",
       "stock_name": "佳缘科技",
       "lgb_score": 100.0,
-      "raw_score": 0.31
+      "raw_score": 0.35
     },
     {
       "rank": 2,
       "ts_code": "300612.SZ",
       "stock_code": "300612",
       "stock_name": "宣亚国际",
-      "lgb_score": 97.51,
-      "raw_score": 0.3
+      "lgb_score": 93.8,
+      "raw_score": 0.32
     },
     {
       "rank": 3,
       "ts_code": "600802.SH",
       "stock_code": "600802",
       "stock_name": "福建水泥",
-      "lgb_score": 86.41,
-      "raw_score": 0.25
+      "lgb_score": 82.65,
+      "raw_score": 0.27
     },
     {
       "rank": 4,
-      "ts_code": "920985.BJ",
-      "stock_code": "920985.BJ",
-      "stock_name": "",
-      "lgb_score": 84.71,
-      "raw_score": 0.24
-    },
-    {
-      "rank": 5,
       "ts_code": "920578.BJ",
       "stock_code": "920578.BJ",
       "stock_name": "",
-      "lgb_score": 84.54,
+      "lgb_score": 78.69,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 5,
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 75.87,
       "raw_score": 0.24
     }
   ]

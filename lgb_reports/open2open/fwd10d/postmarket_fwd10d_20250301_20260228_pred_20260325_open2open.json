@@ -7,43 +7,43 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301306.SZ",
-      "stock_code": "301306",
-      "stock_name": "西测测试",
+      "ts_code": "688195.SH",
+      "stock_code": "688195",
+      "stock_name": "腾景科技",
       "lgb_score": 100.0,
-      "raw_score": 0.19
+      "raw_score": 0.21
     },
     {
       "rank": 2,
-      "ts_code": "000589.SZ",
-      "stock_code": "000589",
-      "stock_name": "贵州轮胎",
-      "lgb_score": 87.07,
-      "raw_score": 0.14
+      "ts_code": "688411.SH",
+      "stock_code": "688411",
+      "stock_name": "海博思创",
+      "lgb_score": 95.16,
+      "raw_score": 0.2
     },
     {
       "rank": 3,
-      "ts_code": "301599.SZ",
-      "stock_code": "301599",
-      "stock_name": "理奇智能",
-      "lgb_score": 83.64,
-      "raw_score": 0.13
+      "ts_code": "600704.SH",
+      "stock_code": "600704",
+      "stock_name": "物产中大",
+      "lgb_score": 81.84,
+      "raw_score": 0.15
     },
     {
       "rank": 4,
-      "ts_code": "688811.SH",
-      "stock_code": "688811",
-      "stock_name": "有研复材",
-      "lgb_score": 82.9,
-      "raw_score": 0.13
+      "ts_code": "000589.SZ",
+      "stock_code": "000589",
+      "stock_name": "贵州轮胎",
+      "lgb_score": 81.37,
+      "raw_score": 0.15
     },
     {
       "rank": 5,
-      "ts_code": "301683.SZ",
-      "stock_code": "301683",
-      "stock_name": "慧谷新材",
-      "lgb_score": 82.29,
-      "raw_score": 0.13
+      "ts_code": "688808.SH",
+      "stock_code": "688808",
+      "stock_name": "联讯仪器",
+      "lgb_score": 80.33,
+      "raw_score": 0.15
     }
   ]
 }
