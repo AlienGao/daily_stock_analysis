@@ -46,7 +46,7 @@ const LightGBMPage: React.FC = () => {
   const [backtestSim, setBacktestSim] = useState<LGBBacktestSimResponse | null>(null);
   const [backtestSimLoading, setBacktestSimLoading] = useState(false);
   const [backtestFwd, setBacktestFwd] = useState(1);
-  const [backtestTopN, setBacktestTopN] = useState(5);
+  const [backtestTopN, setBacktestTopN] = useState(1);
 
   /* ── Derived per-mode bounds ── */
   const dateBounds = dateRange?.postmarket;
@@ -102,11 +102,12 @@ const LightGBMPage: React.FC = () => {
   }, [selectedModel]);
   const loadModelResults = useCallback(async (modelPath: string) => {
     setError(null);
+    setBacktest(null);
+    // Fetch FI & predictions independently from backtest (backtest may fail on loaded model)
     try {
-      const [fi, pred, bt] = await Promise.all([
+      const [fi, pred] = await Promise.all([
         researchApi.getFeatureImportance(modelPath),
         researchApi.getPredictions(modelPath),
-        researchApi.getBacktestCompare({ mode: 'postmarket', top_n: 10, forward_days: forwardDays, model_path: modelPath }),
       ]);
       const fiList = Object.keys(fi.gain).map((name) => ({
         name,
@@ -116,11 +117,10 @@ const LightGBMPage: React.FC = () => {
       setFeatureImportance(fiList);
       setPredictions(pred.predictions);
       setPredictionDate(pred.model_date);
-      setBacktest(bt);
     } catch (e) {
       setError(getParsedApiError(e));
     }
-  }, [forwardDays]);
+  }, []);
 
   /* ── Train ── */
   const handleTrain = useCallback(async () => {
@@ -228,7 +228,7 @@ const LightGBMPage: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => { fetchBacktestSim(1, trainExecMode, backtestTopN); }, [fetchBacktestSim, trainExecMode, backtestTopN]);
+  useEffect(() => { fetchBacktestSim(backtestFwd, trainExecMode, backtestTopN); }, [fetchBacktestSim, trainExecMode, backtestTopN]);
 
   /* ── Cleanup polling on unmount ── */
   useEffect(() => {
@@ -518,7 +518,7 @@ const LightGBMPage: React.FC = () => {
                   max={5}
                   value={backtestTopN}
                   onChange={(v) => {
-                    const n = v ?? 5;
+                    const n = v ?? 1;
                     setBacktestTopN(n);
                     fetchBacktestSim(backtestFwd, trainExecMode, n);
                   }}

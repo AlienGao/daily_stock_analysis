@@ -729,6 +729,25 @@ class LGBTrainer:
     # Model Persistence
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _cleanup_same_config_models(new_name: str):
+        """Delete old models matching the same mode/fwd/exec_mode."""
+        parts = new_name.rsplit("_", 3)
+        if len(parts) < 4:
+            return
+        prefix = parts[0]
+        suffix = parts[3]
+
+        if not os.path.isdir(MODEL_DIR):
+            return
+        import glob as _g
+        pattern = f"{prefix}_*_{suffix}.joblib"
+        for fp in _g.glob(os.path.join(MODEL_DIR, pattern)):
+            try:
+                os.remove(fp)
+            except OSError:
+                pass
+
     def save(self, name: Optional[str] = None) -> str:
         """保存模型到 data/lgb_models/ 目录。"""
         if self.model is None:
@@ -737,10 +756,12 @@ class LGBTrainer:
         os.makedirs(MODEL_DIR, exist_ok=True)
         if name is None:
             exec_suffix = "open2open" if self.exec_mode == "open" else "close2close"
-            name = (
-                f"lgb_{self.mode}_fwd{self.forward_days}d_"
-                f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{exec_suffix}"
-            )
+            sd = str(self._train_start).replace("-", "")[:8]
+            ed = str(self._train_end).replace("-", "")[:8]
+            name = f"lgb_{self.mode}_fwd{self.forward_days}d_{sd}_{ed}_{exec_suffix}"
+
+        # Delete old models with the same (mode, forward_days, exec_mode)
+        _cleanup_same_config_models(name)
 
         model_path = os.path.join(MODEL_DIR, f"{name}.joblib")
         meta = {
@@ -805,9 +826,10 @@ class LGBTrainer:
         ed = str(ed).replace("-", "")[:8]
         exec_suffix = "open2open" if self.exec_mode == "open" else "close2close"
         base = f"{self.mode}_fwd{self.forward_days}d_{sd}_{ed}_{exec_suffix}"
-        md_path = os.path.join(_REPORTS_DIR, f"{base}.md")
-        json_path = os.path.join(_REPORTS_DIR, f"{base}.json")
-        os.makedirs(_REPORTS_DIR, exist_ok=True)
+        report_dir = os.path.join(_REPORTS_DIR, exec_suffix)
+        md_path = os.path.join(report_dir, f"{base}.md")
+        json_path = os.path.join(report_dir, f"{base}.json")
+        os.makedirs(report_dir, exist_ok=True)
 
         importance = self.get_feature_importance()
         top_predictions = self.get_latest_predictions(top_n=top_n)
@@ -861,7 +883,7 @@ class LGBTrainer:
         report = {
             "mode": self.mode,
             "forward_days": self.forward_days,
-            "generated_at": now,
+            "generated_at": datetime.now().isoformat(),
             "training_metrics": {k: v for k, v in metrics.items()},
             "feature_importance": {
                 "gain": dict(list(importance["gain"].items())[:20]),

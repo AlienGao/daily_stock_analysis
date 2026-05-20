@@ -23,17 +23,18 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from src.discovery.ml.lgb_trainer import LGBTrainer
 from src.storage import DatabaseManager, StockDaily
 
-REPORTS_DIR = os.path.join(
+REPORTS_ROOT = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lgb_reports"
 )
+# EXEC_SUBDIR is set in main() after EXEC_MODE is known
 
-TRAIN_START = "20250101"
-TRAIN_END = "20251231"
-PRED_START = "20260101"
+TRAIN_START = "20240101"
+TRAIN_END = "20260430"
+PRED_START = "20250101"
 PRED_END = "20260519"
-FORWARD_DAYS_LIST = [1, 3]
+FORWARD_DAYS_LIST = [1, 3, 5]
 MODE = "postmarket"
-EXEC_MODE = "open"  # "open" = open→open labels, "close" = close→close labels
+EXEC_MODE_LIST = ["open", "close"]  # "open" = open→open labels, "close" = close→close labels
 TOP_N = 5
 
 
@@ -83,8 +84,10 @@ def save_daily_report(trainer: LGBTrainer, pred_date: str) -> str:
 
     exec_suffix = "open2open" if getattr(trainer, "exec_mode", "close") == "open" else "close2close"
     base = f"{trainer.mode}_fwd{trainer.forward_days}d_{sd}_{ed}_pred_{pred_date}_{exec_suffix}"
-    md_path = os.path.join(REPORTS_DIR, f"{base}.md")
-    json_path = os.path.join(REPORTS_DIR, f"{base}.json")
+    report_dir = os.path.join(REPORTS_ROOT, exec_suffix)
+    os.makedirs(report_dir, exist_ok=True)
+    md_path = os.path.join(report_dir, f"{base}.md")
+    json_path = os.path.join(report_dir, f"{base}.json")
 
     lines = [
         f"# LGB 预测 · {trainer.mode} · 前向 {trainer.forward_days} 日",
@@ -179,54 +182,98 @@ def run_window(trainer: LGBTrainer, train_s: str, train_e: str,
 
 
 def main():
-    os.makedirs(REPORTS_DIR, exist_ok=True)
+    os.makedirs(REPORTS_ROOT, exist_ok=True)
     windows = generate_monthly_windows()
 
     print("=" * 64)
     print(f"滚动窗口 LGB 回测")
-    print(f"模式: {MODE} | exec: {EXEC_MODE} | Top {TOP_N}")
+    print(f"模式: {MODE} | exec: {EXEC_MODE_LIST} | Top {TOP_N}")
     print(f"训练起点: {TRAIN_START} ~ {TRAIN_END} (逐月右移)")
     print(f"预测范围: {PRED_START} ~ {PRED_END}")
     print(f"窗口数: {len(windows)} | Forward: {FORWARD_DAYS_LIST}")
-    print(f"报告目录: {REPORTS_DIR}")
+    print(f"报告目录: {REPORTS_ROOT}/{{open2open,close2close}}")
     print("=" * 64)
 
     grand_total_ok = 0
     grand_total_fail = 0
 
-    for fwd in FORWARD_DAYS_LIST:
+    for exec_mode in EXEC_MODE_LIST:
+        exec_suffix = "open2open" if exec_mode == "open" else "close2close"
         print(f"\n{'#'*60}")
-        print(f"# Forward = {fwd} 日")
+        print(f"# EXEC = {exec_mode} ({exec_suffix})")
         print(f"{'#'*60}")
 
-        fwd_ok = 0
-        fwd_fail = 0
+        for fwd in FORWARD_DAYS_LIST:
+            print(f"\n{'='*50}")
+            print(f"  Forward = {fwd} 日")
+            print(f"{'='*50}")
 
-        for wi, (train_s, train_e, pred_s, pred_e) in enumerate(windows):
-            print(f"\n--- Window {wi + 1}/{len(windows)} "
-                  f"train={train_s}~{train_e}  pred={pred_s}~{pred_e} ---")
+            fwd_ok = 0
+            fwd_fail = 0
 
-            trainer = LGBTrainer(mode=MODE, forward_days=fwd, exec_mode=EXEC_MODE)
-            result = run_window(trainer, train_s, train_e, pred_s, pred_e)
+            for wi, (train_s, train_e, pred_s, pred_e) in enumerate(windows):
+                print(f"\n--- Window {wi + 1}/{len(windows)} "
+                      f"train={train_s}~{train_e}  pred={pred_s}~{pred_e} ---")
 
-            if result["status"] == "skip":
-                print(f"  跳过: {result['reason']}")
-                continue
+                trainer = LGBTrainer(mode=MODE, forward_days=fwd, exec_mode=exec_mode)
+                result = run_window(trainer, train_s, train_e, pred_s, pred_e)
 
-            fwd_ok += result["ok"]
-            fwd_fail += result["fail"]
-            print(f"  成功: {result['ok']}/{result['total']}"
-                  + (f"  失败: {result['fail']}" if result["fail"] else ""))
+                if result["status"] == "skip":
+                    print(f"  跳过: {result['reason']}")
+                    continue
 
-            trainer.save()
+                fwd_ok += result["ok"]
+                fwd_fail += result["fail"]
+                print(f"  成功: {result['ok']}/{result['total']}"
+                      + (f"  失败: {result['fail']}" if result["fail"] else ""))
 
-        print(f"\n  Forward={fwd}d 汇总: 成功 {fwd_ok}, 失败 {fwd_fail}")
-        grand_total_ok += fwd_ok
-        grand_total_fail += fwd_fail
+                trainer.save()
+
+            print(f"\n  EXEC={exec_suffix} Forward={fwd}d 汇总: 成功 {fwd_ok}, 失败 {fwd_fail}")
+            grand_total_ok += fwd_ok
+            grand_total_fail += fwd_fail
 
     print(f"\n{'='*60}")
     print(f"全部完成: 成功 {grand_total_ok}, 失败 {grand_total_fail}")
     print(f"{'='*60}")
+
+    # Cleanup: keep only the latest model per exec_mode
+    cleanup_old_models()
+    print(f"\n模型清理完成")
+
+
+def cleanup_old_models():
+    """Remove old model files, keeping only the latest open and latest close model."""
+    models_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "src", "data", "lgb_models",
+    )
+    if not os.path.isdir(models_dir):
+        return
+
+    models = [f for f in os.listdir(models_dir) if f.endswith(".joblib") and f.startswith("lgb_")]
+    if not models:
+        return
+
+    # Group by (forward_days, exec_mode), keep only the latest per group
+    keep: set = set()
+    for fwd in [1, 3]:
+        for suffix in ["open2open", "close2close"]:
+            group = sorted(
+                [m for m in models if f"fwd{fwd}d" in m and suffix in m],
+                reverse=True,
+            )
+            if group:
+                keep.add(group[0])  # latest per (fwd, exec_mode)
+
+    deleted = 0
+    for m in models:
+        if m not in keep:
+            os.remove(os.path.join(models_dir, m))
+            deleted += 1
+
+    if deleted:
+        print(f"  删除历史模型: {deleted}  保留: {keep}")
 
 
 if __name__ == "__main__":

@@ -106,19 +106,17 @@ class IntradayScanner:
     # ------------------------------------------------------------------
 
     def start(self) -> None:
-        """启动盘中扫描轮询（阻塞，永久运行）。"""
+        """启动盘中扫描，收盘后自动退出。"""
         logger.info(
             "[Scanner] 盘中扫描守护进程启动, interval=%ss, top_n=%s",
             self.config.scan_interval_seconds,
             self.config.scan_top_n,
         )
 
-        while True:
-            try:
-                self._wait_for_market_and_scan()
-            except Exception as e:
-                logger.warning("[Scanner] 扫描周期异常，60s 后重试: %s", e)
-                time.sleep(60)
+        try:
+            self._wait_for_market_and_scan()
+        except Exception as e:
+            logger.warning("[Scanner] 扫描周期异常，进程退出: %s", e)
 
     # ------------------------------------------------------------------
     # Market timing

@@ -504,8 +504,12 @@ def lgb_backtest_sim(
 
     # 1. Scan prediction files (filtered by exec_mode suffix)
     exec_suffix = "open2open" if exec_mode == "open" else "close2close"
-    pattern = f"*_fwd{forward_days}d_*_pred_*_{exec_suffix}.json"
-    json_files = sorted(_glob.glob(_os.path.join(reports_dir, pattern)))
+    pattern = f"*_fwd{forward_days}d_*_pred_*.json"
+    search_dir = _os.path.join(reports_dir, exec_suffix)
+    json_files = sorted(_glob.glob(_os.path.join(search_dir, pattern)))
+    # Fallback: also check root reports_dir for legacy files
+    if not json_files:
+        json_files = sorted(_glob.glob(_os.path.join(reports_dir, pattern)))
     if not json_files:
         raise HTTPException(status_code=404, detail=f"No {exec_suffix} prediction files found for forward_days={forward_days}")
 
@@ -890,3 +894,29 @@ def lgb_backtest_sim(
 
     _backtest_cache[cache_key] = result
     return result
+
+
+def _warmup_backtest_cache():
+    """Pre-warm backtest-sim cache in background to avoid first-request timeout."""
+    import logging
+    _log = logging.getLogger(__name__)
+    common_combos = [
+        (1, 5, "open"),
+        (1, 5, "close"),
+        (3, 5, "open"),
+        (3, 5, "close"),
+    ]
+    for fwd, tn, em in common_combos:
+        key = f"fwd{fwd}_top{tn}_{em}"
+        if key not in _backtest_cache:
+            try:
+                # Internal call — duplicate logic but avoids circular imports
+                lgb_backtest_sim(forward_days=fwd, top_n=tn, exec_mode=em)
+                _log.info(f"Backtest cache warmed: {key}")
+            except Exception:
+                _log.warning(f"Backtest cache warmup failed: {key}", exc_info=True)
+
+
+# Fire-and-forget background warmup after module loads
+_t = threading.Thread(target=_warmup_backtest_cache, daemon=True)
+_t.start()
