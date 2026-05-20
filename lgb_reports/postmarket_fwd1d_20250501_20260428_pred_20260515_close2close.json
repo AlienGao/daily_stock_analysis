@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 1,
+  "train_start": "20250501",
+  "train_end": "20260428",
+  "pred_date": "20260515",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "601678.SH",
+      "stock_code": "601678",
+      "stock_name": "滨化股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 2,
+      "ts_code": "300276.SZ",
+      "stock_code": "300276",
+      "stock_name": "三丰智能",
+      "lgb_score": 92.66,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 3,
+      "ts_code": "600081.SH",
+      "stock_code": "600081",
+      "stock_name": "东风科技",
+      "lgb_score": 89.46,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 4,
+      "ts_code": "688549.SH",
+      "stock_code": "688549",
+      "stock_name": "中巨芯-U",
+      "lgb_score": 88.63,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 5,
+      "ts_code": "600386.SH",
+      "stock_code": "600386",
+      "stock_name": "北巴传媒",
+      "lgb_score": 85.63,
+      "raw_score": 0.06
+    }
+  ]
+}

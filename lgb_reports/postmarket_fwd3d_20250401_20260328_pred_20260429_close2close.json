@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20250401",
+  "train_end": "20260328",
+  "pred_date": "20260429",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002847.SZ",
+      "stock_code": "002847",
+      "stock_name": "盐津铺子",
+      "lgb_score": 100.0,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 2,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 80.04,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 3,
+      "ts_code": "301396.SZ",
+      "stock_code": "301396",
+      "stock_name": "宏景科技",
+      "lgb_score": 79.79,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 4,
+      "ts_code": "000915.SZ",
+      "stock_code": "000915",
+      "stock_name": "华特达因",
+      "lgb_score": 78.84,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 5,
+      "ts_code": "301129.SZ",
+      "stock_code": "301129",
+      "stock_name": "瑞纳智能",
+      "lgb_score": 77.82,
+      "raw_score": 0.06
+    }
+  ]
+}

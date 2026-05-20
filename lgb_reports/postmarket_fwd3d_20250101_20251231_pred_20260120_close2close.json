@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20250101",
+  "train_end": "20251231",
+  "pred_date": "20260120",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301071.SZ",
+      "stock_code": "301071",
+      "stock_name": "力量钻石",
+      "lgb_score": 100.0,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "300151.SZ",
+      "stock_code": "300151",
+      "stock_name": "昌红科技",
+      "lgb_score": 92.17,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 3,
+      "ts_code": "603915.SH",
+      "stock_code": "603915",
+      "stock_name": "国茂股份",
+      "lgb_score": 90.22,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "688035.SH",
+      "stock_code": "688035",
+      "stock_name": "德邦科技",
+      "lgb_score": 90.07,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "300042.SZ",
+      "stock_code": "300042",
+      "stock_name": "朗科科技",
+      "lgb_score": 88.51,
+      "raw_score": 0.07
+    }
+  ]
+}

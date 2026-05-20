@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 1,
+  "train_start": "20250101",
+  "train_end": "20251231",
+  "pred_date": "20260113",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "920367.BJ",
+      "stock_code": "920367.BJ",
+      "stock_name": "",
+      "lgb_score": 100.0,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 2,
+      "ts_code": "688031.SH",
+      "stock_code": "688031",
+      "stock_name": "星环科技-U",
+      "lgb_score": 98.59,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 3,
+      "ts_code": "000785.SZ",
+      "stock_code": "000785",
+      "stock_name": "居然智家",
+      "lgb_score": 98.28,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 4,
+      "ts_code": "601992.SH",
+      "stock_code": "601992",
+      "stock_name": "金隅集团",
+      "lgb_score": 97.62,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 5,
+      "ts_code": "300751.SZ",
+      "stock_code": "300751",
+      "stock_name": "迈为股份",
+      "lgb_score": 92.51,
+      "raw_score": 0.04
+    }
+  ]
+}

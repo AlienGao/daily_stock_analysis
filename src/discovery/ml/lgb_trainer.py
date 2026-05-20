@@ -20,6 +20,7 @@ from lightgbm import LGBMRegressor
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import mean_squared_error
 
+from data_provider.base import is_st_stock
 from src.storage import DatabaseManager
 
 warnings.filterwarnings("ignore", category=UserWarning, module="lightgbm")
@@ -27,6 +28,7 @@ warnings.filterwarnings("ignore", category=UserWarning, module="lightgbm")
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
 MODEL_DIR = os.path.join(_PROJECT_ROOT, "data", "lgb_models")
+_REPORTS_DIR = os.path.join(_PROJECT_ROOT, "lgb_reports")
 
 
 def _get_db() -> DatabaseManager:
@@ -48,12 +50,15 @@ class LGBTrainer:
         importance = trainer.get_feature_importance()
     """
 
-    def __init__(self, mode: str = "postmarket", forward_days: int = 5,
-                 progress_callback=None):
+    def __init__(self, mode: str = "postmarket", forward_days: int = 3,
+                 exec_mode: str = "close", progress_callback=None):
         if mode not in ("intraday", "postmarket"):
             raise ValueError("mode 须为 intraday 或 postmarket")
+        if exec_mode not in ("open", "close"):
+            raise ValueError("exec_mode 须为 open 或 close")
         self.mode = mode
         self.forward_days = forward_days
+        self.exec_mode = exec_mode  # "open" = open→open labels, "close" = close→close labels
         self.progress_callback = progress_callback
         self.model: Optional[LGBMRegressor] = None
         self.feature_names: List[str] = []
@@ -75,55 +80,76 @@ class LGBTrainer:
     ) -> Tuple[pd.DataFrame, pd.Series]:
         """从 factor_score_snapshots 构建特征矩阵与目标变量。
 
+        使用 SQL 级 PIVOT（MAX+CASE WHEN）避免将 60M 行加载到 Python 内存。
         特征矩阵: 每行 = (trade_date, ts_code)，每列 = 一个因子 score
         目标变量: N 日后的涨跌幅（从 stock_daily 计算）
         """
         db = _get_db()
         cb = self.progress_callback
+        from sqlalchemy import text as _text
 
-        from src.storage import FactorScoreSnapshot
+        if start_date is not None:
+            start_date = start_date.replace("-", "")
+        if end_date is not None:
+            end_date = end_date.replace("-", "")
 
         if cb:
             cb(f"正在查询{mode_label(self.mode)}因子快照...")
+
         with db.get_session() as session:
-            q = session.query(FactorScoreSnapshot).filter(
-                FactorScoreSnapshot.mode == self.mode,
-            )
-            if start_date:
-                q = q.filter(FactorScoreSnapshot.trade_date >= start_date)
-            if end_date:
-                q = q.filter(FactorScoreSnapshot.trade_date <= end_date)
-
-            rows = q.all()
-            if not rows:
+            factor_rows = session.execute(
+                _text(
+                    "SELECT DISTINCT factor_name FROM factor_score_snapshots "
+                    "WHERE mode = :mode"
+                ),
+                {"mode": self.mode},
+            ).fetchall()
+            if not factor_rows:
                 raise ValueError(
-                    f"factor_score_snapshots 中没有 mode={self.mode} "
-                    f"日期范围 [{start_date or 'any'}, {end_date or 'any'}] 的数据"
+                    f"factor_score_snapshots 中没有 mode={self.mode} 的数据"
                 )
+        factor_names = sorted(r[0] for r in factor_rows)
+        self.feature_names = factor_names
 
-            if cb:
-                cb(f"已读取 {len(rows):,} 行快照数据，正在构建特征矩阵...")
-            records = [
-                {"trade_date": r.trade_date, "ts_code": r.ts_code,
-                 "factor_name": r.factor_name, "score": r.score}
-                for r in rows
-            ]
-
-        df = pd.DataFrame(records)
-        df["score"] = pd.to_numeric(df["score"], errors="coerce")
-
-        pivot = df.pivot_table(
-            index=["trade_date", "ts_code"],
-            columns="factor_name",
-            values="score",
-            aggfunc="mean",
-        )
-        pivot.reset_index(inplace=True)
-        self.feature_names = [c for c in pivot.columns
-                              if c not in ("trade_date", "ts_code")]
         if cb:
-            cb(f"特征矩阵: {pivot.shape[0]:,} 行 × {len(self.feature_names)} 因子")
-        X = pivot.dropna(subset=self.feature_names[:min(3, len(self.feature_names))])
+            cb(f"发现 {len(factor_names)} 个因子，正在 SQL PIVOT 构建特征矩阵...")
+
+        cols = ", ".join(
+            f"MAX(CASE WHEN factor_name = :fn{i} THEN score END) AS \"{fn}\""
+            for i, fn in enumerate(factor_names)
+        )
+
+        sql_where = "WHERE mode = :mode"
+        params: Dict = {"mode": self.mode}
+        if start_date:
+            sql_where += " AND trade_date >= :start_date"
+            params["start_date"] = start_date
+        if end_date:
+            sql_where += " AND trade_date <= :end_date"
+            params["end_date"] = end_date
+        for i, fn in enumerate(factor_names):
+            params[f"fn{i}"] = fn
+
+        pivot_sql = (
+            f"SELECT trade_date, ts_code, {cols} "
+            f"FROM factor_score_snapshots {sql_where} "
+            f"GROUP BY trade_date, ts_code"
+        )
+
+        with db.get_session() as session:
+            conn = session.connection()
+            X = pd.read_sql_query(_text(pivot_sql), conn, params=params)
+
+        if X.empty:
+            raise ValueError(
+                f"factor_score_snapshots 中没有 mode={self.mode} "
+                f"日期范围 [{start_date or 'any'}, {end_date or 'any'}] 的数据"
+            )
+
+        if cb:
+            cb(f"特征矩阵: {X.shape[0]:,} 行 × {len(self.feature_names)} 因子")
+
+        X = X.dropna(subset=self.feature_names[:min(3, len(self.feature_names))])
 
         if cb:
             cb(f"正在计算未来 {self.forward_days} 日收益...")
@@ -141,6 +167,8 @@ class LGBTrainer:
         if cb:
             cb(f"数据准备完成: {len(X):,} 样本，{len(self.feature_names)} 特征，"
                f"日期范围 {X.index.get_level_values(0).min()} ~ {X.index.get_level_values(0).max()}")
+        self._train_start = start_date or X.index.get_level_values(0).min()
+        self._train_end = end_date or X.index.get_level_values(0).max()
         self._X_train = X
         self._y_train = y
         return X, y
@@ -149,13 +177,94 @@ class LGBTrainer:
         self, db: DatabaseManager, X: pd.DataFrame,
         _start: Optional[str], _end: Optional[str],
     ) -> pd.Series:
-        """计算每只股票在每个交易日的 forward N-day 收益。"""
+        """计算每只股票在每个交易日的 forward N-day 收益。
+
+        exec_mode="close": buy at td close, sell at (td+N) close（当前默认）
+        exec_mode="open":  buy at next-trading-day open, sell at N days later open
+        """
         from src.storage import StockDaily
+        from sqlalchemy import func
 
         trading_dates = sorted(X["trade_date"].unique())
         all_codes = X["ts_code"].unique().tolist()
         bare_codes = [c.split(".")[0] for c in all_codes]
 
+        if self.exec_mode == "open":
+            # ── Open-to-open: need full trading day list for date navigation ──
+            with db.get_session() as session:
+                dates_raw = (
+                    session.query(StockDaily.date)
+                    .group_by(StockDaily.date)
+                    .having(func.count(StockDaily.code) >= 100)
+                    .order_by(StockDaily.date)
+                    .all()
+                )
+            trading_days_all = sorted(
+                d[0].strftime("%Y%m%d") if hasattr(d[0], "strftime") else str(d[0]).replace("-", "")[:8]
+                for d in dates_raw
+            )
+
+            # Collect all needed buy/sell dates
+            needed_dates: set = set(trading_dates)
+            buy_dates_by_td: Dict[str, Optional[str]] = {}
+            sell_dates_by_td: Dict[str, Optional[str]] = {}
+            for td in trading_dates:
+                # Find next trading day after td (buy date)
+                buy_date = None
+                for d in trading_days_all:
+                    if d > td:
+                        buy_date = d
+                        break
+                buy_dates_by_td[td] = buy_date
+                if buy_date:
+                    needed_dates.add(buy_date)
+                    # Find Nth trading day after buy_date (sell date)
+                    try:
+                        buy_idx = trading_days_all.index(buy_date)
+                        sell_idx = buy_idx + (self.forward_days - 1)  # -1 because buy is day 1
+                        if sell_idx < len(trading_days_all):
+                            sell_date = trading_days_all[sell_idx]
+                            sell_dates_by_td[td] = sell_date
+                            needed_dates.add(sell_date)
+                        else:
+                            sell_dates_by_td[td] = None
+                    except ValueError:
+                        sell_dates_by_td[td] = None
+                else:
+                    sell_dates_by_td[td] = None
+
+            # Fetch prices for all needed dates
+            with db.get_session() as session:
+                rows = session.query(StockDaily).filter(
+                    StockDaily.date.in_([pd.Timestamp(f"{d[:4]}-{d[4:6]}-{d[6:8]}") for d in needed_dates]),
+                    StockDaily.code.in_(bare_codes),
+                ).all()
+
+            price_map: Dict[Tuple[str, str], Dict[str, float]] = {}
+            for r in rows:
+                code_str = str(r.code).split(".")[0]
+                d = r.date.strftime("%Y%m%d")
+                price_map[(d, code_str)] = {
+                    "open": float(r.open) if r.open else 0.0,
+                    "close": float(r.close) if r.close else 0.0,
+                }
+
+            results = {}
+            for td in trading_dates:
+                buy_date = buy_dates_by_td.get(td)
+                sell_date = sell_dates_by_td.get(td)
+                if not buy_date or not sell_date:
+                    continue
+                td_codes = X[X["trade_date"] == td]["ts_code"].tolist()
+                for code in td_codes:
+                    bare = str(code).split(".")[0]
+                    buy_entry = price_map.get((buy_date, bare))
+                    sell_entry = price_map.get((sell_date, bare))
+                    if buy_entry and sell_entry and buy_entry["open"] > 0 and sell_entry["open"] > 0:
+                        results[(td, code)] = (sell_entry["open"] - buy_entry["open"]) / buy_entry["open"]
+            return pd.Series(results, name=f"fwd_{self.forward_days}d")
+
+        # ── Close-to-close (original behavior) ──
         with db.get_session() as session:
             rows = session.query(StockDaily).filter(
                 StockDaily.date.in_([pd.Timestamp(d) for d in trading_dates]),
@@ -164,10 +273,7 @@ class LGBTrainer:
 
         price_map: Dict[Tuple[str, str], float] = {}
         for r in rows:
-            code_str = str(r.code)
-            if "." not in code_str:
-                suffix = ".SH" if code_str.startswith("6") else ".SZ"
-                code_str = f"{code_str}{suffix}"
+            code_str = str(r.code).split(".")[0]
             price_map[(r.date.strftime("%Y%m%d"), code_str)] = float(r.close)
 
         results = {}
@@ -178,8 +284,9 @@ class LGBTrainer:
             sell_date = trading_dates[sell_idx]
             td_codes = X[X["trade_date"] == td]["ts_code"].tolist()
             for code in td_codes:
-                bp = price_map.get((td, code))
-                sp = price_map.get((sell_date, code))
+                bare = str(code).split(".")[0]
+                bp = price_map.get((td, bare))
+                sp = price_map.get((sell_date, bare))
                 if bp and sp and bp > 0:
                     results[(td, code)] = (sp - bp) / bp
         return pd.Series(results, name=f"fwd_{self.forward_days}d")
@@ -227,8 +334,8 @@ class LGBTrainer:
 
         model.fit(X, y)
         self.model = model
-        self._training_metrics["n_samples"] = len(X)
-        self._training_metrics["n_features"] = len(self.feature_names)
+        self._training_metrics["n_samples"] = int(len(X))
+        self._training_metrics["n_features"] = int(len(self.feature_names))
         return model
 
     # ------------------------------------------------------------------
@@ -240,14 +347,14 @@ class LGBTrainer:
         if self.model is None:
             raise RuntimeError("请先调用 train() 训练模型")
 
-        gain = dict(zip(
+        gain = {k: float(v) for k, v in zip(
             self.feature_names,
             self.model.booster_.feature_importance(importance_type="gain"),
-        ))
-        split = dict(zip(
+        )}
+        split = {k: float(v) for k, v in zip(
             self.feature_names,
             self.model.booster_.feature_importance(importance_type="split"),
-        ))
+        )}
         return {
             "gain": dict(sorted(gain.items(), key=lambda x: x[1], reverse=True)),
             "split": dict(sorted(split.items(), key=lambda x: x[1], reverse=True)),
@@ -258,9 +365,15 @@ class LGBTrainer:
     # ------------------------------------------------------------------
 
     def predict(self, target_date: Optional[str] = None) -> pd.DataFrame:
-        """对指定交易日（默认最新）的全市场股票打分。"""
+        """对指定交易日（默认最新）的全市场股票打分。
+
+        优先从 factor_score_snapshots 读取因子分；若当天数据缺失，
+        则通过 discovery engine 从实时数据（realtime_spot + stock_daily）在内存中计算因子分。
+        """
         if self.model is None:
             raise RuntimeError("请先调用 train() 训练模型")
+        if target_date is not None:
+            target_date = target_date.replace("-", "")
 
         db = _get_db()
         from src.storage import FactorScoreSnapshot
@@ -271,8 +384,13 @@ class LGBTrainer:
                     FactorScoreSnapshot.mode == self.mode,
                 ).order_by(FactorScoreSnapshot.trade_date.desc()).first()
                 if not row:
-                    raise ValueError("factor_score_snapshots 中没有数据")
-                target_date = row[0]
+                    target_date = None  # let fallback handle it
+                else:
+                    target_date = row[0]
+            if target_date is None:
+                # No snapshots at all - use today as target for realtime compute
+                from datetime import date as _date
+                target_date = _date.today().strftime("%Y%m%d")
 
         self._latest_date = target_date
 
@@ -283,10 +401,16 @@ class LGBTrainer:
             ).all()
 
         if not rows:
-            raise ValueError(f"没有 {target_date} 的因子快照数据")
+            # Fallback: compute factor scores in memory via discovery engine
+            rows = self._compute_realtime_scores(db, target_date)
+
+        if not rows:
+            raise ValueError(f"无法获取 {target_date} 的因子数据（DB 快照缺失且实时计算失败）")
 
         records = [
-            {"ts_code": r.ts_code, "factor_name": r.factor_name, "score": r.score}
+            {"ts_code": r["ts_code"] if isinstance(r, dict) else r.ts_code,
+             "factor_name": r["factor_name"] if isinstance(r, dict) else r.factor_name,
+             "score": r["score"] if isinstance(r, dict) else r.score}
             for r in rows
         ]
         df = pd.DataFrame(records)
@@ -315,25 +439,86 @@ class LGBTrainer:
         pivot["stock_code"] = (
             pivot["ts_code"].str.replace(".SH", "").str.replace(".SZ", "")
         )
+
+        # 补股票名称
+        with db.get_session() as session:
+            from src.storage import RealtimeSpot
+            codes = pivot["stock_code"].unique().tolist()
+            spots = session.query(RealtimeSpot.code, RealtimeSpot.name).filter(
+                RealtimeSpot.code.in_(codes),
+            ).all()
+        name_map = {s.code: s.name for s in spots if s.name}
+        pivot["stock_name"] = pivot["stock_code"].map(name_map).fillna("")
+
         self._X_latest = pivot
         return pivot
 
-    def get_latest_predictions(self) -> List[Dict]:
-        """获取最新预测结果列表。"""
+    def _compute_realtime_scores(self, db, target_date: str) -> List[Dict]:
+        """通过 discovery engine 在内存中计算因子分（不写入 DB）。
+
+        用于 predict() 的兜底路径：当 factor_score_snapshots 没有当天数据时，
+        从 realtime_spot + stock_daily + 各因子自身数据源实时计算因子分。
+        """
+        import logging
+        _log = logging.getLogger(__name__)
+
+        try:
+            from src.discovery.engine import create_discovery_engine
+            engine = create_discovery_engine()
+            results = engine.discover(
+                mode=self.mode,
+                trade_date=target_date,
+                skip_persist=True,
+            )
+            raw_scores = getattr(engine, '_last_raw_scores', {})
+            _log.info(
+                "Realtime factor scoring: %d factors scored for %s mode on %s (results=%d)",
+                len(raw_scores), self.mode, target_date, len(results),
+            )
+        except Exception as e:
+            _log.warning("Realtime factor scoring failed: %s", e)
+            return []
+
+        if not raw_scores:
+            return []
+
+        # Convert raw_scores {factor_name: Series(index=bare_code, score)} to snapshot rows
+        rows: list = []
+        for factor_name, series in raw_scores.items():
+            if not hasattr(series, 'items'):
+                continue
+            for ts_code, score in series.items():
+                if score is None:
+                    continue
+                rows.append({
+                    "ts_code": str(ts_code),
+                    "factor_name": factor_name,
+                    "score": float(score),
+                })
+        return rows
+
+    def get_latest_predictions(self, top_n: int = 5) -> List[Dict]:
+        """获取最新预测结果列表，自动过滤 ST 股顺延。"""
         if self._X_latest is None:
             raise RuntimeError("请先调用 predict() 生成预测")
 
-        top = self._X_latest.head(50)
-        return [
-            {
-                "rank": i + 1,
+        df = self._X_latest
+        results = []
+        for _, row in df.iterrows():
+            name = str(row.get("stock_name", ""))
+            if is_st_stock(name):
+                continue
+            results.append({
+                "rank": len(results) + 1,
                 "ts_code": row["ts_code"],
                 "stock_code": row["stock_code"],
+                "stock_name": name,
                 "lgb_score": round(float(row["lgb_score_norm"]), 2),
                 "raw_score": round(float(row["lgb_score"]), 2),
-            }
-            for i, (_, row) in enumerate(top.iterrows())
-        ]
+            })
+            if len(results) >= top_n:
+                break
+        return results
 
     # ------------------------------------------------------------------
     # Backtest Comparison
@@ -551,15 +736,17 @@ class LGBTrainer:
 
         os.makedirs(MODEL_DIR, exist_ok=True)
         if name is None:
+            exec_suffix = "open2open" if self.exec_mode == "open" else "close2close"
             name = (
                 f"lgb_{self.mode}_fwd{self.forward_days}d_"
-                f"{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{exec_suffix}"
             )
 
         model_path = os.path.join(MODEL_DIR, f"{name}.joblib")
         meta = {
             "mode": self.mode,
             "forward_days": self.forward_days,
+            "exec_mode": self.exec_mode,
             "feature_names": self.feature_names,
             "training_metrics": self._training_metrics,
             "saved_at": datetime.now().isoformat(),
@@ -572,7 +759,11 @@ class LGBTrainer:
         """从文件加载模型。"""
         data = joblib.load(model_path)
         meta = data["meta"]
-        trainer = cls(mode=meta["mode"], forward_days=meta["forward_days"])
+        trainer = cls(
+            mode=meta["mode"],
+            forward_days=meta["forward_days"],
+            exec_mode=meta.get("exec_mode", "close"),
+        )
         trainer.model = data["model"]
         trainer.feature_names = meta["feature_names"]
         trainer._training_metrics = meta.get("training_metrics", {})
@@ -596,3 +787,89 @@ class LGBTrainer:
                     "saved_at": mtime.isoformat(),
                 })
         return models
+
+    def save_report(self, top_n: int = 5) -> str:
+        """保存训练报告到 discovery_reports/lgb_report_*.md/json。
+
+        包含模型摘要、特征重要性、Top N 预测。
+        """
+        if self.model is None:
+            raise RuntimeError("请先调用 train() 训练模型")
+        if self._X_latest is None:
+            self.predict()
+
+        sd = getattr(self, "_train_start", self._latest_date or "unknown")
+        ed = getattr(self, "_train_end", self._latest_date or "unknown")
+        # normalize to YYYYMMDD without hyphens
+        sd = str(sd).replace("-", "")[:8]
+        ed = str(ed).replace("-", "")[:8]
+        exec_suffix = "open2open" if self.exec_mode == "open" else "close2close"
+        base = f"{self.mode}_fwd{self.forward_days}d_{sd}_{ed}_{exec_suffix}"
+        md_path = os.path.join(_REPORTS_DIR, f"{base}.md")
+        json_path = os.path.join(_REPORTS_DIR, f"{base}.json")
+        os.makedirs(_REPORTS_DIR, exist_ok=True)
+
+        importance = self.get_feature_importance()
+        top_predictions = self.get_latest_predictions(top_n=top_n)
+        metrics = self._training_metrics
+
+        # ── Markdown ──
+        lines = [
+            f"# LGB 训练报告 · {mode_label(self.mode)} · 前向 {self.forward_days} 日",
+            "",
+            f"**日期范围**: {sd} ~ {ed}",
+            f"**生成时间**: {datetime.now().strftime('%Y%m%d %H:%M:%S')}",
+            f"**模式**: {mode_label(self.mode)}",
+            f"**预测窗口**: {self.forward_days} 日",
+            f"**训练样本**: {metrics.get('n_samples', 'N/A'):,}",
+            f"**特征数**: {metrics.get('n_features', 'N/A')}",
+        ]
+        if "cv_rmse_mean" in metrics:
+            lines.append(
+                f"**CV RMSE**: {metrics['cv_rmse_mean']:.4f} "
+                f"± {metrics.get('cv_rmse_std', 0):.4f}"
+            )
+
+        lines.extend([
+            "",
+            "## 特征重要性 (Gain Top 10)",
+            "",
+            "| 排名 | 因子 | Gain | Split |",
+            "|------|------|------|-------|",
+        ])
+        for i, (name, g) in enumerate(list(importance["gain"].items())[:10]):
+            s = importance["split"].get(name, 0)
+            lines.append(f"| {i + 1} | {name} | {g:.1f} | {s:.1f} |")
+
+        lines.extend([
+            "",
+            f"## Top {top_n} 预测",
+            "",
+            "| 排名 | 代码 | 名称 | LGB 评分 | 原始得分 |",
+            "|------|------|------|----------|----------|",
+        ])
+        for p in top_predictions:
+            lines.append(
+                f"| {p['rank']} | {p['stock_code']} | {p['stock_name']} "
+                f"| {p['lgb_score']:.2f} | {p['raw_score']:.4f} |"
+            )
+
+        with open(md_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines))
+
+        # ── JSON ──
+        report = {
+            "mode": self.mode,
+            "forward_days": self.forward_days,
+            "generated_at": now,
+            "training_metrics": {k: v for k, v in metrics.items()},
+            "feature_importance": {
+                "gain": dict(list(importance["gain"].items())[:20]),
+                "split": dict(list(importance["split"].items())[:20]),
+            },
+            "predictions": top_predictions,
+        }
+        with open(json_path, "w", encoding="utf-8") as f:
+            json.dump(report, f, ensure_ascii=False, indent=2)
+
+        return md_path

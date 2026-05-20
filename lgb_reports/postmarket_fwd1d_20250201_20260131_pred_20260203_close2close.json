@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 1,
+  "train_start": "20250201",
+  "train_end": "20260131",
+  "pred_date": "20260203",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301362.SZ",
+      "stock_code": "301362",
+      "stock_name": "民爆光电",
+      "lgb_score": 100.0,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 2,
+      "ts_code": "603618.SH",
+      "stock_code": "603618",
+      "stock_name": "杭电股份",
+      "lgb_score": 87.42,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 3,
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 81.76,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 4,
+      "ts_code": "301182.SZ",
+      "stock_code": "301182",
+      "stock_name": "凯旺科技",
+      "lgb_score": 79.27,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 5,
+      "ts_code": "600149.SH",
+      "stock_code": "600149",
+      "stock_name": "廊坊发展",
+      "lgb_score": 77.39,
+      "raw_score": 0.04
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 1,
+  "train_start": "20250101",
+  "train_end": "20251231",
+  "pred_date": "20260127",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002155.SZ",
+      "stock_code": "002155",
+      "stock_name": "湖南黄金",
+      "lgb_score": 100.0,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 2,
+      "ts_code": "603121.SH",
+      "stock_code": "603121",
+      "stock_name": "华培动力",
+      "lgb_score": 86.7,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 3,
+      "ts_code": "603061.SH",
+      "stock_code": "603061",
+      "stock_name": "金海通",
+      "lgb_score": 85.52,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 4,
+      "ts_code": "600602.SH",
+      "stock_code": "600602",
+      "stock_name": "云赛智联",
+      "lgb_score": 84.46,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 5,
+      "ts_code": "002943.SZ",
+      "stock_code": "002943",
+      "stock_name": "宇晶股份",
+      "lgb_score": 80.59,
+      "raw_score": 0.04
+    }
+  ]
+}

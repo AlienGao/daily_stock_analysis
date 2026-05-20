@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 1,
+  "train_start": "20250501",
+  "train_end": "20260428",
+  "pred_date": "20260505",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "603283.SH",
+      "stock_code": "603283",
+      "stock_name": "赛腾股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 2,
+      "ts_code": "688337.SH",
+      "stock_code": "688337",
+      "stock_name": "普源精电",
+      "lgb_score": 93.79,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 3,
+      "ts_code": "600400.SH",
+      "stock_code": "600400",
+      "stock_name": "红豆股份",
+      "lgb_score": 93.61,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 4,
+      "ts_code": "603191.SH",
+      "stock_code": "603191",
+      "stock_name": "望变电气",
+      "lgb_score": 92.46,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 5,
+      "ts_code": "688301.SH",
+      "stock_code": "688301",
+      "stock_name": "奕瑞科技",
+      "lgb_score": 92.05,
+      "raw_score": 0.04
+    }
+  ]
+}

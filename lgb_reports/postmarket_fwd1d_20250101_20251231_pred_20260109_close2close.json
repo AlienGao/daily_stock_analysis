@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 1,
+  "train_start": "20250101",
+  "train_end": "20251231",
+  "pred_date": "20260109",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600477.SH",
+      "stock_code": "600477",
+      "stock_name": "杭萧钢构",
+      "lgb_score": 100.0,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 2,
+      "ts_code": "603017.SH",
+      "stock_code": "603017",
+      "stock_name": "中衡设计",
+      "lgb_score": 92.02,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 3,
+      "ts_code": "600858.SH",
+      "stock_code": "600858",
+      "stock_name": "银座股份",
+      "lgb_score": 83.57,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 4,
+      "ts_code": "600807.SH",
+      "stock_code": "600807",
+      "stock_name": "济高发展",
+      "lgb_score": 82.45,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 5,
+      "ts_code": "000503.SZ",
+      "stock_code": "000503",
+      "stock_name": "国新健康",
+      "lgb_score": 81.43,
+      "raw_score": 0.04
+    }
+  ]
+}

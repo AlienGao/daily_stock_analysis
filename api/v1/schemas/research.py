@@ -8,7 +8,8 @@ from pydantic import BaseModel, Field
 
 class LGBTrainRequest(BaseModel):
     mode: str = Field("postmarket", description="扫描模式: intraday | postmarket")
-    forward_days: int = Field(5, ge=1, le=60, description="预测未来 N 日收益")
+    forward_days: int = Field(3, ge=1, le=60, description="预测未来 N 日收益")
+    exec_mode: str = Field("close", description="标签模式: open (开盘→开盘) | close (收盘→收盘)")
     start_date: Optional[str] = Field(None, description="训练起始日期 YYYYMMDD")
     end_date: Optional[str] = Field(None, description="训练结束日期 YYYYMMDD")
     n_estimators: int = Field(200, ge=10, le=2000)
@@ -34,6 +35,7 @@ class LGBPredictionItem(BaseModel):
     rank: int
     ts_code: str
     stock_code: str
+    stock_name: str = ""
     lgb_score: float
     raw_score: float
 
@@ -82,3 +84,37 @@ class LGBStockLookupResponse(BaseModel):
     found: bool
     item: Optional[LGBStockLookupItem] = None
     message: str = ""
+
+
+# ── Backtest Simulation ──
+
+class LGBBacktestTradeItem(BaseModel):
+    """单笔回测交易明细。"""
+    pred_date: str
+    stock_code: str
+    ts_code: str
+    stock_name: str = ""
+    rank: int
+    buy_date: str
+    buy_price: float
+    sell_date: str
+    sell_price: float
+    return_pct: float
+    skipped: bool = False
+
+
+class LGBBacktestSimMetrics(BaseModel):
+    cumulative_return: float
+    win_rate: float
+    max_drawdown: float
+    total_trades: int
+    skipped_trades: int
+
+
+class LGBBacktestSimResponse(BaseModel):
+    forward_days: int
+    top_n: int
+    exec_mode: str = "open"
+    metrics: LGBBacktestSimMetrics
+    capital_curve: List[Dict] = Field(default_factory=list)
+    trades: List[LGBBacktestTradeItem] = Field(default_factory=list)

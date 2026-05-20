@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20250101",
+  "train_end": "20251231",
+  "pred_date": "20260121",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301023.SZ",
+      "stock_code": "301023",
+      "stock_name": "奕帆传动",
+      "lgb_score": 100.0,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "601678.SH",
+      "stock_code": "601678",
+      "stock_name": "滨化股份",
+      "lgb_score": 98.31,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "002437.SZ",
+      "stock_code": "002437",
+      "stock_name": "誉衡药业",
+      "lgb_score": 98.3,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "000968.SZ",
+      "stock_code": "000968",
+      "stock_name": "蓝焰控股",
+      "lgb_score": 94.42,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "600500.SH",
+      "stock_code": "600500",
+      "stock_name": "中化国际",
+      "lgb_score": 89.11,
+      "raw_score": 0.08
+    }
+  ]
+}

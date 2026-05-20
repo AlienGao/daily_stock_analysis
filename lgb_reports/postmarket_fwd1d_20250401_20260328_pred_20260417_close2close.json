@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 1,
+  "train_start": "20250401",
+  "train_end": "20260328",
+  "pred_date": "20260417",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000936.SZ",
+      "stock_code": "000936",
+      "stock_name": "华西股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 2,
+      "ts_code": "002108.SZ",
+      "stock_code": "002108",
+      "stock_name": "沧州明珠",
+      "lgb_score": 90.93,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 3,
+      "ts_code": "002487.SZ",
+      "stock_code": "002487",
+      "stock_name": "大金重工",
+      "lgb_score": 84.59,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 4,
+      "ts_code": "688628.SH",
+      "stock_code": "688628",
+      "stock_name": "优利德",
+      "lgb_score": 83.93,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 5,
+      "ts_code": "002980.SZ",
+      "stock_code": "002980",
+      "stock_name": "华盛昌",
+      "lgb_score": 82.48,
+      "raw_score": 0.04
+    }
+  ]
+}

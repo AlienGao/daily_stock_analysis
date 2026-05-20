@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20250101",
+  "train_end": "20251231",
+  "pred_date": "20260116",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 100.0,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 2,
+      "ts_code": "002452.SZ",
+      "stock_code": "002452",
+      "stock_name": "长高电新",
+      "lgb_score": 98.49,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 3,
+      "ts_code": "688319.SH",
+      "stock_code": "688319",
+      "stock_name": "欧林生物",
+      "lgb_score": 94.83,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 4,
+      "ts_code": "300290.SZ",
+      "stock_code": "300290",
+      "stock_name": "荣科科技",
+      "lgb_score": 94.53,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 5,
+      "ts_code": "603352.SH",
+      "stock_code": "603352",
+      "stock_name": "至信股份",
+      "lgb_score": 92.84,
+      "raw_score": 0.04
+    }
+  ]
+}

@@ -5,6 +5,7 @@ import apiClient from './index';
 export type LGBTrainRequest = {
   mode: 'intraday' | 'postmarket';
   forward_days: number;
+  exec_mode?: string;
   start_date?: string | null;
   end_date?: string | null;
   n_estimators: number;
@@ -20,6 +21,7 @@ export type LGBTaskStatusResponse = {
   error?: string;
   result?: {
     model_path: string;
+    model_date?: string;
     feature_importance: { gain: Record<string, number>; split: Record<string, number> };
     predictions: LGBPredictionItem[];
     training_metrics: Record<string, number>;
@@ -35,6 +37,7 @@ export type LGBPredictionItem = {
   rank: number;
   ts_code: string;
   stock_code: string;
+  stock_name: string;
   lgb_score: number;
   raw_score: number;
 };
@@ -88,30 +91,62 @@ export type LGBStockLookupResponse = {
   message: string;
 };
 
+export type LGBBacktestTradeItem = {
+  pred_date: string;
+  stock_code: string;
+  ts_code: string;
+  stock_name: string;
+  rank: number;
+  buy_date: string;
+  buy_price: number;
+  sell_date: string;
+  sell_price: number;
+  return_pct: number;
+  skipped: boolean;
+};
+
+export type LGBBacktestSimMetrics = {
+  cumulative_return: number;
+  win_rate: number;
+  max_drawdown: number;
+  total_trades: number;
+  skipped_trades: number;
+};
+
+export type LGBBacktestSimResponse = {
+  forward_days: number;
+  top_n: number;
+  exec_mode: string;
+  metrics: LGBBacktestSimMetrics;
+  capital_curve: Array<{ date: string; capital: number; daily_return?: number }>;
+  trades: LGBBacktestTradeItem[];
+};
+
 /* ── API ── */
 
 export const researchApi = {
   async train(params: LGBTrainRequest): Promise<{ task_id: string; status: string }> {
-    const resp = await apiClient.post('/api/v1/research/lgb/train', params);
+    const resp = await apiClient.post('/api/v1/research/lgb/train', params, { timeout: 120000 });
     return resp.data;
   },
 
   async getStatus(taskId: string): Promise<LGBTaskStatusResponse> {
     const resp = await apiClient.get('/api/v1/research/lgb/status', {
       params: { task_id: taskId },
+      timeout: 60000,
     });
     return resp.data;
   },
 
   async getFeatureImportance(modelPath?: string): Promise<LGBFeatureImportanceResponse> {
     const params = modelPath ? { model_path: modelPath } : {};
-    const resp = await apiClient.get('/api/v1/research/lgb/feature-importance', { params });
+    const resp = await apiClient.get('/api/v1/research/lgb/feature-importance', { params, timeout: 120000 });
     return resp.data;
   },
 
   async getPredictions(modelPath?: string): Promise<LGBPredictionsResponse> {
     const params = modelPath ? { model_path: modelPath } : {};
-    const resp = await apiClient.get('/api/v1/research/lgb/predictions', { params });
+    const resp = await apiClient.get('/api/v1/research/lgb/predictions', { params, timeout: 120000 });
     return resp.data;
   },
 
@@ -123,7 +158,7 @@ export const researchApi = {
     end_date?: string;
     model_path?: string;
   } = {}): Promise<LGBBacktestCompareResponse> {
-    const resp = await apiClient.get('/api/v1/research/lgb/backtest-compare', { params });
+    const resp = await apiClient.get('/api/v1/research/lgb/backtest-compare', { params, timeout: 300000 });
     return resp.data;
   },
 
@@ -140,7 +175,16 @@ export const researchApi = {
   async lookupStock(stockCode: string, modelPath?: string): Promise<LGBStockLookupResponse> {
     const params: Record<string, string> = { stock_code: stockCode };
     if (modelPath) params.model_path = modelPath;
-    const resp = await apiClient.get('/api/v1/research/lgb/stock-lookup', { params });
+    const resp = await apiClient.get('/api/v1/research/lgb/stock-lookup', { params, timeout: 120000 });
+    return resp.data;
+  },
+
+  async getBacktestSim(params: {
+    forward_days: number;
+    top_n?: number;
+    exec_mode?: string;
+  }): Promise<LGBBacktestSimResponse> {
+    const resp = await apiClient.get('/api/v1/research/lgb/backtest-sim', { params, timeout: 300000 });
     return resp.data;
   },
 };

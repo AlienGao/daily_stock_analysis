@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 1,
+  "train_start": "20250101",
+  "train_end": "20251231",
+  "pred_date": "20260119",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600189.SH",
+      "stock_code": "600189",
+      "stock_name": "泉阳泉",
+      "lgb_score": 100.0,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 2,
+      "ts_code": "002498.SZ",
+      "stock_code": "002498",
+      "stock_name": "汉缆股份",
+      "lgb_score": 99.66,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 3,
+      "ts_code": "002358.SZ",
+      "stock_code": "002358",
+      "stock_name": "森源电气",
+      "lgb_score": 94.15,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 4,
+      "ts_code": "688031.SH",
+      "stock_code": "688031",
+      "stock_name": "星环科技-U",
+      "lgb_score": 91.54,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 5,
+      "ts_code": "000720.SZ",
+      "stock_code": "000720",
+      "stock_name": "新能泰山",
+      "lgb_score": 89.13,
+      "raw_score": 0.04
+    }
+  ]
+}

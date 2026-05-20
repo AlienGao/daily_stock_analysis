@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20250101",
+  "train_end": "20251231",
+  "pred_date": "20260106",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301222.SZ",
+      "stock_code": "301222",
+      "stock_name": "浙江恒威",
+      "lgb_score": 100.0,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 2,
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 98.27,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 3,
+      "ts_code": "688403.SH",
+      "stock_code": "688403",
+      "stock_name": "XD汇成股",
+      "lgb_score": 96.89,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 4,
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
+      "lgb_score": 96.66,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 5,
+      "ts_code": "300083.SZ",
+      "stock_code": "300083",
+      "stock_name": "创世纪",
+      "lgb_score": 96.06,
+      "raw_score": 0.04
+    }
+  ]
+}

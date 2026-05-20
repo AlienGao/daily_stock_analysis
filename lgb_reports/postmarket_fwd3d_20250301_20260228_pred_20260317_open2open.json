@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20250301",
+  "train_end": "20260228",
+  "pred_date": "20260317",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301633.SZ",
+      "stock_code": "301633",
+      "stock_name": "港迪技术",
+      "lgb_score": 100.0,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 2,
+      "ts_code": "605196.SH",
+      "stock_code": "605196",
+      "stock_name": "华通线缆",
+      "lgb_score": 97.95,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 3,
+      "ts_code": "300751.SZ",
+      "stock_code": "300751",
+      "stock_name": "迈为股份",
+      "lgb_score": 96.65,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 4,
+      "ts_code": "001389.SZ",
+      "stock_code": "001389",
+      "stock_name": "广合科技",
+      "lgb_score": 95.46,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 5,
+      "ts_code": "301196.SZ",
+      "stock_code": "301196",
+      "stock_name": "唯科科技",
+      "lgb_score": 92.34,
+      "raw_score": 0.04
+    }
+  ]
+}

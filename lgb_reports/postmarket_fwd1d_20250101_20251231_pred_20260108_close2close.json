@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 1,
+  "train_start": "20250101",
+  "train_end": "20251231",
+  "pred_date": "20260108",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002195.SZ",
+      "stock_code": "002195",
+      "stock_name": "岩山科技",
+      "lgb_score": 99.82,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 2,
+      "ts_code": "600477.SH",
+      "stock_code": "600477",
+      "stock_name": "杭萧钢构",
+      "lgb_score": 97.14,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 3,
+      "ts_code": "600215.SH",
+      "stock_code": "600215",
+      "stock_name": "派斯林",
+      "lgb_score": 92.03,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 4,
+      "ts_code": "603015.SH",
+      "stock_code": "603015",
+      "stock_name": "弘讯科技",
+      "lgb_score": 87.8,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 5,
+      "ts_code": "603938.SH",
+      "stock_code": "603938",
+      "stock_name": "三孚股份",
+      "lgb_score": 86.45,
+      "raw_score": 0.04
+    }
+  ]
+}

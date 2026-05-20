@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20250201",
+  "train_end": "20260131",
+  "pred_date": "20260209",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600751.SH",
+      "stock_code": "600751",
+      "stock_name": "海航科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 2,
+      "ts_code": "603191.SH",
+      "stock_code": "603191",
+      "stock_name": "望变电气",
+      "lgb_score": 98.26,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 3,
+      "ts_code": "002150.SZ",
+      "stock_code": "002150",
+      "stock_name": "正泰电源",
+      "lgb_score": 97.98,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 4,
+      "ts_code": "603980.SH",
+      "stock_code": "603980",
+      "stock_name": "吉华集团",
+      "lgb_score": 92.62,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 5,
+      "ts_code": "688323.SH",
+      "stock_code": "688323",
+      "stock_name": "瑞华泰",
+      "lgb_score": 91.61,
+      "raw_score": 0.05
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 1,
+  "train_start": "20250301",
+  "train_end": "20260228",
+  "pred_date": "20260317",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600569.SH",
+      "stock_code": "600569",
+      "stock_name": "安阳钢铁",
+      "lgb_score": 100.0,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 2,
+      "ts_code": "603248.SH",
+      "stock_code": "603248",
+      "stock_name": "锡华科技",
+      "lgb_score": 97.22,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 3,
+      "ts_code": "002150.SZ",
+      "stock_code": "002150",
+      "stock_name": "正泰电源",
+      "lgb_score": 86.04,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 4,
+      "ts_code": "002980.SZ",
+      "stock_code": "002980",
+      "stock_name": "华盛昌",
+      "lgb_score": 84.55,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 5,
+      "ts_code": "600367.SH",
+      "stock_code": "600367",
+      "stock_name": "红星发展",
+      "lgb_score": 82.58,
+      "raw_score": 0.03
+    }
+  ]
+}

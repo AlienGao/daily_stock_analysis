@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 1,
+  "train_start": "20250101",
+  "train_end": "20251231",
+  "pred_date": "20260121",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000670.SZ",
+      "stock_code": "000670",
+      "stock_name": "盈方微",
+      "lgb_score": 100.0,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 2,
+      "ts_code": "301023.SZ",
+      "stock_code": "301023",
+      "stock_name": "奕帆传动",
+      "lgb_score": 96.3,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 3,
+      "ts_code": "002279.SZ",
+      "stock_code": "002279",
+      "stock_name": "久其软件",
+      "lgb_score": 88.36,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 4,
+      "ts_code": "603608.SH",
+      "stock_code": "603608",
+      "stock_name": "天创时尚",
+      "lgb_score": 86.63,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 5,
+      "ts_code": "603078.SH",
+      "stock_code": "603078",
+      "stock_name": "江化微",
+      "lgb_score": 85.44,
+      "raw_score": 0.04
+    }
+  ]
+}

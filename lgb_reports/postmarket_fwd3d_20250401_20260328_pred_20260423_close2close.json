@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20250401",
+  "train_end": "20260328",
+  "pred_date": "20260423",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 100.0,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 2,
+      "ts_code": "000900.SZ",
+      "stock_code": "000900",
+      "stock_name": "现代投资",
+      "lgb_score": 87.19,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 3,
+      "ts_code": "301302.SZ",
+      "stock_code": "301302",
+      "stock_name": "华如科技",
+      "lgb_score": 85.35,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 4,
+      "ts_code": "688381.SH",
+      "stock_code": "688381",
+      "stock_name": "帝奥微",
+      "lgb_score": 84.62,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 5,
+      "ts_code": "301022.SZ",
+      "stock_code": "301022",
+      "stock_name": "海泰科",
+      "lgb_score": 84.59,
+      "raw_score": 0.06
+    }
+  ]
+}

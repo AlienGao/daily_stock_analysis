@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 1,
+  "train_start": "20250101",
+  "train_end": "20251231",
+  "pred_date": "20260126",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300751.SZ",
+      "stock_code": "300751",
+      "stock_name": "迈为股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 2,
+      "ts_code": "002218.SZ",
+      "stock_code": "002218",
+      "stock_name": "拓日新能",
+      "lgb_score": 92.34,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 3,
+      "ts_code": "601615.SH",
+      "stock_code": "601615",
+      "stock_name": "明阳智能",
+      "lgb_score": 92.31,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 4,
+      "ts_code": "600531.SH",
+      "stock_code": "600531",
+      "stock_name": "豫光金铅",
+      "lgb_score": 88.56,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 5,
+      "ts_code": "600736.SH",
+      "stock_code": "600736",
+      "stock_name": "苏州高新",
+      "lgb_score": 87.08,
+      "raw_score": 0.04
+    }
+  ]
+}

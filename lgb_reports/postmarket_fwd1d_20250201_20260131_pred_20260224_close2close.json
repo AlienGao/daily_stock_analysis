@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 1,
+  "train_start": "20250201",
+  "train_end": "20260131",
+  "pred_date": "20260224",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "001896.SZ",
+      "stock_code": "001896",
+      "stock_name": "豫能控股",
+      "lgb_score": 100.0,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 2,
+      "ts_code": "605033.SH",
+      "stock_code": "605033",
+      "stock_name": "美邦股份",
+      "lgb_score": 97.98,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 3,
+      "ts_code": "000968.SZ",
+      "stock_code": "000968",
+      "stock_name": "蓝焰控股",
+      "lgb_score": 96.76,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 4,
+      "ts_code": "300179.SZ",
+      "stock_code": "300179",
+      "stock_name": "四方达",
+      "lgb_score": 95.44,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 5,
+      "ts_code": "603400.SH",
+      "stock_code": "603400",
+      "stock_name": "华之杰",
+      "lgb_score": 93.07,
+      "raw_score": 0.04
+    }
+  ]
+}

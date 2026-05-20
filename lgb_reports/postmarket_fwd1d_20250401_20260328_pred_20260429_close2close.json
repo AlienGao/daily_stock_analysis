@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 1,
+  "train_start": "20250401",
+  "train_end": "20260328",
+  "pred_date": "20260429",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688531.SH",
+      "stock_code": "688531",
+      "stock_name": "日联科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 2,
+      "ts_code": "600367.SH",
+      "stock_code": "600367",
+      "stock_name": "红星发展",
+      "lgb_score": 94.88,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 3,
+      "ts_code": "001266.SZ",
+      "stock_code": "001266",
+      "stock_name": "宏英智能",
+      "lgb_score": 92.94,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 4,
+      "ts_code": "603516.SH",
+      "stock_code": "603516",
+      "stock_name": "淳中科技",
+      "lgb_score": 87.14,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 5,
+      "ts_code": "002174.SZ",
+      "stock_code": "002174",
+      "stock_name": "游族网络",
+      "lgb_score": 85.35,
+      "raw_score": 0.04
+    }
+  ]
+}

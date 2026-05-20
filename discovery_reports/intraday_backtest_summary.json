@@ -1,102 +1,12 @@
 [
   {
-    "date": "20260506",
+    "date": "20260520",
     "mode": "intraday",
-    "cumulative_return": 0.0,
-    "win_rate": 0.0,
-    "total_trades": 10,
-    "total_days": 1,
-    "final_capital": 5000000.0,
-    "initial_capital": 5000000.0
-  },
-  {
-    "date": "20260507",
-    "mode": "intraday",
-    "cumulative_return": 0.03227271349940989,
-    "win_rate": 0.7,
-    "total_trades": 10,
-    "total_days": 1,
-    "final_capital": 5161363.57,
-    "initial_capital": 5000000.0
-  },
-  {
-    "date": "20260508",
-    "mode": "intraday",
-    "cumulative_return": 0.0315219143167546,
-    "win_rate": 0.52,
-    "total_trades": 25,
-    "total_days": 3,
-    "final_capital": 5157609.57,
-    "initial_capital": 5000000.0
-  },
-  {
-    "date": "20260511",
-    "mode": "intraday",
-    "cumulative_return": 0.015551187442460283,
-    "win_rate": 0.4666666666666667,
-    "total_trades": 30,
-    "total_days": 4,
-    "final_capital": 5077755.94,
-    "initial_capital": 5000000.0
-  },
-  {
-    "date": "20260512",
-    "mode": "intraday",
-    "cumulative_return": 0.02387270681249164,
-    "win_rate": 0.4857142857142857,
-    "total_trades": 35,
-    "total_days": 5,
-    "final_capital": 5119363.53,
-    "initial_capital": 5000000.0
-  },
-  {
-    "date": "20260513",
-    "mode": "intraday",
-    "cumulative_return": 0.009103235208394938,
-    "win_rate": 0.45,
-    "total_trades": 40,
-    "total_days": 6,
-    "final_capital": 5045516.18,
-    "initial_capital": 5000000.0
-  },
-  {
-    "date": "20260514",
-    "mode": "intraday",
-    "cumulative_return": -0.002740449914693646,
-    "win_rate": 0.4444444444444444,
-    "total_trades": 45,
-    "total_days": 7,
-    "final_capital": 4986297.75,
-    "initial_capital": 5000000.0
-  },
-  {
-    "date": "20260515",
-    "mode": "intraday",
-    "cumulative_return": 0.007097817997015454,
-    "win_rate": 0.44,
-    "total_trades": 50,
-    "total_days": 8,
-    "final_capital": 5035489.09,
-    "initial_capital": 5000000.0
-  },
-  {
-    "date": "20260518",
-    "mode": "intraday",
-    "cumulative_return": 0.007097817997015454,
-    "win_rate": 0.4,
-    "total_trades": 55,
-    "total_days": 9,
-    "final_capital": 5035489.09,
-    "initial_capital": 5000000.0
-  },
-  {
-    "date": "20260519",
-    "mode": "intraday",
-    "cumulative_return": -0.004023845706382021,
-    "win_rate": 0.3898305084745763,
+    "cumulative_return": 0.013883818086080253,
+    "win_rate": 0.423728813559322,
     "total_trades": 59,
     "total_days": 10,
-    "final_capital": 4979880.77,
+    "final_capital": 5069419.09,
     "initial_capital": 5000000.0
   }
 ]

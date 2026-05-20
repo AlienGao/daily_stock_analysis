@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 1,
+  "train_start": "20250101",
+  "train_end": "20251231",
+  "pred_date": "20260105",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002195.SZ",
+      "stock_code": "002195",
+      "stock_name": "岩山科技",
+      "lgb_score": 99.57,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 2,
+      "ts_code": "002413.SZ",
+      "stock_code": "002413",
+      "stock_name": "雷科防务",
+      "lgb_score": 96.37,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 3,
+      "ts_code": "002465.SZ",
+      "stock_code": "002465",
+      "stock_name": "海格通信",
+      "lgb_score": 95.89,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 4,
+      "ts_code": "002259.SZ",
+      "stock_code": "002259",
+      "stock_name": "升达林业",
+      "lgb_score": 95.23,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 5,
+      "ts_code": "002490.SZ",
+      "stock_code": "002490",
+      "stock_name": "山东墨龙",
+      "lgb_score": 92.9,
+      "raw_score": 0.04
+    }
+  ]
+}

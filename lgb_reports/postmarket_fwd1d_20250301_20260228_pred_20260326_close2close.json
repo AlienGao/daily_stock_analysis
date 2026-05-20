@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 1,
+  "train_start": "20250301",
+  "train_end": "20260228",
+  "pred_date": "20260326",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301358.SZ",
+      "stock_code": "301358",
+      "stock_name": "湖南裕能",
+      "lgb_score": 100.0,
+      "raw_score": 0.03
+    },
+    {
+      "rank": 2,
+      "ts_code": "000692.SZ",
+      "stock_code": "000692",
+      "stock_name": "惠天热电",
+      "lgb_score": 98.09,
+      "raw_score": 0.03
+    },
+    {
+      "rank": 3,
+      "ts_code": "002709.SZ",
+      "stock_code": "002709",
+      "stock_name": "天赐材料",
+      "lgb_score": 97.3,
+      "raw_score": 0.03
+    },
+    {
+      "rank": 4,
+      "ts_code": "600163.SH",
+      "stock_code": "600163",
+      "stock_name": "中闽能源",
+      "lgb_score": 97.26,
+      "raw_score": 0.03
+    },
+    {
+      "rank": 5,
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 95.85,
+      "raw_score": 0.03
+    }
+  ]
+}

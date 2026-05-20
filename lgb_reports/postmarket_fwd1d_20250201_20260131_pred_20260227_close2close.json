@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 1,
+  "train_start": "20250201",
+  "train_end": "20260131",
+  "pred_date": "20260227",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002843.SZ",
+      "stock_code": "002843",
+      "stock_name": "泰嘉股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 2,
+      "ts_code": "002470.SZ",
+      "stock_code": "002470",
+      "stock_name": "金正大",
+      "lgb_score": 88.12,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 3,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 85.35,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 4,
+      "ts_code": "600744.SH",
+      "stock_code": "600744",
+      "stock_name": "华银电力",
+      "lgb_score": 84.1,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 5,
+      "ts_code": "000035.SZ",
+      "stock_code": "000035",
+      "stock_name": "中国天楹",
+      "lgb_score": 82.25,
+      "raw_score": 0.03
+    }
+  ]
+}

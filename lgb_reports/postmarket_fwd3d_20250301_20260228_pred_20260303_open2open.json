@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20250301",
+  "train_end": "20260228",
+  "pred_date": "20260303",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 100.0,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 2,
+      "ts_code": "603738.SH",
+      "stock_code": "603738",
+      "stock_name": "泰晶科技",
+      "lgb_score": 95.57,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 3,
+      "ts_code": "301232.SZ",
+      "stock_code": "301232",
+      "stock_name": "飞沃科技",
+      "lgb_score": 95.33,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 4,
+      "ts_code": "688359.SH",
+      "stock_code": "688359",
+      "stock_name": "三孚新科",
+      "lgb_score": 91.05,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 5,
+      "ts_code": "688377.SH",
+      "stock_code": "688377",
+      "stock_name": "迪威尔",
+      "lgb_score": 90.59,
+      "raw_score": 0.04
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20250501",
+  "train_end": "20260428",
+  "pred_date": "20260505",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600219.SH",
+      "stock_code": "600219",
+      "stock_name": "XD南山铝",
+      "lgb_score": 100.0,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "002241.SZ",
+      "stock_code": "002241",
+      "stock_name": "歌尔股份",
+      "lgb_score": 93.55,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 3,
+      "ts_code": "688506.SH",
+      "stock_code": "688506",
+      "stock_name": "百利天恒",
+      "lgb_score": 91.44,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 4,
+      "ts_code": "002374.SZ",
+      "stock_code": "002374",
+      "stock_name": "中锐股份",
+      "lgb_score": 91.02,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 5,
+      "ts_code": "000404.SZ",
+      "stock_code": "000404",
+      "stock_name": "长虹华意",
+      "lgb_score": 90.78,
+      "raw_score": 0.07
+    }
+  ]
+}

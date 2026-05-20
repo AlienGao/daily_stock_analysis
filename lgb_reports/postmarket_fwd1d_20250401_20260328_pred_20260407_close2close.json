@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 1,
+  "train_start": "20250401",
+  "train_end": "20260328",
+  "pred_date": "20260407",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002274.SZ",
+      "stock_code": "002274",
+      "stock_name": "华昌化工",
+      "lgb_score": 100.0,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 2,
+      "ts_code": "000586.SZ",
+      "stock_code": "000586",
+      "stock_name": "汇源通信",
+      "lgb_score": 89.81,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 3,
+      "ts_code": "300821.SZ",
+      "stock_code": "300821",
+      "stock_name": "东岳硅材",
+      "lgb_score": 86.67,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 4,
+      "ts_code": "600488.SH",
+      "stock_code": "600488",
+      "stock_name": "津药药业",
+      "lgb_score": 85.26,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 5,
+      "ts_code": "603637.SH",
+      "stock_code": "603637",
+      "stock_name": "镇海股份",
+      "lgb_score": 84.13,
+      "raw_score": 0.04
+    }
+  ]
+}

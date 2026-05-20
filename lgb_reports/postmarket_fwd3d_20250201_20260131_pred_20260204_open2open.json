@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20250201",
+  "train_end": "20260131",
+  "pred_date": "20260204",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300418.SZ",
+      "stock_code": "300418",
+      "stock_name": "昆仑万维",
+      "lgb_score": 100.0,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 2,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 96.22,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 3,
+      "ts_code": "301232.SZ",
+      "stock_code": "301232",
+      "stock_name": "飞沃科技",
+      "lgb_score": 92.56,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 4,
+      "ts_code": "001326.SZ",
+      "stock_code": "001326",
+      "stock_name": "联域股份",
+      "lgb_score": 92.44,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 5,
+      "ts_code": "000039.SZ",
+      "stock_code": "000039",
+      "stock_name": "中集集团",
+      "lgb_score": 92.11,
+      "raw_score": 0.05
+    }
+  ]
+}

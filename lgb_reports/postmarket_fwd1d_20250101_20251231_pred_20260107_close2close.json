@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 1,
+  "train_start": "20250101",
+  "train_end": "20251231",
+  "pred_date": "20260107",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "001331.SZ",
+      "stock_code": "001331",
+      "stock_name": "胜通能源",
+      "lgb_score": 100.0,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 2,
+      "ts_code": "301213.SZ",
+      "stock_code": "301213",
+      "stock_name": "观想科技",
+      "lgb_score": 94.53,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 3,
+      "ts_code": "600775.SH",
+      "stock_code": "600775",
+      "stock_name": "南京熊猫",
+      "lgb_score": 86.07,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 4,
+      "ts_code": "000620.SZ",
+      "stock_code": "000620",
+      "stock_name": "盈新发展",
+      "lgb_score": 85.55,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 5,
+      "ts_code": "603650.SH",
+      "stock_code": "603650",
+      "stock_name": "彤程新材",
+      "lgb_score": 84.57,
+      "raw_score": 0.04
+    }
+  ]
+}

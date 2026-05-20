@@ -897,7 +897,8 @@ class StockDiscoveryEngine:
 
     def discover(self, mode: ModeStr, trade_date: Optional[str] = None,
                 candidate_codes: Optional[List[str]] = None,
-                skip_monitor: bool = False) -> List[DiscoveryResult]:
+                skip_monitor: bool = False,
+                skip_persist: bool = False) -> List[DiscoveryResult]:
         start_time = time.time()
         self._integrity_warnings: List[str] = []
 
@@ -1223,11 +1224,13 @@ class StockDiscoveryEngine:
         self._last_scan_mode = mode
 
         # Phase 4.9a: 保存因子得分快照（供因子回测使用）
-        try:
-            from src.storage import DatabaseManager
-            DatabaseManager().save_factor_score_snapshots(raw_scores, trade_date, mode)
-        except Exception:
-            logger.warning("[Discovery] 因子得分快照保存失败", exc_info=True)
+        self._last_raw_scores = raw_scores  # expose for in-memory consumers
+        if not skip_persist:
+            try:
+                from src.storage import DatabaseManager
+                DatabaseManager().save_factor_score_snapshots(raw_scores, trade_date, mode)
+            except Exception:
+                logger.warning("[Discovery] 因子得分快照保存失败", exc_info=True)
 
         # Phase 4.9b: 批量预取技术指标（ATR/MA），供止盈止损计算
         tech_cache: Dict[str, Dict[str, float]] = {}
@@ -1624,6 +1627,20 @@ class StockDiscoveryEngine:
         for r in results:
             r.composite_score = alpha * r.score + (1 - alpha) * r.tech_score
         results.sort(key=lambda r: r.composite_score, reverse=True)
+
+        # 诊断：捕获 tech_score 异常为 0 的情况
+        zero_tech = [r for r in results if r.tech_score == 0.0]
+        if zero_tech:
+            logger.warning(
+                "[Discovery] ⚠️ tech_score=0 异常: %d/%d 只, use_pipeline=%s, "
+                "tech_map_size=%d, alpha=%.2f, scorer=%s, "
+                "samples: %s",
+                len(zero_tech), len(results), use_pipeline,
+                len(tech_scores_map), alpha,
+                "set" if getattr(self, '_scorer', None) else "None",
+                ", ".join(f"{r.stock_name}(score={r.score}, rr={r.rr_score})" for r in zero_tech[:3]),
+            )
+
         logger.info(
             "[Discovery] 综合分排序完成 (alpha=%.2f), Top 3: %s",
             alpha,

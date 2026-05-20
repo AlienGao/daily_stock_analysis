@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 1,
+  "train_start": "20250301",
+  "train_end": "20260228",
+  "pred_date": "20260313",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 100.0,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 2,
+      "ts_code": "600121.SH",
+      "stock_code": "600121",
+      "stock_name": "郑州煤电",
+      "lgb_score": 88.89,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 3,
+      "ts_code": "603248.SH",
+      "stock_code": "603248",
+      "stock_name": "锡华科技",
+      "lgb_score": 78.12,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 4,
+      "ts_code": "002438.SZ",
+      "stock_code": "002438",
+      "stock_name": "江苏神通",
+      "lgb_score": 67.85,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 5,
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 66.4,
+      "raw_score": 0.03
+    }
+  ]
+}

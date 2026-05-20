@@ -7,12 +7,10 @@ import {
 import { DatePicker, Segmented, Table, InputNumber, Button, Select, Input } from 'antd';
 import { Brain, Play, Loader2, Search } from 'lucide-react';
 import { AppPage, Card, StatCard, EmptyState, ApiErrorAlert } from '../components/common';
-import { researchApi, type LGBTaskStatusResponse, type LGBPredictionItem, type LGBBacktestCompareResponse, type LGBModelInfo, type LGBDateRangeResponse, type LGBStockLookupItem } from '../api/research';
+import { researchApi, type LGBTaskStatusResponse, type LGBPredictionItem, type LGBBacktestCompareResponse, type LGBModelInfo, type LGBDateRangeResponse, type LGBStockLookupItem, type LGBBacktestSimResponse } from '../api/research';
 import type { ParsedApiError } from '../api/error';
 import { getParsedApiError } from '../api/error';
 import dayjs from 'dayjs';
-
-type TabKey = 'intraday' | 'postmarket';
 
 function pctNum(v: number): string {
   return `${(v * 100).toFixed(1)}%`;
@@ -21,8 +19,8 @@ function pctNum(v: number): string {
 const LightGBMPage: React.FC = () => {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const [mode, setMode] = useState<TabKey>('postmarket');
-  const [forwardDays, setForwardDays] = useState(5);
+  const [forwardDays, setForwardDays] = useState(3);
+  const [trainExecMode, setTrainExecMode] = useState('close');
   const [nEstimators, setNEstimators] = useState(200);
   const [numLeaves, setNumLeaves] = useState(31);
   const [learningRate, setLearningRate] = useState(0.05);
@@ -45,9 +43,13 @@ const LightGBMPage: React.FC = () => {
   const [stockLookup, setStockLookup] = useState<LGBStockLookupItem | null>(null);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState('');
+  const [backtestSim, setBacktestSim] = useState<LGBBacktestSimResponse | null>(null);
+  const [backtestSimLoading, setBacktestSimLoading] = useState(false);
+  const [backtestFwd, setBacktestFwd] = useState(1);
+  const [backtestTopN, setBacktestTopN] = useState(5);
 
   /* ── Derived per-mode bounds ── */
-  const dateBounds = dateRange?.[mode];
+  const dateBounds = dateRange?.postmarket;
   const dateMin = dateBounds ? dayjs(dateBounds.min) : null;
   const dateMax = dateBounds ? dayjs(dateBounds.max) : null;
   const disableDate = useCallback(
@@ -80,14 +82,31 @@ const LightGBMPage: React.FC = () => {
 
   useEffect(() => { loadModels(); }, [loadModels]);
 
-  /* ── Load results from a selected model ── */
+  const [predictLoading, setPredictLoading] = useState(false);
+  const [predictionDate, setPredictionDate] = useState('');
+
+  /* ── Predict Top 5 with selected model ── */
+  const handlePredictTop5 = useCallback(async () => {
+    if (!selectedModel) return;
+    setError(null);
+    setPredictLoading(true);
+    try {
+      const pred = await researchApi.getPredictions(selectedModel);
+      setPredictions(pred.predictions);
+      setPredictionDate(pred.model_date);
+    } catch (e) {
+      setError(getParsedApiError(e));
+    } finally {
+      setPredictLoading(false);
+    }
+  }, [selectedModel]);
   const loadModelResults = useCallback(async (modelPath: string) => {
     setError(null);
     try {
       const [fi, pred, bt] = await Promise.all([
         researchApi.getFeatureImportance(modelPath),
         researchApi.getPredictions(modelPath),
-        researchApi.getBacktestCompare({ mode, top_n: 10, forward_days: forwardDays, model_path: modelPath }),
+        researchApi.getBacktestCompare({ mode: 'postmarket', top_n: 10, forward_days: forwardDays, model_path: modelPath }),
       ]);
       const fiList = Object.keys(fi.gain).map((name) => ({
         name,
@@ -96,11 +115,12 @@ const LightGBMPage: React.FC = () => {
       })).sort((a, b) => b.gain - a.gain);
       setFeatureImportance(fiList);
       setPredictions(pred.predictions);
+      setPredictionDate(pred.model_date);
       setBacktest(bt);
     } catch (e) {
       setError(getParsedApiError(e));
     }
-  }, [mode, forwardDays]);
+  }, [forwardDays]);
 
   /* ── Train ── */
   const handleTrain = useCallback(async () => {
@@ -113,8 +133,9 @@ const LightGBMPage: React.FC = () => {
 
     try {
       const { task_id } = await researchApi.train({
-        mode,
+        mode: 'postmarket',
         forward_days: forwardDays,
+        exec_mode: trainExecMode,
         start_date: startDate,
         end_date: endDate,
         n_estimators: nEstimators,
@@ -128,6 +149,7 @@ const LightGBMPage: React.FC = () => {
             const status = await researchApi.getStatus(task_id);
             if (status.status_message) setStatusMsg(status.status_message);
             if (status.status === 'completed') {
+              setStatusMsg('');
               clearInterval(pollRef.current!);
               pollRef.current = null;
               resolve(status);
@@ -153,25 +175,23 @@ const LightGBMPage: React.FC = () => {
         })).sort((a, b) => b.gain - a.gain);
         setFeatureImportance(fiList);
         setPredictions(finalResult.result.predictions);
+        if (finalResult.result.model_date) setPredictionDate(finalResult.result.model_date);
+        setTraining(false);
+        setStatusMsg('');
 
-        await loadModels();
-
-        try {
-          const bt = await researchApi.getBacktestCompare({
-            mode,
-            top_n: 10,
-            forward_days: forwardDays,
-          });
-          setBacktest(bt);
-        } catch { /* backtest may fail independently */ }
+        loadModels();
+        researchApi.getBacktestCompare({
+          mode: 'postmarket',
+          top_n: 10,
+          forward_days: forwardDays,
+        }).then((bt) => setBacktest(bt)).catch(() => {});
       }
     } catch (e) {
       setError(getParsedApiError(e));
-    } finally {
       setTraining(false);
       setStatusMsg('');
     }
-  }, [mode, forwardDays, nEstimators, numLeaves, learningRate, cvFolds, startDate, endDate, loadModels]);
+  }, [forwardDays, trainExecMode, nEstimators, numLeaves, learningRate, cvFolds, startDate, endDate, loadModels]);
 
   /* ── Stock lookup ── */
   const handleLookup = useCallback(async () => {
@@ -194,6 +214,22 @@ const LightGBMPage: React.FC = () => {
     }
   }, [stockCode, selectedModel]);
 
+  /* ── Backtest Sim ── */
+  const fetchBacktestSim = useCallback(async (fwd: number, exec: string, topN: number) => {
+    setBacktestSimLoading(true);
+    setBacktestSim(null);
+    try {
+      const data = await researchApi.getBacktestSim({ forward_days: fwd, top_n: topN, exec_mode: exec });
+      setBacktestSim(data);
+    } catch {
+      // ignore
+    } finally {
+      setBacktestSimLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchBacktestSim(1, trainExecMode, backtestTopN); }, [fetchBacktestSim, trainExecMode, backtestTopN]);
+
   /* ── Cleanup polling on unmount ── */
   useEffect(() => {
     return () => {
@@ -211,6 +247,7 @@ const LightGBMPage: React.FC = () => {
   const predColumns = [
     { title: '排名', dataIndex: 'rank', key: 'rank', width: 60 },
     { title: '代码', dataIndex: 'ts_code', key: 'ts_code', width: 100 },
+    { title: '名称', dataIndex: 'stock_name', key: 'stock_name', width: 100 },
     { title: 'LGB 评分', dataIndex: 'lgb_score', key: 'lgb_score', width: 100, render: (_: unknown, r: LGBPredictionItem) => r.lgb_score.toFixed(4) },
     { title: '原始分', dataIndex: 'raw_score', key: 'raw_score', width: 100, render: (_: unknown, r: LGBPredictionItem) => r.raw_score.toFixed(4) },
   ];
@@ -222,16 +259,19 @@ const LightGBMPage: React.FC = () => {
         <div className="lg:w-[260px] shrink-0 space-y-4">
           <Card>
             <div className="space-y-3">
-              <div className="font-medium text-sm text-secondary-text">扫描模式</div>
+              <div className="font-medium text-sm text-secondary-text">训练标签模式</div>
               <Segmented
                 block
-                value={mode}
-                onChange={(v) => setMode(v as TabKey)}
+                value={trainExecMode}
+                onChange={(v) => setTrainExecMode(v as string)}
                 options={[
-                  { label: '盘后', value: 'postmarket' },
-                  { label: '盘中', value: 'intraday' },
+                  { label: '收盘→收盘', value: 'close' },
+                  { label: '开盘→开盘', value: 'open' },
                 ]}
               />
+              <div className="text-[10px] text-tertiary-text">
+                训练标签与回测执行模式对应，训练/回测一致才可对比
+              </div>
             </div>
           </Card>
 
@@ -241,7 +281,7 @@ const LightGBMPage: React.FC = () => {
 
               {/* 预测天数 */}
               <div className="space-y-1.5">
-                <div className="text-xs text-secondary-text">预测天数 <span className="text-tertiary-text">（未来N日后涨跌幅，推荐5）</span></div>
+                <div className="text-xs text-secondary-text">预测天数 <span className="text-tertiary-text">（未来N日后涨跌幅，推荐3）</span></div>
                 <InputNumber size="small" min={1} max={60} value={forwardDays} onChange={(v) => setForwardDays(v ?? 5)} className="w-full" />
               </div>
 
@@ -273,12 +313,32 @@ const LightGBMPage: React.FC = () => {
               <div className="space-y-1.5">
                 <div className="text-xs text-secondary-text">日期范围 <span className="text-tertiary-text">（可选）</span></div>
                 {dateBounds && (
-                  <div className="text-[10px] text-tertiary-text/70">{dateBounds.min} ~ {dateBounds.max}</div>
+                  <>
+                    <div className="text-[10px] text-tertiary-text/70">{dateBounds.min} ~ {dateBounds.max}</div>
+                    <div className="flex flex-wrap gap-1">
+                      {[{ label: '30日', days: 42 }, { label: '60日', days: 85 }, { label: '120日', days: 170 }, { label: '240日', days: 340 }].map(({ label, days }) => (
+                        <Button
+                          key={label}
+                          size="small"
+                          type="default"
+                          className="text-[10px] h-5 px-1.5"
+                          onClick={() => {
+                            const end = dateMax ?? dayjs();
+                            setStartDate(end.subtract(days, 'day').format('YYYYMMDD'));
+                            setEndDate(end.format('YYYYMMDD'));
+                          }}
+                        >
+                          近{label}
+                        </Button>
+                      ))}
+                    </div>
+                  </>
                 )}
                 <DatePicker
                   size="small"
                   placeholder="起始日"
                   disabledDate={disableDate}
+                  value={startDate ? dayjs(startDate) : null}
                   onChange={(_, ds) => setStartDate(typeof ds === 'string' ? ds : null)}
                   className="w-full"
                 />
@@ -287,6 +347,7 @@ const LightGBMPage: React.FC = () => {
                     size="small"
                     placeholder="结束日"
                     disabledDate={disableDate}
+                    value={endDate ? dayjs(endDate) : null}
                     onChange={(_, ds) => setEndDate(typeof ds === 'string' ? ds : null)}
                     className="w-full"
                   />
@@ -308,7 +369,7 @@ const LightGBMPage: React.FC = () => {
 
           {models.length > 0 && (
             <Card>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="font-medium text-sm text-secondary-text">已有模型</div>
                 <Select
                   size="small"
@@ -326,6 +387,21 @@ const LightGBMPage: React.FC = () => {
                     value: m.path,
                   }))}
                 />
+                {selectedModel && (
+                  <>
+                    <div className="border-t border-white/5" />
+                    <Button
+                      block
+                      size="small"
+                      type="primary"
+                      icon={predictLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Brain className="h-4 w-4" />}
+                      onClick={handlePredictTop5}
+                      loading={predictLoading}
+                    >
+                      预测当前 Top 5
+                    </Button>
+                  </>
+                )}
               </div>
             </Card>
           )}
@@ -418,7 +494,7 @@ const LightGBMPage: React.FC = () => {
           {/* Predictions */}
           {predictions.length > 0 && (
             <Card>
-              <div className="font-medium text-sm text-secondary-text mb-3">预测结果 Top 50</div>
+              <div className="font-medium text-sm text-secondary-text mb-3">预测结果 Top 5{predictionDate ? <span className="text-tertiary-text ml-2 text-xs">数据日期: {predictionDate}</span> : ''}</div>
               <Table
                 size="small"
                 dataSource={predictions}
@@ -429,6 +505,135 @@ const LightGBMPage: React.FC = () => {
               />
             </Card>
           )}
+
+          {/* Backtest Simulation (from prediction files) */}
+          <Card>
+            <div className="flex items-center justify-between mb-3">
+              <div className="font-medium text-sm text-secondary-text">回测模拟（预测文件）</div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-tertiary-text">Top</span>
+                <InputNumber
+                  size="small"
+                  min={1}
+                  max={5}
+                  value={backtestTopN}
+                  onChange={(v) => {
+                    const n = v ?? 5;
+                    setBacktestTopN(n);
+                    fetchBacktestSim(backtestFwd, trainExecMode, n);
+                  }}
+                  style={{ width: 52 }}
+                />
+                <Segmented
+                  size="small"
+                  value={backtestFwd.toString()}
+                  onChange={(v) => {
+                    const fwd = Number(v);
+                    setBacktestFwd(fwd);
+                    fetchBacktestSim(fwd, trainExecMode, backtestTopN);
+                  }}
+                  options={[
+                    { label: '1 日', value: '1' },
+                    { label: '3 日', value: '3' },
+                  ]}
+                />
+              </div>
+            </div>
+
+            {backtestSimLoading && (
+              <div className="flex items-center gap-2 text-sm text-tertiary-text py-4">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                计算中...
+              </div>
+            )}
+
+            {backtestSim && !backtestSimLoading && (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+                  <StatCard
+                    label="总收益率"
+                    value={pctNum(backtestSim.metrics.cumulative_return)}
+                  />
+                  <StatCard
+                    label="胜率"
+                    value={pctNum(backtestSim.metrics.win_rate)}
+                  />
+                  <StatCard
+                    label="最大回撤"
+                    value={pctNum(backtestSim.metrics.max_drawdown)}
+                  />
+                  <StatCard
+                    label="交易笔数"
+                    value={String(backtestSim.metrics.total_trades)}
+                  />
+                  <StatCard
+                    label="跳过（涨停）"
+                    value={String(backtestSim.metrics.skipped_trades)}
+                  />
+                </div>
+
+                {backtestSim.capital_curve.length > 1 && (
+                  <ResponsiveContainer width="100%" height={280} className="mb-4">
+                    <LineChart data={backtestSim.capital_curve}>
+                      <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                      <XAxis dataKey="date" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                      <YAxis tick={{ fontSize: 11 }} domain={['auto', 'auto']} />
+                      <Tooltip
+                        contentStyle={{ background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', fontSize: 12 }}
+                        formatter={(value) => [Number(value).toFixed(4), '资金']}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="capital"
+                        name="资金曲线"
+                        stroke="#22c55e"
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+
+                {backtestSim.trades.length > 0 && (
+                  <details open>
+                    <summary className="cursor-pointer text-xs text-tertiary-text mb-2 select-none">
+                      交易明细（{backtestSim.trades.filter((t) => !t.skipped).length} 笔，跳过 {backtestSim.metrics.skipped_trades} 笔涨停）
+                    </summary>
+                    <Table
+                      size="small"
+                      dataSource={backtestSim.trades.filter((t) => !t.skipped)}
+                      rowKey={(r) => `${r.pred_date}_${r.stock_code}`}
+                      pagination={{ pageSize: 50, size: 'small', showSizeChanger: true, pageSizeOptions: ['20', '50', '100'], showTotal: (total) => `共 ${total} 笔` }}
+                      scroll={{ x: 780, y: 400 }}
+                      columns={[
+                        { title: '预测日', dataIndex: 'pred_date', key: 'pred_date', width: 85, render: (_: unknown, r: typeof backtestSim.trades[0]) => r.pred_date },
+                        { title: '代码', dataIndex: 'stock_code', key: 'stock_code', width: 75 },
+                        { title: '名称', dataIndex: 'stock_name', key: 'stock_name', width: 70 },
+                        { title: '买入日', dataIndex: 'buy_date', key: 'buy_date', width: 85 },
+                        { title: '买入价', dataIndex: 'buy_price', key: 'buy_price', width: 70, render: (_: unknown, r: typeof backtestSim.trades[0]) => r.buy_price.toFixed(2) },
+                        { title: '卖出日', dataIndex: 'sell_date', key: 'sell_date', width: 85 },
+                        { title: '卖出价', dataIndex: 'sell_price', key: 'sell_price', width: 70, render: (_: unknown, r: typeof backtestSim.trades[0]) => r.sell_price.toFixed(2) },
+                        {
+                          title: '收益', dataIndex: 'return_pct', key: 'return_pct', width: 70,
+                          render: (_: unknown, r: typeof backtestSim.trades[0]) => (
+                            <span className={r.return_pct >= 0 ? 'text-red-400' : 'text-green-400'}>
+                              {pctNum(r.return_pct)}
+                            </span>
+                          ),
+                        },
+                      ]}
+                    />
+                  </details>
+                )}
+              </>
+            )}
+
+            {!backtestSim && !backtestSimLoading && (
+              <div className="text-xs text-tertiary-text">
+                选择天数点击查询，系统将读取预测文件模拟实盘交易。
+              </div>
+            )}
+          </Card>
 
           {/* Backtest Compare */}
           {backtest && (

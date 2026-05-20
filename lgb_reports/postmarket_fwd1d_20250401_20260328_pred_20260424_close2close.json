@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 1,
+  "train_start": "20250401",
+  "train_end": "20260328",
+  "pred_date": "20260424",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300613.SZ",
+      "stock_code": "300613",
+      "stock_name": "富瀚微",
+      "lgb_score": 100.0,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 2,
+      "ts_code": "002756.SZ",
+      "stock_code": "002756",
+      "stock_name": "永兴材料",
+      "lgb_score": 97.57,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 3,
+      "ts_code": "000906.SZ",
+      "stock_code": "000906",
+      "stock_name": "浙商中拓",
+      "lgb_score": 90.36,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 4,
+      "ts_code": "002406.SZ",
+      "stock_code": "002406",
+      "stock_name": "远东传动",
+      "lgb_score": 89.08,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 5,
+      "ts_code": "600527.SH",
+      "stock_code": "600527",
+      "stock_name": "江南高纤",
+      "lgb_score": 87.57,
+      "raw_score": 0.04
+    }
+  ]
+}

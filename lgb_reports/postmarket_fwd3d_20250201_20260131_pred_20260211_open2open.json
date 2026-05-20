@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20250201",
+  "train_end": "20260131",
+  "pred_date": "20260211",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002150.SZ",
+      "stock_code": "002150",
+      "stock_name": "正泰电源",
+      "lgb_score": 100.0,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 2,
+      "ts_code": "002340.SZ",
+      "stock_code": "002340",
+      "stock_name": "格林美",
+      "lgb_score": 99.66,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 3,
+      "ts_code": "688035.SH",
+      "stock_code": "688035",
+      "stock_name": "德邦科技",
+      "lgb_score": 98.95,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 4,
+      "ts_code": "600459.SH",
+      "stock_code": "600459",
+      "stock_name": "贵研铂业",
+      "lgb_score": 98.04,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 5,
+      "ts_code": "002929.SZ",
+      "stock_code": "002929",
+      "stock_name": "润建股份",
+      "lgb_score": 97.27,
+      "raw_score": 0.05
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 1,
+  "train_start": "20250101",
+  "train_end": "20251231",
+  "pred_date": "20260128",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300798.SZ",
+      "stock_code": "300798",
+      "stock_name": "锦鸡股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 2,
+      "ts_code": "000620.SZ",
+      "stock_code": "000620",
+      "stock_name": "盈新发展",
+      "lgb_score": 98.81,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 3,
+      "ts_code": "603077.SH",
+      "stock_code": "603077",
+      "stock_name": "和邦生物",
+      "lgb_score": 98.34,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 4,
+      "ts_code": "000815.SZ",
+      "stock_code": "000815",
+      "stock_name": "美利云",
+      "lgb_score": 98.29,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 5,
+      "ts_code": "600170.SH",
+      "stock_code": "600170",
+      "stock_name": "上海建工",
+      "lgb_score": 95.55,
+      "raw_score": 0.04
+    }
+  ]
+}

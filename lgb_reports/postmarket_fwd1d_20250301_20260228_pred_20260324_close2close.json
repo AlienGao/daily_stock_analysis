@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 1,
+  "train_start": "20250301",
+  "train_end": "20260228",
+  "pred_date": "20260324",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "603527.SH",
+      "stock_code": "603527",
+      "stock_name": "众源新材",
+      "lgb_score": 100.0,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 2,
+      "ts_code": "600475.SH",
+      "stock_code": "600475",
+      "stock_name": "华光环能",
+      "lgb_score": 98.15,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 3,
+      "ts_code": "002350.SZ",
+      "stock_code": "002350",
+      "stock_name": "北京科锐",
+      "lgb_score": 92.82,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 4,
+      "ts_code": "002645.SZ",
+      "stock_code": "002645",
+      "stock_name": "华宏科技",
+      "lgb_score": 91.21,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 5,
+      "ts_code": "688551.SH",
+      "stock_code": "688551",
+      "stock_name": "科威尔",
+      "lgb_score": 87.74,
+      "raw_score": 0.05
+    }
+  ]
+}

@@ -32,6 +32,48 @@ logger = logging.getLogger(__name__)
 
 _OUTPUT_PATH = "/tmp/discovery_top10.json"
 _REPORTS_DIR = Path(__file__).resolve().parent.parent.parent / "discovery_reports"
+_PID_FILE = Path("/tmp/discovery_scanner.pid")
+
+
+def _acquire_pid_lock(force: bool = False) -> None:
+    """获取扫描器 PID 锁，防止多实例同时写入同一份 JSON 文件。
+
+    若已有活着的扫描器进程，抛出 RuntimeError；否则写入当前 PID。
+    """
+    if _PID_FILE.exists():
+        try:
+            stale_pid = int(_PID_FILE.read_text().strip())
+            if stale_pid == os.getpid():
+                return  # 同一进程重入（例如测试）
+            try:
+                os.kill(stale_pid, 0)  # 信号 0 只检查进程是否存在
+            except OSError:
+                logger.warning(
+                    "[Scanner] 发现残留 PID 文件 (pid=%d 已不存在)，覆盖", stale_pid
+                )
+            else:
+                if not force:
+                    raise RuntimeError(
+                        f"盘中扫描器已在运行中 (pid={stale_pid})。"
+                        f" 如需强制启动，删除 {_PID_FILE} 或设置 DISCOVERY_SCANNER_FORCE=true"
+                    )
+                logger.warning("[Scanner] 强制启动，覆盖旧 PID 锁 (pid=%d)", stale_pid)
+        except (ValueError, OSError):
+            pass  # 文件损坏或无法读取，覆盖
+
+    _PID_FILE.parent.mkdir(parents=True, exist_ok=True)
+    _PID_FILE.write_text(str(os.getpid()))
+
+
+def _release_pid_lock() -> None:
+    """释放扫描器 PID 锁。"""
+    try:
+        if _PID_FILE.exists():
+            pid = int(_PID_FILE.read_text().strip())
+            if pid == os.getpid():
+                _PID_FILE.unlink()
+    except Exception:
+        pass
 
 _TZ_CN = timezone(timedelta(hours=8))
 _MARKET_OPEN = (9, 25)   # 盘中扫描开始
@@ -220,11 +262,8 @@ class IntradayScanner:
             time.sleep(wait)
         self._ensure_daily_kline_complete()
 
-        # Step 4: 收盘后休眠至下一交易日 8:00
-        next_open = self._time_to(8, 0)
-        wait_min = (next_open - self._now()).total_seconds() / 60
-        logger.info("[Scanner] 休眠至 %s (%.0f 分钟)", next_open.strftime("%m-%d %H:%M"), wait_min)
-        time.sleep((next_open - self._now()).total_seconds())
+        # Step 4: 收盘后退出，由外部调度（cron / 手动）次日重新拉起
+        logger.info("[Scanner] 收盘后扫描结束，进程退出")
 
     def _refresh_realtime_spot(self) -> bool:
         """拉取最新实时行情并落库。
@@ -712,6 +751,18 @@ class IntradayScanner:
         try:
             os.makedirs(os.path.dirname(_OUTPUT_PATH), exist_ok=True)
             active = [e for e in annotated if e["rank"] > 0]
+
+            # 诊断：检测写入 JSON 时 tech_score 为 0 的异常
+            zero_tech_active = [e for e in active if e.get("tech_score", 0) == 0.0]
+            if zero_tech_active:
+                logger.warning(
+                    "[Scanner] ⚠️ 写入 JSON 时发现 tech_score=0: %d/%d 条, round=%d, "
+                    "samples: %s",
+                    len(zero_tech_active), len(active), self._round,
+                    ", ".join(f"{e.get('stock_name','?')}(score={e.get('score',0):.1f}, "
+                              f"comp={e.get('composite_score',0):.1f})" for e in zero_tech_active[:3]),
+                )
+
             now_utc = datetime.now(timezone.utc)
             now_local = (now_utc + timedelta(hours=8)).strftime("%H:%M:%S")
             for e in active:
@@ -1011,8 +1062,8 @@ def refresh_margin_detail_postmarket(tushare_fetcher) -> int:
                 total_saved += saved
                 logger.info(f"[Scanner] 盘后 margin_detail 刷新 {td}: DB已有{cnt}, 补{saved} 条")
 
-        # 清理超 10 年数据
-        cutoff = str(int(trade_dates[-1][:4]) - 10) + trade_dates[-1][4:]
+        # 清理超 5 年数据
+        cutoff = str(int(trade_dates[-1][:4]) - 5) + trade_dates[-1][4:]
         with db.get_session() as sess:
             deleted = sess.execute(
                 _text("DELETE FROM margin_detail WHERE trade_date < :cutoff"),
@@ -1020,7 +1071,7 @@ def refresh_margin_detail_postmarket(tushare_fetcher) -> int:
             ).rowcount
             sess.commit()
         if deleted:
-            logger.info("[Scanner] margin_detail 清理超 10 年数据: %d 条 (早于 %s)", deleted, cutoff)
+            logger.info("[Scanner] margin_detail 清理超 5 年数据: %d 条 (早于 %s)", deleted, cutoff)
 
         logger.info("[Scanner] 盘后 margin_detail 全量刷新: 合计 %d 条", total_saved)
         return total_saved
@@ -1061,9 +1112,9 @@ def refresh_daily_basic_postmarket(tushare_fetcher) -> int:
         saved = db.upsert_daily_basic(out, source="tushare")
         logger.info(f"[Scanner] 盘后 daily_basic 刷新 {td}: {saved} 条")
 
-        # 自动清理超 10 年数据
+        # 自动清理超 5 年数据
         from datetime import datetime, timedelta
-        cutoff = (datetime.now() - timedelta(days=365 * 10)).strftime("%Y%m%d")
+        cutoff = (datetime.now() - timedelta(days=365 * 5)).strftime("%Y%m%d")
         db.delete_daily_basic_before(cutoff)
 
         return saved
@@ -1119,8 +1170,8 @@ def refresh_hm_detail_postmarket(tushare_fetcher, start: Optional[str] = None) -
 
         logger.info("[Scanner] 盘后 hm_detail 刷新完成: %d 天, 合计 %d 条", len(target_dates), total_saved)
 
-        # 清理超 10 年数据
-        cutoff = str(int(trade_dates[-1][:4]) - 10) + trade_dates[-1][4:]
+        # 清理超 5 年数据
+        cutoff = str(int(trade_dates[-1][:4]) - 5) + trade_dates[-1][4:]
         with db.get_session() as sess:
             deleted = sess.execute(
                 _text("DELETE FROM hm_detail WHERE trade_date < :cutoff"),
@@ -1128,7 +1179,7 @@ def refresh_hm_detail_postmarket(tushare_fetcher, start: Optional[str] = None) -
             ).rowcount
             sess.commit()
         if deleted:
-            logger.info("[Scanner] hm_detail 清理超 10 年数据: %d 条 (早于 %s)", deleted, cutoff)
+            logger.info("[Scanner] hm_detail 清理超 5 年数据: %d 条 (早于 %s)", deleted, cutoff)
 
         return total_saved
     except Exception as e:
@@ -1208,8 +1259,8 @@ def refresh_cyq_perf_postmarket(tushare_fetcher) -> int:
                 total_saved += saved
                 logger.info(f"[Scanner] 盘后 cyq_perf 刷新 {td}: DB已有{cnt}, 补{saved} 条")
 
-        # 清理超 10 年数据
-        cutoff = str(int(trade_dates[-1][:4]) - 10) + trade_dates[-1][4:]
+        # 清理超 5 年数据
+        cutoff = str(int(trade_dates[-1][:4]) - 5) + trade_dates[-1][4:]
         with db.get_session() as sess:
             deleted = sess.execute(
                 _text("DELETE FROM broker_enrichment_cyq_perf WHERE trade_date < :cutoff"),
@@ -1217,7 +1268,7 @@ def refresh_cyq_perf_postmarket(tushare_fetcher) -> int:
             ).rowcount
             sess.commit()
         if deleted:
-            logger.info("[Scanner] 盘后 cyq_perf 清理超 10 年数据: %d 条 (早于 %s)", deleted, cutoff)
+            logger.info("[Scanner] 盘后 cyq_perf 清理超 5 年数据: %d 条 (早于 %s)", deleted, cutoff)
 
         logger.info("[Scanner] 盘后 cyq_perf 全量刷新: 合计 %d 条", total_saved)
         return total_saved
@@ -1389,9 +1440,9 @@ def refresh_performance_report_postmarket(akshare_fetcher=None) -> int:
             logger.info("[Scanner] performance_report %s: %d 条", period, saved)
             total_saved += saved
 
-        # 清理超过 10 年的数据
+        # 清理超过 5 年的数据
         from datetime import date as _date, timedelta
-        cutoff = (_date.today() - timedelta(days=3652)).strftime("%Y%m%d")
+        cutoff = (_date.today() - timedelta(days=365 * 5 + 2)).strftime("%Y%m%d")
         deleted = db.delete_performance_report_before(cutoff)
         if deleted > 0:
             logger.info("[Scanner] 清理 performance_report < %s: %d 条", cutoff, deleted)
@@ -1405,7 +1456,7 @@ def refresh_performance_report_postmarket(akshare_fetcher=None) -> int:
 def refresh_repurchase_postmarket(tushare_fetcher=None) -> int:
     """盘后用 Tushare repurchase 刷新 repurchase 表。
 
-    拉取近 180 天的回购公告数据并 upsert 入库，同时清理超出 10 年的旧数据。
+    拉取近 180 天的回购公告数据并 upsert 入库，同时清理超出 5 年的旧数据。
     与 institution_hold 不同，回购数据可能每日有新公告，每次都拉取更新。
 
     Returns:
@@ -1431,9 +1482,9 @@ def refresh_repurchase_postmarket(tushare_fetcher=None) -> int:
         saved = db.upsert_repurchase(df, source="tushare")
         logger.info("[Scanner] 盘后 repurchase 刷新: %d 条", saved)
 
-        # 超出 10 年自动删除
+        # 超出 5 年自动删除
         from sqlalchemy import text as _text
-        cutoff = str(int(today.strftime("%Y%m%d")[:4]) - 10) + today.strftime("%m%d")
+        cutoff = str(int(today.strftime("%Y%m%d")[:4]) - 5) + today.strftime("%m%d")
         with db.get_session() as sess:
             deleted = sess.execute(
                 _text("DELETE FROM repurchase WHERE ann_date < :cutoff"),
@@ -1441,7 +1492,7 @@ def refresh_repurchase_postmarket(tushare_fetcher=None) -> int:
             ).rowcount
             sess.commit()
         if deleted:
-            logger.info("[Scanner] repurchase 清理: 删除 %d 条 (>10年)", deleted)
+            logger.info("[Scanner] repurchase 清理: 删除 %d 条 (>5年)", deleted)
 
         return saved
     except Exception as e:
@@ -1514,11 +1565,11 @@ def refresh_popularity_postmarket(tushare_fetcher) -> int:
         saved = db.upsert_popularity_rank(out, source="tushare")
         logger.info("[Scanner] 盘后 popularity_rank 全量刷新: %d 条", saved)
 
-        # 清理超 10 年数据
+        # 清理超 5 年数据
         from sqlalchemy import text as _text
         latest_td = str(out["trade_date"].max())[:8] if not out.empty else ""
         if latest_td:
-            cutoff = str(int(latest_td[:4]) - 10) + latest_td[4:]
+            cutoff = str(int(latest_td[:4]) - 5) + latest_td[4:]
             with db.get_session() as sess:
                 deleted = sess.execute(
                     _text("DELETE FROM popularity_rank WHERE trade_date < :cutoff"),
@@ -1526,7 +1577,7 @@ def refresh_popularity_postmarket(tushare_fetcher) -> int:
                 ).rowcount
                 sess.commit()
             if deleted:
-                logger.info("[Scanner] popularity_rank 清理超 10 年数据: %d 条 (早于 %s)", deleted, cutoff)
+                logger.info("[Scanner] popularity_rank 清理超 5 年数据: %d 条 (早于 %s)", deleted, cutoff)
 
         return saved
     except Exception as e:
@@ -1702,23 +1753,32 @@ def refresh_ths_concept_map_postmarket(tushare_fetcher) -> int:
 
 def run_intraday_scan(config: DiscoveryConfig, tushare_fetcher=None, akshare_fetcher=None) -> None:
     """一键启动盘中扫描（注册全部盘中因子）。"""
+    force = os.getenv("DISCOVERY_SCANNER_FORCE", "").strip().lower() in ("true", "1", "yes")
+    _acquire_pid_lock(force=force)
+
     from src.discovery.factors import (
         MaEntryFactor,
         SectorFactor, MomentumFactor,
         RankingMomentumFactor, ReboundFactor, PopularityFactor,
     )
 
-    engine = StockDiscoveryEngine(config, tushare_fetcher, akshare_fetcher)
-    engine.register_factors([
-        MaEntryFactor(),
-        SectorFactor(), MomentumFactor(),
-        RankingMomentumFactor(), ReboundFactor(), PopularityFactor(),
-    ])
+    import atexit
+    atexit.register(_release_pid_lock)
 
-    set_active_config(config)
-    _load_runtime_state_into(config)
-    scanner = IntradayScanner(config, engine)
-    scanner.start()
+    try:
+        engine = StockDiscoveryEngine(config, tushare_fetcher, akshare_fetcher)
+        engine.register_factors([
+            MaEntryFactor(),
+            SectorFactor(), MomentumFactor(),
+            RankingMomentumFactor(), ReboundFactor(), PopularityFactor(),
+        ])
+
+        set_active_config(config)
+        _load_runtime_state_into(config)
+        scanner = IntradayScanner(config, engine)
+        scanner.start()
+    finally:
+        _release_pid_lock()
 
 
 def _build_sector_index_mapping() -> Dict[str, str]:

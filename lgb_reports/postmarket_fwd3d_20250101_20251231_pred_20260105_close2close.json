@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20250101",
+  "train_end": "20251231",
+  "pred_date": "20260105",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002458.SZ",
+      "stock_code": "002458",
+      "stock_name": "益生股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "000404.SZ",
+      "stock_code": "000404",
+      "stock_name": "长虹华意",
+      "lgb_score": 96.88,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 94.76,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "300992.SZ",
+      "stock_code": "300992",
+      "stock_name": "泰福泵业",
+      "lgb_score": 93.45,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "301322.SZ",
+      "stock_code": "301322",
+      "stock_name": "绿通科技",
+      "lgb_score": 90.56,
+      "raw_score": 0.08
+    }
+  ]
+}

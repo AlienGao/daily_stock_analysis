@@ -1379,7 +1379,11 @@ def main() -> int:
             akshare_fetcher = AkshareFetcher()
             if not tushare_fetcher.is_available():
                 logger.warning("Tushare 不可用，盘中扫描可能无法获取数据")
-            run_intraday_scan(discovery_config, tushare_fetcher, akshare_fetcher)
+            try:
+                run_intraday_scan(discovery_config, tushare_fetcher, akshare_fetcher)
+            except RuntimeError as e:
+                logger.error("无法启动扫描器: %s", e)
+                raise _ModeExit(1)
             raise _ModeExit(0)
 
         # 模式: 仅股票发现

@@ -25,9 +25,12 @@ from api.v1.schemas.research import (
     LGBDateRangeResponse,
     LGBStockLookupItem,
     LGBStockLookupResponse,
+    LGBBacktestSimResponse,
+    LGBBacktestSimMetrics,
+    LGBBacktestTradeItem,
 )
 from src.discovery.ml.lgb_trainer import LGBTrainer
-from src.storage import DatabaseManager, FactorScoreSnapshot
+from src.storage import DatabaseManager, FactorScoreSnapshot, StockDaily
 
 router = APIRouter()
 
@@ -55,6 +58,7 @@ def _run_train_in_process(queue: multiprocessing.Queue, req_dict: dict):
         trainer = LGBTrainer(
             mode=req_dict["mode"],
             forward_days=req_dict["forward_days"],
+            exec_mode=req_dict.get("exec_mode", "close"),
             progress_callback=_progress,
         )
         trainer.prepare_data(
@@ -71,10 +75,13 @@ def _run_train_in_process(queue: multiprocessing.Queue, req_dict: dict):
         )
 
         _progress("正在生成预测...")
-        trainer.predict()
+        trainer.predict(target_date=req_dict.get("end_date"))
 
         _progress("正在保存模型...")
         model_path = trainer.save()
+
+        _progress("正在生成报告...")
+        report_path = trainer.save_report(top_n=5)
 
         importance = trainer.get_feature_importance()
         predictions = trainer.get_latest_predictions()
@@ -82,6 +89,8 @@ def _run_train_in_process(queue: multiprocessing.Queue, req_dict: dict):
 
         queue.put(("completed", {
             "model_path": model_path,
+            "report_path": report_path,
+            "model_date": trainer._latest_date,
             "feature_importance": importance,
             "predictions": predictions,
             "training_metrics": metrics,
@@ -168,6 +177,7 @@ def lgb_train(req: LGBTrainRequest):
     req_dict = {
         "mode": req.mode,
         "forward_days": req.forward_days,
+        "exec_mode": req.exec_mode,
         "start_date": req.start_date,
         "end_date": req.end_date,
         "n_estimators": req.n_estimators,
@@ -195,6 +205,7 @@ def lgb_train(req: LGBTrainRequest):
 
 @router.get(
     "/lgb/status",
+    response_model=LGBTaskStatusResponse,
     summary="查询 LightGBM 训练任务状态",
 )
 def lgb_status(task_id: str = Query(..., description="任务 ID")):
@@ -274,6 +285,8 @@ def lgb_predictions(
         model_path = latest_task["result"]["model_path"]
         trainer = LGBTrainer.load(model_path)
 
+    if trainer._X_latest is None:
+        trainer.predict()
     predictions = trainer.get_latest_predictions()
     return LGBPredictionsResponse(
         model_date=trainer._latest_date or "",
@@ -295,11 +308,12 @@ def lgb_backtest_compare(
     start_date: str = Query(None),
     end_date: str = Query(None),
     model_path: str = Query(None, description="可选：指定模型路径"),
+    exec_mode: str = Query("close", description="标签模式（仅无 model_path 时生效）"),
 ):
     if model_path:
         trainer = LGBTrainer.load(model_path)
     else:
-        trainer = LGBTrainer(mode=mode, forward_days=forward_days)
+        trainer = LGBTrainer(mode=mode, forward_days=forward_days, exec_mode=exec_mode)
         try:
             trainer.prepare_data(start_date=start_date, end_date=end_date)
             trainer.train()
@@ -320,17 +334,27 @@ def lgb_backtest_compare(
     summary="获取 factor_score_snapshots 中每种模式的可训练日期范围",
 )
 def lgb_date_range():
+    from src.storage import StockDaily
+    from sqlalchemy import distinct as _distinct
     db = DatabaseManager.get_instance()
     result = {}
     with db.get_session() as session:
-        for mode in ("intraday", "postmarket"):
-            dates = session.query(FactorScoreSnapshot.trade_date).filter(
-                FactorScoreSnapshot.mode == mode,
-            ).distinct().order_by(FactorScoreSnapshot.trade_date).all()
-            if dates:
-                result[mode] = {"min": dates[0][0], "max": dates[-1][0]}
+        dates_raw = session.query(_distinct(StockDaily.date)).order_by(
+            StockDaily.date
+        ).all()
+        if dates_raw:
+            all_dates = [d[0] for d in dates_raw]
+            min_d = min(all_dates)
+            max_d = max(all_dates)
+            if hasattr(min_d, 'strftime'):
+                min_s, max_s = min_d.strftime("%Y%m%d"), max_d.strftime("%Y%m%d")
             else:
-                result[mode] = None
+                min_s, max_s = str(min_d).replace('-', ''), str(max_d).replace('-', '')
+            result["intraday"] = {"min": min_s, "max": max_s}
+            result["postmarket"] = {"min": min_s, "max": max_s}
+        else:
+            result["intraday"] = None
+            result["postmarket"] = None
     return LGBDateRangeResponse(**result)
 
 
@@ -413,3 +437,456 @@ def lgb_stock_lookup(
             total_stocks=len(df),
         ),
     )
+
+
+# ── Backtest Simulation ──
+
+import glob as _glob
+import json as _json
+import os as _os
+from collections import defaultdict as _defaultdict
+from typing import Optional as _Optional
+from datetime import date as _date, datetime as _datetime, timedelta as _timedelta
+
+# Cache for backtest results (in-memory, cleared on restart)
+_backtest_cache: Dict[str, dict] = {}
+
+
+def _get_limit_pct(stock_code: str) -> float:
+    """Get the daily limit-up/down percentage for a stock."""
+    code = str(stock_code).strip().zfill(6)
+    if code.startswith(("688",)):
+        return 0.20
+    if code.startswith(("300", "301")):
+        return 0.20
+    if code.startswith(("83", "87", "43")):
+        return 0.30
+    return 0.10
+
+
+def _find_next_trading_day(d: str, trading_days_set: set, trading_days_sorted: list) -> _Optional[str]:
+    """Find the next trading day strictly after date d (YYYYMMDD)."""
+    d_str = d.replace("-", "")[:8]
+    for td in trading_days_sorted:
+        if td > d_str:
+            return td
+    return None
+
+
+def _find_nth_trading_day(start: str, n: int, trading_days_sorted: list) -> _Optional[str]:
+    """Return the nth trading day on or after start (0-indexed)."""
+    try:
+        idx = trading_days_sorted.index(start)
+    except ValueError:
+        return None
+    target_idx = idx + n
+    if 0 <= target_idx < len(trading_days_sorted):
+        return trading_days_sorted[target_idx]
+    return None
+
+
+@router.get(
+    "/lgb/backtest-sim",
+    response_model=LGBBacktestSimResponse,
+    summary="LGB 预测交易回测模拟（基于预测文件）",
+)
+def lgb_backtest_sim(
+    forward_days: int = Query(..., ge=1, le=60, description="前向天数（1 或 3）"),
+    top_n: int = Query(5, ge=1, le=20, description="每预测日选取 Top N"),
+    exec_mode: str = Query("open", pattern="^(open|close)$", description="执行模式: open=开盘买入→开盘卖出, close=收盘买入→收盘卖出"),
+):
+    cache_key = f"fwd{forward_days}_top{top_n}_{exec_mode}"
+    if cache_key in _backtest_cache:
+        return _backtest_cache[cache_key]
+
+    project_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
+    reports_dir = _os.path.join(project_root, "lgb_reports")
+
+    # 1. Scan prediction files (filtered by exec_mode suffix)
+    exec_suffix = "open2open" if exec_mode == "open" else "close2close"
+    pattern = f"*_fwd{forward_days}d_*_pred_*_{exec_suffix}.json"
+    json_files = sorted(_glob.glob(_os.path.join(reports_dir, pattern)))
+    if not json_files:
+        raise HTTPException(status_code=404, detail=f"No {exec_suffix} prediction files found for forward_days={forward_days}")
+
+    preds_by_date: Dict[str, list] = _defaultdict(list)
+    for fp in json_files:
+        with open(fp, "r", encoding="utf-8") as fh:
+            data = _json.load(fh)
+        pd_date = data.get("pred_date", "")
+        if not pd_date:
+            continue
+        for p in data.get("predictions", [])[:top_n]:
+            preds_by_date[pd_date].append({
+                "stock_code": str(p.get("stock_code", "")).strip().zfill(6),
+                "ts_code": str(p.get("ts_code", "")),
+                "stock_name": str(p.get("stock_name", "")),
+                "rank": int(p.get("rank", 0)),
+            })
+
+    if not preds_by_date:
+        raise HTTPException(status_code=404, detail="No prediction data found")
+
+    # 2. Get real trading days from stock_daily (filter sparse/fake dates)
+    db = DatabaseManager.get_instance()
+    with db.get_session() as session:
+        from sqlalchemy import func
+        dates_raw = (
+            session.query(StockDaily.date)
+            .group_by(StockDaily.date)
+            .having(func.count(StockDaily.code) >= 100)
+            .order_by(StockDaily.date)
+            .all()
+        )
+    trading_days_sorted = [
+        d[0].strftime("%Y%m%d") if hasattr(d[0], "strftime") else str(d[0]).replace("-", "")[:8]
+        for d in dates_raw
+    ]
+    trading_days_set = set(trading_days_sorted)
+
+    # 3. Collect all needed stock codes and date pairs
+    all_codes: set = set()
+    date_pairs: list = []  # (pred_date, buy_date, sell_date)
+    for pred_date, preds in sorted(preds_by_date.items()):
+        if exec_mode == "close":
+            # Close mode: pred_date must be a trading day, buy at pred_date's close
+            if pred_date not in trading_days_set:
+                continue
+            sell_date = _find_nth_trading_day(pred_date, forward_days, trading_days_sorted)
+            if not sell_date:
+                continue
+            date_pairs.append((pred_date, pred_date, sell_date))
+        else:
+            # Open mode: buy at next trading day's open
+            buy_date = _find_next_trading_day(pred_date, trading_days_set, trading_days_sorted)
+            if not buy_date:
+                continue
+            sell_date = _find_nth_trading_day(buy_date, forward_days, trading_days_sorted)
+            if not sell_date:
+                continue
+            date_pairs.append((pred_date, buy_date, sell_date))
+        for p in preds:
+            all_codes.add(p["stock_code"])
+
+    if not date_pairs:
+        raise HTTPException(status_code=404, detail="No valid trading dates found")
+
+    # 4. Batch fetch all price data in one query
+    all_date_strs: set = set()
+    for _, bd, sd in date_pairs:
+        all_date_strs.add(bd)
+        all_date_strs.add(sd)
+
+    if exec_mode == "open":
+        # Need pre_close (previous trading day close) for limit-up/down checks
+        for d in list(all_date_strs):
+            prev_td = None
+            for i, td in enumerate(trading_days_sorted):
+                if td == d and i > 0:
+                    prev_td = trading_days_sorted[i - 1]
+                    break
+            if prev_td:
+                all_date_strs.add(prev_td)
+    else:
+        # Close mode: also need pre_close for limit-up checks on buy dates
+        for _, bd, _ in date_pairs:
+            prev_td = None
+            for i, td in enumerate(trading_days_sorted):
+                if td == bd and i > 0:
+                    prev_td = trading_days_sorted[i - 1]
+                    break
+            if prev_td:
+                all_date_strs.add(prev_td)
+
+    all_dates_iso = {
+        ds: f"{ds[:4]}-{ds[4:6]}-{ds[6:8]}"
+        for ds in all_date_strs
+    }
+
+    with db.get_session() as session:
+        rows = session.query(StockDaily).filter(
+            StockDaily.date.in_([v for v in all_dates_iso.values()]),
+            StockDaily.code.in_(list(all_codes)),
+        ).all()
+
+    # Build price lookup: {(code, YYYYMMDD): {open, close, pct_chg}}
+    price_map: Dict[tuple, dict] = {}
+    for r in rows:
+        d = r.date.strftime("%Y%m%d") if hasattr(r.date, "strftime") else str(r.date).replace("-", "")[:8]
+        price_map[(str(r.code).strip().zfill(6), d)] = {
+            "open": float(r.open) if r.open else 0.0,
+            "close": float(r.close) if r.close else 0.0,
+            "pct_chg": float(r.pct_chg) if r.pct_chg else 0.0,
+        }
+
+    # 5. Simulate trades with rolling position sizing
+    # initial_capital = 100w, each slot uses 1/forward_days of total portfolio
+    INITIAL_CAPITAL = 1_000_000.0
+    trades: list = []
+    capital_curve: list = []
+
+    # Group date_pairs by buy_date → pred_date list (for sorting by actual calendar)
+    pairs_by_buy: Dict[str, list] = _defaultdict(list)
+    for pred_date, buy_date, sell_date in date_pairs:
+        pairs_by_buy[buy_date].append((pred_date, sell_date))
+
+    buy_dates_sorted = sorted(pairs_by_buy.keys())
+    cash = INITIAL_CAPITAL
+    active_positions: list = []  # [{entry_value, sell_date, ret_pct}]
+
+    for buy_date in buy_dates_sorted:
+        # 1. Close positions maturing on or before this buy_date
+        still_active: list = []
+        for pos in active_positions:
+            if pos["sell_date"] <= buy_date:
+                proceeds = pos["entry_value"] * (1.0 + pos["ret_pct"])
+                cash += proceeds
+            else:
+                still_active.append(pos)
+        active_positions = still_active
+
+        # 2. Calculate current portfolio value and per-slot allocation
+        locked_value = sum(p["entry_value"] for p in active_positions)
+        portfolio_value = cash + locked_value
+        slot_size = portfolio_value / forward_days if forward_days > 0 else portfolio_value
+
+        # 3. Open new positions for this buy_date
+        for pred_date, sell_date in pairs_by_buy[buy_date]:
+            preds = preds_by_date.get(pred_date, [])
+            slot_trades: list = []
+
+            for p in preds:
+                code = p["stock_code"]
+                ts_code = p["ts_code"]
+                stock_name = p["stock_name"]
+                rank = p["rank"]
+
+                if exec_mode == "close":
+                    buy_entry = price_map.get((code, buy_date))
+                    if not buy_entry or buy_entry["close"] <= 0:
+                        continue
+
+                    # Close mode: check if close was at limit-up
+                    limit_pct_c = _get_limit_pct(code)
+                    at_limit_up = False
+                    prev_bd = _find_nth_trading_day(buy_date, -1, trading_days_sorted)
+                    if prev_bd:
+                        prev_entry = price_map.get((code, prev_bd))
+                        if prev_entry and prev_entry["close"] > 0:
+                            limit_up_c = prev_entry["close"] * (1.0 + limit_pct_c)
+                            if buy_entry["close"] >= limit_up_c * 0.999:
+                                at_limit_up = True
+                    # Fallback: use pct_chg when pre_close unavailable (e.g. stock resumed trading after gap)
+                    if not at_limit_up and buy_entry.get("pct_chg", 0) >= limit_pct_c * 99.0:
+                        at_limit_up = True
+                    if at_limit_up:
+                                trades.append(LGBBacktestTradeItem(
+                                    pred_date=pred_date, stock_code=code, ts_code=ts_code,
+                                    stock_name=stock_name, rank=rank,
+                                    buy_date=buy_date, buy_price=buy_entry["close"],
+                                    sell_date="", sell_price=0.0, return_pct=0.0, skipped=True,
+                                ))
+                                continue
+
+                    buy_price = buy_entry["close"]
+
+                    # Limit-down sell check: postpone if close is at limit-down
+                    actual_sell_date = sell_date
+                    sell_price = None
+                    postpone_count = 0
+                    while postpone_count < 10:
+                        sell_entry = price_map.get((code, actual_sell_date))
+                        if not sell_entry or sell_entry["close"] <= 0:
+                            actual_sell_date = _find_next_trading_day(
+                                actual_sell_date, trading_days_set, trading_days_sorted,
+                            )
+                            if not actual_sell_date:
+                                break
+                            postpone_count += 1
+                            continue
+
+                        limit_pct_c2 = _get_limit_pct(code)
+                        at_limit_down = False
+                        prev_sd = _find_nth_trading_day(actual_sell_date, -1, trading_days_sorted)
+                        if prev_sd:
+                            prev_sell_entry = price_map.get((code, prev_sd))
+                            if prev_sell_entry and prev_sell_entry["close"] > 0:
+                                limit_down_c = prev_sell_entry["close"] * (1.0 - limit_pct_c2)
+                                if sell_entry["close"] <= limit_down_c * 1.001:
+                                    at_limit_down = True
+                        # Fallback: use pct_chg when pre_close unavailable
+                        if not at_limit_down and sell_entry.get("pct_chg", 0) <= -limit_pct_c2 * 99.0:
+                            at_limit_down = True
+                        if at_limit_down:
+                            next_sd = _find_next_trading_day(
+                                actual_sell_date, trading_days_set, trading_days_sorted,
+                            )
+                            if not next_sd:
+                                sell_price = sell_entry["close"]
+                                break
+                            actual_sell_date = next_sd
+                            postpone_count += 1
+                            continue
+
+                        sell_price = sell_entry["close"]
+                        break
+
+                    if sell_price is None:
+                        continue
+                    skipped = False
+                else:
+                    # ── Open-to-open with limit checks ──
+                    buy_entry = price_map.get((code, buy_date))
+                    if not buy_entry or buy_entry["open"] <= 0:
+                        continue
+
+                    limit_pct = _get_limit_pct(code)
+                    at_limit_up = False
+                    prev_buy = _find_nth_trading_day(buy_date, -1, trading_days_sorted)
+                    if prev_buy:
+                        prev_entry = price_map.get((code, prev_buy))
+                        if prev_entry and prev_entry["close"] > 0:
+                            limit_up = prev_entry["close"] * (1.0 + limit_pct)
+                            if buy_entry["open"] >= limit_up * 0.999:
+                                at_limit_up = True
+                    # Fallback: use pct_chg when pre_close unavailable
+                    if not at_limit_up and buy_entry.get("pct_chg", 0) >= limit_pct * 99.0:
+                        at_limit_up = True
+                    if at_limit_up:
+                        trades.append(LGBBacktestTradeItem(
+                            pred_date=pred_date, stock_code=code, ts_code=ts_code,
+                            stock_name=stock_name, rank=rank,
+                            buy_date=buy_date, buy_price=buy_entry["open"],
+                            sell_date="", sell_price=0.0, return_pct=0.0, skipped=True,
+                        ))
+                        continue
+
+                    buy_price = buy_entry["open"]
+
+                    actual_sell_date = sell_date
+                    actual_sell_price = None
+                    postpone_count = 0
+                    while postpone_count < 10:
+                        sell_entry = price_map.get((code, actual_sell_date))
+                        if not sell_entry or sell_entry["open"] <= 0:
+                            actual_sell_date = _find_next_trading_day(
+                                actual_sell_date, trading_days_set, trading_days_sorted,
+                            )
+                            if not actual_sell_date:
+                                break
+                            postpone_count += 1
+                            continue
+
+                        at_limit_down = False
+                        prev_sell = _find_nth_trading_day(actual_sell_date, -1, trading_days_sorted)
+                        if prev_sell:
+                            prev_sell_entry = price_map.get((code, prev_sell))
+                            if prev_sell_entry and prev_sell_entry["close"] > 0:
+                                limit_down = prev_sell_entry["close"] * (1.0 - limit_pct)
+                                if sell_entry["open"] <= limit_down * 1.001:
+                                    at_limit_down = True
+                        # Fallback: use pct_chg when pre_close unavailable
+                        if not at_limit_down and sell_entry.get("pct_chg", 0) <= -limit_pct * 99.0:
+                            at_limit_down = True
+                        if at_limit_down:
+                            next_sd = _find_next_trading_day(
+                                actual_sell_date, trading_days_set, trading_days_sorted,
+                            )
+                            if not next_sd:
+                                actual_sell_price = sell_entry["open"]
+                                break
+                            actual_sell_date = next_sd
+                            postpone_count += 1
+                        else:
+                            actual_sell_price = sell_entry["open"]
+                            break
+
+                    if actual_sell_price is None or actual_sell_price <= 0:
+                        continue
+                    sell_price = actual_sell_price
+                    skipped = False
+
+                ret = round((sell_price - buy_price) / buy_price, 6)
+                slot_trades.append({
+                    "code": code, "ts_code": ts_code, "stock_name": stock_name,
+                    "rank": rank, "buy_price": buy_price, "sell_price": sell_price,
+                    "ret": ret, "skipped": skipped, "actual_sell_date": actual_sell_date,
+                })
+
+            if not slot_trades:
+                continue
+
+            n_stocks = len(slot_trades)
+            per_stock = slot_size / n_stocks if n_stocks > 0 else 0
+            actual_cash_used = min(per_stock * n_stocks, cash)
+            if actual_cash_used <= 0:
+                continue
+
+            cash -= actual_cash_used
+            per_stock_actual = actual_cash_used / n_stocks
+
+            slot_ret = 0.0
+            for st in slot_trades:
+                slot_ret += st["ret"] / n_stocks  # equal-weight within slot
+                trades.append(LGBBacktestTradeItem(
+                    pred_date=pred_date, stock_code=st["code"], ts_code=st["ts_code"],
+                    stock_name=st["stock_name"], rank=st["rank"],
+                    buy_date=buy_date, buy_price=st["buy_price"],
+                    sell_date=st["actual_sell_date"], sell_price=st["sell_price"],
+                    return_pct=st["ret"], skipped=st["skipped"],
+                ))
+
+            active_positions.append({
+                "entry_value": actual_cash_used,
+                "sell_date": max(st["actual_sell_date"] for st in slot_trades),
+                "ret_pct": slot_ret,
+            })
+
+        # 4. Record capital curve
+        locked_value = sum(p["entry_value"] for p in active_positions)
+        portfolio_value = cash + locked_value
+        capital_curve.append({
+            "date": buy_date,
+            "capital": round(portfolio_value / INITIAL_CAPITAL, 6),
+            "daily_return": round((portfolio_value / INITIAL_CAPITAL - 1.0)
+                                  - (capital_curve[-1]["capital"] - 1.0 if capital_curve else 0), 4),
+        })
+
+    # 6. Compute metrics on a per-trade basis
+    completed_trades = [t for t in trades if not t.skipped]
+    skipped_count = len(trades) - len(completed_trades)
+    win_count = sum(1 for t in completed_trades if t.return_pct > 0)
+    total_count = len(completed_trades)
+
+    final_capital = capital_curve[-1]["capital"] if capital_curve else 1.0
+    win_rate = round(win_count / total_count, 4) if total_count > 0 else 0.0
+
+    peak = 1.0
+    max_dd = 0.0
+    for pt in capital_curve:
+        val = pt["capital"]
+        if val > peak:
+            peak = val
+        dd = (val - peak) / peak
+        if dd < max_dd:
+            max_dd = dd
+
+    metrics = LGBBacktestSimMetrics(
+        cumulative_return=round(final_capital - 1.0, 4),
+        win_rate=win_rate,
+        max_drawdown=round(max_dd, 4),
+        total_trades=total_count,
+        skipped_trades=skipped_count,
+    )
+
+    result = LGBBacktestSimResponse(
+        forward_days=forward_days,
+        top_n=top_n,
+        exec_mode=exec_mode,
+        metrics=metrics,
+        capital_curve=capital_curve,
+        trades=trades,
+    )
+
+    _backtest_cache[cache_key] = result
+    return result

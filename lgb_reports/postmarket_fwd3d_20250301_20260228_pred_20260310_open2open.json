@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "train_start": "20250301",
+  "train_end": "20260228",
+  "pred_date": "20260310",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301590.SZ",
+      "stock_code": "301590",
+      "stock_name": "优优绿能",
+      "lgb_score": 100.0,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 2,
+      "ts_code": "301071.SZ",
+      "stock_code": "301071",
+      "stock_name": "力量钻石",
+      "lgb_score": 90.05,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 3,
+      "ts_code": "001387.SZ",
+      "stock_code": "001387",
+      "stock_name": "雪祺电气",
+      "lgb_score": 84.2,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 4,
+      "ts_code": "688506.SH",
+      "stock_code": "688506",
+      "stock_name": "百利天恒",
+      "lgb_score": 84.13,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 5,
+      "ts_code": "688217.SH",
+      "stock_code": "688217",
+      "stock_name": "睿昂基因",
+      "lgb_score": 82.78,
+      "raw_score": 0.04
+    }
+  ]
+}

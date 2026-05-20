@@ -1,0 +1,49 @@
+{
+  "mode": "postmarket",
+  "forward_days": 1,
+  "train_start": "20250301",
+  "train_end": "20260228",
+  "pred_date": "20260306",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000001",
+      "stock_code": "000001",
+      "stock_name": "平安银行",
+      "lgb_score": 50.0,
+      "raw_score": 0.0
+    },
+    {
+      "rank": 2,
+      "ts_code": "831844",
+      "stock_code": "831844",
+      "stock_name": "",
+      "lgb_score": 50.0,
+      "raw_score": 0.0
+    },
+    {
+      "rank": 3,
+      "ts_code": "831804",
+      "stock_code": "831804",
+      "stock_name": "",
+      "lgb_score": 50.0,
+      "raw_score": 0.0
+    },
+    {
+      "rank": 4,
+      "ts_code": "831805",
+      "stock_code": "831805",
+      "stock_name": "",
+      "lgb_score": 50.0,
+      "raw_score": 0.0
+    },
+    {
+      "rank": 5,
+      "ts_code": "831813",
+      "stock_code": "831813",
+      "stock_name": "",
+      "lgb_score": 50.0,
+      "raw_score": 0.0
+    }
+  ]
+}
