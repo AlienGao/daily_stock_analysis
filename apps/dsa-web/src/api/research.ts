@@ -88,6 +88,7 @@ export type LGBDateRangeResponse = {
 export type LGBStockLookupItem = {
   stock_code: string;
   ts_code: string;
+  stock_name?: string;
   rank: number;
   lgb_score: number;
   raw_score: number;
@@ -205,6 +206,20 @@ export type LGBDiagnosticsResponse = {
   prediction_stats: LGBPredictionStats | null;
 };
 
+export type LGBCrossModelOverlapStock = {
+  stock_code: string;
+  ts_code: string;
+  stock_name: string;
+  count: number;
+  model_names: string[];
+};
+
+export type LGBCrossModelOverlapResponse = {
+  exec_mode: string;
+  total_models: number;
+  stocks: LGBCrossModelOverlapStock[];
+};
+
 /* ── API ── */
 
 export const researchApi = {
@@ -267,8 +282,8 @@ export const researchApi = {
     top_n?: number;
     exec_mode?: string;
     stop_strategy?: string;
-  }): Promise<LGBBacktestSimResponse> {
-    const resp = await apiClient.get('/api/v1/research/lgb/backtest-sim', { params, timeout: 300000 });
+  }, signal?: AbortSignal): Promise<LGBBacktestSimResponse> {
+    const resp = await apiClient.get('/api/v1/research/lgb/backtest-sim', { params, timeout: 300000, signal });
     return resp.data;
   },
 
@@ -293,6 +308,14 @@ export const researchApi = {
   async getDiagnostics(modelPath?: string): Promise<LGBDiagnosticsResponse> {
     const params = modelPath ? { model_path: modelPath } : {};
     const resp = await apiClient.get('/api/v1/research/lgb/diagnostics', { params, timeout: 120000 });
+    return resp.data;
+  },
+
+  async getCrossModelOverlap(execMode: string, topN?: number): Promise<LGBCrossModelOverlapResponse> {
+    const resp = await apiClient.get('/api/v1/research/lgb/cross-model-overlap', {
+      params: { exec_mode: execMode, top_n: topN ?? 5 },
+      timeout: 300000,
+    });
     return resp.data;
   },
 

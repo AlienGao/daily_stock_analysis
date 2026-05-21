@@ -36,6 +36,8 @@ from api.v1.schemas.research import (
     LGBTrainingMetrics,
     LGBTreeDiagnostics,
     LGBPredictionStats,
+    LGBCrossModelOverlapResponse,
+    LGBCrossModelOverlapStock,
 )
 from src.discovery.ml.lgb_trainer import LGBTrainer
 from src.storage import DatabaseManager, FactorScoreSnapshot, StockAdjFactor, StockDaily
@@ -456,11 +458,12 @@ def lgb_diagnostics(
     summary="查询指定股票的 LGB 预测评分与排名",
 )
 def lgb_stock_lookup(
-    stock_code: str = Query(..., description="股票代码，如 600519"),
+    stock_code: str = Query(..., description="股票代码（如 600519）或字母缩写（如 ZSYH、ZGPA）"),
     model_path: str = Query(None, description="可选：指定模型路径"),
 ):
-    """在最新预测结果中查找指定个股的评分和全市场排名。"""
+    """在最新预测结果中查找指定个股的评分和全市场排名，支持拼音首字母缩写查询。"""
     import pandas as pd
+    from pypinyin import lazy_pinyin
 
     if model_path:
         trainer = LGBTrainer.load(model_path)
@@ -488,14 +491,38 @@ def lgb_stock_lookup(
     if df is None or df.empty:
         return LGBStockLookupResponse(found=False, message="预测结果为空")
 
-    # 按 stock_code（去后缀）或 ts_code 匹配
+    # 按 stock_code 或 ts_code 匹配
     mask = (df["stock_code"] == code) | (df["ts_code"] == code)
     if not mask.any():
-        # 尝试带后缀匹配
         for sfx in [".SH", ".SZ", ".BJ"]:
             mask = df["ts_code"] == f"{code}{sfx}"
             if mask.any():
                 break
+
+    # 如果代码匹配失败且输入为纯字母，尝试拼音首字母匹配
+    if not mask.any() and stock_code.replace(" ", "").isalpha():
+        q = stock_code.strip().upper()
+        name_col = df["stock_name"] if "stock_name" in df.columns else None
+        if name_col is not None:
+            init_mask = pd.Series(False, index=df.index)
+            for i, name in enumerate(name_col):
+                if not isinstance(name, str):
+                    continue
+                initials = "".join([s[0].upper() for s in lazy_pinyin(name) if s])
+                if q in initials or q in name.upper():
+                    init_mask.iloc[i] = True
+            if init_mask.any():
+                mask = init_mask
+            else:
+                return LGBStockLookupResponse(
+                    found=False,
+                    message=f"未找到与「{stock_code}」匹配的股票（已尝试代码匹配和拼音首字母匹配）",
+                )
+        else:
+            return LGBStockLookupResponse(
+                found=False,
+                message=f"未找到 {stock_code} 的预测数据，请确认代码正确且该股票在当次扫描范围内",
+            )
 
     if not mask.any():
         return LGBStockLookupResponse(
@@ -505,12 +532,14 @@ def lgb_stock_lookup(
 
     row = df[mask].iloc[0]
     rank = int(df["lgb_score"].rank(ascending=False).loc[row.name])
+    stock_name_val = str(row.get("stock_name", "")) if "stock_name" in df.columns else ""
 
     return LGBStockLookupResponse(
         found=True,
         item=LGBStockLookupItem(
             stock_code=str(row["stock_code"]),
             ts_code=str(row["ts_code"]),
+            stock_name=stock_name_val,
             rank=rank,
             lgb_score=round(float(row["lgb_score_norm"]), 4),
             raw_score=round(float(row["lgb_score"]), 4),
@@ -565,9 +594,26 @@ def _find_nth_trading_day(start: str, n: int, trading_days_sorted: list) -> _Opt
     return None
 
 
+def _adj_lookup(code: str, date_str: str, adj_by_code: dict) -> float:
+    """Get adj_factor for a date, forward-filling from nearest prior date if missing."""
+    entries = adj_by_code.get(code, [])
+    if not entries:
+        return 1.0
+    lo, hi = 0, len(entries) - 1
+    best = 1.0
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        if entries[mid][0] <= date_str:
+            best = entries[mid][1]
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return best
+
+
 def _check_loss_stop(
     code: str, buy_date: str, buy_price: float, sell_date: str,
-    price_map: dict, adj_map: dict, trading_days_sorted: list,
+    price_map: dict, adj_by_code: dict, trading_days_sorted: list,
 ) -> tuple:
     """Check intermediate trading days for loss stop (亏损厌恶).
     Returns (effective_sell_date, effective_sell_price) — same as input if not stopped.
@@ -581,8 +627,8 @@ def _check_loss_stop(
         px = entry["close"] if entry["close"] > 0 else entry["open"]
         if px <= 0:
             continue
-        adj_b = _get_adj(code, buy_date)
-        adj_t = _get_adj(code, td)
+        adj_b = _adj_lookup(code, buy_date, adj_by_code)
+        adj_t = _adj_lookup(code, td, adj_by_code)
         raw_ret = (px - buy_price) / buy_price if buy_price > 0 else 0.0
         ret = (1.0 + raw_ret) * (adj_t / adj_b) - 1.0 if adj_b > 0 and adj_t > 0 else 0.0
         if ret < 0:
@@ -592,7 +638,7 @@ def _check_loss_stop(
 
 def _check_dead_hold(
     code: str, buy_date: str, buy_price: float, sell_date: str,
-    price_map: dict, adj_map: dict, trading_days_sorted: list,
+    price_map: dict, adj_by_code: dict, trading_days_sorted: list,
     max_hold_days: int = 20,
 ) -> tuple:
     """Dead-hold (跌了死扛): if losing at sell_date, extend up to max_hold_days trading days.
@@ -604,7 +650,7 @@ def _check_dead_hold(
         sell_idx = trading_days_sorted.index(sell_date)
     except ValueError:
         return (sell_date, 0.0, False)
-    adj_b = _get_adj(code, buy_date)
+    adj_b = _adj_lookup(code, buy_date, adj_by_code)
 
     for offset in range(1, max_hold_days + 1):
         ext_idx = sell_idx + offset
@@ -617,7 +663,7 @@ def _check_dead_hold(
         px = entry["close"] if entry["close"] > 0 else entry["open"]
         if px <= 0:
             continue
-        adj_t = _get_adj(code, td)
+        adj_t = _adj_lookup(code, td, adj_by_code)
         raw_ret = (px - buy_price) / buy_price if buy_price > 0 else 0.0
         ret = (1.0 + raw_ret) * (adj_t / adj_b) - 1.0 if adj_b > 0 and adj_t > 0 else 0.0
         if ret >= 0:
@@ -919,7 +965,7 @@ def _simulate_backtest(exec_mode: str, forward_days: int, top_n: int, stop_strat
         pd_date = data.get("pred_date", "")
         if not pd_date:
             continue
-        for p in data.get("predictions", [])[:top_n]:
+        for p in data.get("predictions", [])[:5]:  # read all 5 for fallback, limit to top_n in trade loop
             preds_by_date[pd_date].append({
                 "stock_code": str(p.get("stock_code", "")).strip().zfill(6),
                 "ts_code": str(p.get("ts_code", "")),
@@ -1095,7 +1141,10 @@ def _simulate_backtest(exec_mode: str, forward_days: int, top_n: int, stop_strat
             is_holding = sell_date is None
             eff_sell_date = sell_date if sell_date is not None else latest_td
 
+            held = 0  # count of valid trades for this slot
             for p in preds:
+                if held >= top_n:
+                    break
                 code = p["stock_code"]
                 ts_code = p["ts_code"]
                 stock_name = p["stock_name"]
@@ -1137,7 +1186,7 @@ def _simulate_backtest(exec_mode: str, forward_days: int, top_n: int, stop_strat
                     if stop_strategy == "loss_aversion" and latest_td:
                         eff_sd, eff_sp = _check_loss_stop(
                             code, buy_date, buy_price, latest_td,
-                            price_map, adj_map, trading_days_sorted,
+                            price_map, _adj_by_code, trading_days_sorted,
                         )
                         if eff_sp > 0:
                             eff_sell_date = eff_sd
@@ -1155,6 +1204,7 @@ def _simulate_backtest(exec_mode: str, forward_days: int, top_n: int, stop_strat
                         "sell_price": eff_sell_price,
                         "return_pct": ret, "skipped": False,
                     })
+                    held += 1
                     continue
 
                 if exec_mode == "close":
@@ -1229,7 +1279,7 @@ def _simulate_backtest(exec_mode: str, forward_days: int, top_n: int, stop_strat
                     if stop_strategy == "loss_aversion":
                         eff_sd, eff_sp = _check_loss_stop(
                             code, buy_date, buy_price, actual_sell_date,
-                            price_map, adj_map, trading_days_sorted,
+                            price_map, _adj_by_code, trading_days_sorted,
                         )
                         if eff_sp > 0:
                             actual_sell_date = eff_sd
@@ -1305,7 +1355,7 @@ def _simulate_backtest(exec_mode: str, forward_days: int, top_n: int, stop_strat
                     if stop_strategy == "loss_aversion":
                         eff_sd, eff_sp = _check_loss_stop(
                             code, buy_date, buy_price, actual_sell_date,
-                            price_map, adj_map, trading_days_sorted,
+                            price_map, _adj_by_code, trading_days_sorted,
                         )
                         if eff_sp > 0:
                             actual_sell_date = eff_sd
@@ -1321,7 +1371,7 @@ def _simulate_backtest(exec_mode: str, forward_days: int, top_n: int, stop_strat
                 if stop_strategy == "dead_hold" and ret < 0:
                     ext_sd, ext_sp, was_ext = _check_dead_hold(
                         code, buy_date, buy_price, actual_sell_date,
-                        price_map, adj_map, trading_days_sorted,
+                        price_map, _adj_by_code, trading_days_sorted,
                     )
                     if was_ext:
                         was_dead_held = True
@@ -1336,6 +1386,7 @@ def _simulate_backtest(exec_mode: str, forward_days: int, top_n: int, stop_strat
                     "rank": rank, "buy_price": buy_price, "sell_price": sell_price,
                     "ret": ret, "skipped": skipped, "actual_sell_date": actual_sell_date,
                 })
+                held += 1
 
             if not slot_trades:
                 continue
@@ -1687,6 +1738,74 @@ def _run_brute_force_search(task_id: str):
         task["error"] = f"{exc}\n{traceback.format_exc()}"
         task["status_message"] = f"Failed: {exc}"
         task["finished_at"] = datetime.now().isoformat()
+
+
+@router.get(
+    "/lgb/cross-model-overlap",
+    response_model=LGBCrossModelOverlapResponse,
+    summary="统计同一 exec_mode 下所有模型的 Top 5 预测重叠情况",
+)
+def lgb_cross_model_overlap(
+    exec_mode: str = Query("all", pattern="^(open|close|all)$", description="执行模式，all=全部"),
+    top_n: int = Query(5, ge=1, le=20, description="从每个模型取前 N 只股票"),
+):
+    """遍历指定 exec_mode 下所有已保存模型，获取各自 Top N 预测，统计股票出现次数。"""
+    from collections import Counter as _Counter
+
+    all_models = LGBTrainer.list_models()
+    if not all_models:
+        raise HTTPException(status_code=404, detail="没有已保存的模型")
+
+    if exec_mode == "all":
+        matched = [m for m in all_models if m["name"].endswith(("open2open", "close2close"))]
+    else:
+        suffix = "open2open" if exec_mode == "open" else "close2close"
+        matched = [m for m in all_models if m["name"].endswith(suffix)]
+    if not matched:
+        raise HTTPException(
+            status_code=404,
+            detail=f"没有找到 exec_mode={exec_mode} 的模型",
+        )
+
+    stock_counter: _Counter = _Counter()
+    stock_info: dict = {}  # ts_code -> {stock_code, stock_name, model_names: list}
+    models_used = 0
+
+    for m in matched:
+        try:
+            trainer = LGBTrainer.load(m["path"])
+            trainer.predict()
+            preds = trainer.get_latest_predictions(top_n=top_n)
+            for p in preds:
+                code = p.get("ts_code", "")
+                stock_counter[code] += 1
+                if code not in stock_info:
+                    stock_info[code] = {
+                        "stock_code": p.get("stock_code", code),
+                        "stock_name": p.get("stock_name", ""),
+                        "model_names": [],
+                    }
+                stock_info[code]["model_names"].append(m["name"])
+            models_used += 1
+        except Exception:
+            continue
+
+    stocks = []
+    for ts_code, count in stock_counter.most_common():
+        info = stock_info.get(ts_code, {})
+        stocks.append(LGBCrossModelOverlapStock(
+            stock_code=info.get("stock_code", ts_code),
+            ts_code=ts_code,
+            stock_name=info.get("stock_name", ""),
+            count=count,
+            model_names=info.get("model_names", []),
+        ))
+
+    return LGBCrossModelOverlapResponse(
+        exec_mode=exec_mode,
+        total_models=models_used,
+        stocks=stocks,
+    )
 
 
 @router.post(

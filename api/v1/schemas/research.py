@@ -81,6 +81,7 @@ class LGBStockLookupItem(BaseModel):
     """个股 LGB 预测详情。"""
     stock_code: str
     ts_code: str
+    stock_name: str = ""
     rank: int
     lgb_score: float       # 归一化 0-100
     raw_score: float        # 模型原始输出
@@ -168,6 +169,22 @@ class LGBDiagnosticsResponse(BaseModel):
     training_metrics: LGBTrainingMetrics
     tree_diagnostics: LGBTreeDiagnostics
     prediction_stats: Optional[LGBPredictionStats] = None
+
+
+# ── Cross-Model Overlap ──
+
+class LGBCrossModelOverlapStock(BaseModel):
+    stock_code: str
+    ts_code: str
+    stock_name: str = ""
+    count: int
+    model_names: List[str] = Field(default_factory=list)
+
+
+class LGBCrossModelOverlapResponse(BaseModel):
+    exec_mode: str
+    total_models: int
+    stocks: List[LGBCrossModelOverlapStock]
 
 
 # ── Brute Force Search ──

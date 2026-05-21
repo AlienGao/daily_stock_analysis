@@ -160,8 +160,9 @@ class StockDaily(Base):
 class StockAdjFactor(Base):
     """复权因子表（Tushare adj_factor），用于后复权价格计算。
 
-    前复权价格 = 未复权价格 × adj_factor
-    后复权价格 = 未复权价格 × adj_factor[latest] / adj_factor[date]
+    后复权价格 = 未复权价格 × adj_factor
+    前复权价格 = 未复权价格 × adj_factor / adj_factor[latest]
+    adj_factor 随时间递增（分红送股时跳升），直接乘即得后复权价格。
     """
 
     __tablename__ = "stock_adj_factor"

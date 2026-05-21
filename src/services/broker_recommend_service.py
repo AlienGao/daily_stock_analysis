@@ -939,7 +939,7 @@ class BrokerRecommendService:
         return {}
 
     def _get_stock_prices(
-        self, ts_code: str, start_date: str, end_date: str, skip_tushare: bool = False
+        self, ts_code: str, start_date: str, end_date: str, skip_tushare: bool = False, adj_all: dict | None = None
     ) -> Dict[str, float]:
         """获取指定股票在日期范围内的收盘价。DB 无数据或不完整时从 Tushare 拉取补全。"""
         try:
@@ -959,6 +959,15 @@ class BrokerRecommendService:
                     d = r.date.strftime("%Y%m%d") if isinstance(r.date, date) else str(r.date)[:8]
                     if r.close:
                         prices[d] = float(r.close)
+
+                # 后复权：adjusted = close × adj_factor
+                adj_map = (adj_all or {}).get(code, {})
+                if adj_map and prices:
+                    for d in list(prices.keys()):
+                        f = adj_map.get(d, 1.0)
+                        if f > 0:
+                            prices[d] = round(prices[d] * f, 4)
+
                 if not skip_tushare:
                     last_db_date = max(prices.keys()) if prices else ""
                     if last_db_date < end_date:
@@ -973,8 +982,34 @@ class BrokerRecommendService:
             pass
         return {}
 
+    @staticmethod
+    def _load_all_adj_factors(ts_codes: list) -> Dict[str, Dict[str, float]]:
+        """批量预加载所有股票的复权因子，避免多线程 SQLite 并发锁。
+        返回 {ts_code_bare: {YYYYMMDD: factor}}。
+        """
+        result: Dict[str, Dict[str, float]] = {}
+        if not ts_codes:
+            return result
+        try:
+            from src.storage import DatabaseManager, StockAdjFactor
+            db = DatabaseManager.get_instance()
+            codes_bare = [c.split(".")[0] if "." in c else c for c in ts_codes]
+            with db.get_session() as session:
+                rows = session.query(StockAdjFactor).filter(
+                    StockAdjFactor.code.in_(codes_bare),
+                ).order_by(StockAdjFactor.trade_date.asc()).all()
+            for r in rows:
+                if not r.adj_factor or r.adj_factor <= 0:
+                    continue
+                code = str(r.code).strip().zfill(6)
+                d = r.trade_date.strftime("%Y%m%d") if hasattr(r.trade_date, "strftime") else str(r.trade_date)[:8]
+                result.setdefault(code, {})[d] = float(r.adj_factor)
+        except Exception:
+            pass
+        return result
+
     def _get_stock_ohlc(
-        self, ts_code: str, start_date: str, end_date: str
+        self, ts_code: str, start_date: str, end_date: str, adj_all: dict | None = None
     ) -> Dict[str, Dict[str, Optional[float]]]:
         """获取单只股票的 OHLC 数据，返回 {date: {open, high, low, close}}。"""
         try:
@@ -982,33 +1017,39 @@ class BrokerRecommendService:
             s_date = date(int(start_date[:4]), int(start_date[4:6]), int(start_date[6:8]))
             e_date = date(int(end_date[:4]), int(end_date[4:6]), int(end_date[6:8]))
             records = self.db.get_data_range(code, s_date, e_date)
-            if records:
-                result: Dict[str, Dict[str, Optional[float]]] = {}
-                for r in records:
-                    d = r.date.strftime("%Y%m%d") if isinstance(r.date, date) else str(r.date)[:8]
-                    result[d] = {
-                        "open": float(r.open) if r.open else None,
-                        "high": float(r.high) if r.high else None,
-                        "low": float(r.low) if r.low else None,
-                        "close": float(r.close) if r.close else None,
+
+            def _build_ohlc(recs) -> Dict[str, Dict[str, Optional[float]]]:
+                r: Dict[str, Dict[str, Optional[float]]] = {}
+                for rec in recs:
+                    d = rec.date.strftime("%Y%m%d") if isinstance(rec.date, date) else str(rec.date)[:8]
+                    r[d] = {
+                        "open": float(rec.open) if rec.open else None,
+                        "high": float(rec.high) if rec.high else None,
+                        "low": float(rec.low) if rec.low else None,
+                        "close": float(rec.close) if rec.close else None,
                     }
-                return result
+                # 后复权：每个 OHLC 字段 × adj_factor
+                adj_map = (adj_all or {}).get(code, {})
+                if adj_map and r:
+                    for d in list(r.keys()):
+                        f = adj_map.get(d, 1.0)
+                        if f <= 0:
+                            continue
+                        entry = r[d]
+                        for k in ("open", "high", "low", "close"):
+                            if entry[k] is not None:
+                                entry[k] = round(entry[k] * f, 4)
+                return r
+
+            if records:
+                return _build_ohlc(records)
 
             # DB 无数据，尝试从 Tushare 拉取并入库后重新查询
             try:
                 self._fetch_tushare_prices(ts_code, code, start_date, end_date)
                 records = self.db.get_data_range(code, s_date, e_date)
                 if records:
-                    result = {}
-                    for r in records:
-                        d = r.date.strftime("%Y%m%d") if isinstance(r.date, date) else str(r.date)[:8]
-                        result[d] = {
-                            "open": float(r.open) if r.open else None,
-                            "high": float(r.high) if r.high else None,
-                            "low": float(r.low) if r.low else None,
-                            "close": float(r.close) if r.close else None,
-                        }
-                    return result
+                    return _build_ohlc(records)
             except Exception:
                 pass
         except Exception:
@@ -1016,14 +1057,15 @@ class BrokerRecommendService:
         return {}
 
     def _prefetch_ohlc(
-        self, ts_codes: List[str], start_date: str, end_date: str, max_workers: int = 20
+        self, ts_codes: List[str], start_date: str, end_date: str, max_workers: int = 20, use_adj: bool = False
     ) -> Dict[str, Dict[str, Dict[str, Optional[float]]]]:
         """并行预取多只股票的 OHLC 数据。"""
         ohlc: Dict[str, Dict[str, Dict[str, Optional[float]]]] = {}
         if not ts_codes:
             return ohlc
+        adj_all = self._load_all_adj_factors(ts_codes) if use_adj else {}
         with ThreadPoolExecutor(max_workers=max_workers) as pool:
-            futures = {pool.submit(self._get_stock_ohlc, tc, start_date, end_date): tc for tc in ts_codes}
+            futures = {pool.submit(self._get_stock_ohlc, tc, start_date, end_date, adj_all): tc for tc in ts_codes}
             for f in as_completed(futures, timeout=120):
                 tc = futures[f]
                 try:
@@ -1033,14 +1075,15 @@ class BrokerRecommendService:
         return ohlc
 
     def _prefetch_prices(
-        self, ts_codes: List[str], start_date: str, end_date: str, max_workers: int = 20, skip_tushare: bool = False
+        self, ts_codes: List[str], start_date: str, end_date: str, max_workers: int = 20, skip_tushare: bool = False, use_adj: bool = False
     ) -> Dict[str, Dict[str, float]]:
         """并行预取多只股票的价格数据，减少串行 Tushare 调用延迟。"""
         prices: Dict[str, Dict[str, float]] = {}
         if not ts_codes:
             return prices
+        adj_all = self._load_all_adj_factors(ts_codes) if use_adj else {}
         with ThreadPoolExecutor(max_workers=max_workers) as pool:
-            futures = {pool.submit(self._get_stock_prices, tc, start_date, end_date, skip_tushare): tc for tc in ts_codes}
+            futures = {pool.submit(self._get_stock_prices, tc, start_date, end_date, skip_tushare, adj_all): tc for tc in ts_codes}
             for f in as_completed(futures, timeout=120):
                 tc = futures[f]
                 try:
@@ -1138,7 +1181,7 @@ class BrokerRecommendService:
                     buy_date = trading_days[0]
                     sell_date = trading_days[-1]
                     # 并行预取缺失股票价格
-                    price_cache = self._prefetch_prices(list(missing), month_start, month_end, skip_tushare=is_current)
+                    price_cache = self._prefetch_prices(list(missing), month_start, month_end, skip_tushare=is_current, use_adj=True)
                     for ts in missing:
                         prices = price_cache.get(ts, {})
                         if not prices:
@@ -1191,7 +1234,7 @@ class BrokerRecommendService:
             # 补充 OHLC 数据用于蜡烛图
             stored_stocks = {sr["ts_code"]: sr for sr in stored.get("stock_returns", [])}
             if stored_stocks:
-                ohlc_cache = self._prefetch_ohlc(list(stored_stocks.keys()), stored.get("buy_date", f"{month}01"), stored.get("sell_date", effective_end))
+                ohlc_cache = self._prefetch_ohlc(list(stored_stocks.keys()), stored.get("buy_date", f"{month}01"), stored.get("sell_date", effective_end), use_adj=True)
                 ohlc_merged = 0
                 for sr in stored["stock_returns"]:
                     ohlc = ohlc_cache.get(sr["ts_code"], {})
@@ -1231,7 +1274,7 @@ class BrokerRecommendService:
         # 并行预取所有股票价格（DB 有则秒查，无则并发拉 Tushare）
         all_ts = df["ts_code"].unique().tolist()
         logger.info(f"[BrokerRecommend] 回测 {month} 预取 {len(all_ts)} 只股票价格...")
-        price_cache = self._prefetch_prices(all_ts, month_start, month_end, skip_tushare=is_current)
+        price_cache = self._prefetch_prices(all_ts, month_start, month_end, skip_tushare=is_current, use_adj=True)
 
         # 当月补充实时最新价（Sina 批量接口，2~3s）
         daily_changes: Dict[str, float] = {}
@@ -1239,7 +1282,15 @@ class BrokerRecommendService:
             try:
                 rt_prices, rt_changes, rt_ohlc = self._get_realtime_prices_batch(all_ts)
                 if rt_prices:
+                    # 后复权：实时价也需要 × adj_factor 才能和 price_cache 对齐
+                    adj_all = self._load_all_adj_factors(all_ts)
                     for ts, p in rt_prices.items():
+                        code = ts.split(".")[0] if "." in ts else ts
+                        adj_map = adj_all.get(code, {})
+                        today_str = list(p.keys())[0]
+                        f = adj_map.get(today_str, 1.0)
+                        if f > 0:
+                            p = {d: round(v * f, 4) for d, v in p.items()}
                         price_cache.setdefault(ts, {}).update(p)
                     logger.info(f"[BrokerRecommend] 回测 {month} 实时价补充 {len(rt_prices)} 只")
                     # 有实时数据时，把今天加入交易日列表
@@ -1423,7 +1474,7 @@ class BrokerRecommendService:
 
         # 并行预取 OHLC 数据用于蜡烛图展示
         if stock_returns_list:
-            ohlc_cache = self._prefetch_ohlc(list(stock_results.keys()), month_start, month_end)
+            ohlc_cache = self._prefetch_ohlc(list(stock_results.keys()), month_start, month_end, use_adj=True)
             for sr in stock_returns_list:
                 ohlc = ohlc_cache.get(sr["ts_code"], {})
                 for dr in sr["daily_returns"]:

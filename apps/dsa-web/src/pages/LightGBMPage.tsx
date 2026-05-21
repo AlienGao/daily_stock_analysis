@@ -4,10 +4,10 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
   BarChart, Bar, CartesianGrid,
 } from 'recharts';
-import { DatePicker, Segmented, Table, InputNumber, Button, Select, Input } from 'antd';
+import { DatePicker, Segmented, Table, InputNumber, Button, Select, Input, Tooltip as AntTooltip } from 'antd';
 import { Brain, Play, Loader2, Search } from 'lucide-react';
 import { AppPage, Card, StatCard, EmptyState, ApiErrorAlert } from '../components/common';
-import { researchApi, type LGBTaskStatusResponse, type LGBPredictionItem, type LGBBacktestCompareResponse, type LGBModelInfo, type LGBDateRangeResponse, type LGBStockLookupItem, type LGBBacktestSimResponse, type LGBBacktestSimAvailableResponse, type LGBBruteForceTaskStatus, type LGBDiagnosticsResponse, type CatchUpTaskStatus } from '../api/research';
+import { researchApi, type LGBTaskStatusResponse, type LGBPredictionItem, type LGBBacktestCompareResponse, type LGBModelInfo, type LGBDateRangeResponse, type LGBStockLookupItem, type LGBBacktestSimResponse, type LGBBacktestSimAvailableResponse, type LGBBruteForceTaskStatus, type LGBDiagnosticsResponse, type LGBCrossModelOverlapResponse, type CatchUpTaskStatus } from '../api/research';
 import type { ParsedApiError } from '../api/error';
 import { getParsedApiError } from '../api/error';
 import dayjs from 'dayjs';
@@ -55,6 +55,23 @@ const LightGBMPage: React.FC = () => {
   const [diagnostics, setDiagnostics] = useState<LGBDiagnosticsResponse | null>(null);
   const [catchUpStatus, setCatchUpStatus] = useState<CatchUpTaskStatus | null>(null);
   const catchUpPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Cross-model overlap
+  const [overlapData, setOverlapData] = useState<LGBCrossModelOverlapResponse | null>(null);
+  const [overlapLoading, setOverlapLoading] = useState(false);
+  const overlapHighlight = new Set(
+    overlapData?.stocks.filter((s) => s.count >= 3).map((s) => s.ts_code) ?? [],
+  );
+
+  const selectedExecMode = selectedModel
+    ? (selectedModel.endsWith('open2open') ? 'open' : 'close')
+    : trainExecMode;
+
+  const modelDisplayName = (() => {
+    if (!selectedModel) return '';
+    const raw = models.find(m => m.path === selectedModel)?.name ?? selectedModel.split('/').pop()?.replace('.joblib', '') ?? '';
+    return raw.replace(/^lgb_(postmarket|intraday)_/, '');
+  })();
 
   /* ── Derived per-mode bounds ── */
   const dateBounds = dateRange?.postmarket;
@@ -108,10 +125,28 @@ const LightGBMPage: React.FC = () => {
       setPredictLoading(false);
     }
   }, [selectedModel]);
+
+  const handleCrossModelOverlap = useCallback(async () => {
+    setError(null);
+    setOverlapLoading(true);
+    try {
+      const data = await researchApi.getCrossModelOverlap('all', 5);
+      setOverlapData(data);
+    } catch (e) {
+      setError(getParsedApiError(e));
+    } finally {
+      setOverlapLoading(false);
+    }
+  }, [selectedExecMode]);
+
   const loadModelResults = useCallback(async (modelPath: string) => {
     setError(null);
-    setBacktest(null);
+    setPredictions([]);
+    setFeatureImportance([]);
     setDiagnostics(null);
+    setStockLookup(null);
+    setOverlapData(null);
+    setBacktest(null);
     try {
       const [fi, pred] = await Promise.all([
         researchApi.getFeatureImportance(modelPath),
@@ -233,14 +268,20 @@ const LightGBMPage: React.FC = () => {
   }, [stockCode, selectedModel]);
 
   /* ── Backtest Sim ── */
+  const backtestAbortRef = useRef<AbortController | null>(null);
+
   const fetchBacktestSim = useCallback(async (fwd: number, exec: string, topN: number, st: string) => {
+    backtestAbortRef.current?.abort();
+    const controller = new AbortController();
+    backtestAbortRef.current = controller;
+
     setBacktestSimLoading(true);
     setBacktestSim(null);
     try {
-      const data = await researchApi.getBacktestSim({ forward_days: fwd, top_n: topN, exec_mode: exec, stop_strategy: st });
+      const data = await researchApi.getBacktestSim({ forward_days: fwd, top_n: topN, exec_mode: exec, stop_strategy: st }, controller.signal);
       setBacktestSim(data);
-    } catch {
-      // ignore
+    } catch (e: any) {
+      if (e?.name === 'CanceledError' || e?.code === 'ERR_CANCELED') return;
     } finally {
       setBacktestSimLoading(false);
     }
@@ -381,17 +422,46 @@ const LightGBMPage: React.FC = () => {
 
   const predColumns = [
     { title: '排名', dataIndex: 'rank', key: 'rank', width: 50 },
-    { title: '代码', dataIndex: 'ts_code', key: 'ts_code', width: 90 },
-    { title: '名称', dataIndex: 'stock_name', key: 'stock_name', width: 80 },
-    { title: 'LGB 评分', dataIndex: 'lgb_score', key: 'lgb_score', width: 80, render: (_: unknown, r: LGBPredictionItem) => r.lgb_score.toFixed(2) },
-    { title: '预期涨幅', dataIndex: 'raw_score', key: 'raw_score', width: 80, render: (_: unknown, r: LGBPredictionItem) => <span className={r.raw_score >= 0 ? 'text-green-600' : 'text-red-500'}>{(r.raw_score * 100).toFixed(2)}%</span> },
-    { title: '胜率', dataIndex: 'win_rate', key: 'win_rate', width: 65, render: (_: unknown, r: LGBPredictionItem) => r.win_rate != null ? `${(r.win_rate * 100).toFixed(1)}%` : '-' },
-    { title: '历史均收益', dataIndex: 'avg_return', key: 'avg_return', width: 85, render: (_: unknown, r: LGBPredictionItem) => r.avg_return != null ? <span className={r.avg_return >= 0 ? 'text-green-600' : 'text-red-500'}>{(r.avg_return * 100).toFixed(2)}%</span> : '-' },
-    { title: '最大盈', dataIndex: 'max_return', key: 'max_return', width: 70, render: (_: unknown, r: LGBPredictionItem) => r.max_return != null ? <span className="text-green-600">{(r.max_return * 100).toFixed(1)}%</span> : '-' },
-    { title: '最大亏', dataIndex: 'max_loss', key: 'max_loss', width: 70, render: (_: unknown, r: LGBPredictionItem) => r.max_loss != null ? <span className="text-red-500">{(r.max_loss * 100).toFixed(1)}%</span> : '-' },
-    { title: '盈亏比', dataIndex: 'profit_loss_ratio', key: 'profit_loss_ratio', width: 65, render: (_: unknown, r: LGBPredictionItem) => r.profit_loss_ratio != null ? r.profit_loss_ratio.toFixed(2) : '-' },
-    { title: '入选次数', dataIndex: 'hit_count', key: 'hit_count', width: 70, render: (_: unknown, r: LGBPredictionItem) => r.hit_count ?? '-' },
-    { title: '分位数', dataIndex: 'score_percentile', key: 'score_percentile', width: 65, render: (_: unknown, r: LGBPredictionItem) => r.score_percentile != null ? `${r.score_percentile}%` : '-' },
+    { title: '股票', dataIndex: 'ts_code', key: 'stock', width: 100, render: (_: unknown, r: LGBPredictionItem) => (
+      <div className="leading-tight">
+        <div className="text-xs font-medium">{r.stock_name || r.stock_code}</div>
+        <div className="text-[10px] text-tertiary-text">{r.ts_code}</div>
+      </div>
+    )},
+    { title: 'LGB 评分（LGB Score）', dataIndex: 'lgb_score', key: 'lgb_score', width: 80, render: (_: unknown, r: LGBPredictionItem) => r.lgb_score.toFixed(2) },
+    { title: '预期涨幅（Exp. Return）', dataIndex: 'raw_score', key: 'raw_score', width: 90, render: (_: unknown, r: LGBPredictionItem) => <span className={r.raw_score >= 0 ? 'text-red-400' : 'text-green-400'}>{(r.raw_score * 100).toFixed(2)}%</span> },
+    { title: '胜率（Win Rate）', dataIndex: 'win_rate', key: 'win_rate', width: 80, render: (_: unknown, r: LGBPredictionItem) => r.win_rate != null ? `${(r.win_rate * 100).toFixed(1)}%` : '-' },
+    { title: '历史均收益（Avg Return）', dataIndex: 'avg_return', key: 'avg_return', width: 100, render: (_: unknown, r: LGBPredictionItem) => r.avg_return != null ? <span className={r.avg_return >= 0 ? 'text-red-400' : 'text-green-400'}>{(r.avg_return * 100).toFixed(2)}%</span> : '-' },
+    { title: '最大盈（Max Gain）', dataIndex: 'max_return', key: 'max_return', width: 85, render: (_: unknown, r: LGBPredictionItem) => r.max_return != null ? <span className="text-red-400">{(r.max_return * 100).toFixed(1)}%</span> : '-' },
+    { title: '最大亏（Max Loss）', dataIndex: 'max_loss', key: 'max_loss', width: 85, render: (_: unknown, r: LGBPredictionItem) => r.max_loss != null ? <span className="text-green-400">{(r.max_loss * 100).toFixed(1)}%</span> : '-' },
+    { title: '盈亏比（P/L Ratio）', dataIndex: 'profit_loss_ratio', key: 'profit_loss_ratio', width: 85, render: (_: unknown, r: LGBPredictionItem) => r.profit_loss_ratio != null ? r.profit_loss_ratio.toFixed(2) : '-' },
+    { title: '入选次数（Hits）', dataIndex: 'hit_count', key: 'hit_count', width: 75, render: (_: unknown, r: LGBPredictionItem) => r.hit_count ?? '-' },
+    { title: '分位数（%ile）', dataIndex: 'score_percentile', key: 'score_percentile', width: 70, render: (_: unknown, r: LGBPredictionItem) => r.score_percentile != null ? `${r.score_percentile}%` : '-' },
+    ...(overlapData ? [{
+      title: '交叉命中（Overlap）',
+      dataIndex: 'ts_code',
+      key: 'overlap',
+      width: 90,
+      render: (_: unknown, r: LGBPredictionItem) => {
+        const found = overlapData.stocks.find(s => s.ts_code === r.ts_code);
+        const cnt = found?.count ?? 0;
+        if (cnt === 0) return '-';
+        const tipLines = found?.model_names?.length
+          ? found.model_names.map((n) => {
+              const exec = n.endsWith('open2open') ? 'open' : n.endsWith('close2close') ? 'close' : '';
+              const m = n.replace(/_open2open$|_close2close$/, '');
+              const p = m.split('_');
+              const fwd = p.find(x => x.startsWith('fwd'));
+              const dates = p.filter(x => /^\d{8}$/.test(x));
+              const short = [exec, fwd, ...dates].filter(Boolean).join(' ');
+              return short || n;
+            })
+          : [];
+        const tip = tipLines.join('\n');
+        const el = cnt >= 3 ? <span className="text-amber-400 font-medium">{cnt}/{overlapData.total_models}</span> : <span>{cnt}/{overlapData.total_models}</span>;
+        return tip ? <AntTooltip overlayStyle={{ maxWidth: 360 }} title={<pre className="text-[11px] leading-relaxed m-0 whitespace-pre-wrap">{tip}</pre>} placement="top">{el}</AntTooltip> : el;
+      },
+    }] : []),
   ];
 
   return (
@@ -405,7 +475,7 @@ const LightGBMPage: React.FC = () => {
               <Segmented
                 block
                 value={trainExecMode}
-                onChange={(v) => setTrainExecMode(v as string)}
+                onChange={(v) => { setTrainExecMode(v as string); setSelectedModel(undefined); setPredictions([]); setFeatureImportance([]); setDiagnostics(null); setStockLookup(null); setOverlapData(null); }}
                 options={[
                   { label: '收盘→收盘', value: 'close' },
                   { label: '开盘→开盘', value: 'open' },
@@ -530,7 +600,7 @@ const LightGBMPage: React.FC = () => {
                       return m.name.includes(suffix);
                     })
                     .map((m) => ({
-                      label: `${m.name} (${new Date(m.saved_at).toLocaleDateString()})`,
+                      label: `${m.name.replace(/^lgb_(postmarket|intraday)_/, '')} (${new Date(m.saved_at).toLocaleDateString()})`,
                       value: m.path,
                     }))}
                 />
@@ -598,7 +668,7 @@ const LightGBMPage: React.FC = () => {
                       <div className="font-medium">
                         {bruteForceStatus.result.best_by_return.stop_strategy} {bruteForceStatus.result.best_by_return.exec_mode} fwd={bruteForceStatus.result.best_by_return.forward_days} top={bruteForceStatus.result.best_by_return.top_n}
                       </div>
-                      <div className="text-green-400">
+                      <div className="text-red-400">
                         {(bruteForceStatus.result.best_by_return.cumulative_return * 100).toFixed(1)}%
                       </div>
                     </div>
@@ -658,7 +728,7 @@ const LightGBMPage: React.FC = () => {
           {/* Feature Importance */}
           {featureImportance.length > 0 && (
             <Card>
-              <div className="font-medium text-sm text-secondary-text mb-3">特征重要性 (Gain)</div>
+              <div className="font-medium text-sm text-secondary-text mb-3">特征重要性 (Gain){modelDisplayName ? <span className="text-tertiary-text ml-1 text-xs">| {modelDisplayName}</span> : ''}</div>
               <ResponsiveContainer width="100%" height={Math.max(240, featureImportance.length * 28)}>
                 <BarChart data={featureImportance} layout="vertical" margin={{ left: 80, right: 20, top: 5, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
@@ -677,7 +747,7 @@ const LightGBMPage: React.FC = () => {
           {/* Model Diagnostics */}
           {diagnostics && (
             <Card>
-              <div className="font-medium text-sm text-secondary-text mb-3">模型诊断</div>
+              <div className="font-medium text-sm text-secondary-text mb-3">模型诊断{modelDisplayName ? <span className="text-tertiary-text ml-1 text-xs">| {modelDisplayName}</span> : ''}</div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                 <StatCard label="CV RMSE" value={`${diagnostics.training_metrics.cv_rmse_mean.toFixed(4)} ± ${diagnostics.training_metrics.cv_rmse_std.toFixed(4)}`} />
                 <StatCard label="样本数" value={diagnostics.training_metrics.n_samples.toLocaleString()} />
@@ -730,7 +800,7 @@ const LightGBMPage: React.FC = () => {
           {/* Stock Lookup */}
           {(predictions.length > 0 || selectedModel) && (
             <Card>
-              <div className="font-medium text-sm text-secondary-text mb-3">个股查询</div>
+              <div className="font-medium text-sm text-secondary-text mb-3">个股查询{modelDisplayName ? <span className="text-tertiary-text ml-1 text-xs">| {modelDisplayName}</span> : ''}</div>
               <div className="flex gap-2">
                 <Input
                   size="small"
@@ -758,6 +828,12 @@ const LightGBMPage: React.FC = () => {
                       <span className="text-tertiary-text">代码</span>
                       <div className="font-medium text-sm">{stockLookup.ts_code}</div>
                     </div>
+                    {stockLookup.stock_name && (
+                      <div>
+                        <span className="text-tertiary-text">名称</span>
+                        <div className="font-medium text-sm">{stockLookup.stock_name}</div>
+                      </div>
+                    )}
                     <div>
                       <span className="text-tertiary-text">LGB 评分</span>
                       <div className="font-medium text-sm text-blue-400">{stockLookup.lgb_score.toFixed(2)}</div>
@@ -783,7 +859,25 @@ const LightGBMPage: React.FC = () => {
           {/* Predictions */}
           {predictions.length > 0 && (
             <Card>
-              <div className="font-medium text-sm text-secondary-text mb-3">预测结果 Top 5{predictionDate ? <span className="text-tertiary-text ml-2 text-xs">数据日期: {predictionDate}</span> : ''}</div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="font-medium text-sm text-secondary-text">
+                  预测结果 Top 5{predictionDate ? <span className="text-tertiary-text ml-2 text-xs">数据日期: {predictionDate}</span> : ''}
+                  {modelDisplayName ? <span className="text-tertiary-text ml-1 text-xs">| {modelDisplayName}</span> : ''}
+                </div>
+                <Button
+                  size="small"
+                  type="default"
+                  onClick={handleCrossModelOverlap}
+                  loading={overlapLoading}
+                >
+                  交叉验证 (全部)
+                </Button>
+              </div>
+              {overlapData && (
+                <div className="mb-2 text-xs text-tertiary-text">
+                  共 {overlapData.total_models} 个模型，{overlapData.stocks.filter(s => s.count >= 3).length} 只股票出现在 ≥3 个模型的 Top 5 中
+                </div>
+              )}
               <Table
                 size="small"
                 dataSource={predictions}
@@ -791,6 +885,7 @@ const LightGBMPage: React.FC = () => {
                 pagination={{ pageSize: 20, size: 'small' }}
                 columns={predColumns}
                 scroll={{ x: 400 }}
+                rowClassName={(r) => overlapHighlight.has(r.ts_code) ? 'bg-amber-500/10' : ''}
               />
             </Card>
           )}
