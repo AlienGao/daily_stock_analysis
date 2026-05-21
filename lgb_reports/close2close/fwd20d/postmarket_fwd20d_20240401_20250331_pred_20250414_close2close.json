@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20240401",
+  "train_end": "20250331",
+  "pred_date": "20250414",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 100.0,
+      "raw_score": 0.48
+    },
+    {
+      "rank": 2,
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 88.8,
+      "raw_score": 0.4
+    },
+    {
+      "rank": 3,
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
+      "lgb_score": 85.84,
+      "raw_score": 0.38
+    },
+    {
+      "rank": 4,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 85.38,
+      "raw_score": 0.37
+    },
+    {
+      "rank": 5,
+      "ts_code": "002164.SZ",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 85.06,
+      "raw_score": 0.37
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.93,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.030295,
+    "std": 0.039589,
+    "skew": 2.3133,
+    "kurtosis": 23.5613,
+    "min": -0.236748,
+    "max": 0.477085,
+    "median": -0.022648
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.13760558948703813,
+    "cv_rmse_std": 0.02566934091651597,
+    "cv_scores": [
+      0.099483,
+      0.169834,
+      0.158973,
+      0.119233,
+      0.140505
+    ],
+    "rank_ic_mean": 0.208258,
+    "rank_ic_std": 0.134342,
+    "icir": 1.5502,
+    "oof_corr": 0.305312,
+    "n_samples": 27008,
+    "n_features": 22
+  }
+}

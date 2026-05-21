@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20241001",
+  "train_end": "20250930",
+  "pred_date": "20251031",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 100.0,
+      "raw_score": 0.48
+    },
+    {
+      "rank": 2,
+      "ts_code": "688135.SH",
+      "stock_code": "688135",
+      "stock_name": "利扬芯片",
+      "lgb_score": 98.09,
+      "raw_score": 0.46
+    },
+    {
+      "rank": 3,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 97.21,
+      "raw_score": 0.46
+    },
+    {
+      "rank": 4,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 96.86,
+      "raw_score": 0.46
+    },
+    {
+      "rank": 5,
+      "ts_code": "688316.SH",
+      "stock_code": "688316",
+      "stock_name": "青云科技-U",
+      "lgb_score": 95.91,
+      "raw_score": 0.45
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.02,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.009851,
+    "std": 0.038814,
+    "skew": 3.7618,
+    "kurtosis": 24.6591,
+    "min": -0.160217,
+    "max": 0.476795,
+    "median": -0.004604
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.14524523950098703,
+    "cv_rmse_std": 0.017203232096565945,
+    "cv_scores": [
+      0.117276,
+      0.154282,
+      0.134616,
+      0.165767,
+      0.154285
+    ],
+    "rank_ic_mean": 0.122812,
+    "rank_ic_std": 0.075518,
+    "icir": 1.6263,
+    "oof_corr": 0.122553,
+    "n_samples": 24727,
+    "n_features": 22
+  }
+}

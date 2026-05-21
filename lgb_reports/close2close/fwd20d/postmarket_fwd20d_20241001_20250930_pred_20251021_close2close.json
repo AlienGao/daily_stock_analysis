@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20241001",
+  "train_end": "20250930",
+  "pred_date": "20251021",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000159.SZ",
+      "stock_code": "000159",
+      "stock_name": "国际实业",
+      "lgb_score": 100.0,
+      "raw_score": 0.41
+    },
+    {
+      "rank": 2,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 96.7,
+      "raw_score": 0.39
+    },
+    {
+      "rank": 3,
+      "ts_code": "002274.SZ",
+      "stock_code": "002274",
+      "stock_name": "华昌化工",
+      "lgb_score": 96.28,
+      "raw_score": 0.39
+    },
+    {
+      "rank": 4,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 95.52,
+      "raw_score": 0.39
+    },
+    {
+      "rank": 5,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 94.83,
+      "raw_score": 0.38
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.85,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.003645,
+    "std": 0.031665,
+    "skew": 3.4107,
+    "kurtosis": 32.9505,
+    "min": -0.170832,
+    "max": 0.413585,
+    "median": 0.00298
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.14547290288568285,
+    "cv_rmse_std": 0.014917586917977193,
+    "cv_scores": [
+      0.118338,
+      0.149132,
+      0.155802,
+      0.14283,
+      0.161263
+    ],
+    "rank_ic_mean": 0.129363,
+    "rank_ic_std": 0.115294,
+    "icir": 1.122,
+    "oof_corr": 0.136483,
+    "n_samples": 22873,
+    "n_features": 22
+  }
+}

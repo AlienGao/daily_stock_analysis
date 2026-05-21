@@ -1,0 +1,110 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "generated_at": "2026-05-21T17:16:58.975144",
+  "training_metrics": {
+    "cv_rmse_mean": 0.14426301917332876,
+    "cv_rmse_std": 0.022991971040232363,
+    "cv_scores": [
+      0.121377,
+      0.175249,
+      0.167348,
+      0.120301,
+      0.137041
+    ],
+    "rank_ic_mean": 0.158348,
+    "rank_ic_std": 0.074896,
+    "icir": 2.1142,
+    "oof_corr": 0.104772,
+    "n_samples": 17443,
+    "n_features": 22
+  },
+  "feature_importance": {
+    "gain": {
+      "broker_recommend": 650.0124941878021,
+      "buyback": 412.8747974727303,
+      "margin": 367.6823085937649,
+      "chip": 278.0270552225411,
+      "vwap_reversal": 127.94199038483202,
+      "ranking_momentum": 98.4264894425869,
+      "fundamental": 77.51563379913568,
+      "technical": 64.88295897096395,
+      "gtja114": 31.672547698020935,
+      "alpha042": 20.082549251616,
+      "vwap_deviation": 19.535028003156185,
+      "gap_reversal": 12.422009196132421,
+      "liquid_oversold": 12.366938730701804,
+      "money_flow": 9.626464450731874,
+      "limit": 1.8128295876085758,
+      "concept_heat": 0.0,
+      "hot_money": 0.0,
+      "insider_buy": 0.0,
+      "institution_hold": 0.0,
+      "performance": 0.0
+    },
+    "split": {
+      "broker_recommend": 1475.0,
+      "buyback": 1050.0,
+      "margin": 741.0,
+      "chip": 717.0,
+      "vwap_reversal": 434.0,
+      "ranking_momentum": 365.0,
+      "fundamental": 286.0,
+      "technical": 251.0,
+      "alpha042": 157.0,
+      "vwap_deviation": 125.0,
+      "gtja114": 124.0,
+      "liquid_oversold": 94.0,
+      "money_flow": 87.0,
+      "gap_reversal": 79.0,
+      "limit": 15.0,
+      "concept_heat": 0.0,
+      "hot_money": 0.0,
+      "insider_buy": 0.0,
+      "institution_hold": 0.0,
+      "performance": 0.0
+    }
+  },
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "001309",
+      "stock_code": "001309",
+      "stock_name": "德明利",
+      "lgb_score": 100.0,
+      "raw_score": 0.44
+    },
+    {
+      "rank": 2,
+      "ts_code": "300959",
+      "stock_code": "300959",
+      "stock_name": "线上线下",
+      "lgb_score": 89.58,
+      "raw_score": 0.38
+    },
+    {
+      "rank": 3,
+      "ts_code": "688167",
+      "stock_code": "688167",
+      "stock_name": "炬光科技",
+      "lgb_score": 84.39,
+      "raw_score": 0.36
+    },
+    {
+      "rank": 4,
+      "ts_code": "002371",
+      "stock_code": "002371",
+      "stock_name": "北方华创",
+      "lgb_score": 82.18,
+      "raw_score": 0.34
+    },
+    {
+      "rank": 5,
+      "ts_code": "688121",
+      "stock_code": "688121",
+      "stock_name": "卓然股份",
+      "lgb_score": 81.42,
+      "raw_score": 0.34
+    }
+  ]
+}

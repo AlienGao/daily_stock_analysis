@@ -1,0 +1,110 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "generated_at": "2026-05-21T17:13:54.716543",
+  "training_metrics": {
+    "cv_rmse_mean": 0.15072235844215096,
+    "cv_rmse_std": 0.017741949912801393,
+    "cv_scores": [
+      0.180401,
+      0.138115,
+      0.144358,
+      0.160138,
+      0.130599
+    ],
+    "rank_ic_mean": 0.158374,
+    "rank_ic_std": 0.075528,
+    "icir": 2.0969,
+    "oof_corr": 0.154293,
+    "n_samples": 20097,
+    "n_features": 22
+  },
+  "feature_importance": {
+    "gain": {
+      "broker_recommend": 642.065231340006,
+      "buyback": 455.11920931376517,
+      "margin": 418.63122586905956,
+      "chip": 369.1210087854415,
+      "vwap_reversal": 141.44819137454033,
+      "ranking_momentum": 99.67160765081644,
+      "technical": 73.78187625482678,
+      "fundamental": 73.2415222786367,
+      "vwap_deviation": 25.620658461004496,
+      "gtja114": 22.696371287107468,
+      "liquid_oversold": 20.222657334059477,
+      "alpha042": 16.98287316225469,
+      "money_flow": 13.511467482894659,
+      "gap_reversal": 10.96503385528922,
+      "limit": 0.4307657964527607,
+      "hot_money": 0.09538500010967255,
+      "concept_heat": 0.0,
+      "insider_buy": 0.0,
+      "institution_hold": 0.0,
+      "performance": 0.0
+    },
+    "split": {
+      "broker_recommend": 1395.0,
+      "buyback": 1083.0,
+      "chip": 826.0,
+      "margin": 703.0,
+      "vwap_reversal": 394.0,
+      "ranking_momentum": 314.0,
+      "fundamental": 269.0,
+      "technical": 258.0,
+      "alpha042": 153.0,
+      "vwap_deviation": 149.0,
+      "gtja114": 139.0,
+      "liquid_oversold": 126.0,
+      "money_flow": 101.0,
+      "gap_reversal": 84.0,
+      "limit": 5.0,
+      "hot_money": 1.0,
+      "concept_heat": 0.0,
+      "insider_buy": 0.0,
+      "institution_hold": 0.0,
+      "performance": 0.0
+    }
+  },
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300109",
+      "stock_code": "300109",
+      "stock_name": "新开源",
+      "lgb_score": 100.0,
+      "raw_score": 0.34
+    },
+    {
+      "rank": 2,
+      "ts_code": "002527",
+      "stock_code": "002527",
+      "stock_name": "新时达",
+      "lgb_score": 89.56,
+      "raw_score": 0.29
+    },
+    {
+      "rank": 3,
+      "ts_code": "300031",
+      "stock_code": "300031",
+      "stock_name": "宝通科技",
+      "lgb_score": 88.86,
+      "raw_score": 0.28
+    },
+    {
+      "rank": 4,
+      "ts_code": "300901",
+      "stock_code": "300901",
+      "stock_name": "中胤时尚",
+      "lgb_score": 87.71,
+      "raw_score": 0.28
+    },
+    {
+      "rank": 5,
+      "ts_code": "301008",
+      "stock_code": "301008",
+      "stock_name": "宏昌科技",
+      "lgb_score": 86.53,
+      "raw_score": 0.27
+    }
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20250401",
+  "train_end": "20260331",
+  "pred_date": "20260422",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.34
+    },
+    {
+      "rank": 2,
+      "ts_code": "301599.SZ",
+      "stock_code": "301599",
+      "stock_name": "理奇智能",
+      "lgb_score": 84.64,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 3,
+      "ts_code": "688700.SH",
+      "stock_code": "688700",
+      "stock_name": "东威科技",
+      "lgb_score": 80.77,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 4,
+      "ts_code": "688820.SH",
+      "stock_code": "688820",
+      "stock_name": "盛合晶微",
+      "lgb_score": 75.83,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 5,
+      "ts_code": "301513.SZ",
+      "stock_code": "301513",
+      "stock_name": "尚水智能",
+      "lgb_score": 69.69,
+      "raw_score": 0.18
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.47,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.077417,
+    "std": 0.026561,
+    "skew": 3.331,
+    "kurtosis": 17.8164,
+    "min": -0.169619,
+    "max": 0.337856,
+    "median": -0.088018
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.14248846986097002,
+    "cv_rmse_std": 0.014357582944710607,
+    "cv_scores": [
+      0.142921,
+      0.156465,
+      0.137978,
+      0.117971,
+      0.157108
+    ],
+    "rank_ic_mean": 0.209506,
+    "rank_ic_std": 0.09461,
+    "icir": 2.2144,
+    "oof_corr": 0.202181,
+    "n_samples": 18588,
+    "n_features": 22
+  }
+}

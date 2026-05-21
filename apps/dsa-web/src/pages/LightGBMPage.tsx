@@ -7,7 +7,7 @@ import {
 import { DatePicker, Segmented, Table, InputNumber, Button, Select, Input } from 'antd';
 import { Brain, Play, Loader2, Search } from 'lucide-react';
 import { AppPage, Card, StatCard, EmptyState, ApiErrorAlert } from '../components/common';
-import { researchApi, type LGBTaskStatusResponse, type LGBPredictionItem, type LGBBacktestCompareResponse, type LGBModelInfo, type LGBDateRangeResponse, type LGBStockLookupItem, type LGBBacktestSimResponse, type LGBBacktestSimAvailableResponse } from '../api/research';
+import { researchApi, type LGBTaskStatusResponse, type LGBPredictionItem, type LGBBacktestCompareResponse, type LGBModelInfo, type LGBDateRangeResponse, type LGBStockLookupItem, type LGBBacktestSimResponse, type LGBBacktestSimAvailableResponse, type LGBBruteForceTaskStatus, type LGBDiagnosticsResponse, type CatchUpTaskStatus } from '../api/research';
 import type { ParsedApiError } from '../api/error';
 import { getParsedApiError } from '../api/error';
 import dayjs from 'dayjs';
@@ -48,6 +48,13 @@ const LightGBMPage: React.FC = () => {
   const [backtestSimAvailable, setBacktestSimAvailable] = useState<LGBBacktestSimAvailableResponse | null>(null);
   const [backtestFwd, setBacktestFwd] = useState(3);
   const [backtestTopN, setBacktestTopN] = useState(1);
+  const [stopStrategy, setStopStrategy] = useState('none');
+  const [bruteForceStatus, setBruteForceStatus] = useState<LGBBruteForceTaskStatus | null>(null);
+  const [bruteForceLoading, setBruteForceLoading] = useState(false);
+  const bruteForcePollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [diagnostics, setDiagnostics] = useState<LGBDiagnosticsResponse | null>(null);
+  const [catchUpStatus, setCatchUpStatus] = useState<CatchUpTaskStatus | null>(null);
+  const catchUpPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   /* ── Derived per-mode bounds ── */
   const dateBounds = dateRange?.postmarket;
@@ -104,7 +111,7 @@ const LightGBMPage: React.FC = () => {
   const loadModelResults = useCallback(async (modelPath: string) => {
     setError(null);
     setBacktest(null);
-    // Fetch FI & predictions independently from backtest (backtest may fail on loaded model)
+    setDiagnostics(null);
     try {
       const [fi, pred] = await Promise.all([
         researchApi.getFeatureImportance(modelPath),
@@ -121,6 +128,7 @@ const LightGBMPage: React.FC = () => {
     } catch (e) {
       setError(getParsedApiError(e));
     }
+    researchApi.getDiagnostics(modelPath).then(setDiagnostics).catch(() => {});
   }, []);
 
   /* ── Train ── */
@@ -177,6 +185,15 @@ const LightGBMPage: React.FC = () => {
         setFeatureImportance(fiList);
         setPredictions(finalResult.result.predictions);
         if (finalResult.result.model_date) setPredictionDate(finalResult.result.model_date);
+
+        if (finalResult.result.training_metrics || finalResult.result.tree_diagnostics) {
+          setDiagnostics({
+            training_metrics: finalResult.result.training_metrics ?? { cv_rmse_mean: 0, cv_rmse_std: 0, n_samples: 0, n_features: 0, cv_scores: [], rank_ic_mean: null, rank_ic_std: null, icir: null, oof_corr: null },
+            tree_diagnostics: finalResult.result.tree_diagnostics ?? { n_trees: 0, avg_depth: 0, avg_n_leaves: 0, total_n_leaves: 0 },
+            prediction_stats: finalResult.result.prediction_stats ?? null,
+          });
+        }
+
         setTraining(false);
         setStatusMsg('');
 
@@ -216,11 +233,11 @@ const LightGBMPage: React.FC = () => {
   }, [stockCode, selectedModel]);
 
   /* ── Backtest Sim ── */
-  const fetchBacktestSim = useCallback(async (fwd: number, exec: string, topN: number) => {
+  const fetchBacktestSim = useCallback(async (fwd: number, exec: string, topN: number, st: string) => {
     setBacktestSimLoading(true);
     setBacktestSim(null);
     try {
-      const data = await researchApi.getBacktestSim({ forward_days: fwd, top_n: topN, exec_mode: exec });
+      const data = await researchApi.getBacktestSim({ forward_days: fwd, top_n: topN, exec_mode: exec, stop_strategy: st });
       setBacktestSim(data);
     } catch {
       // ignore
@@ -244,14 +261,116 @@ const LightGBMPage: React.FC = () => {
   useEffect(() => { fetchBacktestSimAvailable(); }, []); // mount
   useEffect(() => { fetchBacktestSimAvailable(); }, [trainExecMode]);
 
-  useEffect(() => { fetchBacktestSim(backtestFwd, trainExecMode, backtestTopN); }, [fetchBacktestSim, backtestFwd, trainExecMode, backtestTopN]);
+  useEffect(() => { fetchBacktestSim(backtestFwd, trainExecMode, backtestTopN, stopStrategy); }, [fetchBacktestSim, backtestFwd, trainExecMode, backtestTopN, stopStrategy]);
 
   /* ── Cleanup polling on unmount ── */
   useEffect(() => {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
+      if (bruteForcePollRef.current) clearInterval(bruteForcePollRef.current);
     };
   }, []);
+
+  /* ── Brute-Force Search ── */
+  const BF_TASK_KEY = 'lgb_brute_force_task_id';
+
+  const pollBruteForce = useCallback((taskId: string): Promise<LGBBruteForceTaskStatus> => {
+    return new Promise<LGBBruteForceTaskStatus>((resolve, reject) => {
+      bruteForcePollRef.current = setInterval(async () => {
+        try {
+          const status = await researchApi.getBruteForceStatus(taskId);
+          setBruteForceStatus(status);
+          if (status.status === 'completed') {
+            clearInterval(bruteForcePollRef.current!);
+            bruteForcePollRef.current = null;
+            localStorage.removeItem(BF_TASK_KEY);
+            resolve(status);
+          } else if (status.status === 'failed') {
+            clearInterval(bruteForcePollRef.current!);
+            bruteForcePollRef.current = null;
+            localStorage.removeItem(BF_TASK_KEY);
+            reject(new Error(status.error || '搜索失败'));
+          }
+        } catch (e) {
+          clearInterval(bruteForcePollRef.current!);
+          bruteForcePollRef.current = null;
+          localStorage.removeItem(BF_TASK_KEY);
+          reject(e);
+        }
+      }, 1500);
+    });
+  }, []);
+
+  // Auto-resume on mount if there's a stored task_id
+  useEffect(() => {
+    const stored = localStorage.getItem(BF_TASK_KEY);
+    if (!stored) return;
+    setBruteForceLoading(true);
+    pollBruteForce(stored)
+      .then((result) => setBruteForceStatus(result))
+      .catch(() => {})
+      .finally(() => setBruteForceLoading(false));
+  }, [pollBruteForce]);
+
+  const handleBruteForceStart = useCallback(async () => {
+    setBruteForceLoading(true);
+    setBruteForceStatus(null);
+    try {
+      const { task_id } = await researchApi.startBruteForce();
+      localStorage.setItem(BF_TASK_KEY, task_id);
+      const finalResult = await pollBruteForce(task_id);
+      setBruteForceStatus(finalResult);
+    } catch {
+      // error already set via polling
+    } finally {
+      setBruteForceLoading(false);
+    }
+  }, [pollBruteForce]);
+
+  /* ── Catch-up prediction ── */
+  const CU_TASK_KEY = 'lgb_catchup_task';
+
+  const pollCatchUp = useCallback(async (taskId: string): Promise<CatchUpTaskStatus> => {
+    return new Promise((resolve, reject) => {
+      const interval = setInterval(async () => {
+        try {
+          const status = await researchApi.getCatchUpStatus(taskId);
+          setCatchUpStatus(status);
+          if (status.status === 'completed' || status.status === 'failed') {
+            clearInterval(interval);
+            catchUpPollRef.current = null;
+            localStorage.removeItem(CU_TASK_KEY);
+            resolve(status);
+          }
+        } catch (e) {
+          clearInterval(interval);
+          catchUpPollRef.current = null;
+          reject(e);
+        }
+      }, 2000);
+      catchUpPollRef.current = interval;
+    });
+  }, []);
+
+  const handleCatchUpStart = useCallback(async () => {
+    setCatchUpStatus(null);
+    try {
+      const { task_id } = await researchApi.startCatchUp();
+      localStorage.setItem(CU_TASK_KEY, task_id);
+      await pollCatchUp(task_id);
+      // Refresh backtest available after catch-up
+      fetchBacktestSimAvailable();
+    } catch {
+      // error already set via polling
+    }
+  }, [pollCatchUp, fetchBacktestSimAvailable]);
+
+  // Auto-resume catch-up if page refreshed during task
+  useEffect(() => {
+    const stored = localStorage.getItem(CU_TASK_KEY);
+    if (!stored) return;
+    pollCatchUp(stored).catch(() => {});
+  }, [pollCatchUp]);
 
   /* ── Capital curve chart data ── */
   const capitalData = backtest?.capital_curve?.map((p) => ({
@@ -261,11 +380,18 @@ const LightGBMPage: React.FC = () => {
   })) ?? [];
 
   const predColumns = [
-    { title: '排名', dataIndex: 'rank', key: 'rank', width: 60 },
-    { title: '代码', dataIndex: 'ts_code', key: 'ts_code', width: 100 },
-    { title: '名称', dataIndex: 'stock_name', key: 'stock_name', width: 100 },
-    { title: 'LGB 评分', dataIndex: 'lgb_score', key: 'lgb_score', width: 100, render: (_: unknown, r: LGBPredictionItem) => r.lgb_score.toFixed(4) },
-    { title: '原始分', dataIndex: 'raw_score', key: 'raw_score', width: 100, render: (_: unknown, r: LGBPredictionItem) => r.raw_score.toFixed(4) },
+    { title: '排名', dataIndex: 'rank', key: 'rank', width: 50 },
+    { title: '代码', dataIndex: 'ts_code', key: 'ts_code', width: 90 },
+    { title: '名称', dataIndex: 'stock_name', key: 'stock_name', width: 80 },
+    { title: 'LGB 评分', dataIndex: 'lgb_score', key: 'lgb_score', width: 80, render: (_: unknown, r: LGBPredictionItem) => r.lgb_score.toFixed(2) },
+    { title: '预期涨幅', dataIndex: 'raw_score', key: 'raw_score', width: 80, render: (_: unknown, r: LGBPredictionItem) => <span className={r.raw_score >= 0 ? 'text-green-600' : 'text-red-500'}>{(r.raw_score * 100).toFixed(2)}%</span> },
+    { title: '胜率', dataIndex: 'win_rate', key: 'win_rate', width: 65, render: (_: unknown, r: LGBPredictionItem) => r.win_rate != null ? `${(r.win_rate * 100).toFixed(1)}%` : '-' },
+    { title: '历史均收益', dataIndex: 'avg_return', key: 'avg_return', width: 85, render: (_: unknown, r: LGBPredictionItem) => r.avg_return != null ? <span className={r.avg_return >= 0 ? 'text-green-600' : 'text-red-500'}>{(r.avg_return * 100).toFixed(2)}%</span> : '-' },
+    { title: '最大盈', dataIndex: 'max_return', key: 'max_return', width: 70, render: (_: unknown, r: LGBPredictionItem) => r.max_return != null ? <span className="text-green-600">{(r.max_return * 100).toFixed(1)}%</span> : '-' },
+    { title: '最大亏', dataIndex: 'max_loss', key: 'max_loss', width: 70, render: (_: unknown, r: LGBPredictionItem) => r.max_loss != null ? <span className="text-red-500">{(r.max_loss * 100).toFixed(1)}%</span> : '-' },
+    { title: '盈亏比', dataIndex: 'profit_loss_ratio', key: 'profit_loss_ratio', width: 65, render: (_: unknown, r: LGBPredictionItem) => r.profit_loss_ratio != null ? r.profit_loss_ratio.toFixed(2) : '-' },
+    { title: '入选次数', dataIndex: 'hit_count', key: 'hit_count', width: 70, render: (_: unknown, r: LGBPredictionItem) => r.hit_count ?? '-' },
+    { title: '分位数', dataIndex: 'score_percentile', key: 'score_percentile', width: 65, render: (_: unknown, r: LGBPredictionItem) => r.score_percentile != null ? `${r.score_percentile}%` : '-' },
   ];
 
   return (
@@ -398,10 +524,15 @@ const LightGBMPage: React.FC = () => {
                     setSelectedModel(v);
                     if (v) loadModelResults(v);
                   }}
-                  options={models.map((m) => ({
-                    label: `${m.name} (${new Date(m.saved_at).toLocaleDateString()})`,
-                    value: m.path,
-                  }))}
+                  options={models
+                    .filter((m) => {
+                      const suffix = trainExecMode === 'open' ? 'open2open' : 'close2close';
+                      return m.name.includes(suffix);
+                    })
+                    .map((m) => ({
+                      label: `${m.name} (${new Date(m.saved_at).toLocaleDateString()})`,
+                      value: m.path,
+                    }))}
                 />
                 {selectedModel && (
                   <>
@@ -421,6 +552,95 @@ const LightGBMPage: React.FC = () => {
               </div>
             </Card>
           )}
+
+          {/* Brute-Force Search */}
+          <Card>
+            <div className="space-y-3">
+              <div className="font-medium text-sm text-secondary-text">全方案搜索</div>
+              <div className="text-xs text-tertiary-text">
+                遍历 lgb_reports/ 缓存中所有参数组合（止损策略 × 执行模式 × 持有期 × top_n），寻找收益/夏普最优方案。后台运行，结果保存至 lgb_reports/。
+                {(() => {
+                  const results = bruteForceStatus?.result?.all_results;
+                  if (!results || results.length === 0) return null;
+                  const strs = [...new Set(results.map((r) => r.stop_strategy).filter(Boolean))];
+                  const ems = [...new Set(results.map((r) => r.exec_mode).filter(Boolean))];
+                  const fwds = [...new Set(results.map((r) => r.forward_days))].sort((a, b) => a - b);
+                  const tns = [...new Set(results.map((r) => r.top_n))].sort((a, b) => a - b);
+                  return ` (本次: ${strs.length}策略 × ${ems.length}模式 × ${fwds.length}持有期 × ${tns.length}top_n = ${results.length} 组合)`;
+                })()}
+              </div>
+
+              {bruteForceStatus && bruteForceStatus.status === 'running' && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2 text-xs text-blue-400">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    {bruteForceStatus.status_message}
+                  </div>
+                  <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-blue-500 transition-all duration-300"
+                      style={{
+                        width: `${(bruteForceStatus.progress_current / bruteForceStatus.progress_total) * 100}%`,
+                      }}
+                    />
+                  </div>
+                  <div className="text-[10px] text-tertiary-text text-right">
+                    {bruteForceStatus.progress_current}/{bruteForceStatus.progress_total}
+                  </div>
+                </div>
+              )}
+
+              {bruteForceStatus && bruteForceStatus.status === 'completed' && bruteForceStatus.result && (
+                <div className="space-y-2 text-xs">
+                  {bruteForceStatus.result.best_by_return && (
+                    <div className="p-2 rounded bg-green-500/10 border border-green-500/20">
+                      <div className="text-tertiary-text">最佳收益</div>
+                      <div className="font-medium">
+                        {bruteForceStatus.result.best_by_return.stop_strategy} {bruteForceStatus.result.best_by_return.exec_mode} fwd={bruteForceStatus.result.best_by_return.forward_days} top={bruteForceStatus.result.best_by_return.top_n}
+                      </div>
+                      <div className="text-green-400">
+                        {(bruteForceStatus.result.best_by_return.cumulative_return * 100).toFixed(1)}%
+                      </div>
+                    </div>
+                  )}
+                  {bruteForceStatus.result.best_by_sharpe && (
+                    <div className="p-2 rounded bg-blue-500/10 border border-blue-500/20">
+                      <div className="text-tertiary-text">最佳夏普</div>
+                      <div className="font-medium">
+                        {bruteForceStatus.result.best_by_sharpe.stop_strategy} {bruteForceStatus.result.best_by_sharpe.exec_mode} fwd={bruteForceStatus.result.best_by_sharpe.forward_days} top={bruteForceStatus.result.best_by_sharpe.top_n}
+                      </div>
+                      <div className="text-blue-400">
+                        {bruteForceStatus.result.best_by_sharpe.sharpe_ratio.toFixed(2)}
+                      </div>
+                    </div>
+                  )}
+                  {bruteForceStatus.result.report_path && (
+                    <div className="text-[10px] text-tertiary-text truncate" title={bruteForceStatus.result.report_path}>
+                      报告: {bruteForceStatus.result.report_path.split('/').pop()}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {bruteForceStatus && bruteForceStatus.status === 'failed' && (
+                <div className="text-xs text-red-400">
+                  {bruteForceStatus.error || '搜索失败'}
+                </div>
+              )}
+
+              <Button
+                block
+                size="small"
+                type="primary"
+                icon={bruteForceLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                onClick={handleBruteForceStart}
+                disabled={bruteForceLoading || bruteForceStatus?.status === 'running'}
+                loading={bruteForceLoading}
+              >
+                {bruteForceLoading ? '搜索中...' : '开始搜索'}
+              </Button>
+            </div>
+          </Card>
         </div>
 
         {/* ──── Right Panel ──── */}
@@ -451,6 +671,59 @@ const LightGBMPage: React.FC = () => {
                   <Bar dataKey="gain" fill="#3b82f6" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
+            </Card>
+          )}
+
+          {/* Model Diagnostics */}
+          {diagnostics && (
+            <Card>
+              <div className="font-medium text-sm text-secondary-text mb-3">模型诊断</div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                <StatCard label="CV RMSE" value={`${diagnostics.training_metrics.cv_rmse_mean.toFixed(4)} ± ${diagnostics.training_metrics.cv_rmse_std.toFixed(4)}`} />
+                <StatCard label="样本数" value={diagnostics.training_metrics.n_samples.toLocaleString()} />
+                <StatCard label="特征数" value={String(diagnostics.training_metrics.n_features)} />
+                {diagnostics.training_metrics.rank_ic_mean != null && (
+                  <StatCard label="Rank IC" value={`${diagnostics.training_metrics.rank_ic_mean.toFixed(4)} ± ${(diagnostics.training_metrics.rank_ic_std ?? 0).toFixed(4)}`} />
+                )}
+                {diagnostics.training_metrics.icir != null && (
+                  <StatCard label="ICIR" value={diagnostics.training_metrics.icir.toFixed(3)} />
+                )}
+                {diagnostics.training_metrics.oof_corr != null && (
+                  <StatCard label="OOF 相关性" value={diagnostics.training_metrics.oof_corr.toFixed(4)} />
+                )}
+                <StatCard label="树数量" value={String(diagnostics.tree_diagnostics.n_trees)} />
+                <StatCard label="平均深度" value={diagnostics.tree_diagnostics.avg_depth.toFixed(1)} />
+              </div>
+
+              {diagnostics.training_metrics.cv_scores.length > 1 && (
+                <>
+                  <div className="text-xs text-tertiary-text mb-2">逐折 CV RMSE</div>
+                  <ResponsiveContainer width="100%" height={120}>
+                    <LineChart data={diagnostics.training_metrics.cv_scores.map((v, i) => ({ fold: `Fold ${i + 1}`, rmse: v }))} margin={{ left: 20, right: 20, top: 5, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                      <XAxis dataKey="fold" tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} />
+                      <Tooltip contentStyle={{ background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', fontSize: 12 }} />
+                      <Line type="monotone" dataKey="rmse" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </>
+              )}
+
+              {diagnostics.prediction_stats && (
+                <div className="mt-3">
+                  <div className="text-xs text-tertiary-text mb-2">预测分布</div>
+                  <div className="grid grid-cols-4 gap-2 text-xs">
+                    <div><span className="text-tertiary-text">Mean:</span> {diagnostics.prediction_stats.mean.toFixed(4)}</div>
+                    <div><span className="text-tertiary-text">Std:</span> {diagnostics.prediction_stats.std.toFixed(4)}</div>
+                    <div><span className="text-tertiary-text">Skew:</span> {diagnostics.prediction_stats.skew.toFixed(3)}</div>
+                    <div><span className="text-tertiary-text">Kurt:</span> {diagnostics.prediction_stats.kurtosis.toFixed(3)}</div>
+                    <div><span className="text-tertiary-text">Min:</span> {diagnostics.prediction_stats.min.toFixed(4)}</div>
+                    <div><span className="text-tertiary-text">Max:</span> {diagnostics.prediction_stats.max.toFixed(4)}</div>
+                    <div><span className="text-tertiary-text">Median:</span> {diagnostics.prediction_stats.median.toFixed(4)}</div>
+                  </div>
+                </div>
+              )}
             </Card>
           )}
 
@@ -525,7 +798,19 @@ const LightGBMPage: React.FC = () => {
           {/* Backtest Simulation (from prediction files) */}
           <Card>
             <div className="flex items-center justify-between mb-3">
-              <div className="font-medium text-sm text-secondary-text">回测模拟（预测文件）</div>
+              <div className="flex items-center gap-3">
+                <div className="font-medium text-sm text-secondary-text">回测模拟（预测文件）</div>
+                <Button
+                  size="small"
+                  type={catchUpStatus?.status === 'running' || catchUpPollRef.current ? 'default' : 'primary'}
+                  onClick={handleCatchUpStart}
+                  loading={catchUpStatus?.status === 'running' || !!catchUpPollRef.current}
+                >
+                  {catchUpStatus?.status === 'running' || catchUpPollRef.current
+                    ? `补全中… ${catchUpStatus?.status_message || ''}`
+                    : '补全预测'}
+                </Button>
+              </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-tertiary-text">Top</span>
                 <InputNumber
@@ -547,6 +832,16 @@ const LightGBMPage: React.FC = () => {
                     : [3, 5, 10]
                   ).map((d) => ({ label: `${d} 日`, value: String(d) }))}
                 />
+                <Segmented
+                  size="small"
+                  value={stopStrategy}
+                  onChange={(v) => setStopStrategy(v as string)}
+                  options={[
+                    { label: '默认', value: 'none' },
+                    { label: '亏损厌恶', value: 'loss_aversion' },
+                    { label: '跌了死扛', value: 'dead_hold' },
+                  ]}
+                />
               </div>
             </div>
 
@@ -559,7 +854,7 @@ const LightGBMPage: React.FC = () => {
 
             {backtestSim && !backtestSimLoading && (
               <>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
                   <StatCard
                     label="总收益率"
                     value={pctNum(backtestSim.metrics.cumulative_return)}
@@ -573,8 +868,12 @@ const LightGBMPage: React.FC = () => {
                     value={pctNum(backtestSim.metrics.max_drawdown)}
                   />
                   <StatCard
-                    label="交易笔数"
+                    label="已平仓"
                     value={String(backtestSim.metrics.total_trades)}
+                  />
+                  <StatCard
+                    label="持仓中"
+                    value={String(backtestSim.metrics.holding_trades || 0)}
                   />
                   <StatCard
                     label="跳过（涨停）"
@@ -608,10 +907,13 @@ const LightGBMPage: React.FC = () => {
                   const holding = backtestSim.trades.filter((t) => !t.skipped && !t.sell_date);
                   const done = backtestSim.trades.filter((t) => !t.skipped && t.sell_date);
                   const skipped = backtestSim.trades.filter((t) => t.skipped);
+                  const holdingAvgRet = holding.length > 0
+                    ? holding.reduce((s, t) => s + t.return_pct, 0) / holding.length
+                    : 0;
                   return (
                   <details open>
                     <summary className="cursor-pointer text-xs text-tertiary-text mb-2 select-none">
-                      交易明细（{done.length} 笔已平仓{holding.length > 0 ? `，${holding.length} 笔持仓中` : ''}{skipped.length > 0 ? `，${skipped.length} 笔涨停跳过` : ''}）
+                      交易明细（{done.length} 笔已平仓{holding.length > 0 ? `，${holding.length} 笔持仓中 均收益 ${pctNum(holdingAvgRet)}` : ''}{skipped.length > 0 ? `，${skipped.length} 笔涨停跳过` : ''}）
                     </summary>
                     <Table
                       size="small"

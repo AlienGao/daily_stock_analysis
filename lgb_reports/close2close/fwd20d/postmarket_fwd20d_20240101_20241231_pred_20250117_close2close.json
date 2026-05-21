@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20240101",
+  "train_end": "20241231",
+  "pred_date": "20250117",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 100.0,
+      "raw_score": 0.42
+    },
+    {
+      "rank": 2,
+      "ts_code": "688181.SH",
+      "stock_code": "688181",
+      "stock_name": "八亿时空",
+      "lgb_score": 83.8,
+      "raw_score": 0.32
+    },
+    {
+      "rank": 3,
+      "ts_code": "300042.SZ",
+      "stock_code": "300042",
+      "stock_name": "朗科科技",
+      "lgb_score": 79.33,
+      "raw_score": 0.29
+    },
+    {
+      "rank": 4,
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 79.11,
+      "raw_score": 0.29
+    },
+    {
+      "rank": 5,
+      "ts_code": "300842.SZ",
+      "stock_code": "300842",
+      "stock_name": "帝科股份",
+      "lgb_score": 77.86,
+      "raw_score": 0.29
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.43,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.007071,
+    "std": 0.032888,
+    "skew": 0.1639,
+    "kurtosis": 11.5923,
+    "min": -0.201261,
+    "max": 0.423865,
+    "median": 0.003691
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.13778801555138342,
+    "cv_rmse_std": 0.05512352713294029,
+    "cv_scores": [
+      0.120939,
+      0.125243,
+      0.092441,
+      0.245523,
+      0.104794
+    ],
+    "rank_ic_mean": 0.13241,
+    "rank_ic_std": 0.042613,
+    "icir": 3.1073,
+    "oof_corr": 0.017743,
+    "n_samples": 26429,
+    "n_features": 22
+  }
+}

@@ -17,6 +17,7 @@ import joblib
 import numpy as np
 import pandas as pd
 from lightgbm import LGBMRegressor
+from scipy.stats import spearmanr
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import mean_squared_error
 
@@ -382,15 +383,38 @@ class LGBTrainer:
         if cv_folds > 1 and len(X) > cv_folds * 100:
             tscv = TimeSeriesSplit(n_splits=cv_folds)
             cv_scores = []
+            rank_ics = []
+            oof_preds = np.full(len(X), np.nan)
             for train_idx, val_idx in tscv.split(X):
                 X_tr, X_val = X[train_idx], X[val_idx]
                 y_tr, y_val = y[train_idx], y[val_idx]
                 model.fit(X_tr, y_tr, eval_set=[(X_val, y_val)], callbacks=[])
                 pred = model.predict(X_val)
                 cv_scores.append(np.sqrt(mean_squared_error(y_val, pred)))
+                oof_preds[val_idx] = pred
+                if len(pred) > 5:
+                    ic, _ = spearmanr(pred, y_val)
+                    if np.isfinite(ic):
+                        rank_ics.append(float(ic))
 
             self._training_metrics["cv_rmse_mean"] = float(np.mean(cv_scores))
             self._training_metrics["cv_rmse_std"] = float(np.std(cv_scores))
+            self._training_metrics["cv_scores"] = [round(s, 6) for s in cv_scores]
+
+            if rank_ics:
+                ic_mean = float(np.mean(rank_ics))
+                ic_std = float(np.std(rank_ics))
+                self._training_metrics["rank_ic_mean"] = round(ic_mean, 6)
+                self._training_metrics["rank_ic_std"] = round(ic_std, 6)
+                self._training_metrics["icir"] = (
+                    round(ic_mean / ic_std, 4) if ic_std > 1e-9 else None
+                )
+
+            valid_mask = ~np.isnan(oof_preds)
+            if valid_mask.sum() > 10:
+                oof_corr = float(np.corrcoef(oof_preds[valid_mask], y[valid_mask])[0, 1])
+                if np.isfinite(oof_corr):
+                    self._training_metrics["oof_corr"] = round(oof_corr, 6)
 
         model.fit(X, y)
         self.model = model
@@ -418,6 +442,58 @@ class LGBTrainer:
         return {
             "gain": dict(sorted(gain.items(), key=lambda x: x[1], reverse=True)),
             "split": dict(sorted(split.items(), key=lambda x: x[1], reverse=True)),
+        }
+
+    def get_tree_diagnostics(self) -> Dict[str, float]:
+        """从 booster 提取树结构诊断信息。"""
+        if self.model is None:
+            raise RuntimeError("请先调用 train() 训练模型")
+
+        model_dump = self.model.booster_.dump_model()
+        trees = model_dump.get("tree_info", [])
+        n_trees = len(trees)
+        if n_trees == 0:
+            return {"n_trees": 0, "avg_depth": 0, "avg_n_leaves": 0, "total_n_leaves": 0}
+
+        def _tree_depth(node: dict, depth: int = 0) -> int:
+            if "leaf_index" in node or "leaf_value" in node:
+                return depth
+            left = node.get("left_child", {})
+            right = node.get("right_child", {})
+            return max(_tree_depth(left, depth + 1), _tree_depth(right, depth + 1))
+
+        depths = []
+        leaves = []
+        for t in trees:
+            leaves.append(t.get("num_leaves", 0))
+            structure = t.get("tree_structure", {})
+            depths.append(_tree_depth(structure))
+
+        return {
+            "n_trees": n_trees,
+            "avg_depth": round(float(np.mean(depths)), 2),
+            "avg_n_leaves": round(float(np.mean(leaves)), 2),
+            "total_n_leaves": int(np.sum(leaves)),
+        }
+
+    def get_prediction_stats(self) -> Optional[Dict[str, float]]:
+        """计算最新预测得分的分布统计。"""
+        if self._X_latest is None:
+            return None
+
+        scores = self._X_latest["lgb_score"].values
+        if len(scores) == 0:
+            return None
+
+        from scipy.stats import skew as _skew, kurtosis as _kurtosis
+        return {
+            "mean": round(float(np.mean(scores)), 6),
+            "std": round(float(np.std(scores)), 6),
+            "skew": round(float(_skew(scores)), 4),
+            "kurtosis": round(float(_kurtosis(scores)), 4),
+            "min": round(float(np.min(scores)), 6),
+            "max": round(float(np.max(scores)), 6),
+            "median": round(float(np.median(scores)), 6),
         }
 
     # ------------------------------------------------------------------

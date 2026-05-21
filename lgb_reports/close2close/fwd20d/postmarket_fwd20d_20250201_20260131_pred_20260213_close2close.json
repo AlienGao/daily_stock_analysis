@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20250201",
+  "train_end": "20260131",
+  "pred_date": "20260213",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002311.SZ",
+      "stock_code": "002311",
+      "stock_name": "海大集团",
+      "lgb_score": 100.0,
+      "raw_score": 0.29
+    },
+    {
+      "rank": 2,
+      "ts_code": "301489.SZ",
+      "stock_code": "301489",
+      "stock_name": "思泉新材",
+      "lgb_score": 95.87,
+      "raw_score": 0.27
+    },
+    {
+      "rank": 3,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 93.67,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 4,
+      "ts_code": "688682.SH",
+      "stock_code": "688682",
+      "stock_name": "霍莱沃",
+      "lgb_score": 93.32,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 5,
+      "ts_code": "300351.SZ",
+      "stock_code": "300351",
+      "stock_name": "永贵电器",
+      "lgb_score": 91.85,
+      "raw_score": 0.25
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.92,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.09205,
+    "std": 0.032212,
+    "skew": -1.3259,
+    "kurtosis": 4.338,
+    "min": -0.112272,
+    "max": 0.286031,
+    "median": 0.103102
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.14330650974180323,
+    "cv_rmse_std": 0.01740043755874104,
+    "cv_scores": [
+      0.118987,
+      0.161089,
+      0.165157,
+      0.133249,
+      0.13805
+    ],
+    "rank_ic_mean": 0.155394,
+    "rank_ic_std": 0.072637,
+    "icir": 2.1393,
+    "oof_corr": 0.124974,
+    "n_samples": 18035,
+    "n_features": 22
+  }
+}

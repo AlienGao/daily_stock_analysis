@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260512",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688808.SH",
+      "stock_code": "688808",
+      "stock_name": "联讯仪器",
+      "lgb_score": 100.0,
+      "raw_score": 0.36
+    },
+    {
+      "rank": 2,
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
+      "lgb_score": 92.46,
+      "raw_score": 0.32
+    },
+    {
+      "rank": 3,
+      "ts_code": "301531.SZ",
+      "stock_code": "301531",
+      "stock_name": "春光集团",
+      "lgb_score": 78.78,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 4,
+      "ts_code": "600188.SH",
+      "stock_code": "600188",
+      "stock_name": "兖矿能源",
+      "lgb_score": 68.86,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 5,
+      "ts_code": "002541.SZ",
+      "stock_code": "002541",
+      "stock_name": "鸿路钢构",
+      "lgb_score": 63.18,
+      "raw_score": 0.16
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.49,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.109957,
+    "std": 0.048702,
+    "skew": 1.3321,
+    "kurtosis": 1.3221,
+    "min": -0.179092,
+    "max": 0.359278,
+    "median": -0.140855
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.14923084789533686,
+    "cv_rmse_std": 0.012018799506010995,
+    "cv_scores": [
+      0.160246,
+      0.16325,
+      0.136074,
+      0.134327,
+      0.152258
+    ],
+    "rank_ic_mean": 0.166802,
+    "rank_ic_std": 0.041574,
+    "icir": 4.0121,
+    "oof_corr": 0.134501,
+    "n_samples": 17257,
+    "n_features": 22
+  }
+}

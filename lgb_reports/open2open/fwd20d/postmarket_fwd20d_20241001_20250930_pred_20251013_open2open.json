@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20241001",
+  "train_end": "20250930",
+  "pred_date": "20251013",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 100.0,
+      "raw_score": 0.48
+    },
+    {
+      "rank": 2,
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 99.41,
+      "raw_score": 0.47
+    },
+    {
+      "rank": 3,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 97.73,
+      "raw_score": 0.46
+    },
+    {
+      "rank": 4,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 97.3,
+      "raw_score": 0.46
+    },
+    {
+      "rank": 5,
+      "ts_code": "000159.SZ",
+      "stock_code": "000159",
+      "stock_name": "国际实业",
+      "lgb_score": 95.27,
+      "raw_score": 0.45
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.02,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.009232,
+    "std": 0.037876,
+    "skew": 3.6126,
+    "kurtosis": 24.5519,
+    "min": -0.171351,
+    "max": 0.47652,
+    "median": -0.004604
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.14524523950098703,
+    "cv_rmse_std": 0.017203232096565945,
+    "cv_scores": [
+      0.117276,
+      0.154282,
+      0.134616,
+      0.165767,
+      0.154285
+    ],
+    "rank_ic_mean": 0.122812,
+    "rank_ic_std": 0.075518,
+    "icir": 1.6263,
+    "oof_corr": 0.122553,
+    "n_samples": 24727,
+    "n_features": 22
+  }
+}

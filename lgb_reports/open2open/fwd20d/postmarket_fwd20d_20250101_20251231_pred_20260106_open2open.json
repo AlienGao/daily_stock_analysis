@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20250101",
+  "train_end": "20251231",
+  "pred_date": "20260106",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "920985.BJ",
+      "stock_code": "920985.BJ",
+      "stock_name": "",
+      "lgb_score": 100.0,
+      "raw_score": 0.36
+    },
+    {
+      "rank": 2,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 93.75,
+      "raw_score": 0.33
+    },
+    {
+      "rank": 3,
+      "ts_code": "600986.SH",
+      "stock_code": "600986",
+      "stock_name": "浙文互联",
+      "lgb_score": 81.61,
+      "raw_score": 0.27
+    },
+    {
+      "rank": 4,
+      "ts_code": "600704.SH",
+      "stock_code": "600704",
+      "stock_name": "物产中大",
+      "lgb_score": 81.32,
+      "raw_score": 0.27
+    },
+    {
+      "rank": 5,
+      "ts_code": "301071.SZ",
+      "stock_code": "301071",
+      "stock_name": "力量钻石",
+      "lgb_score": 80.01,
+      "raw_score": 0.26
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.04,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.053674,
+    "std": 0.033907,
+    "skew": 1.7327,
+    "kurtosis": 5.7775,
+    "min": -0.12441,
+    "max": 0.356218,
+    "median": 0.041621
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.14055554400509473,
+    "cv_rmse_std": 0.010097409573787896,
+    "cv_scores": [
+      0.134032,
+      0.137998,
+      0.160554,
+      0.134334,
+      0.13586
+    ],
+    "rank_ic_mean": 0.168105,
+    "rank_ic_std": 0.063298,
+    "icir": 2.6558,
+    "oof_corr": 0.171743,
+    "n_samples": 19784,
+    "n_features": 22
+  }
+}

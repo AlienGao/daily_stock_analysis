@@ -1,0 +1,110 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "generated_at": "2026-05-21T16:58:14.121318",
+  "training_metrics": {
+    "cv_rmse_mean": 0.14032340352157,
+    "cv_rmse_std": 0.014509251146023753,
+    "cv_scores": [
+      0.131787,
+      0.15981,
+      0.137314,
+      0.119628,
+      0.153078
+    ],
+    "rank_ic_mean": 0.195852,
+    "rank_ic_std": 0.053759,
+    "icir": 3.6431,
+    "oof_corr": 0.210444,
+    "n_samples": 18811,
+    "n_features": 22
+  },
+  "feature_importance": {
+    "gain": {
+      "broker_recommend": 664.670437535271,
+      "buyback": 441.5792351420969,
+      "margin": 363.19132037460804,
+      "chip": 259.49953097477555,
+      "vwap_reversal": 151.1660430468619,
+      "ranking_momentum": 113.4215970672667,
+      "fundamental": 80.98020381480455,
+      "technical": 77.20556155219674,
+      "gtja114": 33.56990346685052,
+      "vwap_deviation": 21.312287935987115,
+      "alpha042": 20.861575160175562,
+      "liquid_oversold": 15.033164590597153,
+      "gap_reversal": 13.711657520383596,
+      "money_flow": 13.136275216937065,
+      "limit": 2.1235748883336782,
+      "hot_money": 0.6523659974336624,
+      "concept_heat": 0.0,
+      "insider_buy": 0.0,
+      "institution_hold": 0.0,
+      "performance": 0.0
+    },
+    "split": {
+      "broker_recommend": 1518.0,
+      "buyback": 1049.0,
+      "margin": 767.0,
+      "chip": 626.0,
+      "vwap_reversal": 407.0,
+      "ranking_momentum": 372.0,
+      "fundamental": 287.0,
+      "technical": 249.0,
+      "gtja114": 149.0,
+      "alpha042": 143.0,
+      "vwap_deviation": 120.0,
+      "liquid_oversold": 106.0,
+      "money_flow": 98.0,
+      "gap_reversal": 87.0,
+      "limit": 19.0,
+      "hot_money": 3.0,
+      "concept_heat": 0.0,
+      "insider_buy": 0.0,
+      "institution_hold": 0.0,
+      "performance": 0.0
+    }
+  },
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002541",
+      "stock_code": "002541",
+      "stock_name": "鸿路钢构",
+      "lgb_score": 100.0,
+      "raw_score": 0.37
+    },
+    {
+      "rank": 2,
+      "ts_code": "601088",
+      "stock_code": "601088",
+      "stock_name": "中国神华",
+      "lgb_score": 90.09,
+      "raw_score": 0.32
+    },
+    {
+      "rank": 3,
+      "ts_code": "002738",
+      "stock_code": "002738",
+      "stock_name": "中矿资源",
+      "lgb_score": 67.77,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 4,
+      "ts_code": "300109",
+      "stock_code": "300109",
+      "stock_name": "新开源",
+      "lgb_score": 63.18,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 5,
+      "ts_code": "600176",
+      "stock_code": "600176",
+      "stock_name": "中国巨石",
+      "lgb_score": 54.81,
+      "raw_score": 0.12
+    }
+  ]
+}

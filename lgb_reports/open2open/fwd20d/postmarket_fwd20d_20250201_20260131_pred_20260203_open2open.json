@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20250201",
+  "train_end": "20260131",
+  "pred_date": "20260203",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002311.SZ",
+      "stock_code": "002311",
+      "stock_name": "海大集团",
+      "lgb_score": 100.0,
+      "raw_score": 0.32
+    },
+    {
+      "rank": 2,
+      "ts_code": "000159.SZ",
+      "stock_code": "000159",
+      "stock_name": "国际实业",
+      "lgb_score": 87.65,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 3,
+      "ts_code": "300140.SZ",
+      "stock_code": "300140",
+      "stock_name": "节能环境",
+      "lgb_score": 80.21,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 4,
+      "ts_code": "688073.SH",
+      "stock_code": "688073",
+      "stock_name": "毕得医药",
+      "lgb_score": 80.18,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 5,
+      "ts_code": "601018.SH",
+      "stock_code": "601018",
+      "stock_name": "宁波港",
+      "lgb_score": 75.0,
+      "raw_score": 0.21
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.45,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.043938,
+    "std": 0.023455,
+    "skew": 1.2643,
+    "kurtosis": 9.2342,
+    "min": -0.129367,
+    "max": 0.317501,
+    "median": 0.040074
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.14098033644453953,
+    "cv_rmse_std": 0.020299403198315014,
+    "cv_scores": [
+      0.123298,
+      0.162452,
+      0.168229,
+      0.119872,
+      0.131051
+    ],
+    "rank_ic_mean": 0.174046,
+    "rank_ic_std": 0.074066,
+    "icir": 2.3499,
+    "oof_corr": 0.118824,
+    "n_samples": 18749,
+    "n_features": 22
+  }
+}

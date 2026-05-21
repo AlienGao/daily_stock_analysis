@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20240601",
+  "train_end": "20250531",
+  "pred_date": "20250617",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.4
+    },
+    {
+      "rank": 2,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 99.57,
+      "raw_score": 0.4
+    },
+    {
+      "rank": 3,
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 98.47,
+      "raw_score": 0.39
+    },
+    {
+      "rank": 4,
+      "ts_code": "300042.SZ",
+      "stock_code": "300042",
+      "stock_name": "朗科科技",
+      "lgb_score": 97.73,
+      "raw_score": 0.39
+    },
+    {
+      "rank": 5,
+      "ts_code": "300975.SZ",
+      "stock_code": "300975",
+      "stock_name": "商络电子",
+      "lgb_score": 97.4,
+      "raw_score": 0.38
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.82,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.071668,
+    "std": 0.051679,
+    "skew": 3.073,
+    "kurtosis": 16.205,
+    "min": -0.26315,
+    "max": 0.400961,
+    "median": -0.095809
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.151387485771107,
+    "cv_rmse_std": 0.05698543335821009,
+    "cv_scores": [
+      0.104755,
+      0.260542,
+      0.107009,
+      0.144899,
+      0.139732
+    ],
+    "rank_ic_mean": 0.124251,
+    "rank_ic_std": 0.028945,
+    "icir": 4.2927,
+    "oof_corr": 0.021143,
+    "n_samples": 25370,
+    "n_features": 22
+  }
+}

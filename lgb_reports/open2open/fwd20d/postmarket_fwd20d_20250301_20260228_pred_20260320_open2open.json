@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20250301",
+  "train_end": "20260228",
+  "pred_date": "20260320",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "601126.SH",
+      "stock_code": "601126",
+      "stock_name": "四方股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 2,
+      "ts_code": "300666.SZ",
+      "stock_code": "300666",
+      "stock_name": "江丰电子",
+      "lgb_score": 94.19,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 3,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 87.08,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 4,
+      "ts_code": "300761.SZ",
+      "stock_code": "300761",
+      "stock_name": "立华股份",
+      "lgb_score": 85.38,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 5,
+      "ts_code": "600160.SH",
+      "stock_code": "600160",
+      "stock_name": "巨化股份",
+      "lgb_score": 85.24,
+      "raw_score": 0.11
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.28,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.095275,
+    "std": 0.039381,
+    "skew": 1.7972,
+    "kurtosis": 2.7842,
+    "min": -0.175453,
+    "max": 0.162665,
+    "median": -0.117572
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.14032340352157,
+    "cv_rmse_std": 0.014509251146023753,
+    "cv_scores": [
+      0.131787,
+      0.15981,
+      0.137314,
+      0.119628,
+      0.153078
+    ],
+    "rank_ic_mean": 0.195852,
+    "rank_ic_std": 0.053759,
+    "icir": 3.6431,
+    "oof_corr": 0.210444,
+    "n_samples": 18811,
+    "n_features": 22
+  }
+}

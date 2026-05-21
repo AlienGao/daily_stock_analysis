@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20250401",
+  "train_end": "20260331",
+  "pred_date": "20260422",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.38
+    },
+    {
+      "rank": 2,
+      "ts_code": "688820.SH",
+      "stock_code": "688820",
+      "stock_name": "盛合晶微",
+      "lgb_score": 79.64,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 3,
+      "ts_code": "301599.SZ",
+      "stock_code": "301599",
+      "stock_name": "理奇智能",
+      "lgb_score": 78.66,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 4,
+      "ts_code": "603993.SH",
+      "stock_code": "603993",
+      "stock_name": "洛阳钼业",
+      "lgb_score": 64.66,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 5,
+      "ts_code": "301513.SZ",
+      "stock_code": "301513",
+      "stock_name": "尚水智能",
+      "lgb_score": 64.59,
+      "raw_score": 0.18
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.34,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.061267,
+    "std": 0.02637,
+    "skew": 3.0322,
+    "kurtosis": 16.6381,
+    "min": -0.175156,
+    "max": 0.377207,
+    "median": -0.071193
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.14302597433698827,
+    "cv_rmse_std": 0.012201369547023779,
+    "cv_scores": [
+      0.138016,
+      0.151485,
+      0.138029,
+      0.126171,
+      0.161428
+    ],
+    "rank_ic_mean": 0.225844,
+    "rank_ic_std": 0.087583,
+    "icir": 2.5786,
+    "oof_corr": 0.225206,
+    "n_samples": 17967,
+    "n_features": 22
+  }
+}

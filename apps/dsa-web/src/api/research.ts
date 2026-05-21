@@ -24,7 +24,9 @@ export type LGBTaskStatusResponse = {
     model_date?: string;
     feature_importance: { gain: Record<string, number>; split: Record<string, number> };
     predictions: LGBPredictionItem[];
-    training_metrics: Record<string, number>;
+    training_metrics: LGBTrainingMetrics;
+    tree_diagnostics?: LGBTreeDiagnostics;
+    prediction_stats?: LGBPredictionStats | null;
   };
 };
 
@@ -40,6 +42,13 @@ export type LGBPredictionItem = {
   stock_name: string;
   lgb_score: number;
   raw_score: number;
+  win_rate: number | null;
+  avg_return: number | null;
+  max_return: number | null;
+  max_loss: number | null;
+  profit_loss_ratio: number | null;
+  hit_count: number | null;
+  score_percentile: number | null;
 };
 
 export type LGBPredictionsResponse = {
@@ -111,6 +120,7 @@ export type LGBBacktestSimMetrics = {
   max_drawdown: number;
   total_trades: number;
   skipped_trades: number;
+  holding_trades: number;
 };
 
 export type LGBBacktestSimResponse = {
@@ -125,6 +135,74 @@ export type LGBBacktestSimResponse = {
 export type LGBBacktestSimAvailableResponse = {
   open: number[];
   close: number[];
+};
+
+export type LGBBruteForceItem = {
+  exec_mode: string;
+  forward_days: number;
+  top_n: number;
+  stop_strategy: string;
+  cumulative_return: number;
+  sharpe_ratio: number;
+  win_rate: number;
+  max_drawdown: number;
+  total_trades: number;
+  skipped_trades: number;
+  error: string;
+};
+
+export type LGBBruteForceResult = {
+  best_by_return: LGBBruteForceItem | null;
+  best_by_sharpe: LGBBruteForceItem | null;
+  top5_by_return: LGBBruteForceItem[];
+  top5_by_sharpe: LGBBruteForceItem[];
+  all_results: LGBBruteForceItem[];
+  report_path: string;
+};
+
+export type LGBBruteForceTaskStatus = {
+  task_id: string;
+  status: string;
+  progress_current: number;
+  progress_total: number;
+  status_message: string;
+  result: LGBBruteForceResult | null;
+  error: string;
+};
+
+export type LGBTrainingMetrics = {
+  cv_rmse_mean: number;
+  cv_rmse_std: number;
+  n_samples: number;
+  n_features: number;
+  cv_scores: number[];
+  rank_ic_mean: number | null;
+  rank_ic_std: number | null;
+  icir: number | null;
+  oof_corr: number | null;
+};
+
+export type LGBTreeDiagnostics = {
+  n_trees: number;
+  avg_depth: number;
+  avg_n_leaves: number;
+  total_n_leaves: number;
+};
+
+export type LGBPredictionStats = {
+  mean: number;
+  std: number;
+  skew: number;
+  kurtosis: number;
+  min: number;
+  max: number;
+  median: number;
+};
+
+export type LGBDiagnosticsResponse = {
+  training_metrics: LGBTrainingMetrics;
+  tree_diagnostics: LGBTreeDiagnostics;
+  prediction_stats: LGBPredictionStats | null;
 };
 
 /* ── API ── */
@@ -188,6 +266,7 @@ export const researchApi = {
     forward_days: number;
     top_n?: number;
     exec_mode?: string;
+    stop_strategy?: string;
   }): Promise<LGBBacktestSimResponse> {
     const resp = await apiClient.get('/api/v1/research/lgb/backtest-sim', { params, timeout: 300000 });
     return resp.data;
@@ -197,4 +276,61 @@ export const researchApi = {
     const resp = await apiClient.get('/api/v1/research/lgb/backtest-sim/available');
     return resp.data;
   },
+
+  async startBruteForce(): Promise<{ task_id: string; status: string }> {
+    const resp = await apiClient.post('/api/v1/research/lgb/brute-force-search', {}, { timeout: 120000 });
+    return resp.data;
+  },
+
+  async getBruteForceStatus(taskId: string): Promise<LGBBruteForceTaskStatus> {
+    const resp = await apiClient.get('/api/v1/research/lgb/brute-force-search/status', {
+      params: { task_id: taskId },
+      timeout: 60000,
+    });
+    return resp.data;
+  },
+
+  async getDiagnostics(modelPath?: string): Promise<LGBDiagnosticsResponse> {
+    const params = modelPath ? { model_path: modelPath } : {};
+    const resp = await apiClient.get('/api/v1/research/lgb/diagnostics', { params, timeout: 120000 });
+    return resp.data;
+  },
+
+  async startCatchUp(): Promise<{ task_id: string; status: string }> {
+    const resp = await apiClient.post('/api/v1/research/lgb/catch-up', {}, { timeout: 120000 });
+    return resp.data;
+  },
+
+  async getCatchUpStatus(taskId: string): Promise<CatchUpTaskStatus> {
+    const resp = await apiClient.get('/api/v1/research/lgb/catch-up/status', {
+      params: { task_id: taskId },
+      timeout: 60000,
+    });
+    return resp.data;
+  },
+};
+
+export type CatchUpResultItem = {
+  exec_mode: string;
+  forward_days: number;
+  status: string;
+  train_window?: string;
+  pred_range?: string;
+  ok?: number;
+  fail?: number;
+  latest_pred?: string;
+  error?: string;
+};
+
+export type CatchUpTaskStatus = {
+  task_id: string;
+  status: string;
+  progress_current: number;
+  progress_total: number;
+  status_message: string;
+  result?: {
+    combos: CatchUpResultItem[];
+    latest_trading_day: string;
+  };
+  error: string;
 };

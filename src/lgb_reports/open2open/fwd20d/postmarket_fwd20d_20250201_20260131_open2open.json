@@ -1,0 +1,110 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "generated_at": "2026-05-21T16:56:55.346701",
+  "training_metrics": {
+    "cv_rmse_mean": 0.14098033644453953,
+    "cv_rmse_std": 0.020299403198315014,
+    "cv_scores": [
+      0.123298,
+      0.162452,
+      0.168229,
+      0.119872,
+      0.131051
+    ],
+    "rank_ic_mean": 0.174046,
+    "rank_ic_std": 0.074066,
+    "icir": 2.3499,
+    "oof_corr": 0.118824,
+    "n_samples": 18749,
+    "n_features": 22
+  },
+  "feature_importance": {
+    "gain": {
+      "broker_recommend": 602.0639603920281,
+      "buyback": 477.31087302044034,
+      "margin": 370.38166391290724,
+      "chip": 269.1489183790982,
+      "vwap_reversal": 124.42601859383285,
+      "ranking_momentum": 114.67976061999798,
+      "fundamental": 70.6196744479239,
+      "technical": 69.23184242658317,
+      "gtja114": 31.487859971821308,
+      "alpha042": 21.449839506298304,
+      "vwap_deviation": 15.027520682662725,
+      "liquid_oversold": 14.707947047427297,
+      "money_flow": 11.826739102602005,
+      "gap_reversal": 11.263229809701443,
+      "limit": 2.2997943088412285,
+      "hot_money": 0.4405799023807049,
+      "concept_heat": 0.0,
+      "insider_buy": 0.0,
+      "institution_hold": 0.0,
+      "performance": 0.0
+    },
+    "split": {
+      "broker_recommend": 1410.0,
+      "buyback": 1121.0,
+      "margin": 794.0,
+      "chip": 686.0,
+      "vwap_reversal": 383.0,
+      "ranking_momentum": 350.0,
+      "fundamental": 273.0,
+      "technical": 246.0,
+      "alpha042": 162.0,
+      "gtja114": 149.0,
+      "liquid_oversold": 109.0,
+      "vwap_deviation": 101.0,
+      "money_flow": 97.0,
+      "gap_reversal": 90.0,
+      "limit": 23.0,
+      "hot_money": 6.0,
+      "concept_heat": 0.0,
+      "insider_buy": 0.0,
+      "institution_hold": 0.0,
+      "performance": 0.0
+    }
+  },
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002541",
+      "stock_code": "002541",
+      "stock_name": "鸿路钢构",
+      "lgb_score": 100.0,
+      "raw_score": 0.29
+    },
+    {
+      "rank": 2,
+      "ts_code": "601088",
+      "stock_code": "601088",
+      "stock_name": "中国神华",
+      "lgb_score": 92.67,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 3,
+      "ts_code": "002935",
+      "stock_code": "002935",
+      "stock_name": "天奥电子",
+      "lgb_score": 85.54,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 4,
+      "ts_code": "001393",
+      "stock_code": "001393",
+      "stock_name": "C维通利",
+      "lgb_score": 84.51,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 5,
+      "ts_code": "300031",
+      "stock_code": "300031",
+      "stock_name": "宝通科技",
+      "lgb_score": 82.41,
+      "raw_score": 0.21
+    }
+  ]
+}

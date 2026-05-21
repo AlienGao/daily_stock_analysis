@@ -306,9 +306,7 @@ class FactorBacktestEngine:
                     
 
                 cap += day_pnl
-                # 仅在有实际盈亏时记录曲线点（跳过纯未平仓日期）
-                if day_pnl != 0:
-                    curve.append({"date": snap_date, "capital": round(cap, 2)})
+                curve.append({"date": snap_date, "capital": round(cap, 2)})
             capital_curves[str(hd)] = curve
 
         phd = min(hold_days)  # 优先用最短持有期

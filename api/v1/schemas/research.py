@@ -38,6 +38,13 @@ class LGBPredictionItem(BaseModel):
     stock_name: str = ""
     lgb_score: float
     raw_score: float
+    win_rate: Optional[float] = None
+    avg_return: Optional[float] = None
+    max_return: Optional[float] = None
+    max_loss: Optional[float] = None
+    profit_loss_ratio: Optional[float] = None
+    hit_count: Optional[int] = None
+    score_percentile: Optional[float] = None
 
 
 class LGBPredictionsResponse(BaseModel):
@@ -109,6 +116,7 @@ class LGBBacktestSimMetrics(BaseModel):
     max_drawdown: float
     total_trades: int
     skipped_trades: int
+    holding_trades: int = 0
 
 
 class LGBBacktestSimResponse(BaseModel):
@@ -123,3 +131,77 @@ class LGBBacktestSimResponse(BaseModel):
 class LGBBacktestSimAvailableResponse(BaseModel):
     open: List[int] = Field(default_factory=list)
     close: List[int] = Field(default_factory=list)
+
+
+# ── Model Diagnostics ──
+
+class LGBTrainingMetrics(BaseModel):
+    cv_rmse_mean: float = 0.0
+    cv_rmse_std: float = 0.0
+    n_samples: int = 0
+    n_features: int = 0
+    cv_scores: List[float] = Field(default_factory=list)
+    rank_ic_mean: Optional[float] = None
+    rank_ic_std: Optional[float] = None
+    icir: Optional[float] = None
+    oof_corr: Optional[float] = None
+
+
+class LGBTreeDiagnostics(BaseModel):
+    n_trees: int = 0
+    avg_depth: float = 0.0
+    avg_n_leaves: float = 0.0
+    total_n_leaves: int = 0
+
+
+class LGBPredictionStats(BaseModel):
+    mean: float
+    std: float
+    skew: float
+    kurtosis: float
+    min: float
+    max: float
+    median: float
+
+
+class LGBDiagnosticsResponse(BaseModel):
+    training_metrics: LGBTrainingMetrics
+    tree_diagnostics: LGBTreeDiagnostics
+    prediction_stats: Optional[LGBPredictionStats] = None
+
+
+# ── Brute Force Search ──
+
+class LGBBruteForceItem(BaseModel):
+    """单个参数组合的回测结果。"""
+    exec_mode: str
+    forward_days: int
+    top_n: int
+    stop_strategy: str = "none"
+    cumulative_return: float
+    sharpe_ratio: float
+    win_rate: float
+    max_drawdown: float
+    total_trades: int
+    skipped_trades: int
+    error: str = ""
+
+
+class LGBBruteForceResult(BaseModel):
+    """全方案搜索结果。"""
+    best_by_return: Optional[LGBBruteForceItem] = None
+    best_by_sharpe: Optional[LGBBruteForceItem] = None
+    top5_by_return: List[LGBBruteForceItem] = Field(default_factory=list)
+    top5_by_sharpe: List[LGBBruteForceItem] = Field(default_factory=list)
+    all_results: List[LGBBruteForceItem] = Field(default_factory=list)
+    report_path: str = ""
+
+
+class LGBBruteForceTaskStatus(BaseModel):
+    task_id: str
+    status: str  # running | completed | failed
+    progress_current: int = 0
+    progress_total: int = 90
+    status_message: str = ""
+    result: Optional[LGBBruteForceResult] = None
+    error: str = ""

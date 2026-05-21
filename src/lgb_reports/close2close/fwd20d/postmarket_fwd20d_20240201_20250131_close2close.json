@@ -1,0 +1,110 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "generated_at": "2026-05-21T17:03:00.433533",
+  "training_metrics": {
+    "cv_rmse_mean": 0.14285145817030712,
+    "cv_rmse_std": 0.04690751512393601,
+    "cv_scores": [
+      0.131489,
+      0.107915,
+      0.235433,
+      0.117541,
+      0.121879
+    ],
+    "rank_ic_mean": 0.101905,
+    "rank_ic_std": 0.05628,
+    "icir": 1.8107,
+    "oof_corr": 0.004182,
+    "n_samples": 27110,
+    "n_features": 22
+  },
+  "feature_importance": {
+    "gain": {
+      "broker_recommend": 1056.650208555162,
+      "buyback": 429.83198364079,
+      "chip": 413.83779517933726,
+      "margin": 343.6472837254405,
+      "fundamental": 110.00270304828882,
+      "vwap_reversal": 97.26157345250249,
+      "ranking_momentum": 93.4142706207931,
+      "vwap_deviation": 47.986687168478966,
+      "technical": 45.21973583102226,
+      "gtja114": 36.76792874187231,
+      "alpha042": 24.778491366654634,
+      "liquid_oversold": 14.996976464986801,
+      "gap_reversal": 13.946934700012207,
+      "money_flow": 8.222781620919704,
+      "hot_money": 0.9780077934265137,
+      "limit": 0.6198066025972366,
+      "concept_heat": 0.0,
+      "insider_buy": 0.0,
+      "institution_hold": 0.0,
+      "performance": 0.0
+    },
+    "split": {
+      "broker_recommend": 1675.0,
+      "buyback": 1002.0,
+      "chip": 865.0,
+      "margin": 663.0,
+      "vwap_reversal": 344.0,
+      "fundamental": 305.0,
+      "ranking_momentum": 286.0,
+      "technical": 204.0,
+      "alpha042": 139.0,
+      "gtja114": 135.0,
+      "vwap_deviation": 126.0,
+      "gap_reversal": 88.0,
+      "liquid_oversold": 88.0,
+      "money_flow": 66.0,
+      "hot_money": 8.0,
+      "limit": 6.0,
+      "concept_heat": 0.0,
+      "insider_buy": 0.0,
+      "institution_hold": 0.0,
+      "performance": 0.0
+    }
+  },
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002374",
+      "stock_code": "002374",
+      "stock_name": "中锐股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.35
+    },
+    {
+      "rank": 2,
+      "ts_code": "002164",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 99.84,
+      "raw_score": 0.35
+    },
+    {
+      "rank": 3,
+      "ts_code": "002121",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 97.04,
+      "raw_score": 0.34
+    },
+    {
+      "rank": 4,
+      "ts_code": "600888",
+      "stock_code": "600888",
+      "stock_name": "新疆众和",
+      "lgb_score": 91.28,
+      "raw_score": 0.31
+    },
+    {
+      "rank": 5,
+      "ts_code": "002368",
+      "stock_code": "002368",
+      "stock_name": "太极股份",
+      "lgb_score": 89.77,
+      "raw_score": 0.3
+    }
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20240101",
+  "train_end": "20241231",
+  "pred_date": "20250115",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 100.0,
+      "raw_score": 0.35
+    },
+    {
+      "rank": 2,
+      "ts_code": "688181.SH",
+      "stock_code": "688181",
+      "stock_name": "八亿时空",
+      "lgb_score": 96.46,
+      "raw_score": 0.33
+    },
+    {
+      "rank": 3,
+      "ts_code": "688320.SH",
+      "stock_code": "688320",
+      "stock_name": "禾川科技",
+      "lgb_score": 95.32,
+      "raw_score": 0.32
+    },
+    {
+      "rank": 4,
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 94.36,
+      "raw_score": 0.32
+    },
+    {
+      "rank": 5,
+      "ts_code": "300995.SZ",
+      "stock_code": "300995",
+      "stock_name": "奇德新材",
+      "lgb_score": 91.28,
+      "raw_score": 0.3
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.6,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.000459,
+    "std": 0.042951,
+    "skew": -1.0014,
+    "kurtosis": 3.2351,
+    "min": -0.206243,
+    "max": 0.346483,
+    "median": 0.022281
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.13716774040230276,
+    "cv_rmse_std": 0.03654066853791433,
+    "cv_scores": [
+      0.124334,
+      0.107099,
+      0.208924,
+      0.127328,
+      0.118154
+    ],
+    "rank_ic_mean": 0.123282,
+    "rank_ic_std": 0.059354,
+    "icir": 2.0771,
+    "oof_corr": 0.128874,
+    "n_samples": 29745,
+    "n_features": 22
+  }
+}

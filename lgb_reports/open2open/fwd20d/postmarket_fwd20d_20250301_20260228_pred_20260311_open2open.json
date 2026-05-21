@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20250301",
+  "train_end": "20260228",
+  "pred_date": "20260311",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "601126.SH",
+      "stock_code": "601126",
+      "stock_name": "四方股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 2,
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
+      "lgb_score": 94.99,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 3,
+      "ts_code": "688525.SH",
+      "stock_code": "688525",
+      "stock_name": "佰维存储",
+      "lgb_score": 94.14,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 4,
+      "ts_code": "600160.SH",
+      "stock_code": "600160",
+      "stock_name": "巨化股份",
+      "lgb_score": 91.75,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 5,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 90.8,
+      "raw_score": 0.12
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.28,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.098936,
+    "std": 0.035016,
+    "skew": 2.1111,
+    "kurtosis": 4.5853,
+    "min": -0.181378,
+    "max": 0.153194,
+    "median": -0.117572
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.14032340352157,
+    "cv_rmse_std": 0.014509251146023753,
+    "cv_scores": [
+      0.131787,
+      0.15981,
+      0.137314,
+      0.119628,
+      0.153078
+    ],
+    "rank_ic_mean": 0.195852,
+    "rank_ic_std": 0.053759,
+    "icir": 3.6431,
+    "oof_corr": 0.210444,
+    "n_samples": 18811,
+    "n_features": 22
+  }
+}

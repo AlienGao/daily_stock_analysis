@@ -1,0 +1,110 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "generated_at": "2026-05-21T17:11:50.660753",
+  "training_metrics": {
+    "cv_rmse_mean": 0.14547290288568285,
+    "cv_rmse_std": 0.014917586917977193,
+    "cv_scores": [
+      0.118338,
+      0.149132,
+      0.155802,
+      0.14283,
+      0.161263
+    ],
+    "rank_ic_mean": 0.129363,
+    "rank_ic_std": 0.115294,
+    "icir": 1.122,
+    "oof_corr": 0.136483,
+    "n_samples": 22873,
+    "n_features": 22
+  },
+  "feature_importance": {
+    "gain": {
+      "broker_recommend": 623.2921443656087,
+      "buyback": 442.3025806285441,
+      "margin": 407.62516522035,
+      "chip": 358.4882286339998,
+      "vwap_reversal": 142.13290666043758,
+      "ranking_momentum": 91.4317453019321,
+      "fundamental": 85.32966936379671,
+      "technical": 73.8937570489943,
+      "vwap_deviation": 45.1152460873127,
+      "alpha042": 27.848102390766144,
+      "gtja114": 25.729444656521082,
+      "liquid_oversold": 16.19345063716173,
+      "money_flow": 11.723687440156937,
+      "gap_reversal": 11.39321170002222,
+      "limit": 0.8240160942077637,
+      "hot_money": 0.06659910082817078,
+      "concept_heat": 0.0,
+      "insider_buy": 0.0,
+      "institution_hold": 0.0,
+      "performance": 0.0
+    },
+    "split": {
+      "broker_recommend": 1432.0,
+      "buyback": 1067.0,
+      "chip": 760.0,
+      "margin": 756.0,
+      "vwap_reversal": 378.0,
+      "ranking_momentum": 329.0,
+      "technical": 283.0,
+      "fundamental": 274.0,
+      "alpha042": 165.0,
+      "vwap_deviation": 165.0,
+      "gtja114": 106.0,
+      "liquid_oversold": 106.0,
+      "money_flow": 86.0,
+      "gap_reversal": 84.0,
+      "limit": 8.0,
+      "hot_money": 1.0,
+      "concept_heat": 0.0,
+      "insider_buy": 0.0,
+      "institution_hold": 0.0,
+      "performance": 0.0
+    }
+  },
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000926",
+      "stock_code": "000926",
+      "stock_name": "福星股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.44
+    },
+    {
+      "rank": 2,
+      "ts_code": "002474",
+      "stock_code": "002474",
+      "stock_name": "榕基软件",
+      "lgb_score": 90.95,
+      "raw_score": 0.38
+    },
+    {
+      "rank": 3,
+      "ts_code": "002119",
+      "stock_code": "002119",
+      "stock_name": "康强电子",
+      "lgb_score": 89.95,
+      "raw_score": 0.38
+    },
+    {
+      "rank": 4,
+      "ts_code": "002067",
+      "stock_code": "002067",
+      "stock_name": "景兴纸业",
+      "lgb_score": 89.55,
+      "raw_score": 0.37
+    },
+    {
+      "rank": 5,
+      "ts_code": "300031",
+      "stock_code": "300031",
+      "stock_name": "宝通科技",
+      "lgb_score": 87.18,
+      "raw_score": 0.36
+    }
+  ]
+}

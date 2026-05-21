@@ -32,7 +32,7 @@ TRAIN_START = "20240101"
 TRAIN_END = "20260430"
 PRED_START = "20250101"
 PRED_END = "20260519"
-FORWARD_DAYS_LIST = [3, 5, 10]
+FORWARD_DAYS_LIST = [20]
 MODE = "postmarket"
 EXEC_MODE_LIST = ["open", "close"]  # "open" = open→open labels, "close" = close→close labels
 TOP_N = 5
@@ -77,7 +77,7 @@ def get_trading_days(start: str, end: str, min_stocks: int = 100) -> list:
 
 
 def save_daily_report(trainer: LGBTrainer, pred_date: str) -> str:
-    """Save a single-day prediction report (MD + JSON)."""
+    """Save a single-day prediction report (MD + JSON), including model diagnostics."""
     predictions = trainer.get_latest_predictions(top_n=TOP_N)
     sd = _ymd(getattr(trainer, "_train_start", ""))
     ed = _ymd(getattr(trainer, "_train_end", ""))
@@ -90,27 +90,47 @@ def save_daily_report(trainer: LGBTrainer, pred_date: str) -> str:
     md_path = os.path.join(report_dir, f"{base}.md")
     json_path = os.path.join(report_dir, f"{base}.json")
 
-    lines = [
+    tree_diag = None
+    pred_stats = None
+    try:
+        tree_diag = trainer.get_tree_diagnostics()
+    except Exception:
+        pass
+    try:
+        pred_stats = trainer.get_prediction_stats()
+    except Exception:
+        pass
+    metrics = trainer._training_metrics
+
+    # ── Markdown ──
+    md_parts = [
         f"# LGB 预测 · {trainer.mode} · 前向 {trainer.forward_days} 日",
         "",
         f"**训练范围**: {sd} ~ {ed}",
         f"**预测日期**: {pred_date}",
         f"**生成时间**: {datetime.now().strftime('%Y%m%d %H:%M:%S')}",
+    ]
+    if isinstance(metrics.get("cv_rmse_mean"), float):
+        md_parts.append(f"**CV RMSE**: {metrics['cv_rmse_mean']:.4f}")
+    if tree_diag:
+        md_parts.append(f"**树数**: {tree_diag['n_trees']} | "
+                        f"**平均深度**: {tree_diag['avg_depth']:.1f}")
+    md_parts.extend([
         "",
         "## Top 5 预测",
         "",
         "| 排名 | 代码 | 名称 | LGB 评分 | 原始得分 |",
         "|------|------|------|----------|----------|",
-    ]
+    ])
     for p in predictions:
-        lines.append(
+        md_parts.append(
             f"| {p['rank']} | {p['stock_code']} | {p['stock_name']} "
             f"| {p['lgb_score']:.2f} | {p['raw_score']:.4f} |"
         )
-    lines.append("")
+    md_parts.append("")
 
     with open(md_path, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines))
+        f.write("\n".join(md_parts))
 
     report = {
         "mode": trainer.mode,
@@ -119,6 +139,13 @@ def save_daily_report(trainer: LGBTrainer, pred_date: str) -> str:
         "train_end": ed,
         "pred_date": pred_date,
         "predictions": predictions,
+        "tree_diagnostics": tree_diag,
+        "prediction_stats": pred_stats,
+        "training_metrics": {
+            k: v for k, v in metrics.items()
+            if k in ("cv_rmse_mean", "cv_rmse_std", "n_samples", "n_features",
+                     "cv_scores", "rank_ic_mean", "rank_ic_std", "icir", "oof_corr")
+        },
     }
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
@@ -173,6 +200,7 @@ def run_window(trainer: LGBTrainer, train_s: str, train_e: str,
 
     trainer.prepare_data(start_date=train_s, end_date=train_e)
     trainer.train()
+
 
     ok = 0
     fail = 0
@@ -246,9 +274,9 @@ def main():
     print(f"全部完成: 成功 {grand_total_ok}, 失败 {grand_total_fail}")
     print(f"{'='*60}")
 
-    # Cleanup: keep only the latest model per exec_mode
+    # NOTE: cleanup removed — historical predictions needed for backtest-sim
     cleanup_old_models()
-    print(f"\n模型清理完成")
+    print(f"\n清理完成（旧模型）")
 
 
 def cleanup_old_models():
@@ -266,7 +294,7 @@ def cleanup_old_models():
 
     # Group by (forward_days, exec_mode), keep only the latest per group
     keep: set = set()
-    for fwd in [3, 5, 10]:
+    for fwd in FORWARD_DAYS_LIST:
         for suffix in ["open2open", "close2close"]:
             group = sorted(
                 [m for m in models if f"fwd{fwd}d" in m and suffix in m],
@@ -283,6 +311,62 @@ def cleanup_old_models():
 
     if deleted:
         print(f"  删除历史模型: {deleted}  保留: {keep}")
+
+
+def cleanup_old_reports():
+    """Remove old report files, keeping only the latest per (fwd, exec_mode).
+
+    Both training reports ({base}_{exec_suffix}.json/.md) and daily prediction
+    reports ({base}_pred_{date}_{exec_suffix}.json/.md) are cleaned.
+    """
+    import glob as _g
+
+    deleted = 0
+    for fwd in FORWARD_DAYS_LIST:
+        for exec_suffix in ["open2open", "close2close"]:
+            report_dir = os.path.join(REPORTS_ROOT, exec_suffix, f"fwd{fwd}d")
+            if not os.path.isdir(report_dir):
+                continue
+
+            all_files = sorted(os.listdir(report_dir))
+            if not all_files:
+                continue
+
+            # Extract unique training windows (train_start-train_end pairs)
+            windows = set()
+            for fn in all_files:
+                # Pattern: {mode}_fwd{N}d_{train_s}_{train_e}_pred_{pred_date}_{exec}.{ext}
+                #                or {mode}_fwd{N}d_{train_s}_{train_e}_{exec}.{ext}
+                parts = fn.replace(".json", "").replace(".md", "").split("_")
+                # Find the date range: after fwd part, before exec suffix or _pred_
+                try:
+                    fwd_idx = next(i for i, p in enumerate(parts) if p.startswith("fwd"))
+                except StopIteration:
+                    continue
+                # train_s is at fwd_idx+1, train_e at fwd_idx+2
+                if fwd_idx + 2 < len(parts):
+                    train_key = f"{parts[fwd_idx + 1]}_{parts[fwd_idx + 2]}"
+                    windows.add(train_key)
+
+            if not windows:
+                continue
+
+            # Keep reports from the latest training window only
+            latest_window = sorted(windows)[-1]
+            train_s, train_e = latest_window.split("_")
+            keep_marker = f"_{train_s}_{train_e}_"
+
+            for fn in all_files:
+                if keep_marker not in fn:
+                    fp = os.path.join(report_dir, fn)
+                    try:
+                        os.remove(fp)
+                        deleted += 1
+                    except OSError:
+                        pass
+
+    if deleted:
+        print(f"  删除历史报告: {deleted}")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20241201",
+  "train_end": "20251130",
+  "pred_date": "20251202",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301292.SZ",
+      "stock_code": "301292",
+      "stock_name": "海科新源",
+      "lgb_score": 100.0,
+      "raw_score": 0.38
+    },
+    {
+      "rank": 2,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 92.61,
+      "raw_score": 0.34
+    },
+    {
+      "rank": 3,
+      "ts_code": "603960.SH",
+      "stock_code": "603960",
+      "stock_name": "克来机电",
+      "lgb_score": 91.2,
+      "raw_score": 0.34
+    },
+    {
+      "rank": 4,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 90.37,
+      "raw_score": 0.33
+    },
+    {
+      "rank": 5,
+      "ts_code": "300612.SZ",
+      "stock_code": "300612",
+      "stock_name": "宣亚国际",
+      "lgb_score": 90.31,
+      "raw_score": 0.33
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.03,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.039749,
+    "std": 0.035736,
+    "skew": 2.1565,
+    "kurtosis": 7.0763,
+    "min": -0.145926,
+    "max": 0.381558,
+    "median": 0.023678
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.14829723362814504,
+    "cv_rmse_std": 0.019381344118312094,
+    "cv_scores": [
+      0.165645,
+      0.13579,
+      0.165962,
+      0.157727,
+      0.116362
+    ],
+    "rank_ic_mean": 0.096781,
+    "rank_ic_std": 0.048119,
+    "icir": 2.0113,
+    "oof_corr": 0.094811,
+    "n_samples": 22371,
+    "n_features": 22
+  }
+}

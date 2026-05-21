@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20240401",
+  "train_end": "20250331",
+  "pred_date": "20250414",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.44
+    },
+    {
+      "rank": 2,
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 99.44,
+      "raw_score": 0.43
+    },
+    {
+      "rank": 3,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 97.09,
+      "raw_score": 0.42
+    },
+    {
+      "rank": 4,
+      "ts_code": "002274.SZ",
+      "stock_code": "002274",
+      "stock_name": "华昌化工",
+      "lgb_score": 96.9,
+      "raw_score": 0.42
+    },
+    {
+      "rank": 5,
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 96.75,
+      "raw_score": 0.41
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.6,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.094805,
+    "std": 0.045052,
+    "skew": 4.3016,
+    "kurtosis": 31.6764,
+    "min": -0.258056,
+    "max": 0.436888,
+    "median": -0.112007
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.14205482440749093,
+    "cv_rmse_std": 0.03493443291077808,
+    "cv_scores": [
+      0.098756,
+      0.203169,
+      0.139491,
+      0.120839,
+      0.148019
+    ],
+    "rank_ic_mean": 0.166065,
+    "rank_ic_std": 0.108087,
+    "icir": 1.5364,
+    "oof_corr": 0.218437,
+    "n_samples": 27873,
+    "n_features": 22
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20240301",
+  "train_end": "20250228",
+  "pred_date": "20250306",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688316.SH",
+      "stock_code": "688316",
+      "stock_name": "青云科技-U",
+      "lgb_score": 100.0,
+      "raw_score": 0.39
+    },
+    {
+      "rank": 2,
+      "ts_code": "002234.SZ",
+      "stock_code": "002234",
+      "stock_name": "民和股份",
+      "lgb_score": 95.2,
+      "raw_score": 0.36
+    },
+    {
+      "rank": 3,
+      "ts_code": "301022.SZ",
+      "stock_code": "301022",
+      "stock_name": "海泰科",
+      "lgb_score": 95.19,
+      "raw_score": 0.36
+    },
+    {
+      "rank": 4,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 93.75,
+      "raw_score": 0.35
+    },
+    {
+      "rank": 5,
+      "ts_code": "688401.SH",
+      "stock_code": "688401",
+      "stock_name": "路维光电",
+      "lgb_score": 93.05,
+      "raw_score": 0.35
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.75,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.08305,
+    "std": 0.049346,
+    "skew": 3.9729,
+    "kurtosis": 20.7099,
+    "min": -0.21509,
+    "max": 0.391657,
+    "median": -0.101097
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.14256507224872067,
+    "cv_rmse_std": 0.056304553766907565,
+    "cv_scores": [
+      0.117917,
+      0.09414,
+      0.249923,
+      0.105611,
+      0.145235
+    ],
+    "rank_ic_mean": 0.107175,
+    "rank_ic_std": 0.039808,
+    "icir": 2.6923,
+    "oof_corr": 0.001379,
+    "n_samples": 27595,
+    "n_features": 22
+  }
+}

@@ -116,6 +116,13 @@ from api.v1.schemas.research import (
     LGBModelListResponse,
     LGBDateRangeResponse,
     LGBBacktestSimAvailableResponse,
+    LGBBruteForceItem,
+    LGBBruteForceResult,
+    LGBBruteForceTaskStatus,
+    LGBTrainingMetrics,
+    LGBTreeDiagnostics,
+    LGBPredictionStats,
+    LGBDiagnosticsResponse,
 )
 
 __all__ = [
@@ -219,4 +226,11 @@ __all__ = [
     "LGBModelListResponse",
     "LGBDateRangeResponse",
     "LGBBacktestSimAvailableResponse",
+    "LGBBruteForceItem",
+    "LGBBruteForceResult",
+    "LGBBruteForceTaskStatus",
+    "LGBTrainingMetrics",
+    "LGBTreeDiagnostics",
+    "LGBPredictionStats",
+    "LGBDiagnosticsResponse",
 ]

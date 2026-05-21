@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20240701",
+  "train_end": "20250630",
+  "pred_date": "20250725",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 100.0,
+      "raw_score": 0.4
+    },
+    {
+      "rank": 2,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 96.53,
+      "raw_score": 0.38
+    },
+    {
+      "rank": 3,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 95.59,
+      "raw_score": 0.38
+    },
+    {
+      "rank": 4,
+      "ts_code": "300476.SZ",
+      "stock_code": "300476",
+      "stock_name": "胜宏科技",
+      "lgb_score": 95.25,
+      "raw_score": 0.38
+    },
+    {
+      "rank": 5,
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 94.46,
+      "raw_score": 0.37
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.59,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.051118,
+    "std": 0.052346,
+    "skew": 2.2899,
+    "kurtosis": 7.7601,
+    "min": -0.173101,
+    "max": 0.402923,
+    "median": -0.078994
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.15988222898067178,
+    "cv_rmse_std": 0.05103553488596043,
+    "cv_scores": [
+      0.260149,
+      0.137009,
+      0.129075,
+      0.150947,
+      0.122231
+    ],
+    "rank_ic_mean": 0.099069,
+    "rank_ic_std": 0.058946,
+    "icir": 1.6807,
+    "oof_corr": -0.085267,
+    "n_samples": 25035,
+    "n_features": 22
+  }
+}

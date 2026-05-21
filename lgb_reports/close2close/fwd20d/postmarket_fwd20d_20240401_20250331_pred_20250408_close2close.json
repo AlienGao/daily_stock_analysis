@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20240401",
+  "train_end": "20250331",
+  "pred_date": "20250408",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 100.0,
+      "raw_score": 0.47
+    },
+    {
+      "rank": 2,
+      "ts_code": "301372.SZ",
+      "stock_code": "301372",
+      "stock_name": "科净源",
+      "lgb_score": 93.36,
+      "raw_score": 0.42
+    },
+    {
+      "rank": 3,
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 91.75,
+      "raw_score": 0.41
+    },
+    {
+      "rank": 4,
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 90.67,
+      "raw_score": 0.4
+    },
+    {
+      "rank": 5,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 89.83,
+      "raw_score": 0.39
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.93,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.026912,
+    "std": 0.041767,
+    "skew": 2.8623,
+    "kurtosis": 25.5938,
+    "min": -0.255363,
+    "max": 0.466483,
+    "median": -0.022648
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.13760558948703813,
+    "cv_rmse_std": 0.02566934091651597,
+    "cv_scores": [
+      0.099483,
+      0.169834,
+      0.158973,
+      0.119233,
+      0.140505
+    ],
+    "rank_ic_mean": 0.208258,
+    "rank_ic_std": 0.134342,
+    "icir": 1.5502,
+    "oof_corr": 0.305312,
+    "n_samples": 27008,
+    "n_features": 22
+  }
+}

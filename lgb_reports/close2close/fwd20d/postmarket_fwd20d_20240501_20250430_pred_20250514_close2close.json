@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20240501",
+  "train_end": "20250430",
+  "pred_date": "20250514",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688135.SH",
+      "stock_code": "688135",
+      "stock_name": "利扬芯片",
+      "lgb_score": 100.0,
+      "raw_score": 0.45
+    },
+    {
+      "rank": 2,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 99.66,
+      "raw_score": 0.45
+    },
+    {
+      "rank": 3,
+      "ts_code": "688316.SH",
+      "stock_code": "688316",
+      "stock_name": "青云科技-U",
+      "lgb_score": 97.21,
+      "raw_score": 0.43
+    },
+    {
+      "rank": 4,
+      "ts_code": "002438.SZ",
+      "stock_code": "002438",
+      "stock_name": "江苏神通",
+      "lgb_score": 96.51,
+      "raw_score": 0.43
+    },
+    {
+      "rank": 5,
+      "ts_code": "600151.SH",
+      "stock_code": "600151",
+      "stock_name": "航天机电",
+      "lgb_score": 95.7,
+      "raw_score": 0.42
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.04,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.052506,
+    "std": 0.040199,
+    "skew": 5.0263,
+    "kurtosis": 44.6881,
+    "min": -0.222366,
+    "max": 0.451524,
+    "median": -0.066305
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.1524325198858344,
+    "cv_rmse_std": 0.05502495467434665,
+    "cv_scores": [
+      0.102083,
+      0.25702,
+      0.123745,
+      0.123601,
+      0.155714
+    ],
+    "rank_ic_mean": 0.056601,
+    "rank_ic_std": 0.070774,
+    "icir": 0.7998,
+    "oof_corr": 0.001603,
+    "n_samples": 25817,
+    "n_features": 22
+  }
+}

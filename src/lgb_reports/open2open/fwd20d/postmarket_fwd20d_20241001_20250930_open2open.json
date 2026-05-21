@@ -1,0 +1,110 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "generated_at": "2026-05-21T16:51:15.212734",
+  "training_metrics": {
+    "cv_rmse_mean": 0.14524523950098703,
+    "cv_rmse_std": 0.017203232096565945,
+    "cv_scores": [
+      0.117276,
+      0.154282,
+      0.134616,
+      0.165767,
+      0.154285
+    ],
+    "rank_ic_mean": 0.122812,
+    "rank_ic_std": 0.075518,
+    "icir": 1.6263,
+    "oof_corr": 0.122553,
+    "n_samples": 24727,
+    "n_features": 22
+  },
+  "feature_importance": {
+    "gain": {
+      "broker_recommend": 698.3683116212487,
+      "buyback": 437.6149910092354,
+      "chip": 405.5126854032278,
+      "margin": 392.3034020625055,
+      "vwap_reversal": 136.97705209627748,
+      "ranking_momentum": 102.89834460243583,
+      "fundamental": 79.3997612297535,
+      "technical": 61.3696880415082,
+      "vwap_deviation": 42.22172565758228,
+      "gtja114": 34.07744190841913,
+      "alpha042": 31.225889027118683,
+      "gap_reversal": 16.235787741839886,
+      "liquid_oversold": 15.733811605721712,
+      "money_flow": 13.169997941702604,
+      "limit": 1.7045631855726242,
+      "hot_money": 0.4905276969075203,
+      "concept_heat": 0.0,
+      "insider_buy": 0.0,
+      "institution_hold": 0.0,
+      "performance": 0.0
+    },
+    "split": {
+      "broker_recommend": 1442.0,
+      "buyback": 1026.0,
+      "chip": 812.0,
+      "margin": 749.0,
+      "vwap_reversal": 359.0,
+      "ranking_momentum": 326.0,
+      "fundamental": 258.0,
+      "technical": 231.0,
+      "alpha042": 174.0,
+      "vwap_deviation": 167.0,
+      "gtja114": 133.0,
+      "gap_reversal": 106.0,
+      "liquid_oversold": 105.0,
+      "money_flow": 94.0,
+      "limit": 13.0,
+      "hot_money": 5.0,
+      "concept_heat": 0.0,
+      "insider_buy": 0.0,
+      "institution_hold": 0.0,
+      "performance": 0.0
+    }
+  },
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300109",
+      "stock_code": "300109",
+      "stock_name": "新开源",
+      "lgb_score": 100.0,
+      "raw_score": 0.51
+    },
+    {
+      "rank": 2,
+      "ts_code": "002474",
+      "stock_code": "002474",
+      "stock_name": "榕基软件",
+      "lgb_score": 92.29,
+      "raw_score": 0.46
+    },
+    {
+      "rank": 3,
+      "ts_code": "002527",
+      "stock_code": "002527",
+      "stock_name": "新时达",
+      "lgb_score": 91.45,
+      "raw_score": 0.45
+    },
+    {
+      "rank": 4,
+      "ts_code": "600626",
+      "stock_code": "600626",
+      "stock_name": "申达股份",
+      "lgb_score": 86.62,
+      "raw_score": 0.42
+    },
+    {
+      "rank": 5,
+      "ts_code": "300031",
+      "stock_code": "300031",
+      "stock_name": "宝通科技",
+      "lgb_score": 86.54,
+      "raw_score": 0.42
+    }
+  ]
+}

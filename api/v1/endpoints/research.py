@@ -29,6 +29,13 @@ from api.v1.schemas.research import (
     LGBBacktestSimMetrics,
     LGBBacktestTradeItem,
     LGBBacktestSimAvailableResponse,
+    LGBBruteForceItem,
+    LGBBruteForceResult,
+    LGBBruteForceTaskStatus,
+    LGBDiagnosticsResponse,
+    LGBTrainingMetrics,
+    LGBTreeDiagnostics,
+    LGBPredictionStats,
 )
 from src.discovery.ml.lgb_trainer import LGBTrainer
 from src.storage import DatabaseManager, FactorScoreSnapshot, StockAdjFactor, StockDaily
@@ -87,6 +94,8 @@ def _run_train_in_process(queue: multiprocessing.Queue, req_dict: dict):
         importance = trainer.get_feature_importance()
         predictions = trainer.get_latest_predictions()
         metrics = trainer._training_metrics
+        tree_diag = trainer.get_tree_diagnostics()
+        pred_stats = trainer.get_prediction_stats()
 
         queue.put(("completed", {
             "model_path": model_path,
@@ -95,6 +104,8 @@ def _run_train_in_process(queue: multiprocessing.Queue, req_dict: dict):
             "feature_importance": importance,
             "predictions": predictions,
             "training_metrics": metrics,
+            "tree_diagnostics": tree_diag,
+            "prediction_stats": pred_stats,
         }))
     except Exception as e:
         import traceback
@@ -172,6 +183,8 @@ def lgb_train(req: LGBTrainRequest):
     _lgb_tasks[task_id] = {
         "status": "running",
         "mode": req.mode,
+        "exec_mode": req.exec_mode,
+        "forward_days": req.forward_days,
         "started_at": datetime.now().isoformat(),
     }
 
@@ -222,7 +235,14 @@ def lgb_status(task_id: str = Query(..., description="任务 ID")):
     if task.get("status") == "failed":
         resp["error"] = task.get("error", "")
     if task.get("status") == "completed":
-        resp["result"] = task.get("result")
+        result = task.get("result")
+        if result and result.get("predictions"):
+            fwd = task.get("forward_days", 3)
+            em = task.get("exec_mode", "close")
+            result["predictions"] = _enrich_predictions_with_stats(
+                result["predictions"], fwd, em
+            )
+        resp["result"] = result
     return resp
 
 
@@ -289,6 +309,9 @@ def lgb_predictions(
     if trainer._X_latest is None:
         trainer.predict()
     predictions = trainer.get_latest_predictions()
+    predictions = _enrich_predictions_with_stats(
+        predictions, trainer.forward_days, getattr(trainer, "exec_mode", "close")
+    )
     return LGBPredictionsResponse(
         model_date=trainer._latest_date or "",
         forward_days=trainer.forward_days,
@@ -368,6 +391,62 @@ def lgb_list_models():
     models = LGBTrainer.list_models()
     return LGBModelListResponse(
         models=[LGBModelInfo(**m) for m in models],
+    )
+
+
+@router.get(
+    "/lgb/diagnostics",
+    response_model=LGBDiagnosticsResponse,
+    summary="获取模型诊断数据",
+)
+def lgb_diagnostics(
+    model_path: str = Query(None, description="模型路径，为空则使用最近训练的模型"),
+):
+    """返回训练指标、树结构诊断、预测分布统计。"""
+    if model_path:
+        trainer = LGBTrainer.load(model_path)
+    else:
+        completed = [
+            (tid, t) for tid, t in _lgb_tasks.items()
+            if t.get("status") == "completed"
+            and t.get("result", {}).get("model_path")
+        ]
+        if not completed:
+            raise HTTPException(
+                status_code=404,
+                detail="没有已完成的训练任务，请先训练模型或指定 model_path",
+            )
+        _, latest_task = max(
+            completed,
+            key=lambda x: x[1].get("finished_at", ""),
+        )
+        model_path = latest_task["result"]["model_path"]
+        trainer = LGBTrainer.load(model_path)
+
+    tree_diag = trainer.get_tree_diagnostics()
+    metrics_raw = trainer._training_metrics
+
+    pred_stats = None
+    try:
+        trainer.predict()
+        pred_stats = trainer.get_prediction_stats()
+    except Exception:
+        pass
+
+    return LGBDiagnosticsResponse(
+        training_metrics=LGBTrainingMetrics(**{
+            "cv_rmse_mean": metrics_raw.get("cv_rmse_mean", 0.0),
+            "cv_rmse_std": metrics_raw.get("cv_rmse_std", 0.0),
+            "n_samples": metrics_raw.get("n_samples", 0),
+            "n_features": metrics_raw.get("n_features", 0),
+            "cv_scores": metrics_raw.get("cv_scores", []),
+            "rank_ic_mean": metrics_raw.get("rank_ic_mean"),
+            "rank_ic_std": metrics_raw.get("rank_ic_std"),
+            "icir": metrics_raw.get("icir"),
+            "oof_corr": metrics_raw.get("oof_corr"),
+        }),
+        tree_diagnostics=LGBTreeDiagnostics(**tree_diag),
+        prediction_stats=LGBPredictionStats(**pred_stats) if pred_stats else None,
     )
 
 
@@ -486,34 +565,352 @@ def _find_nth_trading_day(start: str, n: int, trading_days_sorted: list) -> _Opt
     return None
 
 
-@router.get(
-    "/lgb/backtest-sim",
-    response_model=LGBBacktestSimResponse,
-    summary="LGB 预测交易回测模拟（基于预测文件）",
-)
-def lgb_backtest_sim(
-    forward_days: int = Query(..., ge=1, le=60, description="前向天数（1 或 3）"),
-    top_n: int = Query(5, ge=1, le=20, description="每预测日选取 Top N"),
-    exec_mode: str = Query("open", pattern="^(open|close)$", description="执行模式: open=开盘买入→开盘卖出, close=收盘买入→收盘卖出"),
-):
-    cache_key = f"fwd{forward_days}_top{top_n}_{exec_mode}"
-    if cache_key in _backtest_cache:
-        return _backtest_cache[cache_key]
+def _check_loss_stop(
+    code: str, buy_date: str, buy_price: float, sell_date: str,
+    price_map: dict, adj_map: dict, trading_days_sorted: list,
+) -> tuple:
+    """Check intermediate trading days for loss stop (亏损厌恶).
+    Returns (effective_sell_date, effective_sell_price) — same as input if not stopped.
+    """
+    for td in trading_days_sorted:
+        if td <= buy_date or td >= sell_date:
+            continue
+        entry = price_map.get((code, td))
+        if not entry:
+            continue
+        px = entry["close"] if entry["close"] > 0 else entry["open"]
+        if px <= 0:
+            continue
+        adj_b = _get_adj(code, buy_date)
+        adj_t = _get_adj(code, td)
+        raw_ret = (px - buy_price) / buy_price if buy_price > 0 else 0.0
+        ret = (1.0 + raw_ret) * (adj_t / adj_b) - 1.0 if adj_b > 0 and adj_t > 0 else 0.0
+        if ret < 0:
+            return (td, px)
+    return (sell_date, 0.0)  # 0.0 sentinel: caller uses original sell_price
 
+
+def _check_dead_hold(
+    code: str, buy_date: str, buy_price: float, sell_date: str,
+    price_map: dict, adj_map: dict, trading_days_sorted: list,
+    max_hold_days: int = 20,
+) -> tuple:
+    """Dead-hold (跌了死扛): if losing at sell_date, extend up to max_hold_days trading days.
+    Close as soon as breakeven (return >= 0), or force-close after max_hold_days.
+    Returns (effective_sell_date, effective_sell_price, was_extended).
+    """
+    # Find index range: sell_date_idx + 1 to sell_date_idx + max_hold_days
+    try:
+        sell_idx = trading_days_sorted.index(sell_date)
+    except ValueError:
+        return (sell_date, 0.0, False)
+    adj_b = _get_adj(code, buy_date)
+
+    for offset in range(1, max_hold_days + 1):
+        ext_idx = sell_idx + offset
+        if ext_idx >= len(trading_days_sorted):
+            break
+        td = trading_days_sorted[ext_idx]
+        entry = price_map.get((code, td))
+        if not entry:
+            continue
+        px = entry["close"] if entry["close"] > 0 else entry["open"]
+        if px <= 0:
+            continue
+        adj_t = _get_adj(code, td)
+        raw_ret = (px - buy_price) / buy_price if buy_price > 0 else 0.0
+        ret = (1.0 + raw_ret) * (adj_t / adj_b) - 1.0 if adj_b > 0 and adj_t > 0 else 0.0
+        if ret >= 0:
+            return (td, px, True)
+    # Force-close: use last available trading day within extended range
+    last_idx = min(sell_idx + max_hold_days, len(trading_days_sorted) - 1)
+    if last_idx > sell_idx:
+        last_td = trading_days_sorted[last_idx]
+        last_entry = price_map.get((code, last_td))
+        if last_entry:
+            last_px = last_entry["close"] if last_entry["close"] > 0 else last_entry["open"]
+            if last_px > 0:
+                return (last_td, last_px, True)
+    return (sell_date, 0.0, False)
+
+
+def _compute_sharpe(capital_curve: list) -> float:
+    """Compute annualized Sharpe ratio from capital curve daily returns."""
+    if not capital_curve or len(capital_curve) < 2:
+        return 0.0
+    daily_returns = [pt.get("daily_return", 0.0) for pt in capital_curve][1:]
+    if not daily_returns:
+        return 0.0
+    mean_ret = sum(daily_returns) / len(daily_returns)
+    variance = sum((r - mean_ret) ** 2 for r in daily_returns) / len(daily_returns)
+    if variance <= 0:
+        return 0.0
+    return (mean_ret / (variance ** 0.5)) * (252 ** 0.5)
+
+
+# Cache for prediction historical stats
+_pred_stats_cache: Dict[str, dict] = {}
+
+
+def _enrich_predictions_with_stats(
+    predictions: list,
+    forward_days: int,
+    exec_mode: str,
+) -> list:
+    """Enrich prediction items with historical stats (win_rate, avg_return, etc.).
+
+    predictions: list of dicts with rank, stock_code, ts_code, raw_score, etc.
+    Returns the same list with added fields.
+    """
+    cache_key = f"{exec_mode}_{forward_days}"
+    stats = _pred_stats_cache.get(cache_key)
+
+    if stats is None:
+        stats = _build_historical_stats(forward_days, exec_mode)
+        _pred_stats_cache[cache_key] = stats
+
+    if not stats or not stats.get("rank_stats"):
+        return predictions
+
+    rank_stats = stats["rank_stats"]
+    stock_hits = stats["stock_hits"]
+    all_raw_scores_sorted = stats["all_raw_scores_sorted"]
+
+    for p in predictions:
+        rank = p.get("rank", 0)
+        code = p.get("stock_code", "")
+        raw_score = p.get("raw_score", 0.0)
+
+        rs = rank_stats.get(rank)
+        if rs:
+            p["win_rate"] = rs["win_rate"]
+            p["avg_return"] = rs["avg_return"]
+            p["max_return"] = rs["max_return"]
+            p["max_loss"] = rs["max_loss"]
+            p["profit_loss_ratio"] = rs["profit_loss_ratio"]
+        else:
+            p["win_rate"] = None
+            p["avg_return"] = None
+            p["max_return"] = None
+            p["max_loss"] = None
+            p["profit_loss_ratio"] = None
+
+        p["hit_count"] = stock_hits.get(code, 0) or None
+
+        if all_raw_scores_sorted:
+            import bisect
+            idx = bisect.bisect_left(all_raw_scores_sorted, raw_score)
+            p["score_percentile"] = round(idx / len(all_raw_scores_sorted) * 100, 1)
+        else:
+            p["score_percentile"] = None
+
+    return predictions
+
+
+def _build_historical_stats(forward_days: int, exec_mode: str) -> dict:
+    """Build historical prediction stats from lgb_reports/ + DB prices."""
+    project_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
+    reports_dir = _os.path.join(project_root, "lgb_reports")
+    exec_suffix = "open2open" if exec_mode == "open" else "close2close"
+    fwd_dir = f"fwd{forward_days}d"
+    search_dir = _os.path.join(reports_dir, exec_suffix, fwd_dir)
+
+    if not _os.path.isdir(search_dir):
+        return {}
+
+    pattern = _os.path.join(search_dir, "*_pred_*.json")
+    json_files = sorted(_glob.glob(pattern))
+    if not json_files:
+        return {}
+
+    # 1) Parse all historical predictions
+    hist_preds: list = []  # [(pred_date, rank, stock_code, raw_score)]
+    all_raw_scores: list = []
+    stock_hits: Dict[str, int] = _defaultdict(int)
+
+    for fp in json_files:
+        try:
+            with open(fp, "r", encoding="utf-8") as fh:
+                data = _json.load(fh)
+        except Exception:
+            continue
+        pred_date = data.get("pred_date", "")
+        if not pred_date:
+            continue
+        for p in data.get("predictions", []):
+            rank = int(p.get("rank", 0))
+            code = str(p.get("stock_code", "")).strip().zfill(6)
+            raw = float(p.get("raw_score", 0.0))
+            hist_preds.append((pred_date, rank, code, raw))
+            all_raw_scores.append(raw)
+            stock_hits[code] += 1
+
+    if not hist_preds:
+        return {}
+
+    # 2) Get trading days
+    db = DatabaseManager.get_instance()
+    with db.get_session() as session:
+        from sqlalchemy import func
+        dates_raw = (
+            session.query(StockDaily.date)
+            .group_by(StockDaily.date)
+            .having(func.count(StockDaily.code) >= 100)
+            .order_by(StockDaily.date)
+            .all()
+        )
+    trading_days_sorted = [
+        d[0].strftime("%Y%m%d") if hasattr(d[0], "strftime") else str(d[0]).replace("-", "")[:8]
+        for d in dates_raw
+    ]
+    trading_days_set = set(trading_days_sorted)
+
+    # 3) Determine buy/sell dates for each prediction
+    all_codes: set = set()
+    pred_with_dates: list = []  # [(pred_date, rank, code, raw, buy_date, sell_date)]
+
+    for pred_date, rank, code, raw in hist_preds:
+        if exec_mode == "close":
+            if pred_date not in trading_days_set:
+                continue
+            buy_date = pred_date
+            sell_date = _find_nth_trading_day(pred_date, forward_days, trading_days_sorted)
+        else:
+            buy_date = _find_next_trading_day(pred_date, trading_days_set, trading_days_sorted)
+            if not buy_date:
+                continue
+            sell_date = _find_nth_trading_day(buy_date, forward_days, trading_days_sorted)
+
+        if not sell_date:
+            continue
+        pred_with_dates.append((pred_date, rank, code, raw, buy_date, sell_date))
+        all_codes.add(code)
+
+    if not pred_with_dates:
+        return {"rank_stats": {}, "stock_hits": dict(stock_hits), "all_raw_scores_sorted": sorted(all_raw_scores)}
+
+    # 4) Load prices + adj_factors
+    all_date_strs: set = set()
+    for _, _, _, _, bd, sd in pred_with_dates:
+        all_date_strs.add(bd)
+        all_date_strs.add(sd)
+
+    price_map: Dict[tuple, dict] = {}
+    with db.get_session() as session:
+        rows = session.query(StockDaily).filter(
+            StockDaily.code.in_(list(all_codes)),
+            StockDaily.date.in_([f"{d[:4]}-{d[4:6]}-{d[6:8]}" for d in all_date_strs]),
+        ).all()
+    for r in rows:
+        c = str(r.code).split(".")[0].zfill(6)
+        d = r.date.strftime("%Y%m%d") if hasattr(r.date, "strftime") else str(r.date).replace("-", "")[:8]
+        price_map[(c, d)] = {
+            "open": float(r.open) if r.open else 0.0,
+            "close": float(r.close) if r.close else 0.0,
+        }
+
+    adj_map: Dict[tuple, float] = {}
+    with db.get_session() as session:
+        adj_rows = session.query(StockAdjFactor).filter(
+            StockAdjFactor.code.in_(list(all_codes)),
+            StockAdjFactor.trade_date.in_([f"{d[:4]}-{d[4:6]}-{d[6:8]}" for d in all_date_strs]),
+        ).all()
+    for r in adj_rows:
+        d = r.trade_date.strftime("%Y%m%d") if hasattr(r.trade_date, "strftime") else str(r.trade_date).replace("-", "")[:8]
+        adj_map[(str(r.code).split(".")[0].zfill(6), d)] = float(r.adj_factor)
+
+    # Forward-fill adj_factor
+    _adj_by_code: Dict[str, list] = _defaultdict(list)
+    for (code, d), v in adj_map.items():
+        _adj_by_code[code].append((d, v))
+    for code in _adj_by_code:
+        _adj_by_code[code].sort(key=lambda x: x[0])
+
+    def _get_adj_local(code: str, date_str: str) -> float:
+        entries = _adj_by_code.get(code, [])
+        if not entries:
+            return 1.0
+        lo, hi = 0, len(entries) - 1
+        best = 1.0
+        while lo <= hi:
+            mid = (lo + hi) // 2
+            if entries[mid][0] <= date_str:
+                best = entries[mid][1]
+                lo = mid + 1
+            else:
+                hi = mid - 1
+        return best
+
+    # 5) Compute actual returns per prediction
+    rank_returns: Dict[int, list] = _defaultdict(list)
+
+    for _, rank, code, _, buy_date, sell_date in pred_with_dates:
+        buy_entry = price_map.get((code, buy_date))
+        sell_entry = price_map.get((code, sell_date))
+        if not buy_entry or not sell_entry:
+            continue
+
+        if exec_mode == "close":
+            buy_px = buy_entry["close"]
+            sell_px = sell_entry["close"]
+        else:
+            buy_px = buy_entry["open"]
+            sell_px = sell_entry["open"]
+
+        if buy_px <= 0 or sell_px <= 0:
+            continue
+
+        adj_buy = _get_adj_local(code, buy_date)
+        adj_sell = _get_adj_local(code, sell_date)
+        raw_ret = (sell_px - buy_px) / buy_px
+        ret = (1.0 + raw_ret) * (adj_sell / adj_buy) - 1.0 if adj_buy > 0 else raw_ret
+
+        rank_returns[rank].append(ret)
+
+    # 6) Compute per-rank stats
+    rank_stats: Dict[int, dict] = {}
+    for rank, returns in rank_returns.items():
+        if not returns:
+            continue
+        wins = [r for r in returns if r > 0]
+        losses = [r for r in returns if r <= 0]
+        avg_win = sum(wins) / len(wins) if wins else 0.0
+        avg_loss = abs(sum(losses) / len(losses)) if losses else 0.0
+
+        rank_stats[rank] = {
+            "win_rate": round(len(wins) / len(returns), 4),
+            "avg_return": round(sum(returns) / len(returns), 4),
+            "max_return": round(max(returns), 4),
+            "max_loss": round(min(returns), 4),
+            "profit_loss_ratio": round(avg_win / avg_loss, 2) if avg_loss > 0 else None,
+        }
+
+    return {
+        "rank_stats": rank_stats,
+        "stock_hits": dict(stock_hits),
+        "all_raw_scores_sorted": sorted(all_raw_scores),
+    }
+
+
+def _simulate_backtest(exec_mode: str, forward_days: int, top_n: int, stop_strategy: str = "none") -> dict:
+    """Run backtest simulation from cached prediction files.
+
+    stop_strategy: "none" | "loss_aversion" | "dead_hold"
+    Returns dict with keys: error, metrics, capital_curve, trades.
+    If error is not None, the simulation failed and metrics is None.
+    """
     project_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
     reports_dir = _os.path.join(project_root, "lgb_reports")
 
-    # 1. Scan prediction files (filtered by exec_mode suffix)
     exec_suffix = "open2open" if exec_mode == "open" else "close2close"
     fwd_dir = f"fwd{forward_days}d"
     pattern = f"*_fwd{forward_days}d_*_pred_*.json"
     search_dir = _os.path.join(reports_dir, exec_suffix, fwd_dir)
     json_files = sorted(_glob.glob(_os.path.join(search_dir, pattern)))
-    # Fallback: also check exec_suffix dir without fwd subdir for legacy files
     if not json_files:
         json_files = sorted(_glob.glob(_os.path.join(reports_dir, exec_suffix, pattern)))
     if not json_files:
-        raise HTTPException(status_code=404, detail=f"No {exec_suffix} prediction files found for forward_days={forward_days}")
+        return {"error": f"No {exec_suffix} prediction files for forward_days={forward_days}", "metrics": None, "capital_curve": [], "trades": []}
 
     preds_by_date: Dict[str, list] = _defaultdict(list)
     for fp in json_files:
@@ -531,9 +928,8 @@ def lgb_backtest_sim(
             })
 
     if not preds_by_date:
-        raise HTTPException(status_code=404, detail="No prediction data found")
+        return {"error": "No prediction data found", "metrics": None, "capital_curve": [], "trades": []}
 
-    # 2. Get real trading days from stock_daily (filter sparse/fake dates)
     db = DatabaseManager.get_instance()
     with db.get_session() as session:
         from sqlalchemy import func
@@ -550,9 +946,8 @@ def lgb_backtest_sim(
     ]
     trading_days_set = set(trading_days_sorted)
 
-    # 3. Collect all needed stock codes and date pairs
     all_codes: set = set()
-    date_pairs: list = []  # (pred_date, buy_date, sell_date) — sell_date None = holding
+    date_pairs: list = []
     for pred_date, preds in sorted(preds_by_date.items()):
         if exec_mode == "close":
             if pred_date not in trading_days_set:
@@ -569,9 +964,8 @@ def lgb_backtest_sim(
             all_codes.add(p["stock_code"])
 
     if not date_pairs:
-        raise HTTPException(status_code=404, detail="No valid trading dates found")
+        return {"error": "No valid trading dates found", "metrics": None, "capital_curve": [], "trades": []}
 
-    # 4. Batch fetch all price data in one query
     all_date_strs: set = set()
     latest_td = trading_days_sorted[-1] if trading_days_sorted else None
     has_holding = any(sd is None for _, _, sd in date_pairs)
@@ -583,30 +977,40 @@ def lgb_backtest_sim(
         all_date_strs.add(latest_td)
 
     if exec_mode == "open":
-        # Need pre_close (previous trading day close) for limit-up/down checks
         for d in list(all_date_strs):
-            prev_td = None
             for i, td in enumerate(trading_days_sorted):
                 if td == d and i > 0:
-                    prev_td = trading_days_sorted[i - 1]
+                    all_date_strs.add(trading_days_sorted[i - 1])
                     break
-            if prev_td:
-                all_date_strs.add(prev_td)
     else:
-        # Close mode: also need pre_close for limit-up checks on buy dates
         for _, bd, _ in date_pairs:
-            prev_td = None
             for i, td in enumerate(trading_days_sorted):
                 if td == bd and i > 0:
-                    prev_td = trading_days_sorted[i - 1]
+                    all_date_strs.add(trading_days_sorted[i - 1])
                     break
-            if prev_td:
-                all_date_strs.add(prev_td)
 
-    all_dates_iso = {
-        ds: f"{ds[:4]}-{ds[4:6]}-{ds[6:8]}"
-        for ds in all_date_strs
-    }
+    if stop_strategy == "loss_aversion":
+        for _, bd, sd in date_pairs:
+            if sd is None:
+                continue
+            for td in trading_days_sorted:
+                if bd < td < sd:
+                    all_date_strs.add(td)
+
+    if stop_strategy == "dead_hold":
+        for _, _bd, sd in date_pairs:
+            if sd is None:
+                continue
+            try:
+                sd_idx = trading_days_sorted.index(sd)
+            except ValueError:
+                continue
+            for offset in range(1, 21):
+                ext_idx = sd_idx + offset
+                if ext_idx < len(trading_days_sorted):
+                    all_date_strs.add(trading_days_sorted[ext_idx])
+
+    all_dates_iso = {ds: f"{ds[:4]}-{ds[4:6]}-{ds[6:8]}" for ds in all_date_strs}
 
     with db.get_session() as session:
         rows = session.query(StockDaily).filter(
@@ -614,7 +1018,6 @@ def lgb_backtest_sim(
             StockDaily.code.in_(list(all_codes)),
         ).all()
 
-    # Build price lookup: {(code, YYYYMMDD): {open, close, pct_chg}}
     price_map: Dict[tuple, dict] = {}
     for r in rows:
         d = r.date.strftime("%Y%m%d") if hasattr(r.date, "strftime") else str(r.date).replace("-", "")[:8]
@@ -624,7 +1027,6 @@ def lgb_backtest_sim(
             "pct_chg": float(r.pct_chg) if r.pct_chg else 0.0,
         }
 
-    # Build adj_factor lookup: {(code, YYYYMMDD): adj_factor}
     adj_map: Dict[tuple, float] = {}
     with db.get_session() as session:
         adj_rows = session.query(StockAdjFactor).filter(
@@ -637,23 +1039,43 @@ def lgb_backtest_sim(
         d = r.trade_date.strftime("%Y%m%d") if hasattr(r.trade_date, "strftime") else str(r.trade_date).replace("-", "")[:8]
         adj_map[(str(r.code).split(".")[0].zfill(6), d)] = float(r.adj_factor)
 
-    # 5. Simulate trades with rolling position sizing
-    # initial_capital = 100w, each slot uses 1/forward_days of total portfolio
+    # Build per-code sorted date list for forward-fill lookup
+    _adj_by_code: Dict[str, list] = _defaultdict(list)
+    for (code, d), v in adj_map.items():
+        _adj_by_code[code].append((d, v))
+    for code in _adj_by_code:
+        _adj_by_code[code].sort(key=lambda x: x[0])
+
+    def _get_adj(code: str, date_str: str) -> float:
+        """Get adj_factor for a date, forward-filling from nearest prior date if missing."""
+        entries = _adj_by_code.get(code, [])
+        if not entries:
+            return 1.0
+        # Binary search for nearest date <= date_str
+        lo, hi = 0, len(entries) - 1
+        best = 1.0
+        while lo <= hi:
+            mid = (lo + hi) // 2
+            if entries[mid][0] <= date_str:
+                best = entries[mid][1]
+                lo = mid + 1
+            else:
+                hi = mid - 1
+        return best
+
     INITIAL_CAPITAL = 1_000_000.0
     trades: list = []
     capital_curve: list = []
 
-    # Group date_pairs by buy_date → pred_date list (for sorting by actual calendar)
     pairs_by_buy: Dict[str, list] = _defaultdict(list)
     for pred_date, buy_date, sell_date in date_pairs:
         pairs_by_buy[buy_date].append((pred_date, sell_date))
 
     buy_dates_sorted = sorted(pairs_by_buy.keys())
     cash = INITIAL_CAPITAL
-    active_positions: list = []  # [{entry_value, sell_date, ret_pct}]
+    active_positions: list = []
 
     for buy_date in buy_dates_sorted:
-        # 1. Close positions maturing on or before this buy_date
         still_active: list = []
         for pos in active_positions:
             if pos["sell_date"] <= buy_date:
@@ -663,12 +1085,10 @@ def lgb_backtest_sim(
                 still_active.append(pos)
         active_positions = still_active
 
-        # 2. Calculate current portfolio value and per-slot allocation
         locked_value = sum(p["entry_value"] for p in active_positions)
         portfolio_value = cash + locked_value
         slot_size = portfolio_value / forward_days if forward_days > 0 else portfolio_value
 
-        # 3. Open new positions for this buy_date
         for pred_date, sell_date in pairs_by_buy[buy_date]:
             preds = preds_by_date.get(pred_date, [])
             slot_trades: list = []
@@ -682,7 +1102,6 @@ def lgb_backtest_sim(
                 rank = p["rank"]
 
                 if is_holding:
-                    # ── Holding trade (sell date not yet reached) ──
                     buy_entry = price_map.get((code, buy_date))
                     if not buy_entry:
                         continue
@@ -690,23 +1109,52 @@ def lgb_backtest_sim(
                         if buy_entry["close"] <= 0:
                             continue
                         buy_price = buy_entry["close"]
-                        sell_price_raw = price_map.get((code, latest_td), {}).get("close", buy_entry["close"])
                     else:
                         if buy_entry["open"] <= 0:
                             continue
                         buy_price = buy_entry["open"]
-                        sell_price_raw = price_map.get((code, latest_td), {}).get("open", buy_entry["open"])
-                    adj_b = adj_map.get((code, buy_date), 1.0)
-                    adj_s = adj_map.get((code, latest_td), 1.0)
-                    raw_ret = (sell_price_raw - buy_price) / buy_price if buy_price > 0 else 0.0
+                    # Holding positions: always use latest close for current valuation
+                    latest_entry = price_map.get((code, latest_td))
+                    actual_sell_date = latest_td
+                    if latest_entry and latest_entry["close"] > 0:
+                        sell_price_raw = latest_entry["close"]
+                    else:
+                        # Walk backwards to find the most recent close for this stock
+                        sell_price_raw = 0.0
+                        for td in reversed(trading_days_sorted):
+                            if td > latest_td:
+                                continue
+                            entry = price_map.get((code, td))
+                            if entry and entry["close"] > 0:
+                                sell_price_raw = entry["close"]
+                                actual_sell_date = td
+                                break
+                        if sell_price_raw <= 0:
+                            sell_price_raw = buy_price
+
+                    eff_sell_date = actual_sell_date
+                    eff_sell_price = sell_price_raw
+                    if stop_strategy == "loss_aversion" and latest_td:
+                        eff_sd, eff_sp = _check_loss_stop(
+                            code, buy_date, buy_price, latest_td,
+                            price_map, adj_map, trading_days_sorted,
+                        )
+                        if eff_sp > 0:
+                            eff_sell_date = eff_sd
+                            eff_sell_price = eff_sp
+
+                    adj_b = _get_adj(code, buy_date)
+                    adj_s = _get_adj(code, eff_sell_date)
+                    raw_ret = (eff_sell_price - buy_price) / buy_price if buy_price > 0 else 0.0
                     ret = round((1.0 + raw_ret) * (adj_s / adj_b) - 1.0, 6) if adj_s > 0 else 0.0
-                    trades.append(LGBBacktestTradeItem(
-                        pred_date=pred_date, stock_code=code, ts_code=ts_code,
-                        stock_name=stock_name, rank=rank,
-                        buy_date=buy_date, buy_price=buy_price,
-                        sell_date="", sell_price=sell_price_raw,
-                        return_pct=ret, skipped=False,
-                    ))
+                    trades.append({
+                        "pred_date": pred_date, "stock_code": code, "ts_code": ts_code,
+                        "stock_name": stock_name, "rank": rank,
+                        "buy_date": buy_date, "buy_price": buy_price,
+                        "sell_date": "",
+                        "sell_price": eff_sell_price,
+                        "return_pct": ret, "skipped": False,
+                    })
                     continue
 
                 if exec_mode == "close":
@@ -714,7 +1162,6 @@ def lgb_backtest_sim(
                     if not buy_entry or buy_entry["close"] <= 0:
                         continue
 
-                    # Close mode: check if close was at limit-up
                     limit_pct_c = _get_limit_pct(code)
                     at_limit_up = False
                     prev_bd = _find_nth_trading_day(buy_date, -1, trading_days_sorted)
@@ -724,21 +1171,18 @@ def lgb_backtest_sim(
                             limit_up_c = prev_entry["close"] * (1.0 + limit_pct_c)
                             if buy_entry["close"] >= limit_up_c * 0.999:
                                 at_limit_up = True
-                    # Fallback: use pct_chg when pre_close unavailable (e.g. stock resumed trading after gap)
                     if not at_limit_up and buy_entry.get("pct_chg", 0) >= limit_pct_c * 99.0:
                         at_limit_up = True
                     if at_limit_up:
-                                trades.append(LGBBacktestTradeItem(
-                                    pred_date=pred_date, stock_code=code, ts_code=ts_code,
-                                    stock_name=stock_name, rank=rank,
-                                    buy_date=buy_date, buy_price=buy_entry["close"],
-                                    sell_date="", sell_price=0.0, return_pct=0.0, skipped=True,
-                                ))
-                                continue
+                        trades.append({
+                            "pred_date": pred_date, "stock_code": code, "ts_code": ts_code,
+                            "stock_name": stock_name, "rank": rank,
+                            "buy_date": buy_date, "buy_price": buy_entry["close"],
+                            "sell_date": "", "sell_price": 0.0, "return_pct": 0.0, "skipped": True,
+                        })
+                        continue
 
                     buy_price = buy_entry["close"]
-
-                    # Limit-down sell check: postpone if close is at limit-down
                     actual_sell_date = sell_date
                     sell_price = None
                     postpone_count = 0
@@ -762,7 +1206,6 @@ def lgb_backtest_sim(
                                 limit_down_c = prev_sell_entry["close"] * (1.0 - limit_pct_c2)
                                 if sell_entry["close"] <= limit_down_c * 1.001:
                                     at_limit_down = True
-                        # Fallback: use pct_chg when pre_close unavailable
                         if not at_limit_down and sell_entry.get("pct_chg", 0) <= -limit_pct_c2 * 99.0:
                             at_limit_down = True
                         if at_limit_down:
@@ -782,8 +1225,16 @@ def lgb_backtest_sim(
                     if sell_price is None:
                         continue
                     skipped = False
+
+                    if stop_strategy == "loss_aversion":
+                        eff_sd, eff_sp = _check_loss_stop(
+                            code, buy_date, buy_price, actual_sell_date,
+                            price_map, adj_map, trading_days_sorted,
+                        )
+                        if eff_sp > 0:
+                            actual_sell_date = eff_sd
+                            sell_price = eff_sp
                 else:
-                    # ── Open-to-open with limit checks ──
                     buy_entry = price_map.get((code, buy_date))
                     if not buy_entry or buy_entry["open"] <= 0:
                         continue
@@ -797,20 +1248,18 @@ def lgb_backtest_sim(
                             limit_up = prev_entry["close"] * (1.0 + limit_pct)
                             if buy_entry["open"] >= limit_up * 0.999:
                                 at_limit_up = True
-                    # Fallback: use pct_chg when pre_close unavailable
                     if not at_limit_up and buy_entry.get("pct_chg", 0) >= limit_pct * 99.0:
                         at_limit_up = True
                     if at_limit_up:
-                        trades.append(LGBBacktestTradeItem(
-                            pred_date=pred_date, stock_code=code, ts_code=ts_code,
-                            stock_name=stock_name, rank=rank,
-                            buy_date=buy_date, buy_price=buy_entry["open"],
-                            sell_date="", sell_price=0.0, return_pct=0.0, skipped=True,
-                        ))
+                        trades.append({
+                            "pred_date": pred_date, "stock_code": code, "ts_code": ts_code,
+                            "stock_name": stock_name, "rank": rank,
+                            "buy_date": buy_date, "buy_price": buy_entry["open"],
+                            "sell_date": "", "sell_price": 0.0, "return_pct": 0.0, "skipped": True,
+                        })
                         continue
 
                     buy_price = buy_entry["open"]
-
                     actual_sell_date = sell_date
                     actual_sell_price = None
                     postpone_count = 0
@@ -833,7 +1282,6 @@ def lgb_backtest_sim(
                                 limit_down = prev_sell_entry["close"] * (1.0 - limit_pct)
                                 if sell_entry["open"] <= limit_down * 1.001:
                                     at_limit_down = True
-                        # Fallback: use pct_chg when pre_close unavailable
                         if not at_limit_down and sell_entry.get("pct_chg", 0) <= -limit_pct * 99.0:
                             at_limit_down = True
                         if at_limit_down:
@@ -854,10 +1302,35 @@ def lgb_backtest_sim(
                     sell_price = actual_sell_price
                     skipped = False
 
-                adj_b = adj_map.get((code, buy_date), 1.0)
-                adj_s = adj_map.get((code, actual_sell_date), 1.0)
+                    if stop_strategy == "loss_aversion":
+                        eff_sd, eff_sp = _check_loss_stop(
+                            code, buy_date, buy_price, actual_sell_date,
+                            price_map, adj_map, trading_days_sorted,
+                        )
+                        if eff_sp > 0:
+                            actual_sell_date = eff_sd
+                            sell_price = eff_sp
+
+                adj_b = _get_adj(code, buy_date)
+                adj_s = _get_adj(code, actual_sell_date)
                 raw_ret = (sell_price - buy_price) / buy_price
                 ret = round((1.0 + raw_ret) * (adj_s / adj_b) - 1.0, 6)
+
+                # Dead-hold: if losing at sell_date, extend up to 20 trading days
+                was_dead_held = False
+                if stop_strategy == "dead_hold" and ret < 0:
+                    ext_sd, ext_sp, was_ext = _check_dead_hold(
+                        code, buy_date, buy_price, actual_sell_date,
+                        price_map, adj_map, trading_days_sorted,
+                    )
+                    if was_ext:
+                        was_dead_held = True
+                        actual_sell_date = ext_sd
+                        sell_price = ext_sp
+                        adj_s2 = _get_adj(code, actual_sell_date)
+                        raw_ret2 = (sell_price - buy_price) / buy_price
+                        ret = round((1.0 + raw_ret2) * (adj_s2 / adj_b) - 1.0, 6)
+
                 slot_trades.append({
                     "code": code, "ts_code": ts_code, "stock_name": stock_name,
                     "rank": rank, "buy_price": buy_price, "sell_price": sell_price,
@@ -878,14 +1351,14 @@ def lgb_backtest_sim(
 
             slot_ret = 0.0
             for st in slot_trades:
-                slot_ret += st["ret"] / n_stocks  # equal-weight within slot
-                trades.append(LGBBacktestTradeItem(
-                    pred_date=pred_date, stock_code=st["code"], ts_code=st["ts_code"],
-                    stock_name=st["stock_name"], rank=st["rank"],
-                    buy_date=buy_date, buy_price=st["buy_price"],
-                    sell_date=st["actual_sell_date"], sell_price=st["sell_price"],
-                    return_pct=st["ret"], skipped=st["skipped"],
-                ))
+                slot_ret += st["ret"] / n_stocks
+                trades.append({
+                    "pred_date": pred_date, "stock_code": st["code"], "ts_code": st["ts_code"],
+                    "stock_name": st["stock_name"], "rank": st["rank"],
+                    "buy_date": buy_date, "buy_price": st["buy_price"],
+                    "sell_date": st["actual_sell_date"], "sell_price": st["sell_price"],
+                    "return_pct": st["ret"], "skipped": st["skipped"],
+                })
 
             active_positions.append({
                 "entry_value": actual_cash_used,
@@ -893,21 +1366,40 @@ def lgb_backtest_sim(
                 "ret_pct": slot_ret,
             })
 
-        # 4. Record capital curve
         locked_value = sum(p["entry_value"] for p in active_positions)
         portfolio_value = cash + locked_value
+        c_t = portfolio_value / INITIAL_CAPITAL
+        if capital_curve:
+            c_prev = capital_curve[-1]["capital"]
+            daily_ret = c_t / c_prev - 1.0 if c_prev > 0 else 0.0
+        else:
+            daily_ret = 0.0
         capital_curve.append({
             "date": buy_date,
-            "capital": round(portfolio_value / INITIAL_CAPITAL, 6),
-            "daily_return": round((portfolio_value / INITIAL_CAPITAL - 1.0)
-                                  - (capital_curve[-1]["capital"] - 1.0 if capital_curve else 0), 4),
+            "capital": round(c_t, 6),
+            "daily_return": round(daily_ret, 6),
         })
 
-    # 6. Compute metrics on a per-trade basis (holding trades excluded)
-    completed_trades = [t for t in trades if not t.skipped and t.sell_date != ""]
-    skipped_count = sum(1 for t in trades if t.skipped)
-    holding_count = sum(1 for t in trades if not t.skipped and t.sell_date == "")
-    win_count = sum(1 for t in completed_trades if t.return_pct > 0)
+    # Settle remaining active positions at market value for final capital
+    holding_gain = 0.0
+    for pos in active_positions:
+        holding_gain += pos["entry_value"] * pos["ret_pct"]
+    if active_positions:
+        final_cash = cash + sum(p["entry_value"] for p in active_positions) + holding_gain
+        final_portfolio = final_cash / INITIAL_CAPITAL
+        if capital_curve and latest_td:
+            c_prev = capital_curve[-1]["capital"]
+            final_daily_ret = final_portfolio / c_prev - 1.0 if c_prev > 0 else 0.0
+            capital_curve.append({
+                "date": latest_td,
+                "capital": round(final_portfolio, 6),
+                "daily_return": round(final_daily_ret, 6),
+            })
+
+    holding_trades = [t for t in trades if not t["skipped"] and t["sell_date"] == ""]
+    completed_trades = [t for t in trades if not t["skipped"] and t["sell_date"] != ""]
+    skipped_count = sum(1 for t in trades if t["skipped"])
+    win_count = sum(1 for t in completed_trades if t["return_pct"] > 0)
     total_count = len(completed_trades)
 
     final_capital = capital_curve[-1]["capital"] if capital_curve else 1.0
@@ -923,13 +1415,46 @@ def lgb_backtest_sim(
         if dd < max_dd:
             max_dd = dd
 
-    metrics = LGBBacktestSimMetrics(
-        cumulative_return=round(final_capital - 1.0, 4),
-        win_rate=win_rate,
-        max_drawdown=round(max_dd, 4),
-        total_trades=total_count,
-        skipped_trades=skipped_count,
-    )
+    sharpe = _compute_sharpe(capital_curve)
+
+    return {
+        "error": None,
+        "metrics": {
+            "cumulative_return": round(final_capital - 1.0, 4),
+            "win_rate": win_rate,
+            "max_drawdown": round(max_dd, 4),
+            "sharpe_ratio": round(sharpe, 4),
+            "total_trades": total_count,
+            "skipped_trades": skipped_count,
+            "holding_trades": len(holding_trades),
+        },
+        "capital_curve": capital_curve,
+        "trades": trades,
+    }
+
+
+@router.get(
+    "/lgb/backtest-sim",
+    response_model=LGBBacktestSimResponse,
+    summary="LGB 预测交易回测模拟（基于预测文件）",
+)
+def lgb_backtest_sim(
+    forward_days: int = Query(..., ge=1, le=60, description="前向天数（1 或 3）"),
+    top_n: int = Query(5, ge=1, le=20, description="每预测日选取 Top N"),
+    exec_mode: str = Query("open", pattern="^(open|close)$", description="执行模式: open=开盘买入→开盘卖出, close=收盘买入→收盘卖出"),
+    stop_strategy: str = Query("none", pattern="^(none|loss_aversion|dead_hold)$", description="止损策略: none=默认, loss_aversion=亏损厌恶, dead_hold=跌了死扛"),
+):
+    cache_key = f"fwd{forward_days}_top{top_n}_{exec_mode}_st{stop_strategy}"
+    if cache_key in _backtest_cache:
+        return _backtest_cache[cache_key]
+
+    sim_result = _simulate_backtest(exec_mode, forward_days, top_n, stop_strategy)
+    if sim_result.get("error"):
+        raise HTTPException(status_code=404, detail=sim_result["error"])
+
+    metrics = LGBBacktestSimMetrics(**sim_result["metrics"])
+    trades = [LGBBacktestTradeItem(**t) for t in sim_result["trades"]]
+    capital_curve = sim_result["capital_curve"]
 
     result = LGBBacktestSimResponse(
         forward_days=forward_days,
@@ -953,37 +1478,520 @@ def lgb_backtest_sim_available():
     """扫描 lgb_reports/ 返回每个 exec_mode 下实际可用的 forward_days。"""
     project_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
     reports_dir = _os.path.join(project_root, "lgb_reports")
+    # Discover exec modes from directory names
+    exec_dirs = {"open2open": "open", "close2close": "close"}
     result = {"open": [], "close": []}
-    for exec_key, dir_name in [("open", "open2open"), ("close", "close2close")]:
+    for dir_name, exec_key in exec_dirs.items():
         base = _os.path.join(reports_dir, dir_name)
         if not _os.path.isdir(base):
             continue
-        for fwd in [3, 5, 10]:
-            fwd_dir = _os.path.join(base, f"fwd{fwd}d")
-            if _os.path.isdir(fwd_dir):
-                json_count = len(_glob.glob(_os.path.join(fwd_dir, "*.json")))
-                if json_count > 0:
-                    result[exec_key].append(fwd)
+        for entry in sorted(_os.listdir(base)):
+            if entry.startswith("fwd") and entry.endswith("d"):
+                fwd_dir = _os.path.join(base, entry)
+                if _os.path.isdir(fwd_dir):
+                    json_count = len(_glob.glob(_os.path.join(fwd_dir, "*.json")))
+                    if json_count > 0:
+                        try:
+                            fwd = int(entry[3:-1])
+                            result[exec_key].append(fwd)
+                        except ValueError:
+                            pass
+        result[exec_key].sort()
     return result
 
 
+# ── Brute-Force Search ──
+
+_brute_force_tasks: Dict[str, dict] = {}
+
+
+def _run_brute_force_search(task_id: str):
+    """Background: iterate over all available forward_days, call _simulate_backtest, save report."""
+    task = _brute_force_tasks.get(task_id)
+    if not task:
+        return
+    task["status"] = "running"
+    task["status_message"] = "Starting brute-force search..."
+
+    try:
+        stop_strategies = ["none", "loss_aversion", "dead_hold"]
+        # ── Discover everything from lgb_reports/ cache files ──
+        project_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
+        reports_root = _os.path.join(project_root, "lgb_reports")
+
+        # 1) exec_modes from directory names (open2open→open, close2close→close)
+        exec_mode_map: Dict[str, str] = {}
+        all_forward_days: set = set()
+        max_top_n = 0
+        for dir_name in sorted(_os.listdir(reports_root)):
+            dir_path = _os.path.join(reports_root, dir_name)
+            if not _os.path.isdir(dir_path) or dir_name.startswith("."):
+                continue
+            if dir_name == "open2open":
+                exec_mode_map["open2open"] = "open"
+            elif dir_name == "close2close":
+                exec_mode_map["close2close"] = "close"
+            else:
+                continue
+
+            # 2) forward_days from fwd{N}d subdirectories
+            for entry in sorted(_os.listdir(dir_path)):
+                if not entry.startswith("fwd") or not entry.endswith("d"):
+                    continue
+                fwd_dir = _os.path.join(dir_path, entry)
+                if not _os.path.isdir(fwd_dir):
+                    continue
+                try:
+                    fwd = int(entry[3:-1])
+                except ValueError:
+                    continue
+                all_forward_days.add(fwd)
+
+                # 3) max top_n from prediction JSON files (sample first file per combo)
+                json_files = _glob.glob(_os.path.join(fwd_dir, "*.json"))
+                if json_files:
+                    try:
+                        with open(json_files[0], "r", encoding="utf-8") as fh:
+                            data = _json.load(fh)
+                        n_preds = len(data.get("predictions", []))
+                        if n_preds > max_top_n:
+                            max_top_n = n_preds
+                    except Exception:
+                        pass
+
+        exec_modes = sorted(set(exec_mode_map.values()))
+        forward_days_list = sorted(all_forward_days) or [3, 5, 10]
+        top_n_list = list(range(1, max(max_top_n, 5) + 1))
+        total = len(stop_strategies) * len(exec_modes) * len(forward_days_list) * len(top_n_list)
+
+        all_results: list = []
+        progress = 0
+
+        for st in stop_strategies:
+            for em in exec_modes:
+                for fwd in forward_days_list:
+                    for tn in top_n_list:
+                        progress += 1
+                        task["progress_current"] = progress
+                        task["progress_total"] = total
+                        task["status_message"] = f"Simulating {st} {em} fwd={fwd} top={tn} ({progress}/{total})"
+
+                        try:
+                            sim = _simulate_backtest(em, fwd, tn, stop_strategy=st)
+                        except Exception as exc:
+                            import traceback
+                            sim = {"error": f"Exception: {exc}\n{traceback.format_exc()}"}
+                        item = LGBBruteForceItem(
+                            exec_mode=em,
+                            forward_days=fwd,
+                            top_n=tn,
+                            stop_strategy=st,
+                            cumulative_return=0.0,
+                            sharpe_ratio=0.0,
+                            win_rate=0.0,
+                            max_drawdown=0.0,
+                            total_trades=0,
+                            skipped_trades=0,
+                        )
+                        if sim.get("error"):
+                            item.error = sim["error"]
+                        elif sim.get("metrics"):
+                            m = sim["metrics"]
+                            item.cumulative_return = m.get("cumulative_return", 0.0)
+                            item.sharpe_ratio = m.get("sharpe_ratio", 0.0)
+                            item.win_rate = m.get("win_rate", 0.0)
+                            item.max_drawdown = m.get("max_drawdown", 0.0)
+                            item.total_trades = m.get("total_trades", 0)
+                            item.skipped_trades = m.get("skipped_trades", 0)
+                        all_results.append(item)
+
+        # Sort
+        valid = [r for r in all_results if not r.error]
+        by_return = sorted(valid, key=lambda r: r.cumulative_return, reverse=True)
+        by_sharpe = sorted(valid, key=lambda r: r.sharpe_ratio, reverse=True)
+
+        result = LGBBruteForceResult(
+            best_by_return=by_return[0] if by_return else None,
+            best_by_sharpe=by_sharpe[0] if by_sharpe else None,
+            top5_by_return=by_return[:5],
+            top5_by_sharpe=by_sharpe[:5],
+            all_results=all_results,
+        )
+
+        # Generate Markdown report
+        now_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        project_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
+        reports_dir = _os.path.join(project_root, "lgb_reports")
+        _os.makedirs(reports_dir, exist_ok=True)
+        report_path = _os.path.join(reports_dir, f"brute_force_{now_str}.md")
+
+        lines = [
+            f"# LGB 全方案搜索报告",
+            f"",
+            f"**生成时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            f"**搜索方案数**: {total} ({len(stop_strategies)} stop × {len(exec_modes)} exec × {len(forward_days_list)} fwd × {len(top_n_list)} top_n)",
+            f"**成功方案数**: {len(valid)}",
+            f"",
+            f"---",
+            f"",
+            f"## 最佳收益方案 (Top 5)",
+            f"",
+            f"| # | stop_strategy | exec_mode | forward_days | top_n | cumulative_return | sharpe_ratio | win_rate | max_drawdown | total_trades |",
+            f"|---|---|---|---|---|---|---|---|---|---|",
+        ]
+        for i, r in enumerate(by_return[:5], 1):
+            lines.append(
+                f"| {i} | {r.stop_strategy} | {r.exec_mode} | {r.forward_days} | {r.top_n} | "
+                f"{r.cumulative_return:.4f} | {r.sharpe_ratio:.4f} | {r.win_rate:.4f} | "
+                f"{r.max_drawdown:.4f} | {r.total_trades} |"
+            )
+        lines += [
+            f"",
+            f"## 最佳夏普方案 (Top 5)",
+            f"",
+            f"| # | stop_strategy | exec_mode | forward_days | top_n | cumulative_return | sharpe_ratio | win_rate | max_drawdown | total_trades |",
+            f"|---|---|---|---|---|---|---|---|---|---|",
+        ]
+        for i, r in enumerate(by_sharpe[:5], 1):
+            lines.append(
+                f"| {i} | {r.stop_strategy} | {r.exec_mode} | {r.forward_days} | {r.top_n} | "
+                f"{r.cumulative_return:.4f} | {r.sharpe_ratio:.4f} | {r.win_rate:.4f} | "
+                f"{r.max_drawdown:.4f} | {r.total_trades} |"
+            )
+        lines += [
+            f"",
+            f"## 全部方案",
+            f"",
+            f"| # | stop_strategy | exec_mode | forward_days | top_n | cumulative_return | sharpe_ratio | win_rate | max_drawdown | total_trades | error |",
+            f"|---|---|---|---|---|---|---|---|---|---|---|",
+        ]
+        for i, r in enumerate(all_results, 1):
+            err = r.error[:30] if r.error else ""
+            lines.append(
+                f"| {i} | {r.stop_strategy} | {r.exec_mode} | {r.forward_days} | {r.top_n} | "
+                f"{r.cumulative_return:.4f} | {r.sharpe_ratio:.4f} | {r.win_rate:.4f} | "
+                f"{r.max_drawdown:.4f} | {r.total_trades} | {err} |"
+            )
+
+        with open(report_path, "w", encoding="utf-8") as fh:
+            fh.write("\n".join(lines) + "\n")
+
+        result.report_path = report_path
+        task["status"] = "completed"
+        task["result"] = result
+        task["status_message"] = f"Done — {len(valid)}/{total} combos valid, report saved to {report_path}"
+        task["finished_at"] = datetime.now().isoformat()
+    except Exception as exc:
+        import traceback
+        task["status"] = "failed"
+        task["error"] = f"{exc}\n{traceback.format_exc()}"
+        task["status_message"] = f"Failed: {exc}"
+        task["finished_at"] = datetime.now().isoformat()
+
+
+@router.post(
+    "/lgb/brute-force-search",
+    summary="启动全方案搜索（异步）：遍历 90 种参数组合寻找收益/夏普最优方案",
+)
+def lgb_brute_force_search():
+    task_id = str(uuid.uuid4())[:8]
+    _brute_force_tasks[task_id] = {
+        "status": "pending",
+        "progress_current": 0,
+        "progress_total": 90,
+        "status_message": "Queued...",
+        "started_at": datetime.now().isoformat(),
+    }
+    threading.Thread(
+        target=_run_brute_force_search,
+        args=(task_id,),
+        daemon=True,
+    ).start()
+    return {"task_id": task_id, "status": "pending"}
+
+
+@router.get(
+    "/lgb/brute-force-search/status",
+    response_model=LGBBruteForceTaskStatus,
+    summary="查询全方案搜索任务状态",
+)
+def lgb_brute_force_search_status(
+    task_id: str = Query(..., description="任务 ID"),
+):
+    task = _brute_force_tasks.get(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务 ID 不存在")
+    return LGBBruteForceTaskStatus(
+        task_id=task_id,
+        status=task.get("status", "unknown"),
+        progress_current=task.get("progress_current", 0),
+        progress_total=task.get("progress_total", 90),
+        status_message=task.get("status_message", ""),
+        result=task.get("result"),
+        error=task.get("error", ""),
+    )
+
+
+_catch_up_tasks: Dict[str, dict] = {}
+
+
+def _run_catch_up(task_id: str):
+    """Run catch-up prediction for all combos."""
+    import logging
+    import traceback
+    from dateutil.relativedelta import relativedelta
+
+    _log = logging.getLogger(__name__)
+    task = _catch_up_tasks[task_id]
+    task["status"] = "running"
+
+    project_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
+    reports_root = _os.path.join(project_root, "lgb_reports")
+    models_dir = _os.path.join(project_root, "src", "data", "lgb_models")
+
+    db = DatabaseManager.get_instance()
+    with db.get_session() as session:
+        from sqlalchemy import func
+        dates_raw = (
+            session.query(StockDaily.date)
+            .group_by(StockDaily.date)
+            .having(func.count(StockDaily.code) >= 100)
+            .order_by(StockDaily.date.desc())
+            .first()
+        )
+    if not dates_raw:
+        task["status"] = "failed"
+        task["error"] = "No trading days found"
+        return
+    latest_td = dates_raw[0].strftime("%Y%m%d") if hasattr(dates_raw[0], "strftime") else str(dates_raw[0]).replace("-", "")[:8]
+
+    # Discover all (exec_mode, forward_days) combos
+    combos: list = []
+    exec_dirs = {"open2open": "open", "close2close": "close"}
+    for dir_name, exec_mode in exec_dirs.items():
+        base = _os.path.join(reports_root, dir_name)
+        if not _os.path.isdir(base):
+            continue
+        for entry in sorted(_os.listdir(base)):
+            if not entry.startswith("fwd") or not entry.endswith("d"):
+                continue
+            try:
+                fwd = int(entry[3:-1])
+            except ValueError:
+                continue
+            fwd_dir = _os.path.join(base, entry)
+            if not _os.path.isdir(fwd_dir):
+                continue
+            combos.append((exec_mode, fwd, dir_name))
+
+    total = len(combos)
+    task["progress_total"] = total
+    results: list = []
+
+    for idx, (exec_mode, fwd, dir_name) in enumerate(combos):
+        task["progress_current"] = idx + 1
+        task["status_message"] = f"{dir_name} fwd{fwd}d..."
+
+        # Find latest prediction date and last training window
+        fwd_dir = _os.path.join(reports_root, dir_name, f"fwd{fwd}d")
+        json_files = sorted(_glob.glob(_os.path.join(fwd_dir, "*_pred_*.json")))
+
+        latest_pred_date = ""
+        last_train_s = ""
+        last_train_e = ""
+        if json_files:
+            for jf in reversed(json_files):
+                try:
+                    with open(jf, "r", encoding="utf-8") as fh:
+                        data = _json.load(fh)
+                    pd = data.get("pred_date", "")
+                    if pd > latest_pred_date:
+                        latest_pred_date = pd
+                    # Extract training window from filename
+                    fn = _os.path.basename(jf).replace(".json", "")
+                    parts = fn.split("_")
+                    for pi, p in enumerate(parts):
+                        if p.startswith("fwd"):
+                            if pi + 2 < len(parts) and len(parts[pi + 1]) == 8 and len(parts[pi + 2]) == 8:
+                                last_train_s = parts[pi + 1]
+                                last_train_e = parts[pi + 2]
+                            break
+                except Exception:
+                    continue
+
+        if latest_pred_date >= latest_td:
+            results.append({"exec_mode": exec_mode, "forward_days": fwd, "status": "up_to_date", "latest_pred": latest_pred_date})
+            continue
+
+        # Determine new training window
+        new_train_e = datetime.strptime(latest_td, "%Y%m%d") - timedelta(days=1)
+        new_pred_s = datetime.strptime(latest_pred_date, "%Y%m%d") + timedelta(days=1)
+
+        if last_train_s and last_train_e:
+            try:
+                old_train_s = datetime.strptime(last_train_s, "%Y%m%d")
+                old_train_e = datetime.strptime(last_train_e, "%Y%m%d")
+                # Slide training window forward 1 month only if pred crosses into a new month
+                old_pred_month = datetime.strptime(latest_pred_date, "%Y%m%d").month
+                new_pred_month = new_pred_s.month
+                if old_pred_month != new_pred_month:
+                    new_train_s = old_train_s + relativedelta(months=1)
+                else:
+                    new_train_s = old_train_s  # same window, just extend train_end
+            except Exception:
+                new_train_s = datetime(2024, 1, 1)
+        else:
+            new_train_s = datetime(2024, 1, 1)
+            new_pred_s = datetime.strptime(latest_td, "%Y%m%d") - timedelta(days=30)
+
+        new_train_s_str = new_train_s.strftime("%Y%m%d")
+        new_train_e_str = new_train_e.strftime("%Y%m%d")
+        new_pred_e_str = latest_td
+
+        task["status_message"] = f"{dir_name} fwd{fwd}d: 训练 {new_train_s_str}~{new_train_e_str}..."
+
+        try:
+            trainer = LGBTrainer(mode="postmarket", forward_days=fwd, exec_mode=exec_mode)
+            trainer.prepare_data(start_date=new_train_s_str, end_date=new_train_e_str)
+            trainer.train()
+
+            # Get all trading days from pred_start to latest
+            from scripts.rolling_lgb_backtest import get_trading_days
+            trading_days = get_trading_days(new_pred_s.strftime("%Y%m%d"), new_pred_e_str)
+            ok = 0
+            fail = 0
+            for td in trading_days:
+                try:
+                    from scripts.rolling_lgb_backtest import save_daily_report, _ymd
+                    trainer.predict(target_date=_ymd(td))
+                    save_daily_report(trainer, _ymd(td))
+                    ok += 1
+                except Exception:
+                    fail += 1
+
+            # Delete old models for this combo
+            if _os.path.isdir(models_dir):
+                for mf in _os.listdir(models_dir):
+                    if mf.endswith(".joblib") and f"fwd{fwd}d" in mf:
+                        exec_tag = "open2open" if exec_mode == "open" else "close2close"
+                        if exec_tag in mf:
+                            # Keep only the latest (just trained) model for this combo
+                            # The newly trained model path is the latest
+                            pass  # We'll just remove old ones below
+                # Remove old model files for this combo (keep the newly saved one)
+                combo_models = sorted(
+                    [m for m in _os.listdir(models_dir) if m.endswith(".joblib") and f"fwd{fwd}d" in m and (("open2open" if exec_mode == "open" else "close2close") in m)],
+                    reverse=True,
+                )
+                for old_m in combo_models[1:]:  # keep the latest
+                    _os.remove(_os.path.join(models_dir, old_m))
+
+            trainer.save()
+            results.append({
+                "exec_mode": exec_mode, "forward_days": fwd, "status": "done",
+                "train_window": f"{new_train_s_str}~{new_train_e_str}",
+                "pred_range": f"{new_pred_s.strftime('%Y%m%d')}~{new_pred_e_str}",
+                "ok": ok, "fail": fail,
+            })
+
+        except Exception as e:
+            _log.error(f"Catch-up failed for {exec_mode} fwd{fwd}: {e}")
+            results.append({"exec_mode": exec_mode, "forward_days": fwd, "status": "failed", "error": str(e)})
+
+    task["status"] = "completed"
+    task["result"] = {"combos": results, "latest_trading_day": latest_td}
+    task["finished_at"] = datetime.now().isoformat()
+
+
+@router.post(
+    "/lgb/catch-up",
+    summary="补全所有模式的预测到最新日期",
+)
+def lgb_catch_up():
+    """检查每个 (exec_mode, forward_days) 组合是否有未预测日期，自动补全。
+    若跨月则重新训练（滑动窗口），并删除旧模型。"""
+    for tid, t in list(_catch_up_tasks.items()):
+        if t.get("status") == "running":
+            raise HTTPException(
+                status_code=409,
+                detail=f"已有补全任务运行中（task_id={tid}），请等待完成后再试",
+            )
+
+    task_id = str(uuid.uuid4())[:8]
+    _catch_up_tasks[task_id] = {
+        "status": "pending",
+        "progress_current": 0,
+        "progress_total": 0,
+        "status_message": "Queued...",
+        "started_at": datetime.now().isoformat(),
+    }
+    threading.Thread(
+        target=_run_catch_up,
+        args=(task_id,),
+        daemon=True,
+    ).start()
+    return {"task_id": task_id, "status": "pending"}
+
+
+@router.get(
+    "/lgb/catch-up/status",
+    summary="查询补全预测任务状态",
+)
+def lgb_catch_up_status(task_id: str = Query(..., description="任务 ID")):
+    task = _catch_up_tasks.get(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务 ID 不存在")
+    return {
+        "task_id": task_id,
+        "status": task.get("status", "unknown"),
+        "progress_current": task.get("progress_current", 0),
+        "progress_total": task.get("progress_total", 0),
+        "status_message": task.get("status_message", ""),
+        "result": task.get("result"),
+        "error": task.get("error", ""),
+    }
+
+
 def _warmup_backtest_cache():
-    """Pre-warm backtest-sim cache in background to avoid first-request timeout."""
+    """Pre-warm backtest-sim cache in background to avoid first-request timeout.
+    Discovers available combos dynamically from lgb_reports/ directory."""
     import logging
     _log = logging.getLogger(__name__)
-    common_combos = [
-        (3, 5, "open"),
-        (3, 5, "close"),
-        (5, 5, "open"),
-        (5, 5, "close"),
-        (10, 5, "open"),
-        (10, 5, "close"),
-    ]
-    for fwd, tn, em in common_combos:
-        key = f"fwd{fwd}_top{tn}_{em}"
+    project_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
+    reports_root = _os.path.join(project_root, "lgb_reports")
+
+    combos: list = []
+    exec_dirs = {"open2open": "open", "close2close": "close"}
+    for dir_name, exec_mode in exec_dirs.items():
+        base = _os.path.join(reports_root, dir_name)
+        if not _os.path.isdir(base):
+            continue
+        for entry in sorted(_os.listdir(base)):
+            if not entry.startswith("fwd") or not entry.endswith("d"):
+                continue
+            try:
+                fwd = int(entry[3:-1])
+            except ValueError:
+                continue
+            fwd_dir = _os.path.join(base, entry)
+            if not _os.path.isdir(fwd_dir):
+                continue
+            # Sample one JSON file to find top_n
+            json_files = _glob.glob(_os.path.join(fwd_dir, "*.json"))
+            n_preds = 5
+            if json_files:
+                try:
+                    with open(json_files[0], "r", encoding="utf-8") as fh:
+                        data = _json.load(fh)
+                    n_preds = len(data.get("predictions", []))
+                except Exception:
+                    pass
+            combos.append((fwd, min(n_preds, 5), exec_mode))
+
+    for fwd, tn, em in combos:
+        key = f"fwd{fwd}_top{tn}_{em}_stnone"
         if key not in _backtest_cache:
             try:
-                # Internal call — duplicate logic but avoids circular imports
                 lgb_backtest_sim(forward_days=fwd, top_n=tn, exec_mode=em)
                 _log.info(f"Backtest cache warmed: {key}")
             except Exception:

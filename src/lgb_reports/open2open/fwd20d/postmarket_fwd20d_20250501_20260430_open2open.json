@@ -1,0 +1,110 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "generated_at": "2026-05-21T17:00:58.347638",
+  "training_metrics": {
+    "cv_rmse_mean": 0.15745620089392012,
+    "cv_rmse_std": 0.02712943507860998,
+    "cv_scores": [
+      0.160993,
+      0.168897,
+      0.126831,
+      0.130092,
+      0.200467
+    ],
+    "rank_ic_mean": 0.180929,
+    "rank_ic_std": 0.098709,
+    "icir": 1.8329,
+    "oof_corr": 0.113925,
+    "n_samples": 17997,
+    "n_features": 22
+  },
+  "feature_importance": {
+    "gain": {
+      "broker_recommend": 661.3092155866325,
+      "buyback": 459.36671690270305,
+      "margin": 356.372383216396,
+      "chip": 319.6211824938655,
+      "vwap_reversal": 211.86678452789783,
+      "ranking_momentum": 121.32430875860155,
+      "fundamental": 84.12184417247772,
+      "technical": 80.66700615547597,
+      "gtja114": 41.097464460879564,
+      "alpha042": 21.79974371008575,
+      "vwap_deviation": 19.209407728165388,
+      "money_flow": 18.87640657648444,
+      "gap_reversal": 15.04694351926446,
+      "liquid_oversold": 13.323171272873878,
+      "limit": 1.5408857930451632,
+      "hot_money": 0.10037000104784966,
+      "concept_heat": 0.0,
+      "insider_buy": 0.0,
+      "institution_hold": 0.0,
+      "performance": 0.0
+    },
+    "split": {
+      "broker_recommend": 1436.0,
+      "buyback": 1064.0,
+      "chip": 664.0,
+      "margin": 635.0,
+      "vwap_reversal": 471.0,
+      "ranking_momentum": 382.0,
+      "fundamental": 293.0,
+      "technical": 278.0,
+      "gtja114": 186.0,
+      "alpha042": 156.0,
+      "vwap_deviation": 120.0,
+      "money_flow": 118.0,
+      "gap_reversal": 92.0,
+      "liquid_oversold": 91.0,
+      "limit": 12.0,
+      "hot_money": 2.0,
+      "concept_heat": 0.0,
+      "insider_buy": 0.0,
+      "institution_hold": 0.0,
+      "performance": 0.0
+    }
+  },
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688121",
+      "stock_code": "688121",
+      "stock_name": "卓然股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.4
+    },
+    {
+      "rank": 2,
+      "ts_code": "001309",
+      "stock_code": "001309",
+      "stock_name": "德明利",
+      "lgb_score": 91.98,
+      "raw_score": 0.35
+    },
+    {
+      "rank": 3,
+      "ts_code": "300073",
+      "stock_code": "300073",
+      "stock_name": "当升科技",
+      "lgb_score": 70.73,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 4,
+      "ts_code": "688808",
+      "stock_code": "688808",
+      "stock_name": "联讯仪器",
+      "lgb_score": 64.45,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 5,
+      "ts_code": "002384",
+      "stock_code": "002384",
+      "stock_name": "东山精密",
+      "lgb_score": 64.37,
+      "raw_score": 0.19
+    }
+  ]
+}

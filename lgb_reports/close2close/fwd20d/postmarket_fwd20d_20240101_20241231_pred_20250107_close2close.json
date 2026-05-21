@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20240101",
+  "train_end": "20241231",
+  "pred_date": "20250107",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688181.SH",
+      "stock_code": "688181",
+      "stock_name": "八亿时空",
+      "lgb_score": 100.0,
+      "raw_score": 0.36
+    },
+    {
+      "rank": 2,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 96.08,
+      "raw_score": 0.34
+    },
+    {
+      "rank": 3,
+      "ts_code": "300042.SZ",
+      "stock_code": "300042",
+      "stock_name": "朗科科技",
+      "lgb_score": 95.85,
+      "raw_score": 0.33
+    },
+    {
+      "rank": 4,
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 92.32,
+      "raw_score": 0.31
+    },
+    {
+      "rank": 5,
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 91.51,
+      "raw_score": 0.31
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.43,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.007655,
+    "std": 0.033616,
+    "skew": -0.1171,
+    "kurtosis": 9.6918,
+    "min": -0.203167,
+    "max": 0.357246,
+    "median": 0.003691
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.13778801555138342,
+    "cv_rmse_std": 0.05512352713294029,
+    "cv_scores": [
+      0.120939,
+      0.125243,
+      0.092441,
+      0.245523,
+      0.104794
+    ],
+    "rank_ic_mean": 0.13241,
+    "rank_ic_std": 0.042613,
+    "icir": 3.1073,
+    "oof_corr": 0.017743,
+    "n_samples": 26429,
+    "n_features": 22
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20240201",
+  "train_end": "20250131",
+  "pred_date": "20250220",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301205.SZ",
+      "stock_code": "301205",
+      "stock_name": "联特科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.35
+    },
+    {
+      "rank": 2,
+      "ts_code": "300042.SZ",
+      "stock_code": "300042",
+      "stock_name": "朗科科技",
+      "lgb_score": 98.92,
+      "raw_score": 0.34
+    },
+    {
+      "rank": 3,
+      "ts_code": "688135.SH",
+      "stock_code": "688135",
+      "stock_name": "利扬芯片",
+      "lgb_score": 98.32,
+      "raw_score": 0.34
+    },
+    {
+      "rank": 4,
+      "ts_code": "688368.SH",
+      "stock_code": "688368",
+      "stock_name": "晶丰明源",
+      "lgb_score": 97.07,
+      "raw_score": 0.33
+    },
+    {
+      "rank": 5,
+      "ts_code": "300842.SZ",
+      "stock_code": "300842",
+      "stock_name": "帝科股份",
+      "lgb_score": 96.93,
+      "raw_score": 0.33
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.79,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.01589,
+    "std": 0.041276,
+    "skew": 2.5438,
+    "kurtosis": 15.9269,
+    "min": -0.16433,
+    "max": 0.346825,
+    "median": -0.015764
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.14749090610031385,
+    "cv_rmse_std": 0.04892441444614424,
+    "cv_scores": [
+      0.136386,
+      0.106591,
+      0.240533,
+      0.108627,
+      0.145317
+    ],
+    "rank_ic_mean": 0.094319,
+    "rank_ic_std": 0.035056,
+    "icir": 2.6905,
+    "oof_corr": -0.052618,
+    "n_samples": 29001,
+    "n_features": 22
+  }
+}

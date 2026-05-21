@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20240501",
+  "train_end": "20250430",
+  "pred_date": "20250516",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688135.SH",
+      "stock_code": "688135",
+      "stock_name": "利扬芯片",
+      "lgb_score": 100.0,
+      "raw_score": 0.42
+    },
+    {
+      "rank": 2,
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 99.7,
+      "raw_score": 0.42
+    },
+    {
+      "rank": 3,
+      "ts_code": "920088.BJ",
+      "stock_code": "920088.BJ",
+      "stock_name": "",
+      "lgb_score": 98.61,
+      "raw_score": 0.42
+    },
+    {
+      "rank": 4,
+      "ts_code": "301137.SZ",
+      "stock_code": "301137",
+      "stock_name": "哈焊华通",
+      "lgb_score": 97.72,
+      "raw_score": 0.41
+    },
+    {
+      "rank": 5,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 97.63,
+      "raw_score": 0.41
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.04,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.052735,
+    "std": 0.03982,
+    "skew": 4.9084,
+    "kurtosis": 42.9092,
+    "min": -0.23072,
+    "max": 0.424151,
+    "median": -0.066305
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.1524325198858344,
+    "cv_rmse_std": 0.05502495467434665,
+    "cv_scores": [
+      0.102083,
+      0.25702,
+      0.123745,
+      0.123601,
+      0.155714
+    ],
+    "rank_ic_mean": 0.056601,
+    "rank_ic_std": 0.070774,
+    "icir": 0.7998,
+    "oof_corr": 0.001603,
+    "n_samples": 25817,
+    "n_features": 22
+  }
+}

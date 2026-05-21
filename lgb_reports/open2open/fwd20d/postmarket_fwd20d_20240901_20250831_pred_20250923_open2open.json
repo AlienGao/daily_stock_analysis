@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20240901",
+  "train_end": "20250831",
+  "pred_date": "20250923",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 100.0,
+      "raw_score": 0.31
+    },
+    {
+      "rank": 2,
+      "ts_code": "600177.SH",
+      "stock_code": "600177",
+      "stock_name": "雅戈尔",
+      "lgb_score": 93.99,
+      "raw_score": 0.28
+    },
+    {
+      "rank": 3,
+      "ts_code": "000950.SZ",
+      "stock_code": "000950",
+      "stock_name": "重药控股",
+      "lgb_score": 92.15,
+      "raw_score": 0.27
+    },
+    {
+      "rank": 4,
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
+      "lgb_score": 89.6,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 5,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 89.28,
+      "raw_score": 0.26
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.52,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.011972,
+    "std": 0.026756,
+    "skew": 2.1796,
+    "kurtosis": 19.3924,
+    "min": -0.178815,
+    "max": 0.308261,
+    "median": -0.015652
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.15155301427825163,
+    "cv_rmse_std": 0.011362028641538974,
+    "cv_scores": [
+      0.138459,
+      0.166723,
+      0.15141,
+      0.139586,
+      0.161587
+    ],
+    "rank_ic_mean": 0.109946,
+    "rank_ic_std": 0.082849,
+    "icir": 1.3271,
+    "oof_corr": 0.066214,
+    "n_samples": 25429,
+    "n_features": 22
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20240201",
+  "train_end": "20250131",
+  "pred_date": "20250213",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688181.SH",
+      "stock_code": "688181",
+      "stock_name": "八亿时空",
+      "lgb_score": 100.0,
+      "raw_score": 0.36
+    },
+    {
+      "rank": 2,
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 97.68,
+      "raw_score": 0.34
+    },
+    {
+      "rank": 3,
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 94.87,
+      "raw_score": 0.33
+    },
+    {
+      "rank": 4,
+      "ts_code": "301372.SZ",
+      "stock_code": "301372",
+      "stock_name": "科净源",
+      "lgb_score": 93.34,
+      "raw_score": 0.32
+    },
+    {
+      "rank": 5,
+      "ts_code": "300995.SZ",
+      "stock_code": "300995",
+      "stock_name": "奇德新材",
+      "lgb_score": 92.95,
+      "raw_score": 0.32
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.61,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.047106,
+    "std": 0.032335,
+    "skew": 3.3296,
+    "kurtosis": 28.6831,
+    "min": -0.209589,
+    "max": 0.357026,
+    "median": -0.049117
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.14285145817030712,
+    "cv_rmse_std": 0.04690751512393601,
+    "cv_scores": [
+      0.131489,
+      0.107915,
+      0.235433,
+      0.117541,
+      0.121879
+    ],
+    "rank_ic_mean": 0.101905,
+    "rank_ic_std": 0.05628,
+    "icir": 1.8107,
+    "oof_corr": 0.004182,
+    "n_samples": 27110,
+    "n_features": 22
+  }
+}

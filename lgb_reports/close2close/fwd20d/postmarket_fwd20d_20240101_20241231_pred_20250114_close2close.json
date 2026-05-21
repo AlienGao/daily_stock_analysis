@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20240101",
+  "train_end": "20241231",
+  "pred_date": "20250114",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 100.0,
+      "raw_score": 0.31
+    },
+    {
+      "rank": 2,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 96.47,
+      "raw_score": 0.29
+    },
+    {
+      "rank": 3,
+      "ts_code": "002031.SZ",
+      "stock_code": "002031",
+      "stock_name": "巨轮智能",
+      "lgb_score": 95.42,
+      "raw_score": 0.29
+    },
+    {
+      "rank": 4,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 95.32,
+      "raw_score": 0.29
+    },
+    {
+      "rank": 5,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 94.29,
+      "raw_score": 0.28
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.43,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.008194,
+    "std": 0.032878,
+    "skew": -0.1483,
+    "kurtosis": 8.7591,
+    "min": -0.185014,
+    "max": 0.312206,
+    "median": 0.003691
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.13778801555138342,
+    "cv_rmse_std": 0.05512352713294029,
+    "cv_scores": [
+      0.120939,
+      0.125243,
+      0.092441,
+      0.245523,
+      0.104794
+    ],
+    "rank_ic_mean": 0.13241,
+    "rank_ic_std": 0.042613,
+    "icir": 3.1073,
+    "oof_corr": 0.017743,
+    "n_samples": 26429,
+    "n_features": 22
+  }
+}

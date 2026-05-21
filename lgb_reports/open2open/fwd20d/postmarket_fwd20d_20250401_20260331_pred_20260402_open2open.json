@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20250401",
+  "train_end": "20260331",
+  "pred_date": "20260402",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.38
+    },
+    {
+      "rank": 2,
+      "ts_code": "601138.SH",
+      "stock_code": "601138",
+      "stock_name": "工业富联",
+      "lgb_score": 96.16,
+      "raw_score": 0.35
+    },
+    {
+      "rank": 3,
+      "ts_code": "300757.SZ",
+      "stock_code": "300757",
+      "stock_name": "罗博特科",
+      "lgb_score": 93.53,
+      "raw_score": 0.34
+    },
+    {
+      "rank": 4,
+      "ts_code": "001309.SZ",
+      "stock_code": "001309",
+      "stock_name": "德明利",
+      "lgb_score": 88.79,
+      "raw_score": 0.31
+    },
+    {
+      "rank": 5,
+      "ts_code": "688813.SH",
+      "stock_code": "688813",
+      "stock_name": "泰金新能",
+      "lgb_score": 82.81,
+      "raw_score": 0.28
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.47,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.078291,
+    "std": 0.028508,
+    "skew": 4.1308,
+    "kurtosis": 30.3796,
+    "min": -0.176487,
+    "max": 0.376038,
+    "median": -0.088018
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.14248846986097002,
+    "cv_rmse_std": 0.014357582944710607,
+    "cv_scores": [
+      0.142921,
+      0.156465,
+      0.137978,
+      0.117971,
+      0.157108
+    ],
+    "rank_ic_mean": 0.209506,
+    "rank_ic_std": 0.09461,
+    "icir": 2.2144,
+    "oof_corr": 0.202181,
+    "n_samples": 18588,
+    "n_features": 22
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "generated_at": "2026-05-21T17:07:25.842784",
+  "training_metrics": {
+    "cv_rmse_mean": 0.151387485771107,
+    "cv_rmse_std": 0.05698543335821009,
+    "cv_scores": [
+      0.104755,
+      0.260542,
+      0.107009,
+      0.144899,
+      0.139732
+    ],
+    "rank_ic_mean": 0.124251,
+    "rank_ic_std": 0.028945,
+    "icir": 4.2927,
+    "oof_corr": 0.021143,
+    "n_samples": 25370,
+    "n_features": 22
+  },
+  "feature_importance": {
+    "gain": {
+      "broker_recommend": 1062.1254420913756,
+      "buyback": 500.46292109787464,
+      "chip": 442.27527710422873,
+      "margin": 378.23293797671795,
+      "vwap_reversal": 102.53142976015806,
+      "ranking_momentum": 93.88670441508293,
+      "fundamental": 90.44160341471434,
+      "technical": 58.017480842769146,
+      "vwap_deviation": 57.32485140115023,
+      "gtja114": 38.632461942732334,
+      "alpha042": 30.892327647656202,
+      "liquid_oversold": 15.157372266054153,
+      "gap_reversal": 14.999780416488647,
+      "money_flow": 7.89865617826581,
+      "hot_money": 0.7807422019541264,
+      "limit": 0.5020366013050079,
+      "concept_heat": 0.0,
+      "insider_buy": 0.0,
+      "institution_hold": 0.0,
+      "performance": 0.0
+    },
+    "split": {
+      "broker_recommend": 1643.0,
+      "buyback": 1027.0,
+      "chip": 894.0,
+      "margin": 693.0,
+      "vwap_reversal": 317.0,
+      "ranking_momentum": 291.0,
+      "fundamental": 252.0,
+      "technical": 227.0,
+      "alpha042": 153.0,
+      "vwap_deviation": 134.0,
+      "gtja114": 120.0,
+      "liquid_oversold": 97.0,
+      "gap_reversal": 84.0,
+      "money_flow": 53.0,
+      "hot_money": 9.0,
+      "limit": 6.0,
+      "concept_heat": 0.0,
+      "insider_buy": 0.0,
+      "institution_hold": 0.0,
+      "performance": 0.0
+    }
+  },
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002393",
+      "stock_code": "002393",
+      "stock_name": "力生制药",
+      "lgb_score": 100.0,
+      "raw_score": 0.41
+    },
+    {
+      "rank": 2,
+      "ts_code": "002368",
+      "stock_code": "002368",
+      "stock_name": "太极股份",
+      "lgb_score": 99.05,
+      "raw_score": 0.41
+    },
+    {
+      "rank": 3,
+      "ts_code": "002374",
+      "stock_code": "002374",
+      "stock_name": "中锐股份",
+      "lgb_score": 97.99,
+      "raw_score": 0.4
+    },
+    {
+      "rank": 4,
+      "ts_code": "002729",
+      "stock_code": "002729",
+      "stock_name": "好利科技",
+      "lgb_score": 97.25,
+      "raw_score": 0.39
+    },
+    {
+      "rank": 5,
+      "ts_code": "600386",
+      "stock_code": "600386",
+      "stock_name": "北巴传媒",
+      "lgb_score": 94.71,
+      "raw_score": 0.38
+    }
+  ]
+}

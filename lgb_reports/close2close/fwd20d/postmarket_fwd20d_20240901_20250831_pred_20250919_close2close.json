@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20240901",
+  "train_end": "20250831",
+  "pred_date": "20250919",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300796.SZ",
+      "stock_code": "300796",
+      "stock_name": "贝斯美",
+      "lgb_score": 100.0,
+      "raw_score": 0.29
+    },
+    {
+      "rank": 2,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 91.4,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 3,
+      "ts_code": "002511.SZ",
+      "stock_code": "002511",
+      "stock_name": "中顺洁柔",
+      "lgb_score": 88.38,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 4,
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
+      "lgb_score": 86.5,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 5,
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 86.37,
+      "raw_score": 0.22
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.59,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.012754,
+    "std": 0.032422,
+    "skew": -0.8071,
+    "kurtosis": 5.6026,
+    "min": -0.194174,
+    "max": 0.288128,
+    "median": 0.025594
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.15654362910797662,
+    "cv_rmse_std": 0.012576942067918203,
+    "cv_scores": [
+      0.160306,
+      0.163571,
+      0.167487,
+      0.132049,
+      0.159305
+    ],
+    "rank_ic_mean": 0.065852,
+    "rank_ic_std": 0.036339,
+    "icir": 1.8122,
+    "oof_corr": -0.018317,
+    "n_samples": 23499,
+    "n_features": 22
+  }
+}

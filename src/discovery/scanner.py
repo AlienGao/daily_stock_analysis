@@ -250,18 +250,7 @@ class IntradayScanner:
                 )
                 time.sleep(sleep_sec)
 
-        logger.info("[Scanner] 盘中扫描结束（已收盘），共 %d 轮", self._round)
-
-        # Step 3.5: 等待 Tushare 日线数据更新（~15:30），补全当日日K线
-        data_ready = self._now().replace(hour=15, minute=30, second=0, microsecond=0)
-        if self._now() < data_ready:
-            wait = (data_ready - self._now()).total_seconds()
-            logger.info("[Scanner] 等待日线数据更新，%ds 后同步...", int(wait))
-            time.sleep(wait)
-        self._ensure_daily_kline_complete()
-
-        # Step 4: 收盘后退出，由外部调度（cron / 手动）次日重新拉起
-        logger.info("[Scanner] 收盘后扫描结束，进程退出")
+        logger.info("[Scanner] 盘中扫描结束（已收盘），共 %d 轮，进程退出", self._round)
 
     def _refresh_realtime_spot(self) -> bool:
         """拉取最新实时行情并落库。

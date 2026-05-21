@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20250101",
+  "train_end": "20251231",
+  "pred_date": "20260108",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "603508.SH",
+      "stock_code": "603508",
+      "stock_name": "XD思维列",
+      "lgb_score": 100.0,
+      "raw_score": 0.31
+    },
+    {
+      "rank": 2,
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 97.78,
+      "raw_score": 0.3
+    },
+    {
+      "rank": 3,
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 97.44,
+      "raw_score": 0.3
+    },
+    {
+      "rank": 4,
+      "ts_code": "002067.SZ",
+      "stock_code": "002067",
+      "stock_name": "景兴纸业",
+      "lgb_score": 95.62,
+      "raw_score": 0.29
+    },
+    {
+      "rank": 5,
+      "ts_code": "002506.SZ",
+      "stock_code": "002506",
+      "stock_name": "协鑫集成",
+      "lgb_score": 94.34,
+      "raw_score": 0.28
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.2,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.056633,
+    "std": 0.039083,
+    "skew": 1.691,
+    "kurtosis": 3.2379,
+    "min": -0.122537,
+    "max": 0.307804,
+    "median": 0.037987
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.13415468001060754,
+    "cv_rmse_std": 0.012372521827595876,
+    "cv_scores": [
+      0.13373,
+      0.132516,
+      0.153117,
+      0.137111,
+      0.114299
+    ],
+    "rank_ic_mean": 0.215852,
+    "rank_ic_std": 0.043661,
+    "icir": 4.9438,
+    "oof_corr": 0.244343,
+    "n_samples": 18855,
+    "n_features": 22
+  }
+}

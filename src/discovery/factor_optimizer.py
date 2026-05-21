@@ -594,6 +594,7 @@ class FactorOptimizer:
                     if ret > 0:
                         wins += 1
             if not returns:
+                daily_returns.append(0.0)
                 continue
             day_ret = np.mean(returns)
             daily_returns.append(day_ret)

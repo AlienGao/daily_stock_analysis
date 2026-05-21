@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20241201",
+  "train_end": "20251130",
+  "pred_date": "20251210",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000159.SZ",
+      "stock_code": "000159",
+      "stock_name": "国际实业",
+      "lgb_score": 100.0,
+      "raw_score": 0.31
+    },
+    {
+      "rank": 2,
+      "ts_code": "301302.SZ",
+      "stock_code": "301302",
+      "stock_name": "华如科技",
+      "lgb_score": 91.55,
+      "raw_score": 0.27
+    },
+    {
+      "rank": 3,
+      "ts_code": "300970.SZ",
+      "stock_code": "300970",
+      "stock_name": "华绿生物",
+      "lgb_score": 91.07,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 4,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 90.39,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 5,
+      "ts_code": "603990.SH",
+      "stock_code": "603990",
+      "stock_name": "麦迪科技",
+      "lgb_score": 89.69,
+      "raw_score": 0.26
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.61,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.045735,
+    "std": 0.055529,
+    "skew": 1.4665,
+    "kurtosis": 1.577,
+    "min": -0.162733,
+    "max": 0.305195,
+    "median": -0.079665
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.15072235844215096,
+    "cv_rmse_std": 0.017741949912801393,
+    "cv_scores": [
+      0.180401,
+      0.138115,
+      0.144358,
+      0.160138,
+      0.130599
+    ],
+    "rank_ic_mean": 0.158374,
+    "rank_ic_std": 0.075528,
+    "icir": 2.0969,
+    "oof_corr": 0.154293,
+    "n_samples": 20097,
+    "n_features": 22
+  }
+}

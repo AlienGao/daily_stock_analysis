@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20240901",
+  "train_end": "20250831",
+  "pred_date": "20250902",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 100.0,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 2,
+      "ts_code": "002164.SZ",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 98.43,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 3,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 90.43,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 4,
+      "ts_code": "601366.SH",
+      "stock_code": "601366",
+      "stock_name": "利群股份",
+      "lgb_score": 90.33,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 5,
+      "ts_code": "000950.SZ",
+      "stock_code": "000950",
+      "stock_name": "重药控股",
+      "lgb_score": 89.19,
+      "raw_score": 0.2
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.59,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.012378,
+    "std": 0.032982,
+    "skew": -0.8973,
+    "kurtosis": 4.7003,
+    "min": -0.184159,
+    "max": 0.250173,
+    "median": 0.025594
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.15654362910797662,
+    "cv_rmse_std": 0.012576942067918203,
+    "cv_scores": [
+      0.160306,
+      0.163571,
+      0.167487,
+      0.132049,
+      0.159305
+    ],
+    "rank_ic_mean": 0.065852,
+    "rank_ic_std": 0.036339,
+    "icir": 1.8122,
+    "oof_corr": -0.018317,
+    "n_samples": 23499,
+    "n_features": 22
+  }
+}

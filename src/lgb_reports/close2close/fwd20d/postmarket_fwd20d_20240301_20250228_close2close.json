@@ -1,0 +1,110 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "generated_at": "2026-05-21T17:04:06.136548",
+  "training_metrics": {
+    "cv_rmse_mean": 0.14256507224872067,
+    "cv_rmse_std": 0.056304553766907565,
+    "cv_scores": [
+      0.117917,
+      0.09414,
+      0.249923,
+      0.105611,
+      0.145235
+    ],
+    "rank_ic_mean": 0.107175,
+    "rank_ic_std": 0.039808,
+    "icir": 2.6923,
+    "oof_corr": 0.001379,
+    "n_samples": 27595,
+    "n_features": 22
+  },
+  "feature_importance": {
+    "gain": {
+      "broker_recommend": 1065.1114164851606,
+      "buyback": 529.0149839445949,
+      "chip": 429.5904263816774,
+      "margin": 370.011981241405,
+      "vwap_reversal": 136.94574148207903,
+      "fundamental": 110.69369183853269,
+      "ranking_momentum": 80.47784971818328,
+      "vwap_deviation": 62.93198614194989,
+      "technical": 38.71874710172415,
+      "gtja114": 36.72149673104286,
+      "alpha042": 26.350543525069952,
+      "gap_reversal": 10.752203542739153,
+      "liquid_oversold": 10.689339183270931,
+      "money_flow": 7.174541816115379,
+      "hot_money": 1.1473112851381302,
+      "limit": 0.14155559614300728,
+      "concept_heat": 0.0,
+      "insider_buy": 0.0,
+      "institution_hold": 0.0,
+      "performance": 0.0
+    },
+    "split": {
+      "broker_recommend": 1641.0,
+      "buyback": 1031.0,
+      "chip": 907.0,
+      "margin": 634.0,
+      "vwap_reversal": 382.0,
+      "fundamental": 323.0,
+      "ranking_momentum": 298.0,
+      "technical": 179.0,
+      "alpha042": 141.0,
+      "vwap_deviation": 137.0,
+      "gtja114": 108.0,
+      "gap_reversal": 79.0,
+      "liquid_oversold": 72.0,
+      "money_flow": 59.0,
+      "hot_money": 7.0,
+      "limit": 2.0,
+      "concept_heat": 0.0,
+      "insider_buy": 0.0,
+      "institution_hold": 0.0,
+      "performance": 0.0
+    }
+  },
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688816",
+      "stock_code": "688816",
+      "stock_name": "易思维",
+      "lgb_score": 100.0,
+      "raw_score": 0.41
+    },
+    {
+      "rank": 2,
+      "ts_code": "002374",
+      "stock_code": "002374",
+      "stock_name": "中锐股份",
+      "lgb_score": 96.12,
+      "raw_score": 0.39
+    },
+    {
+      "rank": 3,
+      "ts_code": "002274",
+      "stock_code": "002274",
+      "stock_name": "华昌化工",
+      "lgb_score": 93.99,
+      "raw_score": 0.37
+    },
+    {
+      "rank": 4,
+      "ts_code": "600386",
+      "stock_code": "600386",
+      "stock_name": "北巴传媒",
+      "lgb_score": 92.99,
+      "raw_score": 0.37
+    },
+    {
+      "rank": 5,
+      "ts_code": "002474",
+      "stock_code": "002474",
+      "stock_name": "榕基软件",
+      "lgb_score": 92.93,
+      "raw_score": 0.37
+    }
+  ]
+}

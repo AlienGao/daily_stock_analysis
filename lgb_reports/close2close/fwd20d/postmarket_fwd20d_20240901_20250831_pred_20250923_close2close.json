@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20240901",
+  "train_end": "20250831",
+  "pred_date": "20250923",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 100.0,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 2,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 97.0,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 3,
+      "ts_code": "300796.SZ",
+      "stock_code": "300796",
+      "stock_name": "贝斯美",
+      "lgb_score": 96.59,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 4,
+      "ts_code": "002532.SZ",
+      "stock_code": "002532",
+      "stock_name": "天山铝业",
+      "lgb_score": 94.05,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 5,
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 93.28,
+      "raw_score": 0.22
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.59,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.013288,
+    "std": 0.031666,
+    "skew": -0.8531,
+    "kurtosis": 5.6407,
+    "min": -0.177323,
+    "max": 0.25356,
+    "median": 0.025594
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.15654362910797662,
+    "cv_rmse_std": 0.012576942067918203,
+    "cv_scores": [
+      0.160306,
+      0.163571,
+      0.167487,
+      0.132049,
+      0.159305
+    ],
+    "rank_ic_mean": 0.065852,
+    "rank_ic_std": 0.036339,
+    "icir": 1.8122,
+    "oof_corr": -0.018317,
+    "n_samples": 23499,
+    "n_features": 22
+  }
+}

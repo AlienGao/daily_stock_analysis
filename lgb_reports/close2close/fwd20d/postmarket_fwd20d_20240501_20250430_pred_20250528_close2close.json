@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20240501",
+  "train_end": "20250430",
+  "pred_date": "20250528",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300842.SZ",
+      "stock_code": "300842",
+      "stock_name": "帝科股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.44
+    },
+    {
+      "rank": 2,
+      "ts_code": "603120.SH",
+      "stock_code": "603120",
+      "stock_name": "肯特催化",
+      "lgb_score": 97.77,
+      "raw_score": 0.43
+    },
+    {
+      "rank": 3,
+      "ts_code": "002274.SZ",
+      "stock_code": "002274",
+      "stock_name": "华昌化工",
+      "lgb_score": 97.22,
+      "raw_score": 0.42
+    },
+    {
+      "rank": 4,
+      "ts_code": "002121.SZ",
+      "stock_code": "002121",
+      "stock_name": "科陆电子",
+      "lgb_score": 96.03,
+      "raw_score": 0.42
+    },
+    {
+      "rank": 5,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 94.47,
+      "raw_score": 0.41
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.04,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.052941,
+    "std": 0.039292,
+    "skew": 4.7578,
+    "kurtosis": 41.4803,
+    "min": -0.25858,
+    "max": 0.443867,
+    "median": -0.066305
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.1524325198858344,
+    "cv_rmse_std": 0.05502495467434665,
+    "cv_scores": [
+      0.102083,
+      0.25702,
+      0.123745,
+      0.123601,
+      0.155714
+    ],
+    "rank_ic_mean": 0.056601,
+    "rank_ic_std": 0.070774,
+    "icir": 0.7998,
+    "oof_corr": 0.001603,
+    "n_samples": 25817,
+    "n_features": 22
+  }
+}

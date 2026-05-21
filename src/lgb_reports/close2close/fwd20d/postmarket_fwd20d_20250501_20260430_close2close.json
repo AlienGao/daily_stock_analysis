@@ -1,0 +1,110 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "generated_at": "2026-05-21T17:19:01.716822",
+  "training_metrics": {
+    "cv_rmse_mean": 0.14923084789533686,
+    "cv_rmse_std": 0.012018799506010995,
+    "cv_scores": [
+      0.160246,
+      0.16325,
+      0.136074,
+      0.134327,
+      0.152258
+    ],
+    "rank_ic_mean": 0.166802,
+    "rank_ic_std": 0.041574,
+    "icir": 4.0121,
+    "oof_corr": 0.134501,
+    "n_samples": 17257,
+    "n_features": 22
+  },
+  "feature_importance": {
+    "gain": {
+      "broker_recommend": 589.0168096516281,
+      "buyback": 449.1496065557003,
+      "margin": 314.51649491116405,
+      "chip": 264.42139261215925,
+      "vwap_reversal": 173.60010423883796,
+      "ranking_momentum": 125.0243831705302,
+      "fundamental": 64.80589454807341,
+      "technical": 63.92762407101691,
+      "alpha042": 24.915166802704334,
+      "gtja114": 23.01727220416069,
+      "vwap_deviation": 16.983185609802604,
+      "liquid_oversold": 12.715380581095815,
+      "gap_reversal": 11.52762971445918,
+      "money_flow": 9.96050563454628,
+      "limit": 0.9366613067686558,
+      "hot_money": 0.6946515068411827,
+      "concept_heat": 0.0,
+      "insider_buy": 0.0,
+      "institution_hold": 0.0,
+      "performance": 0.0
+    },
+    "split": {
+      "broker_recommend": 1456.0,
+      "buyback": 1130.0,
+      "margin": 693.0,
+      "chip": 665.0,
+      "ranking_momentum": 436.0,
+      "vwap_reversal": 421.0,
+      "fundamental": 264.0,
+      "technical": 241.0,
+      "alpha042": 148.0,
+      "gtja114": 131.0,
+      "vwap_deviation": 118.0,
+      "liquid_oversold": 105.0,
+      "money_flow": 90.0,
+      "gap_reversal": 86.0,
+      "limit": 9.0,
+      "hot_money": 7.0,
+      "concept_heat": 0.0,
+      "insider_buy": 0.0,
+      "institution_hold": 0.0,
+      "performance": 0.0
+    }
+  },
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "001309",
+      "stock_code": "001309",
+      "stock_name": "德明利",
+      "lgb_score": 100.0,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 2,
+      "ts_code": "688121",
+      "stock_code": "688121",
+      "stock_name": "卓然股份",
+      "lgb_score": 88.42,
+      "raw_score": 0.2
+    },
+    {
+      "rank": 3,
+      "ts_code": "002099",
+      "stock_code": "002099",
+      "stock_name": "海翔药业",
+      "lgb_score": 74.9,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 4,
+      "ts_code": "601088",
+      "stock_code": "601088",
+      "stock_name": "中国神华",
+      "lgb_score": 72.98,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 5,
+      "ts_code": "300109",
+      "stock_code": "300109",
+      "stock_name": "新开源",
+      "lgb_score": 72.27,
+      "raw_score": 0.13
+    }
+  ]
+}

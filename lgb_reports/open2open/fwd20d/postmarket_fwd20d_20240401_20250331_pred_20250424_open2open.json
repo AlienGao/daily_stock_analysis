@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20240401",
+  "train_end": "20250331",
+  "pred_date": "20250424",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.52
+    },
+    {
+      "rank": 2,
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 96.61,
+      "raw_score": 0.5
+    },
+    {
+      "rank": 3,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 93.44,
+      "raw_score": 0.47
+    },
+    {
+      "rank": 4,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 93.26,
+      "raw_score": 0.47
+    },
+    {
+      "rank": 5,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 91.54,
+      "raw_score": 0.46
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.6,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.090907,
+    "std": 0.050309,
+    "skew": 3.9594,
+    "kurtosis": 27.1161,
+    "min": -0.251369,
+    "max": 0.52208,
+    "median": -0.112007
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.14205482440749093,
+    "cv_rmse_std": 0.03493443291077808,
+    "cv_scores": [
+      0.098756,
+      0.203169,
+      0.139491,
+      0.120839,
+      0.148019
+    ],
+    "rank_ic_mean": 0.166065,
+    "rank_ic_std": 0.108087,
+    "icir": 1.5364,
+    "oof_corr": 0.218437,
+    "n_samples": 27873,
+    "n_features": 22
+  }
+}

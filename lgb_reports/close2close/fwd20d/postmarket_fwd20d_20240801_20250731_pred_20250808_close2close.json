@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 20,
+  "train_start": "20240801",
+  "train_end": "20250731",
+  "pred_date": "20250808",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.48
+    },
+    {
+      "rank": 2,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 89.07,
+      "raw_score": 0.41
+    },
+    {
+      "rank": 3,
+      "ts_code": "000159.SZ",
+      "stock_code": "000159",
+      "stock_name": "国际实业",
+      "lgb_score": 88.45,
+      "raw_score": 0.41
+    },
+    {
+      "rank": 4,
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 85.72,
+      "raw_score": 0.39
+    },
+    {
+      "rank": 5,
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
+      "lgb_score": 84.98,
+      "raw_score": 0.38
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.61,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.036982,
+    "std": 0.030429,
+    "skew": 2.466,
+    "kurtosis": 32.0494,
+    "min": -0.175641,
+    "max": 0.483546,
+    "median": 0.041005
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.14578544094814785,
+    "cv_rmse_std": 0.021838654020860417,
+    "cv_scores": [
+      0.185186,
+      0.122414,
+      0.148273,
+      0.14389,
+      0.129165
+    ],
+    "rank_ic_mean": 0.155789,
+    "rank_ic_std": 0.099601,
+    "icir": 1.5641,
+    "oof_corr": 0.233043,
+    "n_samples": 23093,
+    "n_features": 22
+  }
+}

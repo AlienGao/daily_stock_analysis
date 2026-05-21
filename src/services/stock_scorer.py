@@ -215,7 +215,8 @@ class StockScorer:
         highs, lows, closes = ohlcv
 
         # 1. 各维度评分
-        rr = self._calc_rr_score(price, tp1, stop_loss)
+        atr = self._calc_atr(highs, lows, closes)
+        rr = self._calc_rr_score(price, tp1, stop_loss, atr)
         market = self._calc_market_score()
         sector_s = self._calc_sector_score(stock_code, sector, price, pre_close)
         vol = self._calc_volume_score(price, pre_close, volume_ratio)
@@ -262,9 +263,10 @@ class StockScorer:
     # 维度评分计算
     # =================================================================
 
-    def _calc_rr_score(self, price: float, tp1: float, stop_loss: float) -> float:
-        """赔率评分：RR = (TP1 - price) / (price - stop_loss)，RR=2.0 时满分。
+    def _calc_rr_score(self, price: float, tp1: float, stop_loss: float, atr: float = 0.0) -> float:
+        """赔率评分：RR = (TP1 - price) / max(price - stop_loss, 0.5 × ATR)，RR=2.0 时满分。
 
+        分母至少取 0.5 ATR，避免止损过近导致 RR 虚高。
         - price <= stop_loss：已跌破止损，0 分
         - tp1 略低于 price（<0.5%）：数据精度问题，给 10 分而非 0
         - tp1 明显低于 price（>=0.5%）：无盈利空间，0 分
@@ -272,11 +274,24 @@ class StockScorer:
         if price <= stop_loss:
             return 0.0
         if tp1 <= price:
-            # 区分精度问题和真实无空间
             gap_pct = (price - tp1) / price
             return 10.0 if gap_pct < 0.005 else 0.0
-        rr = (tp1 - price) / (price - stop_loss)
-        return min(rr / 2.0, 1.0) * 100
+        risk_dist = max(price - stop_loss, 0.5 * atr) if atr > 0 else (price - stop_loss)
+        rr = (tp1 - price) / risk_dist
+        return min(rr / 4.0, 1.0) * 100
+
+    @staticmethod
+    def _calc_atr(highs: np.ndarray, lows: np.ndarray, closes: np.ndarray, period: int = 14) -> float:
+        """计算 ATR(14)，返回 0 表示数据不足。"""
+        if len(highs) < period + 1 or len(lows) < period + 1 or len(closes) < period + 1:
+            return 0.0
+        h = highs[-(period + 1):]
+        l = lows[-(period + 1):]
+        c = closes[-(period + 1):]
+        tr = np.maximum(h - l, np.maximum(
+            np.abs(h - np.roll(c, 1)), np.abs(l - np.roll(c, 1))))
+        tr[0] = float(h[0] - l[0])
+        return float(np.mean(tr[-period:]))
 
     def _calc_market_score(self) -> float:
         """大盘环境评分：基于上证指数 MA20/MA60 偏离度，输出 0-100。
