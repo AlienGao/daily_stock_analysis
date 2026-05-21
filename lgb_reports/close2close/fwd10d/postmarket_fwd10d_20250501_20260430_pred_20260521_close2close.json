@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260521",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002451",
+      "stock_code": "002451",
+      "stock_name": "摩恩电气",
+      "lgb_score": 100.0,
+      "raw_score": 0.27
+    },
+    {
+      "rank": 2,
+      "ts_code": "300394",
+      "stock_code": "300394",
+      "stock_name": "天孚通信",
+      "lgb_score": 92.14,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 3,
+      "ts_code": "002246",
+      "stock_code": "002246",
+      "stock_name": "北化股份",
+      "lgb_score": 91.09,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 4,
+      "ts_code": "000034",
+      "stock_code": "000034",
+      "stock_name": "神州数码",
+      "lgb_score": 89.95,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 5,
+      "ts_code": "002909",
+      "stock_code": "002909",
+      "stock_name": "集泰股份",
+      "lgb_score": 89.67,
+      "raw_score": 0.23
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.12,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.003214,
+    "std": 0.033079,
+    "skew": 0.8654,
+    "kurtosis": 4.8898,
+    "min": -0.104111,
+    "max": 0.26787,
+    "median": 0.010842
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.10555796166006633,
+    "cv_rmse_std": 0.004759488059331734,
+    "cv_scores": [
+      0.101733,
+      0.105965,
+      0.103919,
+      0.101645,
+      0.114528
+    ],
+    "rank_ic_mean": 0.083807,
+    "rank_ic_std": 0.064875,
+    "icir": 1.2918,
+    "oof_corr": 0.071869,
+    "n_samples": 17972,
+    "n_features": 22
+  }
+}

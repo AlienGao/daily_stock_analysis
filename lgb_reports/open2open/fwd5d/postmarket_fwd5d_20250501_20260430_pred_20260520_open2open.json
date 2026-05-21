@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 5,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260520",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300109",
+      "stock_code": "300109",
+      "stock_name": "新开源",
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "300873",
+      "stock_code": "300873",
+      "stock_name": "海晨股份",
+      "lgb_score": 97.67,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "300319",
+      "stock_code": "300319",
+      "stock_name": "麦捷科技",
+      "lgb_score": 93.11,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "300349",
+      "stock_code": "300349",
+      "stock_name": "金卡智能",
+      "lgb_score": 92.94,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "002648",
+      "stock_code": "002648",
+      "stock_name": "卫星化学",
+      "lgb_score": 91.12,
+      "raw_score": 0.1
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.95,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.018861,
+    "std": 0.01596,
+    "skew": 2.1764,
+    "kurtosis": 7.6998,
+    "min": -0.105491,
+    "max": 0.116466,
+    "median": -0.025956
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.07124132173817163,
+    "cv_rmse_std": 0.006784761945855149,
+    "cv_scores": [
+      0.067348,
+      0.071193,
+      0.07369,
+      0.061792,
+      0.082183
+    ],
+    "rank_ic_mean": 0.052323,
+    "rank_ic_std": 0.045517,
+    "icir": 1.1495,
+    "oof_corr": 0.039643,
+    "n_samples": 18659,
+    "n_features": 22
+  }
+}

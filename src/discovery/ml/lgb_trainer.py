@@ -247,7 +247,7 @@ class LGBTrainer:
                 dates_raw = (
                     session.query(StockDaily.date)
                     .group_by(StockDaily.date)
-                    .having(func.count(StockDaily.code) >= 100)
+                    .having(func.count(StockDaily.code) >= 3000)
                     .order_by(StockDaily.date)
                     .all()
                 )
@@ -924,6 +924,8 @@ class LGBTrainer:
             "exec_mode": self.exec_mode,
             "feature_names": self.feature_names,
             "training_metrics": self._training_metrics,
+            "train_start": str(self._train_start)[:10] if self._train_start else "",
+            "train_end": str(self._train_end)[:10] if self._train_end else "",
             "saved_at": datetime.now().isoformat(),
         }
         joblib.dump({"model": self.model, "meta": meta}, model_path)
@@ -942,6 +944,8 @@ class LGBTrainer:
         trainer.model = data["model"]
         trainer.feature_names = meta["feature_names"]
         trainer._training_metrics = meta.get("training_metrics", {})
+        trainer._train_start = meta.get("train_start", "")
+        trainer._train_end = meta.get("train_end", "")
         return trainer
 
     @staticmethod

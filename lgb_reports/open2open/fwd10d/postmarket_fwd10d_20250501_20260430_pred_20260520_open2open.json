@@ -1,0 +1,81 @@
+{
+  "mode": "postmarket",
+  "forward_days": 10,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260520",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301110",
+      "stock_code": "301110",
+      "stock_name": "青木科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 2,
+      "ts_code": "688121",
+      "stock_code": "688121",
+      "stock_name": "卓然股份",
+      "lgb_score": 99.12,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 3,
+      "ts_code": "301008",
+      "stock_code": "301008",
+      "stock_name": "宏昌科技",
+      "lgb_score": 98.17,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 4,
+      "ts_code": "300992",
+      "stock_code": "300992",
+      "stock_name": "泰福泵业",
+      "lgb_score": 97.81,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 5,
+      "ts_code": "002371",
+      "stock_code": "002371",
+      "stock_name": "北方华创",
+      "lgb_score": 94.15,
+      "raw_score": 0.2
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.01,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.053485,
+    "std": 0.03016,
+    "skew": 3.1823,
+    "kurtosis": 14.7576,
+    "min": -0.149062,
+    "max": 0.226325,
+    "median": -0.063032
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.10590074603374136,
+    "cv_rmse_std": 0.00990538761358294,
+    "cv_scores": [
+      0.10046,
+      0.108578,
+      0.103479,
+      0.093754,
+      0.123233
+    ],
+    "rank_ic_mean": 0.084884,
+    "rank_ic_std": 0.043723,
+    "icir": 1.9414,
+    "oof_corr": 0.059481,
+    "n_samples": 18655,
+    "n_features": 22
+  }
+}

@@ -29,10 +29,9 @@ REPORTS_ROOT = os.path.join(
 # EXEC_SUBDIR is set in main() after EXEC_MODE is known
 
 TRAIN_START = "20240101"
-TRAIN_END = "20260430"
 PRED_START = "20250101"
-PRED_END = "20260519"
 FORWARD_DAYS_LIST = [20]
+# PRED_END is computed dynamically from StockDaily in main()
 MODE = "postmarket"
 EXEC_MODE_LIST = ["open", "close"]  # "open" = open→open labels, "close" = close→close labels
 TOP_N = 5
@@ -153,7 +152,7 @@ def save_daily_report(trainer: LGBTrainer, pred_date: str) -> str:
     return md_path
 
 
-def generate_monthly_windows():
+def generate_monthly_windows(pred_end: str):
     """Yield (train_start, train_end, pred_start, pred_end) YYYYMMDD tuples.
 
     Training window ends the day before prediction starts, and slides
@@ -161,8 +160,7 @@ def generate_monthly_windows():
     """
     train_s = datetime.strptime(TRAIN_START, "%Y%m%d")
     pred_s = datetime.strptime(PRED_START, "%Y%m%d")
-    final_pred_e = datetime.strptime(PRED_END, "%Y%m%d")
-    final_train_e = datetime.strptime(TRAIN_END, "%Y%m%d")
+    final_pred_e = datetime.strptime(pred_end, "%Y%m%d")
 
     windows = []
     while pred_s < final_pred_e:
@@ -171,9 +169,6 @@ def generate_monthly_windows():
             pred_e = final_pred_e
 
         train_e = pred_s - timedelta(days=1)
-        # Cap training end to TRAIN_END to avoid running into prediction period
-        if train_e > final_train_e:
-            train_e = final_train_e
 
         windows.append((
             train_s.strftime("%Y%m%d"),
@@ -220,13 +215,29 @@ def run_window(trainer: LGBTrainer, train_s: str, train_e: str,
 
 def main():
     os.makedirs(REPORTS_ROOT, exist_ok=True)
-    windows = generate_monthly_windows()
+
+    # Compute PRED_END from StockDaily (latest trading day with >= 3000 stocks)
+    db = DatabaseManager.get_instance()
+    with db.get_session() as session:
+        dates_raw = (
+            session.query(StockDaily.date)
+            .group_by(StockDaily.date)
+            .having(_func.count(StockDaily.code) >= 3000)
+            .order_by(StockDaily.date.desc())
+            .first()
+        )
+    if not dates_raw:
+        print("错误: StockDaily 中没有足够的交易数据")
+        return
+    pred_end = dates_raw[0].strftime("%Y%m%d") if hasattr(dates_raw[0], "strftime") else str(dates_raw[0]).replace("-", "")[:8]
+
+    windows = generate_monthly_windows(pred_end)
 
     print("=" * 64)
     print(f"滚动窗口 LGB 回测")
     print(f"模式: {MODE} | exec: {EXEC_MODE_LIST} | Top {TOP_N}")
-    print(f"训练起点: {TRAIN_START} ~ {TRAIN_END} (逐月右移)")
-    print(f"预测范围: {PRED_START} ~ {PRED_END}")
+    print(f"训练起点: {TRAIN_START} (逐月右移 12 个月窗口)")
+    print(f"预测范围: {PRED_START} ~ {pred_end}")
     print(f"窗口数: {len(windows)} | Forward: {FORWARD_DAYS_LIST}")
     print(f"报告目录: {REPORTS_ROOT}/{{open2open,close2close}}/{{fwd3d,fwd5d,fwd10d}}")
     print("=" * 64)
@@ -292,22 +303,31 @@ def cleanup_old_models():
     if not models:
         return
 
-    # Group by (forward_days, exec_mode), keep only the latest per group
+    # Only clean models for forward_days in FORWARD_DAYS_LIST.
+    # Models for other forward_days (e.g. fwd3, fwd5) are left untouched.
+    import re as _re
     keep: set = set()
     for fwd in FORWARD_DAYS_LIST:
+        _fwd_pat = _re.compile(rf"_fwd{fwd}d_")
         for suffix in ["open2open", "close2close"]:
             group = sorted(
-                [m for m in models if f"fwd{fwd}d" in m and suffix in m],
+                [m for m in models if _fwd_pat.search(m) and suffix in m],
                 reverse=True,
             )
             if group:
                 keep.add(group[0])  # latest per (fwd, exec_mode)
 
+    to_delete: list = []
+    for fwd in FORWARD_DAYS_LIST:
+        _fwd_pat = _re.compile(rf"_fwd{fwd}d_")
+        for m in models:
+            if m not in keep and _fwd_pat.search(m):
+                to_delete.append(m)
+
     deleted = 0
-    for m in models:
-        if m not in keep:
-            os.remove(os.path.join(models_dir, m))
-            deleted += 1
+    for m in set(to_delete):
+        os.remove(os.path.join(models_dir, m))
+        deleted += 1
 
     if deleted:
         print(f"  删除历史模型: {deleted}  保留: {keep}")

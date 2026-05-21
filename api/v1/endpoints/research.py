@@ -755,7 +755,7 @@ def _build_historical_stats(forward_days: int, exec_mode: str) -> dict:
         dates_raw = (
             session.query(StockDaily.date)
             .group_by(StockDaily.date)
-            .having(func.count(StockDaily.code) >= 100)
+            .having(func.count(StockDaily.code) >= 3000)
             .order_by(StockDaily.date)
             .all()
         )
@@ -936,7 +936,7 @@ def _simulate_backtest(exec_mode: str, forward_days: int, top_n: int, stop_strat
         dates_raw = (
             session.query(StockDaily.date)
             .group_by(StockDaily.date)
-            .having(func.count(StockDaily.code) >= 100)
+            .having(func.count(StockDaily.code) >= 3000)
             .order_by(StockDaily.date)
             .all()
         )
@@ -1755,7 +1755,7 @@ def _run_catch_up(task_id: str):
         dates_raw = (
             session.query(StockDaily.date)
             .group_by(StockDaily.date)
-            .having(func.count(StockDaily.code) >= 100)
+            .having(func.count(StockDaily.code) >= 3000)
             .order_by(StockDaily.date.desc())
             .first()
         )
@@ -1797,8 +1797,6 @@ def _run_catch_up(task_id: str):
         json_files = sorted(_glob.glob(_os.path.join(fwd_dir, "*_pred_*.json")))
 
         latest_pred_date = ""
-        last_train_s = ""
-        last_train_e = ""
         if json_files:
             for jf in reversed(json_files):
                 try:
@@ -1807,15 +1805,6 @@ def _run_catch_up(task_id: str):
                     pd = data.get("pred_date", "")
                     if pd > latest_pred_date:
                         latest_pred_date = pd
-                    # Extract training window from filename
-                    fn = _os.path.basename(jf).replace(".json", "")
-                    parts = fn.split("_")
-                    for pi, p in enumerate(parts):
-                        if p.startswith("fwd"):
-                            if pi + 2 < len(parts) and len(parts[pi + 1]) == 8 and len(parts[pi + 2]) == 8:
-                                last_train_s = parts[pi + 1]
-                                last_train_e = parts[pi + 2]
-                            break
                 except Exception:
                     continue
 
@@ -1823,37 +1812,48 @@ def _run_catch_up(task_id: str):
             results.append({"exec_mode": exec_mode, "forward_days": fwd, "status": "up_to_date", "latest_pred": latest_pred_date})
             continue
 
-        # Determine new training window
-        new_train_e = datetime.strptime(latest_td, "%Y%m%d") - timedelta(days=1)
-        new_pred_s = datetime.strptime(latest_pred_date, "%Y%m%d") + timedelta(days=1)
-
-        if last_train_s and last_train_e:
-            try:
-                old_train_s = datetime.strptime(last_train_s, "%Y%m%d")
-                old_train_e = datetime.strptime(last_train_e, "%Y%m%d")
-                # Slide training window forward 1 month only if pred crosses into a new month
-                old_pred_month = datetime.strptime(latest_pred_date, "%Y%m%d").month
-                new_pred_month = new_pred_s.month
-                if old_pred_month != new_pred_month:
-                    new_train_s = old_train_s + relativedelta(months=1)
-                else:
-                    new_train_s = old_train_s  # same window, just extend train_end
-            except Exception:
-                new_train_s = datetime(2024, 1, 1)
+        # Determine prediction range: from day after latest prediction to today
+        if latest_pred_date:
+            new_pred_s = datetime.strptime(latest_pred_date, "%Y%m%d") + timedelta(days=1)
         else:
-            new_train_s = datetime(2024, 1, 1)
+            # First prediction: start 30 days before latest trading day
             new_pred_s = datetime.strptime(latest_td, "%Y%m%d") - timedelta(days=30)
+        new_pred_e_str = latest_td
+
+        # Training window: full calendar months, 12 months ending before first prediction
+        from calendar import monthrange
+        # train_end = last day of month before new_pred_s
+        _te = new_pred_s - relativedelta(months=1)
+        _te = _te.replace(day=monthrange(_te.year, _te.month)[1])
+        new_train_e = _te
+        # train_start = first day of the month 11 months before train_end month
+        new_train_s = _te.replace(day=1) - relativedelta(months=11)
 
         new_train_s_str = new_train_s.strftime("%Y%m%d")
         new_train_e_str = new_train_e.strftime("%Y%m%d")
-        new_pred_e_str = latest_td
 
-        task["status_message"] = f"{dir_name} fwd{fwd}d: 训练 {new_train_s_str}~{new_train_e_str}..."
+        # Find existing model for this combo
+        exec_tag = "open2open" if exec_mode == "open" else "close2close"
+        existing_model = None
+        if _os.path.isdir(models_dir):
+            import re as _re
+            _fwd_pat = _re.compile(rf"_fwd{fwd}d_")
+            for mf in sorted(_os.listdir(models_dir), reverse=True):
+                if mf.endswith(".joblib") and _fwd_pat.search(mf) and exec_tag in mf:
+                    existing_model = _os.path.join(models_dir, mf)
+                    break
 
         try:
-            trainer = LGBTrainer(mode="postmarket", forward_days=fwd, exec_mode=exec_mode)
-            trainer.prepare_data(start_date=new_train_s_str, end_date=new_train_e_str)
-            trainer.train()
+            if existing_model:
+                # Use existing model — no need to retrain
+                task["status_message"] = f"{dir_name} fwd{fwd}d: 加载已有模型预测..."
+                trainer = LGBTrainer.load(existing_model)
+            else:
+                task["status_message"] = f"{dir_name} fwd{fwd}d: 训练 {new_train_s_str}~{new_train_e_str}..."
+                trainer = LGBTrainer(mode="postmarket", forward_days=fwd, exec_mode=exec_mode)
+                trainer.prepare_data(start_date=new_train_s_str, end_date=new_train_e_str)
+                trainer.train()
+                trainer.save()
 
             # Get all trading days from pred_start to latest
             from scripts.rolling_lgb_backtest import get_trading_days
@@ -1869,29 +1869,12 @@ def _run_catch_up(task_id: str):
                 except Exception:
                     fail += 1
 
-            # Delete old models for this combo
-            if _os.path.isdir(models_dir):
-                for mf in _os.listdir(models_dir):
-                    if mf.endswith(".joblib") and f"fwd{fwd}d" in mf:
-                        exec_tag = "open2open" if exec_mode == "open" else "close2close"
-                        if exec_tag in mf:
-                            # Keep only the latest (just trained) model for this combo
-                            # The newly trained model path is the latest
-                            pass  # We'll just remove old ones below
-                # Remove old model files for this combo (keep the newly saved one)
-                combo_models = sorted(
-                    [m for m in _os.listdir(models_dir) if m.endswith(".joblib") and f"fwd{fwd}d" in m and (("open2open" if exec_mode == "open" else "close2close") in m)],
-                    reverse=True,
-                )
-                for old_m in combo_models[1:]:  # keep the latest
-                    _os.remove(_os.path.join(models_dir, old_m))
-
-            trainer.save()
             results.append({
                 "exec_mode": exec_mode, "forward_days": fwd, "status": "done",
                 "train_window": f"{new_train_s_str}~{new_train_e_str}",
                 "pred_range": f"{new_pred_s.strftime('%Y%m%d')}~{new_pred_e_str}",
                 "ok": ok, "fail": fail,
+                "used_existing_model": bool(existing_model),
             })
 
         except Exception as e:

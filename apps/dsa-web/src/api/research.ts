@@ -319,6 +319,7 @@ export type CatchUpResultItem = {
   ok?: number;
   fail?: number;
   latest_pred?: string;
+  used_existing_model?: boolean;
   error?: string;
 };
 

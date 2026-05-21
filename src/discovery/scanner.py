@@ -1787,6 +1787,7 @@ def refresh_ths_concept_map_postmarket(tushare_fetcher) -> int:
         logger.info("[Scanner] 获取 %d 个概念板块", len(concept_indices))
 
         code_to_concepts: dict = {}
+        total = len(concept_indices)
         for i, (_, row) in enumerate(concept_indices.iterrows()):
             ts_code = str(row["ts_code"]).strip()
             name = str(row["name"]).strip()
@@ -1800,6 +1801,8 @@ def refresh_ths_concept_map_postmarket(tushare_fetcher) -> int:
                             code_to_concepts.setdefault(code, []).append(name)
             except Exception:
                 continue
+            if (i + 1) % 50 == 0:
+                logger.info("[Scanner] ths_concept_map 进度: %d/%d (%.0f%%)", i + 1, total, (i + 1) / total * 100)
             _time.sleep(0.8)
 
         if not code_to_concepts:
