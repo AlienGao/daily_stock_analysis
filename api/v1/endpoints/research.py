@@ -1529,7 +1529,7 @@ def _simulate_backtest(exec_mode: str, forward_days: int, top_n: int, stop_strat
 def _simulate_peak_backtest(exec_mode: str, top_n: int, stop_loss_pct: float = -0.10) -> dict:
     """Peak speed 模式回测：从预测文件读取，动态退出策略。
 
-    退出优先级: 止损 → 止盈(50%预测收益) → 到期窗口(±2天) → 强制退出(20天)
+    退出优先级: 止损 → 止盈(预测收益 × 历史胜率) → 到期窗口(±2天) → 强制退出(20天)
     """
     project_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
     reports_dir = _os.path.join(project_root, "lgb_reports")
@@ -1686,6 +1686,42 @@ def _simulate_peak_backtest(exec_mode: str, top_n: int, stop_loss_pct: float = -
     if not buy_dates_sorted:
         return {"error": "No valid buy dates found", "metrics": None, "capital_curve": [], "trades": []}
 
+    # Compute historical win rate per rank from matured predictions
+    _rank_wins: Dict[int, int] = _defaultdict(int)
+    _rank_total: Dict[int, int] = _defaultdict(int)
+    preds_flat = [p for preds in buy_date_preds.values() for p in preds]
+    for cand in preds_flat:
+        code = cand["stock_code"]
+        rank = cand["rank"]
+        buy_d = cand["_pred_date"] if exec_mode == "close" else _find_next_trading_day(cand["_pred_date"], trading_days_set, trading_days_sorted)
+        if not buy_d:
+            continue
+        sell_d = _find_nth_trading_day(buy_d, cand.get("predicted_days", 10), trading_days_sorted)
+        if not sell_d or sell_d > latest_td:
+            continue
+        buy_px_entry = price_map.get((code, buy_d))
+        if not buy_px_entry:
+            continue
+        buy_px = buy_px_entry["close"] if exec_mode == "close" else buy_px_entry["open"]
+        if not buy_px or buy_px <= 0:
+            continue
+        buy_idx = trading_days_sorted.index(buy_d)
+        sell_idx = trading_days_sorted.index(sell_d)
+        peak_px = buy_px
+        for di in range(buy_idx + 1, sell_idx + 1):
+            px_entry = price_map.get((code, trading_days_sorted[di]))
+            if px_entry:
+                px = px_entry["close"] if exec_mode == "close" else px_entry["open"]
+                if px and px > peak_px:
+                    peak_px = px
+        actual_ret = (peak_px - buy_px) / buy_px
+        _rank_total[rank] += 1
+        if actual_ret > 0:
+            _rank_wins[rank] += 1
+    rank_win_rate: Dict[int, float] = {}
+    for r in sorted(_rank_total.keys()):
+        rank_win_rate[r] = _rank_wins.get(r, 0) / _rank_total[r] if _rank_total[r] > 0 else 0.5
+
     # Extract all trading days from first buy_date to latest_td for the daily loop
     try:
         start_idx = trading_days_sorted.index(buy_dates_sorted[0])
@@ -1697,7 +1733,6 @@ def _simulate_peak_backtest(exec_mode: str, top_n: int, stop_loss_pct: float = -
         end_idx = len(trading_days_sorted) - 1
     all_trading_days = trading_days_sorted[start_idx:end_idx + 1]
 
-    TAKE_PROFIT_RATIO = 0.5
     WINDOW_DAYS = 20
 
     INITIAL_CAPITAL = 1_000_000.0
@@ -1741,7 +1776,7 @@ def _simulate_peak_backtest(exec_mode: str, top_n: int, stop_loss_pct: float = -
                     exit_reason = "force_exit"
                 elif adj_return <= stop_loss_pct:
                     exit_reason = "stop_loss"
-                elif adj_return >= pos["pred_return"] * TAKE_PROFIT_RATIO:
+                elif adj_return >= pos["pred_return"] * pos.get("win_rate", 0.5):
                     exit_reason = "take_profit"
                 elif abs(held_days - pos["pred_days"]) <= 2 and adj_return > 0:
                     exit_reason = "arrival"
@@ -1811,6 +1846,7 @@ def _simulate_peak_backtest(exec_mode: str, top_n: int, stop_loss_pct: float = -
                         "buy_price": price,
                         "pred_days": cand["predicted_days"],
                         "pred_return": cand["raw_score"],
+                        "win_rate": rank_win_rate.get(cand["rank"], 0.5),
                         "entry_idx": entry_idx,
                         "alloc": alloc_per_slot,
                         "adj_buy": adj_b,

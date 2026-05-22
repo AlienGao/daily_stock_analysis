@@ -57,6 +57,7 @@ const LightGBMPage: React.FC = () => {
   const [bruteForceLoading, setBruteForceLoading] = useState(false);
   const bruteForcePollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [latestBfReport, setLatestBfReport] = useState<LGBBruteForceResult | null>(null);
+  const [bfReportLoading, setBfReportLoading] = useState(false);
   const bfAutoAppliedRef = useRef(false);
   const bfModelAutoSelectedRef = useRef(false);
   const [diagnostics, setDiagnostics] = useState<LGBDiagnosticsResponse | null>(null);
@@ -101,9 +102,11 @@ const LightGBMPage: React.FC = () => {
 
   /* ── Auto-load latest brute force report ── */
   useEffect(() => {
+    setBfReportLoading(true);
     researchApi.getLatestBruteForceReport()
       .then((report) => setLatestBfReport(report))
-      .catch(() => { /* no report yet, ignore */ });
+      .catch(() => { /* no report yet, ignore */ })
+      .finally(() => setBfReportLoading(false));
   }, []);
 
   /* ── Auto-apply best return params from latest report ── */
@@ -529,7 +532,7 @@ const LightGBMPage: React.FC = () => {
               const exec = n.endsWith('open2open') ? 'open' : n.endsWith('close2close') ? 'close' : '';
               const m = n.replace(/_open2open$|_close2close$/, '');
               const p = m.split('_');
-              const fwd = p.find(x => x.startsWith('fwd'));
+              const fwd = p.find(x => x.startsWith('fwd') || x.startsWith('peak'));
               const dates = p.filter(x => /^\d{8}$/.test(x));
               const short = [exec, fwd, ...dates].filter(Boolean).join(' ');
               return short || n;
@@ -746,6 +749,11 @@ const LightGBMPage: React.FC = () => {
               <div className="font-medium text-sm text-secondary-text">全方案搜索</div>
               <div className="text-xs text-tertiary-text">
                 遍历 lgb_reports/ 缓存中所有参数组合（止损策略 × 执行模式 × 持有期 × top_n），寻找收益/夏普最优方案。后台运行，结果保存至 lgb_reports/。
+                {bfReportLoading && !latestBfReport && (
+                  <span className="text-blue-400 ml-1 inline-flex items-center gap-1">
+                    <Loader2 className="h-3 w-3 animate-spin" />加载报告中...
+                  </span>
+                )}
                 {latestBfReport && !bruteForceStatus && (
                   <span className="text-green-400 ml-1">
                     （已加载最新报告{latestBfReport.report_path ? `: ${latestBfReport.report_path.split('/').pop()}` : ''}，已自动应用最佳收益参数）
