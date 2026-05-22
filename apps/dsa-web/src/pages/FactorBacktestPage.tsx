@@ -718,7 +718,7 @@ const FactorBacktestPage: React.FC = () => {
                       checked={!!selectedFactors[f.name]}
                       onChange={(e) => setSelectedFactors((p) => ({ ...p, [f.name]: e.target.checked }))}
                     />
-                    <span className="text-sm flex-1 truncate text-foreground/85">{f.label}</span>
+                    <span className="text-sm flex-1 truncate text-foreground/85">{f.label} <span className="text-tertiary-text text-[11px]">({f.name})</span></span>
                     <InputNumber
                       size="small"
                       min={0}
