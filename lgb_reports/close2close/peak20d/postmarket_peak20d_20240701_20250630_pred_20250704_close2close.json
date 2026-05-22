@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240701",
+  "train_end": "20250630",
+  "pred_date": "20250704",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.42,
+      "predicted_days": 13
+    },
+    {
+      "rank": 2,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 92.96,
+      "raw_score": 0.39,
+      "predicted_days": 14
+    },
+    {
+      "rank": 3,
+      "ts_code": "600199.SH",
+      "stock_code": "600199",
+      "stock_name": "金种子酒",
+      "lgb_score": 92.19,
+      "raw_score": 0.39,
+      "predicted_days": 13
+    },
+    {
+      "rank": 4,
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 90.8,
+      "raw_score": 0.38,
+      "predicted_days": 11
+    },
+    {
+      "rank": 5,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 89.35,
+      "raw_score": 0.38,
+      "predicted_days": 13
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.88,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.100489,
+    "std": 0.02447,
+    "skew": 3.182,
+    "kurtosis": 30.0582,
+    "min": 0.013125,
+    "max": 0.419442,
+    "median": 0.105492
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.14334047903574315,
+    "cv_rmse_std": 0.05630550470185491,
+    "cv_scores": [
+      0.255193,
+      0.119421,
+      0.10607,
+      0.124937,
+      0.111081
+    ],
+    "rank_ic_mean": 0.106582,
+    "rank_ic_std": 0.026947,
+    "icir": 3.9553,
+    "oof_corr": -0.101753,
+    "n_samples": 26168,
+    "n_features": 22
+  },
+  "window_days": 20
+}

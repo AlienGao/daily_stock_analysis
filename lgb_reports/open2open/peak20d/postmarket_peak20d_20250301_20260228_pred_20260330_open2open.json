@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250301",
+  "train_end": "20260228",
+  "pred_date": "20260330",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002432.SZ",
+      "stock_code": "002432",
+      "stock_name": "九安医疗",
+      "lgb_score": 100.0,
+      "raw_score": 0.34,
+      "predicted_days": 9
+    },
+    {
+      "rank": 2,
+      "ts_code": "603239.SH",
+      "stock_code": "603239",
+      "stock_name": "浙江仙通",
+      "lgb_score": 87.99,
+      "raw_score": 0.3,
+      "predicted_days": 10
+    },
+    {
+      "rank": 3,
+      "ts_code": "600724.SH",
+      "stock_code": "600724",
+      "stock_name": "宁波富达",
+      "lgb_score": 87.93,
+      "raw_score": 0.3,
+      "predicted_days": 11
+    },
+    {
+      "rank": 4,
+      "ts_code": "601869.SH",
+      "stock_code": "601869",
+      "stock_name": "长飞光纤",
+      "lgb_score": 87.75,
+      "raw_score": 0.3,
+      "predicted_days": 11
+    },
+    {
+      "rank": 5,
+      "ts_code": "603017.SH",
+      "stock_code": "603017",
+      "stock_name": "中衡设计",
+      "lgb_score": 87.73,
+      "raw_score": 0.3,
+      "predicted_days": 9
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.68,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.170565,
+    "std": 0.061043,
+    "skew": -1.2253,
+    "kurtosis": -0.183,
+    "min": -0.007245,
+    "max": 0.338891,
+    "median": 0.20679
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11359967897866463,
+    "cv_rmse_std": 0.012686378637300452,
+    "cv_scores": [
+      0.102957,
+      0.127677,
+      0.119324,
+      0.094554,
+      0.123487
+    ],
+    "rank_ic_mean": 0.341293,
+    "rank_ic_std": 0.022539,
+    "icir": 15.1425,
+    "oof_corr": 0.338827,
+    "n_samples": 18822,
+    "n_features": 22
+  },
+  "window_days": 20
+}

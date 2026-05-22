@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20241101",
+  "train_end": "20251031",
+  "pred_date": "20251105",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 100.0,
+      "raw_score": 0.42,
+      "predicted_days": 12
+    },
+    {
+      "rank": 2,
+      "ts_code": "603960.SH",
+      "stock_code": "603960",
+      "stock_name": "克来机电",
+      "lgb_score": 94.7,
+      "raw_score": 0.4,
+      "predicted_days": 13
+    },
+    {
+      "rank": 3,
+      "ts_code": "000159.SZ",
+      "stock_code": "000159",
+      "stock_name": "国际实业",
+      "lgb_score": 94.54,
+      "raw_score": 0.4,
+      "predicted_days": 13
+    },
+    {
+      "rank": 4,
+      "ts_code": "920125.BJ",
+      "stock_code": "920125.BJ",
+      "stock_name": "",
+      "lgb_score": 90.04,
+      "raw_score": 0.38,
+      "predicted_days": 7
+    },
+    {
+      "rank": 5,
+      "ts_code": "002506.SZ",
+      "stock_code": "002506",
+      "stock_name": "协鑫集成",
+      "lgb_score": 88.91,
+      "raw_score": 0.37,
+      "predicted_days": 12
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.07,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.17901,
+    "std": 0.063966,
+    "skew": -1.0172,
+    "kurtosis": -0.5586,
+    "min": 0.025447,
+    "max": 0.417615,
+    "median": 0.218338
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11095731029367276,
+    "cv_rmse_std": 0.016947162241874952,
+    "cv_scores": [
+      0.083584,
+      0.123805,
+      0.102378,
+      0.132027,
+      0.112993
+    ],
+    "rank_ic_mean": 0.274721,
+    "rank_ic_std": 0.063149,
+    "icir": 4.3503,
+    "oof_corr": 0.284165,
+    "n_samples": 24629,
+    "n_features": 22
+  },
+  "window_days": 20
+}

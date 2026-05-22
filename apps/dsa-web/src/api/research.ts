@@ -6,6 +6,9 @@ export type LGBTrainRequest = {
   mode: 'intraday' | 'postmarket';
   forward_days: number;
   exec_mode?: string;
+  label_mode?: 'fixed' | 'peak_speed';
+  window_days?: number;
+  peak_min_return?: number;
   start_date?: string | null;
   end_date?: string | null;
   n_estimators: number;
@@ -42,6 +45,7 @@ export type LGBPredictionItem = {
   stock_name: string;
   lgb_score: number;
   raw_score: number;
+  predicted_days?: number | null;
   win_rate: number | null;
   avg_return: number | null;
   max_return: number | null;
@@ -113,6 +117,7 @@ export type LGBBacktestTradeItem = {
   sell_price: number;
   return_pct: number;
   skipped: boolean;
+  expected_sell_date?: string;
 };
 
 export type LGBBacktestSimMetrics = {
@@ -136,6 +141,7 @@ export type LGBBacktestSimResponse = {
 export type LGBBacktestSimAvailableResponse = {
   open: number[];
   close: number[];
+  has_peak: boolean;
 };
 
 export type LGBBruteForceItem = {
@@ -260,8 +266,9 @@ export const researchApi = {
     return resp.data;
   },
 
-  async listModels(): Promise<LGBModelListResponse> {
-    const resp = await apiClient.get('/api/v1/research/lgb/models');
+  async listModels(labelMode?: string): Promise<LGBModelListResponse> {
+    const params = labelMode ? { label_mode: labelMode } : {};
+    const resp = await apiClient.get('/api/v1/research/lgb/models', { params });
     return resp.data;
   },
 
@@ -289,6 +296,14 @@ export const researchApi = {
 
   async getBacktestSimAvailable(): Promise<LGBBacktestSimAvailableResponse> {
     const resp = await apiClient.get('/api/v1/research/lgb/backtest-sim/available');
+    return resp.data;
+  },
+
+  async getBacktestSimPeak(params: {
+    top_n?: number;
+    exec_mode?: string;
+  }, signal?: AbortSignal): Promise<LGBBacktestSimResponse> {
+    const resp = await apiClient.get('/api/v1/research/lgb/backtest-sim/peak', { params, timeout: 300000, signal });
     return resp.data;
   },
 

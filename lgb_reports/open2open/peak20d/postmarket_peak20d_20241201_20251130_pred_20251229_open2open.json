@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20241201",
+  "train_end": "20251130",
+  "pred_date": "20251229",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600477.SH",
+      "stock_code": "600477",
+      "stock_name": "杭萧钢构",
+      "lgb_score": 100.0,
+      "raw_score": 0.47,
+      "predicted_days": 8
+    },
+    {
+      "rank": 2,
+      "ts_code": "600512.SH",
+      "stock_code": "600512",
+      "stock_name": "腾达建设",
+      "lgb_score": 84.87,
+      "raw_score": 0.4,
+      "predicted_days": 10
+    },
+    {
+      "rank": 3,
+      "ts_code": "002506.SZ",
+      "stock_code": "002506",
+      "stock_name": "协鑫集成",
+      "lgb_score": 84.18,
+      "raw_score": 0.4,
+      "predicted_days": 13
+    },
+    {
+      "rank": 4,
+      "ts_code": "688090.SH",
+      "stock_code": "688090",
+      "stock_name": "瑞松科技",
+      "lgb_score": 78.18,
+      "raw_score": 0.37,
+      "predicted_days": 10
+    },
+    {
+      "rank": 5,
+      "ts_code": "300751.SZ",
+      "stock_code": "300751",
+      "stock_name": "迈为股份",
+      "lgb_score": 77.48,
+      "raw_score": 0.37,
+      "predicted_days": 10
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.09,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.167384,
+    "std": 0.038863,
+    "skew": -0.9557,
+    "kurtosis": 1.8181,
+    "min": 0.022184,
+    "max": 0.469155,
+    "median": 0.185902
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11552564484912886,
+    "cv_rmse_std": 0.014370634108752169,
+    "cv_scores": [
+      0.12397,
+      0.106617,
+      0.124068,
+      0.131188,
+      0.091785
+    ],
+    "rank_ic_mean": 0.251884,
+    "rank_ic_std": 0.058029,
+    "icir": 4.3407,
+    "oof_corr": 0.2441,
+    "n_samples": 22408,
+    "n_features": 22
+  },
+  "window_days": 20
+}

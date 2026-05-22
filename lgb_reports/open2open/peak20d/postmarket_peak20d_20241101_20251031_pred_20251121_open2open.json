@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20241101",
+  "train_end": "20251031",
+  "pred_date": "20251121",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688316.SH",
+      "stock_code": "688316",
+      "stock_name": "青云科技-U",
+      "lgb_score": 100.0,
+      "raw_score": 0.42,
+      "predicted_days": 13
+    },
+    {
+      "rank": 2,
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 99.58,
+      "raw_score": 0.42,
+      "predicted_days": 12
+    },
+    {
+      "rank": 3,
+      "ts_code": "301205.SZ",
+      "stock_code": "301205",
+      "stock_name": "联特科技",
+      "lgb_score": 95.03,
+      "raw_score": 0.4,
+      "predicted_days": 10
+    },
+    {
+      "rank": 4,
+      "ts_code": "603960.SH",
+      "stock_code": "603960",
+      "stock_name": "克来机电",
+      "lgb_score": 90.53,
+      "raw_score": 0.38,
+      "predicted_days": 13
+    },
+    {
+      "rank": 5,
+      "ts_code": "920125.BJ",
+      "stock_code": "920125.BJ",
+      "stock_name": "",
+      "lgb_score": 89.96,
+      "raw_score": 0.38,
+      "predicted_days": 7
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.07,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.175799,
+    "std": 0.066983,
+    "skew": -0.9618,
+    "kurtosis": -0.8198,
+    "min": 0.020451,
+    "max": 0.418505,
+    "median": 0.218338
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11095731029367276,
+    "cv_rmse_std": 0.016947162241874952,
+    "cv_scores": [
+      0.083584,
+      0.123805,
+      0.102378,
+      0.132027,
+      0.112993
+    ],
+    "rank_ic_mean": 0.274721,
+    "rank_ic_std": 0.063149,
+    "icir": 4.3503,
+    "oof_corr": 0.284165,
+    "n_samples": 24629,
+    "n_features": 22
+  },
+  "window_days": 20
+}

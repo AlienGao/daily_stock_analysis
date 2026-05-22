@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240201",
+  "train_end": "20250131",
+  "pred_date": "20250207",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300842.SZ",
+      "stock_code": "300842",
+      "stock_name": "帝科股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.48,
+      "predicted_days": 13
+    },
+    {
+      "rank": 2,
+      "ts_code": "003021.SZ",
+      "stock_code": "003021",
+      "stock_name": "兆威机电",
+      "lgb_score": 94.31,
+      "raw_score": 0.45,
+      "predicted_days": 11
+    },
+    {
+      "rank": 3,
+      "ts_code": "002164.SZ",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 90.66,
+      "raw_score": 0.44,
+      "predicted_days": 15
+    },
+    {
+      "rank": 4,
+      "ts_code": "301596.SZ",
+      "stock_code": "301596",
+      "stock_name": "瑞迪智驱",
+      "lgb_score": 90.15,
+      "raw_score": 0.43,
+      "predicted_days": 10
+    },
+    {
+      "rank": 5,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 89.16,
+      "raw_score": 0.43,
+      "predicted_days": 17
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.96,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.102797,
+    "std": 0.035224,
+    "skew": 3.3453,
+    "kurtosis": 22.9455,
+    "min": 0.005525,
+    "max": 0.480504,
+    "median": 0.103617
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.12618888331877834,
+    "cv_rmse_std": 0.06863715088179677,
+    "cv_scores": [
+      0.085966,
+      0.066974,
+      0.259746,
+      0.106723,
+      0.111536
+    ],
+    "rank_ic_mean": 0.261304,
+    "rank_ic_std": 0.033454,
+    "icir": 7.8108,
+    "oof_corr": 0.055512,
+    "n_samples": 29041,
+    "n_features": 22
+  },
+  "window_days": 20
+}

@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240701",
+  "train_end": "20250630",
+  "pred_date": "20250731",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002009.SZ",
+      "stock_code": "002009",
+      "stock_name": "天奇股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.43,
+      "predicted_days": 15
+    },
+    {
+      "rank": 2,
+      "ts_code": "688135.SH",
+      "stock_code": "688135",
+      "stock_name": "利扬芯片",
+      "lgb_score": 97.23,
+      "raw_score": 0.41,
+      "predicted_days": 14
+    },
+    {
+      "rank": 3,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 96.87,
+      "raw_score": 0.41,
+      "predicted_days": 16
+    },
+    {
+      "rank": 4,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 96.57,
+      "raw_score": 0.41,
+      "predicted_days": 15
+    },
+    {
+      "rank": 5,
+      "ts_code": "300655.SZ",
+      "stock_code": "300655",
+      "stock_name": "晶瑞电材",
+      "lgb_score": 94.28,
+      "raw_score": 0.4,
+      "predicted_days": 14
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.88,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.100456,
+    "std": 0.024581,
+    "skew": 3.5881,
+    "kurtosis": 35.6992,
+    "min": -0.002563,
+    "max": 0.425386,
+    "median": 0.105492
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.14334047903574315,
+    "cv_rmse_std": 0.05630550470185491,
+    "cv_scores": [
+      0.255193,
+      0.119421,
+      0.10607,
+      0.124937,
+      0.111081
+    ],
+    "rank_ic_mean": 0.106582,
+    "rank_ic_std": 0.026947,
+    "icir": 3.9553,
+    "oof_corr": -0.101753,
+    "n_samples": 26168,
+    "n_features": 22
+  },
+  "window_days": 20
+}

@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250401",
+  "train_end": "20260331",
+  "pred_date": "20260410",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000959.SZ",
+      "stock_code": "000959",
+      "stock_name": "首钢股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.3,
+      "predicted_days": 10
+    },
+    {
+      "rank": 2,
+      "ts_code": "002432.SZ",
+      "stock_code": "002432",
+      "stock_name": "九安医疗",
+      "lgb_score": 94.61,
+      "raw_score": 0.28,
+      "predicted_days": 11
+    },
+    {
+      "rank": 3,
+      "ts_code": "300131.SZ",
+      "stock_code": "300131",
+      "stock_name": "英唐智控",
+      "lgb_score": 93.87,
+      "raw_score": 0.28,
+      "predicted_days": 8
+    },
+    {
+      "rank": 4,
+      "ts_code": "603950.SH",
+      "stock_code": "603950",
+      "stock_name": "长源东谷",
+      "lgb_score": 92.97,
+      "raw_score": 0.28,
+      "predicted_days": 12
+    },
+    {
+      "rank": 5,
+      "ts_code": "300672.SZ",
+      "stock_code": "300672",
+      "stock_name": "国科微",
+      "lgb_score": 92.23,
+      "raw_score": 0.28,
+      "predicted_days": 6
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.19,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.171056,
+    "std": 0.064559,
+    "skew": -1.1388,
+    "kurtosis": -0.4211,
+    "min": -0.009645,
+    "max": 0.299676,
+    "median": 0.211306
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11528457550396184,
+    "cv_rmse_std": 0.011973717546257798,
+    "cv_scores": [
+      0.114065,
+      0.125575,
+      0.119731,
+      0.092741,
+      0.12431
+    ],
+    "rank_ic_mean": 0.326163,
+    "rank_ic_std": 0.041728,
+    "icir": 7.8164,
+    "oof_corr": 0.313915,
+    "n_samples": 18599,
+    "n_features": 22
+  },
+  "window_days": 20
+}

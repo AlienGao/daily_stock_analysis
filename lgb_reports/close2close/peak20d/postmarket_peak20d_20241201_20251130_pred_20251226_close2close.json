@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20241201",
+  "train_end": "20251130",
+  "pred_date": "20251226",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "601828.SH",
+      "stock_code": "601828",
+      "stock_name": "美凯龙",
+      "lgb_score": 100.0,
+      "raw_score": 0.44,
+      "predicted_days": 13
+    },
+    {
+      "rank": 2,
+      "ts_code": "600512.SH",
+      "stock_code": "600512",
+      "stock_name": "腾达建设",
+      "lgb_score": 99.07,
+      "raw_score": 0.44,
+      "predicted_days": 13
+    },
+    {
+      "rank": 3,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 96.57,
+      "raw_score": 0.42,
+      "predicted_days": 12
+    },
+    {
+      "rank": 4,
+      "ts_code": "600654.SH",
+      "stock_code": "600654",
+      "stock_name": "中安科",
+      "lgb_score": 88.79,
+      "raw_score": 0.39,
+      "predicted_days": 13
+    },
+    {
+      "rank": 5,
+      "ts_code": "600477.SH",
+      "stock_code": "600477",
+      "stock_name": "杭萧钢构",
+      "lgb_score": 88.29,
+      "raw_score": 0.39,
+      "predicted_days": 7
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.14,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.138153,
+    "std": 0.03006,
+    "skew": 2.5574,
+    "kurtosis": 13.4779,
+    "min": 0.006632,
+    "max": 0.439772,
+    "median": 0.135339
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.1181917138119184,
+    "cv_rmse_std": 0.013931832187834671,
+    "cv_scores": [
+      0.125386,
+      0.111779,
+      0.127183,
+      0.132657,
+      0.093953
+    ],
+    "rank_ic_mean": 0.162891,
+    "rank_ic_std": 0.061036,
+    "icir": 2.6688,
+    "oof_corr": 0.180244,
+    "n_samples": 22408,
+    "n_features": 22
+  },
+  "window_days": 20
+}

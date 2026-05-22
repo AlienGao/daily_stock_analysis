@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260515",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688025.SH",
+      "stock_code": "688025",
+      "stock_name": "杰普特",
+      "lgb_score": 100.0,
+      "raw_score": 0.39,
+      "predicted_days": 8
+    },
+    {
+      "rank": 2,
+      "ts_code": "301629.SZ",
+      "stock_code": "301629",
+      "stock_name": "矽电股份",
+      "lgb_score": 96.33,
+      "raw_score": 0.38,
+      "predicted_days": 12
+    },
+    {
+      "rank": 3,
+      "ts_code": "002371.SZ",
+      "stock_code": "002371",
+      "stock_name": "北方华创",
+      "lgb_score": 94.12,
+      "raw_score": 0.37,
+      "predicted_days": 8
+    },
+    {
+      "rank": 4,
+      "ts_code": "688808.SH",
+      "stock_code": "688808",
+      "stock_name": "联讯仪器",
+      "lgb_score": 93.63,
+      "raw_score": 0.37,
+      "predicted_days": 10
+    },
+    {
+      "rank": 5,
+      "ts_code": "301486.SZ",
+      "stock_code": "301486",
+      "stock_name": "致尚科技",
+      "lgb_score": 92.77,
+      "raw_score": 0.36,
+      "predicted_days": 5
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.43,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.186754,
+    "std": 0.079997,
+    "skew": -1.1321,
+    "kurtosis": -0.4723,
+    "min": -0.021286,
+    "max": 0.393726,
+    "median": 0.236464
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.12675383866228435,
+    "cv_rmse_std": 0.013305419221536273,
+    "cv_scores": [
+      0.132982,
+      0.138764,
+      0.10424,
+      0.119245,
+      0.138538
+    ],
+    "rank_ic_mean": 0.313296,
+    "rank_ic_std": 0.030644,
+    "icir": 10.2236,
+    "oof_corr": 0.285371,
+    "n_samples": 18677,
+    "n_features": 22
+  },
+  "window_days": 20
+}

@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20241101",
+  "train_end": "20251031",
+  "pred_date": "20251126",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.43,
+      "predicted_days": 14
+    },
+    {
+      "rank": 2,
+      "ts_code": "688135.SH",
+      "stock_code": "688135",
+      "stock_name": "利扬芯片",
+      "lgb_score": 94.29,
+      "raw_score": 0.41,
+      "predicted_days": 10
+    },
+    {
+      "rank": 3,
+      "ts_code": "920125.BJ",
+      "stock_code": "920125.BJ",
+      "stock_name": "",
+      "lgb_score": 87.39,
+      "raw_score": 0.38,
+      "predicted_days": 7
+    },
+    {
+      "rank": 4,
+      "ts_code": "300179.SZ",
+      "stock_code": "300179",
+      "stock_name": "四方达",
+      "lgb_score": 87.28,
+      "raw_score": 0.38,
+      "predicted_days": 13
+    },
+    {
+      "rank": 5,
+      "ts_code": "603960.SH",
+      "stock_code": "603960",
+      "stock_name": "克来机电",
+      "lgb_score": 86.84,
+      "raw_score": 0.38,
+      "predicted_days": 13
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.07,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.179507,
+    "std": 0.063348,
+    "skew": -1.0015,
+    "kurtosis": -0.5826,
+    "min": 0.014885,
+    "max": 0.431025,
+    "median": 0.218338
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11095731029367276,
+    "cv_rmse_std": 0.016947162241874952,
+    "cv_scores": [
+      0.083584,
+      0.123805,
+      0.102378,
+      0.132027,
+      0.112993
+    ],
+    "rank_ic_mean": 0.274721,
+    "rank_ic_std": 0.063149,
+    "icir": 4.3503,
+    "oof_corr": 0.284165,
+    "n_samples": 24629,
+    "n_features": 22
+  },
+  "window_days": 20
+}

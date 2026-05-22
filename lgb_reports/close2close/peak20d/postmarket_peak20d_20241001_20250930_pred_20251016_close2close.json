@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20241001",
+  "train_end": "20250930",
+  "pred_date": "20251016",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 100.0,
+      "raw_score": 0.4,
+      "predicted_days": 13
+    },
+    {
+      "rank": 2,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 99.98,
+      "raw_score": 0.4,
+      "predicted_days": 16
+    },
+    {
+      "rank": 3,
+      "ts_code": "688320.SH",
+      "stock_code": "688320",
+      "stock_name": "禾川科技",
+      "lgb_score": 99.03,
+      "raw_score": 0.4,
+      "predicted_days": 13
+    },
+    {
+      "rank": 4,
+      "ts_code": "920100.BJ",
+      "stock_code": "920100.BJ",
+      "stock_name": "",
+      "lgb_score": 95.87,
+      "raw_score": 0.39,
+      "predicted_days": 11
+    },
+    {
+      "rank": 5,
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 95.03,
+      "raw_score": 0.38,
+      "predicted_days": 12
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.45,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.121548,
+    "std": 0.029603,
+    "skew": 0.7823,
+    "kurtosis": 9.9811,
+    "min": 0.019944,
+    "max": 0.400973,
+    "median": 0.130827
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11664984915819392,
+    "cv_rmse_std": 0.014184379309299465,
+    "cv_scores": [
+      0.091848,
+      0.117552,
+      0.113131,
+      0.131297,
+      0.129421
+    ],
+    "rank_ic_mean": 0.158543,
+    "rank_ic_std": 0.043815,
+    "icir": 3.6184,
+    "oof_corr": 0.170294,
+    "n_samples": 24765,
+    "n_features": 22
+  },
+  "window_days": 20
+}

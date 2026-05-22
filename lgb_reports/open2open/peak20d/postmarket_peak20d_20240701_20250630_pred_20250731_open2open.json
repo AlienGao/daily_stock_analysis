@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240701",
+  "train_end": "20250630",
+  "pred_date": "20250731",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.45,
+      "predicted_days": 16
+    },
+    {
+      "rank": 2,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 90.47,
+      "raw_score": 0.41,
+      "predicted_days": 12
+    },
+    {
+      "rank": 3,
+      "ts_code": "600500.SH",
+      "stock_code": "600500",
+      "stock_name": "中化国际",
+      "lgb_score": 83.78,
+      "raw_score": 0.38,
+      "predicted_days": 10
+    },
+    {
+      "rank": 4,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 78.75,
+      "raw_score": 0.35,
+      "predicted_days": 12
+    },
+    {
+      "rank": 5,
+      "ts_code": "002272.SZ",
+      "stock_code": "002272",
+      "stock_name": "川润股份",
+      "lgb_score": 77.83,
+      "raw_score": 0.35,
+      "predicted_days": 15
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.94,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.129895,
+    "std": 0.042363,
+    "skew": -0.7828,
+    "kurtosis": 0.8757,
+    "min": -0.001798,
+    "max": 0.450981,
+    "median": 0.15282
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.1526839816452219,
+    "cv_rmse_std": 0.0664134826984568,
+    "cv_scores": [
+      0.284188,
+      0.134805,
+      0.114106,
+      0.123422,
+      0.106898
+    ],
+    "rank_ic_mean": 0.213032,
+    "rank_ic_std": 0.022265,
+    "icir": 9.5679,
+    "oof_corr": -0.086782,
+    "n_samples": 26168,
+    "n_features": 22
+  },
+  "window_days": 20
+}

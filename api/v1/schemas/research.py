@@ -8,8 +8,11 @@ from pydantic import BaseModel, Field
 
 class LGBTrainRequest(BaseModel):
     mode: str = Field("postmarket", description="扫描模式: intraday | postmarket")
-    forward_days: int = Field(3, ge=1, le=60, description="预测未来 N 日收益")
+    forward_days: int = Field(3, ge=1, le=60, description="预测未来 N 日收益（fixed 模式）")
     exec_mode: str = Field("close", description="标签模式: open (开盘→开盘) | close (收盘→收盘)")
+    label_mode: str = Field("fixed", description="标签构造: fixed | peak_speed")
+    window_days: int = Field(20, ge=5, le=60, description="峰值搜索窗口天数（peak_speed 模式）")
+    peak_min_return: float = Field(0.01, ge=0.0, le=0.1, description="最小峰值门槛")
     start_date: Optional[str] = Field(None, description="训练起始日期 YYYYMMDD")
     end_date: Optional[str] = Field(None, description="训练结束日期 YYYYMMDD")
     n_estimators: int = Field(200, ge=10, le=2000)
@@ -38,6 +41,7 @@ class LGBPredictionItem(BaseModel):
     stock_name: str = ""
     lgb_score: float
     raw_score: float
+    predicted_days: Optional[int] = None
     win_rate: Optional[float] = None
     avg_return: Optional[float] = None
     max_return: Optional[float] = None
@@ -109,6 +113,7 @@ class LGBBacktestTradeItem(BaseModel):
     sell_price: float
     return_pct: float
     skipped: bool = False
+    expected_sell_date: str = ""
 
 
 class LGBBacktestSimMetrics(BaseModel):
@@ -132,6 +137,7 @@ class LGBBacktestSimResponse(BaseModel):
 class LGBBacktestSimAvailableResponse(BaseModel):
     open: List[int] = Field(default_factory=list)
     close: List[int] = Field(default_factory=list)
+    has_peak: bool = False
 
 
 # ── Model Diagnostics ──

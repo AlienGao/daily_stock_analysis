@@ -100,19 +100,29 @@ class LGBTrainer:
     """
 
     def __init__(self, mode: str = "postmarket", forward_days: int = 3,
-                 exec_mode: str = "close", progress_callback=None):
+                 exec_mode: str = "close", progress_callback=None,
+                 label_mode: str = "fixed", window_days: int = 20,
+                 peak_min_return: float = 0.01, winsorize_quantile: float = 0.99):
         if mode not in ("intraday", "postmarket"):
             raise ValueError("mode 须为 intraday 或 postmarket")
         if exec_mode not in ("open", "close"):
             raise ValueError("exec_mode 须为 open 或 close")
+        if label_mode not in ("fixed", "peak_speed"):
+            raise ValueError("label_mode 须为 fixed 或 peak_speed")
         self.mode = mode
         self.forward_days = forward_days
-        self.exec_mode = exec_mode  # "open" = open→open labels, "close" = close→close labels
+        self.exec_mode = exec_mode
+        self.label_mode = label_mode
+        self.window_days = window_days
+        self.peak_min_return = peak_min_return
+        self.winsorize_quantile = winsorize_quantile
         self.progress_callback = progress_callback
         self.model: Optional[LGBMRegressor] = None
+        self.days_model: Optional[LGBMRegressor] = None
         self.feature_names: List[str] = []
         self._X_train: Optional[pd.DataFrame] = None
         self._y_train: Optional[pd.Series] = None
+        self._y_days_train: Optional[pd.Series] = None
         self._X_latest: Optional[pd.DataFrame] = None
         self._latest_date: Optional[str] = None
         self._latest_codes: List[str] = []
@@ -200,27 +210,55 @@ class LGBTrainer:
 
         X = X.dropna(subset=self.feature_names[:min(3, len(self.feature_names))])
 
-        if cb:
-            cb(f"正在计算未来 {self.forward_days} 日收益...")
-        y = self._compute_forward_returns(db, X, start_date, end_date)
+        if self.label_mode == "peak_speed":
+            if cb:
+                cb(f"正在计算 {self.window_days} 日窗口内峰值收益与到达天数...")
+            y_peak, y_days = self._compute_peak_speed_labels(db, X, start_date, end_date)
 
-        X = X.set_index(["trade_date", "ts_code"])
-        common = X.index.intersection(y.index)
-        X = X.loc[common]
-        y = y.loc[common]
+            X = X.set_index(["trade_date", "ts_code"])
+            common = X.index.intersection(y_peak.index)
+            X = X.loc[common]
+            y_peak = y_peak.loc[common]
+            y_days = y_days.loc[common]
 
-        mask = np.isfinite(y)
-        X = X.loc[mask]
-        y = y.loc[mask]
+            mask = np.isfinite(y_peak) & np.isfinite(y_days)
+            X = X.loc[mask]
+            y_peak = y_peak.loc[mask]
+            y_days = y_days.loc[mask]
 
-        if cb:
-            cb(f"数据准备完成: {len(X):,} 样本，{len(self.feature_names)} 特征，"
-               f"日期范围 {X.index.get_level_values(0).min()} ~ {X.index.get_level_values(0).max()}")
-        self._train_start = start_date or X.index.get_level_values(0).min()
-        self._train_end = end_date or X.index.get_level_values(0).max()
-        self._X_train = X
-        self._y_train = y
-        return X, y
+            if cb:
+                cb(f"数据准备完成: {len(X):,} 样本，{len(self.feature_names)} 特征，"
+                   f"日期范围 {X.index.get_level_values(0).min()} ~ "
+                   f"{X.index.get_level_values(0).max()}")
+            self._train_start = start_date or X.index.get_level_values(0).min()
+            self._train_end = end_date or X.index.get_level_values(0).max()
+            self._X_train = X
+            self._y_train = y_peak
+            self._y_days_train = y_days
+            return X, y_peak
+        else:
+            if cb:
+                cb(f"正在计算未来 {self.forward_days} 日收益...")
+            y = self._compute_forward_returns(db, X, start_date, end_date)
+
+            X = X.set_index(["trade_date", "ts_code"])
+            common = X.index.intersection(y.index)
+            X = X.loc[common]
+            y = y.loc[common]
+
+            mask = np.isfinite(y)
+            X = X.loc[mask]
+            y = y.loc[mask]
+
+            if cb:
+                cb(f"数据准备完成: {len(X):,} 样本，{len(self.feature_names)} 特征，"
+                   f"日期范围 {X.index.get_level_values(0).min()} ~ "
+                   f"{X.index.get_level_values(0).max()}")
+            self._train_start = start_date or X.index.get_level_values(0).min()
+            self._train_end = end_date or X.index.get_level_values(0).max()
+            self._X_train = X
+            self._y_train = y
+            return X, y
 
     def _compute_forward_returns(
         self, db: DatabaseManager, X: pd.DataFrame,
@@ -353,6 +391,139 @@ class LGBTrainer:
         return pd.Series(results, name=f"fwd_{self.forward_days}d")
 
     # ------------------------------------------------------------------
+    # Peak Speed Label Helpers
+    # ------------------------------------------------------------------
+
+    def _calc_peak_from_prices(
+        self, forward_prices: np.ndarray, buy_price: float,
+    ) -> Tuple[float, int]:
+        """Calculate peak return and days to peak from a price array."""
+        if len(forward_prices) == 0 or buy_price <= 0:
+            return 0.0, self.window_days
+
+        returns = forward_prices / buy_price - 1.0
+        peak_idx = int(np.argmax(returns))
+        peak_return = float(returns[peak_idx])
+
+        if peak_return < self.peak_min_return:
+            return 0.0, self.window_days
+
+        days_to_peak = peak_idx + 1
+        return peak_return, days_to_peak
+
+    @staticmethod
+    def _winsorize(series: pd.Series, quantile: float) -> pd.Series:
+        """Clip series at symmetric quantile boundaries."""
+        lower = series.quantile(1.0 - quantile)
+        upper = series.quantile(quantile)
+        return series.clip(lower=lower, upper=upper)
+
+    def _compute_peak_speed_labels(
+        self, db: DatabaseManager, X: pd.DataFrame,
+        _start: Optional[str], _end: Optional[str],
+    ) -> Tuple[pd.Series, pd.Series]:
+        """Compute peak_return and days_to_peak labels for peak_speed mode."""
+        from src.storage import StockAdjFactor, StockDaily
+        from sqlalchemy import func
+
+        trading_dates = sorted(X["trade_date"].unique())
+        all_codes = X["ts_code"].unique().tolist()
+        bare_codes = [c.split(".")[0] for c in all_codes]
+
+        with db.get_session() as session:
+            dates_raw = (
+                session.query(StockDaily.date)
+                .group_by(StockDaily.date)
+                .having(func.count(StockDaily.code) >= 3000)
+                .order_by(StockDaily.date)
+                .all()
+            )
+        trading_days_all = sorted(
+            d[0].strftime("%Y%m%d") if hasattr(d[0], "strftime")
+            else str(d[0]).replace("-", "")[:8]
+            for d in dates_raw
+        )
+
+        needed_dates: set = set(trading_dates)
+        window_dates_by_td: Dict[str, List[str]] = {}
+
+        for td in trading_dates:
+            try:
+                td_idx = trading_days_all.index(td)
+            except ValueError:
+                continue
+            window = trading_days_all[td_idx + 1: td_idx + 1 + self.window_days]
+            if len(window) < 3:
+                continue
+            window_dates_by_td[td] = window
+            needed_dates.update(window)
+
+        price_col = "open" if self.exec_mode == "open" else "close"
+        with db.get_session() as session:
+            rows = session.query(StockDaily).filter(
+                StockDaily.date.in_([
+                    pd.Timestamp(f"{d[:4]}-{d[4:6]}-{d[6:8]}")
+                    for d in needed_dates
+                ]),
+                StockDaily.code.in_(bare_codes),
+            ).all()
+
+        price_map: Dict[Tuple[str, str], float] = {}
+        for r in rows:
+            code_str = str(r.code).split(".")[0]
+            d = r.date.strftime("%Y%m%d")
+            p = float(getattr(r, price_col)) if getattr(r, price_col) else 0.0
+            price_map[(d, code_str)] = p
+
+        adj_map = _load_adj_factors(db, bare_codes, needed_dates)
+
+        peak_results = {}
+        days_results = {}
+
+        for td, window in window_dates_by_td.items():
+            td_codes = X[X["trade_date"] == td]["ts_code"].tolist()
+            for code in td_codes:
+                bare = str(code).split(".")[0]
+                buy_price = price_map.get((td, bare))
+                if not buy_price or buy_price <= 0:
+                    continue
+
+                adj_buy = adj_map.get((bare, td), 1.0)
+                if adj_buy <= 0:
+                    continue
+
+                forward_prices = []
+                for wd in window:
+                    raw_p = price_map.get((wd, bare))
+                    if raw_p and raw_p > 0:
+                        adj_sell = adj_map.get((bare, wd), 1.0)
+                        if adj_sell > 0:
+                            forward_prices.append(raw_p * (adj_sell / adj_buy))
+                        else:
+                            forward_prices.append(raw_p)
+                    else:
+                        forward_prices.append(np.nan)
+
+                fp_array = np.array(forward_prices, dtype=np.float64)
+                valid_mask = ~np.isnan(fp_array)
+                if valid_mask.sum() < 3:
+                    continue
+
+                peak_ret, days = self._calc_peak_from_prices(
+                    fp_array[valid_mask], buy_price
+                )
+                peak_results[(td, code)] = peak_ret
+                days_results[(td, code)] = days
+
+        peak_series = pd.Series(peak_results, name="peak_return")
+        days_series = pd.Series(days_results, name="days_to_peak")
+
+        if len(peak_series) > 0:
+            peak_series = self._winsorize(peak_series, self.winsorize_quantile)
+
+        return peak_series, days_series
+
+    # ------------------------------------------------------------------
     # Training
     # ------------------------------------------------------------------
 
@@ -420,6 +591,21 @@ class LGBTrainer:
         self.model = model
         self._training_metrics["n_samples"] = int(len(X))
         self._training_metrics["n_features"] = int(len(self.feature_names))
+
+        # Train auxiliary days_to_peak model for peak_speed mode
+        if self.label_mode == "peak_speed" and self._y_days_train is not None:
+            y_days = self._y_days_train.values
+            days_model = LGBMRegressor(
+                n_estimators=n_estimators,
+                num_leaves=num_leaves,
+                learning_rate=learning_rate,
+                verbose=-1,
+                random_state=43,
+                **kwargs,
+            )
+            days_model.fit(X, y_days)
+            self.days_model = days_model
+
         return model
 
     # ------------------------------------------------------------------
@@ -571,6 +757,13 @@ class LGBTrainer:
         else:
             pivot["lgb_score_norm"] = 50.0
 
+        # Predict days_to_peak for peak_speed mode
+        if self.label_mode == "peak_speed" and self.days_model is not None:
+            days_pred = self.days_model.predict(X_pred)
+            pivot["predicted_days"] = np.clip(
+                np.round(days_pred), 1, self.window_days
+            ).astype(int)
+
         pivot = pivot.sort_values("lgb_score", ascending=False)
         pivot["stock_code"] = (
             pivot["ts_code"].str.replace(".SH", "").str.replace(".SZ", "")
@@ -644,14 +837,17 @@ class LGBTrainer:
             name = str(row.get("stock_name", ""))
             if is_st_stock(name):
                 continue
-            results.append({
+            entry = {
                 "rank": len(results) + 1,
                 "ts_code": row["ts_code"],
                 "stock_code": row["stock_code"],
                 "stock_name": name,
                 "lgb_score": round(float(row["lgb_score_norm"]), 2),
                 "raw_score": round(float(row["lgb_score"]), 2),
-            })
+            }
+            if "predicted_days" in row.index:
+                entry["predicted_days"] = int(row["predicted_days"])
+            results.append(entry)
             if len(results) >= top_n:
                 break
         return results
@@ -761,6 +957,229 @@ class LGBTrainer:
                 "factor_return": factor_summary.get("cumulative_return", 0),
                 "benchmark_return": round(bench_capital - 1, 4),
             },
+        }
+
+    def backtest_peak_speed(
+        self,
+        top_n: int = 5,
+        stop_loss: float = -0.05,
+        take_profit_ratio: float = 0.8,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+    ) -> Dict:
+        """Peak speed 模式回测：动态退出策略。
+
+        每个持仓根据模型预测的 predicted_return 和 predicted_days 决定退出时机。
+        退出优先级: 止损 → 止盈 → 到期窗口 → 强制退出。
+        """
+        if self.label_mode != "peak_speed":
+            raise RuntimeError("backtest_peak_speed 仅适用于 peak_speed 模式")
+        if self.model is None or self.days_model is None:
+            raise RuntimeError("需要主模型和辅助模型（days_model）")
+
+        db = _get_db()
+        from src.storage import FactorScoreSnapshot, StockDaily
+
+        with db.get_session() as session:
+            dates_query = session.query(FactorScoreSnapshot.trade_date).filter(
+                FactorScoreSnapshot.mode == self.mode,
+            )
+            if start_date:
+                dates_query = dates_query.filter(
+                    FactorScoreSnapshot.trade_date >= start_date.replace("-", ""))
+            if end_date:
+                dates_query = dates_query.filter(
+                    FactorScoreSnapshot.trade_date <= end_date.replace("-", ""))
+            all_dates = sorted(set(r[0] for r in dates_query.distinct().all()))
+
+        if len(all_dates) < self.window_days + 5:
+            return {"error": "数据不足（需要至少 window_days + 5 个交易日的因子快照）"}
+
+        # State
+        positions: List[Dict] = []  # {ts_code, bare, buy_date, buy_price, pred_return, pred_days, alloc, entry_idx}
+        cash = 1.0
+        trades: List[Dict] = []
+        capital_curve: List[Dict] = []
+        exit_reasons = {"stop_loss": 0, "take_profit": 0, "arrival": 0, "force_exit": 0}
+
+        for date_idx, td in enumerate(all_dates):
+            # --- 1. Check exit conditions for open positions ---
+            if positions:
+                held_codes = [p["bare"] for p in positions]
+                with db.get_session() as session:
+                    price_rows = session.query(StockDaily).filter(
+                        StockDaily.date == pd.Timestamp(td),
+                        StockDaily.code.in_(held_codes),
+                    ).all()
+                price_map = {str(r.code): float(r.close) for r in price_rows}
+
+                adj_map = _load_adj_factors(db, held_codes, {td}) if held_codes else {}
+
+                to_close = []
+                for pos in positions:
+                    cur_price = price_map.get(pos["bare"])
+                    if cur_price is None or cur_price <= 0:
+                        continue
+                    held_days = date_idx - pos["entry_idx"]
+
+                    adj_buy = pos.get("adj_buy", 1.0)
+                    adj_cur = adj_map.get((pos["bare"], td), 1.0)
+                    if adj_buy > 0 and adj_cur > 0:
+                        raw_ret = (cur_price - pos["buy_price"]) / pos["buy_price"]
+                        adj_return = (1.0 + raw_ret) * (adj_cur / adj_buy) - 1.0
+                    else:
+                        adj_return = (cur_price - pos["buy_price"]) / pos["buy_price"]
+
+                    exit_reason = None
+                    if adj_return <= stop_loss:
+                        exit_reason = "stop_loss"
+                    elif adj_return >= pos["pred_return"] * take_profit_ratio:
+                        exit_reason = "take_profit"
+                    elif abs(held_days - pos["pred_days"]) <= 2 and adj_return > 0:
+                        exit_reason = "arrival"
+                    elif held_days > self.window_days:
+                        exit_reason = "force_exit"
+
+                    if exit_reason:
+                        to_close.append((pos, adj_return, exit_reason, held_days))
+
+                for pos, ret, reason, held in to_close:
+                    cash += pos["alloc"] * (1.0 + ret)
+                    trades.append({
+                        "ts_code": pos["ts_code"],
+                        "buy_date": pos["buy_date"],
+                        "sell_date": td,
+                        "return_pct": round(ret, 6),
+                        "holding_days": held,
+                        "exit_reason": reason,
+                    })
+                    exit_reasons[reason] += 1
+                    positions.remove(pos)
+
+            # --- 2. Open new positions if slots available ---
+            open_slots = top_n - len(positions)
+            if open_slots > 0 and cash > 0.01:
+                with db.get_session() as session:
+                    rows = session.query(FactorScoreSnapshot).filter(
+                        FactorScoreSnapshot.mode == self.mode,
+                        FactorScoreSnapshot.trade_date == td,
+                    ).all()
+
+                if rows:
+                    records = [
+                        {"ts_code": r.ts_code, "factor_name": r.factor_name, "score": r.score}
+                        for r in rows
+                    ]
+                    df = pd.DataFrame(records)
+                    pivot = df.pivot_table(
+                        index="ts_code", columns="factor_name",
+                        values="score", aggfunc="mean",
+                    )
+                    pivot.fillna(0, inplace=True)
+                    for f in self.feature_names:
+                        if f not in pivot.columns:
+                            pivot[f] = 0.0
+
+                    X = pivot[self.feature_names].fillna(0).values
+                    scores = self.model.predict(X)
+                    days_pred = self.days_model.predict(X)
+                    pivot["_score"] = scores
+                    pivot["_days"] = np.clip(np.round(days_pred), 1, self.window_days).astype(int)
+
+                    held_ts = {p["ts_code"] for p in positions}
+                    candidates = pivot[~pivot.index.isin(held_ts)].nlargest(
+                        open_slots, "_score"
+                    )
+
+                    if len(candidates) > 0:
+                        # Get buy prices
+                        cand_codes = [c.split(".")[0] for c in candidates.index]
+                        with db.get_session() as session:
+                            buy_rows = session.query(StockDaily).filter(
+                                StockDaily.date == pd.Timestamp(td),
+                                StockDaily.code.in_(cand_codes),
+                            ).all()
+                        buy_prices = {str(r.code): float(r.close) for r in buy_rows}
+                        adj_map_buy = _load_adj_factors(db, cand_codes, {td})
+
+                        alloc_per = cash / top_n
+                        for ts_code in candidates.index:
+                            bare = ts_code.split(".")[0]
+                            bp = buy_prices.get(bare)
+                            if bp is None or bp <= 0:
+                                continue
+                            positions.append({
+                                "ts_code": ts_code,
+                                "bare": bare,
+                                "buy_date": td,
+                                "buy_price": bp,
+                                "pred_return": float(candidates.loc[ts_code, "_score"]),
+                                "pred_days": int(candidates.loc[ts_code, "_days"]),
+                                "alloc": alloc_per,
+                                "adj_buy": adj_map_buy.get((bare, td), 1.0),
+                                "entry_idx": date_idx,
+                            })
+                            cash -= alloc_per
+
+            # --- 3. Record capital curve (mark-to-market) ---
+            mtm = cash
+            for pos in positions:
+                mtm += pos["alloc"]  # simplified: assume flat for open positions intra-day
+            capital_curve.append({"date": td, "capital": round(mtm, 6)})
+
+        # Force-close any remaining positions at last available date
+        if positions:
+            last_td = all_dates[-1]
+            held_codes = [p["bare"] for p in positions]
+            with db.get_session() as session:
+                price_rows = session.query(StockDaily).filter(
+                    StockDaily.date == pd.Timestamp(last_td),
+                    StockDaily.code.in_(held_codes),
+                ).all()
+            price_map = {str(r.code): float(r.close) for r in price_rows}
+            adj_map = _load_adj_factors(db, held_codes, {last_td})
+
+            for pos in list(positions):
+                cur_price = price_map.get(pos["bare"])
+                held_days = len(all_dates) - 1 - pos["entry_idx"]
+                if cur_price and cur_price > 0:
+                    adj_buy = pos.get("adj_buy", 1.0)
+                    adj_cur = adj_map.get((pos["bare"], last_td), 1.0)
+                    if adj_buy > 0 and adj_cur > 0:
+                        raw_ret = (cur_price - pos["buy_price"]) / pos["buy_price"]
+                        adj_return = (1.0 + raw_ret) * (adj_cur / adj_buy) - 1.0
+                    else:
+                        adj_return = (cur_price - pos["buy_price"]) / pos["buy_price"]
+                else:
+                    adj_return = 0.0
+                cash += pos["alloc"] * (1.0 + adj_return)
+                trades.append({
+                    "ts_code": pos["ts_code"],
+                    "buy_date": pos["buy_date"],
+                    "sell_date": last_td,
+                    "return_pct": round(adj_return, 6),
+                    "holding_days": held_days,
+                    "exit_reason": "force_exit",
+                })
+                exit_reasons["force_exit"] += 1
+
+        total_trades = len(trades)
+        win_count = sum(1 for t in trades if t["return_pct"] > 0)
+        avg_hold = float(np.mean([t["holding_days"] for t in trades])) if trades else 0.0
+        capital_values = [c["capital"] for c in capital_curve]
+        max_dd = self._calc_max_drawdown(capital_values) if capital_values else 0.0
+
+        return {
+            "metrics": {
+                "cumulative_return": round(cash - 1.0, 4),
+                "win_rate": round(win_count / total_trades, 4) if total_trades > 0 else 0.0,
+                "max_drawdown": round(max_dd, 4),
+                "total_trades": total_trades,
+                "avg_holding_days": round(avg_hold, 1),
+                "exit_reasons": exit_reasons,
+            },
+            "capital_curve": capital_curve,
+            "trades": trades,
         }
 
     def _calc_lgb_return(
@@ -912,7 +1331,10 @@ class LGBTrainer:
             exec_suffix = "open2open" if self.exec_mode == "open" else "close2close"
             sd = str(self._train_start).replace("-", "")[:8]
             ed = str(self._train_end).replace("-", "")[:8]
-            name = f"lgb_{self.mode}_fwd{self.forward_days}d_{sd}_{ed}_{exec_suffix}"
+            if self.label_mode == "peak_speed":
+                name = f"lgb_{self.mode}_peak{self.window_days}d_{sd}_{ed}_{exec_suffix}"
+            else:
+                name = f"lgb_{self.mode}_fwd{self.forward_days}d_{sd}_{ed}_{exec_suffix}"
 
         # Delete old models with the same (mode, forward_days, exec_mode)
         self._cleanup_same_config_models(name)
@@ -922,6 +1344,10 @@ class LGBTrainer:
             "mode": self.mode,
             "forward_days": self.forward_days,
             "exec_mode": self.exec_mode,
+            "label_mode": self.label_mode,
+            "window_days": self.window_days,
+            "peak_min_return": self.peak_min_return,
+            "winsorize_quantile": self.winsorize_quantile,
             "feature_names": self.feature_names,
             "training_metrics": self._training_metrics,
             "train_start": str(self._train_start)[:10] if self._train_start else "",
@@ -929,6 +1355,11 @@ class LGBTrainer:
             "saved_at": datetime.now().isoformat(),
         }
         joblib.dump({"model": self.model, "meta": meta}, model_path)
+
+        if self.label_mode == "peak_speed" and self.days_model is not None:
+            days_path = os.path.join(MODEL_DIR, f"{name}_days.joblib")
+            joblib.dump({"model": self.days_model, "meta": meta}, days_path)
+
         return model_path
 
     @classmethod
@@ -940,22 +1371,41 @@ class LGBTrainer:
             mode=meta["mode"],
             forward_days=meta["forward_days"],
             exec_mode=meta.get("exec_mode", "close"),
+            label_mode=meta.get("label_mode", "fixed"),
+            window_days=meta.get("window_days", 20),
+            peak_min_return=meta.get("peak_min_return", 0.01),
+            winsorize_quantile=meta.get("winsorize_quantile", 0.99),
         )
         trainer.model = data["model"]
         trainer.feature_names = meta["feature_names"]
         trainer._training_metrics = meta.get("training_metrics", {})
         trainer._train_start = meta.get("train_start", "")
         trainer._train_end = meta.get("train_end", "")
+
+        if trainer.label_mode == "peak_speed":
+            days_path = model_path.replace(".joblib", "_days.joblib")
+            if os.path.exists(days_path):
+                days_data = joblib.load(days_path)
+                trainer.days_model = days_data["model"]
+
         return trainer
 
     @staticmethod
-    def list_models() -> List[Dict]:
-        """列出 data/lgb_models/ 下所有已保存的模型。"""
+    def list_models(label_mode: Optional[str] = None) -> List[Dict]:
+        """列出 data/lgb_models/ 下所有已保存的模型。
+
+        Args:
+            label_mode: 可选过滤 "fixed" 或 "peak_speed"，只返回对应模式的模型。
+        """
         if not os.path.isdir(MODEL_DIR):
             return []
         models = []
         for fname in sorted(os.listdir(MODEL_DIR), reverse=True):
-            if fname.endswith(".joblib"):
+            if fname.endswith(".joblib") and not fname.endswith("_days.joblib"):
+                if label_mode == "peak_speed" and "_peak" not in fname:
+                    continue
+                if label_mode == "fixed" and "_fwd" not in fname:
+                    continue
                 full = os.path.join(MODEL_DIR, fname)
                 size = os.path.getsize(full)
                 mtime = datetime.fromtimestamp(os.path.getmtime(full))

@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20241101",
+  "train_end": "20251031",
+  "pred_date": "20251110",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300179.SZ",
+      "stock_code": "300179",
+      "stock_name": "四方达",
+      "lgb_score": 100.0,
+      "raw_score": 0.39,
+      "predicted_days": 14
+    },
+    {
+      "rank": 2,
+      "ts_code": "000159.SZ",
+      "stock_code": "000159",
+      "stock_name": "国际实业",
+      "lgb_score": 99.49,
+      "raw_score": 0.39,
+      "predicted_days": 12
+    },
+    {
+      "rank": 3,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 97.55,
+      "raw_score": 0.38,
+      "predicted_days": 11
+    },
+    {
+      "rank": 4,
+      "ts_code": "603960.SH",
+      "stock_code": "603960",
+      "stock_name": "克来机电",
+      "lgb_score": 97.47,
+      "raw_score": 0.38,
+      "predicted_days": 11
+    },
+    {
+      "rank": 5,
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 97.33,
+      "raw_score": 0.38,
+      "predicted_days": 12
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.07,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.179046,
+    "std": 0.063999,
+    "skew": -1.008,
+    "kurtosis": -0.5841,
+    "min": 0.01932,
+    "max": 0.392494,
+    "median": 0.218338
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11095731029367276,
+    "cv_rmse_std": 0.016947162241874952,
+    "cv_scores": [
+      0.083584,
+      0.123805,
+      0.102378,
+      0.132027,
+      0.112993
+    ],
+    "rank_ic_mean": 0.274721,
+    "rank_ic_std": 0.063149,
+    "icir": 4.3503,
+    "oof_corr": 0.284165,
+    "n_samples": 24629,
+    "n_features": 22
+  },
+  "window_days": 20
+}

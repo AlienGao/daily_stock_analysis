@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250401",
+  "train_end": "20260331",
+  "pred_date": "20260403",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300394.SZ",
+      "stock_code": "300394",
+      "stock_name": "天孚通信",
+      "lgb_score": 100.0,
+      "raw_score": 0.31,
+      "predicted_days": 15
+    },
+    {
+      "rank": 2,
+      "ts_code": "601698.SH",
+      "stock_code": "601698",
+      "stock_name": "中国卫通",
+      "lgb_score": 97.15,
+      "raw_score": 0.3,
+      "predicted_days": 15
+    },
+    {
+      "rank": 3,
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
+      "lgb_score": 97.13,
+      "raw_score": 0.3,
+      "predicted_days": 16
+    },
+    {
+      "rank": 4,
+      "ts_code": "301322.SZ",
+      "stock_code": "301322",
+      "stock_name": "绿通科技",
+      "lgb_score": 92.84,
+      "raw_score": 0.28,
+      "predicted_days": 15
+    },
+    {
+      "rank": 5,
+      "ts_code": "002785.SZ",
+      "stock_code": "002785",
+      "stock_name": "万里石",
+      "lgb_score": 92.01,
+      "raw_score": 0.28,
+      "predicted_days": 15
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.45,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.15633,
+    "std": 0.050773,
+    "skew": -1.204,
+    "kurtosis": -0.1738,
+    "min": 0.008684,
+    "max": 0.305864,
+    "median": 0.186573
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11828676020404827,
+    "cv_rmse_std": 0.011685008217054042,
+    "cv_scores": [
+      0.116887,
+      0.130805,
+      0.121783,
+      0.096749,
+      0.12521
+    ],
+    "rank_ic_mean": 0.226964,
+    "rank_ic_std": 0.062313,
+    "icir": 3.6423,
+    "oof_corr": 0.245804,
+    "n_samples": 18599,
+    "n_features": 22
+  },
+  "window_days": 20
+}

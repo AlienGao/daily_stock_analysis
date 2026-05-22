@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250201",
+  "train_end": "20260131",
+  "pred_date": "20260205",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301231.SZ",
+      "stock_code": "301231",
+      "stock_name": "荣信文化",
+      "lgb_score": 100.0,
+      "raw_score": 0.39,
+      "predicted_days": 14
+    },
+    {
+      "rank": 2,
+      "ts_code": "002311.SZ",
+      "stock_code": "002311",
+      "stock_name": "海大集团",
+      "lgb_score": 71.25,
+      "raw_score": 0.29,
+      "predicted_days": 14
+    },
+    {
+      "rank": 3,
+      "ts_code": "688239.SH",
+      "stock_code": "688239",
+      "stock_name": "航宇科技",
+      "lgb_score": 68.93,
+      "raw_score": 0.28,
+      "predicted_days": 12
+    },
+    {
+      "rank": 4,
+      "ts_code": "688390.SH",
+      "stock_code": "688390",
+      "stock_name": "固德威",
+      "lgb_score": 65.96,
+      "raw_score": 0.27,
+      "predicted_days": 13
+    },
+    {
+      "rank": 5,
+      "ts_code": "000768.SZ",
+      "stock_code": "000768",
+      "stock_name": "中航西飞",
+      "lgb_score": 65.17,
+      "raw_score": 0.26,
+      "predicted_days": 11
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.26,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.115435,
+    "std": 0.021395,
+    "skew": 1.8716,
+    "kurtosis": 8.723,
+    "min": 0.023242,
+    "max": 0.391315,
+    "median": 0.11192
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11772348634642178,
+    "cv_rmse_std": 0.013658985858186647,
+    "cv_scores": [
+      0.108277,
+      0.131253,
+      0.135783,
+      0.099971,
+      0.113334
+    ],
+    "rank_ic_mean": 0.221293,
+    "rank_ic_std": 0.06563,
+    "icir": 3.3718,
+    "oof_corr": 0.210543,
+    "n_samples": 18759,
+    "n_features": 22
+  },
+  "window_days": 20
+}

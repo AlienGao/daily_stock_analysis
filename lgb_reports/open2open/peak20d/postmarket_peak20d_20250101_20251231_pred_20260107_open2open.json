@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250101",
+  "train_end": "20251231",
+  "pred_date": "20260107",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688082.SH",
+      "stock_code": "688082",
+      "stock_name": "盛美上海",
+      "lgb_score": 100.0,
+      "raw_score": 0.38,
+      "predicted_days": 12
+    },
+    {
+      "rank": 2,
+      "ts_code": "300870.SZ",
+      "stock_code": "300870",
+      "stock_name": "欧陆通",
+      "lgb_score": 97.63,
+      "raw_score": 0.38,
+      "predicted_days": 9
+    },
+    {
+      "rank": 3,
+      "ts_code": "603516.SH",
+      "stock_code": "603516",
+      "stock_name": "淳中科技",
+      "lgb_score": 96.51,
+      "raw_score": 0.37,
+      "predicted_days": 12
+    },
+    {
+      "rank": 4,
+      "ts_code": "688073.SH",
+      "stock_code": "688073",
+      "stock_name": "毕得医药",
+      "lgb_score": 93.91,
+      "raw_score": 0.36,
+      "predicted_days": 13
+    },
+    {
+      "rank": 5,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 92.9,
+      "raw_score": 0.36,
+      "predicted_days": 11
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.01,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.153462,
+    "std": 0.026326,
+    "skew": 1.1612,
+    "kurtosis": 9.4941,
+    "min": 0.030381,
+    "max": 0.383708,
+    "median": 0.1561
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11844696412143678,
+    "cv_rmse_std": 0.004585427166448762,
+    "cv_scores": [
+      0.118504,
+      0.112957,
+      0.126836,
+      0.117309,
+      0.116628
+    ],
+    "rank_ic_mean": 0.282693,
+    "rank_ic_std": 0.095299,
+    "icir": 2.9664,
+    "oof_corr": 0.259806,
+    "n_samples": 19794,
+    "n_features": 22
+  },
+  "window_days": 20
+}

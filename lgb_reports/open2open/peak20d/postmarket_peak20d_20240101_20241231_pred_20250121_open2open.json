@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240101",
+  "train_end": "20241231",
+  "pred_date": "20250121",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301209.SZ",
+      "stock_code": "301209",
+      "stock_name": "联合化学",
+      "lgb_score": 100.0,
+      "raw_score": 0.5,
+      "predicted_days": 14
+    },
+    {
+      "rank": 2,
+      "ts_code": "688401.SH",
+      "stock_code": "688401",
+      "stock_name": "路维光电",
+      "lgb_score": 98.45,
+      "raw_score": 0.49,
+      "predicted_days": 12
+    },
+    {
+      "rank": 3,
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
+      "lgb_score": 93.17,
+      "raw_score": 0.46,
+      "predicted_days": 17
+    },
+    {
+      "rank": 4,
+      "ts_code": "300007.SZ",
+      "stock_code": "300007",
+      "stock_name": "汉威科技",
+      "lgb_score": 92.96,
+      "raw_score": 0.46,
+      "predicted_days": 10
+    },
+    {
+      "rank": 5,
+      "ts_code": "688135.SH",
+      "stock_code": "688135",
+      "stock_name": "利扬芯片",
+      "lgb_score": 90.36,
+      "raw_score": 0.45,
+      "predicted_days": 12
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.83,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.115987,
+    "std": 0.038579,
+    "skew": 0.8688,
+    "kurtosis": 10.4219,
+    "min": -0.002385,
+    "max": 0.498213,
+    "median": 0.127096
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11679138816984935,
+    "cv_rmse_std": 0.05546922094610952,
+    "cv_scores": [
+      0.085435,
+      0.063111,
+      0.222489,
+      0.114645,
+      0.098277
+    ],
+    "rank_ic_mean": 0.251646,
+    "rank_ic_std": 0.099649,
+    "icir": 2.5253,
+    "oof_corr": 0.251078,
+    "n_samples": 29785,
+    "n_features": 22
+  },
+  "window_days": 20
+}

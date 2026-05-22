@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250401",
+  "train_end": "20260331",
+  "pred_date": "20260428",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "001266.SZ",
+      "stock_code": "001266",
+      "stock_name": "宏英智能",
+      "lgb_score": 100.0,
+      "raw_score": 0.29,
+      "predicted_days": 15
+    },
+    {
+      "rank": 2,
+      "ts_code": "688335.SH",
+      "stock_code": "688335",
+      "stock_name": "复洁科技",
+      "lgb_score": 99.35,
+      "raw_score": 0.28,
+      "predicted_days": 16
+    },
+    {
+      "rank": 3,
+      "ts_code": "688048.SH",
+      "stock_code": "688048",
+      "stock_name": "长光华芯",
+      "lgb_score": 95.62,
+      "raw_score": 0.27,
+      "predicted_days": 13
+    },
+    {
+      "rank": 4,
+      "ts_code": "002940.SZ.SZ",
+      "stock_code": "002940",
+      "stock_name": "昂利康",
+      "lgb_score": 95.06,
+      "raw_score": 0.27,
+      "predicted_days": 16
+    },
+    {
+      "rank": 5,
+      "ts_code": "605198.SH",
+      "stock_code": "605198",
+      "stock_name": "安德利",
+      "lgb_score": 94.23,
+      "raw_score": 0.27,
+      "predicted_days": 16
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.45,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.156258,
+    "std": 0.051128,
+    "skew": -1.2429,
+    "kurtosis": -0.0795,
+    "min": 0.000677,
+    "max": 0.285459,
+    "median": 0.186573
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11828676020404827,
+    "cv_rmse_std": 0.011685008217054042,
+    "cv_scores": [
+      0.116887,
+      0.130805,
+      0.121783,
+      0.096749,
+      0.12521
+    ],
+    "rank_ic_mean": 0.226964,
+    "rank_ic_std": 0.062313,
+    "icir": 3.6423,
+    "oof_corr": 0.245804,
+    "n_samples": 18599,
+    "n_features": 22
+  },
+  "window_days": 20
+}

@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260518",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301531.SZ",
+      "stock_code": "301531",
+      "stock_name": "春光集团",
+      "lgb_score": 100.0,
+      "raw_score": 0.38,
+      "predicted_days": 13
+    },
+    {
+      "rank": 2,
+      "ts_code": "600183.SH",
+      "stock_code": "600183",
+      "stock_name": "生益科技",
+      "lgb_score": 99.18,
+      "raw_score": 0.37,
+      "predicted_days": 15
+    },
+    {
+      "rank": 3,
+      "ts_code": "688808.SH",
+      "stock_code": "688808",
+      "stock_name": "联讯仪器",
+      "lgb_score": 98.48,
+      "raw_score": 0.37,
+      "predicted_days": 17
+    },
+    {
+      "rank": 4,
+      "ts_code": "300868.SZ",
+      "stock_code": "300868",
+      "stock_name": "杰美特",
+      "lgb_score": 96.81,
+      "raw_score": 0.36,
+      "predicted_days": 12
+    },
+    {
+      "rank": 5,
+      "ts_code": "301629.SZ",
+      "stock_code": "301629",
+      "stock_name": "矽电股份",
+      "lgb_score": 95.65,
+      "raw_score": 0.36,
+      "predicted_days": 13
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.09,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.139789,
+    "std": 0.047774,
+    "skew": -1.1664,
+    "kurtosis": 0.9835,
+    "min": -0.024103,
+    "max": 0.377473,
+    "median": 0.162521
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.12885455355763983,
+    "cv_rmse_std": 0.01510361069641485,
+    "cv_scores": [
+      0.138337,
+      0.141427,
+      0.103139,
+      0.120087,
+      0.141283
+    ],
+    "rank_ic_mean": 0.222845,
+    "rank_ic_std": 0.033637,
+    "icir": 6.6249,
+    "oof_corr": 0.214074,
+    "n_samples": 18677,
+    "n_features": 22
+  },
+  "window_days": 20
+}

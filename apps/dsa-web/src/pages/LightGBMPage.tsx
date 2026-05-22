@@ -20,6 +20,9 @@ const LightGBMPage: React.FC = () => {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [forwardDays, setForwardDays] = useState(3);
+  const [labelMode, setLabelMode] = useState<'fixed' | 'peak_speed'>('fixed');
+  const [windowDays, setWindowDays] = useState(20);
+  const [peakMinReturn, setPeakMinReturn] = useState(0.01);
   const [trainExecMode, setTrainExecMode] = useState('close');
   const [nEstimators, setNEstimators] = useState(200);
   const [numLeaves, setNumLeaves] = useState(31);
@@ -96,14 +99,14 @@ const LightGBMPage: React.FC = () => {
   const loadModels = useCallback(async () => {
     setModelsLoading(true);
     try {
-      const data = await researchApi.listModels();
+      const data = await researchApi.listModels(labelMode);
       setModels(data.models);
     } catch (e) {
       setError(getParsedApiError(e));
     } finally {
       setModelsLoading(false);
     }
-  }, []);
+  }, [labelMode]);
 
   useEffect(() => { loadModels(); }, [loadModels]);
 
@@ -180,6 +183,9 @@ const LightGBMPage: React.FC = () => {
         mode: 'postmarket',
         forward_days: forwardDays,
         exec_mode: trainExecMode,
+        label_mode: labelMode,
+        window_days: windowDays,
+        peak_min_return: peakMinReturn,
         start_date: startDate,
         end_date: endDate,
         n_estimators: nEstimators,
@@ -244,7 +250,7 @@ const LightGBMPage: React.FC = () => {
       setTraining(false);
       setStatusMsg('');
     }
-  }, [forwardDays, trainExecMode, nEstimators, numLeaves, learningRate, cvFolds, startDate, endDate, loadModels]);
+  }, [forwardDays, trainExecMode, labelMode, windowDays, peakMinReturn, nEstimators, numLeaves, learningRate, cvFolds, startDate, endDate, loadModels]);
 
   /* ── Stock lookup ── */
   const handleLookup = useCallback(async () => {
@@ -287,6 +293,23 @@ const LightGBMPage: React.FC = () => {
     }
   }, []);
 
+  const fetchBacktestSimPeak = useCallback(async (exec: string, topN: number) => {
+    backtestAbortRef.current?.abort();
+    const controller = new AbortController();
+    backtestAbortRef.current = controller;
+
+    setBacktestSimLoading(true);
+    setBacktestSim(null);
+    try {
+      const data = await researchApi.getBacktestSimPeak({ top_n: topN, exec_mode: exec }, controller.signal);
+      setBacktestSim(data);
+    } catch (e: any) {
+      if (e?.name === 'CanceledError' || e?.code === 'ERR_CANCELED') return;
+    } finally {
+      setBacktestSimLoading(false);
+    }
+  }, []);
+
   /* ── Fetch available backtest-sim options ── */
   const fetchBacktestSimAvailable = useCallback(async () => {
     try {
@@ -302,7 +325,13 @@ const LightGBMPage: React.FC = () => {
   useEffect(() => { fetchBacktestSimAvailable(); }, []); // mount
   useEffect(() => { fetchBacktestSimAvailable(); }, [trainExecMode]);
 
-  useEffect(() => { fetchBacktestSim(backtestFwd, trainExecMode, backtestTopN, stopStrategy); }, [fetchBacktestSim, backtestFwd, trainExecMode, backtestTopN, stopStrategy]);
+  useEffect(() => {
+    if (labelMode === 'peak_speed') {
+      fetchBacktestSimPeak(trainExecMode, backtestTopN);
+      return;
+    }
+    fetchBacktestSim(backtestFwd, trainExecMode, backtestTopN, stopStrategy);
+  }, [fetchBacktestSim, fetchBacktestSimPeak, backtestFwd, trainExecMode, backtestTopN, stopStrategy, labelMode]);
 
   /* ── Cleanup polling on unmount ── */
   useEffect(() => {
@@ -430,6 +459,7 @@ const LightGBMPage: React.FC = () => {
     )},
     { title: 'LGB 评分（LGB Score）', dataIndex: 'lgb_score', key: 'lgb_score', width: 80, render: (_: unknown, r: LGBPredictionItem) => r.lgb_score.toFixed(2) },
     { title: '预期涨幅（Exp. Return）', dataIndex: 'raw_score', key: 'raw_score', width: 90, render: (_: unknown, r: LGBPredictionItem) => <span className={r.raw_score >= 0 ? 'text-red-400' : 'text-green-400'}>{(r.raw_score * 100).toFixed(2)}%</span> },
+    ...(predictions.some(p => p.predicted_days != null) ? [{ title: '预计见顶', dataIndex: 'predicted_days', key: 'predicted_days', width: 80, render: (_: unknown, r: LGBPredictionItem) => r.predicted_days != null ? `${r.predicted_days}天` : '-' }] : []),
     { title: '胜率（Win Rate）', dataIndex: 'win_rate', key: 'win_rate', width: 80, render: (_: unknown, r: LGBPredictionItem) => r.win_rate != null ? `${(r.win_rate * 100).toFixed(1)}%` : '-' },
     { title: '历史均收益（Avg Return）', dataIndex: 'avg_return', key: 'avg_return', width: 100, render: (_: unknown, r: LGBPredictionItem) => r.avg_return != null ? <span className={r.avg_return >= 0 ? 'text-red-400' : 'text-green-400'}>{(r.avg_return * 100).toFixed(2)}%</span> : '-' },
     { title: '最大盈（Max Gain）', dataIndex: 'max_return', key: 'max_return', width: 85, render: (_: unknown, r: LGBPredictionItem) => r.max_return != null ? <span className="text-red-400">{(r.max_return * 100).toFixed(1)}%</span> : '-' },
@@ -488,14 +518,53 @@ const LightGBMPage: React.FC = () => {
           </Card>
 
           <Card>
+            <div className="space-y-3">
+              <div className="font-medium text-sm text-secondary-text">标签模式</div>
+              <Segmented
+                block
+                value={labelMode}
+                onChange={(v) => {
+                  setLabelMode(v as 'fixed' | 'peak_speed');
+                  setSelectedModel(undefined);
+                  setPredictions([]);
+                  setFeatureImportance([]);
+                  setDiagnostics(null);
+                }}
+                options={[
+                  { label: '固定持有期', value: 'fixed' },
+                  { label: '峰值速度', value: 'peak_speed' },
+                ]}
+              />
+              <div className="text-[10px] text-tertiary-text">
+                {labelMode === 'fixed'
+                  ? '预测固定第N天的涨跌幅'
+                  : '预测窗口内最大涨幅与到达天数'}
+              </div>
+            </div>
+          </Card>
+
+          <Card>
             <div className="space-y-4">
               <div className="font-medium text-sm text-secondary-text">训练参数</div>
 
-              {/* 预测天数 */}
-              <div className="space-y-1.5">
-                <div className="text-xs text-secondary-text">预测天数 <span className="text-tertiary-text">（未来N日后涨跌幅，推荐3）</span></div>
-                <InputNumber size="small" min={1} max={60} value={forwardDays} onChange={(v) => setForwardDays(v ?? 5)} className="w-full" />
-              </div>
+              {/* 标签参数 - 根据模式切换 */}
+              {labelMode === 'fixed' ? (
+                <div className="space-y-1.5">
+                  <div className="text-xs text-secondary-text">预测天数 <span className="text-tertiary-text">（未来N日后涨跌幅，推荐3）</span></div>
+                  <InputNumber size="small" min={1} max={60} value={forwardDays} onChange={(v) => setForwardDays(v ?? 3)} className="w-full" />
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-1.5">
+                    <div className="text-xs text-secondary-text">观察窗口 <span className="text-tertiary-text">（未来N日内搜索峰值，推荐20）</span></div>
+                    <InputNumber size="small" min={5} max={60} value={windowDays} onChange={(v) => setWindowDays(v ?? 20)} className="w-full" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="text-xs text-secondary-text">最小涨幅门槛 <span className="text-tertiary-text">（低于此值视为无效）</span></div>
+                    <InputNumber size="small" min={0} max={0.1} step={0.005} value={peakMinReturn} onChange={(v) => setPeakMinReturn(v ?? 0.01)} className="w-full" />
+                  </div>
+                </>
+              )}
 
               {/* 树结构参数：一行两列 */}
               <div className="grid grid-cols-2 gap-2">
@@ -906,38 +975,52 @@ const LightGBMPage: React.FC = () => {
                     : '补全预测'}
                 </Button>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-tertiary-text">Top</span>
-                <InputNumber
-                  size="small"
-                  min={1}
-                  max={5}
-                  value={backtestTopN}
-                  onChange={(v) => setBacktestTopN(v ?? 1)}
-                  style={{ width: 52 }}
-                />
-                <Segmented
-                  size="small"
-                  value={backtestFwd.toString()}
-                  onChange={(v) => setBacktestFwd(Number(v))}
-                  options={(backtestSimAvailable
-                    ? (trainExecMode === 'open'
-                      ? backtestSimAvailable.open
-                      : backtestSimAvailable.close)
-                    : [3, 5, 10]
-                  ).map((d) => ({ label: `${d} 日`, value: String(d) }))}
-                />
-                <Segmented
-                  size="small"
-                  value={stopStrategy}
-                  onChange={(v) => setStopStrategy(v as string)}
-                  options={[
-                    { label: '默认', value: 'none' },
-                    { label: '亏损厌恶', value: 'loss_aversion' },
-                    { label: '跌了死扛', value: 'dead_hold' },
-                  ]}
-                />
-              </div>
+              {labelMode === 'peak_speed' ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-tertiary-text">Top</span>
+                  <InputNumber
+                    size="small"
+                    min={1}
+                    max={5}
+                    value={backtestTopN}
+                    onChange={(v) => setBacktestTopN(v ?? 1)}
+                    style={{ width: 52 }}
+                  />
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-tertiary-text">Top</span>
+                  <InputNumber
+                    size="small"
+                    min={1}
+                    max={5}
+                    value={backtestTopN}
+                    onChange={(v) => setBacktestTopN(v ?? 1)}
+                    style={{ width: 52 }}
+                  />
+                  <Segmented
+                    size="small"
+                    value={backtestFwd.toString()}
+                    onChange={(v) => setBacktestFwd(Number(v))}
+                    options={(backtestSimAvailable
+                      ? (trainExecMode === 'open'
+                        ? backtestSimAvailable.open
+                        : backtestSimAvailable.close)
+                      : [3, 5, 10]
+                    ).map((d) => ({ label: `${d} 日`, value: String(d) }))}
+                  />
+                  <Segmented
+                    size="small"
+                    value={stopStrategy}
+                    onChange={(v) => setStopStrategy(v as string)}
+                    options={[
+                      { label: '默认', value: 'none' },
+                      { label: '亏损厌恶', value: 'loss_aversion' },
+                      { label: '跌了死扛', value: 'dead_hold' },
+                    ]}
+                  />
+                </div>
+              )}
             </div>
 
             {backtestSimLoading && (
@@ -1015,13 +1098,17 @@ const LightGBMPage: React.FC = () => {
                       dataSource={backtestSim.trades.filter((t) => !t.skipped)}
                       rowKey={(r) => `${r.pred_date}_${r.stock_code}`}
                       pagination={{ pageSize: 50, size: 'small', showSizeChanger: true, pageSizeOptions: ['20', '50', '100'], showTotal: (total) => `共 ${total} 笔` }}
-                      scroll={{ x: 780, y: 400 }}
+                      scroll={{ x: 900, y: 400 }}
                       columns={[
                         { title: '预测日', dataIndex: 'pred_date', key: 'pred_date', width: 85, render: (_: unknown, r: typeof backtestSim.trades[0]) => r.pred_date },
                         { title: '代码', dataIndex: 'stock_code', key: 'stock_code', width: 75 },
                         { title: '名称', dataIndex: 'stock_name', key: 'stock_name', width: 70 },
                         { title: '买入日', dataIndex: 'buy_date', key: 'buy_date', width: 85 },
                         { title: '买入价', dataIndex: 'buy_price', key: 'buy_price', width: 70, render: (_: unknown, r: typeof backtestSim.trades[0]) => r.buy_price.toFixed(2) },
+                        ...(labelMode === 'peak_speed' ? [{
+                          title: '预期卖出日', dataIndex: 'expected_sell_date', key: 'expected_sell_date', width: 90,
+                          render: (_: unknown, r: typeof backtestSim.trades[0]) => (r as any).expected_sell_date || '--',
+                        }] : []),
                         { title: '卖出日', dataIndex: 'sell_date', key: 'sell_date', width: 85, render: (_: unknown, r: typeof backtestSim.trades[0]) => r.skipped ? '（涨停）' : (r.sell_date || '--') },
                         { title: '卖出价', dataIndex: 'sell_price', key: 'sell_price', width: 70, render: (_: unknown, r: typeof backtestSim.trades[0]) => r.skipped ? '-' : (r.sell_date ? r.sell_price.toFixed(2) : r.sell_price.toFixed(2)) },
                         {

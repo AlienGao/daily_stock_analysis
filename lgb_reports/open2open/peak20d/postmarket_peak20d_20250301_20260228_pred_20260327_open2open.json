@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250301",
+  "train_end": "20260228",
+  "pred_date": "20260327",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688068.SH",
+      "stock_code": "688068",
+      "stock_name": "热景生物",
+      "lgb_score": 100.0,
+      "raw_score": 0.42,
+      "predicted_days": 11
+    },
+    {
+      "rank": 2,
+      "ts_code": "002432.SZ",
+      "stock_code": "002432",
+      "stock_name": "九安医疗",
+      "lgb_score": 77.12,
+      "raw_score": 0.32,
+      "predicted_days": 7
+    },
+    {
+      "rank": 3,
+      "ts_code": "605186.SH",
+      "stock_code": "605186",
+      "stock_name": "健麾信息",
+      "lgb_score": 72.08,
+      "raw_score": 0.3,
+      "predicted_days": 14
+    },
+    {
+      "rank": 4,
+      "ts_code": "688506.SH",
+      "stock_code": "688506",
+      "stock_name": "百利天恒",
+      "lgb_score": 71.99,
+      "raw_score": 0.3,
+      "predicted_days": 9
+    },
+    {
+      "rank": 5,
+      "ts_code": "301317.SZ",
+      "stock_code": "301317",
+      "stock_name": "鑫磊股份",
+      "lgb_score": 70.35,
+      "raw_score": 0.29,
+      "predicted_days": 11
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.68,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.17156,
+    "std": 0.060223,
+    "skew": -1.2401,
+    "kurtosis": -0.0947,
+    "min": -0.010175,
+    "max": 0.422812,
+    "median": 0.20679
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11359967897866463,
+    "cv_rmse_std": 0.012686378637300452,
+    "cv_scores": [
+      0.102957,
+      0.127677,
+      0.119324,
+      0.094554,
+      0.123487
+    ],
+    "rank_ic_mean": 0.341293,
+    "rank_ic_std": 0.022539,
+    "icir": 15.1425,
+    "oof_corr": 0.338827,
+    "n_samples": 18822,
+    "n_features": 22
+  },
+  "window_days": 20
+}

@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250101",
+  "train_end": "20251231",
+  "pred_date": "20260115",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688519.SH",
+      "stock_code": "688519",
+      "stock_name": "南亚新材",
+      "lgb_score": 100.0,
+      "raw_score": 0.37,
+      "predicted_days": 13
+    },
+    {
+      "rank": 2,
+      "ts_code": "603360.SH",
+      "stock_code": "603360",
+      "stock_name": "百傲化学",
+      "lgb_score": 91.38,
+      "raw_score": 0.34,
+      "predicted_days": 13
+    },
+    {
+      "rank": 3,
+      "ts_code": "601366.SH",
+      "stock_code": "601366",
+      "stock_name": "利群股份",
+      "lgb_score": 89.34,
+      "raw_score": 0.33,
+      "predicted_days": 12
+    },
+    {
+      "rank": 4,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 86.86,
+      "raw_score": 0.32,
+      "predicted_days": 12
+    },
+    {
+      "rank": 5,
+      "ts_code": "301629.SZ",
+      "stock_code": "301629",
+      "stock_name": "矽电股份",
+      "lgb_score": 86.47,
+      "raw_score": 0.32,
+      "predicted_days": 13
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.01,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.13886,
+    "std": 0.0372,
+    "skew": -1.1646,
+    "kurtosis": 1.6939,
+    "min": -0.002655,
+    "max": 0.369233,
+    "median": 0.1561
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11844696412143678,
+    "cv_rmse_std": 0.004585427166448762,
+    "cv_scores": [
+      0.118504,
+      0.112957,
+      0.126836,
+      0.117309,
+      0.116628
+    ],
+    "rank_ic_mean": 0.282693,
+    "rank_ic_std": 0.095299,
+    "icir": 2.9664,
+    "oof_corr": 0.259806,
+    "n_samples": 19794,
+    "n_features": 22
+  },
+  "window_days": 20
+}

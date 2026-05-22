@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250201",
+  "train_end": "20260131",
+  "pred_date": "20260203",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002311.SZ",
+      "stock_code": "002311",
+      "stock_name": "海大集团",
+      "lgb_score": 100.0,
+      "raw_score": 0.33,
+      "predicted_days": 10
+    },
+    {
+      "rank": 2,
+      "ts_code": "688239.SH",
+      "stock_code": "688239",
+      "stock_name": "航宇科技",
+      "lgb_score": 98.71,
+      "raw_score": 0.33,
+      "predicted_days": 10
+    },
+    {
+      "rank": 3,
+      "ts_code": "688011.SH",
+      "stock_code": "688011",
+      "stock_name": "新光光电",
+      "lgb_score": 93.73,
+      "raw_score": 0.31,
+      "predicted_days": 12
+    },
+    {
+      "rank": 4,
+      "ts_code": "002922.SZ",
+      "stock_code": "002922",
+      "stock_name": "伊戈尔",
+      "lgb_score": 93.54,
+      "raw_score": 0.31,
+      "predicted_days": 7
+    },
+    {
+      "rank": 5,
+      "ts_code": "002792.SZ",
+      "stock_code": "002792",
+      "stock_name": "通宇通讯",
+      "lgb_score": 91.74,
+      "raw_score": 0.3,
+      "predicted_days": 10
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.33,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.156497,
+    "std": 0.034531,
+    "skew": -1.344,
+    "kurtosis": 1.5552,
+    "min": 0.002311,
+    "max": 0.33217,
+    "median": 0.1736
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11435184084213472,
+    "cv_rmse_std": 0.01168555995245403,
+    "cv_scores": [
+      0.103504,
+      0.124438,
+      0.131189,
+      0.101282,
+      0.111347
+    ],
+    "rank_ic_mean": 0.311669,
+    "rank_ic_std": 0.053933,
+    "icir": 5.7788,
+    "oof_corr": 0.295304,
+    "n_samples": 18759,
+    "n_features": 22
+  },
+  "window_days": 20
+}

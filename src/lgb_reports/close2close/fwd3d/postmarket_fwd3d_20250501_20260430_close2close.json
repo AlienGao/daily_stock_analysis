@@ -1,0 +1,115 @@
+{
+  "mode": "postmarket",
+  "forward_days": 3,
+  "generated_at": "2026-05-22T08:37:29.502192",
+  "training_metrics": {
+    "cv_rmse_mean": 0.12885455355763983,
+    "cv_rmse_std": 0.01510361069641485,
+    "cv_scores": [
+      0.138337,
+      0.141427,
+      0.103139,
+      0.120087,
+      0.141283
+    ],
+    "rank_ic_mean": 0.222845,
+    "rank_ic_std": 0.033637,
+    "icir": 6.6249,
+    "oof_corr": 0.214074,
+    "n_samples": 18677,
+    "n_features": 22
+  },
+  "feature_importance": {
+    "gain": {
+      "broker_recommend": 504.2579200863838,
+      "margin": 331.31020039878786,
+      "buyback": 311.18579588085413,
+      "chip": 284.50337555259466,
+      "vwap_reversal": 145.27395351231098,
+      "ranking_momentum": 117.36919102072716,
+      "technical": 72.72250599600375,
+      "gtja114": 58.1071065608412,
+      "fundamental": 48.716983050107956,
+      "alpha042": 15.284964479506016,
+      "liquid_oversold": 14.300478806719184,
+      "vwap_deviation": 11.66276952251792,
+      "money_flow": 7.986080013215542,
+      "gap_reversal": 7.905726253986359,
+      "hot_money": 0.8208932057023048,
+      "limit": 0.3516080044209957,
+      "concept_heat": 0.0,
+      "insider_buy": 0.0,
+      "institution_hold": 0.0,
+      "performance": 0.0
+    },
+    "split": {
+      "broker_recommend": 1304.0,
+      "buyback": 1019.0,
+      "margin": 817.0,
+      "chip": 677.0,
+      "ranking_momentum": 494.0,
+      "vwap_reversal": 411.0,
+      "technical": 289.0,
+      "fundamental": 261.0,
+      "gtja114": 177.0,
+      "alpha042": 144.0,
+      "liquid_oversold": 124.0,
+      "vwap_deviation": 104.0,
+      "money_flow": 87.0,
+      "gap_reversal": 76.0,
+      "hot_money": 10.0,
+      "limit": 6.0,
+      "concept_heat": 0.0,
+      "insider_buy": 0.0,
+      "institution_hold": 0.0,
+      "performance": 0.0
+    }
+  },
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002281.SZ",
+      "stock_code": "002281",
+      "stock_name": "光迅科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.61,
+      "predicted_days": 14
+    },
+    {
+      "rank": 2,
+      "ts_code": "301511.SZ",
+      "stock_code": "301511",
+      "stock_name": "德福科技",
+      "lgb_score": 92.37,
+      "raw_score": 0.56,
+      "predicted_days": 13
+    },
+    {
+      "rank": 3,
+      "ts_code": "001309.SZ",
+      "stock_code": "001309",
+      "stock_name": "德明利",
+      "lgb_score": 80.11,
+      "raw_score": 0.48,
+      "predicted_days": 15
+    },
+    {
+      "rank": 4,
+      "ts_code": "688531.SH",
+      "stock_code": "688531",
+      "stock_name": "日联科技",
+      "lgb_score": 72.97,
+      "raw_score": 0.44,
+      "predicted_days": 12
+    },
+    {
+      "rank": 5,
+      "ts_code": "688205.SH",
+      "stock_code": "688205",
+      "stock_name": "德科立",
+      "lgb_score": 71.91,
+      "raw_score": 0.43,
+      "predicted_days": 11
+    }
+  ]
+}

@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20241201",
+  "train_end": "20251130",
+  "pred_date": "20251212",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000533.SZ",
+      "stock_code": "000533",
+      "stock_name": "顺钠股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.42,
+      "predicted_days": 10
+    },
+    {
+      "rank": 2,
+      "ts_code": "002255.SZ",
+      "stock_code": "002255",
+      "stock_name": "海陆重工",
+      "lgb_score": 96.13,
+      "raw_score": 0.4,
+      "predicted_days": 10
+    },
+    {
+      "rank": 3,
+      "ts_code": "301079.SZ",
+      "stock_code": "301079",
+      "stock_name": "邵阳液压",
+      "lgb_score": 87.74,
+      "raw_score": 0.37,
+      "predicted_days": 11
+    },
+    {
+      "rank": 4,
+      "ts_code": "300265.SZ",
+      "stock_code": "300265",
+      "stock_name": "通光线缆",
+      "lgb_score": 85.68,
+      "raw_score": 0.36,
+      "predicted_days": 10
+    },
+    {
+      "rank": 5,
+      "ts_code": "688368.SH",
+      "stock_code": "688368",
+      "stock_name": "晶丰明源",
+      "lgb_score": 85.62,
+      "raw_score": 0.36,
+      "predicted_days": 10
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.09,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.166456,
+    "std": 0.039082,
+    "skew": -0.9266,
+    "kurtosis": 1.3402,
+    "min": 0.020797,
+    "max": 0.420187,
+    "median": 0.185902
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11552564484912886,
+    "cv_rmse_std": 0.014370634108752169,
+    "cv_scores": [
+      0.12397,
+      0.106617,
+      0.124068,
+      0.131188,
+      0.091785
+    ],
+    "rank_ic_mean": 0.251884,
+    "rank_ic_std": 0.058029,
+    "icir": 4.3407,
+    "oof_corr": 0.2441,
+    "n_samples": 22408,
+    "n_features": 22
+  },
+  "window_days": 20
+}

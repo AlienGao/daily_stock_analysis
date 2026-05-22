@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240201",
+  "train_end": "20250131",
+  "pred_date": "20250213",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300007.SZ",
+      "stock_code": "300007",
+      "stock_name": "汉威科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.47,
+      "predicted_days": 13
+    },
+    {
+      "rank": 2,
+      "ts_code": "301396.SZ",
+      "stock_code": "301396",
+      "stock_name": "宏景科技",
+      "lgb_score": 97.43,
+      "raw_score": 0.46,
+      "predicted_days": 8
+    },
+    {
+      "rank": 3,
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 95.6,
+      "raw_score": 0.45,
+      "predicted_days": 14
+    },
+    {
+      "rank": 4,
+      "ts_code": "002164.SZ",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 95.43,
+      "raw_score": 0.45,
+      "predicted_days": 16
+    },
+    {
+      "rank": 5,
+      "ts_code": "002031.SZ",
+      "stock_code": "002031",
+      "stock_name": "巨轮智能",
+      "lgb_score": 94.4,
+      "raw_score": 0.45,
+      "predicted_days": 13
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.96,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.097822,
+    "std": 0.032774,
+    "skew": 2.3117,
+    "kurtosis": 19.871,
+    "min": 0.001485,
+    "max": 0.474719,
+    "median": 0.103617
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.12618888331877834,
+    "cv_rmse_std": 0.06863715088179677,
+    "cv_scores": [
+      0.085966,
+      0.066974,
+      0.259746,
+      0.106723,
+      0.111536
+    ],
+    "rank_ic_mean": 0.261304,
+    "rank_ic_std": 0.033454,
+    "icir": 7.8108,
+    "oof_corr": 0.055512,
+    "n_samples": 29041,
+    "n_features": 22
+  },
+  "window_days": 20
+}

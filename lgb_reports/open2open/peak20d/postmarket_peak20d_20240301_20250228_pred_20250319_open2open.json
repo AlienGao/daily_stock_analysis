@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240301",
+  "train_end": "20250228",
+  "pred_date": "20250319",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002062.SZ",
+      "stock_code": "002062",
+      "stock_name": "宏润建设",
+      "lgb_score": 100.0,
+      "raw_score": 0.53,
+      "predicted_days": 12
+    },
+    {
+      "rank": 2,
+      "ts_code": "000159.SZ",
+      "stock_code": "000159",
+      "stock_name": "国际实业",
+      "lgb_score": 81.51,
+      "raw_score": 0.43,
+      "predicted_days": 19
+    },
+    {
+      "rank": 3,
+      "ts_code": "002565.SZ",
+      "stock_code": "002565",
+      "stock_name": "顺灏股份",
+      "lgb_score": 79.89,
+      "raw_score": 0.42,
+      "predicted_days": 11
+    },
+    {
+      "rank": 4,
+      "ts_code": "300842.SZ",
+      "stock_code": "300842",
+      "stock_name": "帝科股份",
+      "lgb_score": 79.87,
+      "raw_score": 0.42,
+      "predicted_days": 13
+    },
+    {
+      "rank": 5,
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 77.58,
+      "raw_score": 0.41,
+      "predicted_days": 15
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.09,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.126496,
+    "std": 0.044276,
+    "skew": -0.4689,
+    "kurtosis": 2.7745,
+    "min": -0.011816,
+    "max": 0.534827,
+    "median": 0.14908
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.12190984630680957,
+    "cv_rmse_std": 0.06139703434187123,
+    "cv_scores": [
+      0.066363,
+      0.090559,
+      0.241177,
+      0.101783,
+      0.109668
+    ],
+    "rank_ic_mean": 0.272928,
+    "rank_ic_std": 0.040175,
+    "icir": 6.7934,
+    "oof_corr": 0.215943,
+    "n_samples": 28911,
+    "n_features": 22
+  },
+  "window_days": 20
+}

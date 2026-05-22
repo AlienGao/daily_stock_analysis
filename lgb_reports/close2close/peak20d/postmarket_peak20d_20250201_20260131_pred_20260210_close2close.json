@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250201",
+  "train_end": "20260131",
+  "pred_date": "20260210",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688519.SH",
+      "stock_code": "688519",
+      "stock_name": "南亚新材",
+      "lgb_score": 100.0,
+      "raw_score": 0.33,
+      "predicted_days": 12
+    },
+    {
+      "rank": 2,
+      "ts_code": "601678.SH",
+      "stock_code": "601678",
+      "stock_name": "滨化股份",
+      "lgb_score": 92.84,
+      "raw_score": 0.31,
+      "predicted_days": 15
+    },
+    {
+      "rank": 3,
+      "ts_code": "688256.SH",
+      "stock_code": "688256",
+      "stock_name": "寒武纪",
+      "lgb_score": 86.69,
+      "raw_score": 0.29,
+      "predicted_days": 13
+    },
+    {
+      "rank": 4,
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
+      "lgb_score": 82.84,
+      "raw_score": 0.28,
+      "predicted_days": 15
+    },
+    {
+      "rank": 5,
+      "ts_code": "688627.SH",
+      "stock_code": "688627",
+      "stock_name": "精智达",
+      "lgb_score": 81.54,
+      "raw_score": 0.27,
+      "predicted_days": 14
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.26,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.11619,
+    "std": 0.022801,
+    "skew": 1.909,
+    "kurtosis": 7.5029,
+    "min": 0.026195,
+    "max": 0.330138,
+    "median": 0.11192
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11772348634642178,
+    "cv_rmse_std": 0.013658985858186647,
+    "cv_scores": [
+      0.108277,
+      0.131253,
+      0.135783,
+      0.099971,
+      0.113334
+    ],
+    "rank_ic_mean": 0.221293,
+    "rank_ic_std": 0.06563,
+    "icir": 3.3718,
+    "oof_corr": 0.210543,
+    "n_samples": 18759,
+    "n_features": 22
+  },
+  "window_days": 20
+}

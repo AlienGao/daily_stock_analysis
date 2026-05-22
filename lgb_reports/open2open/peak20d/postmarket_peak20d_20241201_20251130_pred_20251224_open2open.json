@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20241201",
+  "train_end": "20251130",
+  "pred_date": "20251224",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002909.SZ",
+      "stock_code": "002909",
+      "stock_name": "集泰股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.44,
+      "predicted_days": 12
+    },
+    {
+      "rank": 2,
+      "ts_code": "600512.SH",
+      "stock_code": "600512",
+      "stock_name": "腾达建设",
+      "lgb_score": 90.42,
+      "raw_score": 0.4,
+      "predicted_days": 12
+    },
+    {
+      "rank": 3,
+      "ts_code": "002506.SZ",
+      "stock_code": "002506",
+      "stock_name": "协鑫集成",
+      "lgb_score": 90.42,
+      "raw_score": 0.4,
+      "predicted_days": 10
+    },
+    {
+      "rank": 4,
+      "ts_code": "300629.SZ",
+      "stock_code": "300629",
+      "stock_name": "新劲刚",
+      "lgb_score": 87.44,
+      "raw_score": 0.38,
+      "predicted_days": 10
+    },
+    {
+      "rank": 5,
+      "ts_code": "300887.SZ",
+      "stock_code": "300887",
+      "stock_name": "谱尼测试",
+      "lgb_score": 86.03,
+      "raw_score": 0.38,
+      "predicted_days": 8
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.09,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.169246,
+    "std": 0.037663,
+    "skew": -0.8537,
+    "kurtosis": 2.5931,
+    "min": 0.016366,
+    "max": 0.43615,
+    "median": 0.185902
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11552564484912886,
+    "cv_rmse_std": 0.014370634108752169,
+    "cv_scores": [
+      0.12397,
+      0.106617,
+      0.124068,
+      0.131188,
+      0.091785
+    ],
+    "rank_ic_mean": 0.251884,
+    "rank_ic_std": 0.058029,
+    "icir": 4.3407,
+    "oof_corr": 0.2441,
+    "n_samples": 22408,
+    "n_features": 22
+  },
+  "window_days": 20
+}

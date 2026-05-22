@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240701",
+  "train_end": "20250630",
+  "pred_date": "20250708",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.44,
+      "predicted_days": 14
+    },
+    {
+      "rank": 2,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 92.15,
+      "raw_score": 0.4,
+      "predicted_days": 14
+    },
+    {
+      "rank": 3,
+      "ts_code": "600704.SH",
+      "stock_code": "600704",
+      "stock_name": "物产中大",
+      "lgb_score": 87.02,
+      "raw_score": 0.38,
+      "predicted_days": 9
+    },
+    {
+      "rank": 4,
+      "ts_code": "300158.SZ",
+      "stock_code": "300158",
+      "stock_name": "振东制药",
+      "lgb_score": 85.83,
+      "raw_score": 0.38,
+      "predicted_days": 10
+    },
+    {
+      "rank": 5,
+      "ts_code": "000848.SZ",
+      "stock_code": "000848",
+      "stock_name": "承德露露",
+      "lgb_score": 81.77,
+      "raw_score": 0.36,
+      "predicted_days": 10
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.94,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.131691,
+    "std": 0.040995,
+    "skew": -0.6476,
+    "kurtosis": 1.5397,
+    "min": 0.007039,
+    "max": 0.437033,
+    "median": 0.15282
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.1526839816452219,
+    "cv_rmse_std": 0.0664134826984568,
+    "cv_scores": [
+      0.284188,
+      0.134805,
+      0.114106,
+      0.123422,
+      0.106898
+    ],
+    "rank_ic_mean": 0.213032,
+    "rank_ic_std": 0.022265,
+    "icir": 9.5679,
+    "oof_corr": -0.086782,
+    "n_samples": 26168,
+    "n_features": 22
+  },
+  "window_days": 20
+}

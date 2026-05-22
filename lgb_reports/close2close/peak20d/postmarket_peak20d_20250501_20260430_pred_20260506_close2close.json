@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260506",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688390.SH",
+      "stock_code": "688390",
+      "stock_name": "固德威",
+      "lgb_score": 100.0,
+      "raw_score": 0.38,
+      "predicted_days": 15
+    },
+    {
+      "rank": 2,
+      "ts_code": "002281.SZ",
+      "stock_code": "002281",
+      "stock_name": "光迅科技",
+      "lgb_score": 96.0,
+      "raw_score": 0.36,
+      "predicted_days": 11
+    },
+    {
+      "rank": 3,
+      "ts_code": "300394.SZ",
+      "stock_code": "300394",
+      "stock_name": "天孚通信",
+      "lgb_score": 93.07,
+      "raw_score": 0.35,
+      "predicted_days": 14
+    },
+    {
+      "rank": 4,
+      "ts_code": "002371.SZ",
+      "stock_code": "002371",
+      "stock_name": "北方华创",
+      "lgb_score": 92.64,
+      "raw_score": 0.35,
+      "predicted_days": 16
+    },
+    {
+      "rank": 5,
+      "ts_code": "688313.SH",
+      "stock_code": "688313",
+      "stock_name": "仕佳光子",
+      "lgb_score": 89.58,
+      "raw_score": 0.34,
+      "predicted_days": 12
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.09,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.13445,
+    "std": 0.053561,
+    "skew": -1.2274,
+    "kurtosis": 0.304,
+    "min": -0.036386,
+    "max": 0.381249,
+    "median": 0.162521
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.12885455355763983,
+    "cv_rmse_std": 0.01510361069641485,
+    "cv_scores": [
+      0.138337,
+      0.141427,
+      0.103139,
+      0.120087,
+      0.141283
+    ],
+    "rank_ic_mean": 0.222845,
+    "rank_ic_std": 0.033637,
+    "icir": 6.6249,
+    "oof_corr": 0.214074,
+    "n_samples": 18677,
+    "n_features": 22
+  },
+  "window_days": 20
+}

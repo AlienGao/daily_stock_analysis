@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240201",
+  "train_end": "20250131",
+  "pred_date": "20250212",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688135.SH",
+      "stock_code": "688135",
+      "stock_name": "利扬芯片",
+      "lgb_score": 100.0,
+      "raw_score": 0.54,
+      "predicted_days": 13
+    },
+    {
+      "rank": 2,
+      "ts_code": "003021.SZ",
+      "stock_code": "003021",
+      "stock_name": "兆威机电",
+      "lgb_score": 89.1,
+      "raw_score": 0.48,
+      "predicted_days": 11
+    },
+    {
+      "rank": 3,
+      "ts_code": "002009.SZ",
+      "stock_code": "002009",
+      "stock_name": "天奇股份",
+      "lgb_score": 85.65,
+      "raw_score": 0.47,
+      "predicted_days": 16
+    },
+    {
+      "rank": 4,
+      "ts_code": "300046.SZ",
+      "stock_code": "300046",
+      "stock_name": "台基股份",
+      "lgb_score": 85.23,
+      "raw_score": 0.46,
+      "predicted_days": 14
+    },
+    {
+      "rank": 5,
+      "ts_code": "000880.SZ",
+      "stock_code": "000880",
+      "stock_name": "潍柴重机",
+      "lgb_score": 80.2,
+      "raw_score": 0.44,
+      "predicted_days": 8
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.96,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.100078,
+    "std": 0.0348,
+    "skew": 2.9337,
+    "kurtosis": 21.9025,
+    "min": -4e-06,
+    "max": 0.543528,
+    "median": 0.103617
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.12618888331877834,
+    "cv_rmse_std": 0.06863715088179677,
+    "cv_scores": [
+      0.085966,
+      0.066974,
+      0.259746,
+      0.106723,
+      0.111536
+    ],
+    "rank_ic_mean": 0.261304,
+    "rank_ic_std": 0.033454,
+    "icir": 7.8108,
+    "oof_corr": 0.055512,
+    "n_samples": 29041,
+    "n_features": 22
+  },
+  "window_days": 20
+}

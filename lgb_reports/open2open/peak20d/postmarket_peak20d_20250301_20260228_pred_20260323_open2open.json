@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250301",
+  "train_end": "20260228",
+  "pred_date": "20260323",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000688.SZ",
+      "stock_code": "000688",
+      "stock_name": "国城矿业",
+      "lgb_score": 100.0,
+      "raw_score": 0.32,
+      "predicted_days": 10
+    },
+    {
+      "rank": 2,
+      "ts_code": "600149.SH",
+      "stock_code": "600149",
+      "stock_name": "廊坊发展",
+      "lgb_score": 95.42,
+      "raw_score": 0.31,
+      "predicted_days": 9
+    },
+    {
+      "rank": 3,
+      "ts_code": "603616.SH",
+      "stock_code": "603616",
+      "stock_name": "韩建河山",
+      "lgb_score": 93.44,
+      "raw_score": 0.3,
+      "predicted_days": 12
+    },
+    {
+      "rank": 4,
+      "ts_code": "605186.SH",
+      "stock_code": "605186",
+      "stock_name": "健麾信息",
+      "lgb_score": 91.35,
+      "raw_score": 0.29,
+      "predicted_days": 15
+    },
+    {
+      "rank": 5,
+      "ts_code": "603727.SH",
+      "stock_code": "603727",
+      "stock_name": "博迈科",
+      "lgb_score": 90.31,
+      "raw_score": 0.29,
+      "predicted_days": 8
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.68,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.16719,
+    "std": 0.064544,
+    "skew": -1.1592,
+    "kurtosis": -0.4012,
+    "min": -0.026826,
+    "max": 0.322656,
+    "median": 0.20679
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11359967897866463,
+    "cv_rmse_std": 0.012686378637300452,
+    "cv_scores": [
+      0.102957,
+      0.127677,
+      0.119324,
+      0.094554,
+      0.123487
+    ],
+    "rank_ic_mean": 0.341293,
+    "rank_ic_std": 0.022539,
+    "icir": 15.1425,
+    "oof_corr": 0.338827,
+    "n_samples": 18822,
+    "n_features": 22
+  },
+  "window_days": 20
+}

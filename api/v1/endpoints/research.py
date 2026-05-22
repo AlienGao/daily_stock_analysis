@@ -9,7 +9,7 @@ import threading
 import uuid
 from datetime import datetime, timedelta
 from queue import Empty as QueueEmpty
-from typing import Dict
+from typing import Dict, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -69,6 +69,9 @@ def _run_train_in_process(queue: multiprocessing.Queue, req_dict: dict):
             mode=req_dict["mode"],
             forward_days=req_dict["forward_days"],
             exec_mode=req_dict.get("exec_mode", "close"),
+            label_mode=req_dict.get("label_mode", "fixed"),
+            window_days=req_dict.get("window_days", 20),
+            peak_min_return=req_dict.get("peak_min_return", 0.01),
             progress_callback=_progress,
         )
         trainer.prepare_data(
@@ -187,6 +190,7 @@ def lgb_train(req: LGBTrainRequest):
         "mode": req.mode,
         "exec_mode": req.exec_mode,
         "forward_days": req.forward_days,
+        "label_mode": req.label_mode,
         "started_at": datetime.now().isoformat(),
     }
 
@@ -194,6 +198,9 @@ def lgb_train(req: LGBTrainRequest):
         "mode": req.mode,
         "forward_days": req.forward_days,
         "exec_mode": req.exec_mode,
+        "label_mode": req.label_mode,
+        "window_days": req.window_days,
+        "peak_min_return": req.peak_min_return,
         "start_date": req.start_date,
         "end_date": req.end_date,
         "n_estimators": req.n_estimators,
@@ -389,8 +396,10 @@ def lgb_date_range():
     response_model=LGBModelListResponse,
     summary="列出所有已保存的模型",
 )
-def lgb_list_models():
-    models = LGBTrainer.list_models()
+def lgb_list_models(
+    label_mode: Optional[str] = Query(None, description="按模式过滤: fixed | peak_speed"),
+):
+    models = LGBTrainer.list_models(label_mode=label_mode)
     return LGBModelListResponse(
         models=[LGBModelInfo(**m) for m in models],
     )
@@ -1484,6 +1493,423 @@ def _simulate_backtest(exec_mode: str, forward_days: int, top_n: int, stop_strat
     }
 
 
+def _simulate_peak_backtest(exec_mode: str, top_n: int) -> dict:
+    """Peak speed 模式回测：从预测文件读取，动态退出策略。
+
+    退出优先级: 止损(-5%) → 止盈(80%预测收益) → 到期窗口(±2天) → 强制退出(20天)
+    """
+    project_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
+    reports_dir = _os.path.join(project_root, "lgb_reports")
+    exec_suffix = "open2open" if exec_mode == "open" else "close2close"
+
+    search_dir = _os.path.join(reports_dir, exec_suffix, "peak20d")
+    if not _os.path.isdir(search_dir):
+        return {"error": f"No peak20d reports for {exec_suffix}", "metrics": None, "capital_curve": [], "trades": []}
+
+    json_files = sorted(_glob.glob(_os.path.join(search_dir, "*.json")))
+    if not json_files:
+        return {"error": f"No peak prediction files for {exec_suffix}", "metrics": None, "capital_curve": [], "trades": []}
+
+    preds_by_date: Dict[str, list] = _defaultdict(list)
+    for fp in json_files:
+        with open(fp, "r", encoding="utf-8") as fh:
+            data = _json.load(fh)
+        pd_date = data.get("pred_date", "")
+        if not pd_date:
+            continue
+        for p in data.get("predictions", [])[:top_n]:
+            preds_by_date[pd_date].append({
+                "stock_code": str(p.get("stock_code", "")).strip().zfill(6),
+                "ts_code": str(p.get("ts_code", "")),
+                "stock_name": str(p.get("stock_name", "")),
+                "rank": int(p.get("rank", 0)),
+                "predicted_days": int(p.get("predicted_days", 10)),
+                "raw_score": float(p.get("raw_score", 0.0)),
+            })
+
+    if not preds_by_date:
+        return {"error": "No peak prediction data found", "metrics": None, "capital_curve": [], "trades": []}
+
+    db = DatabaseManager.get_instance()
+    with db.get_session() as session:
+        from sqlalchemy import func
+        dates_raw = (
+            session.query(StockDaily.date)
+            .group_by(StockDaily.date)
+            .having(func.count(StockDaily.code) >= 3000)
+            .order_by(StockDaily.date)
+            .all()
+        )
+    trading_days_sorted = [
+        d[0].strftime("%Y%m%d") if hasattr(d[0], "strftime") else str(d[0]).replace("-", "")[:8]
+        for d in dates_raw
+    ]
+    trading_days_set = set(trading_days_sorted)
+    latest_td = trading_days_sorted[-1] if trading_days_sorted else None
+
+    # Collect all dates needed for price/adj lookup
+    all_codes: set = set()
+    all_dates: set = set()
+    pred_dates_sorted = sorted(preds_by_date.keys())
+    for pd_date in pred_dates_sorted:
+        if exec_mode == "close":
+            if pd_date not in trading_days_set:
+                continue
+            buy_date = pd_date
+        else:
+            buy_date = _find_next_trading_day(pd_date, trading_days_set, trading_days_sorted)
+            if not buy_date:
+                continue
+        all_dates.add(buy_date)
+        # Add up to 25 trading days after buy_date for potential exits
+        for offset in range(26):
+            sd = _find_nth_trading_day(buy_date, offset, trading_days_sorted)
+            if sd:
+                all_dates.add(sd)
+        for p in preds_by_date[pd_date]:
+            all_codes.add(p["stock_code"])
+
+    # Add dates before each buy_date for open-mode prev-day lookup
+    if exec_mode == "open":
+        extra_dates = set()
+        for d in all_dates:
+            for i, td in enumerate(trading_days_sorted):
+                if td == d and i > 0:
+                    extra_dates.add(trading_days_sorted[i - 1])
+                    break
+        all_dates.update(extra_dates)
+
+    all_dates_iso = {ds: f"{ds[:4]}-{ds[4:6]}-{ds[6:8]}" for ds in all_dates}
+
+    # Load prices
+    with db.get_session() as session:
+        rows = session.query(StockDaily).filter(
+            StockDaily.date.in_([v for v in all_dates_iso.values()]),
+            StockDaily.code.in_(list(all_codes)),
+        ).all()
+
+    price_map: Dict[tuple, dict] = {}
+    for r in rows:
+        d = r.date.strftime("%Y%m%d") if hasattr(r.date, "strftime") else str(r.date).replace("-", "")[:8]
+        price_map[(str(r.code).strip().zfill(6), d)] = {
+            "open": float(r.open) if r.open else 0.0,
+            "close": float(r.close) if r.close else 0.0,
+            "pct_chg": float(r.pct_chg) if r.pct_chg else 0.0,
+        }
+
+    # Load adj factors
+    adj_map: Dict[tuple, float] = {}
+    with db.get_session() as session:
+        adj_rows = session.query(StockAdjFactor).filter(
+            StockAdjFactor.code.in_(list(all_codes)),
+            StockAdjFactor.trade_date.in_(
+                [f"{d[:4]}-{d[4:6]}-{d[6:8]}" for d in all_dates]
+            ),
+        ).all()
+    for r in adj_rows:
+        d = r.trade_date.strftime("%Y%m%d") if hasattr(r.trade_date, "strftime") else str(r.trade_date).replace("-", "")[:8]
+        adj_map[(str(r.code).split(".")[0].zfill(6), d)] = float(r.adj_factor)
+
+    _adj_by_code: Dict[str, list] = _defaultdict(list)
+    for (code, d), v in adj_map.items():
+        _adj_by_code[code].append((d, v))
+    for code in _adj_by_code:
+        _adj_by_code[code].sort(key=lambda x: x[0])
+
+    def _get_adj_pk(code: str, date_str: str) -> float:
+        entries = _adj_by_code.get(code, [])
+        if not entries:
+            return 1.0
+        lo, hi = 0, len(entries) - 1
+        best = 1.0
+        while lo <= hi:
+            mid = (lo + hi) // 2
+            if entries[mid][0] <= date_str:
+                best = entries[mid][1]
+                lo = mid + 1
+            else:
+                hi = mid - 1
+        return best
+
+    # Build date-to-index map for tracking holding days
+    date_to_idx = {td: i for i, td in enumerate(trading_days_sorted)}
+
+    # Build prediction queue: for each buy_date, what are the top-N picks
+    buy_date_preds: Dict[str, list] = _defaultdict(list)
+    for pd_date in pred_dates_sorted:
+        if exec_mode == "close":
+            if pd_date not in trading_days_set:
+                continue
+            buy_date = pd_date
+        else:
+            buy_date = _find_next_trading_day(pd_date, trading_days_set, trading_days_sorted)
+            if not buy_date:
+                continue
+        for p in preds_by_date[pd_date]:
+            p["_pred_date"] = pd_date
+            buy_date_preds[buy_date].append(p)
+
+    buy_dates_sorted = sorted(buy_date_preds.keys())
+    if not buy_dates_sorted:
+        return {"error": "No valid buy dates found", "metrics": None, "capital_curve": [], "trades": []}
+
+    # Extract all trading days from first buy_date to latest_td for the daily loop
+    try:
+        start_idx = trading_days_sorted.index(buy_dates_sorted[0])
+    except ValueError:
+        start_idx = 0
+    try:
+        end_idx = trading_days_sorted.index(latest_td) if latest_td else len(trading_days_sorted) - 1
+    except ValueError:
+        end_idx = len(trading_days_sorted) - 1
+    all_trading_days = trading_days_sorted[start_idx:end_idx + 1]
+
+    STOP_LOSS = -0.10
+    TAKE_PROFIT_RATIO = 0.5
+    WINDOW_DAYS = 20
+
+    INITIAL_CAPITAL = 1_000_000.0
+    cash = INITIAL_CAPITAL
+    positions: list = []  # [{code, ts_code, stock_name, buy_date, buy_price, pred_days, pred_return, entry_idx, alloc, adj_buy, rank}]
+    trades: list = []
+    capital_curve: list = []
+    exit_reasons = {"stop_loss": 0, "take_profit": 0, "arrival": 0, "force_exit": 0}
+
+    next_buy_idx = 0  # index into buy_dates_sorted
+
+    for td in all_trading_days:
+        is_last_day = td == latest_td
+        # --- 1. Check exits ---
+        if positions:
+            held_codes = [p["code"] for p in positions]
+            to_close = []
+            for pos in positions:
+                cur_entry = price_map.get((pos["code"], td))
+                if not cur_entry or cur_entry["close"] <= 0:
+                    continue
+                cur_price = cur_entry["close"]
+                adj_buy = pos.get("adj_buy", 1.0)
+                adj_cur = _get_adj_pk(pos["code"], td)
+                if adj_buy > 0 and adj_cur > 0:
+                    raw_ret = (cur_price - pos["buy_price"]) / pos["buy_price"] if pos["buy_price"] > 0 else 0.0
+                    adj_return = (1.0 + raw_ret) * (adj_cur / adj_buy) - 1.0
+                else:
+                    adj_return = (cur_price - pos["buy_price"]) / pos["buy_price"] if pos["buy_price"] > 0 else 0.0
+
+                held_days = date_to_idx.get(td, 0) - pos["entry_idx"]
+
+                exit_reason = None
+                if is_last_day:
+                    exit_reason = "force_exit"
+                elif adj_return <= STOP_LOSS:
+                    exit_reason = "stop_loss"
+                elif adj_return >= pos["pred_return"] * TAKE_PROFIT_RATIO:
+                    exit_reason = "take_profit"
+                elif abs(held_days - pos["pred_days"]) <= 2 and adj_return > 0:
+                    exit_reason = "arrival"
+                elif held_days > WINDOW_DAYS:
+                    exit_reason = "force_exit"
+
+                if exit_reason:
+                    to_close.append((pos, adj_return, exit_reason, held_days, cur_price))
+
+            for pos, ret, reason, held, sell_price in to_close:
+                cash += pos["alloc"] * (1.0 + ret)
+                trades.append({
+                    "pred_date": pos.get("pred_date", ""),
+                    "stock_code": pos["code"],
+                    "ts_code": pos["ts_code"],
+                    "stock_name": pos["stock_name"],
+                    "rank": pos["rank"],
+                    "buy_date": pos["buy_date"],
+                    "buy_price": pos["buy_price"],
+                    "sell_date": td,
+                    "sell_price": sell_price,
+                    "return_pct": round(ret, 6),
+                    "skipped": False,
+                    "expected_sell_date": pos.get("expected_sell_date", ""),
+                })
+                exit_reasons[reason] += 1
+                positions.remove(pos)
+
+        # --- 2. Open new positions (skip on last trading day)
+        # Advance past any missed buy dates (even if no open slots)
+        while next_buy_idx < len(buy_dates_sorted) and buy_dates_sorted[next_buy_idx] < td:
+            next_buy_idx += 1
+
+        open_slots = top_n - len(positions)
+        if is_last_day:
+            open_slots = 0  # don't open on last day, would be force-closed immediately
+        while open_slots > 0 and next_buy_idx < len(buy_dates_sorted):
+            buy_date = buy_dates_sorted[next_buy_idx]
+            if buy_date > td:
+                break
+            if buy_date == td:
+                candidates = buy_date_preds[buy_date]
+                held_codes = {p["code"] for p in positions}
+                alloc_per_slot = cash / max(top_n, 1)
+                for cand in candidates:
+                    if open_slots <= 0:
+                        break
+                    if cand["stock_code"] in held_codes:
+                        continue
+                    entry = price_map.get((cand["stock_code"], buy_date))
+                    if not entry:
+                        continue
+                    if exec_mode == "close":
+                        price = entry["close"]
+                    else:
+                        price = entry["open"]
+                    if price <= 0:
+                        continue
+
+                    adj_b = _get_adj_pk(cand["stock_code"], buy_date)
+                    entry_idx = date_to_idx.get(buy_date, 0)
+                    cash -= alloc_per_slot
+                    positions.append({
+                        "code": cand["stock_code"],
+                        "ts_code": cand["ts_code"],
+                        "stock_name": cand["stock_name"],
+                        "pred_date": cand.get("_pred_date", ""),
+                        "buy_date": buy_date,
+                        "buy_price": price,
+                        "pred_days": cand["predicted_days"],
+                        "pred_return": cand["raw_score"],
+                        "entry_idx": entry_idx,
+                        "alloc": alloc_per_slot,
+                        "adj_buy": adj_b,
+                        "rank": cand["rank"],
+                        "expected_sell_date": _find_nth_trading_day(buy_date, cand["predicted_days"], trading_days_sorted) or "",
+                    })
+                    open_slots -= 1
+                next_buy_idx += 1
+            else:
+                # buy_date < td: missed, skip to next
+                next_buy_idx += 1
+
+        # --- 3. Mark-to-market portfolio value ---
+        locked_value = 0.0
+        for pos in positions:
+            cur_entry = price_map.get((pos["code"], td))
+            if cur_entry and cur_entry["close"] > 0:
+                adj_b = pos.get("adj_buy", 1.0)
+                adj_c = _get_adj_pk(pos["code"], td)
+                raw_ret = (cur_entry["close"] - pos["buy_price"]) / pos["buy_price"] if pos["buy_price"] > 0 else 0.0
+                mtm_ret = (1.0 + raw_ret) * (adj_c / adj_b) - 1.0 if adj_b > 0 else raw_ret
+                locked_value += pos["alloc"] * (1.0 + mtm_ret)
+            else:
+                locked_value += pos["alloc"]
+        portfolio_value = cash + locked_value
+        c_t = portfolio_value / INITIAL_CAPITAL
+        if capital_curve:
+            c_prev = capital_curve[-1]["capital"]
+            daily_ret = c_t / c_prev - 1.0 if c_prev > 0 else 0.0
+        else:
+            daily_ret = 0.0
+        capital_curve.append({
+            "date": td,
+            "capital": round(c_t, 6),
+            "daily_return": round(daily_ret, 6),
+        })
+
+    # Force-close remaining positions at latest price
+    for pos in positions:
+        cur_entry = price_map.get((pos["code"], latest_td)) if latest_td else None
+        if cur_entry and cur_entry["close"] > 0:
+            sell_price = cur_entry["close"]
+            adj_b = pos.get("adj_buy", 1.0)
+            adj_s = _get_adj_pk(pos["code"], latest_td)
+            raw_ret = (sell_price - pos["buy_price"]) / pos["buy_price"] if pos["buy_price"] > 0 else 0.0
+            ret = (1.0 + raw_ret) * (adj_s / adj_b) - 1.0 if adj_b > 0 else raw_ret
+        else:
+            sell_price = pos["buy_price"]
+            ret = 0.0
+        cash += pos["alloc"] * (1.0 + ret)
+        trades.append({
+            "pred_date": pos.get("pred_date", ""),
+            "stock_code": pos["code"],
+            "ts_code": pos["ts_code"],
+            "stock_name": pos["stock_name"],
+            "rank": pos["rank"],
+            "buy_date": pos["buy_date"],
+            "buy_price": pos["buy_price"],
+            "sell_date": latest_td or pos["buy_date"],
+            "sell_price": sell_price,
+            "return_pct": round(ret, 6),
+            "skipped": False,
+            "expected_sell_date": pos.get("expected_sell_date", ""),
+        })
+    positions.clear()
+
+    # Metrics
+    completed_trades = [t for t in trades if not t["skipped"]]
+    win_count = sum(1 for t in completed_trades if t["return_pct"] > 0)
+    total_count = len(completed_trades)
+    final_capital = capital_curve[-1]["capital"] if capital_curve else 1.0
+    win_rate = round(win_count / total_count, 4) if total_count > 0 else 0.0
+
+    peak = 1.0
+    max_dd = 0.0
+    for pt in capital_curve:
+        val = pt["capital"]
+        if val > peak:
+            peak = val
+        dd = (val - peak) / peak
+        if dd < max_dd:
+            max_dd = dd
+
+    sharpe = _compute_sharpe(capital_curve)
+
+    return {
+        "error": None,
+        "metrics": {
+            "cumulative_return": round(final_capital - 1.0, 4),
+            "win_rate": win_rate,
+            "max_drawdown": round(max_dd, 4),
+            "sharpe_ratio": round(sharpe, 4),
+            "total_trades": total_count,
+            "skipped_trades": 0,
+            "holding_trades": 0,
+        },
+        "capital_curve": capital_curve,
+        "trades": trades,
+    }
+
+
+@router.get(
+    "/lgb/backtest-sim/peak",
+    response_model=LGBBacktestSimResponse,
+    summary="Peak Speed 模式回测模拟（动态退出策略）",
+)
+def lgb_backtest_sim_peak(
+    top_n: int = Query(5, ge=1, le=20, description="每预测日选取 Top N"),
+    exec_mode: str = Query("open", pattern="^(open|close)$", description="执行模式: open=开盘买入→开盘卖出, close=收盘买入→收盘卖出"),
+):
+    cache_key = f"peak_top{top_n}_{exec_mode}"
+    if cache_key in _backtest_cache:
+        return _backtest_cache[cache_key]
+
+    sim_result = _simulate_peak_backtest(exec_mode, top_n)
+    if sim_result.get("error"):
+        raise HTTPException(status_code=404, detail=sim_result["error"])
+
+    metrics = LGBBacktestSimMetrics(**sim_result["metrics"])
+    trades = [LGBBacktestTradeItem(**t) for t in sim_result["trades"]]
+    capital_curve = sim_result["capital_curve"]
+
+    result = LGBBacktestSimResponse(
+        forward_days=0,
+        top_n=top_n,
+        exec_mode=exec_mode,
+        metrics=metrics,
+        capital_curve=capital_curve,
+        trades=trades,
+    )
+
+    _backtest_cache[cache_key] = result
+    return result
+
+
 @router.get(
     "/lgb/backtest-sim",
     response_model=LGBBacktestSimResponse,
@@ -1526,12 +1952,11 @@ def lgb_backtest_sim(
     summary="可用回测模拟的 forward_days（基于本地 lgb_reports 目录）",
 )
 def lgb_backtest_sim_available():
-    """扫描 lgb_reports/ 返回每个 exec_mode 下实际可用的 forward_days。"""
+    """扫描 lgb_reports/ 返回每个 exec_mode 下实际可用的 forward_days 以及是否有 peak 数据。"""
     project_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
     reports_dir = _os.path.join(project_root, "lgb_reports")
-    # Discover exec modes from directory names
     exec_dirs = {"open2open": "open", "close2close": "close"}
-    result = {"open": [], "close": []}
+    result = {"open": [], "close": [], "has_peak": False}
     for dir_name, exec_key in exec_dirs.items():
         base = _os.path.join(reports_dir, dir_name)
         if not _os.path.isdir(base):
@@ -1547,6 +1972,10 @@ def lgb_backtest_sim_available():
                             result[exec_key].append(fwd)
                         except ValueError:
                             pass
+            elif entry.startswith("peak") and entry.endswith("d"):
+                peak_dir = _os.path.join(base, entry)
+                if _os.path.isdir(peak_dir) and _glob.glob(_os.path.join(peak_dir, "*.json")):
+                    result["has_peak"] = True
         result[exec_key].sort()
     return result
 
@@ -2098,6 +2527,16 @@ def _warmup_backtest_cache():
                 _log.info(f"Backtest cache warmed: {key}")
             except Exception:
                 _log.warning(f"Backtest cache warmup failed: {key}", exc_info=True)
+
+    # Also warm peak backtest cache
+    for exec_mode in ["open", "close"]:
+        peak_key = f"peak_top5_{exec_mode}"
+        if peak_key not in _backtest_cache:
+            try:
+                lgb_backtest_sim_peak(top_n=5, exec_mode=exec_mode)
+                _log.info(f"Peak backtest cache warmed: {peak_key}")
+            except Exception:
+                _log.warning(f"Peak backtest cache warmup failed: {peak_key}", exc_info=True)
 
 
 # Fire-and-forget background warmup after module loads

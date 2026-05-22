@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240601",
+  "train_end": "20250531",
+  "pred_date": "20250605",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688316.SH",
+      "stock_code": "688316",
+      "stock_name": "青云科技-U",
+      "lgb_score": 100.0,
+      "raw_score": 0.53,
+      "predicted_days": 10
+    },
+    {
+      "rank": 2,
+      "ts_code": "000665.SZ",
+      "stock_code": "000665",
+      "stock_name": "湖北广电",
+      "lgb_score": 87.88,
+      "raw_score": 0.47,
+      "predicted_days": 8
+    },
+    {
+      "rank": 3,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 84.14,
+      "raw_score": 0.45,
+      "predicted_days": 13
+    },
+    {
+      "rank": 4,
+      "ts_code": "301209.SZ",
+      "stock_code": "301209",
+      "stock_name": "联合化学",
+      "lgb_score": 80.64,
+      "raw_score": 0.43,
+      "predicted_days": 8
+    },
+    {
+      "rank": 5,
+      "ts_code": "688320.SH",
+      "stock_code": "688320",
+      "stock_name": "禾川科技",
+      "lgb_score": 80.34,
+      "raw_score": 0.43,
+      "predicted_days": 9
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.84,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.163174,
+    "std": 0.061884,
+    "skew": -0.9421,
+    "kurtosis": -0.3835,
+    "min": 0.003938,
+    "max": 0.534177,
+    "median": 0.200713
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.129421471392606,
+    "cv_rmse_std": 0.027488609562997156,
+    "cv_scores": [
+      0.153141,
+      0.171353,
+      0.106659,
+      0.111092,
+      0.104862
+    ],
+    "rank_ic_mean": 0.283482,
+    "rank_ic_std": 0.141703,
+    "icir": 2.0005,
+    "oof_corr": 0.369626,
+    "n_samples": 27940,
+    "n_features": 22
+  },
+  "window_days": 20
+}

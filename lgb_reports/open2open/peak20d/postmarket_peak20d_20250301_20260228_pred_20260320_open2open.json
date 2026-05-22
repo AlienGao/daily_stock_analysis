@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250301",
+  "train_end": "20260228",
+  "pred_date": "20260320",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "605099.SH",
+      "stock_code": "605099",
+      "stock_name": "共创草坪",
+      "lgb_score": 100.0,
+      "raw_score": 0.32,
+      "predicted_days": 9
+    },
+    {
+      "rank": 2,
+      "ts_code": "605299.SH",
+      "stock_code": "605299",
+      "stock_name": "舒华体育",
+      "lgb_score": 92.53,
+      "raw_score": 0.29,
+      "predicted_days": 9
+    },
+    {
+      "rank": 3,
+      "ts_code": "300827.SZ",
+      "stock_code": "300827",
+      "stock_name": "上能电气",
+      "lgb_score": 88.49,
+      "raw_score": 0.28,
+      "predicted_days": 8
+    },
+    {
+      "rank": 4,
+      "ts_code": "603381.SH",
+      "stock_code": "603381",
+      "stock_name": "永臻股份",
+      "lgb_score": 87.47,
+      "raw_score": 0.28,
+      "predicted_days": 10
+    },
+    {
+      "rank": 5,
+      "ts_code": "600513.SH",
+      "stock_code": "600513",
+      "stock_name": "联环药业",
+      "lgb_score": 84.43,
+      "raw_score": 0.27,
+      "predicted_days": 13
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.68,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.167436,
+    "std": 0.064326,
+    "skew": -1.166,
+    "kurtosis": -0.4044,
+    "min": -0.024756,
+    "max": 0.319813,
+    "median": 0.20679
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11359967897866463,
+    "cv_rmse_std": 0.012686378637300452,
+    "cv_scores": [
+      0.102957,
+      0.127677,
+      0.119324,
+      0.094554,
+      0.123487
+    ],
+    "rank_ic_mean": 0.341293,
+    "rank_ic_std": 0.022539,
+    "icir": 15.1425,
+    "oof_corr": 0.338827,
+    "n_samples": 18822,
+    "n_features": 22
+  },
+  "window_days": 20
+}

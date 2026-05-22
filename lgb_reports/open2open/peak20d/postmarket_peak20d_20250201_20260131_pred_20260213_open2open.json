@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250201",
+  "train_end": "20260131",
+  "pred_date": "20260213",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600629.SH",
+      "stock_code": "600629",
+      "stock_name": "华建集团",
+      "lgb_score": 100.0,
+      "raw_score": 0.3,
+      "predicted_days": 6
+    },
+    {
+      "rank": 2,
+      "ts_code": "688001.SH",
+      "stock_code": "688001",
+      "stock_name": "华兴源创",
+      "lgb_score": 99.0,
+      "raw_score": 0.3,
+      "predicted_days": 13
+    },
+    {
+      "rank": 3,
+      "ts_code": "300442.SZ",
+      "stock_code": "300442",
+      "stock_name": "润泽科技",
+      "lgb_score": 95.69,
+      "raw_score": 0.29,
+      "predicted_days": 15
+    },
+    {
+      "rank": 4,
+      "ts_code": "300449.SZ",
+      "stock_code": "300449",
+      "stock_name": "汉邦高科",
+      "lgb_score": 94.87,
+      "raw_score": 0.29,
+      "predicted_days": 11
+    },
+    {
+      "rank": 5,
+      "ts_code": "000890.SZ",
+      "stock_code": "000890",
+      "stock_name": "法尔胜",
+      "lgb_score": 88.72,
+      "raw_score": 0.27,
+      "predicted_days": 12
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.33,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.154283,
+    "std": 0.035863,
+    "skew": -1.3837,
+    "kurtosis": 0.9615,
+    "min": 0.013902,
+    "max": 0.301955,
+    "median": 0.1736
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11435184084213472,
+    "cv_rmse_std": 0.01168555995245403,
+    "cv_scores": [
+      0.103504,
+      0.124438,
+      0.131189,
+      0.101282,
+      0.111347
+    ],
+    "rank_ic_mean": 0.311669,
+    "rank_ic_std": 0.053933,
+    "icir": 5.7788,
+    "oof_corr": 0.295304,
+    "n_samples": 18759,
+    "n_features": 22
+  },
+  "window_days": 20
+}
