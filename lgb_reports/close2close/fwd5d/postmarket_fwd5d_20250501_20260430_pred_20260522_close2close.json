@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 5,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260522",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002145",
+      "stock_code": "002145",
+      "stock_name": "钛能化学",
+      "lgb_score": 100.0,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 2,
+      "ts_code": "300174",
+      "stock_code": "300174",
+      "stock_name": "元力股份",
+      "lgb_score": 90.17,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 3,
+      "ts_code": "002556",
+      "stock_code": "002556",
+      "stock_name": "辉隆股份",
+      "lgb_score": 88.48,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 4,
+      "ts_code": "300303",
+      "stock_code": "300303",
+      "stock_name": "聚飞光电",
+      "lgb_score": 88.24,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 5,
+      "ts_code": "002250",
+      "stock_code": "002250",
+      "stock_name": "联化科技",
+      "lgb_score": 83.7,
+      "raw_score": 0.12
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.21,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.00078,
+    "std": 0.021443,
+    "skew": 0.3608,
+    "kurtosis": 2.9355,
+    "min": -0.082885,
+    "max": 0.164895,
+    "median": 0.011327
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.07293047112790249,
+    "cv_rmse_std": 0.003796719450767962,
+    "cv_scores": [
+      0.0674,
+      0.070493,
+      0.074004,
+      0.074071,
+      0.078684
+    ],
+    "rank_ic_mean": 0.047685,
+    "rank_ic_std": 0.047815,
+    "icir": 0.9973,
+    "oof_corr": 0.033957,
+    "n_samples": 18327,
+    "n_features": 22
+  }
+}

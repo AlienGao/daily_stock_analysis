@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 10,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260522",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002797",
+      "stock_code": "002797",
+      "stock_name": "第一创业",
+      "lgb_score": 100.0,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 2,
+      "ts_code": "002434",
+      "stock_code": "002434",
+      "stock_name": "万里扬",
+      "lgb_score": 94.47,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 3,
+      "ts_code": "600864",
+      "stock_code": "600864",
+      "stock_name": "哈投股份",
+      "lgb_score": 92.64,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 4,
+      "ts_code": "000712",
+      "stock_code": "000712",
+      "stock_name": "锦龙股份",
+      "lgb_score": 92.14,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 5,
+      "ts_code": "600758",
+      "stock_code": "600758",
+      "stock_name": "辽宁能源",
+      "lgb_score": 91.14,
+      "raw_score": 0.21
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.12,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.000891,
+    "std": 0.031391,
+    "skew": 0.6421,
+    "kurtosis": 5.2203,
+    "min": -0.163826,
+    "max": 0.248115,
+    "median": 0.010842
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.10555796166006633,
+    "cv_rmse_std": 0.004759488059331734,
+    "cv_scores": [
+      0.101733,
+      0.105965,
+      0.103919,
+      0.101645,
+      0.114528
+    ],
+    "rank_ic_mean": 0.083807,
+    "rank_ic_std": 0.064875,
+    "icir": 1.2918,
+    "oof_corr": 0.071869,
+    "n_samples": 17972,
+    "n_features": 22
+  }
+}

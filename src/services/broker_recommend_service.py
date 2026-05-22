@@ -938,6 +938,17 @@ class BrokerRecommendService:
             pass
         return {}
 
+    @staticmethod
+    def _lookup_adj_factor(adj_map: Dict[str, float], date_str: str) -> float:
+        """查找指定日期的复权因子，若无精确匹配则取最近一个 ≤ date_str 的值。"""
+        if date_str in adj_map:
+            f = adj_map[date_str]
+            return f if f > 0 else 1.0
+        prev_dates = sorted(d for d in adj_map if d <= date_str and adj_map.get(d, 0) > 0)
+        if prev_dates:
+            return adj_map[prev_dates[-1]]
+        return 1.0
+
     def _get_stock_prices(
         self, ts_code: str, start_date: str, end_date: str, skip_tushare: bool = False, adj_all: dict | None = None
     ) -> Dict[str, float]:
@@ -964,7 +975,7 @@ class BrokerRecommendService:
                 adj_map = (adj_all or {}).get(code, {})
                 if adj_map and prices:
                     for d in list(prices.keys()):
-                        f = adj_map.get(d, 1.0)
+                        f = self._lookup_adj_factor(adj_map, d)
                         if f > 0:
                             prices[d] = round(prices[d] * f, 4)
 
@@ -1032,7 +1043,7 @@ class BrokerRecommendService:
                 adj_map = (adj_all or {}).get(code, {})
                 if adj_map and r:
                     for d in list(r.keys()):
-                        f = adj_map.get(d, 1.0)
+                        f = self._lookup_adj_factor(adj_map, d)
                         if f <= 0:
                             continue
                         entry = r[d]
@@ -1288,7 +1299,7 @@ class BrokerRecommendService:
                         code = ts.split(".")[0] if "." in ts else ts
                         adj_map = adj_all.get(code, {})
                         today_str = list(p.keys())[0]
-                        f = adj_map.get(today_str, 1.0)
+                        f = self._lookup_adj_factor(adj_map, today_str)
                         if f > 0:
                             p = {d: round(v * f, 4) for d, v in p.items()}
                         price_cache.setdefault(ts, {}).update(p)

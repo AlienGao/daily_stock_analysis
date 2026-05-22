@@ -7,7 +7,7 @@ import {
 import { DatePicker, Segmented, Table, InputNumber, Button, Select, Input, Tooltip as AntTooltip } from 'antd';
 import { Brain, Play, Loader2, Search } from 'lucide-react';
 import { AppPage, Card, StatCard, EmptyState, ApiErrorAlert } from '../components/common';
-import { researchApi, type LGBTaskStatusResponse, type LGBPredictionItem, type LGBBacktestCompareResponse, type LGBModelInfo, type LGBDateRangeResponse, type LGBStockLookupItem, type LGBBacktestSimResponse, type LGBBacktestSimAvailableResponse, type LGBBruteForceTaskStatus, type LGBDiagnosticsResponse, type LGBCrossModelOverlapResponse, type CatchUpTaskStatus } from '../api/research';
+import { researchApi, type LGBTaskStatusResponse, type LGBPredictionItem, type LGBBacktestCompareResponse, type LGBModelInfo, type LGBDateRangeResponse, type LGBStockLookupItem, type LGBBacktestSimResponse, type LGBBacktestSimAvailableResponse, type LGBBruteForceTaskStatus, type LGBDiagnosticsResponse, type LGBCrossModelOverlapResponse, type CatchUpTaskStatus, type LGBBruteForceResult } from '../api/research';
 import type { ParsedApiError } from '../api/error';
 import { getParsedApiError } from '../api/error';
 import dayjs from 'dayjs';
@@ -51,10 +51,14 @@ const LightGBMPage: React.FC = () => {
   const [backtestSimAvailable, setBacktestSimAvailable] = useState<LGBBacktestSimAvailableResponse | null>(null);
   const [backtestFwd, setBacktestFwd] = useState(3);
   const [backtestTopN, setBacktestTopN] = useState(1);
+  const [peakStopLoss, setPeakStopLoss] = useState(-0.10);
   const [stopStrategy, setStopStrategy] = useState('none');
   const [bruteForceStatus, setBruteForceStatus] = useState<LGBBruteForceTaskStatus | null>(null);
   const [bruteForceLoading, setBruteForceLoading] = useState(false);
   const bruteForcePollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [latestBfReport, setLatestBfReport] = useState<LGBBruteForceResult | null>(null);
+  const bfAutoAppliedRef = useRef(false);
+  const bfModelAutoSelectedRef = useRef(false);
   const [diagnostics, setDiagnostics] = useState<LGBDiagnosticsResponse | null>(null);
   const [catchUpStatus, setCatchUpStatus] = useState<CatchUpTaskStatus | null>(null);
   const catchUpPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -94,6 +98,31 @@ const LightGBMPage: React.FC = () => {
   }, []);
 
   useEffect(() => { fetchDateRange(); }, [fetchDateRange]);
+
+  /* ── Auto-load latest brute force report ── */
+  useEffect(() => {
+    researchApi.getLatestBruteForceReport()
+      .then((report) => setLatestBfReport(report))
+      .catch(() => { /* no report yet, ignore */ });
+  }, []);
+
+  /* ── Auto-apply best return params from latest report ── */
+  useEffect(() => {
+    if (!latestBfReport?.best_by_return || bfAutoAppliedRef.current) return;
+    const best = latestBfReport.best_by_return;
+    bfAutoAppliedRef.current = true;
+    setTrainExecMode(best.exec_mode);
+    if (best.label_mode === 'peak_speed') {
+      setLabelMode('peak_speed');
+      setWindowDays(best.window_days || 20);
+    } else {
+      setLabelMode('fixed');
+      setForwardDays(best.forward_days);
+    }
+    setStopStrategy(best.stop_strategy);
+    setBacktestTopN(best.top_n);
+    setBacktestFwd(best.forward_days);
+  }, [latestBfReport]);
 
   /* ── Load model list ── */
   const loadModels = useCallback(async () => {
@@ -168,6 +197,25 @@ const LightGBMPage: React.FC = () => {
     }
     researchApi.getDiagnostics(modelPath).then(setDiagnostics).catch(() => {});
   }, []);
+
+  /* ── Auto-select best model matching brute force best return ── */
+  useEffect(() => {
+    if (!latestBfReport?.best_by_return || !bfAutoAppliedRef.current || bfModelAutoSelectedRef.current) return;
+    if (models.length === 0 || selectedModel) return;
+    const best = latestBfReport.best_by_return;
+    const execSuffix = best.exec_mode === 'open' ? 'open2open' : 'close2close';
+    const modePrefix = best.label_mode === 'peak_speed'
+      ? `peak${best.window_days}d`
+      : `fwd${best.forward_days}d`;
+    const match = models.find((m) =>
+      m.name.includes(modePrefix) && m.name.includes(execSuffix),
+    );
+    if (match) {
+      bfModelAutoSelectedRef.current = true;
+      setSelectedModel(match.path);
+      loadModelResults(match.path);
+    }
+  }, [latestBfReport, models, selectedModel, loadModelResults]);
 
   /* ── Train ── */
   const handleTrain = useCallback(async () => {
@@ -293,7 +341,7 @@ const LightGBMPage: React.FC = () => {
     }
   }, []);
 
-  const fetchBacktestSimPeak = useCallback(async (exec: string, topN: number) => {
+  const fetchBacktestSimPeak = useCallback(async (exec: string, topN: number, sl: number) => {
     backtestAbortRef.current?.abort();
     const controller = new AbortController();
     backtestAbortRef.current = controller;
@@ -301,7 +349,7 @@ const LightGBMPage: React.FC = () => {
     setBacktestSimLoading(true);
     setBacktestSim(null);
     try {
-      const data = await researchApi.getBacktestSimPeak({ top_n: topN, exec_mode: exec }, controller.signal);
+      const data = await researchApi.getBacktestSimPeak({ top_n: topN, exec_mode: exec, stop_loss: sl }, controller.signal);
       setBacktestSim(data);
     } catch (e: any) {
       if (e?.name === 'CanceledError' || e?.code === 'ERR_CANCELED') return;
@@ -327,11 +375,11 @@ const LightGBMPage: React.FC = () => {
 
   useEffect(() => {
     if (labelMode === 'peak_speed') {
-      fetchBacktestSimPeak(trainExecMode, backtestTopN);
+      fetchBacktestSimPeak(trainExecMode, backtestTopN, peakStopLoss);
       return;
     }
     fetchBacktestSim(backtestFwd, trainExecMode, backtestTopN, stopStrategy);
-  }, [fetchBacktestSim, fetchBacktestSimPeak, backtestFwd, trainExecMode, backtestTopN, stopStrategy, labelMode]);
+  }, [fetchBacktestSim, fetchBacktestSimPeak, backtestFwd, trainExecMode, backtestTopN, stopStrategy, labelMode, peakStopLoss]);
 
   /* ── Cleanup polling on unmount ── */
   useEffect(() => {
@@ -698,6 +746,11 @@ const LightGBMPage: React.FC = () => {
               <div className="font-medium text-sm text-secondary-text">全方案搜索</div>
               <div className="text-xs text-tertiary-text">
                 遍历 lgb_reports/ 缓存中所有参数组合（止损策略 × 执行模式 × 持有期 × top_n），寻找收益/夏普最优方案。后台运行，结果保存至 lgb_reports/。
+                {latestBfReport && !bruteForceStatus && (
+                  <span className="text-green-400 ml-1">
+                    （已加载最新报告{latestBfReport.report_path ? `: ${latestBfReport.report_path.split('/').pop()}` : ''}，已自动应用最佳收益参数）
+                  </span>
+                )}
                 {(() => {
                   const results = bruteForceStatus?.result?.all_results;
                   if (!results || results.length === 0) return null;
@@ -729,37 +782,45 @@ const LightGBMPage: React.FC = () => {
                 </div>
               )}
 
-              {bruteForceStatus && bruteForceStatus.status === 'completed' && bruteForceStatus.result && (
+              {(() => {
+                const displayResult = bruteForceStatus?.result || latestBfReport;
+                if (!displayResult || (!displayResult.best_by_return && !displayResult.best_by_sharpe)) return null;
+                const modeLabel = (r: typeof displayResult.best_by_return) => {
+                  if (!r) return '';
+                  return r.label_mode === 'peak_speed' ? `peak${r.window_days}d` : `fwd${r.forward_days}d`;
+                };
+                return (
                 <div className="space-y-2 text-xs">
-                  {bruteForceStatus.result.best_by_return && (
+                  {displayResult.best_by_return && (
                     <div className="p-2 rounded bg-green-500/10 border border-green-500/20">
                       <div className="text-tertiary-text">最佳收益</div>
                       <div className="font-medium">
-                        {bruteForceStatus.result.best_by_return.stop_strategy} {bruteForceStatus.result.best_by_return.exec_mode} fwd={bruteForceStatus.result.best_by_return.forward_days} top={bruteForceStatus.result.best_by_return.top_n}
+                        {displayResult.best_by_return.stop_strategy} {displayResult.best_by_return.exec_mode} {modeLabel(displayResult.best_by_return)} top={displayResult.best_by_return.top_n}
                       </div>
                       <div className="text-red-400">
-                        {(bruteForceStatus.result.best_by_return.cumulative_return * 100).toFixed(1)}%
+                        {(displayResult.best_by_return.cumulative_return * 100).toFixed(1)}%
                       </div>
                     </div>
                   )}
-                  {bruteForceStatus.result.best_by_sharpe && (
+                  {displayResult.best_by_sharpe && (
                     <div className="p-2 rounded bg-blue-500/10 border border-blue-500/20">
                       <div className="text-tertiary-text">最佳夏普</div>
                       <div className="font-medium">
-                        {bruteForceStatus.result.best_by_sharpe.stop_strategy} {bruteForceStatus.result.best_by_sharpe.exec_mode} fwd={bruteForceStatus.result.best_by_sharpe.forward_days} top={bruteForceStatus.result.best_by_sharpe.top_n}
+                        {displayResult.best_by_sharpe.stop_strategy} {displayResult.best_by_sharpe.exec_mode} {modeLabel(displayResult.best_by_sharpe)} top={displayResult.best_by_sharpe.top_n}
                       </div>
                       <div className="text-blue-400">
-                        {bruteForceStatus.result.best_by_sharpe.sharpe_ratio.toFixed(2)}
+                        {displayResult.best_by_sharpe.sharpe_ratio.toFixed(2)}
                       </div>
                     </div>
                   )}
-                  {bruteForceStatus.result.report_path && (
-                    <div className="text-[10px] text-tertiary-text truncate" title={bruteForceStatus.result.report_path}>
-                      报告: {bruteForceStatus.result.report_path.split('/').pop()}
+                  {displayResult.report_path && (
+                    <div className="text-[10px] text-tertiary-text truncate" title={displayResult.report_path}>
+                      报告: {displayResult.report_path.split('/').pop()}
                     </div>
                   )}
                 </div>
-              )}
+                );
+              })()}
 
               {bruteForceStatus && bruteForceStatus.status === 'failed' && (
                 <div className="text-xs text-red-400">
@@ -986,6 +1047,17 @@ const LightGBMPage: React.FC = () => {
                     onChange={(v) => setBacktestTopN(v ?? 1)}
                     style={{ width: 52 }}
                   />
+                  <span className="text-xs text-tertiary-text ml-1">止损</span>
+                  <Segmented
+                    size="small"
+                    value={peakStopLoss.toString()}
+                    onChange={(v) => setPeakStopLoss(Number(v))}
+                    options={[
+                      { label: '-10%', value: '-0.1' },
+                      { label: '-15%', value: '-0.15' },
+                      { label: '-20%', value: '-0.2' },
+                    ]}
+                  />
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
@@ -1002,12 +1074,16 @@ const LightGBMPage: React.FC = () => {
                     size="small"
                     value={backtestFwd.toString()}
                     onChange={(v) => setBacktestFwd(Number(v))}
-                    options={(backtestSimAvailable
-                      ? (trainExecMode === 'open'
-                        ? backtestSimAvailable.open
-                        : backtestSimAvailable.close)
-                      : [3, 5, 10]
-                    ).map((d) => ({ label: `${d} 日`, value: String(d) }))}
+                    options={(() => {
+                      const raw = backtestSimAvailable
+                        ? (trainExecMode === 'open'
+                          ? backtestSimAvailable.open
+                          : backtestSimAvailable.close)
+                        : [3, 5, 10];
+                      const set = new Set(raw);
+                      set.add(backtestFwd);
+                      return [...set].sort((a, b) => a - b).map((d) => ({ label: `${d} 日`, value: String(d) }));
+                    })()}
                   />
                   <Segmented
                     size="small"

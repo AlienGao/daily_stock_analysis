@@ -149,6 +149,8 @@ export type LGBBruteForceItem = {
   forward_days: number;
   top_n: number;
   stop_strategy: string;
+  label_mode?: string;
+  window_days?: number;
   cumulative_return: number;
   sharpe_ratio: number;
   win_rate: number;
@@ -302,6 +304,7 @@ export const researchApi = {
   async getBacktestSimPeak(params: {
     top_n?: number;
     exec_mode?: string;
+    stop_loss?: number;
   }, signal?: AbortSignal): Promise<LGBBacktestSimResponse> {
     const resp = await apiClient.get('/api/v1/research/lgb/backtest-sim/peak', { params, timeout: 300000, signal });
     return resp.data;
@@ -309,6 +312,11 @@ export const researchApi = {
 
   async startBruteForce(): Promise<{ task_id: string; status: string }> {
     const resp = await apiClient.post('/api/v1/research/lgb/brute-force-search', {}, { timeout: 120000 });
+    return resp.data;
+  },
+
+  async getLatestBruteForceReport(): Promise<LGBBruteForceResult> {
+    const resp = await apiClient.get('/api/v1/research/lgb/brute-force-reports/latest', { timeout: 30000 });
     return resp.data;
   },
 
@@ -351,6 +359,8 @@ export const researchApi = {
 export type CatchUpResultItem = {
   exec_mode: string;
   forward_days: number;
+  label_mode?: string;
+  window_days?: number;
   status: string;
   train_window?: string;
   pred_range?: string;

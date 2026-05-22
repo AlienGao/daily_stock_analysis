@@ -482,16 +482,28 @@ def lgb_stock_lookup(
             if t.get("status") == "completed"
             and t.get("result", {}).get("model_path")
         ]
-        if not completed:
-            raise HTTPException(
-                status_code=404,
-                detail="没有已完成的训练任务，请先训练模型",
+        if completed:
+            _, latest_task = max(
+                completed,
+                key=lambda x: x[1].get("finished_at", ""),
             )
-        _, latest_task = max(
-            completed,
-            key=lambda x: x[1].get("finished_at", ""),
-        )
-        model_path = latest_task["result"]["model_path"]
+            model_path = latest_task["result"]["model_path"]
+        else:
+            # Fallback: load latest model from disk
+            project_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
+            models_dir = _os.path.join(project_root, "src", "data", "lgb_models")
+            if _os.path.isdir(models_dir):
+                joblib_files = sorted(
+                    [f for f in _os.listdir(models_dir) if f.endswith(".joblib")],
+                    key=lambda f: _os.path.getmtime(_os.path.join(models_dir, f)),
+                    reverse=True,
+                )
+                if joblib_files:
+                    model_path = _os.path.join(models_dir, joblib_files[0])
+                else:
+                    raise HTTPException(status_code=404, detail="没有已完成的训练任务，请先训练模型")
+            else:
+                raise HTTPException(status_code=404, detail="没有已完成的训练任务，请先训练模型")
         trainer = LGBTrainer.load(model_path)
 
     df = trainer.predict()
@@ -592,7 +604,8 @@ def _find_next_trading_day(d: str, trading_days_set: set, trading_days_sorted: l
 
 
 def _find_nth_trading_day(start: str, n: int, trading_days_sorted: list) -> _Optional[str]:
-    """Return the nth trading day on or after start (0-indexed)."""
+    """Return the nth trading day on or after start (0-indexed).
+    Extrapolates if beyond the available data using average trading-day interval."""
     try:
         idx = trading_days_sorted.index(start)
     except ValueError:
@@ -600,6 +613,21 @@ def _find_nth_trading_day(start: str, n: int, trading_days_sorted: list) -> _Opt
     target_idx = idx + n
     if 0 <= target_idx < len(trading_days_sorted):
         return trading_days_sorted[target_idx]
+    if target_idx >= len(trading_days_sorted) and trading_days_sorted:
+        # Extrapolate: estimate based on average interval between recent trading days
+        from datetime import datetime as _dt, timedelta as _td
+        extra = target_idx - len(trading_days_sorted) + 1
+        # Average gap between last 20 trading days
+        recent = trading_days_sorted[-20:]
+        gaps = []
+        for i in range(1, len(recent)):
+            d1 = _dt.strptime(recent[i-1], "%Y%m%d")
+            d2 = _dt.strptime(recent[i], "%Y%m%d")
+            gaps.append((d2 - d1).days)
+        avg_gap = sum(gaps) / len(gaps) if gaps else 1.4
+        last_date = _dt.strptime(trading_days_sorted[-1], "%Y%m%d")
+        est_date = last_date + _td(days=round(extra * avg_gap))
+        return est_date.strftime("%Y%m%d")
     return None
 
 
@@ -1001,6 +1029,7 @@ def _simulate_backtest(exec_mode: str, forward_days: int, top_n: int, stop_strat
     ]
     trading_days_set = set(trading_days_sorted)
 
+    latest_td = trading_days_sorted[-1] if trading_days_sorted else None
     all_codes: set = set()
     date_pairs: list = []
     for pred_date, preds in sorted(preds_by_date.items()):
@@ -1008,12 +1037,17 @@ def _simulate_backtest(exec_mode: str, forward_days: int, top_n: int, stop_strat
             if pred_date not in trading_days_set:
                 continue
             sell_date = _find_nth_trading_day(pred_date, forward_days, trading_days_sorted)
+            # If sell_date is beyond available data, treat as holding
+            if sell_date and latest_td and sell_date > latest_td:
+                sell_date = None
             date_pairs.append((pred_date, pred_date, sell_date))
         else:
             buy_date = _find_next_trading_day(pred_date, trading_days_set, trading_days_sorted)
             if not buy_date:
                 continue
             sell_date = _find_nth_trading_day(buy_date, forward_days, trading_days_sorted)
+            if sell_date and latest_td and sell_date > latest_td:
+                sell_date = None
             date_pairs.append((pred_date, buy_date, sell_date))
         for p in preds:
             all_codes.add(p["stock_code"])
@@ -1022,7 +1056,6 @@ def _simulate_backtest(exec_mode: str, forward_days: int, top_n: int, stop_strat
         return {"error": "No valid trading dates found", "metrics": None, "capital_curve": [], "trades": []}
 
     all_date_strs: set = set()
-    latest_td = trading_days_sorted[-1] if trading_days_sorted else None
     has_holding = any(sd is None for _, _, sd in date_pairs)
     for _, bd, sd in date_pairs:
         all_date_strs.add(bd)
@@ -1493,10 +1526,10 @@ def _simulate_backtest(exec_mode: str, forward_days: int, top_n: int, stop_strat
     }
 
 
-def _simulate_peak_backtest(exec_mode: str, top_n: int) -> dict:
+def _simulate_peak_backtest(exec_mode: str, top_n: int, stop_loss_pct: float = -0.10) -> dict:
     """Peak speed 模式回测：从预测文件读取，动态退出策略。
 
-    退出优先级: 止损(-5%) → 止盈(80%预测收益) → 到期窗口(±2天) → 强制退出(20天)
+    退出优先级: 止损 → 止盈(50%预测收益) → 到期窗口(±2天) → 强制退出(20天)
     """
     project_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
     reports_dir = _os.path.join(project_root, "lgb_reports")
@@ -1664,7 +1697,6 @@ def _simulate_peak_backtest(exec_mode: str, top_n: int) -> dict:
         end_idx = len(trading_days_sorted) - 1
     all_trading_days = trading_days_sorted[start_idx:end_idx + 1]
 
-    STOP_LOSS = -0.10
     TAKE_PROFIT_RATIO = 0.5
     WINDOW_DAYS = 20
 
@@ -1685,9 +1717,15 @@ def _simulate_peak_backtest(exec_mode: str, top_n: int) -> dict:
             to_close = []
             for pos in positions:
                 cur_entry = price_map.get((pos["code"], td))
-                if not cur_entry or cur_entry["close"] <= 0:
+                if not cur_entry:
                     continue
-                cur_price = cur_entry["close"]
+                # open mode: check exit at open price; close mode: check at close price
+                if exec_mode == "open":
+                    cur_price = cur_entry["open"]
+                else:
+                    cur_price = cur_entry["close"]
+                if cur_price <= 0:
+                    continue
                 adj_buy = pos.get("adj_buy", 1.0)
                 adj_cur = _get_adj_pk(pos["code"], td)
                 if adj_buy > 0 and adj_cur > 0:
@@ -1701,7 +1739,7 @@ def _simulate_peak_backtest(exec_mode: str, top_n: int) -> dict:
                 exit_reason = None
                 if is_last_day:
                     exit_reason = "force_exit"
-                elif adj_return <= STOP_LOSS:
+                elif adj_return <= stop_loss_pct:
                     exit_reason = "stop_loss"
                 elif adj_return >= pos["pred_return"] * TAKE_PROFIT_RATIO:
                     exit_reason = "take_profit"
@@ -1738,8 +1776,6 @@ def _simulate_peak_backtest(exec_mode: str, top_n: int) -> dict:
             next_buy_idx += 1
 
         open_slots = top_n - len(positions)
-        if is_last_day:
-            open_slots = 0  # don't open on last day, would be force-closed immediately
         while open_slots > 0 and next_buy_idx < len(buy_dates_sorted):
             buy_date = buy_dates_sorted[next_buy_idx]
             if buy_date > td:
@@ -1779,7 +1815,7 @@ def _simulate_peak_backtest(exec_mode: str, top_n: int) -> dict:
                         "alloc": alloc_per_slot,
                         "adj_buy": adj_b,
                         "rank": cand["rank"],
-                        "expected_sell_date": _find_nth_trading_day(buy_date, cand["predicted_days"], trading_days_sorted) or "",
+                        "expected_sell_date": _find_nth_trading_day(buy_date, cand["predicted_days"], trading_days_sorted) or (latest_td or ""),
                     })
                     open_slots -= 1
                 next_buy_idx += 1
@@ -1812,7 +1848,8 @@ def _simulate_peak_backtest(exec_mode: str, top_n: int) -> dict:
             "daily_return": round(daily_ret, 6),
         })
 
-    # Force-close remaining positions at latest price
+    # Force-close remaining positions at latest price.
+    # Positions opened on the last trading day are reported as holding (no sell_date).
     for pos in positions:
         cur_entry = price_map.get((pos["code"], latest_td)) if latest_td else None
         if cur_entry and cur_entry["close"] > 0:
@@ -1824,21 +1861,39 @@ def _simulate_peak_backtest(exec_mode: str, top_n: int) -> dict:
         else:
             sell_price = pos["buy_price"]
             ret = 0.0
-        cash += pos["alloc"] * (1.0 + ret)
-        trades.append({
-            "pred_date": pos.get("pred_date", ""),
-            "stock_code": pos["code"],
-            "ts_code": pos["ts_code"],
-            "stock_name": pos["stock_name"],
-            "rank": pos["rank"],
-            "buy_date": pos["buy_date"],
-            "buy_price": pos["buy_price"],
-            "sell_date": latest_td or pos["buy_date"],
-            "sell_price": sell_price,
-            "return_pct": round(ret, 6),
-            "skipped": False,
-            "expected_sell_date": pos.get("expected_sell_date", ""),
-        })
+
+        if pos["buy_date"] == latest_td:
+            # Opened on last day: report as holding
+            trades.append({
+                "pred_date": pos.get("pred_date", ""),
+                "stock_code": pos["code"],
+                "ts_code": pos["ts_code"],
+                "stock_name": pos["stock_name"],
+                "rank": pos["rank"],
+                "buy_date": pos["buy_date"],
+                "buy_price": pos["buy_price"],
+                "sell_date": "",
+                "sell_price": sell_price,
+                "return_pct": round(ret, 6),
+                "skipped": False,
+                "expected_sell_date": pos.get("expected_sell_date", ""),
+            })
+        else:
+            cash += pos["alloc"] * (1.0 + ret)
+            trades.append({
+                "pred_date": pos.get("pred_date", ""),
+                "stock_code": pos["code"],
+                "ts_code": pos["ts_code"],
+                "stock_name": pos["stock_name"],
+                "rank": pos["rank"],
+                "buy_date": pos["buy_date"],
+                "buy_price": pos["buy_price"],
+                "sell_date": latest_td or pos["buy_date"],
+                "sell_price": sell_price,
+                "return_pct": round(ret, 6),
+                "skipped": False,
+                "expected_sell_date": pos.get("expected_sell_date", ""),
+            })
     positions.clear()
 
     # Metrics
@@ -1884,12 +1939,13 @@ def _simulate_peak_backtest(exec_mode: str, top_n: int) -> dict:
 def lgb_backtest_sim_peak(
     top_n: int = Query(5, ge=1, le=20, description="每预测日选取 Top N"),
     exec_mode: str = Query("open", pattern="^(open|close)$", description="执行模式: open=开盘买入→开盘卖出, close=收盘买入→收盘卖出"),
+    stop_loss: float = Query(-0.10, description="止损线: -0.10 / -0.15 / -0.20"),
 ):
-    cache_key = f"peak_top{top_n}_{exec_mode}"
+    cache_key = f"peak_top{top_n}_{exec_mode}_sl{stop_loss}"
     if cache_key in _backtest_cache:
         return _backtest_cache[cache_key]
 
-    sim_result = _simulate_peak_backtest(exec_mode, top_n)
+    sim_result = _simulate_peak_backtest(exec_mode, top_n, stop_loss_pct=stop_loss)
     if sim_result.get("error"):
         raise HTTPException(status_code=404, detail=sim_result["error"])
 
@@ -2002,6 +2058,7 @@ def _run_brute_force_search(task_id: str):
         # 1) exec_modes from directory names (open2open→open, close2close→close)
         exec_mode_map: Dict[str, str] = {}
         all_forward_days: set = set()
+        all_peak_windows: set = set()
         max_top_n = 0
         for dir_name in sorted(_os.listdir(reports_root)):
             dir_path = _os.path.join(reports_root, dir_name)
@@ -2014,21 +2071,30 @@ def _run_brute_force_search(task_id: str):
             else:
                 continue
 
-            # 2) forward_days from fwd{N}d subdirectories
+            # 2) forward_days from fwd{N}d + peak{N}d subdirectories
             for entry in sorted(_os.listdir(dir_path)):
-                if not entry.startswith("fwd") or not entry.endswith("d"):
+                entry_dir = _os.path.join(dir_path, entry)
+                if not _os.path.isdir(entry_dir):
                     continue
-                fwd_dir = _os.path.join(dir_path, entry)
-                if not _os.path.isdir(fwd_dir):
-                    continue
-                try:
-                    fwd = int(entry[3:-1])
-                except ValueError:
-                    continue
-                all_forward_days.add(fwd)
+
+                # Fixed mode: fwd{N}d
+                if entry.startswith("fwd") and entry.endswith("d"):
+                    try:
+                        fwd = int(entry[3:-1])
+                    except ValueError:
+                        continue
+                    all_forward_days.add(fwd)
+
+                # Peak mode: peak{N}d
+                if entry.startswith("peak") and entry.endswith("d"):
+                    try:
+                        wd = int(entry[4:-1])
+                    except ValueError:
+                        continue
+                    all_peak_windows.add(wd)
 
                 # 3) max top_n from prediction JSON files (sample first file per combo)
-                json_files = _glob.glob(_os.path.join(fwd_dir, "*.json"))
+                json_files = _glob.glob(_os.path.join(entry_dir, "*.json"))
                 if json_files:
                     try:
                         with open(json_files[0], "r", encoding="utf-8") as fh:
@@ -2041,12 +2107,20 @@ def _run_brute_force_search(task_id: str):
 
         exec_modes = sorted(set(exec_mode_map.values()))
         forward_days_list = sorted(all_forward_days) or [3, 5, 10]
+        peak_windows_list = sorted(all_peak_windows) if all_peak_windows else []
         top_n_list = list(range(1, max(max_top_n, 5) + 1))
-        total = len(stop_strategies) * len(exec_modes) * len(forward_days_list) * len(top_n_list)
+
+        # Fixed combos: stop_strategies × exec_modes × forward_days × top_n
+        n_fixed = len(stop_strategies) * len(exec_modes) * len(forward_days_list) * len(top_n_list)
+        # Peak combos: exec_modes × stop_loss × peak_windows × top_n
+        peak_stop_losses = [-0.10, -0.15, -0.20]
+        n_peak = len(exec_modes) * len(peak_stop_losses) * len(peak_windows_list) * len(top_n_list)
+        total = n_fixed + n_peak
 
         all_results: list = []
         progress = 0
 
+        # ── Fixed mode combos ──
         for st in stop_strategies:
             for em in exec_modes:
                 for fwd in forward_days_list:
@@ -2054,7 +2128,7 @@ def _run_brute_force_search(task_id: str):
                         progress += 1
                         task["progress_current"] = progress
                         task["progress_total"] = total
-                        task["status_message"] = f"Simulating {st} {em} fwd={fwd} top={tn} ({progress}/{total})"
+                        task["status_message"] = f"Fixed {st} {em} fwd={fwd} top={tn} ({progress}/{total})"
 
                         try:
                             sim = _simulate_backtest(em, fwd, tn, stop_strategy=st)
@@ -2066,6 +2140,50 @@ def _run_brute_force_search(task_id: str):
                             forward_days=fwd,
                             top_n=tn,
                             stop_strategy=st,
+                            label_mode="fixed",
+                            window_days=0,
+                            cumulative_return=0.0,
+                            sharpe_ratio=0.0,
+                            win_rate=0.0,
+                            max_drawdown=0.0,
+                            total_trades=0,
+                            skipped_trades=0,
+                        )
+                        if sim.get("error"):
+                            item.error = sim["error"]
+                        elif sim.get("metrics"):
+                            m = sim["metrics"]
+                            item.cumulative_return = m.get("cumulative_return", 0.0)
+                            item.sharpe_ratio = m.get("sharpe_ratio", 0.0)
+                            item.win_rate = m.get("win_rate", 0.0)
+                            item.max_drawdown = m.get("max_drawdown", 0.0)
+                            item.total_trades = m.get("total_trades", 0)
+                            item.skipped_trades = m.get("skipped_trades", 0)
+                        all_results.append(item)
+
+        # ── Peak mode combos ──
+        for em in exec_modes:
+            for sl in peak_stop_losses:
+                for wd in peak_windows_list:
+                    for tn in top_n_list:
+                        progress += 1
+                        task["progress_current"] = progress
+                        task["progress_total"] = total
+                        sl_pct = f"{int(abs(sl)*100)}%"
+                        task["status_message"] = f"Peak {em} window={wd}d top={tn} sl={sl_pct} ({progress}/{total})"
+
+                        try:
+                            sim = _simulate_peak_backtest(em, tn, stop_loss_pct=sl)
+                        except Exception as exc:
+                            import traceback
+                            sim = {"error": f"Exception: {exc}\n{traceback.format_exc()}"}
+                        item = LGBBruteForceItem(
+                            exec_mode=em,
+                            forward_days=0,
+                            top_n=tn,
+                            stop_strategy=f"sl{sl_pct}",
+                            label_mode="peak_speed",
+                            window_days=wd,
                             cumulative_return=0.0,
                             sharpe_ratio=0.0,
                             win_rate=0.0,
@@ -2105,23 +2223,26 @@ def _run_brute_force_search(task_id: str):
         _os.makedirs(reports_dir, exist_ok=True)
         report_path = _os.path.join(reports_dir, f"brute_force_{now_str}.md")
 
+        n_peak_str = f" + {n_peak} peak" if n_peak > 0 else ""
         lines = [
             f"# LGB 全方案搜索报告",
             f"",
             f"**生成时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-            f"**搜索方案数**: {total} ({len(stop_strategies)} stop × {len(exec_modes)} exec × {len(forward_days_list)} fwd × {len(top_n_list)} top_n)",
+            f"**搜索方案数**: {total} ({len(stop_strategies)} stop × {len(exec_modes)} exec × {len(forward_days_list)} fwd × {len(top_n_list)} top_n{n_peak_str})",
             f"**成功方案数**: {len(valid)}",
             f"",
             f"---",
             f"",
             f"## 最佳收益方案 (Top 5)",
             f"",
-            f"| # | stop_strategy | exec_mode | forward_days | top_n | cumulative_return | sharpe_ratio | win_rate | max_drawdown | total_trades |",
-            f"|---|---|---|---|---|---|---|---|---|---|",
+            f"| # | label | stop | exec | fwd/window | top_n | cum_return | sharpe | win_rate | max_dd | trades |",
+            f"|---|---|---|---|---|---|---|---|---|---|---|",
         ]
         for i, r in enumerate(by_return[:5], 1):
+            label = f"peak{r.window_days}d" if r.label_mode == "peak_speed" else f"fwd{r.forward_days}d"
+            fwd_str = str(r.window_days) if r.label_mode == "peak_speed" else str(r.forward_days)
             lines.append(
-                f"| {i} | {r.stop_strategy} | {r.exec_mode} | {r.forward_days} | {r.top_n} | "
+                f"| {i} | {label} | {r.stop_strategy} | {r.exec_mode} | {fwd_str} | {r.top_n} | "
                 f"{r.cumulative_return:.4f} | {r.sharpe_ratio:.4f} | {r.win_rate:.4f} | "
                 f"{r.max_drawdown:.4f} | {r.total_trades} |"
             )
@@ -2129,12 +2250,14 @@ def _run_brute_force_search(task_id: str):
             f"",
             f"## 最佳夏普方案 (Top 5)",
             f"",
-            f"| # | stop_strategy | exec_mode | forward_days | top_n | cumulative_return | sharpe_ratio | win_rate | max_drawdown | total_trades |",
-            f"|---|---|---|---|---|---|---|---|---|---|",
+            f"| # | label | stop | exec | fwd/window | top_n | cum_return | sharpe | win_rate | max_dd | trades |",
+            f"|---|---|---|---|---|---|---|---|---|---|---|",
         ]
         for i, r in enumerate(by_sharpe[:5], 1):
+            label = f"peak{r.window_days}d" if r.label_mode == "peak_speed" else f"fwd{r.forward_days}d"
+            fwd_str = str(r.window_days) if r.label_mode == "peak_speed" else str(r.forward_days)
             lines.append(
-                f"| {i} | {r.stop_strategy} | {r.exec_mode} | {r.forward_days} | {r.top_n} | "
+                f"| {i} | {label} | {r.stop_strategy} | {r.exec_mode} | {fwd_str} | {r.top_n} | "
                 f"{r.cumulative_return:.4f} | {r.sharpe_ratio:.4f} | {r.win_rate:.4f} | "
                 f"{r.max_drawdown:.4f} | {r.total_trades} |"
             )
@@ -2142,13 +2265,15 @@ def _run_brute_force_search(task_id: str):
             f"",
             f"## 全部方案",
             f"",
-            f"| # | stop_strategy | exec_mode | forward_days | top_n | cumulative_return | sharpe_ratio | win_rate | max_drawdown | total_trades | error |",
-            f"|---|---|---|---|---|---|---|---|---|---|---|",
+            f"| # | label | stop | exec | fwd/window | top_n | cum_return | sharpe | win_rate | max_dd | trades | error |",
+            f"|---|---|---|---|---|---|---|---|---|---|---|---|",
         ]
         for i, r in enumerate(all_results, 1):
+            label = f"peak{r.window_days}d" if r.label_mode == "peak_speed" else f"fwd{r.forward_days}d"
+            fwd_str = str(r.window_days) if r.label_mode == "peak_speed" else str(r.forward_days)
             err = r.error[:30] if r.error else ""
             lines.append(
-                f"| {i} | {r.stop_strategy} | {r.exec_mode} | {r.forward_days} | {r.top_n} | "
+                f"| {i} | {label} | {r.stop_strategy} | {r.exec_mode} | {fwd_str} | {r.top_n} | "
                 f"{r.cumulative_return:.4f} | {r.sharpe_ratio:.4f} | {r.win_rate:.4f} | "
                 f"{r.max_drawdown:.4f} | {r.total_trades} | {err} |"
             )
@@ -2157,6 +2282,12 @@ def _run_brute_force_search(task_id: str):
             fh.write("\n".join(lines) + "\n")
 
         result.report_path = report_path
+
+        # Also save JSON copy for frontend consumption
+        json_path = _os.path.join(reports_dir, f"brute_force_{now_str}.json")
+        with open(json_path, "w", encoding="utf-8") as fh:
+            _json.dump(result.model_dump(mode="json"), fh, ensure_ascii=False, default=str)
+
         task["status"] = "completed"
         task["result"] = result
         task["status_message"] = f"Done — {len(valid)}/{total} combos valid, report saved to {report_path}"
@@ -2280,6 +2411,112 @@ def lgb_brute_force_search_status(
     )
 
 
+def _parse_old_brute_force_md(md_path: str):
+    """Parse legacy brute_force_*.md format (before JSON companion was added)."""
+    from api.v1.schemas.research import LGBBruteForceItem
+
+    with open(md_path, "r", encoding="utf-8") as fh:
+        text = fh.read()
+
+    def parse_table_section(start_marker: str, stop_marker: str | None = None) -> list[LGBBruteForceItem]:
+        """Parse a pipe-separated table from the markdown text."""
+        start_idx = text.find(start_marker)
+        if start_idx < 0:
+            return []
+        # Find the table header after the marker
+        header_start = text.find("| # |", start_idx)
+        if header_start < 0:
+            return []
+        header_end = text.find("\n", header_start)
+        header_line = text[header_start:header_end]
+        headers = [h.strip() for h in header_line.strip("|").split("|")]
+
+        body_start = text.find("\n", header_end + 1)
+        if stop_marker:
+            body_end = text.find(stop_marker, body_start)
+        else:
+            body_end = len(text)
+        if body_end < 0:
+            body_end = len(text)
+
+        lines = [l.strip() for l in text[body_start:body_end].split("\n") if l.strip().startswith("|")]
+        items: list[LGBBruteForceItem] = []
+        for line in lines:
+            cols = [c.strip() for c in line.strip("|").split("|")]
+            if len(cols) < len(headers):
+                continue
+            row = dict(zip(headers, cols))
+            try:
+                forward_days = int(row.get("forward_days", 0))
+                items.append(LGBBruteForceItem(
+                    exec_mode=row.get("exec_mode", "close"),
+                    forward_days=forward_days,
+                    top_n=int(row.get("top_n", 1)),
+                    stop_strategy=row.get("stop_strategy", "none"),
+                    cumulative_return=float(row.get("cumulative_return", 0)),
+                    sharpe_ratio=float(row.get("sharpe_ratio", 0)),
+                    win_rate=float(row.get("win_rate", 0)),
+                    max_drawdown=float(row.get("max_drawdown", 0)),
+                    total_trades=int(row.get("total_trades", 0)),
+                ))
+            except (ValueError, KeyError):
+                continue
+        return items
+
+    by_return = parse_table_section("## 最佳收益方案", "## 最佳夏普方案")
+    by_sharpe = parse_table_section("## 最佳夏普方案", "## 全部方案")
+    all_results = parse_table_section("## 全部方案")
+
+    return LGBBruteForceResult(
+        best_by_return=by_return[0] if by_return else None,
+        best_by_sharpe=by_sharpe[0] if by_sharpe else None,
+        top5_by_return=by_return[:5],
+        top5_by_sharpe=by_sharpe[:5],
+        all_results=all_results,
+        report_path=md_path,
+    )
+
+
+@router.get(
+    "/lgb/brute-force-reports/latest",
+    response_model=LGBBruteForceResult,
+    summary="获取最新的全方案搜索报告",
+)
+def lgb_brute_force_report_latest():
+    """扫描 lgb_reports/ 目录，返回最新的 brute_force_*.json 解析结果。
+    若无 JSON，则回退解析最新的 .md 文件。"""
+    project_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
+    reports_dir = _os.path.join(project_root, "lgb_reports")
+
+    json_files = sorted(
+        [f for f in _os.listdir(reports_dir) if f.startswith("brute_force_") and f.endswith(".json")],
+        reverse=True,
+    )
+    if json_files:
+        latest = json_files[0]
+        json_path = _os.path.join(reports_dir, latest)
+        try:
+            with open(json_path, "r", encoding="utf-8") as fh:
+                data = _json.load(fh)
+            return LGBBruteForceResult(**data)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"读取JSON报告失败: {str(e)}")
+
+    # Fallback: parse legacy markdown
+    md_files = sorted(
+        [f for f in _os.listdir(reports_dir) if f.startswith("brute_force_") and f.endswith(".md")],
+        reverse=True,
+    )
+    if not md_files:
+        raise HTTPException(status_code=404, detail="尚未生成任何全方案搜索报告")
+
+    md_path = _os.path.join(reports_dir, md_files[0])
+    try:
+        return _parse_old_brute_force_md(md_path)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"解析MD报告失败: {str(e)}")
+
+
 _catch_up_tasks: Dict[str, dict] = {}
 
 
@@ -2313,7 +2550,7 @@ def _run_catch_up(task_id: str):
         return
     latest_td = dates_raw[0].strftime("%Y%m%d") if hasattr(dates_raw[0], "strftime") else str(dates_raw[0]).replace("-", "")[:8]
 
-    # Discover all (exec_mode, forward_days) combos
+    # Discover all (exec_mode, label_mode, forward_days/window_days) combos
     combos: list = []
     exec_dirs = {"open2open": "open", "close2close": "close"}
     for dir_name, exec_mode in exec_dirs.items():
@@ -2321,28 +2558,46 @@ def _run_catch_up(task_id: str):
         if not _os.path.isdir(base):
             continue
         for entry in sorted(_os.listdir(base)):
-            if not entry.startswith("fwd") or not entry.endswith("d"):
+            entry_dir = _os.path.join(base, entry)
+            if not _os.path.isdir(entry_dir):
                 continue
-            try:
-                fwd = int(entry[3:-1])
-            except ValueError:
-                continue
-            fwd_dir = _os.path.join(base, entry)
-            if not _os.path.isdir(fwd_dir):
-                continue
-            combos.append((exec_mode, fwd, dir_name))
+
+            # Fixed mode: fwd{N}d
+            if entry.startswith("fwd") and entry.endswith("d"):
+                try:
+                    fwd = int(entry[3:-1])
+                except ValueError:
+                    continue
+                combos.append({"exec_mode": exec_mode, "label_mode": "fixed", "forward_days": fwd, "dir_name": dir_name, "subdir": entry})
+
+            # Peak mode: peak{N}d
+            if entry.startswith("peak") and entry.endswith("d"):
+                try:
+                    wd = int(entry[4:-1])
+                except ValueError:
+                    continue
+                combos.append({"exec_mode": exec_mode, "label_mode": "peak_speed", "window_days": wd, "dir_name": dir_name, "subdir": entry})
 
     total = len(combos)
     task["progress_total"] = total
     results: list = []
 
-    for idx, (exec_mode, fwd, dir_name) in enumerate(combos):
+    for idx, combo in enumerate(combos):
+        exec_mode = combo["exec_mode"]
+        label_mode = combo["label_mode"]
+        dir_name = combo["dir_name"]
+        subdir = combo["subdir"]
+        is_peak = label_mode == "peak_speed"
+        fwd = combo.get("forward_days", 0)
+        wd = combo.get("window_days", 20)
+
+        label_tag = f"peak{wd}d" if is_peak else f"fwd{fwd}d"
         task["progress_current"] = idx + 1
-        task["status_message"] = f"{dir_name} fwd{fwd}d..."
+        task["status_message"] = f"{dir_name} {label_tag}..."
 
         # Find latest prediction date and last training window
-        fwd_dir = _os.path.join(reports_root, dir_name, f"fwd{fwd}d")
-        json_files = sorted(_glob.glob(_os.path.join(fwd_dir, "*_pred_*.json")))
+        report_dir = _os.path.join(reports_root, dir_name, subdir)
+        json_files = sorted(_glob.glob(_os.path.join(report_dir, "*_pred_*.json")))
 
         latest_pred_date = ""
         if json_files:
@@ -2357,24 +2612,24 @@ def _run_catch_up(task_id: str):
                     continue
 
         if latest_pred_date >= latest_td:
-            results.append({"exec_mode": exec_mode, "forward_days": fwd, "status": "up_to_date", "latest_pred": latest_pred_date})
+            results.append({
+                "exec_mode": exec_mode, "forward_days": fwd, "label_mode": label_mode,
+                "window_days": wd, "status": "up_to_date", "latest_pred": latest_pred_date,
+            })
             continue
 
         # Determine prediction range: from day after latest prediction to today
         if latest_pred_date:
             new_pred_s = datetime.strptime(latest_pred_date, "%Y%m%d") + timedelta(days=1)
         else:
-            # First prediction: start 30 days before latest trading day
             new_pred_s = datetime.strptime(latest_td, "%Y%m%d") - timedelta(days=30)
         new_pred_e_str = latest_td
 
         # Training window: full calendar months, 12 months ending before first prediction
         from calendar import monthrange
-        # train_end = last day of month before new_pred_s
         _te = new_pred_s - relativedelta(months=1)
         _te = _te.replace(day=monthrange(_te.year, _te.month)[1])
         new_train_e = _te
-        # train_start = first day of the month 11 months before train_end month
         new_train_s = _te.replace(day=1) - relativedelta(months=11)
 
         new_train_s_str = new_train_s.strftime("%Y%m%d")
@@ -2385,20 +2640,25 @@ def _run_catch_up(task_id: str):
         existing_model = None
         if _os.path.isdir(models_dir):
             import re as _re
-            _fwd_pat = _re.compile(rf"_fwd{fwd}d_")
+            if is_peak:
+                _pat = _re.compile(rf"_peak{wd}d_")
+            else:
+                _pat = _re.compile(rf"_fwd{fwd}d_")
             for mf in sorted(_os.listdir(models_dir), reverse=True):
-                if mf.endswith(".joblib") and _fwd_pat.search(mf) and exec_tag in mf:
+                if mf.endswith(".joblib") and not mf.endswith("_days.joblib") and _pat.search(mf) and exec_tag in mf:
                     existing_model = _os.path.join(models_dir, mf)
                     break
 
         try:
             if existing_model:
-                # Use existing model — no need to retrain
-                task["status_message"] = f"{dir_name} fwd{fwd}d: 加载已有模型预测..."
+                task["status_message"] = f"{dir_name} {label_tag}: 加载已有模型预测..."
                 trainer = LGBTrainer.load(existing_model)
             else:
-                task["status_message"] = f"{dir_name} fwd{fwd}d: 训练 {new_train_s_str}~{new_train_e_str}..."
-                trainer = LGBTrainer(mode="postmarket", forward_days=fwd, exec_mode=exec_mode)
+                task["status_message"] = f"{dir_name} {label_tag}: 训练 {new_train_s_str}~{new_train_e_str}..."
+                if is_peak:
+                    trainer = LGBTrainer(mode="postmarket", label_mode="peak_speed", window_days=wd, exec_mode=exec_mode)
+                else:
+                    trainer = LGBTrainer(mode="postmarket", forward_days=fwd, exec_mode=exec_mode)
                 trainer.prepare_data(start_date=new_train_s_str, end_date=new_train_e_str)
                 trainer.train()
                 trainer.save()
@@ -2418,7 +2678,8 @@ def _run_catch_up(task_id: str):
                     fail += 1
 
             results.append({
-                "exec_mode": exec_mode, "forward_days": fwd, "status": "done",
+                "exec_mode": exec_mode, "forward_days": fwd, "label_mode": label_mode,
+                "window_days": wd, "status": "done",
                 "train_window": f"{new_train_s_str}~{new_train_e_str}",
                 "pred_range": f"{new_pred_s.strftime('%Y%m%d')}~{new_pred_e_str}",
                 "ok": ok, "fail": fail,
@@ -2426,8 +2687,11 @@ def _run_catch_up(task_id: str):
             })
 
         except Exception as e:
-            _log.error(f"Catch-up failed for {exec_mode} fwd{fwd}: {e}")
-            results.append({"exec_mode": exec_mode, "forward_days": fwd, "status": "failed", "error": str(e)})
+            _log.error(f"Catch-up failed for {exec_mode} {label_tag}: {e}")
+            results.append({
+                "exec_mode": exec_mode, "forward_days": fwd, "label_mode": label_mode,
+                "window_days": wd, "status": "failed", "error": str(e),
+            })
 
     task["status"] = "completed"
     task["result"] = {"combos": results, "latest_trading_day": latest_td}
@@ -2523,7 +2787,7 @@ def _warmup_backtest_cache():
         key = f"fwd{fwd}_top{tn}_{em}_stnone"
         if key not in _backtest_cache:
             try:
-                lgb_backtest_sim(forward_days=fwd, top_n=tn, exec_mode=em)
+                lgb_backtest_sim(forward_days=fwd, top_n=tn, exec_mode=em, stop_strategy="none")
                 _log.info(f"Backtest cache warmed: {key}")
             except Exception:
                 _log.warning(f"Backtest cache warmup failed: {key}", exc_info=True)
@@ -2533,7 +2797,7 @@ def _warmup_backtest_cache():
         peak_key = f"peak_top5_{exec_mode}"
         if peak_key not in _backtest_cache:
             try:
-                lgb_backtest_sim_peak(top_n=5, exec_mode=exec_mode)
+                lgb_backtest_sim_peak(top_n=5, exec_mode=exec_mode, stop_loss=-0.10)
                 _log.info(f"Peak backtest cache warmed: {peak_key}")
             except Exception:
                 _log.warning(f"Peak backtest cache warmup failed: {peak_key}", exc_info=True)

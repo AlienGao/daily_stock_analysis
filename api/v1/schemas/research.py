@@ -201,12 +201,14 @@ class LGBBruteForceItem(BaseModel):
     forward_days: int
     top_n: int
     stop_strategy: str = "none"
+    label_mode: str = "fixed"
+    window_days: int = 0
     cumulative_return: float
     sharpe_ratio: float
     win_rate: float
     max_drawdown: float
     total_trades: int
-    skipped_trades: int
+    skipped_trades: int = 0
     error: str = ""
 
 
