@@ -594,6 +594,19 @@ def _get_limit_pct(stock_code: str) -> float:
     return 0.10
 
 
+def _get_lot_info(stock_code: str) -> tuple:
+    """获取最小交易股数和递增单位。
+    科创板/北证：最低200股，超过200后100股递增。
+    其他板块：最低100股，100股递增。
+    """
+    code = str(stock_code).strip().zfill(6)
+    if code.startswith(("688",)):
+        return 200, 100
+    if code.startswith(("83", "87", "43")):
+        return 200, 100
+    return 100, 100
+
+
 def _find_next_trading_day(d: str, trading_days_set: set, trading_days_sorted: list) -> _Optional[str]:
     """Find the next trading day strictly after date d (YYYYMMDD)."""
     d_str = d.replace("-", "")[:8]
@@ -1151,7 +1164,7 @@ def _simulate_backtest(exec_mode: str, forward_days: int, top_n: int, stop_strat
                 hi = mid - 1
         return best
 
-    INITIAL_CAPITAL = 1_000_000.0
+    INITIAL_CAPITAL = 10_000_000.0
     trades: list = []
     capital_curve: list = []
 
@@ -1238,6 +1251,17 @@ def _simulate_backtest(exec_mode: str, forward_days: int, top_n: int, stop_strat
                     adj_s = _get_adj(code, eff_sell_date)
                     raw_ret = (eff_sell_price - buy_price) / buy_price if buy_price > 0 else 0.0
                     ret = round((1.0 + raw_ret) * (adj_s / adj_b) - 1.0, 6) if adj_s > 0 else 0.0
+
+                    # 按手数计算持有仓位的股数
+                    per_stock_h = slot_size / top_n if top_n > 0 else slot_size
+                    min_lot, step = _get_lot_info(code)
+                    raw_shares = per_stock_h / buy_price if buy_price > 0 else 0
+                    h_shares = 0
+                    h_cost = 0.0
+                    if raw_shares >= min_lot:
+                        h_shares = min_lot + int((raw_shares - min_lot) / step) * step
+                        h_cost = h_shares * buy_price
+
                     trades.append({
                         "pred_date": pred_date, "stock_code": code, "ts_code": ts_code,
                         "stock_name": stock_name, "rank": rank,
@@ -1245,6 +1269,7 @@ def _simulate_backtest(exec_mode: str, forward_days: int, top_n: int, stop_strat
                         "sell_date": "",
                         "sell_price": eff_sell_price,
                         "return_pct": ret, "skipped": False,
+                        "shares": h_shares, "actual_cost": round(h_cost, 2),
                     })
                     held += 1
                     continue
@@ -1435,27 +1460,62 @@ def _simulate_backtest(exec_mode: str, forward_days: int, top_n: int, stop_strat
 
             n_stocks = len(slot_trades)
             per_stock = slot_size / n_stocks if n_stocks > 0 else 0
-            actual_cash_used = min(per_stock * n_stocks, cash)
-            if actual_cash_used <= 0:
+
+            # 按手数计算实际可买股数
+            for st in slot_trades:
+                min_lot, step = _get_lot_info(st["code"])
+                raw_shares = per_stock / st["buy_price"] if st["buy_price"] > 0 else 0
+                if raw_shares < min_lot:
+                    st["shares"] = 0
+                    continue
+                shares = min_lot + int((raw_shares - min_lot) / step) * step
+                st["shares"] = shares
+                st["actual_cost"] = shares * st["buy_price"]
+
+            valid_trades = [st for st in slot_trades if st["shares"] > 0]
+            if not valid_trades:
                 continue
 
-            cash -= actual_cash_used
-            per_stock_actual = actual_cash_used / n_stocks
+            total_cost = sum(st["actual_cost"] for st in valid_trades)
+            if total_cost > cash:
+                # 资金不足，按比例缩减
+                scale = cash / total_cost
+                for st in valid_trades:
+                    min_lot, step = _get_lot_info(st["code"])
+                    new_shares = min_lot + int((st["shares"] * scale - min_lot) / step) * step
+                    if new_shares < min_lot:
+                        st["shares"] = 0
+                        st["actual_cost"] = 0.0
+                    else:
+                        st["shares"] = new_shares
+                        st["actual_cost"] = new_shares * st["buy_price"]
+                valid_trades = [st for st in valid_trades if st["shares"] > 0]
+                if not valid_trades:
+                    continue
+                total_cost = sum(st["actual_cost"] for st in valid_trades)
 
-            slot_ret = 0.0
-            for st in slot_trades:
-                slot_ret += st["ret"] / n_stocks
+            if total_cost > cash:
+                continue
+
+            cash -= total_cost
+
+            # 按实际持仓金额加权计算组合收益（使用已含复权因子的 ret）
+            slot_pnl = sum(st["actual_cost"] * st["ret"] for st in valid_trades)
+            slot_ret = slot_pnl / total_cost if total_cost > 0 else 0.0
+
+            for st in valid_trades:
                 trades.append({
                     "pred_date": pred_date, "stock_code": st["code"], "ts_code": st["ts_code"],
                     "stock_name": st["stock_name"], "rank": st["rank"],
                     "buy_date": buy_date, "buy_price": st["buy_price"],
                     "sell_date": st["actual_sell_date"], "sell_price": st["sell_price"],
                     "return_pct": st["ret"], "skipped": st["skipped"],
+                    "shares": st["shares"], "actual_cost": round(st["actual_cost"], 2),
                 })
 
             active_positions.append({
-                "entry_value": actual_cash_used,
-                "sell_date": max(st["actual_sell_date"] for st in slot_trades),
+                "entry_value": total_cost,
+                "sell_date": max(st["actual_sell_date"] for st in valid_trades),
                 "ret_pct": slot_ret,
             })
 
@@ -1686,6 +1746,9 @@ def _simulate_peak_backtest(exec_mode: str, top_n: int, stop_loss_pct: float = -
     if not buy_dates_sorted:
         return {"error": "No valid buy dates found", "metrics": None, "capital_curve": [], "trades": []}
 
+    # Build sorted pred_date list for latest-prediction lookup
+    _sorted_pred_dates = sorted(preds_by_date.keys())
+
     # Compute historical win rate per rank from matured predictions
     _rank_wins: Dict[int, int] = _defaultdict(int)
     _rank_total: Dict[int, int] = _defaultdict(int)
@@ -1735,17 +1798,17 @@ def _simulate_peak_backtest(exec_mode: str, top_n: int, stop_loss_pct: float = -
 
     WINDOW_DAYS = 20
 
-    INITIAL_CAPITAL = 1_000_000.0
+    INITIAL_CAPITAL = 10_000_000.0
     cash = INITIAL_CAPITAL
     positions: list = []  # [{code, ts_code, stock_name, buy_date, buy_price, pred_days, pred_return, entry_idx, alloc, adj_buy, rank}]
     trades: list = []
     capital_curve: list = []
     exit_reasons = {"stop_loss": 0, "take_profit": 0, "arrival": 0, "force_exit": 0}
 
-    next_buy_idx = 0  # index into buy_dates_sorted
-
     for td in all_trading_days:
         is_last_day = td == latest_td
+        exited_this_round = False
+
         # --- 1. Check exits ---
         if positions:
             held_codes = [p["code"] for p in positions]
@@ -1787,7 +1850,11 @@ def _simulate_peak_backtest(exec_mode: str, top_n: int, stop_loss_pct: float = -
                     to_close.append((pos, adj_return, exit_reason, held_days, cur_price))
 
             for pos, ret, reason, held, sell_price in to_close:
-                cash += pos["alloc"] * (1.0 + ret)
+                adj_b = pos.get("adj_buy", 1.0)
+                adj_s = _get_adj_pk(pos["code"], td)
+                adj_ratio = (adj_s / adj_b) if adj_b > 0 else 1.0
+                proceeds = pos["shares"] * sell_price * adj_ratio
+                cash += proceeds
                 trades.append({
                     "pred_date": pos.get("pred_date", ""),
                     "stock_code": pos["code"],
@@ -1801,63 +1868,80 @@ def _simulate_peak_backtest(exec_mode: str, top_n: int, stop_loss_pct: float = -
                     "return_pct": round(ret, 6),
                     "skipped": False,
                     "expected_sell_date": pos.get("expected_sell_date", ""),
+                    "shares": pos["shares"],
+                    "actual_cost": round(pos["actual_cost"], 2),
                 })
                 exit_reasons[reason] += 1
+                exited_this_round = True
                 positions.remove(pos)
 
-        # --- 2. Open new positions (skip on last trading day)
-        # Advance past any missed buy dates (even if no open slots)
-        while next_buy_idx < len(buy_dates_sorted) and buy_dates_sorted[next_buy_idx] < td:
-            next_buy_idx += 1
-
-        open_slots = top_n - len(positions)
-        while open_slots > 0 and next_buy_idx < len(buy_dates_sorted):
-            buy_date = buy_dates_sorted[next_buy_idx]
-            if buy_date > td:
-                break
-            if buy_date == td:
-                candidates = buy_date_preds[buy_date]
-                held_codes = {p["code"] for p in positions}
-                alloc_per_slot = cash / max(top_n, 1)
-                for cand in candidates:
-                    if open_slots <= 0:
-                        break
-                    if cand["stock_code"] in held_codes:
-                        continue
-                    entry = price_map.get((cand["stock_code"], buy_date))
-                    if not entry:
-                        continue
+        # --- 2. Refill: buy top_n from latest predictions after any exit ---
+        if not is_last_day and (exited_this_round or len(positions) == 0):
+            open_slots = top_n
+            if open_slots > 0:
+                # Collect candidates from all available predictions, latest first
+                candidates: list = []
+                for pd in reversed(_sorted_pred_dates):
                     if exec_mode == "close":
-                        price = entry["close"]
+                        if pd > td or pd not in trading_days_set:
+                            continue
                     else:
-                        price = entry["open"]
-                    if price <= 0:
-                        continue
+                        if pd >= td:
+                            continue
+                    for p in preds_by_date[pd]:
+                        p["_refill_pred_date"] = pd
+                        candidates.append(p)
 
-                    adj_b = _get_adj_pk(cand["stock_code"], buy_date)
-                    entry_idx = date_to_idx.get(buy_date, 0)
-                    cash -= alloc_per_slot
-                    positions.append({
-                        "code": cand["stock_code"],
-                        "ts_code": cand["ts_code"],
-                        "stock_name": cand["stock_name"],
-                        "pred_date": cand.get("_pred_date", ""),
-                        "buy_date": buy_date,
-                        "buy_price": price,
-                        "pred_days": cand["predicted_days"],
-                        "pred_return": cand["raw_score"],
-                        "win_rate": rank_win_rate.get(cand["rank"], 0.5),
-                        "entry_idx": entry_idx,
-                        "alloc": alloc_per_slot,
-                        "adj_buy": adj_b,
-                        "rank": cand["rank"],
-                        "expected_sell_date": _find_nth_trading_day(buy_date, cand["predicted_days"], trading_days_sorted) or (latest_td or ""),
-                    })
-                    open_slots -= 1
-                next_buy_idx += 1
-            else:
-                # buy_date < td: missed, skip to next
-                next_buy_idx += 1
+                if candidates:
+                    held_codes = {p["code"] for p in positions}
+                    alloc_per_slot = cash / max(top_n, 1)
+                    for cand in candidates:
+                        if open_slots <= 0:
+                            break
+                        if cand["stock_code"] in held_codes:
+                            continue
+                        entry = price_map.get((cand["stock_code"], td))
+                        if not entry:
+                            continue
+                        if exec_mode == "close":
+                            price = entry["close"]
+                        else:
+                            price = entry["open"]
+                        if price <= 0:
+                            continue
+
+                        min_lot, step = _get_lot_info(cand["stock_code"])
+                        raw_shares = alloc_per_slot / price
+                        if raw_shares < min_lot:
+                            continue
+                        shares = min_lot + int((raw_shares - min_lot) / step) * step
+                        actual_cost = shares * price
+                        if actual_cost > cash:
+                            continue
+
+                        adj_b = _get_adj_pk(cand["stock_code"], td)
+                        entry_idx = date_to_idx.get(td, 0)
+                        cash -= actual_cost
+                        positions.append({
+                            "code": cand["stock_code"],
+                            "ts_code": cand["ts_code"],
+                            "stock_name": cand["stock_name"],
+                            "pred_date": cand.get("_refill_pred_date", ""),
+                            "buy_date": td,
+                            "buy_price": price,
+                            "pred_days": cand["predicted_days"],
+                            "pred_return": cand["raw_score"],
+                            "win_rate": rank_win_rate.get(cand["rank"], 0.5),
+                            "entry_idx": entry_idx,
+                            "alloc": actual_cost,
+                            "shares": shares,
+                            "actual_cost": actual_cost,
+                            "adj_buy": adj_b,
+                            "rank": cand["rank"],
+                            "expected_sell_date": _find_nth_trading_day(td, cand["predicted_days"], trading_days_sorted) or (latest_td or ""),
+                        })
+                        held_codes.add(cand["stock_code"])
+                        open_slots -= 1
 
         # --- 3. Mark-to-market portfolio value ---
         locked_value = 0.0
@@ -1866,11 +1950,10 @@ def _simulate_peak_backtest(exec_mode: str, top_n: int, stop_loss_pct: float = -
             if cur_entry and cur_entry["close"] > 0:
                 adj_b = pos.get("adj_buy", 1.0)
                 adj_c = _get_adj_pk(pos["code"], td)
-                raw_ret = (cur_entry["close"] - pos["buy_price"]) / pos["buy_price"] if pos["buy_price"] > 0 else 0.0
-                mtm_ret = (1.0 + raw_ret) * (adj_c / adj_b) - 1.0 if adj_b > 0 else raw_ret
-                locked_value += pos["alloc"] * (1.0 + mtm_ret)
+                adj_ratio = (adj_c / adj_b) if adj_b > 0 else 1.0
+                locked_value += pos["shares"] * cur_entry["close"] * adj_ratio
             else:
-                locked_value += pos["alloc"]
+                locked_value += pos["actual_cost"]
         portfolio_value = cash + locked_value
         c_t = portfolio_value / INITIAL_CAPITAL
         if capital_curve:
@@ -1888,12 +1971,13 @@ def _simulate_peak_backtest(exec_mode: str, top_n: int, stop_loss_pct: float = -
     # Positions opened on the last trading day are reported as holding (no sell_date).
     for pos in positions:
         cur_entry = price_map.get((pos["code"], latest_td)) if latest_td else None
+        adj_b = pos.get("adj_buy", 1.0)
+        adj_s = _get_adj_pk(pos["code"], latest_td) if latest_td else 1.0
+        adj_ratio = (adj_s / adj_b) if adj_b > 0 else 1.0
         if cur_entry and cur_entry["close"] > 0:
             sell_price = cur_entry["close"]
-            adj_b = pos.get("adj_buy", 1.0)
-            adj_s = _get_adj_pk(pos["code"], latest_td)
             raw_ret = (sell_price - pos["buy_price"]) / pos["buy_price"] if pos["buy_price"] > 0 else 0.0
-            ret = (1.0 + raw_ret) * (adj_s / adj_b) - 1.0 if adj_b > 0 else raw_ret
+            ret = (1.0 + raw_ret) * adj_ratio - 1.0
         else:
             sell_price = pos["buy_price"]
             ret = 0.0
@@ -1913,9 +1997,11 @@ def _simulate_peak_backtest(exec_mode: str, top_n: int, stop_loss_pct: float = -
                 "return_pct": round(ret, 6),
                 "skipped": False,
                 "expected_sell_date": pos.get("expected_sell_date", ""),
+                "shares": pos["shares"],
+                "actual_cost": round(pos["actual_cost"], 2),
             })
         else:
-            cash += pos["alloc"] * (1.0 + ret)
+            cash += pos["shares"] * sell_price * adj_ratio
             trades.append({
                 "pred_date": pos.get("pred_date", ""),
                 "stock_code": pos["code"],
@@ -1929,6 +2015,8 @@ def _simulate_peak_backtest(exec_mode: str, top_n: int, stop_loss_pct: float = -
                 "return_pct": round(ret, 6),
                 "skipped": False,
                 "expected_sell_date": pos.get("expected_sell_date", ""),
+                "shares": pos["shares"],
+                "actual_cost": round(pos["actual_cost"], 2),
             })
     positions.clear()
 

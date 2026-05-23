@@ -16,6 +16,31 @@ function pctNum(v: number): string {
   return `${(v * 100).toFixed(1)}%`;
 }
 
+function exportBacktestExcel(trades: LGBBacktestSimResponse['trades'], forwardDays: number, topN: number, execMode: string) {
+  const rows = trades.filter((t) => !t.skipped);
+  const header = ['预测日', '股票名称', '股票代码', '买入日', '买入价', '股数', '买入金额', '卖出日', '卖出价', '收益%'];
+  const body = rows.map((t) => [
+    t.pred_date,
+    t.stock_name,
+    t.stock_code,
+    t.buy_date,
+    t.buy_price.toFixed(2),
+    t.shares,
+    t.actual_cost.toFixed(2),
+    t.sell_date || '持仓中',
+    t.sell_price.toFixed(2),
+    (t.return_pct * 100).toFixed(2),
+  ].map((v) => `<td>${v}</td>`).join('')).map((r) => `<tr>${r}</tr>`).join('');
+  const html = `<html><head><meta charset="utf-8"></head><body><table border="1"><thead><tr>${header.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></body></html>`;
+  const blob = new Blob(['﻿' + html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `lgb_backtest_fwd${forwardDays}_top${topN}_${execMode}.xls`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 const LightGBMPage: React.FC = () => {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -1174,21 +1199,30 @@ const LightGBMPage: React.FC = () => {
                     : 0;
                   return (
                   <details open>
-                    <summary className="cursor-pointer text-xs text-tertiary-text mb-2 select-none">
-                      交易明细（{done.length} 笔已平仓{holding.length > 0 ? `，${holding.length} 笔持仓中 均收益 ${pctNum(holdingAvgRet)}` : ''}{skipped.length > 0 ? `，${skipped.length} 笔涨停跳过` : ''}）
+                    <summary className="cursor-pointer text-xs text-tertiary-text mb-2 select-none flex items-center gap-2">
+                      <span>交易明细（{done.length} 笔已平仓{holding.length > 0 ? `，${holding.length} 笔持仓中 均收益 ${pctNum(holdingAvgRet)}` : ''}{skipped.length > 0 ? `，${skipped.length} 笔涨停跳过` : ''}）</span>
+                      <Button size="small" type="link" onClick={() => exportBacktestExcel(backtestSim.trades, backtestSim.forward_days, backtestSim.top_n, backtestSim.exec_mode)}>
+                        导出 Excel
+                      </Button>
                     </summary>
                     <Table
                       size="small"
-                      dataSource={backtestSim.trades.filter((t) => !t.skipped)}
-                      rowKey={(r) => `${r.pred_date}_${r.stock_code}`}
+                      dataSource={backtestSim.trades.filter((t) => !t.skipped).sort((a, b) => a.pred_date.localeCompare(b.pred_date))}
+                      rowKey={(r) => `${r.pred_date}_${r.stock_code}_${r.buy_date}_${r.sell_date}`}
                       pagination={{ pageSize: 50, size: 'small', showSizeChanger: true, pageSizeOptions: ['20', '50', '100'], showTotal: (total) => `共 ${total} 笔` }}
                       scroll={{ x: 900, y: 400 }}
                       columns={[
                         { title: '预测日', dataIndex: 'pred_date', key: 'pred_date', width: 85, render: (_: unknown, r: typeof backtestSim.trades[0]) => r.pred_date },
-                        { title: '代码', dataIndex: 'stock_code', key: 'stock_code', width: 75 },
-                        { title: '名称', dataIndex: 'stock_name', key: 'stock_name', width: 70 },
+                        { title: '股票', dataIndex: 'stock_name', key: 'stock', width: 90, render: (_: unknown, r: typeof backtestSim.trades[0]) => (
+                          <div className="leading-tight">
+                            <div>{r.stock_name || '--'}</div>
+                            <div className="text-xs text-tertiary-text">{r.stock_code}</div>
+                          </div>
+                        )},
                         { title: '买入日', dataIndex: 'buy_date', key: 'buy_date', width: 85 },
                         { title: '买入价', dataIndex: 'buy_price', key: 'buy_price', width: 70, render: (_: unknown, r: typeof backtestSim.trades[0]) => r.buy_price.toFixed(2) },
+                        { title: '股数', dataIndex: 'shares', key: 'shares', width: 60, render: (_: unknown, r: typeof backtestSim.trades[0]) => r.skipped ? '-' : (r.shares ? r.shares.toLocaleString() : '--') },
+                        { title: '买入金额', dataIndex: 'actual_cost', key: 'actual_cost', width: 80, render: (_: unknown, r: typeof backtestSim.trades[0]) => r.skipped ? '-' : (r.actual_cost ? `${(r.actual_cost / 10000).toFixed(2)}万` : '--') },
                         ...(labelMode === 'peak_speed' ? [{
                           title: '预期卖出日', dataIndex: 'expected_sell_date', key: 'expected_sell_date', width: 90,
                           render: (_: unknown, r: typeof backtestSim.trades[0]) => (r as any).expected_sell_date || '--',

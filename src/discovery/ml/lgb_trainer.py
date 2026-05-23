@@ -452,7 +452,12 @@ class LGBTrainer:
                 td_idx = trading_days_all.index(td)
             except ValueError:
                 continue
-            window = trading_days_all[td_idx + 1: td_idx + 1 + self.window_days]
+            if self.exec_mode == "open":
+                # open 模式: 买入日 = 下一个交易日, peak 搜索从买入日后一天开始
+                window = trading_days_all[td_idx + 2: td_idx + 2 + self.window_days]
+            else:
+                # close 模式: 买入日 = 预测日, peak 搜索从下一个交易日开始
+                window = trading_days_all[td_idx + 1: td_idx + 1 + self.window_days]
             if len(window) < 3:
                 continue
             window_dates_by_td[td] = window
@@ -484,11 +489,13 @@ class LGBTrainer:
             td_codes = X[X["trade_date"] == td]["ts_code"].tolist()
             for code in td_codes:
                 bare = str(code).split(".")[0]
-                buy_price = price_map.get((td, bare))
+                # open 模式: 买入价 = 下一个交易日的 open; close 模式: 买入价 = 预测日的 close
+                buy_date = window[0] if self.exec_mode == "open" else td
+                buy_price = price_map.get((buy_date, bare))
                 if not buy_price or buy_price <= 0:
                     continue
 
-                adj_buy = adj_map.get((bare, td), 1.0)
+                adj_buy = adj_map.get((bare, buy_date), 1.0)
                 if adj_buy <= 0:
                     continue
 
