@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240401",
+  "train_end": "20250331",
+  "pred_date": "20250429",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.49,
+      "predicted_days": 13
+    },
+    {
+      "rank": 2,
+      "ts_code": "920493.BJ",
+      "stock_code": "920493.BJ",
+      "stock_name": "",
+      "lgb_score": 95.31,
+      "raw_score": 0.47,
+      "predicted_days": 16
+    },
+    {
+      "rank": 3,
+      "ts_code": "002164.SZ",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 87.25,
+      "raw_score": 0.43,
+      "predicted_days": 15
+    },
+    {
+      "rank": 4,
+      "ts_code": "301022.SZ",
+      "stock_code": "301022",
+      "stock_name": "海泰科",
+      "lgb_score": 85.16,
+      "raw_score": 0.42,
+      "predicted_days": 15
+    },
+    {
+      "rank": 5,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 83.89,
+      "raw_score": 0.41,
+      "predicted_days": 15
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.74,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.060305,
+    "std": 0.029666,
+    "skew": 5.6653,
+    "kurtosis": 43.467,
+    "min": -0.001324,
+    "max": 0.492816,
+    "median": 0.052324
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.12400748517795715,
+    "cv_rmse_std": 0.05255711956740594,
+    "cv_scores": [
+      0.058568,
+      0.217962,
+      0.13035,
+      0.101392,
+      0.111766
+    ],
+    "rank_ic_mean": 0.165042,
+    "rank_ic_std": 0.100678,
+    "icir": 1.6393,
+    "oof_corr": 0.252227,
+    "n_samples": 27910,
+    "n_features": 22
+  },
+  "window_days": 20
+}

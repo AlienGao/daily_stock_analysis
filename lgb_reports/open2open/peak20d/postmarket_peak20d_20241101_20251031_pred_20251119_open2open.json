@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20241101",
+  "train_end": "20251031",
+  "pred_date": "20251119",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.43,
+      "predicted_days": 13
+    },
+    {
+      "rank": 2,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 98.03,
+      "raw_score": 0.42,
+      "predicted_days": 15
+    },
+    {
+      "rank": 3,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 97.69,
+      "raw_score": 0.42,
+      "predicted_days": 15
+    },
+    {
+      "rank": 4,
+      "ts_code": "300612.SZ",
+      "stock_code": "300612",
+      "stock_name": "宣亚国际",
+      "lgb_score": 97.51,
+      "raw_score": 0.42,
+      "predicted_days": 13
+    },
+    {
+      "rank": 5,
+      "ts_code": "002234.SZ",
+      "stock_code": "002234",
+      "stock_name": "民和股份",
+      "lgb_score": 91.57,
+      "raw_score": 0.39,
+      "predicted_days": 14
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.2,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.102376,
+    "std": 0.026582,
+    "skew": 3.5788,
+    "kurtosis": 29.0474,
+    "min": 0.025894,
+    "max": 0.428265,
+    "median": 0.10486
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11011537147171009,
+    "cv_rmse_std": 0.01709642987331957,
+    "cv_scores": [
+      0.082685,
+      0.122722,
+      0.101489,
+      0.131859,
+      0.111821
+    ],
+    "rank_ic_mean": 0.142254,
+    "rank_ic_std": 0.055676,
+    "icir": 2.5551,
+    "oof_corr": 0.192929,
+    "n_samples": 24627,
+    "n_features": 22
+  },
+  "window_days": 20
+}

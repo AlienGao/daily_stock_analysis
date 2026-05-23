@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240701",
+  "train_end": "20250630",
+  "pred_date": "20250716",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 100.0,
+      "raw_score": 0.38,
+      "predicted_days": 10
+    },
+    {
+      "rank": 2,
+      "ts_code": "002164.SZ",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 96.82,
+      "raw_score": 0.37,
+      "predicted_days": 14
+    },
+    {
+      "rank": 3,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 96.75,
+      "raw_score": 0.37,
+      "predicted_days": 14
+    },
+    {
+      "rank": 4,
+      "ts_code": "300185.SZ",
+      "stock_code": "300185",
+      "stock_name": "通裕重工",
+      "lgb_score": 91.3,
+      "raw_score": 0.35,
+      "predicted_days": 11
+    },
+    {
+      "rank": 5,
+      "ts_code": "600704.SH",
+      "stock_code": "600704",
+      "stock_name": "物产中大",
+      "lgb_score": 91.07,
+      "raw_score": 0.35,
+      "predicted_days": 14
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.71,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.130926,
+    "std": 0.040528,
+    "skew": -0.923,
+    "kurtosis": 0.7106,
+    "min": -0.009696,
+    "max": 0.380453,
+    "median": 0.153327
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.14967384596470792,
+    "cv_rmse_std": 0.06483437466083021,
+    "cv_scores": [
+      0.278632,
+      0.128037,
+      0.111726,
+      0.121011,
+      0.108962
+    ],
+    "rank_ic_mean": 0.118067,
+    "rank_ic_std": 0.019621,
+    "icir": 6.0175,
+    "oof_corr": -0.143575,
+    "n_samples": 26164,
+    "n_features": 22
+  },
+  "window_days": 20
+}

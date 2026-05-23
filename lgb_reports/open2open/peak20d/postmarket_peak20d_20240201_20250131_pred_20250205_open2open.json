@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240201",
+  "train_end": "20250131",
+  "pred_date": "20250205",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301205.SZ",
+      "stock_code": "301205",
+      "stock_name": "联特科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.46,
+      "predicted_days": 14
+    },
+    {
+      "rank": 2,
+      "ts_code": "003021.SZ",
+      "stock_code": "003021",
+      "stock_name": "兆威机电",
+      "lgb_score": 96.94,
+      "raw_score": 0.44,
+      "predicted_days": 15
+    },
+    {
+      "rank": 3,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 93.81,
+      "raw_score": 0.43,
+      "predicted_days": 15
+    },
+    {
+      "rank": 4,
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 88.18,
+      "raw_score": 0.4,
+      "predicted_days": 15
+    },
+    {
+      "rank": 5,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 87.9,
+      "raw_score": 0.4,
+      "predicted_days": 12
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.62,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.093828,
+    "std": 0.033335,
+    "skew": 3.3563,
+    "kurtosis": 20.8965,
+    "min": 0.00219,
+    "max": 0.455587,
+    "median": 0.094777
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.12529148880333657,
+    "cv_rmse_std": 0.06732325971527339,
+    "cv_scores": [
+      0.086476,
+      0.067034,
+      0.256321,
+      0.105458,
+      0.111168
+    ],
+    "rank_ic_mean": 0.121157,
+    "rank_ic_std": 0.042003,
+    "icir": 2.8845,
+    "oof_corr": -0.040585,
+    "n_samples": 29038,
+    "n_features": 22
+  },
+  "window_days": 20
+}

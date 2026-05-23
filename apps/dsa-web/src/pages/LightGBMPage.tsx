@@ -1123,9 +1123,9 @@ const LightGBMPage: React.FC = () => {
                     value={stopStrategy}
                     onChange={(v) => setStopStrategy(v as string)}
                     options={[
-                      { label: '默认', value: 'none' },
-                      { label: '亏损厌恶', value: 'loss_aversion' },
-                      { label: '跌了死扛', value: 'dead_hold' },
+                      { label: <AntTooltip title="到期日直接卖出，不判断盈亏">默认</AntTooltip>, value: 'none' },
+                      { label: <AntTooltip title="持仓期间逐日检查，当日收盘亏损超过 5% 即卖出，不等到期日">亏损厌恶</AntTooltip>, value: 'loss_aversion' },
+                      { label: <AntTooltip title="到期日若亏损，延长持仓最多20个交易日，回本即卖，否则到期强平">跌了死扛</AntTooltip>, value: 'dead_hold' },
                     ]}
                   />
                 </div>

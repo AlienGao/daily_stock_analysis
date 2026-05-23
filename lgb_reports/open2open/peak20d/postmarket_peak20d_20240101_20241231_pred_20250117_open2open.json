@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240101",
+  "train_end": "20241231",
+  "pred_date": "20250117",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688181.SH",
+      "stock_code": "688181",
+      "stock_name": "八亿时空",
+      "lgb_score": 100.0,
+      "raw_score": 0.38,
+      "predicted_days": 14
+    },
+    {
+      "rank": 2,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 97.22,
+      "raw_score": 0.37,
+      "predicted_days": 12
+    },
+    {
+      "rank": 3,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 96.01,
+      "raw_score": 0.36,
+      "predicted_days": 16
+    },
+    {
+      "rank": 4,
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 95.94,
+      "raw_score": 0.36,
+      "predicted_days": 14
+    },
+    {
+      "rank": 5,
+      "ts_code": "300952.SZ",
+      "stock_code": "300952",
+      "stock_name": "恒辉安防",
+      "lgb_score": 95.71,
+      "raw_score": 0.36,
+      "predicted_days": 12
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.53,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.087115,
+    "std": 0.025893,
+    "skew": 2.4392,
+    "kurtosis": 18.6335,
+    "min": 0.001659,
+    "max": 0.377104,
+    "median": 0.089019
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.12043585726549684,
+    "cv_rmse_std": 0.056720087483284415,
+    "cv_scores": [
+      0.087454,
+      0.065703,
+      0.227721,
+      0.122912,
+      0.09839
+    ],
+    "rank_ic_mean": 0.098455,
+    "rank_ic_std": 0.03979,
+    "icir": 2.4744,
+    "oof_corr": 0.105548,
+    "n_samples": 29782,
+    "n_features": 22
+  },
+  "window_days": 20
+}

@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260520",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002371",
+      "stock_code": "002371",
+      "stock_name": "北方华创",
+      "lgb_score": 100.0,
+      "raw_score": 0.34,
+      "predicted_days": 16
+    },
+    {
+      "rank": 2,
+      "ts_code": "300109",
+      "stock_code": "300109",
+      "stock_name": "新开源",
+      "lgb_score": 79.6,
+      "raw_score": 0.27,
+      "predicted_days": 14
+    },
+    {
+      "rank": 3,
+      "ts_code": "688121",
+      "stock_code": "688121",
+      "stock_name": "卓然股份",
+      "lgb_score": 74.17,
+      "raw_score": 0.25,
+      "predicted_days": 15
+    },
+    {
+      "rank": 4,
+      "ts_code": "300971",
+      "stock_code": "300971",
+      "stock_name": "博亚精工",
+      "lgb_score": 71.68,
+      "raw_score": 0.24,
+      "predicted_days": 11
+    },
+    {
+      "rank": 5,
+      "ts_code": "688068",
+      "stock_code": "688068",
+      "stock_name": "热景生物",
+      "lgb_score": 70.96,
+      "raw_score": 0.24,
+      "predicted_days": 14
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.13,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.085109,
+    "std": 0.034642,
+    "skew": -0.326,
+    "kurtosis": -0.3848,
+    "min": -0.016632,
+    "max": 0.343959,
+    "median": 0.110327
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.1261552269608782,
+    "cv_rmse_std": 0.012873383407044652,
+    "cv_scores": [
+      0.133829,
+      0.138121,
+      0.10303,
+      0.121353,
+      0.134444
+    ],
+    "rank_ic_mean": 0.229583,
+    "rank_ic_std": 0.023852,
+    "icir": 9.6252,
+    "oof_corr": 0.203628,
+    "n_samples": 18670,
+    "n_features": 22
+  },
+  "window_days": 20
+}

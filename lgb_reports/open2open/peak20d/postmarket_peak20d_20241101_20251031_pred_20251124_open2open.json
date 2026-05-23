@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20241101",
+  "train_end": "20251031",
+  "pred_date": "20251124",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 100.0,
+      "raw_score": 0.44,
+      "predicted_days": 14
+    },
+    {
+      "rank": 2,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 95.51,
+      "raw_score": 0.42,
+      "predicted_days": 15
+    },
+    {
+      "rank": 3,
+      "ts_code": "603960.SH",
+      "stock_code": "603960",
+      "stock_name": "克来机电",
+      "lgb_score": 94.74,
+      "raw_score": 0.42,
+      "predicted_days": 14
+    },
+    {
+      "rank": 4,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 90.76,
+      "raw_score": 0.4,
+      "predicted_days": 14
+    },
+    {
+      "rank": 5,
+      "ts_code": "600151.SH",
+      "stock_code": "600151",
+      "stock_name": "航天机电",
+      "lgb_score": 89.68,
+      "raw_score": 0.4,
+      "predicted_days": 13
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.2,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.101836,
+    "std": 0.026341,
+    "skew": 3.7702,
+    "kurtosis": 31.9563,
+    "min": 0.025866,
+    "max": 0.441917,
+    "median": 0.10486
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11011537147171009,
+    "cv_rmse_std": 0.01709642987331957,
+    "cv_scores": [
+      0.082685,
+      0.122722,
+      0.101489,
+      0.131859,
+      0.111821
+    ],
+    "rank_ic_mean": 0.142254,
+    "rank_ic_std": 0.055676,
+    "icir": 2.5551,
+    "oof_corr": 0.192929,
+    "n_samples": 24627,
+    "n_features": 22
+  },
+  "window_days": 20
+}

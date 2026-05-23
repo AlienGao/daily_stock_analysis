@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250401",
+  "train_end": "20260331",
+  "pred_date": "20260421",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "001203.SZ",
+      "stock_code": "001203",
+      "stock_name": "大中矿业",
+      "lgb_score": 100.0,
+      "raw_score": 0.27,
+      "predicted_days": 12
+    },
+    {
+      "rank": 2,
+      "ts_code": "301666.SZ",
+      "stock_code": "301666",
+      "stock_name": "大普微-UW",
+      "lgb_score": 94.71,
+      "raw_score": 0.25,
+      "predicted_days": 15
+    },
+    {
+      "rank": 3,
+      "ts_code": "001309.SZ",
+      "stock_code": "001309",
+      "stock_name": "德明利",
+      "lgb_score": 94.48,
+      "raw_score": 0.25,
+      "predicted_days": 13
+    },
+    {
+      "rank": 4,
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
+      "lgb_score": 92.12,
+      "raw_score": 0.25,
+      "predicted_days": 18
+    },
+    {
+      "rank": 5,
+      "ts_code": "000762.SZ",
+      "stock_code": "000762",
+      "stock_name": "西藏矿业",
+      "lgb_score": 88.43,
+      "raw_score": 0.24,
+      "predicted_days": 15
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.1,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.10063,
+    "std": 0.030636,
+    "skew": -1.2177,
+    "kurtosis": 0.7561,
+    "min": -0.006622,
+    "max": 0.269295,
+    "median": 0.116094
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.1157995087622427,
+    "cv_rmse_std": 0.011240795543616676,
+    "cv_scores": [
+      0.112658,
+      0.127694,
+      0.12193,
+      0.095472,
+      0.121243
+    ],
+    "rank_ic_mean": 0.222488,
+    "rank_ic_std": 0.054812,
+    "icir": 4.0591,
+    "oof_corr": 0.234543,
+    "n_samples": 18595,
+    "n_features": 22
+  },
+  "window_days": 20
+}

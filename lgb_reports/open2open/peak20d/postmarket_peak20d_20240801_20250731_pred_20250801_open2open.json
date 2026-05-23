@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240801",
+  "train_end": "20250731",
+  "pred_date": "20250801",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600704.SH",
+      "stock_code": "600704",
+      "stock_name": "物产中大",
+      "lgb_score": 100.0,
+      "raw_score": 0.43,
+      "predicted_days": 14
+    },
+    {
+      "rank": 2,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 93.44,
+      "raw_score": 0.4,
+      "predicted_days": 12
+    },
+    {
+      "rank": 3,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 91.02,
+      "raw_score": 0.39,
+      "predicted_days": 15
+    },
+    {
+      "rank": 4,
+      "ts_code": "002617.SZ",
+      "stock_code": "002617",
+      "stock_name": "露笑科技",
+      "lgb_score": 89.13,
+      "raw_score": 0.38,
+      "predicted_days": 15
+    },
+    {
+      "rank": 5,
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 87.17,
+      "raw_score": 0.37,
+      "predicted_days": 13
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.14,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.140272,
+    "std": 0.039533,
+    "skew": -0.6887,
+    "kurtosis": 1.6702,
+    "min": -0.003047,
+    "max": 0.427248,
+    "median": 0.1613
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.1439082999704767,
+    "cv_rmse_std": 0.046586420684644435,
+    "cv_scores": [
+      0.236592,
+      0.11846,
+      0.11894,
+      0.115814,
+      0.129736
+    ],
+    "rank_ic_mean": 0.12881,
+    "rank_ic_std": 0.061326,
+    "icir": 2.1004,
+    "oof_corr": 0.123993,
+    "n_samples": 25708,
+    "n_features": 22
+  },
+  "window_days": 20
+}

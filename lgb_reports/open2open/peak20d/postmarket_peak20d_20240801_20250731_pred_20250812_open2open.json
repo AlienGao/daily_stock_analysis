@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240801",
+  "train_end": "20250731",
+  "pred_date": "20250812",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002446.SZ",
+      "stock_code": "002446",
+      "stock_name": "盛路通信",
+      "lgb_score": 100.0,
+      "raw_score": 0.45,
+      "predicted_days": 11
+    },
+    {
+      "rank": 2,
+      "ts_code": "605376.SH",
+      "stock_code": "605376",
+      "stock_name": "博迁新材",
+      "lgb_score": 91.1,
+      "raw_score": 0.41,
+      "predicted_days": 17
+    },
+    {
+      "rank": 3,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 88.57,
+      "raw_score": 0.4,
+      "predicted_days": 14
+    },
+    {
+      "rank": 4,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 86.75,
+      "raw_score": 0.39,
+      "predicted_days": 14
+    },
+    {
+      "rank": 5,
+      "ts_code": "600704.SH",
+      "stock_code": "600704",
+      "stock_name": "物产中大",
+      "lgb_score": 83.8,
+      "raw_score": 0.37,
+      "predicted_days": 13
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.14,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.139515,
+    "std": 0.039859,
+    "skew": -0.7376,
+    "kurtosis": 1.4743,
+    "min": 0.006539,
+    "max": 0.445859,
+    "median": 0.1613
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.1439082999704767,
+    "cv_rmse_std": 0.046586420684644435,
+    "cv_scores": [
+      0.236592,
+      0.11846,
+      0.11894,
+      0.115814,
+      0.129736
+    ],
+    "rank_ic_mean": 0.12881,
+    "rank_ic_std": 0.061326,
+    "icir": 2.1004,
+    "oof_corr": 0.123993,
+    "n_samples": 25708,
+    "n_features": 22
+  },
+  "window_days": 20
+}

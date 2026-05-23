@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240901",
+  "train_end": "20250831",
+  "pred_date": "20250909",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 100.0,
+      "raw_score": 0.42,
+      "predicted_days": 16
+    },
+    {
+      "rank": 2,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 91.05,
+      "raw_score": 0.38,
+      "predicted_days": 11
+    },
+    {
+      "rank": 3,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 83.46,
+      "raw_score": 0.35,
+      "predicted_days": 13
+    },
+    {
+      "rank": 4,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 82.7,
+      "raw_score": 0.34,
+      "predicted_days": 13
+    },
+    {
+      "rank": 5,
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
+      "lgb_score": 82.09,
+      "raw_score": 0.34,
+      "predicted_days": 16
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.75,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.141928,
+    "std": 0.039112,
+    "skew": -1.0327,
+    "kurtosis": 1.0391,
+    "min": 0.002352,
+    "max": 0.416128,
+    "median": 0.163013
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.13924968854381323,
+    "cv_rmse_std": 0.009567698601650678,
+    "cv_scores": [
+      0.15028,
+      0.151209,
+      0.129476,
+      0.130387,
+      0.134896
+    ],
+    "rank_ic_mean": 0.120313,
+    "rank_ic_std": 0.071568,
+    "icir": 1.6811,
+    "oof_corr": 0.075518,
+    "n_samples": 25472,
+    "n_features": 22
+  },
+  "window_days": 20
+}

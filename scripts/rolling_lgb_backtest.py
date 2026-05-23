@@ -31,7 +31,7 @@ REPORTS_ROOT = os.path.join(
 TRAIN_START = "20240101"
 PRED_START = "20250101"
 FORWARD_DAYS_LIST = [20]
-LABEL_MODES = ["fixed", "peak_speed"]
+LABEL_MODES = ["peak_speed"]
 WINDOW_DAYS = 20  # peak_speed 窗口天数
 # PRED_END is computed dynamically from StockDaily in main()
 MODE = "postmarket"

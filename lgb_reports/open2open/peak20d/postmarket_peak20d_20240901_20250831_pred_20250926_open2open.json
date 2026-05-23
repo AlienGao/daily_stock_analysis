@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240901",
+  "train_end": "20250831",
+  "pred_date": "20250926",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 100.0,
+      "raw_score": 0.44,
+      "predicted_days": 16
+    },
+    {
+      "rank": 2,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 96.01,
+      "raw_score": 0.42,
+      "predicted_days": 12
+    },
+    {
+      "rank": 3,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 84.88,
+      "raw_score": 0.37,
+      "predicted_days": 15
+    },
+    {
+      "rank": 4,
+      "ts_code": "002164.SZ",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 81.32,
+      "raw_score": 0.35,
+      "predicted_days": 16
+    },
+    {
+      "rank": 5,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 80.89,
+      "raw_score": 0.35,
+      "predicted_days": 17
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.75,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.142892,
+    "std": 0.038,
+    "skew": -0.9736,
+    "kurtosis": 1.467,
+    "min": 0.002804,
+    "max": 0.435495,
+    "median": 0.163013
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.13924968854381323,
+    "cv_rmse_std": 0.009567698601650678,
+    "cv_scores": [
+      0.15028,
+      0.151209,
+      0.129476,
+      0.130387,
+      0.134896
+    ],
+    "rank_ic_mean": 0.120313,
+    "rank_ic_std": 0.071568,
+    "icir": 1.6811,
+    "oof_corr": 0.075518,
+    "n_samples": 25472,
+    "n_features": 22
+  },
+  "window_days": 20
+}

@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240801",
+  "train_end": "20250731",
+  "pred_date": "20250813",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "605376.SH",
+      "stock_code": "605376",
+      "stock_name": "博迁新材",
+      "lgb_score": 100.0,
+      "raw_score": 0.39,
+      "predicted_days": 17
+    },
+    {
+      "rank": 2,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 95.88,
+      "raw_score": 0.38,
+      "predicted_days": 14
+    },
+    {
+      "rank": 3,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 93.86,
+      "raw_score": 0.37,
+      "predicted_days": 15
+    },
+    {
+      "rank": 4,
+      "ts_code": "002617.SZ",
+      "stock_code": "002617",
+      "stock_name": "露笑科技",
+      "lgb_score": 92.56,
+      "raw_score": 0.36,
+      "predicted_days": 14
+    },
+    {
+      "rank": 5,
+      "ts_code": "002407.SZ",
+      "stock_code": "002407",
+      "stock_name": "多氟多",
+      "lgb_score": 92.34,
+      "raw_score": 0.36,
+      "predicted_days": 13
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.14,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.139228,
+    "std": 0.040011,
+    "skew": -0.8013,
+    "kurtosis": 1.1367,
+    "min": 0.003827,
+    "max": 0.391556,
+    "median": 0.1613
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.1439082999704767,
+    "cv_rmse_std": 0.046586420684644435,
+    "cv_scores": [
+      0.236592,
+      0.11846,
+      0.11894,
+      0.115814,
+      0.129736
+    ],
+    "rank_ic_mean": 0.12881,
+    "rank_ic_std": 0.061326,
+    "icir": 2.1004,
+    "oof_corr": 0.123993,
+    "n_samples": 25708,
+    "n_features": 22
+  },
+  "window_days": 20
+}

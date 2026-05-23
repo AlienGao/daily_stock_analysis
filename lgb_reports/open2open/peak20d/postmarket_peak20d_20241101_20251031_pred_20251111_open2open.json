@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20241101",
+  "train_end": "20251031",
+  "pred_date": "20251111",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.45,
+      "predicted_days": 14
+    },
+    {
+      "rank": 2,
+      "ts_code": "000159.SZ",
+      "stock_code": "000159",
+      "stock_name": "国际实业",
+      "lgb_score": 91.74,
+      "raw_score": 0.41,
+      "predicted_days": 14
+    },
+    {
+      "rank": 3,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 90.41,
+      "raw_score": 0.41,
+      "predicted_days": 13
+    },
+    {
+      "rank": 4,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 88.5,
+      "raw_score": 0.4,
+      "predicted_days": 14
+    },
+    {
+      "rank": 5,
+      "ts_code": "002438.SZ",
+      "stock_code": "002438",
+      "stock_name": "江苏神通",
+      "lgb_score": 87.99,
+      "raw_score": 0.4,
+      "predicted_days": 14
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.2,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.102539,
+    "std": 0.027103,
+    "skew": 3.5488,
+    "kurtosis": 28.0424,
+    "min": 0.020607,
+    "max": 0.447337,
+    "median": 0.10486
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11011537147171009,
+    "cv_rmse_std": 0.01709642987331957,
+    "cv_scores": [
+      0.082685,
+      0.122722,
+      0.101489,
+      0.131859,
+      0.111821
+    ],
+    "rank_ic_mean": 0.142254,
+    "rank_ic_std": 0.055676,
+    "icir": 2.5551,
+    "oof_corr": 0.192929,
+    "n_samples": 24627,
+    "n_features": 22
+  },
+  "window_days": 20
+}

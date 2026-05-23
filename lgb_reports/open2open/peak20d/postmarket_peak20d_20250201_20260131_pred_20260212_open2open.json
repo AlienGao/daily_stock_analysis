@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250201",
+  "train_end": "20260131",
+  "pred_date": "20260212",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "603171.SH",
+      "stock_code": "603171",
+      "stock_name": "税友股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.31,
+      "predicted_days": 15
+    },
+    {
+      "rank": 2,
+      "ts_code": "002524.SZ",
+      "stock_code": "002524",
+      "stock_name": "光正眼科",
+      "lgb_score": 81.95,
+      "raw_score": 0.25,
+      "predicted_days": 14
+    },
+    {
+      "rank": 3,
+      "ts_code": "688519.SH",
+      "stock_code": "688519",
+      "stock_name": "南亚新材",
+      "lgb_score": 81.39,
+      "raw_score": 0.25,
+      "predicted_days": 13
+    },
+    {
+      "rank": 4,
+      "ts_code": "688001.SH",
+      "stock_code": "688001",
+      "stock_name": "华兴源创",
+      "lgb_score": 79.59,
+      "raw_score": 0.25,
+      "predicted_days": 13
+    },
+    {
+      "rank": 5,
+      "ts_code": "601121.SH",
+      "stock_code": "601121",
+      "stock_name": "宝地矿业",
+      "lgb_score": 79.04,
+      "raw_score": 0.25,
+      "predicted_days": 12
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.25,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.110782,
+    "std": 0.017952,
+    "skew": 1.0043,
+    "kurtosis": 7.4925,
+    "min": 0.01685,
+    "max": 0.305899,
+    "median": 0.110039
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11487170318003907,
+    "cv_rmse_std": 0.01323573113095754,
+    "cv_scores": [
+      0.101951,
+      0.126039,
+      0.133464,
+      0.099493,
+      0.113412
+    ],
+    "rank_ic_mean": 0.224185,
+    "rank_ic_std": 0.0338,
+    "icir": 6.6327,
+    "oof_corr": 0.212069,
+    "n_samples": 18757,
+    "n_features": 22
+  },
+  "window_days": 20
+}

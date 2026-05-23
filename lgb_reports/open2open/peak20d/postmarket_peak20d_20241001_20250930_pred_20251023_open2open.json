@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20241001",
+  "train_end": "20250930",
+  "pred_date": "20251023",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688135.SH",
+      "stock_code": "688135",
+      "stock_name": "利扬芯片",
+      "lgb_score": 100.0,
+      "raw_score": 0.36,
+      "predicted_days": 14
+    },
+    {
+      "rank": 2,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 99.81,
+      "raw_score": 0.36,
+      "predicted_days": 15
+    },
+    {
+      "rank": 3,
+      "ts_code": "688627.SH",
+      "stock_code": "688627",
+      "stock_name": "精智达",
+      "lgb_score": 98.2,
+      "raw_score": 0.36,
+      "predicted_days": 12
+    },
+    {
+      "rank": 4,
+      "ts_code": "600527.SH",
+      "stock_code": "600527",
+      "stock_name": "江南高纤",
+      "lgb_score": 96.83,
+      "raw_score": 0.35,
+      "predicted_days": 13
+    },
+    {
+      "rank": 5,
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
+      "lgb_score": 96.46,
+      "raw_score": 0.35,
+      "predicted_days": 13
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.28,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.119147,
+    "std": 0.029506,
+    "skew": 0.3985,
+    "kurtosis": 7.1673,
+    "min": 0.022663,
+    "max": 0.363205,
+    "median": 0.129998
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.1117634468799282,
+    "cv_rmse_std": 0.01466741547704345,
+    "cv_scores": [
+      0.086855,
+      0.112283,
+      0.106821,
+      0.125989,
+      0.126869
+    ],
+    "rank_ic_mean": 0.147645,
+    "rank_ic_std": 0.035164,
+    "icir": 4.1988,
+    "oof_corr": 0.171656,
+    "n_samples": 24763,
+    "n_features": 22
+  },
+  "window_days": 20
+}

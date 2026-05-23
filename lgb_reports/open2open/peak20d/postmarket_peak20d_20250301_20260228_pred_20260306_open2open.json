@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250301",
+  "train_end": "20260228",
+  "pred_date": "20260306",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000688.SZ",
+      "stock_code": "000688",
+      "stock_name": "国城矿业",
+      "lgb_score": 100.0,
+      "raw_score": 0.23,
+      "predicted_days": 14
+    },
+    {
+      "rank": 2,
+      "ts_code": "603171.SH",
+      "stock_code": "603171",
+      "stock_name": "税友股份",
+      "lgb_score": 98.86,
+      "raw_score": 0.22,
+      "predicted_days": 13
+    },
+    {
+      "rank": 3,
+      "ts_code": "601330.SH",
+      "stock_code": "601330",
+      "stock_name": "绿色动力",
+      "lgb_score": 92.56,
+      "raw_score": 0.21,
+      "predicted_days": 13
+    },
+    {
+      "rank": 4,
+      "ts_code": "002859.SZ",
+      "stock_code": "002859",
+      "stock_name": "洁美科技",
+      "lgb_score": 91.72,
+      "raw_score": 0.21,
+      "predicted_days": 15
+    },
+    {
+      "rank": 5,
+      "ts_code": "301057.SZ",
+      "stock_code": "301057",
+      "stock_name": "汇隆新材",
+      "lgb_score": 91.35,
+      "raw_score": 0.21,
+      "predicted_days": 13
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.26,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.098595,
+    "std": 0.027138,
+    "skew": -1.1048,
+    "kurtosis": 1.7056,
+    "min": -0.014584,
+    "max": 0.227441,
+    "median": 0.109539
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11408555590980822,
+    "cv_rmse_std": 0.012941985349320145,
+    "cv_scores": [
+      0.100044,
+      0.126442,
+      0.120872,
+      0.096897,
+      0.126173
+    ],
+    "rank_ic_mean": 0.231633,
+    "rank_ic_std": 0.05419,
+    "icir": 4.2745,
+    "oof_corr": 0.259663,
+    "n_samples": 18818,
+    "n_features": 22
+  },
+  "window_days": 20
+}

@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240801",
+  "train_end": "20250731",
+  "pred_date": "20250829",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 100.0,
+      "raw_score": 0.46,
+      "predicted_days": 13
+    },
+    {
+      "rank": 2,
+      "ts_code": "000757.SZ",
+      "stock_code": "000757",
+      "stock_name": "浩物股份",
+      "lgb_score": 97.01,
+      "raw_score": 0.44,
+      "predicted_days": 13
+    },
+    {
+      "rank": 3,
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
+      "lgb_score": 83.62,
+      "raw_score": 0.38,
+      "predicted_days": 14
+    },
+    {
+      "rank": 4,
+      "ts_code": "600704.SH",
+      "stock_code": "600704",
+      "stock_name": "物产中大",
+      "lgb_score": 79.59,
+      "raw_score": 0.37,
+      "predicted_days": 14
+    },
+    {
+      "rank": 5,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 79.34,
+      "raw_score": 0.36,
+      "predicted_days": 15
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.14,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.139972,
+    "std": 0.039739,
+    "skew": -0.6836,
+    "kurtosis": 1.7768,
+    "min": 0.002458,
+    "max": 0.458147,
+    "median": 0.1613
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.1439082999704767,
+    "cv_rmse_std": 0.046586420684644435,
+    "cv_scores": [
+      0.236592,
+      0.11846,
+      0.11894,
+      0.115814,
+      0.129736
+    ],
+    "rank_ic_mean": 0.12881,
+    "rank_ic_std": 0.061326,
+    "icir": 2.1004,
+    "oof_corr": 0.123993,
+    "n_samples": 25708,
+    "n_features": 22
+  },
+  "window_days": 20
+}

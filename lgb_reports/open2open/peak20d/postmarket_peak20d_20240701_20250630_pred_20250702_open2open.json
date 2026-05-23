@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240701",
+  "train_end": "20250630",
+  "pred_date": "20250702",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.4,
+      "predicted_days": 13
+    },
+    {
+      "rank": 2,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 94.35,
+      "raw_score": 0.38,
+      "predicted_days": 10
+    },
+    {
+      "rank": 3,
+      "ts_code": "002600.SZ",
+      "stock_code": "002600",
+      "stock_name": "领益智造",
+      "lgb_score": 93.95,
+      "raw_score": 0.38,
+      "predicted_days": 11
+    },
+    {
+      "rank": 4,
+      "ts_code": "300185.SZ",
+      "stock_code": "300185",
+      "stock_name": "通裕重工",
+      "lgb_score": 93.66,
+      "raw_score": 0.37,
+      "predicted_days": 11
+    },
+    {
+      "rank": 5,
+      "ts_code": "300750.SZ",
+      "stock_code": "300750",
+      "stock_name": "宁德时代",
+      "lgb_score": 88.33,
+      "raw_score": 0.35,
+      "predicted_days": 12
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.71,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.130987,
+    "std": 0.040586,
+    "skew": -0.8936,
+    "kurtosis": 0.8247,
+    "min": -0.005007,
+    "max": 0.400286,
+    "median": 0.153327
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.14967384596470792,
+    "cv_rmse_std": 0.06483437466083021,
+    "cv_scores": [
+      0.278632,
+      0.128037,
+      0.111726,
+      0.121011,
+      0.108962
+    ],
+    "rank_ic_mean": 0.118067,
+    "rank_ic_std": 0.019621,
+    "icir": 6.0175,
+    "oof_corr": -0.143575,
+    "n_samples": 26164,
+    "n_features": 22
+  },
+  "window_days": 20
+}

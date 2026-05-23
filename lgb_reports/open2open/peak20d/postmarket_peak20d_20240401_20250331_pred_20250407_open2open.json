@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240401",
+  "train_end": "20250331",
+  "pred_date": "20250407",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 100.0,
+      "raw_score": 0.49,
+      "predicted_days": 13
+    },
+    {
+      "rank": 2,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 86.8,
+      "raw_score": 0.43,
+      "predicted_days": 16
+    },
+    {
+      "rank": 3,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 80.64,
+      "raw_score": 0.4,
+      "predicted_days": 14
+    },
+    {
+      "rank": 4,
+      "ts_code": "300166.SZ",
+      "stock_code": "300166",
+      "stock_name": "东方国信",
+      "lgb_score": 79.06,
+      "raw_score": 0.39,
+      "predicted_days": 16
+    },
+    {
+      "rank": 5,
+      "ts_code": "301137.SZ",
+      "stock_code": "301137",
+      "stock_name": "哈焊华通",
+      "lgb_score": 75.65,
+      "raw_score": 0.37,
+      "predicted_days": 17
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.74,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.061355,
+    "std": 0.029556,
+    "skew": 5.2035,
+    "kurtosis": 36.7501,
+    "min": 0.004146,
+    "max": 0.493396,
+    "median": 0.052324
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.12400748517795715,
+    "cv_rmse_std": 0.05255711956740594,
+    "cv_scores": [
+      0.058568,
+      0.217962,
+      0.13035,
+      0.101392,
+      0.111766
+    ],
+    "rank_ic_mean": 0.165042,
+    "rank_ic_std": 0.100678,
+    "icir": 1.6393,
+    "oof_corr": 0.252227,
+    "n_samples": 27910,
+    "n_features": 22
+  },
+  "window_days": 20
+}

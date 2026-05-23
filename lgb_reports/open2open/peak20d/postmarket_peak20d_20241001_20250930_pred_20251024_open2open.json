@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20241001",
+  "train_end": "20250930",
+  "pred_date": "20251024",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688135.SH",
+      "stock_code": "688135",
+      "stock_name": "利扬芯片",
+      "lgb_score": 100.0,
+      "raw_score": 0.36,
+      "predicted_days": 15
+    },
+    {
+      "rank": 2,
+      "ts_code": "688320.SH",
+      "stock_code": "688320",
+      "stock_name": "禾川科技",
+      "lgb_score": 99.43,
+      "raw_score": 0.36,
+      "predicted_days": 15
+    },
+    {
+      "rank": 3,
+      "ts_code": "688090.SH",
+      "stock_code": "688090",
+      "stock_name": "瑞松科技",
+      "lgb_score": 94.08,
+      "raw_score": 0.34,
+      "predicted_days": 14
+    },
+    {
+      "rank": 4,
+      "ts_code": "301383.SZ",
+      "stock_code": "301383",
+      "stock_name": "天键股份",
+      "lgb_score": 93.51,
+      "raw_score": 0.34,
+      "predicted_days": 15
+    },
+    {
+      "rank": 5,
+      "ts_code": "688286.SH",
+      "stock_code": "688286",
+      "stock_name": "敏芯股份",
+      "lgb_score": 92.59,
+      "raw_score": 0.33,
+      "predicted_days": 15
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.28,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.118702,
+    "std": 0.029522,
+    "skew": 0.2107,
+    "kurtosis": 5.9946,
+    "min": 0.019945,
+    "max": 0.357528,
+    "median": 0.129998
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.1117634468799282,
+    "cv_rmse_std": 0.01466741547704345,
+    "cv_scores": [
+      0.086855,
+      0.112283,
+      0.106821,
+      0.125989,
+      0.126869
+    ],
+    "rank_ic_mean": 0.147645,
+    "rank_ic_std": 0.035164,
+    "icir": 4.1988,
+    "oof_corr": 0.171656,
+    "n_samples": 24763,
+    "n_features": 22
+  },
+  "window_days": 20
+}

@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240801",
+  "train_end": "20250731",
+  "pred_date": "20250821",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300017.SZ",
+      "stock_code": "300017",
+      "stock_name": "网宿科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.42,
+      "predicted_days": 15
+    },
+    {
+      "rank": 2,
+      "ts_code": "002438.SZ",
+      "stock_code": "002438",
+      "stock_name": "江苏神通",
+      "lgb_score": 85.52,
+      "raw_score": 0.36,
+      "predicted_days": 13
+    },
+    {
+      "rank": 3,
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 85.42,
+      "raw_score": 0.36,
+      "predicted_days": 13
+    },
+    {
+      "rank": 4,
+      "ts_code": "002617.SZ",
+      "stock_code": "002617",
+      "stock_name": "露笑科技",
+      "lgb_score": 85.38,
+      "raw_score": 0.36,
+      "predicted_days": 12
+    },
+    {
+      "rank": 5,
+      "ts_code": "300158.SZ",
+      "stock_code": "300158",
+      "stock_name": "振东制药",
+      "lgb_score": 84.73,
+      "raw_score": 0.36,
+      "predicted_days": 10
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.14,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.139731,
+    "std": 0.039694,
+    "skew": -0.7775,
+    "kurtosis": 1.2384,
+    "min": 0.009032,
+    "max": 0.420756,
+    "median": 0.1613
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.1439082999704767,
+    "cv_rmse_std": 0.046586420684644435,
+    "cv_scores": [
+      0.236592,
+      0.11846,
+      0.11894,
+      0.115814,
+      0.129736
+    ],
+    "rank_ic_mean": 0.12881,
+    "rank_ic_std": 0.061326,
+    "icir": 2.1004,
+    "oof_corr": 0.123993,
+    "n_samples": 25708,
+    "n_features": 22
+  },
+  "window_days": 20
+}

@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260522",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002250",
+      "stock_code": "002250",
+      "stock_name": "联化科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.4,
+      "predicted_days": 14
+    },
+    {
+      "rank": 2,
+      "ts_code": "002273",
+      "stock_code": "002273",
+      "stock_name": "水晶光电",
+      "lgb_score": 79.56,
+      "raw_score": 0.32,
+      "predicted_days": 12
+    },
+    {
+      "rank": 3,
+      "ts_code": "688068",
+      "stock_code": "688068",
+      "stock_name": "热景生物",
+      "lgb_score": 66.38,
+      "raw_score": 0.26,
+      "predicted_days": 14
+    },
+    {
+      "rank": 4,
+      "ts_code": "002796",
+      "stock_code": "002796",
+      "stock_name": "世嘉科技",
+      "lgb_score": 65.99,
+      "raw_score": 0.26,
+      "predicted_days": 12
+    },
+    {
+      "rank": 5,
+      "ts_code": "301469",
+      "stock_code": "301469",
+      "stock_name": "恒达新材",
+      "lgb_score": 64.63,
+      "raw_score": 0.26,
+      "predicted_days": 11
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.13,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.090165,
+    "std": 0.03303,
+    "skew": -0.1743,
+    "kurtosis": 1.008,
+    "min": -0.001368,
+    "max": 0.398311,
+    "median": 0.110327
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.1261552269608782,
+    "cv_rmse_std": 0.012873383407044652,
+    "cv_scores": [
+      0.133829,
+      0.138121,
+      0.10303,
+      0.121353,
+      0.134444
+    ],
+    "rank_ic_mean": 0.229583,
+    "rank_ic_std": 0.023852,
+    "icir": 9.6252,
+    "oof_corr": 0.203628,
+    "n_samples": 18670,
+    "n_features": 22
+  },
+  "window_days": 20
+}

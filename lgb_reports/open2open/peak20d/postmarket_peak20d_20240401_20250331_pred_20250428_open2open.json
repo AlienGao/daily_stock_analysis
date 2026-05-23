@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240401",
+  "train_end": "20250331",
+  "pred_date": "20250428",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "920493.BJ",
+      "stock_code": "920493.BJ",
+      "stock_name": "",
+      "lgb_score": 100.0,
+      "raw_score": 0.46,
+      "predicted_days": 16
+    },
+    {
+      "rank": 2,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 99.04,
+      "raw_score": 0.46,
+      "predicted_days": 13
+    },
+    {
+      "rank": 3,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 96.46,
+      "raw_score": 0.45,
+      "predicted_days": 14
+    },
+    {
+      "rank": 4,
+      "ts_code": "300007.SZ",
+      "stock_code": "300007",
+      "stock_name": "汉威科技",
+      "lgb_score": 94.24,
+      "raw_score": 0.44,
+      "predicted_days": 14
+    },
+    {
+      "rank": 5,
+      "ts_code": "002164.SZ",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 89.6,
+      "raw_score": 0.41,
+      "predicted_days": 14
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.74,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.060725,
+    "std": 0.029483,
+    "skew": 5.5053,
+    "kurtosis": 41.1226,
+    "min": -0.008622,
+    "max": 0.462482,
+    "median": 0.052324
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.12400748517795715,
+    "cv_rmse_std": 0.05255711956740594,
+    "cv_scores": [
+      0.058568,
+      0.217962,
+      0.13035,
+      0.101392,
+      0.111766
+    ],
+    "rank_ic_mean": 0.165042,
+    "rank_ic_std": 0.100678,
+    "icir": 1.6393,
+    "oof_corr": 0.252227,
+    "n_samples": 27910,
+    "n_features": 22
+  },
+  "window_days": 20
+}

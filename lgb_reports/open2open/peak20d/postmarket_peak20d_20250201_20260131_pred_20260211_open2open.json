@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250201",
+  "train_end": "20260131",
+  "pred_date": "20260211",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "603171.SH",
+      "stock_code": "603171",
+      "stock_name": "税友股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.32,
+      "predicted_days": 15
+    },
+    {
+      "rank": 2,
+      "ts_code": "002274.SZ",
+      "stock_code": "002274",
+      "stock_name": "华昌化工",
+      "lgb_score": 78.95,
+      "raw_score": 0.25,
+      "predicted_days": 10
+    },
+    {
+      "rank": 3,
+      "ts_code": "600487.SH",
+      "stock_code": "600487",
+      "stock_name": "亨通光电",
+      "lgb_score": 78.51,
+      "raw_score": 0.25,
+      "predicted_days": 13
+    },
+    {
+      "rank": 4,
+      "ts_code": "002281.SZ",
+      "stock_code": "002281",
+      "stock_name": "光迅科技",
+      "lgb_score": 78.05,
+      "raw_score": 0.25,
+      "predicted_days": 13
+    },
+    {
+      "rank": 5,
+      "ts_code": "688256.SH",
+      "stock_code": "688256",
+      "stock_name": "寒武纪",
+      "lgb_score": 77.09,
+      "raw_score": 0.25,
+      "predicted_days": 15
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.25,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.111955,
+    "std": 0.018796,
+    "skew": 1.2686,
+    "kurtosis": 7.6775,
+    "min": 0.014394,
+    "max": 0.317202,
+    "median": 0.110039
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11487170318003907,
+    "cv_rmse_std": 0.01323573113095754,
+    "cv_scores": [
+      0.101951,
+      0.126039,
+      0.133464,
+      0.099493,
+      0.113412
+    ],
+    "rank_ic_mean": 0.224185,
+    "rank_ic_std": 0.0338,
+    "icir": 6.6327,
+    "oof_corr": 0.212069,
+    "n_samples": 18757,
+    "n_features": 22
+  },
+  "window_days": 20
+}

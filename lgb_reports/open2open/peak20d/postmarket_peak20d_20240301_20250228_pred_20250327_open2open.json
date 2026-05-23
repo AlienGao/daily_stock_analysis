@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240301",
+  "train_end": "20250228",
+  "pred_date": "20250327",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002062.SZ",
+      "stock_code": "002062",
+      "stock_name": "宏润建设",
+      "lgb_score": 100.0,
+      "raw_score": 0.45,
+      "predicted_days": 12
+    },
+    {
+      "rank": 2,
+      "ts_code": "301137.SZ",
+      "stock_code": "301137",
+      "stock_name": "哈焊华通",
+      "lgb_score": 88.13,
+      "raw_score": 0.4,
+      "predicted_days": 16
+    },
+    {
+      "rank": 3,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 83.69,
+      "raw_score": 0.38,
+      "predicted_days": 14
+    },
+    {
+      "rank": 4,
+      "ts_code": "600711.SH",
+      "stock_code": "600711",
+      "stock_name": "盛屯矿业",
+      "lgb_score": 80.71,
+      "raw_score": 0.36,
+      "predicted_days": 13
+    },
+    {
+      "rank": 5,
+      "ts_code": "920088.BJ",
+      "stock_code": "920088.BJ",
+      "stock_name": "",
+      "lgb_score": 80.68,
+      "raw_score": 0.36,
+      "predicted_days": 16
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.7,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.051556,
+    "std": 0.027762,
+    "skew": 4.7575,
+    "kurtosis": 31.0592,
+    "min": -0.012823,
+    "max": 0.451555,
+    "median": 0.044768
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.12085947774770048,
+    "cv_rmse_std": 0.05484567106808893,
+    "cv_scores": [
+      0.066557,
+      0.101693,
+      0.226572,
+      0.100922,
+      0.108553
+    ],
+    "rank_ic_mean": 0.1571,
+    "rank_ic_std": 0.07748,
+    "icir": 2.0276,
+    "oof_corr": 0.18817,
+    "n_samples": 28909,
+    "n_features": 22
+  },
+  "window_days": 20
+}

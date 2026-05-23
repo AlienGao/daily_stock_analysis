@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20241201",
+  "train_end": "20251130",
+  "pred_date": "20251210",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600512.SH",
+      "stock_code": "600512",
+      "stock_name": "腾达建设",
+      "lgb_score": 100.0,
+      "raw_score": 0.47,
+      "predicted_days": 16
+    },
+    {
+      "rank": 2,
+      "ts_code": "301355.SZ",
+      "stock_code": "301355",
+      "stock_name": "南王科技",
+      "lgb_score": 88.22,
+      "raw_score": 0.42,
+      "predicted_days": 12
+    },
+    {
+      "rank": 3,
+      "ts_code": "000681.SZ",
+      "stock_code": "000681",
+      "stock_name": "视觉中国",
+      "lgb_score": 83.6,
+      "raw_score": 0.4,
+      "predicted_days": 16
+    },
+    {
+      "rank": 4,
+      "ts_code": "002036.SZ",
+      "stock_code": "002036",
+      "stock_name": "联创电子",
+      "lgb_score": 82.16,
+      "raw_score": 0.39,
+      "predicted_days": 15
+    },
+    {
+      "rank": 5,
+      "ts_code": "600986.SH",
+      "stock_code": "600986",
+      "stock_name": "浙文互联",
+      "lgb_score": 80.43,
+      "raw_score": 0.38,
+      "predicted_days": 16
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.37,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.141767,
+    "std": 0.027601,
+    "skew": 3.0101,
+    "kurtosis": 19.1189,
+    "min": 0.031898,
+    "max": 0.470715,
+    "median": 0.139912
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11396607962356053,
+    "cv_rmse_std": 0.014207501613324482,
+    "cv_scores": [
+      0.123269,
+      0.103706,
+      0.121626,
+      0.129802,
+      0.091427
+    ],
+    "rank_ic_mean": 0.163331,
+    "rank_ic_std": 0.049779,
+    "icir": 3.2811,
+    "oof_corr": 0.171424,
+    "n_samples": 22406,
+    "n_features": 22
+  },
+  "window_days": 20
+}

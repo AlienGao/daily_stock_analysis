@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250401",
+  "train_end": "20260331",
+  "pred_date": "20260429",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688048.SH",
+      "stock_code": "688048",
+      "stock_name": "长光华芯",
+      "lgb_score": 100.0,
+      "raw_score": 0.25,
+      "predicted_days": 14
+    },
+    {
+      "rank": 2,
+      "ts_code": "688498.SH",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
+      "lgb_score": 98.01,
+      "raw_score": 0.24,
+      "predicted_days": 17
+    },
+    {
+      "rank": 3,
+      "ts_code": "605299.SH",
+      "stock_code": "605299",
+      "stock_name": "舒华体育",
+      "lgb_score": 96.3,
+      "raw_score": 0.24,
+      "predicted_days": 12
+    },
+    {
+      "rank": 4,
+      "ts_code": "300938.SZ",
+      "stock_code": "300938",
+      "stock_name": "信测标准",
+      "lgb_score": 90.36,
+      "raw_score": 0.22,
+      "predicted_days": 15
+    },
+    {
+      "rank": 5,
+      "ts_code": "688531.SH",
+      "stock_code": "688531",
+      "stock_name": "日联科技",
+      "lgb_score": 89.71,
+      "raw_score": 0.22,
+      "predicted_days": 16
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.1,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.10145,
+    "std": 0.030157,
+    "skew": -1.2308,
+    "kurtosis": 0.872,
+    "min": -0.006557,
+    "max": 0.248286,
+    "median": 0.116094
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.1157995087622427,
+    "cv_rmse_std": 0.011240795543616676,
+    "cv_scores": [
+      0.112658,
+      0.127694,
+      0.12193,
+      0.095472,
+      0.121243
+    ],
+    "rank_ic_mean": 0.222488,
+    "rank_ic_std": 0.054812,
+    "icir": 4.0591,
+    "oof_corr": 0.234543,
+    "n_samples": 18595,
+    "n_features": 22
+  },
+  "window_days": 20
+}

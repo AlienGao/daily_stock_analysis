@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260518",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301629.SZ",
+      "stock_code": "301629",
+      "stock_name": "矽电股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.35,
+      "predicted_days": 15
+    },
+    {
+      "rank": 2,
+      "ts_code": "301511.SZ",
+      "stock_code": "301511",
+      "stock_name": "德福科技",
+      "lgb_score": 98.73,
+      "raw_score": 0.34,
+      "predicted_days": 11
+    },
+    {
+      "rank": 3,
+      "ts_code": "688766.SH",
+      "stock_code": "688766",
+      "stock_name": "普冉股份",
+      "lgb_score": 96.73,
+      "raw_score": 0.33,
+      "predicted_days": 14
+    },
+    {
+      "rank": 4,
+      "ts_code": "688808.SH",
+      "stock_code": "688808",
+      "stock_name": "联讯仪器",
+      "lgb_score": 95.62,
+      "raw_score": 0.33,
+      "predicted_days": 16
+    },
+    {
+      "rank": 5,
+      "ts_code": "688525.SH",
+      "stock_code": "688525",
+      "stock_name": "佰维存储",
+      "lgb_score": 93.72,
+      "raw_score": 0.32,
+      "predicted_days": 14
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.13,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.099198,
+    "std": 0.031087,
+    "skew": -0.2959,
+    "kurtosis": 3.8761,
+    "min": -0.011487,
+    "max": 0.345105,
+    "median": 0.110327
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.1261552269608782,
+    "cv_rmse_std": 0.012873383407044652,
+    "cv_scores": [
+      0.133829,
+      0.138121,
+      0.10303,
+      0.121353,
+      0.134444
+    ],
+    "rank_ic_mean": 0.229583,
+    "rank_ic_std": 0.023852,
+    "icir": 9.6252,
+    "oof_corr": 0.203628,
+    "n_samples": 18670,
+    "n_features": 22
+  },
+  "window_days": 20
+}

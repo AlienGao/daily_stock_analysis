@@ -665,11 +665,11 @@ def _check_loss_stop(
     code: str, buy_date: str, buy_price: float, sell_date: str,
     price_map: dict, adj_by_code: dict, trading_days_sorted: list,
 ) -> tuple:
-    """Check intermediate trading days for loss stop (亏损厌恶).
+    """Check trading days (including sell_date) for loss stop (亏损厌恶).
     Returns (effective_sell_date, effective_sell_price) — same as input if not stopped.
     """
     for td in trading_days_sorted:
-        if td <= buy_date or td >= sell_date:
+        if td <= buy_date or td > sell_date:
             continue
         entry = price_map.get((code, td))
         if not entry:
@@ -681,7 +681,7 @@ def _check_loss_stop(
         adj_t = _adj_lookup(code, td, adj_by_code)
         raw_ret = (px - buy_price) / buy_price if buy_price > 0 else 0.0
         ret = (1.0 + raw_ret) * (adj_t / adj_b) - 1.0 if adj_b > 0 and adj_t > 0 else 0.0
-        if ret < 0:
+        if ret < -0.05:
             return (td, px)
     return (sell_date, 0.0)  # 0.0 sentinel: caller uses original sell_price
 
@@ -1262,6 +1262,9 @@ def _simulate_backtest(exec_mode: str, forward_days: int, top_n: int, stop_strat
                         h_shares = min_lot + int((raw_shares - min_lot) / step) * step
                         h_cost = h_shares * buy_price
 
+                    if h_shares <= 0:
+                        held += 1
+                        continue
                     trades.append({
                         "pred_date": pred_date, "stock_code": code, "ts_code": ts_code,
                         "stock_name": stock_name, "rank": rank,

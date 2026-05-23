@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250301",
+  "train_end": "20260228",
+  "pred_date": "20260305",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688506.SH",
+      "stock_code": "688506",
+      "stock_name": "百利天恒",
+      "lgb_score": 100.0,
+      "raw_score": 0.24,
+      "predicted_days": 14
+    },
+    {
+      "rank": 2,
+      "ts_code": "603171.SH",
+      "stock_code": "603171",
+      "stock_name": "税友股份",
+      "lgb_score": 89.47,
+      "raw_score": 0.22,
+      "predicted_days": 13
+    },
+    {
+      "rank": 3,
+      "ts_code": "600331.SH",
+      "stock_code": "600331",
+      "stock_name": "宏达股份",
+      "lgb_score": 84.14,
+      "raw_score": 0.2,
+      "predicted_days": 15
+    },
+    {
+      "rank": 4,
+      "ts_code": "300097.SZ",
+      "stock_code": "300097",
+      "stock_name": "智云股份",
+      "lgb_score": 83.87,
+      "raw_score": 0.2,
+      "predicted_days": 14
+    },
+    {
+      "rank": 5,
+      "ts_code": "688335.SH",
+      "stock_code": "688335",
+      "stock_name": "复洁科技",
+      "lgb_score": 82.64,
+      "raw_score": 0.2,
+      "predicted_days": 13
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.26,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.096815,
+    "std": 0.028445,
+    "skew": -1.1806,
+    "kurtosis": 1.1689,
+    "min": -0.014055,
+    "max": 0.242385,
+    "median": 0.109539
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11408555590980822,
+    "cv_rmse_std": 0.012941985349320145,
+    "cv_scores": [
+      0.100044,
+      0.126442,
+      0.120872,
+      0.096897,
+      0.126173
+    ],
+    "rank_ic_mean": 0.231633,
+    "rank_ic_std": 0.05419,
+    "icir": 4.2745,
+    "oof_corr": 0.259663,
+    "n_samples": 18818,
+    "n_features": 22
+  },
+  "window_days": 20
+}

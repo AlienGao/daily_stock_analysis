@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240601",
+  "train_end": "20250531",
+  "pred_date": "20250604",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 100.0,
+      "raw_score": 0.46,
+      "predicted_days": 12
+    },
+    {
+      "rank": 2,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 96.1,
+      "raw_score": 0.44,
+      "predicted_days": 15
+    },
+    {
+      "rank": 3,
+      "ts_code": "002600.SZ",
+      "stock_code": "002600",
+      "stock_name": "领益智造",
+      "lgb_score": 92.85,
+      "raw_score": 0.43,
+      "predicted_days": 12
+    },
+    {
+      "rank": 4,
+      "ts_code": "002062.SZ",
+      "stock_code": "002062",
+      "stock_name": "宏润建设",
+      "lgb_score": 89.32,
+      "raw_score": 0.41,
+      "predicted_days": 13
+    },
+    {
+      "rank": 5,
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 83.57,
+      "raw_score": 0.39,
+      "predicted_days": 14
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.77,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.100092,
+    "std": 0.032774,
+    "skew": 0.0714,
+    "kurtosis": 6.0258,
+    "min": 0.003902,
+    "max": 0.460952,
+    "median": 0.116574
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.12931421995581888,
+    "cv_rmse_std": 0.027862608880806595,
+    "cv_scores": [
+      0.163917,
+      0.162836,
+      0.104673,
+      0.109563,
+      0.105582
+    ],
+    "rank_ic_mean": 0.170942,
+    "rank_ic_std": 0.152776,
+    "icir": 1.1189,
+    "oof_corr": 0.30401,
+    "n_samples": 27938,
+    "n_features": 22
+  },
+  "window_days": 20
+}

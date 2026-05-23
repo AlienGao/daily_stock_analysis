@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240401",
+  "train_end": "20250331",
+  "pred_date": "20250417",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.42,
+      "predicted_days": 16
+    },
+    {
+      "rank": 2,
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 98.59,
+      "raw_score": 0.42,
+      "predicted_days": 18
+    },
+    {
+      "rank": 3,
+      "ts_code": "300046.SZ",
+      "stock_code": "300046",
+      "stock_name": "台基股份",
+      "lgb_score": 97.07,
+      "raw_score": 0.41,
+      "predicted_days": 15
+    },
+    {
+      "rank": 4,
+      "ts_code": "688368.SH",
+      "stock_code": "688368",
+      "stock_name": "晶丰明源",
+      "lgb_score": 96.42,
+      "raw_score": 0.41,
+      "predicted_days": 15
+    },
+    {
+      "rank": 5,
+      "ts_code": "301209.SZ",
+      "stock_code": "301209",
+      "stock_name": "联合化学",
+      "lgb_score": 91.1,
+      "raw_score": 0.38,
+      "predicted_days": 15
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.74,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.060658,
+    "std": 0.028813,
+    "skew": 5.4235,
+    "kurtosis": 39.6645,
+    "min": 0.001536,
+    "max": 0.420994,
+    "median": 0.052324
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.12400748517795715,
+    "cv_rmse_std": 0.05255711956740594,
+    "cv_scores": [
+      0.058568,
+      0.217962,
+      0.13035,
+      0.101392,
+      0.111766
+    ],
+    "rank_ic_mean": 0.165042,
+    "rank_ic_std": 0.100678,
+    "icir": 1.6393,
+    "oof_corr": 0.252227,
+    "n_samples": 27910,
+    "n_features": 22
+  },
+  "window_days": 20
+}

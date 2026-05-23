@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240401",
+  "train_end": "20250331",
+  "pred_date": "20250421",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "603120.SH",
+      "stock_code": "603120",
+      "stock_name": "肯特催化",
+      "lgb_score": 100.0,
+      "raw_score": 0.46,
+      "predicted_days": 18
+    },
+    {
+      "rank": 2,
+      "ts_code": "301209.SZ",
+      "stock_code": "301209",
+      "stock_name": "联合化学",
+      "lgb_score": 98.63,
+      "raw_score": 0.45,
+      "predicted_days": 15
+    },
+    {
+      "rank": 3,
+      "ts_code": "002062.SZ",
+      "stock_code": "002062",
+      "stock_name": "宏润建设",
+      "lgb_score": 85.66,
+      "raw_score": 0.4,
+      "predicted_days": 10
+    },
+    {
+      "rank": 4,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 84.31,
+      "raw_score": 0.39,
+      "predicted_days": 14
+    },
+    {
+      "rank": 5,
+      "ts_code": "301413.SZ",
+      "stock_code": "301413",
+      "stock_name": "安培龙",
+      "lgb_score": 82.34,
+      "raw_score": 0.38,
+      "predicted_days": 15
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.74,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.059789,
+    "std": 0.027747,
+    "skew": 5.6666,
+    "kurtosis": 43.7072,
+    "min": -0.000166,
+    "max": 0.46121,
+    "median": 0.052324
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.12400748517795715,
+    "cv_rmse_std": 0.05255711956740594,
+    "cv_scores": [
+      0.058568,
+      0.217962,
+      0.13035,
+      0.101392,
+      0.111766
+    ],
+    "rank_ic_mean": 0.165042,
+    "rank_ic_std": 0.100678,
+    "icir": 1.6393,
+    "oof_corr": 0.252227,
+    "n_samples": 27910,
+    "n_features": 22
+  },
+  "window_days": 20
+}

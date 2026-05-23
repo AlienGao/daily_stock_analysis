@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250201",
+  "train_end": "20260131",
+  "pred_date": "20260224",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301231.SZ",
+      "stock_code": "301231",
+      "stock_name": "荣信文化",
+      "lgb_score": 100.0,
+      "raw_score": 0.29,
+      "predicted_days": 12
+    },
+    {
+      "rank": 2,
+      "ts_code": "002524.SZ",
+      "stock_code": "002524",
+      "stock_name": "光正眼科",
+      "lgb_score": 91.39,
+      "raw_score": 0.26,
+      "predicted_days": 14
+    },
+    {
+      "rank": 3,
+      "ts_code": "688458.SH",
+      "stock_code": "688458",
+      "stock_name": "美芯晟",
+      "lgb_score": 90.05,
+      "raw_score": 0.26,
+      "predicted_days": 15
+    },
+    {
+      "rank": 4,
+      "ts_code": "000020.SZ",
+      "stock_code": "000020",
+      "stock_name": "深华发Ａ",
+      "lgb_score": 89.88,
+      "raw_score": 0.26,
+      "predicted_days": 14
+    },
+    {
+      "rank": 5,
+      "ts_code": "603171.SH",
+      "stock_code": "603171",
+      "stock_name": "税友股份",
+      "lgb_score": 84.5,
+      "raw_score": 0.25,
+      "predicted_days": 15
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.25,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.112257,
+    "std": 0.018641,
+    "skew": 1.3218,
+    "kurtosis": 7.4758,
+    "min": 0.026408,
+    "max": 0.286173,
+    "median": 0.110039
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11487170318003907,
+    "cv_rmse_std": 0.01323573113095754,
+    "cv_scores": [
+      0.101951,
+      0.126039,
+      0.133464,
+      0.099493,
+      0.113412
+    ],
+    "rank_ic_mean": 0.224185,
+    "rank_ic_std": 0.0338,
+    "icir": 6.6327,
+    "oof_corr": 0.212069,
+    "n_samples": 18757,
+    "n_features": 22
+  },
+  "window_days": 20
+}

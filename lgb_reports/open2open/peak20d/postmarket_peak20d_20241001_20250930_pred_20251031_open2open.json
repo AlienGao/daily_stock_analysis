@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20241001",
+  "train_end": "20250930",
+  "pred_date": "20251031",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688135.SH",
+      "stock_code": "688135",
+      "stock_name": "利扬芯片",
+      "lgb_score": 100.0,
+      "raw_score": 0.37,
+      "predicted_days": 14
+    },
+    {
+      "rank": 2,
+      "ts_code": "301322.SZ",
+      "stock_code": "301322",
+      "stock_name": "绿通科技",
+      "lgb_score": 99.77,
+      "raw_score": 0.37,
+      "predicted_days": 14
+    },
+    {
+      "rank": 3,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 99.64,
+      "raw_score": 0.37,
+      "predicted_days": 15
+    },
+    {
+      "rank": 4,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 89.97,
+      "raw_score": 0.33,
+      "predicted_days": 15
+    },
+    {
+      "rank": 5,
+      "ts_code": "301383.SZ",
+      "stock_code": "301383",
+      "stock_name": "天键股份",
+      "lgb_score": 89.07,
+      "raw_score": 0.33,
+      "predicted_days": 15
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.28,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.119196,
+    "std": 0.029216,
+    "skew": 0.1749,
+    "kurtosis": 5.93,
+    "min": 0.026134,
+    "max": 0.368698,
+    "median": 0.129998
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.1117634468799282,
+    "cv_rmse_std": 0.01466741547704345,
+    "cv_scores": [
+      0.086855,
+      0.112283,
+      0.106821,
+      0.125989,
+      0.126869
+    ],
+    "rank_ic_mean": 0.147645,
+    "rank_ic_std": 0.035164,
+    "icir": 4.1988,
+    "oof_corr": 0.171656,
+    "n_samples": 24763,
+    "n_features": 22
+  },
+  "window_days": 20
+}
