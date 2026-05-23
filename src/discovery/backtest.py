@@ -26,6 +26,30 @@ _REPORTS_DIR = Path(__file__).resolve().parent.parent.parent / "discovery_report
 _DEFAULT_INITIAL_CAPITAL = 5_000_000.0
 
 
+def _get_lot_info(stock_code: str) -> tuple:
+    """获取最小交易股数和递增单位。
+    科创板/北证：最低200股，超过200后100股递增。
+    其他板块：最低100股，100股递增。
+    """
+    code = str(stock_code).strip().zfill(6)
+    if code.startswith("688"):
+        return 200, 100
+    if code.startswith(("83", "87", "43")):
+        return 200, 100
+    return 100, 100
+
+
+def _calc_shares(alloc: float, price: float, stock_code: str) -> int:
+    """按手数计算可买股数，不够一手返回 0。"""
+    if price <= 0:
+        return 0
+    min_lot, step = _get_lot_info(stock_code)
+    raw = alloc / price
+    if raw < min_lot:
+        return 0
+    return min_lot + int((raw - min_lot) / step) * step
+
+
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
@@ -42,6 +66,7 @@ class TradeRecord:
     return_pct: float  # e.g. 0.03 = 3%
     pnl: float         # 实际盈亏金额
     allocated_capital: float  # 分配到该股的初始资金
+    shares: int = 0           # 买入股数（100的倍数）
     is_open: bool = False  # 尚未到卖出时间，未平仓
 
 
@@ -248,12 +273,16 @@ class DiscoveryBacktest:
                     and code and name
                 ):
                     ret = (close_next - close_today) / close_today
+
+                    shares = _calc_shares(alloc, close_today, code)
+                    if shares <= 0:
+                        continue
                     stock_returns[code] = ret
-                    pnl = alloc * ret
-                    day_pnl += pnl
                     if ret > 0:
                         wins += 1
-
+                    actual_cost = shares * close_today
+                    pnl = actual_cost * ret
+                    day_pnl += pnl
                     trade_records.append(TradeRecord(
                         stock_code=code,
                         stock_name=name,
@@ -264,6 +293,7 @@ class DiscoveryBacktest:
                         return_pct=round(ret, 6),
                         pnl=round(pnl, 2),
                         allocated_capital=round(alloc, 2),
+                        shares=shares,
                         is_open=is_open,
                     ))
 
@@ -274,9 +304,9 @@ class DiscoveryBacktest:
                     h = self._get_price(code, ohlc_day, "high")
                     lo = self._get_price(code, ohlc_day, "low")
                     if o and h and lo:
-                        w_open += alloc * (o / close_today - 1)
-                        w_high += alloc * (h / close_today - 1)
-                        w_low += alloc * (lo / close_today - 1)
+                        w_open += actual_cost * (o / close_today - 1)
+                        w_high += actual_cost * (h / close_today - 1)
+                        w_low += actual_cost * (lo / close_today - 1)
                         has_ohlc = True
 
             if not stock_returns:
@@ -410,13 +440,17 @@ class DiscoveryBacktest:
                     and code and name
                 ):
                     ret = (open_sell - open_buy) / open_buy
-                    stock_returns[code] = ret
-                    pnl = alloc * ret
-                    day_pnl += pnl
-                    if ret > 0:
-                        wins += 1
 
                     sell_time = datetime.now().strftime("%H:%M:%S") if is_open else "09:30:00"
+                    shares = _calc_shares(alloc, open_buy, code)
+                    if shares <= 0:
+                        continue
+                    stock_returns[code] = ret
+                    if ret > 0:
+                        wins += 1
+                    actual_cost = shares * open_buy
+                    pnl = actual_cost * ret
+                    day_pnl += pnl
                     trade_records.append(TradeRecord(
                         stock_code=code,
                         stock_name=name,
@@ -427,6 +461,7 @@ class DiscoveryBacktest:
                         return_pct=round(ret, 6),
                         pnl=round(pnl, 2),
                         allocated_capital=round(alloc, 2),
+                        shares=shares,
                         is_open=is_open,
                     ))
 
@@ -435,9 +470,9 @@ class DiscoveryBacktest:
                     lo = self._get_price(code, td_buy, "low")
                     c = self._get_price(code, td_buy, "close")
                     if h and lo and c:
-                        w_high += alloc * (h / open_buy - 1)
-                        w_low += alloc * (lo / open_buy - 1)
-                        w_close += alloc * (c / open_buy - 1)
+                        w_high += actual_cost * (h / open_buy - 1)
+                        w_low += actual_cost * (lo / open_buy - 1)
+                        w_close += actual_cost * (c / open_buy - 1)
                         has_ohlc = True
 
             if not stock_returns:

@@ -1221,8 +1221,12 @@ const LightGBMPage: React.FC = () => {
                         )},
                         { title: '买入日', dataIndex: 'buy_date', key: 'buy_date', width: 85 },
                         { title: '买入价', dataIndex: 'buy_price', key: 'buy_price', width: 70, render: (_: unknown, r: typeof backtestSim.trades[0]) => r.buy_price.toFixed(2) },
-                        { title: '股数', dataIndex: 'shares', key: 'shares', width: 60, render: (_: unknown, r: typeof backtestSim.trades[0]) => r.skipped ? '-' : (r.shares ? r.shares.toLocaleString() : '--') },
+                        { title: '股数', dataIndex: 'shares', key: 'shares', width: 75, render: (_: unknown, r: typeof backtestSim.trades[0]) => r.skipped ? '-' : (r.shares ? r.shares.toLocaleString() : '--') },
                         { title: '买入金额', dataIndex: 'actual_cost', key: 'actual_cost', width: 80, render: (_: unknown, r: typeof backtestSim.trades[0]) => r.skipped ? '-' : (r.actual_cost ? `${(r.actual_cost / 10000).toFixed(2)}万` : '--') },
+                        { title: '目标收益', dataIndex: 'target_return', key: 'target_return', width: 75, render: (_: unknown, r: typeof backtestSim.trades[0]) => {
+                          const t = (r as any).target_return;
+                          return t ? <span className="text-amber-400">+{(t * 100).toFixed(1)}%</span> : '--';
+                        }},
                         ...(labelMode === 'peak_speed' ? [{
                           title: '预期卖出日', dataIndex: 'expected_sell_date', key: 'expected_sell_date', width: 100,
                           render: (_: unknown, r: typeof backtestSim.trades[0]) => {

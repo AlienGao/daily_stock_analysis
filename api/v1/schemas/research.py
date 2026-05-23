@@ -114,6 +114,7 @@ class LGBBacktestTradeItem(BaseModel):
     return_pct: float
     skipped: bool = False
     expected_sell_date: str = ""
+    target_return: float = 0.0
     shares: int = 0
     actual_cost: float = 0.0
 

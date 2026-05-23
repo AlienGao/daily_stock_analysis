@@ -1021,6 +1021,7 @@ def _simulate_backtest(exec_mode: str, forward_days: int, top_n: int, stop_strat
                 "ts_code": str(p.get("ts_code", "")),
                 "stock_name": str(p.get("stock_name", "")),
                 "rank": int(p.get("rank", 0)),
+                "raw_score": float(p.get("raw_score", 0.0)),
             })
 
     if not preds_by_date:
@@ -1204,6 +1205,7 @@ def _simulate_backtest(exec_mode: str, forward_days: int, top_n: int, stop_strat
                 ts_code = p["ts_code"]
                 stock_name = p["stock_name"]
                 rank = p["rank"]
+                raw_score = p.get("raw_score", 0.0)
 
                 if is_holding:
                     buy_entry = price_map.get((code, buy_date))
@@ -1272,6 +1274,7 @@ def _simulate_backtest(exec_mode: str, forward_days: int, top_n: int, stop_strat
                         "sell_date": eff_sell_date if eff_sell_date != latest_td else "",
                         "sell_price": eff_sell_price,
                         "return_pct": ret, "skipped": False,
+                        "target_return": raw_score,
                         "shares": h_shares, "actual_cost": round(h_cost, 2),
                     })
                     held += 1
@@ -1455,6 +1458,7 @@ def _simulate_backtest(exec_mode: str, forward_days: int, top_n: int, stop_strat
                     "code": code, "ts_code": ts_code, "stock_name": stock_name,
                     "rank": rank, "buy_price": buy_price, "sell_price": sell_price,
                     "ret": ret, "skipped": skipped, "actual_sell_date": actual_sell_date,
+                    "raw_score": raw_score,
                 })
                 held += 1
 
@@ -1513,6 +1517,7 @@ def _simulate_backtest(exec_mode: str, forward_days: int, top_n: int, stop_strat
                     "buy_date": buy_date, "buy_price": st["buy_price"],
                     "sell_date": st["actual_sell_date"], "sell_price": st["sell_price"],
                     "return_pct": st["ret"], "skipped": st["skipped"],
+                    "target_return": st.get("raw_score", 0.0),
                     "shares": st["shares"], "actual_cost": round(st["actual_cost"], 2),
                 })
 
@@ -2407,6 +2412,12 @@ def _run_brute_force_search(task_id: str):
         json_path = _os.path.join(reports_dir, f"brute_force_{now_str}.json")
         with open(json_path, "w", encoding="utf-8") as fh:
             _json.dump(result.model_dump(mode="json"), fh, ensure_ascii=False, default=str)
+
+        # Delete old brute force reports (keep only the latest)
+        for old_file in _os.listdir(reports_dir):
+            if old_file.startswith("brute_force_") and old_file != _os.path.basename(report_path) and old_file != _os.path.basename(json_path):
+                if old_file.endswith(".md") or old_file.endswith(".json"):
+                    _os.remove(_os.path.join(reports_dir, old_file))
 
         task["status"] = "completed"
         task["result"] = result

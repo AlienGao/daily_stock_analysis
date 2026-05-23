@@ -77,6 +77,7 @@ export type TradeRecordItem = {
   return_pct: number;
   pnl: number;
   allocated_capital: number;
+  shares?: number;
   is_open?: boolean;
 };
 

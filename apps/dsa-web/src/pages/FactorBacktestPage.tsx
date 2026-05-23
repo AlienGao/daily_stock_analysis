@@ -67,7 +67,7 @@ const FactorBacktestPage: React.FC = () => {
   const [topN, setTopN] = useState(1);
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
-  const [initialCapital, setInitialCapital] = useState(1_000_000);
+  const [initialCapital, setInitialCapital] = useState(10_000_000);
   const [riskFreeRate, setRiskFreeRate] = useState(2.0);
   const [usePipeline, setUsePipeline] = useState(true);
   const [blendAlpha, setBlendAlpha] = useState(0.3);
@@ -148,7 +148,7 @@ const FactorBacktestPage: React.FC = () => {
               if (p.topN != null) setTopN(p.topN);
               if (p.startDate) setStartDate(p.startDate);
               if (p.endDate) setEndDate(p.endDate);
-              if (p.initialCapital) setInitialCapital(p.initialCapital);
+              if (p.initialCapital) setInitialCapital(p.initialCapital === 1_000_000 ? 10_000_000 : p.initialCapital);
               if (p.riskFreeRate != null) setRiskFreeRate(p.riskFreeRate);
               if (p.usePipeline != null) setUsePipeline(p.usePipeline);
               if (p.blendAlpha != null) setBlendAlpha(p.blendAlpha);
@@ -552,7 +552,7 @@ const FactorBacktestPage: React.FC = () => {
       const closed = trades.filter((t: FactorBacktestTrade) => t.status === 'closed' || t.status === 'extended');
       const wins = closed.filter((t: FactorBacktestTrade) => t.return_pct > 0).length;
       const wr = closed.length > 0 ? wins / closed.length : 0;
-      const ic = result.params?.initial_capital ?? 1_000_000;
+      const ic = result.params?.initial_capital ?? 10_000_000;
       const finalCapital = curve.length > 0 ? curve[curve.length - 1].capital : ic;
       const cumRet = (finalCapital / ic) - 1;
       let annRet = 0;
@@ -660,8 +660,8 @@ const FactorBacktestPage: React.FC = () => {
     { title: '卖出价', dataIndex: 'sell_price', key: 'sell_price', width: 80, render: (_: unknown, r: FactorBacktestTrade) => r.status === 'pending' ? '--' : r.sell_price },
     { title: '买入额', dataIndex: 'allocated', key: 'allocated', width: 90, render: (_: unknown, r: FactorBacktestTrade) => r.status === 'pending' ? '--' : (r.allocated > 0 ? r.allocated.toFixed(2) : '--') },
     { title: '卖出额', dataIndex: 'allocated', key: 'sell_amount', width: 90, render: (_: unknown, r: FactorBacktestTrade) => r.status === 'pending' ? '--' : (r.allocated > 0 ? (r.allocated + r.pnl).toFixed(2) : '--') },
-    { title: '收益', dataIndex: 'return_pct', key: 'return_pct', width: 80, render: (_: unknown, r: FactorBacktestTrade) => r.status === 'pending' ? '--' : pct(r.return_pct) },
-    { title: '盈亏', dataIndex: 'pnl', key: 'pnl', width: 100, render: (_: unknown, r: FactorBacktestTrade) => r.status === 'pending' ? '--' : r.pnl.toFixed(2) },
+    { title: '收益', dataIndex: 'return_pct', key: 'return_pct', width: 80, render: (_: unknown, r: FactorBacktestTrade) => r.status === 'pending' ? '--' : <span className={r.return_pct >= 0 ? 'text-red-400' : 'text-emerald-400'}>{r.return_pct >= 0 ? '+' : ''}{pct(r.return_pct)}</span> },
+    { title: '盈亏', dataIndex: 'pnl', key: 'pnl', width: 100, render: (_: unknown, r: FactorBacktestTrade) => r.status === 'pending' ? '--' : <span className={r.pnl >= 0 ? 'text-red-400' : 'text-emerald-400'}>{r.pnl >= 0 ? '+' : ''}{r.pnl.toFixed(0)}</span> },
     { title: '状态', dataIndex: 'status', key: 'status', width: 80, render: (_: unknown, r: FactorBacktestTrade) => {
       const m: Record<string, string> = { closed: '已平', extended: '延期', canceled: '取消', open: '持仓', pending: '待执行', locked: '锁仓' };
       return m[r.status] || r.status;
@@ -790,7 +790,7 @@ const FactorBacktestPage: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-tertiary-text whitespace-nowrap">初始资金</span>
                   <InputNumber size="small" min={10000} step={100000} value={initialCapital}
-                    onChange={(v) => setInitialCapital(v ?? 1_000_000)}
+                    onChange={(v) => setInitialCapital(v ?? 10_000_000)}
                     className="w-32" formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} />
                 </div>
                 <div className="flex items-center gap-2">

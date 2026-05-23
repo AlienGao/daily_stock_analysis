@@ -1211,8 +1211,11 @@ const BacktestCard: React.FC<{
                     <th className="px-3 py-2 text-left font-medium">股票</th>
                     <th className="px-2 py-2 text-right font-medium">买入日</th>
                     <th className="px-2 py-2 text-right font-medium">买入价</th>
+                    <th className="px-2 py-2 text-right font-medium">股数</th>
+                    <th className="px-2 py-2 text-right font-medium">买入金额</th>
                     <th className="px-2 py-2 text-right font-medium">卖出日</th>
                     <th className="px-2 py-2 text-right font-medium">卖出价</th>
+                    <th className="px-2 py-2 text-right font-medium">卖出金额</th>
                     <th className="px-2 py-2 text-right font-medium">收益%</th>
                     <th className="px-2 py-2 text-right font-medium">盈亏</th>
                   </tr>
@@ -1226,8 +1229,11 @@ const BacktestCard: React.FC<{
                       </td>
                       <td className="px-2 py-1.5 text-right text-tertiary-text">{fmtDate(t.buy_date)}</td>
                       <td className="px-2 py-1.5 text-right tabular-nums">{t.buy_price.toFixed(2)}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">{t.shares ? t.shares.toLocaleString() : '--'}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">{t.shares ? `${(t.shares * t.buy_price / 10000).toFixed(2)}万` : '--'}</td>
                       <td className="px-2 py-1.5 text-right text-tertiary-text">{t.is_open ? '--' : fmtDate(t.sell_date)}</td>
                       <td className="px-2 py-1.5 text-right tabular-nums">{t.is_open ? '--' : t.sell_price.toFixed(2)}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">{t.is_open ? '--' : (t.shares ? `${(t.shares * t.sell_price / 10000).toFixed(2)}万` : '--')}</td>
                       <td className={`px-2 py-1.5 text-right font-medium tabular-nums ${t.return_pct >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                         {t.return_pct >= 0 ? '+' : ''}{(t.return_pct * 100).toFixed(2)}%
                       </td>

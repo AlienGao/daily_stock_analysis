@@ -1435,6 +1435,7 @@ class TradeRecordItem(BaseModel):
     return_pct: float
     pnl: float
     allocated_capital: float
+    shares: int = 0
     is_open: bool = False  # 未到卖出时间，未平仓
 
 
@@ -1532,6 +1533,7 @@ def get_backtest(
             return_pct=t.return_pct,
             pnl=t.pnl,
             allocated_capital=t.allocated_capital,
+            shares=t.shares,
             is_open=t.is_open,
         )
         for t in summary.trade_records
@@ -2068,7 +2070,7 @@ class FactorBacktestRequest(BaseModel):
     end_date: Optional[str] = None
     top_n: int = 5
     hold_days: List[int] = [1, 3, 5, 10, 20]
-    initial_capital: float = 1_000_000.0
+    initial_capital: float = 10_000_000.0
     risk_free_rate: float = 0.02
     use_pipeline: bool = False
     score_blend_alpha: float = 0.3
