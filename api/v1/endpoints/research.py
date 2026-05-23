@@ -1875,31 +1875,22 @@ def _simulate_peak_backtest(exec_mode: str, top_n: int, stop_loss_pct: float = -
                 exited_this_round = True
                 positions.remove(pos)
 
-        # --- 2. Refill: buy top_n from latest predictions after any exit ---
+        # --- 2. Refill: buy top_n from previous trading day's prediction ---
         if not is_last_day and (exited_this_round or len(positions) == 0):
             open_slots = top_n
             if open_slots > 0:
-                # Collect candidates from all available predictions, latest first
-                candidates: list = []
-                for pd in reversed(_sorted_pred_dates):
-                    if exec_mode == "close":
-                        if pd > td or pd not in trading_days_set:
-                            continue
-                    else:
-                        if pd >= td:
-                            continue
-                    for p in preds_by_date[pd]:
-                        p["_refill_pred_date"] = pd
-                        candidates.append(p)
+                # close: use today's prediction; open: use previous trading day's prediction
+                if exec_mode == "close":
+                    refill_pred_date = td
+                else:
+                    refill_pred_date = _find_nth_trading_day(td, -1, trading_days_sorted)
+                candidates = preds_by_date.get(refill_pred_date, []) if refill_pred_date else []
 
                 if candidates:
-                    held_codes = {p["code"] for p in positions}
                     alloc_per_slot = cash / max(top_n, 1)
                     for cand in candidates:
                         if open_slots <= 0:
                             break
-                        if cand["stock_code"] in held_codes:
-                            continue
                         entry = price_map.get((cand["stock_code"], td))
                         if not entry:
                             continue
@@ -1926,7 +1917,7 @@ def _simulate_peak_backtest(exec_mode: str, top_n: int, stop_loss_pct: float = -
                             "code": cand["stock_code"],
                             "ts_code": cand["ts_code"],
                             "stock_name": cand["stock_name"],
-                            "pred_date": cand.get("_refill_pred_date", ""),
+                            "pred_date": refill_pred_date,
                             "buy_date": td,
                             "buy_price": price,
                             "pred_days": cand["predicted_days"],
@@ -1940,7 +1931,6 @@ def _simulate_peak_backtest(exec_mode: str, top_n: int, stop_loss_pct: float = -
                             "rank": cand["rank"],
                             "expected_sell_date": _find_nth_trading_day(td, cand["predicted_days"], trading_days_sorted) or (latest_td or ""),
                         })
-                        held_codes.add(cand["stock_code"])
                         open_slots -= 1
 
         # --- 3. Mark-to-market portfolio value ---

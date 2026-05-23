@@ -1227,7 +1227,16 @@ const LightGBMPage: React.FC = () => {
                           title: '预期卖出日', dataIndex: 'expected_sell_date', key: 'expected_sell_date', width: 90,
                           render: (_: unknown, r: typeof backtestSim.trades[0]) => (r as any).expected_sell_date || '--',
                         }] : []),
-                        { title: '卖出日', dataIndex: 'sell_date', key: 'sell_date', width: 85, render: (_: unknown, r: typeof backtestSim.trades[0]) => r.skipped ? '（涨停）' : (r.sell_date || '--') },
+                        { title: '卖出日', dataIndex: 'sell_date', key: 'sell_date', width: 85, render: (_: unknown, r: typeof backtestSim.trades[0]) => {
+                          if (r.skipped) return '（涨停）';
+                          if (!r.sell_date) return '--';
+                          let colorClass = 'text-white';
+                          if (r.expected_sell_date) {
+                            if (r.sell_date < r.expected_sell_date) colorClass = 'text-green-400';
+                            else if (r.sell_date > r.expected_sell_date) colorClass = 'text-red-400';
+                          }
+                          return <span className={colorClass}>{r.sell_date}</span>;
+                        }},
                         { title: '卖出价', dataIndex: 'sell_price', key: 'sell_price', width: 70, render: (_: unknown, r: typeof backtestSim.trades[0]) => r.skipped ? '-' : (r.sell_date ? r.sell_price.toFixed(2) : r.sell_price.toFixed(2)) },
                         {
                           title: '收益', dataIndex: 'return_pct', key: 'return_pct', width: 70,
