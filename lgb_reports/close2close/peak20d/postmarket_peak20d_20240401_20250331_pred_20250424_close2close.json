@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240401",
+  "train_end": "20250331",
+  "pred_date": "20250424",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002164.SZ",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 100.0,
+      "raw_score": 0.52,
+      "predicted_days": 16
+    },
+    {
+      "rank": 2,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 98.85,
+      "raw_score": 0.51,
+      "predicted_days": 15
+    },
+    {
+      "rank": 3,
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 90.57,
+      "raw_score": 0.47,
+      "predicted_days": 16
+    },
+    {
+      "rank": 4,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 89.33,
+      "raw_score": 0.46,
+      "predicted_days": 15
+    },
+    {
+      "rank": 5,
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
+      "lgb_score": 89.2,
+      "raw_score": 0.46,
+      "predicted_days": 12
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.93,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.071977,
+    "std": 0.028502,
+    "skew": 5.7734,
+    "kurtosis": 55.1377,
+    "min": -0.005002,
+    "max": 0.515824,
+    "median": 0.073246
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11719752703074304,
+    "cv_rmse_std": 0.041600637154076824,
+    "cv_scores": [
+      0.059992,
+      0.188762,
+      0.122135,
+      0.102619,
+      0.112479
+    ],
+    "rank_ic_mean": 0.189272,
+    "rank_ic_std": 0.122811,
+    "icir": 1.5412,
+    "oof_corr": 0.315428,
+    "n_samples": 27912,
+    "n_features": 22
+  },
+  "window_days": 20
+}

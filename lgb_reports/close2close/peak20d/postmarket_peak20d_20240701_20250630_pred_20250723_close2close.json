@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240701",
+  "train_end": "20250630",
+  "pred_date": "20250723",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
+      "lgb_score": 100.0,
+      "raw_score": 0.54,
+      "predicted_days": 13
+    },
+    {
+      "rank": 2,
+      "ts_code": "002600.SZ",
+      "stock_code": "002600",
+      "stock_name": "领益智造",
+      "lgb_score": 81.94,
+      "raw_score": 0.45,
+      "predicted_days": 11
+    },
+    {
+      "rank": 3,
+      "ts_code": "002438.SZ",
+      "stock_code": "002438",
+      "stock_name": "江苏神通",
+      "lgb_score": 80.86,
+      "raw_score": 0.44,
+      "predicted_days": 12
+    },
+    {
+      "rank": 4,
+      "ts_code": "300263.SZ",
+      "stock_code": "300263",
+      "stock_name": "隆华科技",
+      "lgb_score": 78.46,
+      "raw_score": 0.43,
+      "predicted_days": 15
+    },
+    {
+      "rank": 5,
+      "ts_code": "002009.SZ",
+      "stock_code": "002009",
+      "stock_name": "天奇股份",
+      "lgb_score": 77.13,
+      "raw_score": 0.42,
+      "predicted_days": 15
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.88,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.100432,
+    "std": 0.025248,
+    "skew": 3.6318,
+    "kurtosis": 37.687,
+    "min": 0.012315,
+    "max": 0.541554,
+    "median": 0.105492
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.14334047903574315,
+    "cv_rmse_std": 0.05630550470185491,
+    "cv_scores": [
+      0.255193,
+      0.119421,
+      0.10607,
+      0.124937,
+      0.111081
+    ],
+    "rank_ic_mean": 0.106582,
+    "rank_ic_std": 0.026947,
+    "icir": 3.9553,
+    "oof_corr": -0.101753,
+    "n_samples": 26168,
+    "n_features": 22
+  },
+  "window_days": 20
+}

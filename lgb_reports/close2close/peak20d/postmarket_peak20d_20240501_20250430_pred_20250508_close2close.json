@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240501",
+  "train_end": "20250430",
+  "pred_date": "20250508",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 100.0,
+      "raw_score": 0.5,
+      "predicted_days": 13
+    },
+    {
+      "rank": 2,
+      "ts_code": "688316.SH",
+      "stock_code": "688316",
+      "stock_name": "青云科技-U",
+      "lgb_score": 95.12,
+      "raw_score": 0.47,
+      "predicted_days": 14
+    },
+    {
+      "rank": 3,
+      "ts_code": "002600.SZ",
+      "stock_code": "002600",
+      "stock_name": "领益智造",
+      "lgb_score": 94.89,
+      "raw_score": 0.47,
+      "predicted_days": 12
+    },
+    {
+      "rank": 4,
+      "ts_code": "688320.SH",
+      "stock_code": "688320",
+      "stock_name": "禾川科技",
+      "lgb_score": 93.24,
+      "raw_score": 0.47,
+      "predicted_days": 13
+    },
+    {
+      "rank": 5,
+      "ts_code": "688181.SH",
+      "stock_code": "688181",
+      "stock_name": "八亿时空",
+      "lgb_score": 89.93,
+      "raw_score": 0.45,
+      "predicted_days": 16
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.92,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.09632,
+    "std": 0.033396,
+    "skew": 3.5066,
+    "kurtosis": 28.841,
+    "min": -0.007094,
+    "max": 0.499686,
+    "median": 0.102711
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.125903574767792,
+    "cv_rmse_std": 0.06530408693865328,
+    "cv_scores": [
+      0.059514,
+      0.250984,
+      0.097312,
+      0.111007,
+      0.110701
+    ],
+    "rank_ic_mean": 0.124525,
+    "rank_ic_std": 0.027574,
+    "icir": 4.516,
+    "oof_corr": 0.047373,
+    "n_samples": 27192,
+    "n_features": 22
+  },
+  "window_days": 20
+}

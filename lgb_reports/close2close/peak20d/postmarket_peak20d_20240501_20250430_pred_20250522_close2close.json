@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240501",
+  "train_end": "20250430",
+  "pred_date": "20250522",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 100.0,
+      "raw_score": 0.53,
+      "predicted_days": 13
+    },
+    {
+      "rank": 2,
+      "ts_code": "002600.SZ",
+      "stock_code": "002600",
+      "stock_name": "领益智造",
+      "lgb_score": 92.71,
+      "raw_score": 0.5,
+      "predicted_days": 12
+    },
+    {
+      "rank": 3,
+      "ts_code": "688135.SH",
+      "stock_code": "688135",
+      "stock_name": "利扬芯片",
+      "lgb_score": 88.97,
+      "raw_score": 0.48,
+      "predicted_days": 10
+    },
+    {
+      "rank": 4,
+      "ts_code": "688320.SH",
+      "stock_code": "688320",
+      "stock_name": "禾川科技",
+      "lgb_score": 87.75,
+      "raw_score": 0.47,
+      "predicted_days": 13
+    },
+    {
+      "rank": 5,
+      "ts_code": "301008.SZ",
+      "stock_code": "301008",
+      "stock_name": "宏昌科技",
+      "lgb_score": 86.32,
+      "raw_score": 0.46,
+      "predicted_days": 15
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.92,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.097349,
+    "std": 0.033263,
+    "skew": 4.0258,
+    "kurtosis": 33.9329,
+    "min": -0.003129,
+    "max": 0.534902,
+    "median": 0.102711
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.125903574767792,
+    "cv_rmse_std": 0.06530408693865328,
+    "cv_scores": [
+      0.059514,
+      0.250984,
+      0.097312,
+      0.111007,
+      0.110701
+    ],
+    "rank_ic_mean": 0.124525,
+    "rank_ic_std": 0.027574,
+    "icir": 4.516,
+    "oof_corr": 0.047373,
+    "n_samples": 27192,
+    "n_features": 22
+  },
+  "window_days": 20
+}

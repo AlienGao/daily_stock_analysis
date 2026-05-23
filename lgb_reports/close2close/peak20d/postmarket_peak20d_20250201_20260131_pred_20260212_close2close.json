@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250201",
+  "train_end": "20260131",
+  "pred_date": "20260212",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688627.SH",
+      "stock_code": "688627",
+      "stock_name": "精智达",
+      "lgb_score": 100.0,
+      "raw_score": 0.29,
+      "predicted_days": 14
+    },
+    {
+      "rank": 2,
+      "ts_code": "688377.SH",
+      "stock_code": "688377",
+      "stock_name": "DR迪威尔",
+      "lgb_score": 94.78,
+      "raw_score": 0.27,
+      "predicted_days": 13
+    },
+    {
+      "rank": 3,
+      "ts_code": "603171.SH",
+      "stock_code": "603171",
+      "stock_name": "税友股份",
+      "lgb_score": 91.8,
+      "raw_score": 0.26,
+      "predicted_days": 14
+    },
+    {
+      "rank": 4,
+      "ts_code": "002334.SZ",
+      "stock_code": "002334",
+      "stock_name": "英威腾",
+      "lgb_score": 89.54,
+      "raw_score": 0.26,
+      "predicted_days": 15
+    },
+    {
+      "rank": 5,
+      "ts_code": "603320.SH",
+      "stock_code": "603320",
+      "stock_name": "迪贝电气",
+      "lgb_score": 89.11,
+      "raw_score": 0.26,
+      "predicted_days": 11
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.26,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.114884,
+    "std": 0.021635,
+    "skew": 1.8029,
+    "kurtosis": 7.5746,
+    "min": -0.008457,
+    "max": 0.289315,
+    "median": 0.11192
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11772348634642178,
+    "cv_rmse_std": 0.013658985858186647,
+    "cv_scores": [
+      0.108277,
+      0.131253,
+      0.135783,
+      0.099971,
+      0.113334
+    ],
+    "rank_ic_mean": 0.221293,
+    "rank_ic_std": 0.06563,
+    "icir": 3.3718,
+    "oof_corr": 0.210543,
+    "n_samples": 18759,
+    "n_features": 22
+  },
+  "window_days": 20
+}

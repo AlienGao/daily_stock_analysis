@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240101",
+  "train_end": "20241231",
+  "pred_date": "20250124",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002164.SZ",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 100.0,
+      "raw_score": 0.5,
+      "predicted_days": 16
+    },
+    {
+      "rank": 2,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 98.45,
+      "raw_score": 0.49,
+      "predicted_days": 14
+    },
+    {
+      "rank": 3,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 88.59,
+      "raw_score": 0.44,
+      "predicted_days": 15
+    },
+    {
+      "rank": 4,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 87.47,
+      "raw_score": 0.43,
+      "predicted_days": 12
+    },
+    {
+      "rank": 5,
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
+      "lgb_score": 87.3,
+      "raw_score": 0.43,
+      "predicted_days": 13
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.47,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.070203,
+    "std": 0.026189,
+    "skew": 4.6323,
+    "kurtosis": 39.1293,
+    "min": -0.003638,
+    "max": 0.495506,
+    "median": 0.066857
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11302628423765518,
+    "cv_rmse_std": 0.04482886088409378,
+    "cv_scores": [
+      0.088192,
+      0.06777,
+      0.197434,
+      0.114704,
+      0.097032
+    ],
+    "rank_ic_mean": 0.124294,
+    "rank_ic_std": 0.063127,
+    "icir": 1.969,
+    "oof_corr": 0.189064,
+    "n_samples": 29785,
+    "n_features": 22
+  },
+  "window_days": 20
+}

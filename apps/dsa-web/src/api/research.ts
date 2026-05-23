@@ -118,6 +118,7 @@ export type LGBBacktestTradeItem = {
   return_pct: number;
   skipped: boolean;
   expected_sell_date?: string;
+  target_return?: number;
   shares: number;
   actual_cost: number;
 };

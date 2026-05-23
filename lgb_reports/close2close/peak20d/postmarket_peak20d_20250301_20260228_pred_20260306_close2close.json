@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250301",
+  "train_end": "20260228",
+  "pred_date": "20260306",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "601133.SH",
+      "stock_code": "601133",
+      "stock_name": "柏诚股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.27,
+      "predicted_days": 12
+    },
+    {
+      "rank": 2,
+      "ts_code": "000688.SZ",
+      "stock_code": "000688",
+      "stock_name": "国城矿业",
+      "lgb_score": 99.65,
+      "raw_score": 0.27,
+      "predicted_days": 13
+    },
+    {
+      "rank": 3,
+      "ts_code": "002831.SZ",
+      "stock_code": "002831",
+      "stock_name": "裕同科技",
+      "lgb_score": 93.79,
+      "raw_score": 0.26,
+      "predicted_days": 10
+    },
+    {
+      "rank": 4,
+      "ts_code": "688025.SH",
+      "stock_code": "688025",
+      "stock_name": "杰普特",
+      "lgb_score": 93.26,
+      "raw_score": 0.26,
+      "predicted_days": 14
+    },
+    {
+      "rank": 5,
+      "ts_code": "002334.SZ",
+      "stock_code": "002334",
+      "stock_name": "英威腾",
+      "lgb_score": 93.25,
+      "raw_score": 0.26,
+      "predicted_days": 16
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.38,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.119953,
+    "std": 0.03547,
+    "skew": -1.0644,
+    "kurtosis": 0.5292,
+    "min": -0.004183,
+    "max": 0.274174,
+    "median": 0.136203
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.1165214664476701,
+    "cv_rmse_std": 0.012354261510337305,
+    "cv_scores": [
+      0.104702,
+      0.129828,
+      0.122135,
+      0.099013,
+      0.126929
+    ],
+    "rank_ic_mean": 0.240391,
+    "rank_ic_std": 0.049006,
+    "icir": 4.9054,
+    "oof_corr": 0.275246,
+    "n_samples": 18822,
+    "n_features": 22
+  },
+  "window_days": 20
+}

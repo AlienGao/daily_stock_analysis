@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20241201",
+  "train_end": "20251130",
+  "pred_date": "20251218",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002067.SZ",
+      "stock_code": "002067",
+      "stock_name": "景兴纸业",
+      "lgb_score": 100.0,
+      "raw_score": 0.48,
+      "predicted_days": 12
+    },
+    {
+      "rank": 2,
+      "ts_code": "600512.SH",
+      "stock_code": "600512",
+      "stock_name": "腾达建设",
+      "lgb_score": 89.34,
+      "raw_score": 0.43,
+      "predicted_days": 14
+    },
+    {
+      "rank": 3,
+      "ts_code": "601828.SH",
+      "stock_code": "601828",
+      "stock_name": "美凯龙",
+      "lgb_score": 80.67,
+      "raw_score": 0.39,
+      "predicted_days": 15
+    },
+    {
+      "rank": 4,
+      "ts_code": "603915.SH",
+      "stock_code": "603915",
+      "stock_name": "国茂股份",
+      "lgb_score": 80.24,
+      "raw_score": 0.39,
+      "predicted_days": 13
+    },
+    {
+      "rank": 5,
+      "ts_code": "002234.SZ",
+      "stock_code": "002234",
+      "stock_name": "民和股份",
+      "lgb_score": 78.46,
+      "raw_score": 0.38,
+      "predicted_days": 13
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.14,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.139062,
+    "std": 0.031335,
+    "skew": 2.7212,
+    "kurtosis": 13.7722,
+    "min": 0.022436,
+    "max": 0.477566,
+    "median": 0.135339
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.1181917138119184,
+    "cv_rmse_std": 0.013931832187834671,
+    "cv_scores": [
+      0.125386,
+      0.111779,
+      0.127183,
+      0.132657,
+      0.093953
+    ],
+    "rank_ic_mean": 0.162891,
+    "rank_ic_std": 0.061036,
+    "icir": 2.6688,
+    "oof_corr": 0.180244,
+    "n_samples": 22408,
+    "n_features": 22
+  },
+  "window_days": 20
+}

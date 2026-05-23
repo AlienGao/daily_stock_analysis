@@ -1124,7 +1124,7 @@ const LightGBMPage: React.FC = () => {
                     onChange={(v) => setStopStrategy(v as string)}
                     options={[
                       { label: <AntTooltip title="到期日直接卖出，不判断盈亏">默认</AntTooltip>, value: 'none' },
-                      { label: <AntTooltip title="持仓期间逐日检查，当日收盘亏损超过 5% 即卖出，不等到期日">亏损厌恶</AntTooltip>, value: 'loss_aversion' },
+                      { label: <AntTooltip title="持仓期间逐日检查，当日收盘亏损超过 10% 即卖出，不等到期日">亏损厌恶</AntTooltip>, value: 'loss_aversion' },
                       { label: <AntTooltip title="到期日若亏损，延长持仓最多20个交易日，回本即卖，否则到期强平">跌了死扛</AntTooltip>, value: 'dead_hold' },
                     ]}
                   />
@@ -1224,8 +1224,17 @@ const LightGBMPage: React.FC = () => {
                         { title: '股数', dataIndex: 'shares', key: 'shares', width: 60, render: (_: unknown, r: typeof backtestSim.trades[0]) => r.skipped ? '-' : (r.shares ? r.shares.toLocaleString() : '--') },
                         { title: '买入金额', dataIndex: 'actual_cost', key: 'actual_cost', width: 80, render: (_: unknown, r: typeof backtestSim.trades[0]) => r.skipped ? '-' : (r.actual_cost ? `${(r.actual_cost / 10000).toFixed(2)}万` : '--') },
                         ...(labelMode === 'peak_speed' ? [{
-                          title: '预期卖出日', dataIndex: 'expected_sell_date', key: 'expected_sell_date', width: 90,
-                          render: (_: unknown, r: typeof backtestSim.trades[0]) => (r as any).expected_sell_date || '--',
+                          title: '预期卖出日', dataIndex: 'expected_sell_date', key: 'expected_sell_date', width: 100,
+                          render: (_: unknown, r: typeof backtestSim.trades[0]) => {
+                            const d = (r as any).expected_sell_date;
+                            const t = (r as any).target_return;
+                            return d ? (
+                              <div className="leading-tight">
+                                <div>{d}</div>
+                                {t != null && <div className="text-[11px] text-amber-400">+{(t * 100).toFixed(1)}%</div>}
+                              </div>
+                            ) : '--';
+                          },
                         }] : []),
                         { title: '卖出日', dataIndex: 'sell_date', key: 'sell_date', width: 85, render: (_: unknown, r: typeof backtestSim.trades[0]) => {
                           if (r.skipped) return '（涨停）';

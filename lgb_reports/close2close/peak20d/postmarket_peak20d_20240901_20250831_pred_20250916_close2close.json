@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240901",
+  "train_end": "20250831",
+  "pred_date": "20250916",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 100.0,
+      "raw_score": 0.48,
+      "predicted_days": 13
+    },
+    {
+      "rank": 2,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 92.62,
+      "raw_score": 0.45,
+      "predicted_days": 13
+    },
+    {
+      "rank": 3,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 89.23,
+      "raw_score": 0.43,
+      "predicted_days": 15
+    },
+    {
+      "rank": 4,
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
+      "lgb_score": 88.86,
+      "raw_score": 0.43,
+      "predicted_days": 13
+    },
+    {
+      "rank": 5,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 86.4,
+      "raw_score": 0.42,
+      "predicted_days": 17
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.86,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.148768,
+    "std": 0.04449,
+    "skew": -0.7637,
+    "kurtosis": 1.3129,
+    "min": 0.010323,
+    "max": 0.479877,
+    "median": 0.173521
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.13673739647486025,
+    "cv_rmse_std": 0.007743133162675916,
+    "cv_scores": [
+      0.149983,
+      0.140018,
+      0.129343,
+      0.129239,
+      0.135105
+    ],
+    "rank_ic_mean": 0.148516,
+    "rank_ic_std": 0.071285,
+    "icir": 2.0834,
+    "oof_corr": 0.116711,
+    "n_samples": 25476,
+    "n_features": 22
+  },
+  "window_days": 20
+}

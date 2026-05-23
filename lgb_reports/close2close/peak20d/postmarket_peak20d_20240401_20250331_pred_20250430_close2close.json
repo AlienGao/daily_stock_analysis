@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20240401",
+  "train_end": "20250331",
+  "pred_date": "20250430",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688320.SH",
+      "stock_code": "688320",
+      "stock_name": "禾川科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.52,
+      "predicted_days": 12
+    },
+    {
+      "rank": 2,
+      "ts_code": "301008.SZ",
+      "stock_code": "301008",
+      "stock_name": "宏昌科技",
+      "lgb_score": 89.0,
+      "raw_score": 0.46,
+      "predicted_days": 11
+    },
+    {
+      "rank": 3,
+      "ts_code": "301117.SZ",
+      "stock_code": "301117",
+      "stock_name": "佳缘科技",
+      "lgb_score": 87.08,
+      "raw_score": 0.45,
+      "predicted_days": 17
+    },
+    {
+      "rank": 4,
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
+      "lgb_score": 85.92,
+      "raw_score": 0.45,
+      "predicted_days": 14
+    },
+    {
+      "rank": 5,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 84.85,
+      "raw_score": 0.44,
+      "predicted_days": 14
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.93,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.07156,
+    "std": 0.028963,
+    "skew": 5.7087,
+    "kurtosis": 54.1267,
+    "min": -0.008204,
+    "max": 0.522305,
+    "median": 0.073246
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.11719752703074304,
+    "cv_rmse_std": 0.041600637154076824,
+    "cv_scores": [
+      0.059992,
+      0.188762,
+      0.122135,
+      0.102619,
+      0.112479
+    ],
+    "rank_ic_mean": 0.189272,
+    "rank_ic_std": 0.122811,
+    "icir": 1.5412,
+    "oof_corr": 0.315428,
+    "n_samples": 27912,
+    "n_features": 22
+  },
+  "window_days": 20
+}

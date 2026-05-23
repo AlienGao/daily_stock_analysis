@@ -681,7 +681,7 @@ def _check_loss_stop(
         adj_t = _adj_lookup(code, td, adj_by_code)
         raw_ret = (px - buy_price) / buy_price if buy_price > 0 else 0.0
         ret = (1.0 + raw_ret) * (adj_t / adj_b) - 1.0 if adj_b > 0 and adj_t > 0 else 0.0
-        if ret < -0.05:
+        if ret < -0.10:
             return (td, px)
     return (sell_date, 0.0)  # 0.0 sentinel: caller uses original sell_price
 
@@ -1269,7 +1269,7 @@ def _simulate_backtest(exec_mode: str, forward_days: int, top_n: int, stop_strat
                         "pred_date": pred_date, "stock_code": code, "ts_code": ts_code,
                         "stock_name": stock_name, "rank": rank,
                         "buy_date": buy_date, "buy_price": buy_price,
-                        "sell_date": "",
+                        "sell_date": eff_sell_date if eff_sell_date != latest_td else "",
                         "sell_price": eff_sell_price,
                         "return_pct": ret, "skipped": False,
                         "shares": h_shares, "actual_cost": round(h_cost, 2),
@@ -1871,6 +1871,7 @@ def _simulate_peak_backtest(exec_mode: str, top_n: int, stop_loss_pct: float = -
                     "return_pct": round(ret, 6),
                     "skipped": False,
                     "expected_sell_date": pos.get("expected_sell_date", ""),
+                    "target_return": round(pos["pred_return"] * pos.get("win_rate", 0.5), 4),
                     "shares": pos["shares"],
                     "actual_cost": round(pos["actual_cost"], 2),
                 })
@@ -1990,6 +1991,7 @@ def _simulate_peak_backtest(exec_mode: str, top_n: int, stop_loss_pct: float = -
                 "return_pct": round(ret, 6),
                 "skipped": False,
                 "expected_sell_date": pos.get("expected_sell_date", ""),
+                "target_return": round(pos["pred_return"] * pos.get("win_rate", 0.5), 4),
                 "shares": pos["shares"],
                 "actual_cost": round(pos["actual_cost"], 2),
             })
@@ -2008,6 +2010,7 @@ def _simulate_peak_backtest(exec_mode: str, top_n: int, stop_loss_pct: float = -
                 "return_pct": round(ret, 6),
                 "skipped": False,
                 "expected_sell_date": pos.get("expected_sell_date", ""),
+                "target_return": round(pos["pred_return"] * pos.get("win_rate", 0.5), 4),
                 "shares": pos["shares"],
                 "actual_cost": round(pos["actual_cost"], 2),
             })
