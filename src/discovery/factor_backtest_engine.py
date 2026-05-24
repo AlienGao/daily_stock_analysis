@@ -85,6 +85,30 @@ _DEFAULT_INITIAL_CAPITAL = 1_000_000.0
 _DEFAULT_RISK_FREE_RATE = 0.02
 
 
+def _get_lot_info(stock_code: str) -> tuple:
+    """获取最小交易股数和递增单位。
+    科创板/北证：最低200股，超过200后100股递增。
+    其他板块：最低100股，100股递增。
+    """
+    code = str(stock_code).strip().zfill(6)
+    if code.startswith("688"):
+        return 200, 100
+    if code.startswith(("83", "87", "43")):
+        return 200, 100
+    return 100, 100
+
+
+def _calc_shares(alloc: float, price: float, stock_code: str) -> int:
+    """按手数计算可买股数，不够一手返回 0。"""
+    if price <= 0:
+        return 0
+    min_lot, step = _get_lot_info(stock_code)
+    raw = alloc / price
+    if raw < min_lot:
+        return 0
+    return min_lot + int((raw - min_lot) / step) * step
+
+
 @dataclass
 class FactorBacktestTrade:
     trade_date: str
@@ -98,6 +122,7 @@ class FactorBacktestTrade:
     pnl: float
     allocated: float
     status: str
+    shares: int = 0
     reoptimized: bool = False
 
 
@@ -205,7 +230,10 @@ class FactorBacktestEngine:
         for ss in scores_by_date.values():
             for s in ss.values():
                 all_codes.update(s.index.tolist() if hasattr(s, 'index') else s)
-        self._prefetch_prices(list(all_codes), trading_days)
+        # 确保今天在预取列表中，以便持仓回退取最新后复权价
+        today_str = date.today().strftime("%Y%m%d")
+        prefetch_days = trading_days if today_str in trading_days else trading_days + [today_str]
+        self._prefetch_prices(list(all_codes), prefetch_days)
         self._prefetch_stock_names(list(all_codes))
         if progress_cb:
             progress_cb("预计算收益率矩阵…")
@@ -275,7 +303,7 @@ class FactorBacktestEngine:
                     bp = self._get_price(code, buy_date, buy_field)
                     sp, ext_date, status = self._resolve_sell_price(
                         code, sell_date, sell_field, trading_days)
-                    if bp and sp and bp > 0 and status not in ("locked", "open"):
+                    if bp and sp and bp > 0 and status not in ("locked",):
                         bought.append((code, name, bp, sp, ext_date, status))
                     elif bp is None:
                         skipped.append(code)
@@ -283,25 +311,29 @@ class FactorBacktestEngine:
                         bought.append((code, name, bp, sp if sp else 0, ext_date, status))
                 n_bought = len(bought)
                 if n_bought == 0: continue
-                alloc = cap / n_bought / hd
+                alloc = cap / n_bought
                 day_pnl = 0.0
                 for code, name, bp, sp, sd, status in bought:
-                    if bp and sp and bp > 0 and status not in ("locked", "open"):
+                    shares = _calc_shares(alloc, bp, code) if bp and bp > 0 else 0
+                    if shares > 0 and bp and sp and bp > 0 and status not in ("locked",):
+                        actual_cost = shares * bp
                         ret = (sp - bp) / bp
-                        pnl = alloc * ret; day_pnl += pnl
+                        pnl = actual_cost * ret
+                        day_pnl += pnl
                     else:
-                        ret = 0.0; pnl = 0.0
+                        actual_cost = 0.0; ret = 0.0; pnl = 0.0
                     all_trades[hd].append(FactorBacktestTrade(
                         trade_date=snap_date, hold_days=hd, stock_code=code, stock_name=name,
                         buy_price=round(bp, 2) if bp else 0, sell_date=sd,
                         sell_price=round(sp, 2) if sp else 0, return_pct=round(ret, 6),
-                        pnl=round(pnl, 2), allocated=round(alloc, 2), status=status))
+                        pnl=round(pnl, 2), allocated=round(actual_cost, 2),
+                        shares=shares, status=status))
                 for code in skipped:
                     all_trades[hd].append(FactorBacktestTrade(
                         trade_date=snap_date, hold_days=hd, stock_code=code,
                         stock_name=self._stock_names.get(code, code),
                         buy_price=0, sell_date=sell_date, sell_price=0,
-                        return_pct=0, pnl=0, allocated=0, status="canceled"))
+                        return_pct=0, pnl=0, allocated=0, shares=0, status="canceled"))
                 
                     
 
@@ -358,7 +390,8 @@ class FactorBacktestEngine:
                            "stock_code": t.stock_code, "stock_name": t.stock_name,
                            "buy_price": t.buy_price, "sell_date": t.sell_date,
                            "sell_price": t.sell_price, "return_pct": t.return_pct,
-                           "pnl": t.pnl, "allocated": t.allocated, "status": t.status})
+                           "pnl": t.pnl, "allocated": t.allocated,
+                           "shares": t.shares, "status": t.status})
 
         benchmark_curve = self._build_benchmark_curve(trading_days, initial_capital)
 
@@ -459,7 +492,9 @@ class FactorBacktestEngine:
         for ss in scores_by_date.values():
             for s in ss.values():
                 all_codes_set.update(s.index.tolist() if hasattr(s, 'index') else s)
-        self._prefetch_prices(list(all_codes_set), trading_days)
+        today_str_wf = date.today().strftime("%Y%m%d")
+        prefetch_days_wf = trading_days if today_str_wf in trading_days else trading_days + [today_str_wf]
+        self._prefetch_prices(list(all_codes_set), prefetch_days_wf)
         self._prefetch_stock_names(list(all_codes_set))
         if progress_cb:
             progress_cb("预计算收益率矩阵…")
@@ -530,7 +565,7 @@ class FactorBacktestEngine:
                     bp = self._get_price(code, buy_date, buy_field)
                     sp, ext_date, status = self._resolve_sell_price(
                         code, sell_date, sell_field, trading_days)
-                    if bp and sp and bp > 0 and status not in ("locked", "open"):
+                    if bp and sp and bp > 0 and status not in ("locked",):
                         bought.append((code, name, bp, sp, ext_date, status))
                     elif bp is None:
                         skipped.append(code)
@@ -539,27 +574,29 @@ class FactorBacktestEngine:
                 n_bought = len(bought)
                 if n_bought == 0:
                     continue
-                alloc = cap / n_bought / hd
+                alloc = cap / n_bought
                 day_pnl = 0.0
                 for code, name, bp, sp, sd_ext, status in bought:
-                    if bp and sp and bp > 0 and status not in ("locked", "open"):
+                    shares = _calc_shares(alloc, bp, code) if bp and bp > 0 else 0
+                    if shares > 0 and bp and sp and bp > 0 and status not in ("locked",):
+                        actual_cost = shares * bp
                         ret = (sp - bp) / bp
-                        pnl = alloc * ret
+                        pnl = actual_cost * ret
                         day_pnl += pnl
                     else:
-                        ret = 0.0
-                        pnl = 0.0
+                        actual_cost = 0.0; ret = 0.0; pnl = 0.0
                     fixed_trades[hd].append(FactorBacktestTrade(
                         trade_date=snap_date, hold_days=hd, stock_code=code, stock_name=name,
                         buy_price=round(bp, 2) if bp else 0, sell_date=sd_ext,
                         sell_price=round(sp, 2) if sp else 0, return_pct=round(ret, 6),
-                        pnl=round(pnl, 2), allocated=round(alloc, 2), status=status))
+                        pnl=round(pnl, 2), allocated=round(actual_cost, 2),
+                        shares=shares, status=status))
                 for code in skipped:
                     fixed_trades[hd].append(FactorBacktestTrade(
                         trade_date=snap_date, hold_days=hd, stock_code=code,
                         stock_name=self._stock_names.get(code, code),
                         buy_price=0, sell_date=sell_date, sell_price=0,
-                        return_pct=0, pnl=0, allocated=0, status="canceled"))
+                        return_pct=0, pnl=0, allocated=0, shares=0, status="canceled"))
                 cap += day_pnl
                 if day_pnl != 0:
                     curve.append({"date": snap_date, "capital": round(cap, 2)})
@@ -736,7 +773,7 @@ class FactorBacktestEngine:
                         bp = self._get_price(code, buy_date, buy_field)
                         sp, ext_date, status = self._resolve_sell_price(
                             code, sell_date, sell_field, trading_days)
-                        if bp and sp and bp > 0 and status not in ("locked", "open"):
+                        if bp and sp and bp > 0 and status not in ("locked",):
                             bought.append((code, name, bp, sp, ext_date, status))
                         elif bp is None:
                             skipped.append(code)
@@ -745,30 +782,31 @@ class FactorBacktestEngine:
                     n_bought = len(bought)
                     if n_bought == 0:
                         continue
-                    alloc = cap / n_bought / hd
+                    alloc = cap / n_bought
                     day_pnl = 0.0
                     for code, name, bp, sp, sd_ext, status in bought:
-                        if bp and sp and bp > 0 and status not in ("locked", "open"):
+                        shares = _calc_shares(alloc, bp, code) if bp and bp > 0 else 0
+                        if shares > 0 and bp and sp and bp > 0 and status not in ("locked",):
+                            actual_cost = shares * bp
                             ret = (sp - bp) / bp
-                            pnl = alloc * ret
+                            pnl = actual_cost * ret
                             day_pnl += pnl
                         else:
-                            ret = 0.0
-                            pnl = 0.0
+                            actual_cost = 0.0; ret = 0.0; pnl = 0.0
                         dynamic_trades[hd].append(FactorBacktestTrade(
                             trade_date=snap_date, hold_days=hd, stock_code=code,
                             stock_name=name, buy_price=round(bp, 2) if bp else 0,
                             sell_date=sd_ext, sell_price=round(sp, 2) if sp else 0,
                             return_pct=round(ret, 6), pnl=round(pnl, 2),
-                            allocated=round(alloc, 2), status=status,
-                            reoptimized=True))
+                            allocated=round(actual_cost, 2), shares=shares,
+                            status=status, reoptimized=True))
                     for code in skipped:
                         dynamic_trades[hd].append(FactorBacktestTrade(
                             trade_date=snap_date, hold_days=hd, stock_code=code,
                             stock_name=self._stock_names.get(code, code),
                             buy_price=0, sell_date=sell_date, sell_price=0,
-                            return_pct=0, pnl=0, allocated=0, status="canceled",
-                            reoptimized=True))
+                            return_pct=0, pnl=0, allocated=0, shares=0,
+                            status="canceled", reoptimized=True))
                     cap += day_pnl
                     if day_pnl != 0:
                         curve.append({"date": snap_date, "capital": round(cap, 2)})
@@ -847,14 +885,16 @@ class FactorBacktestEngine:
                            "stock_code": t.stock_code, "stock_name": t.stock_name,
                            "buy_price": t.buy_price, "sell_date": t.sell_date,
                            "sell_price": t.sell_price, "return_pct": t.return_pct,
-                           "pnl": t.pnl, "allocated": t.allocated, "status": t.status,
+                           "pnl": t.pnl, "allocated": t.allocated,
+                           "shares": t.shares, "status": t.status,
                            "reoptimized": False})
             for t in dynamic_trades[hd]:
                 tds.append({"trade_date": t.trade_date, "hold_days": t.hold_days,
                            "stock_code": t.stock_code, "stock_name": t.stock_name,
                            "buy_price": t.buy_price, "sell_date": t.sell_date,
                            "sell_price": t.sell_price, "return_pct": t.return_pct,
-                           "pnl": t.pnl, "allocated": t.allocated, "status": t.status,
+                           "pnl": t.pnl, "allocated": t.allocated,
+                           "shares": t.shares, "status": t.status,
                            "reoptimized": True})
 
         benchmark_curve = self._build_benchmark_curve(trading_days, initial_capital)
@@ -1420,8 +1460,17 @@ class FactorBacktestEngine:
         """解析卖出价：若卖出日在跌停板或缺失价格，顺延至下一个可交易日。
 
         Returns (sell_price, final_sell_date, status)。
-        status: "closed" | "extended" | "locked"（跌停无法卖出）| "open"（无价格）
+        status: "closed" | "extended" | "locked"（跌停无法卖出）| "open"（持仓，用最新价估算）
         """
+        today_str = date.today().strftime("%Y%m%d")
+
+        # 卖出日未到：用最新收盘价估算持仓浮盈，卖出日保留原计划日期
+        if sell_date > today_str:
+            latest_price = self._get_price(code, today_str, "close")
+            if latest_price is not None and latest_price > 0:
+                return latest_price, sell_date, "open"
+            return None, sell_date, "open"
+
         sp = self._get_price(code, sell_date, sell_field)
         ext_date = sell_date
         status = "closed"

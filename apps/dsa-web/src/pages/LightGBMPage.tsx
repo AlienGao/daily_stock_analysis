@@ -19,18 +19,21 @@ function pctNum(v: number): string {
 function exportBacktestExcel(trades: LGBBacktestSimResponse['trades'], forwardDays: number, topN: number, execMode: string) {
   const rows = trades.filter((t) => !t.skipped);
   const header = ['预测日', '股票名称', '股票代码', '买入日', '买入价', '股数', '买入金额', '卖出日', '卖出价', '收益%'];
-  const body = rows.map((t) => [
-    t.pred_date,
-    t.stock_name,
-    t.stock_code,
-    t.buy_date,
-    t.buy_price.toFixed(2),
-    t.shares,
-    t.actual_cost.toFixed(2),
-    t.sell_date || '持仓中',
-    t.sell_price.toFixed(2),
-    (t.return_pct * 100).toFixed(2),
-  ].map((v) => `<td>${v}</td>`).join('')).map((r) => `<tr>${r}</tr>`).join('');
+  const tf = (v: string | number) => `<td style="mso-number-format:\\@">${v}</td>`;
+  const body = rows.map((t) => `<tr>${
+    [
+      tf(t.pred_date),
+      `<td>${t.stock_name}</td>`,
+      tf(t.stock_code),
+      tf(t.buy_date),
+      `<td>${t.buy_price.toFixed(2)}</td>`,
+      `<td>${t.shares}</td>`,
+      `<td>${t.actual_cost.toFixed(2)}</td>`,
+      tf(t.sell_date || '持仓中'),
+      `<td>${t.sell_price.toFixed(2)}</td>`,
+      `<td>${(t.return_pct * 100).toFixed(2)}</td>`,
+    ].join('')
+  }</tr>`).join('');
   const html = `<html><head><meta charset="utf-8"></head><body><table border="1"><thead><tr>${header.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></body></html>`;
   const blob = new Blob(['﻿' + html], { type: 'application/vnd.ms-excel;charset=utf-8' });
   const url = URL.createObjectURL(blob);

@@ -240,6 +240,7 @@ export type FactorBacktestTrade = {
   return_pct: number;
   pnl: number;
   allocated: number;
+  shares: number;
   status: string;
 };
 

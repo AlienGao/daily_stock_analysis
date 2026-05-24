@@ -629,9 +629,13 @@ const FactorBacktestPage: React.FC = () => {
 
   const displayTrades = useMemo(() => {
     if (!result) return [];
-    if (!recentCutoffDate) return result.trade_records;
-    return result.trade_records.filter((t: FactorBacktestTrade) => t.trade_date >= recentCutoffDate);
-  }, [result, recentCutoffDate]);
+    const hd = Number(summaryPeriod);
+    let trades = result.trade_records.filter((t: FactorBacktestTrade) => t.hold_days === hd);
+    if (recentCutoffDate) {
+      trades = trades.filter((t: FactorBacktestTrade) => t.trade_date >= recentCutoffDate);
+    }
+    return trades;
+  }, [result, recentCutoffDate, summaryPeriod]);
 
   const icData = useMemo(() => {
     if (!result?.rank_ic) return null;
@@ -656,9 +660,10 @@ const FactorBacktestPage: React.FC = () => {
       </div>
     )},
     { title: '买入价', dataIndex: 'buy_price', key: 'buy_price', width: 80, render: (_: unknown, r: FactorBacktestTrade) => r.status === 'pending' ? '--' : r.buy_price },
+    { title: '股数', dataIndex: 'shares', key: 'shares', width: 75, render: (_: unknown, r: FactorBacktestTrade) => r.status === 'pending' ? '--' : (r.shares > 0 ? r.shares.toLocaleString() : '--') },
+    { title: '买入额', dataIndex: 'allocated', key: 'allocated', width: 90, render: (_: unknown, r: FactorBacktestTrade) => r.status === 'pending' ? '--' : (r.allocated > 0 ? r.allocated.toFixed(2) : '--') },
     { title: '卖出日', dataIndex: 'sell_date', key: 'sell_date', width: 100, render: (_: unknown, r: FactorBacktestTrade) => r.status === 'pending' ? '--' : r.sell_date },
     { title: '卖出价', dataIndex: 'sell_price', key: 'sell_price', width: 80, render: (_: unknown, r: FactorBacktestTrade) => r.status === 'pending' ? '--' : r.sell_price },
-    { title: '买入额', dataIndex: 'allocated', key: 'allocated', width: 90, render: (_: unknown, r: FactorBacktestTrade) => r.status === 'pending' ? '--' : (r.allocated > 0 ? r.allocated.toFixed(2) : '--') },
     { title: '卖出额', dataIndex: 'allocated', key: 'sell_amount', width: 90, render: (_: unknown, r: FactorBacktestTrade) => r.status === 'pending' ? '--' : (r.allocated > 0 ? (r.allocated + r.pnl).toFixed(2) : '--') },
     { title: '收益', dataIndex: 'return_pct', key: 'return_pct', width: 80, render: (_: unknown, r: FactorBacktestTrade) => r.status === 'pending' ? '--' : <span className={r.return_pct >= 0 ? 'text-red-400' : 'text-emerald-400'}>{r.return_pct >= 0 ? '+' : ''}{pct(r.return_pct)}</span> },
     { title: '盈亏', dataIndex: 'pnl', key: 'pnl', width: 100, render: (_: unknown, r: FactorBacktestTrade) => r.status === 'pending' ? '--' : <span className={r.pnl >= 0 ? 'text-red-400' : 'text-emerald-400'}>{r.pnl >= 0 ? '+' : ''}{r.pnl.toFixed(0)}</span> },
@@ -1153,9 +1158,9 @@ const FactorBacktestPage: React.FC = () => {
                       type="button"
                       className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs text-secondary-text hover:text-foreground transition-colors"
                       onClick={() => {
-                        const header = '信号日,持有期,股票,买入价,卖出日,卖出价,买入额,卖出额,收益率,盈亏,状态';
-                        const rows = displayTrades.filter((t: FactorBacktestTrade) => t.hold_days === Number(summaryPeriod)).map((t: FactorBacktestTrade) =>
-                          `${t.trade_date},${t.hold_days},"${t.stock_name}\n${t.stock_code}",${t.buy_price},${t.sell_date},${t.sell_price},${t.allocated || 0},${(t.allocated || 0) + (t.pnl || 0)},${t.return_pct},${t.pnl},${t.status}`
+                        const header = '信号日,持有期,股票,买入价,股数,买入额,卖出日,卖出价,卖出额,收益率,盈亏,状态';
+                        const rows = displayTrades.map((t: FactorBacktestTrade) =>
+                          `${t.trade_date},${t.hold_days},"${t.stock_name}\n${t.stock_code}",${t.buy_price},${t.shares || 0},${t.allocated || 0},${t.sell_date},${t.sell_price},${(t.allocated || 0) + (t.pnl || 0)},${t.return_pct},${t.pnl},${t.status}`
                         ).join('\n');
                         const bom = '\uFEFF';
                         const blob = new Blob([bom + header + '\n' + rows], { type: 'text/csv;charset=utf-8;' });
@@ -1192,9 +1197,9 @@ const FactorBacktestPage: React.FC = () => {
                           yLabels += `<text x="${R - 8}" y="${toY(v).toFixed(1)}" text-anchor="end" font-size="10" fill="#888">${(v / 10000).toFixed(1)}万</text>\n`;
                         }
                         const legend = `<rect x="${R}" y="${H - R + 8}" width="12" height="12" fill="${color}"/><text x="${R + 16}" y="${H - R + 18}" font-size="11" fill="#ccc">${summaryPeriod}日</text>`;
-                        const trades = displayTrades.filter((t: FactorBacktestTrade) => t.hold_days === Number(summaryPeriod));
-                        const tradeRows = trades.map((t: FactorBacktestTrade) => '<tr><td>'+t.trade_date+'</td><td>'+t.hold_days+'日</td><td>'+t.stock_name+'<br/><span style="color:#888;font-size:11px">'+t.stock_code+'</span></td><td>'+t.buy_price+'</td><td>'+t.sell_date+'</td><td>'+t.sell_price+'</td><td>'+(t.allocated||0).toFixed(0)+'</td><td>'+((t.allocated||0)+(t.pnl||0)).toFixed(0)+'</td><td>'+(t.return_pct*100).toFixed(2)+'%</td><td>'+t.pnl.toFixed(0)+'</td><td>'+t.status+'</td></tr>').join('');
-                        const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>因子回测 '+result.mode+' '+summaryPeriod+'日 '+result.date_range.start+'-'+result.date_range.end+'</title><style>body{font-family:-apple-system,sans-serif;background:#111;color:#ddd;padding:24px;max-width:900px;margin:auto}h1{font-size:18px;margin-bottom:16px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}.card{background:#1a1a1a;border-radius:8px;padding:14px}.card .label{font-size:11px;color:#888}.card .value{font-size:20px;font-weight:600;color:#fff}svg{display:block;margin:0 auto}table{width:100%;border-collapse:collapse;margin-top:24px;font-size:12px}th,td{padding:6px 8px;text-align:left;border-bottom:1px solid #333}th{color:#888;font-weight:500}td{color:#ccc}</style></head><body><h1>因子回测报告 '+result.mode+' · '+summaryPeriod+'日持有 · '+result.date_range.start+' ~ '+result.date_range.end+'</h1><div class="grid"><div class="card"><div class="label">累计收益</div><div class="value">'+(st.cumRet*100).toFixed(2)+'%</div></div><div class="card"><div class="label">年化收益</div><div class="value">'+(st.annRet !== null && isFinite(st.annRet) ? (st.annRet*100).toFixed(2)+'%' : 'N/A')+'</div></div><div class="card"><div class="label">胜率</div><div class="value">'+(st.wr*100).toFixed(1)+'%</div></div><div class="card"><div class="label">夏普</div><div class="value">'+st.sharpe.toFixed(2)+'</div></div><div class="card"><div class="label">最大回撤</div><div class="value" style="color:#ef4444">'+(st.mdd*100).toFixed(2)+'%</div></div><div class="card"><div class="label">已平仓</div><div class="value">'+st.closed.length+'</div></div><div class="card"><div class="label">最终资金</div><div class="value">'+(st.finalCapital/10000).toFixed(1)+'万</div></div><div class="card"><div class="label">初始</div><div class="value">'+((result.params?.initial_capital??0)/10000).toFixed(0)+'万</div></div></div><svg width="'+W+'" height="'+(H+20)+'"><line x1="'+R+'" y1="'+(H-R)+'" x2="'+(W-R)+'" y2="'+(H-R)+'" stroke="#444"/><line x1="'+R+'" y1="'+R+'" x2="'+R+'" y2="'+(H-R)+'" stroke="#444"/>'+yLabels+path+legend+'</svg><table><thead><tr><th>信号日</th><th>持有期</th><th>股票</th><th>买入价</th><th>卖出日</th><th>卖出价</th><th>买入额</th><th>卖出额</th><th>收益</th><th>盈亏</th><th>状态</th></tr></thead><tbody>'+tradeRows+'</tbody></table></body></html>';
+                        const trades = displayTrades;
+                        const tradeRows = trades.map((t: FactorBacktestTrade) => '<tr><td>'+t.trade_date+'</td><td>'+t.hold_days+'日</td><td>'+t.stock_name+'<br/><span style="color:#888;font-size:11px">'+t.stock_code+'</span></td><td>'+t.buy_price+'</td><td>'+(t.shares||0).toLocaleString()+'</td><td>'+(t.allocated||0).toFixed(0)+'</td><td>'+t.sell_date+'</td><td>'+t.sell_price+'</td><td>'+((t.allocated||0)+(t.pnl||0)).toFixed(0)+'</td><td>'+(t.return_pct*100).toFixed(2)+'%</td><td>'+t.pnl.toFixed(0)+'</td><td>'+t.status+'</td></tr>').join('');
+                        const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>因子回测 '+result.mode+' '+summaryPeriod+'日 '+result.date_range.start+'-'+result.date_range.end+'</title><style>body{font-family:-apple-system,sans-serif;background:#111;color:#ddd;padding:24px;max-width:900px;margin:auto}h1{font-size:18px;margin-bottom:16px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}.card{background:#1a1a1a;border-radius:8px;padding:14px}.card .label{font-size:11px;color:#888}.card .value{font-size:20px;font-weight:600;color:#fff}svg{display:block;margin:0 auto}table{width:100%;border-collapse:collapse;margin-top:24px;font-size:12px}th,td{padding:6px 8px;text-align:left;border-bottom:1px solid #333}th{color:#888;font-weight:500}td{color:#ccc}</style></head><body><h1>因子回测报告 '+result.mode+' · '+summaryPeriod+'日持有 · '+result.date_range.start+' ~ '+result.date_range.end+'</h1><div class="grid"><div class="card"><div class="label">累计收益</div><div class="value">'+(st.cumRet*100).toFixed(2)+'%</div></div><div class="card"><div class="label">年化收益</div><div class="value">'+(st.annRet !== null && isFinite(st.annRet) ? (st.annRet*100).toFixed(2)+'%' : 'N/A')+'</div></div><div class="card"><div class="label">胜率</div><div class="value">'+(st.wr*100).toFixed(1)+'%</div></div><div class="card"><div class="label">夏普</div><div class="value">'+st.sharpe.toFixed(2)+'</div></div><div class="card"><div class="label">最大回撤</div><div class="value" style="color:#ef4444">'+(st.mdd*100).toFixed(2)+'%</div></div><div class="card"><div class="label">已平仓</div><div class="value">'+st.closed.length+'</div></div><div class="card"><div class="label">最终资金</div><div class="value">'+(st.finalCapital/10000).toFixed(1)+'万</div></div><div class="card"><div class="label">初始</div><div class="value">'+((result.params?.initial_capital??0)/10000).toFixed(0)+'万</div></div></div><svg width="'+W+'" height="'+(H+20)+'"><line x1="'+R+'" y1="'+(H-R)+'" x2="'+(W-R)+'" y2="'+(H-R)+'" stroke="#444"/><line x1="'+R+'" y1="'+R+'" x2="'+R+'" y2="'+(H-R)+'" stroke="#444"/>'+yLabels+path+legend+'</svg><table><thead><tr><th>信号日</th><th>持有期</th><th>股票</th><th>买入价</th><th>股数</th><th>买入额</th><th>卖出日</th><th>卖出价</th><th>卖出额</th><th>收益</th><th>盈亏</th><th>状态</th></tr></thead><tbody>'+tradeRows+'</tbody></table></body></html>';
                         const blob = new Blob([html], { type: 'text/html;charset=utf-8;' });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
@@ -1208,7 +1213,7 @@ const FactorBacktestPage: React.FC = () => {
                   </div>
                   <Table
                     size="small"
-                    dataSource={displayTrades.filter((t: FactorBacktestTrade) => t.hold_days === Number(summaryPeriod))}
+                    dataSource={displayTrades}
                     rowKey={(r) => `${r.trade_date}_${r.hold_days}_${r.stock_code}`}
                     pagination={{ pageSize: 50, showSizeChanger: false }}
                     columns={tradeColumns}
