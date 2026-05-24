@@ -259,14 +259,19 @@ class FactorBacktestEngine:
         for hd_i, hd in enumerate(hold_days):
             if progress_cb:
                 progress_cb(f"回测计算中 (持有期 {hd_i + 1}/{len(hold_days)})…")
-            cap = initial_capital
-            curve = [{"date": snap_filtered[0], "capital": cap}]
+            # 滚动资金管理：跟踪每批持仓占用的资金和卖出日
+            available = initial_capital   # 可用资金
+            locked = 0.0                  # 锁定在持仓中的资金
+            # batches: [(sell_date, cost, final_value), ...] 待释放的批次
+            batches: list = []
+            total_capital = initial_capital
+            curve = [{"date": snap_filtered[0], "capital": total_capital}]
+            buy_count = 0                 # 已买入轮数，用于区分首轮/滚动轮
 
             for snap_date in snap_filtered:
                 if snap_date not in trading_days:
                     continue
                 ti = trading_days.index(snap_date)
-                # 盘后: T→T+1开盘买→T+1+N开盘卖 | 盘中: T→T日收盘买→T+N收盘卖
                 is_intra = mode == "intraday"
                 buy_idx = ti if is_intra else ti + 1
                 sell_idx = (ti + hd) if is_intra else (ti + 1 + hd)
@@ -277,12 +282,23 @@ class FactorBacktestEngine:
                 buy_field = "close" if is_intra else "open"
                 sell_field = "close" if is_intra else "open"
 
+                # 释放已到期的批次（卖出日 <= 买入日）
+                new_batches = []
+                for sd, cost, fv in batches:
+                    if sd <= buy_date:
+                        available += fv
+                        locked -= cost
+                    else:
+                        new_batches.append((sd, cost, fv))
+                batches = new_batches
+                total_capital = available + locked
+                curve.append({"date": snap_date, "capital": round(total_capital, 2)})
+
                 composite = cached_composites.get(snap_date, pd.Series())
                 if composite.empty:
                     continue
 
                 if buy_date > today_str:
-                    # 买入日未到：返回选股结果但不执行交易
                     ranked = composite.nlargest(top_n)
                     for code, _sc in ranked.items():
                         all_trades[hd].append(FactorBacktestTrade(
@@ -291,7 +307,8 @@ class FactorBacktestEngine:
                             buy_price=0, sell_date=sell_date, sell_price=0,
                             return_pct=0, pnl=0, allocated=0, status="pending"))
                     continue
-                # 两轮：先试买（取消的跳过顺延），后均分资金
+
+                # 两轮：先试买（涨停跳过顺延），后均分可用资金
                 ranked = composite.nlargest(top_n * 5)
                 bought = []
                 skipped = []
@@ -311,17 +328,22 @@ class FactorBacktestEngine:
                         bought.append((code, name, bp, sp if sp else 0, ext_date, status))
                 n_bought = len(bought)
                 if n_bought == 0: continue
-                alloc = cap / n_bought
-                day_pnl = 0.0
+                # 首轮分批部署初始资金；滚动轮用平仓释放的全部资金
+                alloc = (initial_capital / hd / top_n) if buy_count < hd else (available / top_n)
+                buy_count += 1
+                batch_cost = 0.0
+                batch_final = 0.0
                 for code, name, bp, sp, sd, status in bought:
                     shares = _calc_shares(alloc, bp, code) if bp and bp > 0 else 0
                     if shares > 0 and bp and sp and bp > 0 and status not in ("locked",):
                         actual_cost = shares * bp
+                        final_val = shares * sp
                         ret = (sp - bp) / bp
-                        pnl = actual_cost * ret
-                        day_pnl += pnl
+                        pnl = final_val - actual_cost
+                        batch_cost += actual_cost
+                        batch_final += final_val
                     else:
-                        actual_cost = 0.0; ret = 0.0; pnl = 0.0
+                        actual_cost = 0.0; final_val = 0.0; ret = 0.0; pnl = 0.0
                     all_trades[hd].append(FactorBacktestTrade(
                         trade_date=snap_date, hold_days=hd, stock_code=code, stock_name=name,
                         buy_price=round(bp, 2) if bp else 0, sell_date=sd,
@@ -334,11 +356,12 @@ class FactorBacktestEngine:
                         stock_name=self._stock_names.get(code, code),
                         buy_price=0, sell_date=sell_date, sell_price=0,
                         return_pct=0, pnl=0, allocated=0, shares=0, status="canceled"))
-                
-                    
 
-                cap += day_pnl
-                curve.append({"date": snap_date, "capital": round(cap, 2)})
+                if batch_cost > 0:
+                    available -= batch_cost
+                    locked += batch_cost
+                    batches.append((sell_date, batch_cost, batch_final))
+
             capital_curves[str(hd)] = curve
 
         phd = min(hold_days)  # 优先用最短持有期
@@ -522,8 +545,12 @@ class FactorBacktestEngine:
         fixed_trades: Dict[int, List[FactorBacktestTrade]] = {h: [] for h in hold_days}
 
         for hd in hold_days:
-            cap = initial_capital
-            curve = [{"date": snap_filtered[0], "capital": cap}]
+            available = initial_capital
+            locked = 0.0
+            batches: list = []
+            total_capital = initial_capital
+            buy_count = 0
+            curve = [{"date": snap_filtered[0], "capital": total_capital}]
             for snap_date in snap_filtered:
                 if snap_date not in trading_days:
                     continue
@@ -537,6 +564,18 @@ class FactorBacktestEngine:
                 sell_date = trading_days[sell_idx]
                 buy_field = "close" if is_intra else "open"
                 sell_field = "close" if is_intra else "open"
+
+                # 释放已到期的批次（卖出日 <= 买入日）
+                new_batches = []
+                for sd_b, cost_b, fv_b in batches:
+                    if sd_b <= buy_date:
+                        available += fv_b
+                        locked -= cost_b
+                    else:
+                        new_batches.append((sd_b, cost_b, fv_b))
+                batches = new_batches
+                total_capital = available + locked
+                curve.append({"date": snap_date, "capital": round(total_capital, 2)})
 
                 composite = cached_composites.get(snap_date, pd.Series())
                 if composite.empty:
@@ -574,17 +613,21 @@ class FactorBacktestEngine:
                 n_bought = len(bought)
                 if n_bought == 0:
                     continue
-                alloc = cap / n_bought
-                day_pnl = 0.0
+                alloc = (initial_capital / hd / top_n) if buy_count < hd else (available / top_n)
+                buy_count += 1
+                batch_cost = 0.0
+                batch_final = 0.0
                 for code, name, bp, sp, sd_ext, status in bought:
                     shares = _calc_shares(alloc, bp, code) if bp and bp > 0 else 0
                     if shares > 0 and bp and sp and bp > 0 and status not in ("locked",):
                         actual_cost = shares * bp
+                        final_val = shares * sp
                         ret = (sp - bp) / bp
-                        pnl = actual_cost * ret
-                        day_pnl += pnl
+                        pnl = final_val - actual_cost
+                        batch_cost += actual_cost
+                        batch_final += final_val
                     else:
-                        actual_cost = 0.0; ret = 0.0; pnl = 0.0
+                        actual_cost = 0.0; final_val = 0.0; ret = 0.0; pnl = 0.0
                     fixed_trades[hd].append(FactorBacktestTrade(
                         trade_date=snap_date, hold_days=hd, stock_code=code, stock_name=name,
                         buy_price=round(bp, 2) if bp else 0, sell_date=sd_ext,
@@ -597,9 +640,12 @@ class FactorBacktestEngine:
                         stock_name=self._stock_names.get(code, code),
                         buy_price=0, sell_date=sell_date, sell_price=0,
                         return_pct=0, pnl=0, allocated=0, shares=0, status="canceled"))
-                cap += day_pnl
-                if day_pnl != 0:
-                    curve.append({"date": snap_date, "capital": round(cap, 2)})
+
+                if batch_cost > 0:
+                    available -= batch_cost
+                    locked += batch_cost
+                    batches.append((sell_date, batch_cost, batch_final))
+
             fixed_curves[str(hd)] = curve
 
         # ── 2. Dynamic walk-forward (按窗口 TPE + DB 持久化缓存) ──
@@ -720,8 +766,12 @@ class FactorBacktestEngine:
         for hd in hold_days:
             if progress_cb:
                 progress_cb(f"评估动态权重 · {hd}日持有期…")
-            cap = initial_capital
-            curve = [{"date": snap_filtered[0], "capital": cap}]
+            available = initial_capital
+            locked = 0.0
+            batches: list = []
+            total_capital = initial_capital
+            curve = [{"date": snap_filtered[0], "capital": total_capital}]
+            buy_count = 0
 
             for node_idx in node_end_indices:
                 comps = node_composites.get(node_idx, {})
@@ -745,6 +795,18 @@ class FactorBacktestEngine:
                     sell_date = trading_days[sell_idx]
                     buy_field = "close" if is_intra else "open"
                     sell_field = "close" if is_intra else "open"
+
+                    # 释放已到期的批次（卖出日 <= 买入日）
+                    new_batches = []
+                    for sd_b, cost_b, fv_b in batches:
+                        if sd_b <= buy_date:
+                            available += fv_b
+                            locked -= cost_b
+                        else:
+                            new_batches.append((sd_b, cost_b, fv_b))
+                    batches = new_batches
+                    total_capital = available + locked
+                    curve.append({"date": snap_date, "capital": round(total_capital, 2)})
 
                     composite = comps.get(snap_date, pd.Series())
                     if composite.empty:
@@ -782,17 +844,21 @@ class FactorBacktestEngine:
                     n_bought = len(bought)
                     if n_bought == 0:
                         continue
-                    alloc = cap / n_bought
-                    day_pnl = 0.0
+                    alloc = (initial_capital / hd / top_n) if buy_count < hd else (available / top_n)
+                    buy_count += 1
+                    batch_cost = 0.0
+                    batch_final = 0.0
                     for code, name, bp, sp, sd_ext, status in bought:
                         shares = _calc_shares(alloc, bp, code) if bp and bp > 0 else 0
                         if shares > 0 and bp and sp and bp > 0 and status not in ("locked",):
                             actual_cost = shares * bp
+                            final_val = shares * sp
                             ret = (sp - bp) / bp
-                            pnl = actual_cost * ret
-                            day_pnl += pnl
+                            pnl = final_val - actual_cost
+                            batch_cost += actual_cost
+                            batch_final += final_val
                         else:
-                            actual_cost = 0.0; ret = 0.0; pnl = 0.0
+                            actual_cost = 0.0; final_val = 0.0; ret = 0.0; pnl = 0.0
                         dynamic_trades[hd].append(FactorBacktestTrade(
                             trade_date=snap_date, hold_days=hd, stock_code=code,
                             stock_name=name, buy_price=round(bp, 2) if bp else 0,
@@ -807,9 +873,12 @@ class FactorBacktestEngine:
                             buy_price=0, sell_date=sell_date, sell_price=0,
                             return_pct=0, pnl=0, allocated=0, shares=0,
                             status="canceled", reoptimized=True))
-                    cap += day_pnl
-                    if day_pnl != 0:
-                        curve.append({"date": snap_date, "capital": round(cap, 2)})
+
+                    if batch_cost > 0:
+                        available -= batch_cost
+                        locked += batch_cost
+                        batches.append((sell_date, batch_cost, batch_final))
+
             dynamic_curves[str(hd)] = curve
 
         # ── 3. Build result with dual curves ──
