@@ -1409,6 +1409,205 @@ class AnspireSearchProvider(BaseSearchProvider):
             return '未知来源'
 
 
+class KimiSearchProvider(BaseSearchProvider):
+    """
+    Kimi (Moonshot AI) Web Search
+
+    Uses Moonshot's chat completions API with the built-in ``web_search`` tool
+    to retrieve real-time web results.  The API is OpenAI-compatible.
+
+    Features:
+    - Chinese-first web search, strong on A-share news and announcements
+    - Built-in web search tool — no separate search subscription needed
+    - Circuit-breaker protection: 3 consecutive failures -> 300s cooldown
+
+    API endpoint: POST https://api.moonshot.cn/v1/chat/completions
+    """
+
+    DEFAULT_API_ENDPOINT = "https://api.moonshot.cn/v1/chat/completions"
+    MODEL = "moonshot-v1-auto"
+
+    _CB_FAILURE_THRESHOLD = 3
+    _CB_COOLDOWN_SECONDS = 300
+
+    def __init__(self, api_keys: List[str], base_url: Optional[str] = None):
+        super().__init__(api_keys, "Kimi")
+        self._consecutive_failures = 0
+        self._circuit_open_until: float = 0.0
+        self._api_endpoint = base_url.rstrip('/') + "/chat/completions" if base_url else self.DEFAULT_API_ENDPOINT
+
+    @property
+    def is_available(self) -> bool:
+        with self._state_lock:
+            if not self._api_keys:
+                return False
+            if self._consecutive_failures >= self._CB_FAILURE_THRESHOLD:
+                if time.time() < self._circuit_open_until:
+                    return False
+            return True
+
+    def _record_success(self, key: str) -> None:
+        with self._state_lock:
+            super()._record_success(key)
+            self._consecutive_failures = 0
+            self._circuit_open_until = 0.0
+
+    def _record_error(self, key: str) -> None:
+        warning_message = None
+        with self._state_lock:
+            super()._record_error(key)
+            self._consecutive_failures += 1
+            if self._consecutive_failures >= self._CB_FAILURE_THRESHOLD:
+                self._circuit_open_until = time.time() + self._CB_COOLDOWN_SECONDS
+                warning_message = (
+                    f"[Kimi] Circuit breaker OPEN – "
+                    f"{self._consecutive_failures} consecutive failures, "
+                    f"cooldown {self._CB_COOLDOWN_SECONDS}s"
+                )
+        if warning_message:
+            logger.warning(warning_message)
+
+    def _do_search(self, query: str, api_key: str, max_results: int, days: int = 7) -> SearchResponse:
+        try:
+            headers = {
+                'Authorization': f'Bearer {api_key}',
+                'Content-Type': 'application/json',
+            }
+            payload = {
+                "model": self.MODEL,
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": (
+                            "你是 Kimi 搜索助手。请使用 web_search 工具搜索用户的问题，"
+                            "并返回搜索结果。"
+                        ),
+                    },
+                    {"role": "user", "content": f"搜索最新信息：{query}"},
+                ],
+                "tools": [
+                    {
+                        "type": "builtin_function",
+                        "function": {"name": "$web_search"},
+                    }
+                ],
+                "max_tokens": 4096,
+            }
+
+            response = _post_with_retry(
+                self._api_endpoint, headers=headers, json=payload, timeout=30
+            )
+
+            if response.status_code != 200:
+                error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
+                logger.warning(f"[Kimi] Search failed: {error_msg}")
+                return SearchResponse(
+                    query=query, results=[], provider=self.name,
+                    success=False, error_message=error_msg,
+                )
+
+            data = response.json()
+            logger.info(f"[Kimi] Search done, query='{query}'")
+
+            # Parse search results from tool calls
+            results: List[SearchResult] = []
+            choices = data.get('choices', [])
+            if not choices:
+                return SearchResponse(
+                    query=query, results=[], provider=self.name,
+                    success=False, error_message="No choices in response",
+                )
+
+            message = choices[0].get('message', {})
+
+            # Kimi returns search results in tool_calls or as referenced URLs
+            # Try to extract from tool call results first
+            tool_calls = message.get('tool_calls', [])
+            for tc in tool_calls:
+                func = tc.get('function', {})
+                if func.get('name') == '$web_search':
+                    try:
+                        search_data = json.loads(func.get('arguments', '{}'))
+                        items = search_data.get('results', [])
+                        for item in items:
+                            if len(results) >= max_results:
+                                break
+                            results.append(SearchResult(
+                                title=item.get('title', ''),
+                                snippet=(item.get('content', '') or item.get('snippet', ''))[:500],
+                                url=item.get('url', item.get('link', '')),
+                                source=self._extract_domain(
+                                    item.get('url', item.get('link', ''))
+                                ),
+                                published_date=item.get('date', item.get('published_date')),
+                            ))
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+
+            # Fallback: parse content for URLs if tool_calls didn't yield results
+            if not results:
+                content = message.get('content', '')
+                if content:
+                    # Extract URLs from the response content
+                    url_pattern = re.compile(
+                        r'https?://[^\s\)\]\}，。！？》）\n]+'
+                    )
+                    urls = url_pattern.findall(content)
+                    seen_urls: set = set()
+                    for url in urls:
+                        clean_url = url.rstrip('.,;:!?')
+                        if clean_url in seen_urls:
+                            continue
+                        seen_urls.add(clean_url)
+                        if len(results) >= max_results:
+                            break
+                        results.append(SearchResult(
+                            title='',
+                            snippet='',
+                            url=clean_url,
+                            source=self._extract_domain(clean_url),
+                        ))
+
+            logger.info(f"[Kimi] Parsed {len(results)} results")
+
+            return SearchResponse(
+                query=query, results=results, provider=self.name,
+                success=True,
+            )
+
+        except requests.exceptions.Timeout:
+            error_msg = "Request timeout"
+            logger.error(f"[Kimi] {error_msg}")
+            return SearchResponse(
+                query=query, results=[], provider=self.name,
+                success=False, error_message=error_msg,
+            )
+        except requests.exceptions.RequestException as e:
+            error_msg = f"Network error: {e}"
+            logger.error(f"[Kimi] {error_msg}")
+            return SearchResponse(
+                query=query, results=[], provider=self.name,
+                success=False, error_message=error_msg,
+            )
+        except Exception as e:
+            error_msg = f"Unexpected error: {e}"
+            logger.error(f"[Kimi] {error_msg}")
+            return SearchResponse(
+                query=query, results=[], provider=self.name,
+                success=False, error_message=error_msg,
+            )
+
+    @staticmethod
+    def _extract_domain(url: str) -> str:
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(url)
+            domain = parsed.netloc.replace('www.', '')
+            return domain or '未知来源'
+        except Exception:
+            return '未知来源'
+
+
 class MiniMaxSearchProvider(BaseSearchProvider):
     """
     MiniMax Web Search (Coding Plan API)
@@ -2288,6 +2487,8 @@ class SearchService:
         brave_keys: Optional[List[str]] = None,
         serpapi_keys: Optional[List[str]] = None,
         minimax_keys: Optional[List[str]] = None,
+        kimi_keys: Optional[List[str]] = None,
+        kimi_base_url: Optional[str] = None,
         searxng_base_urls: Optional[List[str]] = None,
         searxng_public_instances_enabled: bool = True,
         akshare_news_enabled: bool = False,
@@ -2304,6 +2505,8 @@ class SearchService:
             brave_keys: Brave Search API Key 列表
             serpapi_keys: SerpAPI Key 列表
             minimax_keys: MiniMax API Key 列表
+            kimi_keys: Kimi (Moonshot) API Key 列表
+            kimi_base_url: Kimi (Moonshot) 自定义 API 端点（留空使用官方 endpoint）
             searxng_base_urls: SearXNG 实例地址列表（自建无配额兜底）
             searxng_public_instances_enabled: 未配置自建实例时，是否自动使用公共 SearXNG 实例
             akshare_news_enabled: 启用东方财富个股新闻（免 API Key，最高优先级）
@@ -2332,44 +2535,50 @@ class SearchService:
         # 初始化搜索引擎（按优先级排序）
         # 优先级顺序（仅对有 key / 可用的 provider 生效，跳过未配置的）：
         #   0. AkshareNews —— 东方财富 stock_news_em，免费不限量，A 股新闻覆盖最佳
-        #   1. MiniMax —— Coding Plan 结构化结果，对 A 股新闻覆盖良好
-        #   2. Bocha   —— 中文资讯+AI摘要，覆盖 A 股公告/研报最强
-        #   3. Anspire —— 实时智能搜索，适合时效性场景
-        #   4. Tavily  —— 全球覆盖 + 免费额度较多
-        #   5. Brave   —— 隐私优先 + 全球覆盖
-        #   6. SerpAPI —— Google 镜像，配额小作为补充
-        #   7. SearXNG —— 自建/公共实例兜底，不消耗配额
+        #   1. Kimi     —— Moonshot AI 内置联网搜索，中文理解强
+        #   2. Bocha    —— 中文资讯+AI摘要，覆盖 A 股公告/研报最强
+        #   3. MiniMax  —— Coding Plan 结构化结果，对 A 股新闻覆盖良好
+        #   4. Anspire  —— 实时智能搜索，适合时效性场景
+        #   5. Tavily   —— 全球覆盖 + 免费额度较多
+        #   6. Brave    —— 隐私优先 + 全球覆盖
+        #   7. SerpAPI  —— Google 镜像，配额小作为补充
+        #   8. SearXNG  —— 自建/公共实例兜底，不消耗配额
         # 0. AkshareNews (东方财富)
         if akshare_news_enabled:
             self._providers.append(AkshareNewsProvider())
             logger.info("已配置 东方财富新闻搜索（免 API Key，最高优先级）")
 
-        # 1. MiniMax
-        if minimax_keys:
-            self._providers.append(MiniMaxSearchProvider(minimax_keys))
-            logger.info(f"已配置 MiniMax 搜索，共 {len(minimax_keys)} 个 API Key")
+        # 1. Kimi (Moonshot AI)
+        if kimi_keys:
+            self._providers.append(KimiSearchProvider(kimi_keys, base_url=kimi_base_url))
+            logger.info(f"已配置 Kimi 搜索，共 {len(kimi_keys)} 个 API Key")
 
         # 2. Bocha
         if bocha_keys:
             self._providers.append(BochaSearchProvider(bocha_keys))
             logger.info(f"已配置 Bocha 搜索，共 {len(bocha_keys)} 个 API Key")
 
-        # 3. Anspire
+        # 3. MiniMax
+        if minimax_keys:
+            self._providers.append(MiniMaxSearchProvider(minimax_keys))
+            logger.info(f"已配置 MiniMax 搜索，共 {len(minimax_keys)} 个 API Key")
+
+        # 4. Anspire
         if anspire_keys:
             self._providers.append(AnspireSearchProvider(anspire_keys))
             logger.info(f"已配置 Anspire Search 搜索，共 {len(anspire_keys)} 个 API Key")
 
-        # 4. Tavily
+        # 5. Tavily
         if tavily_keys:
             self._providers.append(TavilySearchProvider(tavily_keys))
             logger.info(f"已配置 Tavily 搜索，共 {len(tavily_keys)} 个 API Key")
 
-        # 5. Brave
+        # 6. Brave
         if brave_keys:
             self._providers.append(BraveSearchProvider(brave_keys))
             logger.info(f"已配置 Brave 搜索，共 {len(brave_keys)} 个 API Key")
 
-        # 6. SerpAPI
+        # 7. SerpAPI
         if serpapi_keys:
             self._providers.append(SerpAPISearchProvider(serpapi_keys))
             logger.info(f"已配置 SerpAPI 搜索，共 {len(serpapi_keys)} 个 API Key")
@@ -3678,6 +3887,8 @@ def get_search_service() -> SearchService:
                     brave_keys=config.brave_api_keys,
                     serpapi_keys=config.serpapi_keys,
                     minimax_keys=config.minimax_api_keys,
+                    kimi_keys=config.kimi_api_keys,
+                    kimi_base_url=config.kimi_base_url,
                     searxng_base_urls=config.searxng_base_urls,
                     searxng_public_instances_enabled=config.searxng_public_instances_enabled,
                     akshare_news_enabled=config.enable_akshare_news,

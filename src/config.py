@@ -596,6 +596,8 @@ class Config:
     anspire_api_keys: List[str] = field(default_factory=list)  # Anspire Search API Keys
     bocha_api_keys: List[str] = field(default_factory=list)  # Bocha API Keys
     minimax_api_keys: List[str] = field(default_factory=list)  # MiniMax API Keys
+    kimi_api_keys: List[str] = field(default_factory=list)  # Kimi (Moonshot) API Keys
+    kimi_base_url: Optional[str] = None  # Kimi (Moonshot) base URL (defaults to official endpoint)
     tavily_api_keys: List[str] = field(default_factory=list)  # Tavily API Keys
     brave_api_keys: List[str] = field(default_factory=list)  # Brave Search API Keys
     serpapi_keys: List[str] = field(default_factory=list)  # SerpAPI Keys
@@ -797,6 +799,10 @@ class Config:
     enable_chip_distribution: bool = True
     # 东财接口补丁开关
     enable_eastmoney_patch: bool = False
+    # 东方财富个股新闻（免 API Key，A 股新闻覆盖最佳）
+    enable_akshare_news: bool = True
+    # FinBERT 新闻情感分析（需要 transformers + torch，约 1GB 内存）
+    finbert_enabled: bool = True
     # 实时行情数据源优先级（逗号分隔）
     # 推荐顺序：tencent > akshare_sina > efinance > akshare_em > tushare
     # - tencent: 腾讯财经，有量比/换手率/市盈率等，单股查询稳定（推荐）
@@ -1194,7 +1200,11 @@ class Config:
 
         minimax_keys_str = os.getenv('MINIMAX_API_KEYS', '')
         minimax_api_keys = [k.strip() for k in minimax_keys_str.split(',') if k.strip()]
-        
+
+        kimi_keys_str = os.getenv('KIMI_API_KEYS', '')
+        kimi_api_keys = [k.strip() for k in kimi_keys_str.split(',') if k.strip()]
+        kimi_base_url = os.getenv('LLM_MOONSHOT_BASE_URL', '').strip() or None
+
         tavily_keys_str = os.getenv('TAVILY_API_KEYS', '')
         tavily_api_keys = [k.strip() for k in tavily_keys_str.split(',') if k.strip()]
         
@@ -1339,6 +1349,8 @@ class Config:
             anspire_api_keys=anspire_api_keys,
             bocha_api_keys=bocha_api_keys,
             minimax_api_keys=minimax_api_keys,
+            kimi_api_keys=kimi_api_keys,
+            kimi_base_url=kimi_base_url,
             tavily_api_keys=tavily_api_keys,
             brave_api_keys=brave_api_keys,
             serpapi_keys=serpapi_keys,
@@ -1583,6 +1595,8 @@ class Config:
             enable_chip_distribution=os.getenv('ENABLE_CHIP_DISTRIBUTION', 'true').lower() == 'true',
             # 东财接口补丁开关
             enable_eastmoney_patch=os.getenv('ENABLE_EASTMONEY_PATCH', 'false').lower() == 'true',
+            enable_akshare_news=os.getenv('ENABLE_AKSHARE_NEWS', 'true').lower() == 'true',
+            finbert_enabled=os.getenv('FINBERT_ENABLED', 'true').lower() == 'true',
             # 实时行情数据源优先级：
             # - tencent: 腾讯财经，有量比/换手率/PE/PB等，单股查询稳定（推荐）
             # - akshare_sina: 新浪财经，基本行情稳定，但无量比
@@ -2170,6 +2184,7 @@ class Config:
         return bool(
             self.anspire_api_keys
             or self.bocha_api_keys
+            or self.kimi_api_keys
             or self.minimax_api_keys
             or self.tavily_api_keys
             or self.brave_api_keys

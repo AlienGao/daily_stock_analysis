@@ -3155,7 +3155,14 @@ class GeminiAnalyzer:
    - 输出到 `risk_alerts` / `positive_catalysts` / `latest_news` 的每一条都必须带具体日期（YYYY-MM-DD）
    - 超出近{news_window_days}日窗口的新闻一律忽略
    - 时间未知、无法确定发布日期的新闻一律忽略
+"""
+            if "[BERT情感分析]" in news_context:
+                prompt += """
+5. 🤖 **BERT情感指标（参考）**：新闻末尾的 [BERT情感分析] 为独立 NLP 模型对新闻的情感打分（-1~+1），
+   请结合此指标与你的分析综合判断，不必完全一致。
+"""
 
+            prompt += f"""
 ```
 {news_context}
 ```

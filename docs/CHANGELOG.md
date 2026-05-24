@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 <!-- 新条目格式：- [类型] 描述（类型取值：新功能/改进/修复/文档/测试/chore）-->
 <!-- 每条独立一行追加到本段末尾，无需分类标题，合并时冲突最小 -->
 - [新功能] Discovery Engine 因子信号注入单股分析：定时任务批次启动前运行一次 discovery engine，单股分析时将因子评分注入 LLM prompt（非 Agent 路径渲染为 Markdown 表格，Agent 路径注入 JSON 块）。通过 `DISCOVERY_FACTOR_SIGNALS_ENABLED` 控制。
+- [新功能] FinBERT 新闻情感分析：集成中文财经 BERT 模型对新闻文本做情感分类（正面/负面/中性），结果注入 LLM prompt 作为参考指标。通过 `FINBERT_ENABLED` 控制。
+- [改进] FinBERT 情感分析扩展支持 Agent 模式：Agent 分析链路在调用 LLM 前同样注入 FinBERT 情感摘要；若 initial_context 尚无新闻则主动搜索一次供 FinBERT 使用，失败静默降级不影响主流程。
 - [新功能] 技术指标优先使用 Tushare 前复权数据：单股分析流程重构为先获取 Tushare stk_factor（MACD/RSI/KDJ/BOLL/CCI）再执行 StockTrendAnalyzer，Tushare 可用时自动覆盖本地计算结果（含 KDJ/BOLL 首次纳入趋势评分），MA 继续由本地计算（Tushare 不提供）。
 - [新功能] 新增 `stock_tech_indicator` 数据库缓存表，按 (code, date) 缓存 Tushare stk_factor 全量指标；单股分析缓存优先命中后跳过 Tushare API 调用，全量批量获取（discovery engine）自动写入缓存积累历史数据。
 - [chore] 移除 `src/discovery/ic_tracker.py`：ICTracker 从未接入主流程，IC 计算已整合到 FactorBacktestEngine。

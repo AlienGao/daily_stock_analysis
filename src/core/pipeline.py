@@ -123,6 +123,7 @@ class StockAnalysisPipeline:
                 brave_keys=self.config.brave_api_keys,
                 serpapi_keys=self.config.serpapi_keys,
                 minimax_keys=self.config.minimax_api_keys,
+                kimi_keys=self.config.kimi_api_keys,
                 searxng_base_urls=self.config.searxng_base_urls,
                 searxng_public_instances_enabled=self.config.searxng_public_instances_enabled,
                 akshare_news_enabled=self.config.enable_akshare_news,
@@ -150,6 +151,17 @@ class StockAnalysisPipeline:
             logger.info("搜索服务已启用")
         else:
             logger.warning("搜索服务未启用（未配置搜索能力）")
+
+        # FinBERT 新闻情感分析（可选，依赖 transformers + torch）
+        if getattr(self.config, "finbert_enabled", True):
+            try:
+                from src.services.finbert_sentiment_service import get_finbert_service
+                self.finbert_service = get_finbert_service()
+            except Exception as exc:
+                logger.warning("FinBERT 情感分析服务初始化失败: %s", exc)
+                self.finbert_service = None
+        else:
+            self.finbert_service = None
 
         # 初始化社交舆情服务（仅美股，可选）
         try:
@@ -602,6 +614,19 @@ class StockAnalysisPipeline:
                             news_context = social_context
                 except Exception as e:
                     logger.warning(f"{stock_name}({code}) Social sentiment fetch failed: {e}")
+
+            # Step 4.6: FinBERT 新闻情感分析
+            if news_context and getattr(self, "finbert_service", None) and self.finbert_service.is_available:
+                try:
+                    news_lines = [line.strip() for line in news_context.split("\n")
+                                  if line.strip() and len(line.strip()) >= 10]
+                    if news_lines:
+                        finbert_result = self.finbert_service.analyze_news_sentiment(news_lines)
+                        if finbert_result:
+                            logger.info(f"{stock_name}({code}) FinBERT情感: {finbert_result['overall_label']} ({finbert_result['overall_score']:+.2f})")
+                            news_context = news_context + "\n\n[BERT情感分析] " + finbert_result["summary"]
+                except Exception as e:
+                    logger.debug(f"{stock_name}({code}) FinBERT情感分析失败: {e}")
 
             # Step 5: 获取分析上下文（技术面数据）
             self._emit_progress(58, f"{stock_name}：正在整理分析上下文")
@@ -1111,6 +1136,43 @@ class StockAnalysisPipeline:
                         logger.info(f"[{code}] Agent mode: social sentiment data injected into news_context")
                 except Exception as e:
                     logger.warning(f"[{code}] Agent mode: social sentiment fetch failed: {e}")
+
+            # Step 4.6 (Agent): FinBERT 新闻情感分析
+            if getattr(self, "finbert_service", None) and self.finbert_service.is_available:
+                try:
+                    agent_news_context = initial_context.get("news_context", "")
+                    # 若 initial_context 尚无新闻，主动搜索一次供 FinBERT 使用
+                    if not agent_news_context and self.search_service is not None and self.search_service.is_available:
+                        _news_resp = self.search_service.search_stock_news(
+                            stock_code=code,
+                            stock_name=stock_name,
+                            max_results=10,
+                        )
+                        if _news_resp.success and _news_resp.results:
+                            agent_news_context = self.search_service.format_intel_report(
+                                {"latest_news": _news_resp},
+                                stock_name,
+                            )
+                    if agent_news_context:
+                        _news_lines = [
+                            line.strip()
+                            for line in agent_news_context.split("\n")
+                            if line.strip() and len(line.strip()) >= 10
+                        ]
+                        if _news_lines:
+                            _finbert_result = self.finbert_service.analyze_news_sentiment(_news_lines)
+                            if _finbert_result:
+                                logger.info(
+                                    f"{stock_name}({code}) FinBERT情感: {_finbert_result['overall_label']} ({_finbert_result['overall_score']:+.2f})"
+                                )
+                                _finbert_summary = "\n\n[BERT情感分析] " + _finbert_result["summary"]
+                                existing = initial_context.get("news_context", "")
+                                if existing:
+                                    initial_context["news_context"] = existing + _finbert_summary
+                                else:
+                                    initial_context["news_context"] = _finbert_summary
+                except Exception as e:
+                    logger.debug(f"{stock_name}({code}) FinBERT情感分析失败: {e}")
 
             # Issue #1066: ensure deep history is in DB before agent tools run
             self._ensure_agent_history(code)
