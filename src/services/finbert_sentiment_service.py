@@ -88,6 +88,73 @@ def get_finbert_service() -> "FinBERTSentimentService":
     return _finbert_instance
 
 
+# Standalone subprocess script for batch inference across multiple stock groups.
+# Loads the model once, infers all groups, prints JSON, and exits.
+_FINBERT_WORKER_BATCH = """\
+import json, os, sys
+
+os.environ.setdefault("TQDM_DISABLE", "1")
+
+import torch
+torch.set_num_threads(2)
+
+from transformers import pipeline
+pipe = pipeline(
+    "text-classification",
+    model=os.environ["FINBERT_MODEL"],
+    truncation=True,
+    max_length=512,
+    device=-1,
+)
+
+data = json.loads(sys.stdin.read())
+results = []
+
+for group in data.get("groups", []):
+    texts = [t.strip() for t in group.get("texts", []) if t and len(t.strip()) >= 5]
+    if not texts:
+        results.append(None)
+        continue
+
+    group_results = []
+    with torch.no_grad():
+        for i in range(0, len(texts), 4):
+            batch = texts[i:i + 4]
+            preds = pipe(batch)
+            for t, p in zip(batch, preds):
+                if isinstance(p, list):
+                    p = max(p, key=lambda x: x["score"])
+                group_results.append({"text": t[:100], "label": p["label"], "score": round(p["score"], 4)})
+
+    pos = [d for d in group_results if d["label"] == "positive"]
+    neg = [d for d in group_results if d["label"] == "negative"]
+    neu = [d for d in group_results if d["label"] == "neutral"]
+    total = len(group_results)
+    ws = sum((1.0 if d["label"] == "positive" else -1.0 if d["label"] == "negative" else 0.0) * d["score"] for d in group_results)
+    overall = ws / total if total else 0.0
+    label = "positive" if overall > 0.1 else ("negative" if overall < -0.1 else "neutral")
+    sp = [f"共分析{total}条新闻"]
+    if pos:
+        sp.append(f"正面{len(pos)}条")
+    if neg:
+        sp.append(f"负面{len(neg)}条")
+    if neu:
+        sp.append(f"中性{len(neu)}条")
+    sp.append(f"综合情感: {label} ({overall:+.2f})")
+
+    results.append({
+        "overall_score": round(overall, 4),
+        "overall_label": label,
+        "positive_count": len(pos),
+        "negative_count": len(neg),
+        "neutral_count": len(neu),
+        "details": group_results,
+        "summary": "，".join(sp),
+    })
+
+print(json.dumps({"results": results}))
+"""
+
 _finbert_instance: Optional["FinBERTSentimentService"] = None
 
 
@@ -154,3 +221,48 @@ class FinBERTSentimentService:
         except Exception as e:
             logger.warning("[FinBERT] 子进程失败: %s", e)
             return None
+
+    def analyze_news_sentiment_batch(self, groups: List[List[str]]) -> List[Optional[Dict]]:
+        """Run FinBERT inference on multiple text groups in a single subprocess.
+
+        This avoids loading the ~400 MB model multiple times when analyzing
+        several stocks.  Returns a list aligned with *groups*.
+        """
+        if not self.is_available:
+            return [None] * len(groups)
+        if not groups:
+            return []
+
+        # Filter empty groups
+        payload_groups = []
+        for texts in groups:
+            filtered = [t.strip() for t in texts if t and len(t.strip()) >= 5]
+            payload_groups.append({"texts": filtered})
+
+        if not any(g["texts"] for g in payload_groups):
+            return [None] * len(groups)
+
+        try:
+            env = {**os.environ, "FINBERT_MODEL": self._model_name, "TQDM_DISABLE": "1"}
+            proc = subprocess.run(
+                [sys.executable, "-c", _FINBERT_WORKER_BATCH],
+                input=json.dumps({"groups": payload_groups}, ensure_ascii=False),
+                capture_output=True, text=True, timeout=180,
+                env=env,
+            )
+            if proc.returncode != 0:
+                logger.warning("[FinBERT] batch 子进程退出码 %d: %s", proc.returncode,
+                               proc.stderr[:300] if proc.stderr else "")
+                return [None] * len(groups)
+            data = json.loads(proc.stdout)
+            results = data.get("results", [])
+            # Ensure length matches input
+            while len(results) < len(groups):
+                results.append(None)
+            return results[:len(groups)]
+        except subprocess.TimeoutExpired:
+            logger.warning("[FinBERT] batch 子进程超时（180s）")
+            return [None] * len(groups)
+        except Exception as e:
+            logger.warning("[FinBERT] batch 子进程失败: %s", e)
+            return [None] * len(groups)

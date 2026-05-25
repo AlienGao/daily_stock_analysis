@@ -29,19 +29,18 @@ class HistoryItem(BaseModel):
     operation_advice: Optional[str] = Field(None, description="操作建议")
     created_at: Optional[str] = Field(None, description="创建时间")
     
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "id": 1234,
-                "query_id": "abc123",
-                "stock_code": "600519",
-                "stock_name": "贵州茅台",
-                "report_type": "detailed",
-                "sentiment_score": 75,
-                "operation_advice": "持有",
-                "created_at": "2024-01-01T12:00:00"
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "id": 1234,
+            "query_id": "abc123",
+            "stock_code": "600519",
+            "stock_name": "贵州茅台",
+            "report_type": "detailed",
+            "sentiment_score": 75,
+            "operation_advice": "持有",
+            "created_at": "2024-01-01T12:00:00"
         }
+    })
 
 
 class HistoryListResponse(BaseModel):
@@ -52,15 +51,14 @@ class HistoryListResponse(BaseModel):
     limit: int = Field(..., description="每页数量")
     items: List[HistoryItem] = Field(default_factory=list, description="记录列表")
     
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "total": 100,
-                "page": 1,
-                "limit": 20,
-                "items": []
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "total": 100,
+            "page": 1,
+            "limit": 20,
+            "items": []
         }
+    })
 
 
 class DeleteHistoryRequest(BaseModel):
@@ -82,14 +80,13 @@ class NewsIntelItem(BaseModel):
     snippet: str = Field("", description="新闻摘要（最多200字）")
     url: str = Field(..., description="新闻链接")
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "title": "公司发布业绩快报，营收同比增长 20%",
-                "snippet": "公司公告显示，季度营收同比增长 20%...",
-                "url": "https://example.com/news/123"
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "title": "公司发布业绩快报，营收同比增长 20%",
+            "snippet": "公司公告显示，季度营收同比增长 20%...",
+            "url": "https://example.com/news/123"
         }
+    })
 
 
 class NewsIntelResponse(BaseModel):
@@ -98,13 +95,12 @@ class NewsIntelResponse(BaseModel):
     total: int = Field(..., description="新闻条数")
     items: List[NewsIntelItem] = Field(default_factory=list, description="新闻列表")
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "total": 2,
-                "items": []
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "total": 2,
+            "items": []
         }
+    })
 
 
 class ReportMeta(BaseModel):
@@ -170,6 +166,17 @@ class ReportDetails(BaseModel):
     sector_rankings: Optional[Any] = Field(None, description="板块涨跌榜（结构 {top, bottom}）")
 
 
+class FinBERTSentiment(BaseModel):
+    """FinBERT 新闻情感分析结果"""
+
+    overall_score: Optional[float] = Field(None, description="综合情感得分 ([-1, 1])")
+    overall_label: Optional[str] = Field(None, description="情感标签 (positive/negative/neutral)")
+    positive_count: Optional[int] = Field(None, description="正面新闻条数")
+    negative_count: Optional[int] = Field(None, description="负面新闻条数")
+    neutral_count: Optional[int] = Field(None, description="中性新闻条数")
+    summary: Optional[str] = Field(None, description="情感分析摘要")
+
+
 class AnalysisReport(BaseModel):
     """完整分析报告"""
 
@@ -179,35 +186,35 @@ class AnalysisReport(BaseModel):
     matched_skills: Optional[List[MatchedSkill]] = Field(
         None, description="本次分析命中的交易技能（按置信度从高到低）"
     )
+    finbert_sentiment: Optional[FinBERTSentiment] = Field(None, description="FinBERT 新闻情感分析")
     details: Optional[ReportDetails] = Field(None, description="详情区")
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "meta": {
-                    "query_id": "abc123",
-                    "stock_code": "600519",
-                    "stock_name": "贵州茅台",
-                    "report_type": "detailed",
-                    "report_language": "zh",
-                    "created_at": "2024-01-01T12:00:00"
-                },
-                "summary": {
-                    "analysis_summary": "技术面向好，建议持有",
-                    "operation_advice": "持有",
-                    "trend_prediction": "看多",
-                    "sentiment_score": 75,
-                    "sentiment_label": "乐观"
-                },
-                "strategy": {
-                    "ideal_buy": "1800.00",
-                    "secondary_buy": "1750.00",
-                    "stop_loss": "1700.00",
-                    "take_profit": "2000.00"
-                },
-                "details": None
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "meta": {
+                "query_id": "abc123",
+                "stock_code": "600519",
+                "stock_name": "贵州茅台",
+                "report_type": "detailed",
+                "report_language": "zh",
+                "created_at": "2024-01-01T12:00:00"
+            },
+            "summary": {
+                "analysis_summary": "技术面向好，建议持有",
+                "operation_advice": "持有",
+                "trend_prediction": "看多",
+                "sentiment_score": 75,
+                "sentiment_label": "乐观"
+            },
+            "strategy": {
+                "ideal_buy": "1800.00",
+                "secondary_buy": "1750.00",
+                "stop_loss": "1700.00",
+                "take_profit": "2000.00"
+            },
+            "details": None
         }
+    })
 
 
 class MarkdownReportResponse(BaseModel):
@@ -215,9 +222,8 @@ class MarkdownReportResponse(BaseModel):
 
     content: str = Field(..., description="Markdown 格式的完整报告内容")
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "content": "# 📊 贵州茅台 (600519) 分析报告\n\n> 分析日期：**2024-01-01**\n\n..."
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "content": "# 📊 贵州茅台 (600519) 分析报告\n\n> 分析日期：**2024-01-01**\n\n..."
         }
+    })

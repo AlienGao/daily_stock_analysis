@@ -176,6 +176,11 @@ class AnalysisService:
                 "risk_warning": result.risk_warning,
             }
         }
+
+        # FinBERT 新闻情感分析
+        finbert_sentiment = getattr(result, "finbert_sentiment", None)
+        if finbert_sentiment:
+            report["finbert_sentiment"] = finbert_sentiment
         
         return {
             "stock_code": result.code,

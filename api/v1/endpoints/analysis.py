@@ -79,6 +79,7 @@ from src.utils.data_processing import (
     parse_json_field,
     extract_fundamental_detail_fields,
     extract_board_detail_fields,
+    extract_realtime_detail_fields,
 )
 
 logger = logging.getLogger(__name__)
@@ -707,6 +708,80 @@ def _format_sse_event(event_type: str, data: Dict[str, Any]) -> str:
     return f"event: {event_type}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
+def _datetime_to_iso(value: Any) -> Optional[str]:
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, str) and value.strip():
+        return value
+    return None
+
+
+def _extract_report_created_at(payload: Dict[str, Any]) -> Optional[str]:
+    report = payload.get("report")
+    if not isinstance(report, dict):
+        return None
+
+    meta = report.get("meta")
+    if not isinstance(meta, dict):
+        return None
+
+    return _datetime_to_iso(meta.get("created_at"))
+
+
+def _build_task_analysis_result(task: Any) -> AnalysisResultResponse:
+    """
+    Normalize an in-memory completed task result to the public API contract.
+
+    Older AnalysisService payloads contain stock_code/stock_name/report only.
+    The status endpoint owns the task metadata, so it can supply the missing
+    response fields without waiting for the database fallback path.
+    """
+    payload = dict(task.result)
+    if not payload.get("query_id"):
+        payload["query_id"] = task.task_id
+    if not payload.get("stock_code"):
+        payload["stock_code"] = task.stock_code
+
+    if not payload.get("stock_name") and getattr(task, "stock_name", None):
+        payload["stock_name"] = task.stock_name
+
+    if not payload.get("created_at"):
+        payload["created_at"] = (
+            _extract_report_created_at(payload)
+            or _datetime_to_iso(getattr(task, "created_at", None))
+            or _datetime_to_iso(getattr(task, "completed_at", None))
+            or datetime.now().isoformat()
+        )
+
+    report_data = payload.get("report")
+    stock_code = payload.get("stock_code")
+    query_id = payload.get("query_id")
+    if isinstance(report_data, dict) and stock_code and query_id:
+        context_snapshot, fundamental_snapshot = _load_sync_fundamental_sources(
+            query_id=query_id,
+            stock_code=stock_code,
+        )
+        if context_snapshot is not None or fundamental_snapshot is not None:
+            try:
+                report = _build_analysis_report(
+                    report_data,
+                    query_id,
+                    stock_code,
+                    payload.get("stock_name") or getattr(task, "stock_name", None),
+                    context_snapshot=context_snapshot,
+                    fallback_fundamental_payload=fundamental_snapshot,
+                )
+                payload["report"] = report.model_dump()
+            except Exception as e:
+                logger.debug(
+                    "enrich in-memory task report failed (fail-open): task_id=%s err=%s",
+                    getattr(task, "task_id", None),
+                    e,
+                )
+
+    return AnalysisResultResponse.model_validate(payload)
+
+
 # ============================================================
 # GET /status/{task_id} - 查询单个任务状态
 # ============================================================
@@ -751,7 +826,7 @@ def get_analysis_status(task_id: str) -> TaskStatus:
                     market_review_report = report_text
             else:
                 try:
-                    result = AnalysisResultResponse.model_validate(task.result)
+                    result = _build_task_analysis_result(task)
                 except Exception:
                     logger.warning(
                         "解析任务结果失败，回退为空返回: task_id=%s",
@@ -808,25 +883,39 @@ def get_analysis_status(task_id: str) -> TaskStatus:
             stock_name = get_localized_stock_name(record.name, record.code, report_language)
 
             # Extract current_price / change_pct from context_snapshot
-            current_price = None
-            change_pct = None
             skills = None
             context_snapshot = parse_json_field(getattr(record, 'context_snapshot', None))
             if context_snapshot and isinstance(context_snapshot, dict):
                 raw_skills = context_snapshot.get("skills")
                 if isinstance(raw_skills, list):
                     skills = [str(skill) for skill in raw_skills]
-                enhanced_context = context_snapshot.get('enhanced_context') or {}
-                realtime = enhanced_context.get('realtime') or {}
-                current_price = realtime.get('price')
-                change_pct = realtime.get('change_pct')
-                realtime_quote_raw = context_snapshot.get('realtime_quote_raw') or {}
-                if current_price is None:
-                    current_price = realtime_quote_raw.get('price')
-                if change_pct is None:
-                    change_pct = realtime_quote_raw.get('change_pct')
-                if change_pct is None:
-                    change_pct = realtime_quote_raw.get('pct_chg')
+            realtime_fields = extract_realtime_detail_fields(context_snapshot)
+            current_price = realtime_fields.get("current_price")
+            change_pct = realtime_fields.get("change_pct")
+            fallback_fundamental = db.get_latest_fundamental_snapshot(
+                query_id=task_id,
+                code=record.code,
+            )
+            extracted_fundamental = extract_fundamental_detail_fields(
+                context_snapshot=context_snapshot,
+                fallback_fundamental_payload=fallback_fundamental,
+            )
+            extracted_boards = extract_board_detail_fields(
+                context_snapshot=context_snapshot,
+                fallback_fundamental_payload=fallback_fundamental,
+            )
+            has_board_details = bool(extracted_boards.get("belong_boards")) or extracted_boards.get("sector_rankings") is not None
+            details = None
+            if any(extracted_fundamental.values()) or has_board_details or context_snapshot is not None:
+                details = ReportDetails(
+                    news_content=getattr(record, "news_content", None),
+                    raw_result=raw_result,
+                    context_snapshot=context_snapshot,
+                    financial_report=extracted_fundamental.get("financial_report"),
+                    dividend_metrics=extracted_fundamental.get("dividend_metrics"),
+                    belong_boards=extracted_boards.get("belong_boards"),
+                    sector_rankings=extracted_boards.get("sector_rankings"),
+                )
 
             # Build report from DB record so completed tasks return real data
             report_dict = AnalysisReport(
@@ -854,6 +943,7 @@ def get_analysis_status(task_id: str) -> TaskStatus:
                     stop_loss=_stringify_report_strategy_value(getattr(record, 'stop_loss', None)),
                     take_profit=_stringify_report_strategy_value(getattr(record, 'take_profit', None)),
                 ),
+                details=details,
             ).model_dump()
             return TaskStatus(
                 task_id=task_id,
@@ -1022,6 +1112,13 @@ def _build_analysis_report(
         meta_data.get("stock_code", stock_code),
         report_language,
     )
+    realtime_fields = extract_realtime_detail_fields(context_snapshot)
+    current_price = meta_data.get("current_price")
+    if current_price is None:
+        current_price = realtime_fields.get("current_price")
+    change_pct = meta_data.get("change_pct")
+    if change_pct is None:
+        change_pct = realtime_fields.get("change_pct")
 
     meta = ReportMeta(
         query_id=meta_data.get("query_id", query_id),
@@ -1030,8 +1127,8 @@ def _build_analysis_report(
         report_type=meta_data.get("report_type", "detailed"),
         report_language=report_language,
         created_at=meta_data.get("created_at", datetime.now().isoformat()),
-        current_price=meta_data.get("current_price"),
-        change_pct=meta_data.get("change_pct"),
+        current_price=current_price,
+        change_pct=change_pct,
         model_used=normalize_model_used(meta_data.get("model_used")),
     )
 
@@ -1078,11 +1175,26 @@ def _build_analysis_report(
             sector_rankings=extracted_boards.get("sector_rankings"),
         )
 
+    # FinBERT sentiment
+    finbert_data = report_data.get("finbert_sentiment")
+    finbert_sentiment = None
+    if finbert_data and isinstance(finbert_data, dict):
+        from api.v1.schemas.history import FinBERTSentiment
+        finbert_sentiment = FinBERTSentiment(
+            overall_score=finbert_data.get("overall_score"),
+            overall_label=finbert_data.get("overall_label"),
+            positive_count=finbert_data.get("positive_count"),
+            negative_count=finbert_data.get("negative_count"),
+            neutral_count=finbert_data.get("neutral_count"),
+            summary=finbert_data.get("summary"),
+        )
+
     return AnalysisReport(
         meta=meta,
         summary=summary,
         strategy=strategy,
         matched_skills=matched_skills,
+        finbert_sentiment=finbert_sentiment,
         details=details,
     )
 

@@ -53,6 +53,9 @@ export type LGBPredictionItem = {
   profit_loss_ratio: number | null;
   hit_count: number | null;
   score_percentile: number | null;
+  finbert_label?: string | null;
+  finbert_score?: number | null;
+  finbert_summary?: string | null;
 };
 
 export type LGBPredictionsResponse = {
@@ -97,6 +100,14 @@ export type LGBStockLookupItem = {
   lgb_score: number;
   raw_score: number;
   total_stocks: number;
+  finbert_sentiment?: {
+    overall_score?: number;
+    overall_label?: string;
+    positive_count?: number;
+    negative_count?: number;
+    neutral_count?: number;
+    summary?: string;
+  } | null;
 };
 
 export type LGBStockLookupResponse = {

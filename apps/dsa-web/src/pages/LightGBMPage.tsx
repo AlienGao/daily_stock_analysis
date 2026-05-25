@@ -571,6 +571,24 @@ const LightGBMPage: React.FC = () => {
         return tip ? <AntTooltip overlayStyle={{ maxWidth: 360 }} title={<pre className="text-[11px] leading-relaxed m-0 whitespace-pre-wrap">{tip}</pre>} placement="top">{el}</AntTooltip> : el;
       },
     }] : []),
+    ...(predictions.some(p => p.finbert_label != null) ? [{
+      title: 'FinBERT 评价',
+      dataIndex: 'finbert_label',
+      key: 'finbert',
+      width: 95,
+      render: (_: unknown, r: LGBPredictionItem) => {
+        if (!r.finbert_label) return '-';
+        const labelMap: Record<string, string> = { positive: '正面', negative: '负面', neutral: '中性' };
+        const colorMap: Record<string, string> = { positive: 'text-red-400', negative: 'text-green-400', neutral: 'text-purple-400' };
+        const label = labelMap[r.finbert_label] || r.finbert_label;
+        const score = r.finbert_score != null ? `${r.finbert_score >= 0 ? '+' : ''}${r.finbert_score.toFixed(2)}` : '';
+        const el = <span className={`${colorMap[r.finbert_label] || ''} font-medium`}>{label} {score}</span>;
+        if (r.finbert_summary) {
+          return <AntTooltip overlayStyle={{ maxWidth: 320 }} title={<span className="text-[11px]">{r.finbert_summary}</span>} placement="top">{el}</AntTooltip>;
+        }
+        return el;
+      },
+    }] : []),
   ];
 
   return (
@@ -1017,6 +1035,29 @@ const LightGBMPage: React.FC = () => {
                       <div className="font-medium text-sm">{stockLookup.raw_score.toFixed(4)}</div>
                     </div>
                   </div>
+                  {stockLookup.finbert_sentiment && (
+                    <div className="mt-3 pt-3 border-t border-blue-500/20">
+                      <div className="text-xs text-tertiary-text mb-1">FinBERT 新闻情感</div>
+                      <div className="flex items-center gap-3 text-xs">
+                        <span className={`font-medium text-sm ${
+                          stockLookup.finbert_sentiment.overall_label === 'positive' ? 'text-green-400' :
+                          stockLookup.finbert_sentiment.overall_label === 'negative' ? 'text-red-400' :
+                          'text-yellow-400'
+                        }`}>
+                          {stockLookup.finbert_sentiment.overall_label === 'positive' ? '正面' :
+                           stockLookup.finbert_sentiment.overall_label === 'negative' ? '负面' : '中性'}
+                          {stockLookup.finbert_sentiment.overall_score != null &&
+                            ` (${stockLookup.finbert_sentiment.overall_score > 0 ? '+' : ''}${stockLookup.finbert_sentiment.overall_score.toFixed(2)})`}
+                        </span>
+                        <span className="text-green-400">正面 {stockLookup.finbert_sentiment.positive_count ?? 0}</span>
+                        <span className="text-red-400">负面 {stockLookup.finbert_sentiment.negative_count ?? 0}</span>
+                        <span className="text-yellow-400">中性 {stockLookup.finbert_sentiment.neutral_count ?? 0}</span>
+                      </div>
+                      {stockLookup.finbert_sentiment.summary && (
+                        <div className="mt-1 text-xs text-secondary-text">{stockLookup.finbert_sentiment.summary}</div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </Card>

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """LightGBM 研究模块 Pydantic Schema。"""
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -49,6 +49,9 @@ class LGBPredictionItem(BaseModel):
     profit_loss_ratio: Optional[float] = None
     hit_count: Optional[int] = None
     score_percentile: Optional[float] = None
+    finbert_label: Optional[str] = None
+    finbert_score: Optional[float] = None
+    finbert_summary: Optional[str] = None
 
 
 class LGBPredictionsResponse(BaseModel):
@@ -90,6 +93,7 @@ class LGBStockLookupItem(BaseModel):
     lgb_score: float       # 归一化 0-100
     raw_score: float        # 模型原始输出
     total_stocks: int       # 全市场参评股票数
+    finbert_sentiment: Optional[Dict[str, Any]] = Field(None, description="FinBERT 新闻情感分析结果")
 
 
 class LGBStockLookupResponse(BaseModel):

@@ -30,9 +30,9 @@ from data_provider.realtime_types import ChipDistribution
 from src.analyzer import (
     GeminiAnalyzer,
     AnalysisResult,
-    fill_chip_structure_if_needed,
     fill_price_position_if_needed,
     _sanitize_matched_skills,
+    normalize_chip_structure_availability,
     stabilize_decision_with_structure,
 )
 from src.data.stock_mapping import STOCK_NAME_MAP
@@ -50,6 +50,7 @@ from src.services.social_sentiment_service import SocialSentimentService
 from src.enums import ReportType
 from src.stock_analyzer import StockTrendAnalyzer, TrendAnalysisResult
 from src.core.trading_calendar import (
+    build_market_phase_context,
     get_effective_trading_date,
     get_market_for_stock,
     get_market_now,
@@ -271,6 +272,7 @@ class StockAnalysisPipeline:
         replace_history: bool = False,
         persist_history: bool = True,
         prefetched_news_context: Optional[str] = None,
+        current_time: Optional[datetime] = None,
     ) -> Optional[AnalysisResult]:
         """
         分析单只股票（增强版：含量比、换手率、筹码分析、多维度情报）
@@ -287,12 +289,22 @@ class StockAnalysisPipeline:
             query_id: 查询链路关联 id
             code: 股票代码
             report_type: 报告类型
+            current_time: 本轮运行冻结的参考时间，用于统一市场阶段上下文
             
         Returns:
             AnalysisResult 或 None（如果分析失败）
         """
         stock_name = code
         try:
+            market = get_market_for_stock(normalize_stock_code(code))
+            market_phase_context = build_market_phase_context(
+                market=market,
+                current_time=current_time,
+                trigger_source=self.query_source,
+                analysis_intent="auto",
+            )
+            market_phase_context_dict = market_phase_context.to_dict()
+
             self._emit_progress(18, f"{code}：正在获取行情与筹码数据")
             # 获取股票名称（先走轻量名称路径，后续若 realtime_quote 有 name 再覆盖）
             stock_name = self.fetcher_manager.get_stock_name(code, allow_realtime=False)
@@ -530,6 +542,7 @@ class StockAnalysisPipeline:
                     agent_exec_config=agent_exec_config,
                     replace_history=replace_history,
                     persist_history=persist_history,
+                    market_phase_context=market_phase_context_dict,
                 )
                 # 应用筹码扣分
                 if chip_penalty > 0 and result and result.success:
@@ -616,6 +629,7 @@ class StockAnalysisPipeline:
                     logger.warning(f"{stock_name}({code}) Social sentiment fetch failed: {e}")
 
             # Step 4.6: FinBERT 新闻情感分析
+            finbert_result = None
             if news_context and getattr(self, "finbert_service", None) and self.finbert_service.is_available:
                 try:
                     news_lines = [line.strip() for line in news_context.split("\n")
@@ -660,6 +674,7 @@ class StockAnalysisPipeline:
                 tech_factors=tech_factors,
                 factor_signals=factor_signals,
             )
+            enhanced_context["market_phase_context"] = market_phase_context_dict
             
             # Step 7: 调用 AI 分析（传入增强的上下文和新闻）
             llm_progress_state = {"last_progress": 64}
@@ -690,14 +705,27 @@ class StockAnalysisPipeline:
                 result.current_price = realtime_data.get('price')
                 result.change_pct = realtime_data.get('change_pct')
 
-            # Step 7.6: chip_structure fallback (Issue #589)
-            if result and chip_data:
-                fill_chip_structure_if_needed(result, chip_data)
+            # Step 7.6: chip_structure fallback (Issue #589) and unavailable collapse
+            if result:
+                normalize_chip_structure_availability(result, chip_data)
 
             # Step 7.7: price_position fallback
             if result:
                 fill_price_position_if_needed(result, trend_result, realtime_quote)
                 stabilize_decision_with_structure(result, trend_result, fundamental_context)
+                if isinstance(fundamental_context, dict):
+                    result.fundamental_context = fundamental_context
+
+            # Step 7.8: attach FinBERT sentiment result
+            if result and finbert_result:
+                result.finbert_sentiment = {
+                    "overall_score": finbert_result.get("overall_score"),
+                    "overall_label": finbert_result.get("overall_label"),
+                    "positive_count": finbert_result.get("positive_count"),
+                    "negative_count": finbert_result.get("negative_count"),
+                    "neutral_count": finbert_result.get("neutral_count"),
+                    "summary": finbert_result.get("summary"),
+                }
 
             # Step 8: 保存分析历史记录
             if result and result.success:
@@ -866,53 +894,75 @@ class StockAnalysisPipeline:
             # 清理 None 值
             enhanced['trend_analysis'] = {k: v for k, v in ta.items() if v is not None}
 
-        # Issue #234: Override today with realtime OHLC + MA for intraday analysis
-        # Use Tushare MAs when available, local as fallback
-        if realtime_quote and trend_result:
-            _ma5 = ma5 if (isinstance(tech_factors, dict) and tech_factors.get('ma_5') is not None) else trend_result.ma5
-            _ma10 = ma10 if (isinstance(tech_factors, dict) and tech_factors.get('ma_10') is not None) else trend_result.ma10
-            _ma20 = ma20 if (isinstance(tech_factors, dict) and tech_factors.get('ma_20') is not None) else trend_result.ma20
-            if _ma5 and _ma5 > 0:
-                price_val = getattr(realtime_quote, 'price', None)
-                if price_val is not None and price_val > 0:
-                    yesterday_close = None
-                    if enhanced.get('yesterday') and isinstance(enhanced['yesterday'], dict):
-                        yesterday_close = enhanced['yesterday'].get('close')
-                    orig_today = enhanced.get('today') or {}
-                    open_p = getattr(realtime_quote, 'open_price', None) or getattr(
-                        realtime_quote, 'pre_close', None
-                    ) or yesterday_close or orig_today.get('open') or price_val
-                    high_p = getattr(realtime_quote, 'high', None) or price_val
-                    low_p = getattr(realtime_quote, 'low', None) or price_val
-                    vol = getattr(realtime_quote, 'volume', None)
-                    amt = getattr(realtime_quote, 'amount', None)
-                    pct = getattr(realtime_quote, 'change_pct', None)
-                    realtime_today = {
-                        'close': price_val,
-                        'open': open_p,
-                        'high': high_p,
-                        'low': low_p,
-                        'ma5': _ma5,
-                        'ma10': _ma10,
-                        'ma20': _ma20,
-                    }
-                    if vol is not None:
-                        realtime_today['volume'] = vol
-                    if amt is not None:
-                        realtime_today['amount'] = amt
-                    if pct is not None:
-                        realtime_today['pct_chg'] = pct
-                    for k, v in orig_today.items():
-                        if k not in realtime_today and v is not None:
-                            realtime_today[k] = v
-                    enhanced['today'] = realtime_today
-                    enhanced['ma_status'] = self._compute_ma_status(
-                        price_val, _ma5, _ma10, _ma20
-                    )
-                    enhanced['date'] = get_market_now(
-                        get_market_for_stock(normalize_stock_code(enhanced.get('code', '')))
-                    ).date().isoformat()
-                    if yesterday_close is not None:
+        # Issue #234：盘中分析使用实时 OHLC 与趋势 MA 覆盖 today。
+        # 防护条件：trend_result.ma5 > 0 表示 MA 计算已成功且数据量充足。
+        if realtime_quote and trend_result and trend_result.ma5 > 0:
+            price = getattr(realtime_quote, 'price', None)
+            if price is not None and price > 0:
+                yesterday_close = None
+                if enhanced.get('yesterday') and isinstance(enhanced['yesterday'], dict):
+                    yesterday_close = enhanced['yesterday'].get('close')
+                orig_today = enhanced.get('today') or {}
+                market_today = get_market_now(
+                    get_market_for_stock(normalize_stock_code(enhanced.get('code', '')))
+                ).date().isoformat()
+                source = getattr(realtime_quote, 'source', None)
+                source_name = getattr(source, 'value', source)
+                source_name = str(source_name) if source_name is not None else 'unknown'
+                open_p = getattr(realtime_quote, 'open_price', None) or getattr(
+                    realtime_quote, 'pre_close', None
+                ) or yesterday_close or orig_today.get('open') or price
+                high_p = getattr(realtime_quote, 'high', None) or price
+                low_p = getattr(realtime_quote, 'low', None) or price
+                vol = getattr(realtime_quote, 'volume', None)
+                amt = getattr(realtime_quote, 'amount', None)
+                pct = getattr(realtime_quote, 'change_pct', None)
+                realtime_today = {
+                    'close': price,
+                    'open': open_p,
+                    'high': high_p,
+                    'low': low_p,
+                    'ma5': trend_result.ma5,
+                    'ma10': trend_result.ma10,
+                    'ma20': trend_result.ma20,
+                    'date': market_today,
+                    'data_source': f"realtime:{source_name}",
+                    'realtime_source': source_name,
+                }
+                if vol is not None:
+                    realtime_today['volume'] = vol
+                if amt is not None:
+                    realtime_today['amount'] = amt
+                if pct is not None:
+                    realtime_today['pct_chg'] = pct
+                realtime_owned_fields = {
+                    'open', 'high', 'low', 'close',
+                    'volume', 'amount', 'pct_chg', 'pctChg',
+                    'date', 'data_source', 'dataSource', 'source',
+                    'realtime_source', 'realtimeSource',
+                }
+                for k, v in orig_today.items():
+                    if k not in realtime_today and k not in realtime_owned_fields and v is not None:
+                        realtime_today[k] = v
+                enhanced['today'] = realtime_today
+                enhanced['ma_status'] = self._compute_ma_status(
+                    price, trend_result.ma5, trend_result.ma10, trend_result.ma20
+                )
+                enhanced['date'] = market_today
+                if yesterday_close is not None:
+                    try:
+                        yc = float(yesterday_close)
+                        if yc > 0:
+                            enhanced['price_change_ratio'] = round(
+                                (price - yc) / yc * 100, 2
+                            )
+                    except (TypeError, ValueError):
+                        pass
+                if vol is not None and enhanced.get('yesterday'):
+                    yest_vol = enhanced['yesterday'].get('volume') if isinstance(
+                        enhanced['yesterday'], dict
+                    ) else None
+                    if yest_vol is not None:
                         try:
                             yc = float(yesterday_close)
                             if yc > 0:
@@ -1020,11 +1070,15 @@ class StockAnalysisPipeline:
         if not isinstance(market, str) or not market.strip():
             market = get_market_for_stock(normalize_stock_code(code))
 
-        if (
-            market != "cn"
-            or boards_status == "not_supported"
-            or boards_coverage == "not_supported"
-        ):
+        # For HK/US: the offshore adapter already populates belong_boards from
+        # yfinance sector/industry. Don't overwrite it (and we have no AkShare
+        # 板块 endpoint for those markets anyway). Default to [] when callers
+        # pass a minimal context without the key.
+        if market != "cn":
+            enriched_context.setdefault("belong_boards", [])
+            return enriched_context
+
+        if boards_status == "not_supported" or boards_coverage == "not_supported":
             enriched_context["belong_boards"] = []
             return enriched_context
 
@@ -1077,6 +1131,8 @@ class StockAnalysisPipeline:
         agent_exec_config: Optional[Config] = None,
         replace_history: bool = False,
         persist_history: bool = True,
+        *,
+        market_phase_context: Optional[Dict[str, Any]] = None,
     ) -> Optional[AnalysisResult]:
         """
         使用 Agent 模式分析单只股票。
@@ -1103,6 +1159,8 @@ class StockAnalysisPipeline:
             }
             if self.analysis_skills is not None:
                 initial_context["skills"] = self.analysis_skills
+            if market_phase_context is not None:
+                initial_context["market_phase_context"] = market_phase_context
             
             if realtime_quote:
                 initial_context["realtime_quote"] = self._safe_to_dict(realtime_quote)
@@ -1138,6 +1196,7 @@ class StockAnalysisPipeline:
                     logger.warning(f"[{code}] Agent mode: social sentiment fetch failed: {e}")
 
             # Step 4.6 (Agent): FinBERT 新闻情感分析
+            finbert_result = None
             if getattr(self, "finbert_service", None) and self.finbert_service.is_available:
                 try:
                     agent_news_context = initial_context.get("news_context", "")
@@ -1160,12 +1219,12 @@ class StockAnalysisPipeline:
                             if line.strip() and len(line.strip()) >= 10
                         ]
                         if _news_lines:
-                            _finbert_result = self.finbert_service.analyze_news_sentiment(_news_lines)
-                            if _finbert_result:
+                            finbert_result = self.finbert_service.analyze_news_sentiment(_news_lines)
+                            if finbert_result:
                                 logger.info(
-                                    f"{stock_name}({code}) FinBERT情感: {_finbert_result['overall_label']} ({_finbert_result['overall_score']:+.2f})"
+                                    f"{stock_name}({code}) FinBERT情感: {finbert_result['overall_label']} ({finbert_result['overall_score']:+.2f})"
                                 )
-                                _finbert_summary = "\n\n[BERT情感分析] " + _finbert_result["summary"]
+                                _finbert_summary = "\n\n[BERT情感分析] " + finbert_result["summary"]
                                 existing = initial_context.get("news_context", "")
                                 if existing:
                                     initial_context["news_context"] = existing + _finbert_summary
@@ -1195,6 +1254,16 @@ class StockAnalysisPipeline:
             )
             if result:
                 result.query_id = query_id
+                # attach FinBERT sentiment result
+                if finbert_result:
+                    result.finbert_sentiment = {
+                        "overall_score": finbert_result.get("overall_score"),
+                        "overall_label": finbert_result.get("overall_label"),
+                        "positive_count": finbert_result.get("positive_count"),
+                        "negative_count": finbert_result.get("negative_count"),
+                        "neutral_count": finbert_result.get("neutral_count"),
+                        "summary": finbert_result.get("summary"),
+                    }
             # Agent weak integrity: placeholder fill only, no LLM retry
             if result and getattr(self.config, "report_integrity_enabled", False):
                 from src.analyzer import check_content_integrity, apply_placeholder_fill
@@ -1207,8 +1276,8 @@ class StockAnalysisPipeline:
                         missing,
                     )
             # chip_structure fallback (Issue #589), before save_analysis_history
-            if result and chip_data:
-                fill_chip_structure_if_needed(result, chip_data)
+            if result and chip_data is not None:
+                normalize_chip_structure_availability(result, chip_data)
 
             # price_position fallback (same as non-agent path Step 7.7)
             if result:
@@ -1218,6 +1287,8 @@ class StockAnalysisPipeline:
                     result.current_price = realtime_data.get("price")
                     result.change_pct = realtime_data.get("change_pct")
                 stabilize_decision_with_structure(result, trend_result, fundamental_context)
+                if isinstance(fundamental_context, dict):
+                    result.fundamental_context = fundamental_context
 
             resolved_stock_name = result.name if result and result.name else stock_name
 
@@ -1247,13 +1318,14 @@ class StockAnalysisPipeline:
             # 保存分析历史记录
             if result and result.success and persist_history:
                 try:
-                    initial_context["stock_name"] = resolved_stock_name
+                    history_context = self._without_market_phase_context(initial_context)
+                    history_context["stock_name"] = resolved_stock_name
                     self._save_analysis_history_row(
                         result=result,
                         query_id=query_id,
                         report_type=report_type,
                         news_content=None,
-                        context_snapshot=initial_context,
+                        context_snapshot=history_context,
                         save_snapshot=self.save_context_snapshot,
                         replace_query_code=replace_history,
                     )
@@ -1789,8 +1861,8 @@ class StockAnalysisPipeline:
         self, df: pd.DataFrame, realtime_quote: Any, code: str
     ) -> pd.DataFrame:
         """
-        Augment historical OHLCV with today's realtime quote for intraday MA calculation.
-        Issue #234: Use realtime price instead of yesterday's close for technical indicators.
+        使用当日实时行情补齐历史 OHLCV，用于盘中 MA 计算。
+        Issue #234：技术指标使用实时价格，而不是沿用昨日收盘价。
         """
         if df is None or df.empty or 'close' not in df.columns:
             return df
@@ -1800,7 +1872,7 @@ class StockAnalysisPipeline:
         if price is None or not (isinstance(price, (int, float)) and price > 0):
             return df
 
-        # Optional: skip augmentation on non-trading days (fail-open)
+        # 非交易日可跳过实时补齐；异常情况下保持失败开放。
         enable_realtime_tech = getattr(
             self.config, 'enable_realtime_technical_indicators', True
         )
@@ -1827,7 +1899,7 @@ class StockAnalysisPipeline:
         pct = getattr(realtime_quote, 'change_pct', None)
 
         if last_date >= market_today:
-            # Update last row with realtime close (copy to avoid mutating caller's df)
+            # 使用实时收盘价更新最后一行；先复制，避免修改调用方传入的 df。
             df = df.copy()
             idx = df.index[-1]
             df.loc[idx, 'close'] = price
@@ -1844,7 +1916,7 @@ class StockAnalysisPipeline:
             if pct is not None:
                 df.loc[idx, 'pct_chg'] = pct
         else:
-            # Append virtual today row
+            # 追加一行虚拟的当日实时 K 线。
             new_row = {
                 'code': code,
                 'date': market_today,
@@ -1871,7 +1943,7 @@ class StockAnalysisPipeline:
         构建分析上下文快照
         """
         snapshot = {
-            "enhanced_context": enhanced_context,
+            "enhanced_context": self._without_market_phase_context(enhanced_context),
             "news_content": news_content,
             "realtime_quote_raw": self._safe_to_dict(realtime_quote),
             "chip_distribution_raw": self._safe_to_dict(chip_data),
@@ -1879,6 +1951,18 @@ class StockAnalysisPipeline:
         if self.analysis_skills is not None:
             snapshot["skills"] = list(self.analysis_skills)
         return snapshot
+
+    @staticmethod
+    def _without_market_phase_context(context: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Return a shallow copy without runtime-only market phase context.
+
+        P1a passes market phase through runtime analysis paths only; stable
+        history/task metadata is intentionally left for P1b.
+        """
+        sanitized = dict(context)
+        sanitized.pop("market_phase_context", None)
+        return sanitized
 
     @staticmethod
     def _resolve_resume_target_date(
@@ -1909,7 +1993,7 @@ class StockAnalysisPipeline:
                 return None
         return None
 
-    def _resolve_query_source(self, query_source: Optional[str]) -> str:
+    def _resolve_query_source(self, query_source: Optional[str] = None) -> str:
         """
         解析请求来源。
 
@@ -1927,9 +2011,9 @@ class StockAnalysisPipeline:
         """
         if query_source:
             return query_source
-        if self.source_message:
+        if getattr(self, "source_message", None):
             return "bot"
-        if self.query_id:
+        if getattr(self, "query_id", None):
             return "web"
         return "system"
 
@@ -2052,8 +2136,11 @@ class StockAnalysisPipeline:
                 logger.info(f"[{code}] 跳过 AI 分析（dry-run 模式）")
                 return None
             
-            effective_query_id = analysis_query_id or self.query_id or uuid.uuid4().hex
-            result = self.analyze_stock(code, report_type, query_id=effective_query_id)
+            effective_query_id = analysis_query_id or getattr(self, "query_id", None) or uuid.uuid4().hex
+            analyze_kwargs = {"query_id": effective_query_id}
+            if current_time is not None:
+                analyze_kwargs["current_time"] = current_time
+            result = self.analyze_stock(code, report_type, **analyze_kwargs)
             
             if result and result.success:
                 logger.info(

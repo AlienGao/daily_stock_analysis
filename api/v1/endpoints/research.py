@@ -321,6 +321,7 @@ def lgb_predictions(
     predictions = _enrich_predictions_with_stats(
         predictions, trainer.forward_days, getattr(trainer, "exec_mode", "close")
     )
+    predictions = _enrich_predictions_with_finbert(predictions)
     return LGBPredictionsResponse(
         model_date=trainer._latest_date or "",
         forward_days=trainer.forward_days,
@@ -555,6 +556,37 @@ def lgb_stock_lookup(
     rank = int(df["lgb_score"].rank(ascending=False).loc[row.name])
     stock_name_val = str(row.get("stock_name", "")) if "stock_name" in df.columns else ""
 
+    # FinBERT 新闻情感分析
+    finbert_sentiment = None
+    try:
+        from src.services.finbert_sentiment_service import get_finbert_service
+        from src.services.search_service import SearchService
+        finbert_svc = get_finbert_service()
+        if finbert_svc.is_available:
+            search_svc = SearchService()
+            if search_svc.is_available:
+                news_resp = search_svc.search_stock_news(
+                    stock_code=str(row["stock_code"]),
+                    stock_name=stock_name_val,
+                    max_results=10,
+                )
+                if news_resp.success and news_resp.results:
+                    news_lines = [r.title or r.content or "" for r in news_resp.results if r.title or r.content]
+                    news_lines = [line.strip() for line in news_lines if len(line.strip()) >= 10]
+                    if news_lines:
+                        fb = finbert_svc.analyze_news_sentiment(news_lines)
+                        if fb:
+                            finbert_sentiment = {
+                                "overall_score": fb.get("overall_score"),
+                                "overall_label": fb.get("overall_label"),
+                                "positive_count": fb.get("positive_count"),
+                                "negative_count": fb.get("negative_count"),
+                                "neutral_count": fb.get("neutral_count"),
+                                "summary": fb.get("summary"),
+                            }
+    except Exception:
+        pass
+
     return LGBStockLookupResponse(
         found=True,
         item=LGBStockLookupItem(
@@ -565,6 +597,7 @@ def lgb_stock_lookup(
             lgb_score=round(float(row["lgb_score_norm"]), 4),
             raw_score=round(float(row["lgb_score"]), 4),
             total_stocks=len(df),
+            finbert_sentiment=finbert_sentiment,
         ),
     )
 
@@ -746,6 +779,56 @@ def _compute_sharpe(capital_curve: list) -> float:
 
 # Cache for prediction historical stats
 _pred_stats_cache: Dict[str, dict] = {}
+
+
+def _enrich_predictions_with_finbert(predictions: list) -> list:
+    """Enrich prediction items with FinBERT news sentiment analysis."""
+    try:
+        from src.services.finbert_sentiment_service import get_finbert_service
+        service = get_finbert_service()
+        if not service or not service.is_available:
+            return predictions
+    except Exception:
+        return predictions
+
+    db = DatabaseManager.get_instance()
+    groups: list = []
+    valid_indices: list = []
+
+    for idx, p in enumerate(predictions):
+        code = p.get("stock_code", "")
+        if not code:
+            continue
+        try:
+            news_items = db.get_recent_news(code=code, days=3, limit=5)
+            texts = []
+            for item in news_items:
+                text = (item.title or "")
+                if item.snippet:
+                    text += " " + item.snippet
+                if text.strip():
+                    texts.append(text.strip())
+            groups.append(texts)
+            valid_indices.append(idx)
+        except Exception:
+            continue
+
+    if not groups:
+        return predictions
+
+    try:
+        results = service.analyze_news_sentiment_batch(groups)
+        for i, idx in enumerate(valid_indices):
+            res = results[i] if i < len(results) else None
+            if res:
+                predictions[idx]["finbert_label"] = res.get("overall_label")
+                predictions[idx]["finbert_score"] = res.get("overall_score")
+                predictions[idx]["finbert_summary"] = res.get("summary")
+    except Exception:
+        # Fail-open: leave predictions unchanged
+        pass
+
+    return predictions
 
 
 def _enrich_predictions_with_stats(

@@ -1,21 +1,27 @@
 import type React from 'react';
 import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import HomePage from './pages/HomePage';
-import BacktestPage from './pages/BacktestPage';
-import SettingsPage from './pages/SettingsPage';
-import LoginPage from './pages/LoginPage';
-import NotFoundPage from './pages/NotFoundPage';
-import ChatPage from './pages/ChatPage';
-import DiscoveryPage from './pages/DiscoveryPage';
-import FactorBacktestPage from './pages/FactorBacktestPage';
-import FactorTuningPage from './pages/FactorTuningPage';
-import LightGBMPage from './pages/LightGBMPage';
 import { ApiErrorAlert, Shell } from './components/common';
+import {
+  PageLoadingFallback,
+  RouteOutletBoundary,
+  StandaloneRouteBoundary,
+} from './components/layout/RouteBoundary';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useAgentChatStore } from './stores/agentChatStore';
 import './App.css';
 
+const HomePage = lazy(() => import('./pages/HomePage'));
+const BacktestPage = lazy(() => import('./pages/BacktestPage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+const ChatPage = lazy(() => import('./pages/ChatPage'));
+const DiscoveryPage = lazy(() => import('./pages/DiscoveryPage'));
+const FactorBacktestPage = lazy(() => import('./pages/FactorBacktestPage'));
+const FactorTuningPage = lazy(() => import('./pages/FactorTuningPage'));
+const LightGBMPage = lazy(() => import('./pages/LightGBMPage'));
+const AlertsPage = lazy(() => import('./pages/AlertsPage'));
 const BrokerRecommendPage = lazy(() => import('./pages/BrokerRecommendPage'));
 const InstitutionSurveyPage = lazy(() => import('./pages/InstitutionSurveyPage'));
 
@@ -28,11 +34,7 @@ const AppContent: React.FC = () => {
   }, [location.pathname]);
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-base">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-cyan/20 border-t-cyan" />
-      </div>
-    );
+    return <PageLoadingFallback />;
   }
 
   if (loadError) {
@@ -54,7 +56,11 @@ const AppContent: React.FC = () => {
 
   if (authEnabled && !loggedIn) {
     if (location.pathname === '/login') {
-      return <LoginPage />;
+      return (
+        <StandaloneRouteBoundary>
+          <LoginPage />
+        </StandaloneRouteBoundary>
+      );
     }
     const redirect = encodeURIComponent(location.pathname + location.search);
     return <Navigate to={`/login?redirect=${redirect}`} replace />;
@@ -66,7 +72,13 @@ const AppContent: React.FC = () => {
 
   return (
     <Routes>
-      <Route element={<Shell />}>
+      <Route
+        element={(
+          <Shell>
+            <RouteOutletBoundary />
+          </Shell>
+        )}
+      >
         <Route path="/" element={<HomePage />} />
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/discovery" element={<DiscoveryPage />} />
@@ -76,10 +88,10 @@ const AppContent: React.FC = () => {
         <Route path="/backtest" element={<BacktestPage />} />
         <Route path="/broker-recommend" element={<Suspense fallback={<div className="flex justify-center py-12"><div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan/20 border-t-cyan" /></div>}><BrokerRecommendPage /></Suspense>} />
         <Route path="/institution-survey" element={<Suspense fallback={<div className="flex justify-center py-12"><div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan/20 border-t-cyan" /></div>}><InstitutionSurveyPage /></Suspense>} />
+        <Route path="/alerts" element={<Suspense fallback={<div className="flex justify-center py-12"><div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan/20 border-t-cyan" /></div>}><AlertsPage /></Suspense>} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
-      <Route path="/login" element={<LoginPage />} />
     </Routes>
   );
 };
