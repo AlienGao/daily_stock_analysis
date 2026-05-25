@@ -128,6 +128,8 @@ const FACTOR_LABELS: Record<string, string> = {
   liquid_oversold: '流动性超卖',
   vwap_reversal: 'VWAP动量反转',
   gtja114: 'GTJA114',
+  alpha60: 'Alpha60收盘位置',
+  money_flow_osc: '资金流振荡',
 };
 
 const factorLabel = (key: string) => FACTOR_LABELS[key] || key;

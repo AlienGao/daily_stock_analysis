@@ -16,6 +16,41 @@ function pctNum(v: number): string {
   return `${(v * 100).toFixed(1)}%`;
 }
 
+const FACTOR_LABELS: Record<string, string> = {
+  money_flow: '资金流向',
+  margin: '融资融券',
+  chip: '筹码分布',
+  technical: '技术形态',
+  limit: '涨跌停',
+  momentum: '动量',
+  rebound: '反弹',
+  sector: '板块',
+  ma_entry: '均线',
+  fundamental: '基本面',
+  popularity: '人气',
+  hot_money: '游资',
+  institution_hold: '机构持仓',
+  profit_forecast: '盈利预测',
+  performance: '业绩',
+  buyback: '回购',
+  insider_buy: '险资举牌',
+  concept_heat: '概念热度',
+  ranking_momentum: '排名动量',
+  alpha042: '均值回归Alpha042',
+  alpha60: 'Alpha60',
+  vwap_deviation: 'VWAP偏离',
+  gap_reversal: '跳空反转',
+  liquid_oversold: '流动性超卖',
+  vwap_reversal: 'VWAP动量反转',
+  gtja114: 'GTJA114',
+  broker_recommend: '券商推荐',
+  money_flow_osc: '资金振荡',
+};
+
+function factorLabel(name: string): string {
+  return FACTOR_LABELS[name] || name;
+}
+
 function exportBacktestExcel(trades: LGBBacktestSimResponse['trades'], forwardDays: number, topN: number, execMode: string) {
   const rows = trades.filter((t) => !t.skipped);
   const header = ['预测日', '股票名称', '股票代码', '买入日', '买入价', '股数', '买入金额', '卖出日', '卖出价', '收益%'];
@@ -65,6 +100,8 @@ const LightGBMPage: React.FC = () => {
 
   const [featureImportance, setFeatureImportance] = useState<{ name: string; gain: number; split: number }[]>([]);
   const [predictions, setPredictions] = useState<LGBPredictionItem[]>([]);
+  const [expandedPredKeys, setExpandedPredKeys] = useState<React.Key[]>([]);
+  useEffect(() => { setExpandedPredKeys([]); }, [predictions]);
   const [backtest, setBacktest] = useState<LGBBacktestCompareResponse | null>(null);
   const [models, setModels] = useState<LGBModelInfo[]>([]);
   const [selectedModel, setSelectedModel] = useState<string | undefined>(undefined);
@@ -74,6 +111,7 @@ const LightGBMPage: React.FC = () => {
   const [stockLookup, setStockLookup] = useState<LGBStockLookupItem | null>(null);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState('');
+  const [newsExpanded, setNewsExpanded] = useState(false);
   const [backtestSim, setBacktestSim] = useState<LGBBacktestSimResponse | null>(null);
   const [backtestSimLoading, setBacktestSimLoading] = useState(false);
   const [backtestSimAvailable, setBacktestSimAvailable] = useState<LGBBacktestSimAvailableResponse | null>(null);
@@ -575,18 +613,30 @@ const LightGBMPage: React.FC = () => {
       title: 'FinBERT 评价',
       dataIndex: 'finbert_label',
       key: 'finbert',
-      width: 95,
+      width: 110,
       render: (_: unknown, r: LGBPredictionItem) => {
-        if (!r.finbert_label) return '-';
+        if (!r.finbert_label) return <span className="text-tertiary-text text-xs">-</span>;
         const labelMap: Record<string, string> = { positive: '正面', negative: '负面', neutral: '中性' };
         const colorMap: Record<string, string> = { positive: 'text-red-400', negative: 'text-green-400', neutral: 'text-purple-400' };
         const label = labelMap[r.finbert_label] || r.finbert_label;
         const score = r.finbert_score != null ? `${r.finbert_score >= 0 ? '+' : ''}${r.finbert_score.toFixed(2)}` : '';
-        const el = <span className={`${colorMap[r.finbert_label] || ''} font-medium`}>{label} {score}</span>;
-        if (r.finbert_summary) {
-          return <AntTooltip overlayStyle={{ maxWidth: 320 }} title={<span className="text-[11px]">{r.finbert_summary}</span>} placement="top">{el}</AntTooltip>;
-        }
-        return el;
+        const isExpanded = expandedPredKeys.includes(r.ts_code);
+        const hasDetails = !!(r.news_items?.length || r.finbert_summary);
+        return (
+          <button
+            type="button"
+            className={`text-left ${hasDetails ? 'cursor-pointer hover:underline' : ''} ${colorMap[r.finbert_label] || ''} font-medium`}
+            onClick={hasDetails ? (e) => {
+              e.stopPropagation();
+              setExpandedPredKeys(prev =>
+                isExpanded ? prev.filter(k => k !== r.ts_code) : [...prev, r.ts_code]
+              );
+            } : undefined}
+          >
+            {label} {score}
+            {hasDetails && <span className="ml-1 text-[10px] opacity-60">{isExpanded ? '▲' : '▼'}</span>}
+          </button>
+        );
       },
     }] : []),
   ];
@@ -917,10 +967,11 @@ const LightGBMPage: React.FC = () => {
                 <BarChart data={featureImportance} layout="vertical" margin={{ left: 80, right: 20, top: 5, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                   <XAxis type="number" tick={{ fontSize: 11 }} />
-                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={75} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={75} tickFormatter={factorLabel} />
                   <Tooltip
                     contentStyle={{ background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', fontSize: 12 }}
-                    formatter={(value) => [Number(value).toFixed(4), 'Gain']}
+                    formatter={(value, _name, props) => [Number(value).toFixed(4), `${factorLabel(props.payload.name)} (${props.payload.name})`]}
+                    labelFormatter={(label) => factorLabel(label as string)}
                   />
                   <Bar dataKey="gain" fill="#3b82f6" radius={[0, 4, 4, 0]} />
                 </BarChart>
@@ -1056,6 +1107,53 @@ const LightGBMPage: React.FC = () => {
                       {stockLookup.finbert_sentiment.summary && (
                         <div className="mt-1 text-xs text-secondary-text">{stockLookup.finbert_sentiment.summary}</div>
                       )}
+                      {stockLookup.finbert_sentiment.news_items && stockLookup.finbert_sentiment.news_items.length > 0 && (
+                        <div className="mt-2">
+                          <button
+                            type="button"
+                            className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                            onClick={() => setNewsExpanded(!newsExpanded)}
+                          >
+                            {newsExpanded ? '收起新闻详情 ▲' : `展开新闻详情（${stockLookup.finbert_sentiment.news_items.length} 条）▼`}
+                          </button>
+                          {newsExpanded && (
+                            <div className="mt-2 max-h-64 overflow-y-auto space-y-1.5">
+                              {stockLookup.finbert_sentiment.news_items.map((item, i) => (
+                                <div key={i} className="text-xs py-1.5 px-2 rounded bg-black/20 border border-white/5">
+                                  <div className="flex items-start gap-1.5">
+                                    {item.sentiment_label && (
+                                      <span className={`mt-0.5 w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                                        item.sentiment_label === 'positive' ? 'bg-green-400' :
+                                        item.sentiment_label === 'negative' ? 'bg-red-400' : 'bg-yellow-400'
+                                      }`} />
+                                    )}
+                                    <div className="min-w-0">
+                                      <div className="text-secondary-text leading-snug">{item.title}</div>
+                                      {item.snippet && (
+                                        <div className="text-tertiary-text mt-0.5 leading-snug line-clamp-2">{item.snippet}</div>
+                                      )}
+                                      <div className="flex items-center gap-2 mt-1 text-tertiary-text/60">
+                                        {item.source && <span>{item.source}</span>}
+                                        {item.date && <span>{item.date}</span>}
+                                        {item.sentiment_label && (
+                                          <span className={`${
+                                            item.sentiment_label === 'positive' ? 'text-green-400/80' :
+                                            item.sentiment_label === 'negative' ? 'text-red-400/80' : 'text-yellow-400/80'
+                                          }`}>
+                                            {item.sentiment_label === 'positive' ? '正面' :
+                                             item.sentiment_label === 'negative' ? '负面' : '中性'}
+                                            {item.sentiment_score != null && ` ${(item.sentiment_score * 100).toFixed(0)}%`}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1093,6 +1191,45 @@ const LightGBMPage: React.FC = () => {
                 columns={predColumns}
                 scroll={{ x: 400 }}
                 rowClassName={(r) => overlapHighlight.has(r.ts_code) ? 'bg-amber-500/10' : ''}
+                expandable={{
+                  expandedRowKeys: expandedPredKeys,
+                  onExpand: (_expanded, record) => {
+                    setExpandedPredKeys(prev =>
+                      prev.includes(record.ts_code)
+                        ? prev.filter(k => k !== record.ts_code)
+                        : [...prev, record.ts_code]
+                    );
+                  },
+                  expandedRowRender: (r: LGBPredictionItem) => {
+                    if (!r.news_items?.length && !r.finbert_summary) return null;
+                    const sentimentColor: Record<string, string> = { positive: 'text-red-400', negative: 'text-green-400', neutral: 'text-purple-400' };
+                    const sentimentLabel: Record<string, string> = { positive: '正面', negative: '负面', neutral: '中性' };
+                    return (
+                      <div className="px-2 py-2 space-y-2">
+                        {r.finbert_summary && (
+                          <div className="text-xs text-secondary-text">{r.finbert_summary}</div>
+                        )}
+                        {r.news_items && r.news_items.length > 0 && (
+                          <div className="space-y-1.5">
+                            {r.news_items.map((n, i) => (
+                              <div key={i} className="flex gap-2 text-xs">
+                                <span className={`shrink-0 ${sentimentColor[n.sentiment_label || ''] || 'text-tertiary-text'}`}>
+                                  {sentimentLabel[n.sentiment_label || ''] || '-'}
+                                </span>
+                                <div className="min-w-0">
+                                  <span className="font-medium">{n.title}</span>
+                                  {n.snippet && <span className="text-tertiary-text ml-1">{n.snippet.slice(0, 80)}{n.snippet.length > 80 ? '...' : ''}</span>}
+                                  {n.date && <span className="text-tertiary-text ml-1">({n.date})</span>}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  },
+                  showExpandColumn: false,
+                }}
               />
             </Card>
           )}

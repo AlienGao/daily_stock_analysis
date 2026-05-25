@@ -64,6 +64,7 @@ def build_market_review_runtime(
             brave_keys=getattr(config, "brave_api_keys", None),
             serpapi_keys=getattr(config, "serpapi_keys", None),
             minimax_keys=getattr(config, "minimax_api_keys", None),
+            bailian_keys=getattr(config, "bailian_api_keys", None),
             searxng_base_urls=getattr(config, "searxng_base_urls", None),
             searxng_public_instances_enabled=getattr(
                 config,
@@ -72,6 +73,7 @@ def build_market_review_runtime(
             ),
             news_max_age_days=getattr(config, "news_max_age_days", 3),
             news_strategy_profile=getattr(config, "news_strategy_profile", "short"),
+            akshare_news_enabled=getattr(config, "enable_akshare_news", True),
         )
 
     analyzer = None

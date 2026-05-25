@@ -56,6 +56,15 @@ export type LGBPredictionItem = {
   finbert_label?: string | null;
   finbert_score?: number | null;
   finbert_summary?: string | null;
+  news_items?: Array<{
+    title: string;
+    snippet: string;
+    source: string;
+    url: string;
+    date: string;
+    sentiment_label?: string;
+    sentiment_score?: number;
+  }>;
 };
 
 export type LGBPredictionsResponse = {
@@ -107,6 +116,15 @@ export type LGBStockLookupItem = {
     negative_count?: number;
     neutral_count?: number;
     summary?: string;
+    news_items?: Array<{
+      title: string;
+      snippet: string;
+      source: string;
+      url: string;
+      date: string;
+      sentiment_label?: string;
+      sentiment_score?: number;
+    }>;
   } | null;
 };
 

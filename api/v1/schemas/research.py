@@ -34,6 +34,16 @@ class LGBFeatureImportanceResponse(BaseModel):
     split: Dict[str, float]
 
 
+class FinBERTNewsItem(BaseModel):
+    title: str = ""
+    snippet: str = ""
+    source: str = ""
+    url: str = ""
+    date: str = ""
+    sentiment_label: Optional[str] = None
+    sentiment_score: Optional[float] = None
+
+
 class LGBPredictionItem(BaseModel):
     rank: int
     ts_code: str
@@ -52,6 +62,7 @@ class LGBPredictionItem(BaseModel):
     finbert_label: Optional[str] = None
     finbert_score: Optional[float] = None
     finbert_summary: Optional[str] = None
+    news_items: Optional[List[FinBERTNewsItem]] = None
 
 
 class LGBPredictionsResponse(BaseModel):

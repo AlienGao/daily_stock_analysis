@@ -150,6 +150,12 @@ class DiscoveryConfig:
     weight_gtja114: float = field(
         default_factory=lambda: _env_float("DISCOVER_WEIGHT_GTJA114", 14.0)
     )
+    weight_alpha60: float = field(
+        default_factory=lambda: _env_float("DISCOVER_WEIGHT_ALPHA60", 10.0)
+    )
+    weight_money_flow_osc: float = field(
+        default_factory=lambda: _env_float("DISCOVER_WEIGHT_MONEY_FLOW_OSC", 10.0)
+    )
 
     # --- 综合分混合比例（factor_score × alpha + tech_score × (1-alpha)）---
     score_blend_alpha: float = field(
@@ -193,6 +199,15 @@ class DiscoveryConfig:
     )
     feishu_webhook_secret: str = field(
         default_factory=lambda: _get_env_value("FEISHU_WEBHOOK_SECRET").strip()
+    )
+
+    # --- 禁用因子列表 ---
+    disabled_factors: set = field(
+        default_factory=lambda: set(
+            c.strip().lower()
+            for c in _get_env_value("DISCOVERY_DISABLED_FACTORS").split(",")
+            if c.strip()
+        )
     )
 
     # --- 股票白名单 ---
@@ -328,6 +343,8 @@ class DiscoveryConfig:
             # --- 通知 ---
             "FEISHU_WEBHOOK_URL",
             "FEISHU_WEBHOOK_SECRET",
+            # --- 禁用因子 ---
+            "DISCOVERY_DISABLED_FACTORS",
             # --- 白名单与扫描范围 ---
             "DISCOVERY_STOCK_WHITELIST",
             "DISCOVERY_USE_WHITELIST",

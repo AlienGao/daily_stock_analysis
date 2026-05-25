@@ -596,6 +596,7 @@ class Config:
     anspire_api_keys: List[str] = field(default_factory=list)  # Anspire Search API Keys
     bocha_api_keys: List[str] = field(default_factory=list)  # Bocha API Keys
     minimax_api_keys: List[str] = field(default_factory=list)  # MiniMax API Keys
+    bailian_api_keys: List[str] = field(default_factory=list)  # Bailian (DashScope) API Keys
     kimi_api_keys: List[str] = field(default_factory=list)  # Kimi (Moonshot) API Keys
     kimi_base_url: Optional[str] = None  # Kimi (Moonshot) base URL (defaults to official endpoint)
     tavily_api_keys: List[str] = field(default_factory=list)  # Tavily API Keys
@@ -1201,6 +1202,9 @@ class Config:
         minimax_keys_str = os.getenv('MINIMAX_API_KEYS', '')
         minimax_api_keys = [k.strip() for k in minimax_keys_str.split(',') if k.strip()]
 
+        bailian_keys_str = os.getenv('BAILIAN_API_KEYS', '')
+        bailian_api_keys = [k.strip() for k in bailian_keys_str.split(',') if k.strip()]
+
         kimi_keys_str = os.getenv('KIMI_API_KEYS', '')
         kimi_api_keys = [k.strip() for k in kimi_keys_str.split(',') if k.strip()]
         kimi_base_url = os.getenv('LLM_MOONSHOT_BASE_URL', '').strip() or None
@@ -1349,6 +1353,7 @@ class Config:
             anspire_api_keys=anspire_api_keys,
             bocha_api_keys=bocha_api_keys,
             minimax_api_keys=minimax_api_keys,
+            bailian_api_keys=bailian_api_keys,
             kimi_api_keys=kimi_api_keys,
             kimi_base_url=kimi_base_url,
             tavily_api_keys=tavily_api_keys,
@@ -2183,6 +2188,7 @@ class Config:
         """Whether any search provider is configured or SearXNG fallback is enabled."""
         return bool(
             self.anspire_api_keys
+            or self.bailian_api_keys
             or self.bocha_api_keys
             or self.kimi_api_keys
             or self.minimax_api_keys
@@ -2432,7 +2438,7 @@ class Config:
         if not self.has_search_capability_enabled():
             issues.append(ConfigIssue(
                 severity="info",
-                message="未配置搜索引擎能力 (Bocha/MiniMax/Tavily/Brave/SerpAPI/SearXNG)，新闻搜索功能将不可用",
+                message="未配置搜索引擎能力 (Bocha/MiniMax/Bailian/Tavily/Brave/SerpAPI/SearXNG)，新闻搜索功能将不可用",
                 field="BOCHA_API_KEYS",
             ))
 

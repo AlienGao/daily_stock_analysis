@@ -124,6 +124,7 @@ class StockAnalysisPipeline:
                 brave_keys=self.config.brave_api_keys,
                 serpapi_keys=self.config.serpapi_keys,
                 minimax_keys=self.config.minimax_api_keys,
+                bailian_keys=getattr(self.config, 'bailian_api_keys', None),
                 kimi_keys=self.config.kimi_api_keys,
                 searxng_base_urls=self.config.searxng_base_urls,
                 searxng_public_instances_enabled=self.config.searxng_public_instances_enabled,

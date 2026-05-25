@@ -560,45 +560,87 @@ def lgb_stock_lookup(
     finbert_sentiment = None
     try:
         from src.services.finbert_sentiment_service import get_finbert_service
-        from src.search_service import SearchService
         finbert_svc = get_finbert_service()
         if finbert_svc.is_available:
-            from src.config import Config
-            cfg = Config.get_instance()
-            search_svc = SearchService(
-                bocha_keys=cfg.bocha_api_keys,
-                tavily_keys=cfg.tavily_api_keys,
-                anspire_keys=cfg.anspire_api_keys,
-                brave_keys=cfg.brave_api_keys,
-                serpapi_keys=cfg.serpapi_keys,
-                minimax_keys=cfg.minimax_api_keys,
-                kimi_keys=cfg.kimi_api_keys,
-                searxng_base_urls=cfg.searxng_base_urls,
-                searxng_public_instances_enabled=cfg.searxng_public_instances_enabled,
-                akshare_news_enabled=getattr(cfg, 'akshare_news_enabled', True),
-            )
-            if search_svc.is_available:
-                news_resp = search_svc.search_stock_news(
-                    stock_code=str(row["stock_code"]),
-                    stock_name=stock_name_val,
-                    max_results=10,
-                )
-                if news_resp.success and news_resp.results:
-                    news_text = search_svc.format_intel_report(
-                        {"latest_news": news_resp}, stock_name_val
+            news_lines = []
+            news_items = []  # 原始新闻条目，供前端展示
+            # 优先从 DB 获取最近 7 天的新闻
+            try:
+                from src.storage import StockDatabase
+                db = StockDatabase()
+                recent = db.get_recent_news(str(row["stock_code"]), days=7, limit=20)
+                for r in recent:
+                    text = (r.title or "") + " " + (r.snippet or "")
+                    text = text.strip()
+                    if len(text) >= 10:
+                        news_lines.append(text)
+                    news_items.append({
+                        "title": (r.title or "").strip(),
+                        "snippet": (r.snippet or "").strip(),
+                        "source": r.source or "",
+                        "url": r.url or "",
+                        "date": r.published_date.strftime("%Y-%m-%d") if r.published_date else "",
+                    })
+            except Exception:
+                pass
+            # DB 无新闻则回退到搜索引擎
+            if not news_lines:
+                try:
+                    from src.search_service import SearchService
+                    from src.config import Config
+                    cfg = Config.get_instance()
+                    search_svc = SearchService(
+                        bocha_keys=cfg.bocha_api_keys,
+                        tavily_keys=cfg.tavily_api_keys,
+                        anspire_keys=cfg.anspire_api_keys,
+                        brave_keys=cfg.brave_api_keys,
+                        serpapi_keys=cfg.serpapi_keys,
+                        minimax_keys=cfg.minimax_api_keys,
+                        bailian_keys=getattr(cfg, 'bailian_api_keys', None),
+                        kimi_keys=cfg.kimi_api_keys,
+                        searxng_base_urls=cfg.searxng_base_urls,
+                        searxng_public_instances_enabled=cfg.searxng_public_instances_enabled,
+                        akshare_news_enabled=getattr(cfg, 'enable_akshare_news', True),
                     )
-                    news_lines = [line.strip() for line in news_text.split("\n")
-                                  if line.strip() and len(line.strip()) >= 10]
-                    if news_lines:
-                        fb = finbert_svc.analyze_news_sentiment(news_lines)
-                        if fb:
-                            finbert_sentiment = {
+                    if search_svc.is_available:
+                        news_resp = search_svc.search_stock_news(
+                            stock_code=str(row["stock_code"]),
+                            stock_name=stock_name_val,
+                            max_results=10,
+                        )
+                        if news_resp.success and news_resp.results:
+                            for r in news_resp.results:
+                                title = (r.title or "").strip()
+                                snippet = (r.snippet or "").strip()
+                                combined = f"{title} {snippet}".strip()
+                                if len(combined) >= 10:
+                                    news_lines.append(combined)
+                                news_items.append({
+                                    "title": title,
+                                    "snippet": snippet,
+                                    "source": r.source or "",
+                                    "url": r.url or "",
+                                    "date": r.published_date or "",
+                                })
+                except Exception:
+                    pass
+            if news_lines:
+                fb = finbert_svc.analyze_news_sentiment(news_lines)
+                if fb:
+                    # 将 FinBERT 情感标签关联回新闻条目
+                    fb_details = fb.get("details", []) or []
+                    for i, item in enumerate(news_items):
+                        if i < len(fb_details):
+                            item["sentiment_label"] = fb_details[i].get("label", "")
+                            item["sentiment_score"] = fb_details[i].get("score")
+                    finbert_sentiment = {
                                 "overall_score": fb.get("overall_score"),
                                 "overall_label": fb.get("overall_label"),
                                 "positive_count": fb.get("positive_count"),
                                 "negative_count": fb.get("negative_count"),
                                 "neutral_count": fb.get("neutral_count"),
                                 "summary": fb.get("summary"),
+                                "news_items": news_items,
                             }
     except Exception:
         pass
@@ -797,6 +839,59 @@ def _compute_sharpe(capital_curve: list) -> float:
 _pred_stats_cache: Dict[str, dict] = {}
 
 
+def _get_search_service_instance():
+    """Lazy-init a SearchService for fallback news fetching."""
+    try:
+        from src.search_service import SearchService
+        from src.config import Config
+        cfg = Config.get_instance()
+        return SearchService(
+            bocha_keys=cfg.bocha_api_keys,
+            tavily_keys=cfg.tavily_api_keys,
+            anspire_keys=cfg.anspire_api_keys,
+            brave_keys=cfg.brave_api_keys,
+            serpapi_keys=cfg.serpapi_keys,
+            minimax_keys=cfg.minimax_api_keys,
+            bailian_keys=getattr(cfg, 'bailian_api_keys', None),
+            kimi_keys=cfg.kimi_api_keys,
+            searxng_base_urls=cfg.searxng_base_urls,
+            searxng_public_instances_enabled=cfg.searxng_public_instances_enabled,
+            akshare_news_enabled=getattr(cfg, 'enable_akshare_news', True),
+        )
+    except Exception:
+        return None
+
+
+def _fetch_texts_from_search(stock_code: str, stock_name: str, search_svc=None):
+    """Fetch news texts via search engine fallback.
+
+    Returns (texts, raw_results) where raw_results are the SearchResult objects
+    for building news_items downstream.
+    """
+    if search_svc is None:
+        search_svc = _get_search_service_instance()
+    if not search_svc or not search_svc.is_available:
+        return [], []
+    try:
+        resp = search_svc.search_stock_news(
+            stock_code=str(stock_code),
+            stock_name=stock_name or str(stock_code),
+            max_results=5,
+        )
+        if not resp.success or not resp.results:
+            return [], []
+        texts = []
+        for r in resp.results:
+            title = (r.title or "").strip()
+            snippet = (r.snippet or "").strip()
+            combined = f"{title} {snippet}".strip()
+            if combined:
+                texts.append(combined)
+        return texts, resp.results
+    except Exception:
+        return [], []
+
+
 def _enrich_predictions_with_finbert(predictions: list) -> list:
     """Enrich prediction items with FinBERT news sentiment analysis."""
     try:
@@ -810,6 +905,11 @@ def _enrich_predictions_with_finbert(predictions: list) -> list:
     db = DatabaseManager.get_instance()
     groups: list = []
     valid_indices: list = []
+    # 每只股票对应的原始新闻条目（用于回传前端展示）
+    per_stock_items: list = []
+
+    # 预创建搜索引擎实例（DB 无新闻时回退用）
+    search_svc = _get_search_service_instance()
 
     for idx, p in enumerate(predictions):
         code = p.get("stock_code", "")
@@ -818,13 +918,38 @@ def _enrich_predictions_with_finbert(predictions: list) -> list:
         try:
             news_items = db.get_recent_news(code=code, days=3, limit=5)
             texts = []
+            items_for_stock = []
             for item in news_items:
                 text = (item.title or "")
                 if item.snippet:
                     text += " " + item.snippet
                 if text.strip():
                     texts.append(text.strip())
+                items_for_stock.append({
+                    "title": (item.title or "").strip(),
+                    "snippet": (item.snippet or "").strip(),
+                    "source": getattr(item, "source", "") or "",
+                    "url": getattr(item, "url", "") or "",
+                    "date": str(getattr(item, "published_date", "") or ""),
+                })
+
+            # DB 无新闻时回退到搜索引擎
+            if not texts:
+                texts, raw_results = _fetch_texts_from_search(
+                    code, p.get("stock_name", ""), search_svc
+                )
+                items_for_stock = []
+                for r in raw_results:
+                    items_for_stock.append({
+                        "title": (r.title or "").strip(),
+                        "snippet": (r.snippet or "").strip(),
+                        "source": r.source or "",
+                        "url": r.url or "",
+                        "date": r.published_date or "",
+                    })
+
             groups.append(texts)
+            per_stock_items.append(items_for_stock)
             valid_indices.append(idx)
         except Exception:
             continue
@@ -840,6 +965,15 @@ def _enrich_predictions_with_finbert(predictions: list) -> list:
                 predictions[idx]["finbert_label"] = res.get("overall_label")
                 predictions[idx]["finbert_score"] = res.get("overall_score")
                 predictions[idx]["finbert_summary"] = res.get("summary")
+                # 将情感标签关联回新闻条目
+                fb_details = res.get("details", []) or []
+                items = per_stock_items[i]
+                for j, item in enumerate(items):
+                    if j < len(fb_details):
+                        item["sentiment_label"] = fb_details[j].get("label", "")
+                        item["sentiment_score"] = fb_details[j].get("score")
+                if items:
+                    predictions[idx]["news_items"] = items
     except Exception:
         # Fail-open: leave predictions unchanged
         pass

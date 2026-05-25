@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - [改进] 自动回测新增 `BACKTEST_AUTO_FILTER_MODE` 与评分区间配置，支持按“信号/评分/信号+评分”叠加筛选候选记录，并与 `BACKTEST_AUTO_MODE` 联动生效。
 - [改进] 新增 `python main.py --serve-only --webui-dev` 开发模式：自动启动 Vite 前端开发服务器并启用热更新，前端改动无需重启后端服务。
 - [改进] `--webui-dev` 新增单端口开发代理：保持访问 `http://127.0.0.1:8000` 时自动代理到 Vite 开发服务器，前端热更新与后端 API 可同端口调试。
+- [新功能] 新增 Alpha60 因子 (`alpha60_factor.py`)：`-1*((low-close)*(open^5))/((close-high)*(close^5))`，捕捉 OHLC 内部结构的非线性偏离信号。
+- [新功能] 新增资金流振荡因子 (`money_flow_oscillator_factor.py`)：`SMA(V*CLV, 11, 2) - SMA(V*CLV, 4, 2)`，捕捉短期 vs 中期资金流入强度差异。
 - [改进] `save_factor_score_snapshots` 改为局部删除：只删除本次写入的因子而非同日期全部因子，防止误删同日期其他因子数据。
 - [改进] 补齐 margin、chip 因子 postmarket 历史评分：margin 覆盖 728 个交易日（2023-05-17 ~ 2026-05-15），chip 依赖 broker_enrichment_cyq_perf 回填 727 天后同样覆盖 728 天。
 - [chore] 新增脚本 `scripts/rerun_margin_chip.py`（单因子评分重算）、`scripts/backfill_cyq_perf.py`（筹码胜率历史回填）。

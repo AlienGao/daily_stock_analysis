@@ -1292,6 +1292,22 @@ def main() -> int:
 
     # === 仅 Web 服务模式：不自动执行分析 ===
     if args.serve_only:
+        # 启动时清理超过 7 个交易日的运行日志
+        try:
+            import sys
+            sys.path.insert(0, 'scripts')
+            from clean_logs import clean_all_logs, clean_replay_logs, clean_wal_files, get_trading_days_ago
+            cutoff = get_trading_days_ago(7)
+            log_removed, log_size = clean_all_logs(cutoff, dry_run=False)
+            replay_removed = clean_replay_logs(dry_run=False)
+            wal_removed, wal_size = clean_wal_files(dry_run=False)
+            total = len(log_removed) + len(replay_removed) + len(wal_removed)
+            if total > 0:
+                logger.info('[启动维护] 日志清理完成，删除 %d 文件，释放 %.1fMB，保留 7 个交易日（截止 %s）',
+                    total, (log_size + wal_size) / 1024 / 1024, cutoff.strftime('%Y-%m-%d'))
+        except Exception:
+            pass
+
         logger.info("模式: 仅 Web 服务")
         logger.info(f"Web 服务运行中: http://{args.host}:{args.port}")
         if getattr(args, "webui_dev", False):

@@ -1843,6 +1843,11 @@ def _row_to_item(row, factor_weights: Dict[str, float] = None,
         factor_scores = {k: float(v) for k, v in raw.items()}
     except (json.JSONDecodeError, TypeError):
         pass
+    # 过滤禁用因子
+    from src.discovery.config import DiscoveryConfig as _DC
+    _disabled = _DC().disabled_factors
+    if _disabled:
+        factor_scores = {k: v for k, v in factor_scores.items() if k.lower() not in _disabled}
 
     # 实时计算 tech_score（DB 里因子分对应的 tech 分），仅管线开启时执行
     tech_score_val = round(float(getattr(row, 'tech_score', 0) or 0), 2)

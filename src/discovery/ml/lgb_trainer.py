@@ -716,6 +716,15 @@ class LGBTrainer:
                     target_date = None  # let fallback handle it
                 else:
                     target_date = row[0]
+            # 如果最新的快照日期早于今天交易日，优先使用今天实时计算
+            try:
+                from data_provider.tushare_fetcher import TushareFetcher
+                fetcher = TushareFetcher()
+                today_str = fetcher.get_trade_time(early_time="18:01", late_time="04:59")
+                if today_str and target_date and today_str > target_date:
+                    target_date = today_str
+            except Exception:
+                pass
             if target_date is None:
                 # No snapshots at all - use today as target for realtime compute
                 from datetime import date as _date

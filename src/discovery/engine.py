@@ -74,11 +74,13 @@ def _default_factors():
     """返回所有内置因子实例列表（盘前+盘中+盘后）。"""
     from src.discovery.factors import (
         Alpha042Factor,
+        Alpha60Factor,
         VwapDeviationFactor,
         GapReversalFactor,
         LiquidOversoldFactor,
         VwapReversalFactor,
         Gtja114Factor,
+        MoneyFlowOscillatorFactor,
         MaEntryFactor,
         MomentumFactor, MoneyFlowFactor, SectorFactor, TechnicalFactor,
         BrokerRecommendFactor, FundamentalFactor, HotMoneyFactor, MarginFactor,
@@ -88,11 +90,13 @@ def _default_factors():
     )
     return [
         Alpha042Factor(),
+        Alpha60Factor(),
         VwapDeviationFactor(),
         GapReversalFactor(),
         LiquidOversoldFactor(),
         VwapReversalFactor(),
         Gtja114Factor(),
+        MoneyFlowOscillatorFactor(),
         MaEntryFactor(),
         MomentumFactor(), MoneyFlowFactor(), SectorFactor(), TechnicalFactor(),
         BrokerRecommendFactor(), FundamentalFactor(), HotMoneyFactor(), MarginFactor(),
@@ -106,12 +110,17 @@ def create_discovery_engine(config=None, tushare_fetcher=None, akshare_fetcher=N
     """创建已注册默认因子的 StockDiscoveryEngine。
 
     config 为 None 时自动加载 DiscoveryConfig()。
+    所有因子始终注册并落库；DISCOVERY_DISABLED_FACTORS 中的因子权重置 0，不参与排名。
     """
     if config is None:
         from src.discovery.config import DiscoveryConfig
         config = DiscoveryConfig()
     engine = StockDiscoveryEngine(config, tushare_fetcher, akshare_fetcher)
     engine.register_factors(_default_factors())
+    if config.disabled_factors:
+        engine._disabled_factor_names = config.disabled_factors
+        logger.info("[Discovery] 以下因子权重置 0（仍会落库）: %s",
+                     ", ".join(sorted(config.disabled_factors)))
     return engine
 
 
@@ -120,6 +129,7 @@ def get_factor_weights(mode: str) -> Dict[str, float]:
     """获取指定模式下所有活跃因子的权重映射（从 .env / DiscoveryConfig 读取）。
 
     统一入口：发现引擎扫描、回测引擎、因子优化器、前端 API 均通过此函数获取权重。
+    禁用因子权重返回 0。
     """
     from src.discovery.config import DiscoveryConfig
     cfg = DiscoveryConfig()
@@ -133,6 +143,10 @@ def get_factor_weights(mode: str) -> Dict[str, float]:
     weights: Dict[str, float] = {}
     for f in _default_factors():
         if not f.is_available(mode):
+            continue
+
+        # 禁用因子不参与权重映射（调优/回测页面不显示）
+        if f.name.lower() in cfg.disabled_factors:
             continue
 
         attr_base = _NAME_FIXES.get(f.name, f.name)
@@ -163,6 +177,8 @@ class StockDiscoveryEngine:
         # 同 session 因子数据缓存，避免重复拉取
         self._factor_data_cache: Dict[str, Dict[str, pd.DataFrame]] = {}
         self._cache_trade_date: Optional[str] = None
+        # 禁用因子名集合（权重置 0，仍打分落库）
+        self._disabled_factor_names: set = set()
 
     # ------------------------------------------------------------------
     # Factor management
@@ -194,7 +210,10 @@ class StockDiscoveryEngine:
         """根据 mode 返回因子的有效权重：config 优先，其次因子类默认值。
 
         对于盘中共用因子（如 popularity），根据 mode 选用对应后缀的配置。
+        禁用因子返回 0（不参与排名，但仍打分落库）。
         """
+        if factor_name.lower() in self._disabled_factor_names:
+            return 0.0
         attr_base = self._NAME_FIXES.get(factor_name, factor_name)
 
         # 优先 mode 后缀属性，其次通用属性
@@ -1298,6 +1317,8 @@ class StockDiscoveryEngine:
             for name in row.index:
                 if name.startswith("_"):
                     continue
+                if name.lower() in self._disabled_factor_names:
+                    continue
                 factor_breakdown[name] = row[name]
 
             labels = sector_labels.get(stock_code, [])
@@ -1695,7 +1716,7 @@ class StockDiscoveryEngine:
         scan_time = getattr(self, '_last_scan_time', '')
         mode = getattr(self, '_last_scan_mode', '')
 
-        factor_cols = [c for c in df.columns if not c.startswith('_')]
+        factor_cols = [c for c in df.columns if not c.startswith('_') and c.lower() not in self._disabled_factor_names]
         records: List[Dict[str, Any]] = []
 
         for rank, (ts_code, row) in enumerate(df.iterrows(), start=1):

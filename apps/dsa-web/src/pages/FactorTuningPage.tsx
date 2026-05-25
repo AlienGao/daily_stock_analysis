@@ -25,6 +25,7 @@ const FACTOR_LABELS: Record<string, string> = {
   alpha042: '均值回归Alpha042', vwap_deviation: 'VWAP偏离',
   gap_reversal: '跳空反转', liquid_oversold: '流动性超卖',
   vwap_reversal: 'VWAP动量反转', gtja114: 'GTJA114',
+  alpha60: 'Alpha60收盘位置', money_flow_osc: '资金流振荡',
 };
 
 const PHASE_LABELS: Record<string, string> = {
@@ -649,7 +650,14 @@ const FactorTuningPage: React.FC = () => {
 
           <Card>
             <div className="space-y-2 overflow-hidden">
-              <div className="font-medium text-sm text-secondary-text">当前权重</div>
+              <div className="font-medium text-sm text-secondary-text">
+                当前权重
+                {Object.keys(currentWeights).length > 0 && (
+                  <span className="ml-2 text-[11px] text-tertiary-text font-normal">
+                    {Object.keys(currentWeights).length} 个因子
+                  </span>
+                )}
+              </div>
               {weightsLoading || Object.keys(currentWeights).length === 0 ? (
                 <div className="flex items-center justify-center py-4">
                   <Loader2 className="h-4 w-4 animate-spin text-tertiary-text" />

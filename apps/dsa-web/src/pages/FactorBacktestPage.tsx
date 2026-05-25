@@ -537,6 +537,7 @@ const FactorBacktestPage: React.FC = () => {
     alpha042: '均值回归Alpha042', vwap_deviation: 'VWAP偏离',
     gap_reversal: '跳空反转', liquid_oversold: '流动性超卖',
     vwap_reversal: 'VWAP动量反转', gtja114: 'GTJA114',
+    alpha60: 'Alpha60收盘位置', money_flow_osc: '资金流振荡',
     _pipeline: '管线综合',
   };
 
