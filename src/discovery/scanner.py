@@ -1211,6 +1211,17 @@ def refresh_adj_factor_postmarket(tushare_fetcher) -> int:
             logger.warning("[Scanner] adj_factor 刷新: 无法获取交易日")
             return 0
 
+        # 今天已有数据则跳过
+        from datetime import date as _date_cls
+        today_dt = _date_cls(int(today[:4]), int(today[4:6]), int(today[6:8]))
+        with db.get_session() as session:
+            existing_today = session.query(func.count(StockAdjFactor.code)).filter(
+                StockAdjFactor.trade_date == today_dt
+            ).scalar()
+        if existing_today and existing_today > 100:
+            logger.info("[Scanner] adj_factor 已有 %s 数据 %d 条，跳过更新", today, existing_today)
+            return 0
+
         codes = _get_adj_factor_stock_codes(db)
         if not codes:
             logger.warning("[Scanner] adj_factor 刷新: 无股票代码")

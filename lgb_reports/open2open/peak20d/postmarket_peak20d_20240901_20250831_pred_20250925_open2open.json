@@ -8,81 +8,81 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
       "lgb_score": 100.0,
-      "raw_score": 0.41,
-      "predicted_days": 15
+      "raw_score": 0.46,
+      "predicted_days": 14
     },
     {
       "rank": 2,
-      "ts_code": "000554.SZ",
-      "stock_code": "000554",
-      "stock_name": "泰山石油",
-      "lgb_score": 89.34,
-      "raw_score": 0.37,
-      "predicted_days": 16
+      "ts_code": "688320.SH",
+      "stock_code": "688320",
+      "stock_name": "禾川科技",
+      "lgb_score": 93.14,
+      "raw_score": 0.43,
+      "predicted_days": 14
     },
     {
       "rank": 3,
-      "ts_code": "002291.SZ",
-      "stock_code": "002291",
-      "stock_name": "遥望科技",
-      "lgb_score": 88.7,
-      "raw_score": 0.37,
+      "ts_code": "301071.SZ",
+      "stock_code": "301071",
+      "stock_name": "力量钻石",
+      "lgb_score": 92.72,
+      "raw_score": 0.42,
       "predicted_days": 14
     },
     {
       "rank": 4,
-      "ts_code": "688502.SH",
-      "stock_code": "688502",
-      "stock_name": "茂莱光学",
-      "lgb_score": 84.58,
-      "raw_score": 0.35,
-      "predicted_days": 13
+      "ts_code": "002009.SZ",
+      "stock_code": "002009",
+      "stock_name": "天奇股份",
+      "lgb_score": 91.93,
+      "raw_score": 0.42,
+      "predicted_days": 14
     },
     {
       "rank": 5,
-      "ts_code": "000159.SZ",
-      "stock_code": "000159",
-      "stock_name": "国际实业",
-      "lgb_score": 83.51,
-      "raw_score": 0.35,
-      "predicted_days": 17
+      "ts_code": "300885.SZ",
+      "stock_code": "300885",
+      "stock_name": "海昌新材",
+      "lgb_score": 91.9,
+      "raw_score": 0.42,
+      "predicted_days": 13
     }
   ],
   "tree_diagnostics": {
     "n_trees": 200,
-    "avg_depth": 10.75,
+    "avg_depth": 10.82,
     "avg_n_leaves": 31.0,
     "total_n_leaves": 6200
   },
   "prediction_stats": {
-    "mean": 0.142424,
-    "std": 0.038473,
-    "skew": -0.9933,
-    "kurtosis": 1.2209,
-    "min": 0.003575,
-    "max": 0.413247,
-    "median": 0.163013
+    "mean": 0.26145,
+    "std": 0.091692,
+    "skew": -1.0112,
+    "kurtosis": -0.7893,
+    "min": 0.0107,
+    "max": 0.45623,
+    "median": 0.320671
   },
   "training_metrics": {
-    "cv_rmse_mean": 0.13924968854381323,
-    "cv_rmse_std": 0.009567698601650678,
+    "cv_rmse_mean": 0.1326517498479997,
+    "cv_rmse_std": 0.012260497140137619,
     "cv_scores": [
-      0.15028,
-      0.151209,
-      0.129476,
-      0.130387,
-      0.134896
+      0.153414,
+      0.12804,
+      0.125823,
+      0.117764,
+      0.138218
     ],
-    "rank_ic_mean": 0.120313,
-    "rank_ic_std": 0.071568,
-    "icir": 1.6811,
-    "oof_corr": 0.075518,
-    "n_samples": 25472,
-    "n_features": 22
+    "rank_ic_mean": 0.154961,
+    "rank_ic_std": 0.064429,
+    "icir": 2.4051,
+    "oof_corr": 0.074956,
+    "n_samples": 45013,
+    "n_features": 24
   },
   "window_days": 20
 }

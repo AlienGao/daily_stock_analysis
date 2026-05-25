@@ -30,12 +30,12 @@ REPORTS_ROOT = os.path.join(
 
 TRAIN_START = "20240101"
 PRED_START = "20250101"
-FORWARD_DAYS_LIST = [20]
-LABEL_MODES = ["peak_speed"]
+FORWARD_DAYS_LIST = [3, 5, 10, 20]
+LABEL_MODES = ["peak_speed", "fixed"]
 WINDOW_DAYS = 20  # peak_speed 窗口天数
 # PRED_END is computed dynamically from StockDaily in main()
 MODE = "postmarket"
-EXEC_MODE_LIST = ["open", "close"]  # "open" = open→open labels, "close" = close→close labels
+EXEC_MODE_LIST = ["open"]  # "open" = open→open labels
 TOP_N = 5
 
 
@@ -273,7 +273,7 @@ def main():
     print(f"训练起点: {TRAIN_START} (逐月右移 12 个月窗口)")
     print(f"预测范围: {PRED_START} ~ {pred_end}")
     print(f"窗口数: {len(windows)} | Label: {LABEL_MODES}")
-    print(f"报告目录: {REPORTS_ROOT}/{{open2open,close2close}}/{{fwd20d,peak20d}}")
+    print(f"报告目录: {REPORTS_ROOT}/open2open/{{peak20d,fwd3d,fwd5d,fwd10d,fwd20d}}")
     print("=" * 64)
 
     grand_total_ok = 0
