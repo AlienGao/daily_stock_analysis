@@ -560,10 +560,23 @@ def lgb_stock_lookup(
     finbert_sentiment = None
     try:
         from src.services.finbert_sentiment_service import get_finbert_service
-        from src.services.search_service import SearchService
+        from src.search_service import SearchService
         finbert_svc = get_finbert_service()
         if finbert_svc.is_available:
-            search_svc = SearchService()
+            from src.config import Config
+            cfg = Config.get_instance()
+            search_svc = SearchService(
+                bocha_keys=cfg.bocha_api_keys,
+                tavily_keys=cfg.tavily_api_keys,
+                anspire_keys=cfg.anspire_api_keys,
+                brave_keys=cfg.brave_api_keys,
+                serpapi_keys=cfg.serpapi_keys,
+                minimax_keys=cfg.minimax_api_keys,
+                kimi_keys=cfg.kimi_api_keys,
+                searxng_base_urls=cfg.searxng_base_urls,
+                searxng_public_instances_enabled=cfg.searxng_public_instances_enabled,
+                akshare_news_enabled=getattr(cfg, 'akshare_news_enabled', True),
+            )
             if search_svc.is_available:
                 news_resp = search_svc.search_stock_news(
                     stock_code=str(row["stock_code"]),
@@ -571,8 +584,11 @@ def lgb_stock_lookup(
                     max_results=10,
                 )
                 if news_resp.success and news_resp.results:
-                    news_lines = [r.title or r.content or "" for r in news_resp.results if r.title or r.content]
-                    news_lines = [line.strip() for line in news_lines if len(line.strip()) >= 10]
+                    news_text = search_svc.format_intel_report(
+                        {"latest_news": news_resp}, stock_name_val
+                    )
+                    news_lines = [line.strip() for line in news_text.split("\n")
+                                  if line.strip() and len(line.strip()) >= 10]
                     if news_lines:
                         fb = finbert_svc.analyze_news_sentiment(news_lines)
                         if fb:

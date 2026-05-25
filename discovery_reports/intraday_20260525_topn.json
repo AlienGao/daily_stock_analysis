@@ -1,0 +1,176 @@
+[
+  {
+    "rank": 1,
+    "stock_code": "300830",
+    "stock_name": "金现代",
+    "score": 61.4,
+    "sector": "软件开发",
+    "factor_scores": {
+      "ma_entry": 81.7008873396452,
+      "sector": 0.0,
+      "momentum": 50.0,
+      "ranking_momentum": 47.09564979846038,
+      "popularity": 80.04968435279083
+    },
+    "factor_weights": {
+      "ma_entry": 25.0,
+      "sector": 25.0,
+      "momentum": 18.0,
+      "ranking_momentum": 15.0,
+      "popularity": 18.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线",
+      "缩量回踩"
+    ],
+    "buy_price_low": 9.9,
+    "buy_price_high": 10.9,
+    "stop_loss": 10.73,
+    "take_profit_1": 11.36,
+    "take_profit_2": 12.42,
+    "discovered_at": "09:27:48",
+    "price_at_discovery": 10.74,
+    "pct_chg": -0.28,
+    "tech_score": 65.43,
+    "rr_score": 72.21297836938429,
+    "market_score": 51.45400501989417,
+    "sector_score": 74.81375138519189,
+    "volume_score": 65.0,
+    "position_score": 75,
+    "formation_score": 50.0,
+    "composite_score": 64.221
+  },
+  {
+    "rank": 2,
+    "stock_code": "002122",
+    "stock_name": "ST汇洲",
+    "score": 34.7,
+    "sector": "通用设备",
+    "factor_scores": {
+      "ma_entry": 79.5420054787831,
+      "sector": 0.0,
+      "momentum": 50.0,
+      "ranking_momentum": 45.6575808569129,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 25.0,
+      "sector": 25.0,
+      "momentum": 18.0,
+      "ranking_momentum": 15.0,
+      "popularity": 18.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线",
+      "缩量回踩",
+      "今日强于90%个股"
+    ],
+    "buy_price_low": 2.8,
+    "buy_price_high": 2.9,
+    "stop_loss": 2.89,
+    "take_profit_1": 3.0,
+    "take_profit_2": 3.13,
+    "discovered_at": "09:27:48",
+    "price_at_discovery": 2.91,
+    "pct_chg": 1.75,
+    "tech_score": 76.05,
+    "rr_score": 100.0,
+    "market_score": 51.45400501989417,
+    "sector_score": 83.38897074204948,
+    "volume_score": 65.0,
+    "position_score": 85,
+    "formation_score": 50.0,
+    "composite_score": 63.644999999999996
+  },
+  {
+    "rank": 3,
+    "stock_code": "920046",
+    "stock_name": "亿能电力",
+    "score": 51.4,
+    "sector": "电网设备",
+    "factor_scores": {
+      "ma_entry": 48.61218809204068,
+      "sector": 0.0,
+      "momentum": 50.0,
+      "ranking_momentum": 47.03457257374267,
+      "popularity": 78.15259905382352
+    },
+    "factor_weights": {
+      "ma_entry": 25.0,
+      "sector": 25.0,
+      "momentum": 18.0,
+      "ranking_momentum": 15.0,
+      "popularity": 18.0
+    },
+    "reasons": [
+      "回踩MA5均线",
+      "缩量回踩",
+      "趋势加速↑(22.0%/天)",
+      "今日强于76%个股",
+      "人气飙升(+945位)",
+      "人气排名持续改善"
+    ],
+    "buy_price_low": 26.6,
+    "buy_price_high": 28.7,
+    "stop_loss": 28.15,
+    "take_profit_1": 33.03,
+    "take_profit_2": 43.53,
+    "discovered_at": "09:27:48",
+    "price_at_discovery": 28.88,
+    "pct_chg": 0.77,
+    "tech_score": 67.66,
+    "rr_score": 74.01273885350322,
+    "market_score": 51.45400501989417,
+    "sector_score": 92.54469602168427,
+    "volume_score": 65.0,
+    "position_score": 75,
+    "formation_score": 40.0,
+    "composite_score": 62.782
+  },
+  {
+    "rank": 4,
+    "stock_code": "601916",
+    "stock_name": "浙商银行",
+    "score": 27.799999999999997,
+    "sector": "银行",
+    "factor_scores": {
+      "ma_entry": 88.0193234896609,
+      "sector": 0.0,
+      "momentum": 50.0,
+      "ranking_momentum": 50.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 25.0,
+      "sector": 25.0,
+      "momentum": 18.0,
+      "ranking_momentum": 15.0,
+      "popularity": 18.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线",
+      "缩量回踩",
+      "趋势加速↑(2.5%/天)",
+      "拥挤惩罚(近5日选中3天-10分)"
+    ],
+    "buy_price_low": 2.9,
+    "buy_price_high": 3.0,
+    "stop_loss": 2.96,
+    "take_profit_1": 3.06,
+    "take_profit_2": 3.18,
+    "discovered_at": "09:27:48",
+    "price_at_discovery": 2.97,
+    "pct_chg": 0.0,
+    "tech_score": 69.83,
+    "rr_score": 100.0,
+    "market_score": 51.45400501989417,
+    "sector_score": 41.93516778523509,
+    "volume_score": 65.0,
+    "position_score": 85,
+    "formation_score": 50.0,
+    "composite_score": 60.22099999999999
+  }
+]
