@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """盘中资金流共享数据源 (Intraday Money Flow Source).
 
-提供 3 级降级拉取：东财 push2（实时全粒度）→ 同花顺 akshare（实时粗粒度）→ Tushare 资金流 + realtime_spot（盘后兜底）。
+提供 3 级降级拉取：同花顺 akshare（实时粗粒度）→ 东财 push2（实时全粒度）→ Tushare 资金流 + realtime_spot（盘后兜底）。
 
 统一输出 7 列 DataFrame，index 为 ts_code（600519.SH）格式：
   major_net, lg_net, inflow_rate, pct_chg, turnover_rate, volume_ratio, data_source
@@ -32,12 +32,14 @@ def fetch_intraday_money_flow(
 ) -> Optional[pd.DataFrame]:
     """3 级降级拉取盘中资金流数据 + DB 落库。
 
-    Tier 1: East Money push2（实时全粒度，全市场）
-    Tier 2: akshare 同花顺个股资金流（实时，粗粒度）
+    Tier 1: akshare 同花顺个股资金流（实时，粗粒度，全市场）
+    Tier 2: East Money push2（实时全粒度）
     Tier 3: Tushare 资金流 + realtime_spot 实时指标（盘后兜底）
     """
 
     # ── Tier 0: DB 缓存优先（盘后/回补直接命中，跳过所有 API）──
+    # 但如果缓存是盘前写入的（turnover_rate 全为 0），盘中应跳过缓存
+    # 重新从 API 拉取，否则 momentum 因子会被 veto 归零。
     try:
         from src.storage import DatabaseManager
         from src.storage import MomentumSnapshot
@@ -49,50 +51,72 @@ def fetch_intraday_money_flow(
                 )
             ).scalars().all()
         if rows:
-            index_map = {
-                str(r.code).zfill(6): _code_to_ts_code(str(r.code))
-                for r in rows
-            }
-            ts_codes = [index_map[c] for c in index_map]
-            df_db = pd.DataFrame(
-                {
-                    "name": [r.name or "" for r in rows],
-                    "major_net": [r.major_net or 0 for r in rows],
-                    "lg_net": [r.lg_net or 0 for r in rows],
-                    "inflow_rate": [r.inflow_rate or 0 for r in rows],
-                    "pct_chg": [r.pct_chg or 0 for r in rows],
-                    "turnover_rate": [r.turnover_rate or 0 for r in rows],
-                    "volume_ratio": [r.volume_ratio or 1.0 for r in rows],
-                    "data_source": [r.data_source or "db_cache" for r in rows],
-                },
-                index=ts_codes,
-            )
-            logger.info("[MoneyFlow] DB 缓存命中: %d 只股票 (trade_date=%s)", len(df_db), trade_date)
-            return df_db
+            # 检查缓存是否在盘前写入（fetch_time < 09:30），当日跳过重新拉取
+            # 盘前缓存的 turnover_rate 全为 0，会导致 momentum 因子归零
+            _skip_cache = False
+            _today = dt.now(ZoneInfo("Asia/Shanghai")).strftime("%Y%m%d")
+            if str(trade_date)[:8] == _today:
+                _fetch_time = rows[0].fetch_time
+                if _fetch_time:
+                    _ft = _fetch_time if isinstance(_fetch_time, dt) else dt.fromisoformat(str(_fetch_time))
+                    if _ft.tzinfo is None:
+                        _ft = _ft.replace(tzinfo=ZoneInfo("Asia/Shanghai"))
+                    _market_open = _ft.replace(hour=9, minute=30, second=0, microsecond=0)
+                    if _ft < _market_open:
+                        _skip_cache = True
+                        logger.info("[MoneyFlow] 缓存为盘前数据 (%s)，跳过重新拉取", _fetch_time)
+            if _skip_cache:
+                pass  # fall through to Tier 1/2/3
+            else:
+                index_map = {
+                    str(r.code).zfill(6): _code_to_ts_code(str(r.code))
+                    for r in rows
+                }
+                ts_codes = [index_map[c] for c in index_map]
+                df_db = pd.DataFrame(
+                    {
+                        "name": [r.name or "" for r in rows],
+                        "major_net": [r.major_net or 0 for r in rows],
+                        "lg_net": [r.lg_net or 0 for r in rows],
+                        "inflow_rate": [r.inflow_rate or 0 for r in rows],
+                        "pct_chg": [r.pct_chg or 0 for r in rows],
+                        "turnover_rate": [r.turnover_rate or 0 for r in rows],
+                        "volume_ratio": [r.volume_ratio or 1.0 for r in rows],
+                        "data_source": [r.data_source or "db_cache" for r in rows],
+                    },
+                    index=ts_codes,
+                )
+                logger.info("[MoneyFlow] DB 缓存命中: %d 只股票 (trade_date=%s)", len(df_db), trade_date)
+                return df_db
     except Exception as e:
         logger.debug("[MoneyFlow] DB 缓存读取失败: %s", e)
 
-    # ── Tier 1: East Money push2 ──
+    # ── Tier 1: 同花顺 akshare ──
+    tier1_df = None
     try:
-        logger.info("[MoneyFlow] Tier 1: 拉取 East Money push2 实时资金流...")
-        df = _fetch_tier1_eastmoney()
-        if df is not None and not df.empty:
-            logger.info("[MoneyFlow] Tier 1 成功: %d 只股票", len(df))
-            _cache_to_db(df, trade_date, source="eastmoney")
-            return df
+        logger.info("[MoneyFlow] Tier 1: 拉取 akshare/同花顺 个股资金流...")
+        tier1_df = _fetch_tier2_tonghuashun(trade_date)
+        if tier1_df is not None and not tier1_df.empty:
+            logger.info("[MoneyFlow] Tier 1 成功: %d 只股票", len(tier1_df))
+            _cache_to_db(tier1_df, trade_date, source="akshare")
+            return tier1_df
     except Exception as e:
-        logger.warning("[MoneyFlow] Tier 1 (East Money push2) 失败: %s", e)
+        logger.warning("[MoneyFlow] Tier 1 (akshare/同花顺) 失败: %s", e)
 
-    # ── Tier 2: 同花顺 akshare ──
+    # ── Tier 2: East Money push2 ──
+    _MIN_RECORDS = 500  # 低于此数量视为数据不足，继续尝试下一级
+    tier2_df = None
     try:
-        logger.info("[MoneyFlow] Tier 2: 拉取 akshare/同花顺 个股资金流...")
-        df = _fetch_tier2_tonghuashun(trade_date)
-        if df is not None and not df.empty:
-            logger.info("[MoneyFlow] Tier 2 成功: %d 只股票", len(df))
-            _cache_to_db(df, trade_date, source="akshare")
-            return df
+        logger.info("[MoneyFlow] Tier 2: 拉取 East Money push2 实时资金流...")
+        tier2_df = _fetch_tier1_eastmoney()
+        if tier2_df is not None and not tier2_df.empty:
+            logger.info("[MoneyFlow] Tier 2 成功: %d 只股票", len(tier2_df))
+            if len(tier2_df) >= _MIN_RECORDS:
+                _cache_to_db(tier2_df, trade_date, source="eastmoney")
+                return tier2_df
+            logger.info("[MoneyFlow] Tier 2 数据不足 (%d < %d)，继续尝试 Tier 3", len(tier2_df), _MIN_RECORDS)
     except Exception as e:
-        logger.warning("[MoneyFlow] Tier 2 (akshare/同花顺) 失败: %s", e)
+        logger.warning("[MoneyFlow] Tier 2 (East Money push2) 失败: %s", e)
 
     # ── Tier 3: Tushare ──
     try:
@@ -104,6 +128,12 @@ def fetch_intraday_money_flow(
             return df
     except Exception as e:
         logger.warning("[MoneyFlow] Tier 3 (Tushare) 失败: %s", e)
+
+    # ── 最后兜底：返回 Tier 2 数据（即使不足 500 条）──
+    if tier2_df is not None and not tier2_df.empty:
+        logger.info("[MoneyFlow] Tier 1/3 均失败，使用 Tier 2 兜底: %d 只股票", len(tier2_df))
+        _cache_to_db(tier2_df, trade_date, source="eastmoney")
+        return tier2_df
 
     logger.warning("[MoneyFlow] 所有数据源均失败")
     return None

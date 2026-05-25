@@ -49,6 +49,7 @@ from sqlalchemy import (
     func,
     or_,
     text,
+    case,
 )
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import (
@@ -6226,6 +6227,13 @@ class DatabaseManager(metaclass=_DatabaseManagerMeta):
             logger.warning("[save_daily_batch] 无代码列")
             return 0
 
+        # Indicator columns: only included when the source DataFrame carries them
+        # (e.g. after BaseFetcher._calculate_indicators).  Tushare daily API does
+        # not return ma5/ma10/ma20/volume_ratio, so batch syncs without indicator
+        # computation must NOT overwrite existing values with NULL.
+        _INDICATOR_COLS = ("ma5", "ma10", "ma20", "volume_ratio")
+        has_indicators = any(c in df.columns for c in _INDICATOR_COLS)
+
         now = datetime.now()
         records: List[Dict[str, Any]] = []
         seen: set = set()
@@ -6239,7 +6247,7 @@ class DatabaseManager(metaclass=_DatabaseManagerMeta):
             if key in seen:
                 continue
             seen.add(key)
-            records.append({
+            rec: Dict[str, Any] = {
                 "code": code,
                 "date": row_date,
                 "open": self._normalize_sql_value(row.get("open")),
@@ -6252,7 +6260,12 @@ class DatabaseManager(metaclass=_DatabaseManagerMeta):
                 "data_source": data_source,
                 "created_at": now,
                 "updated_at": now,
-            })
+            }
+            if has_indicators:
+                for col in _INDICATOR_COLS:
+                    if col in df.columns:
+                        rec[col] = self._normalize_sql_value(row.get(col))
+            records.append(rec)
 
         if not records:
             return 0
@@ -6264,20 +6277,31 @@ class DatabaseManager(metaclass=_DatabaseManagerMeta):
                     chunk = records[i : i + _CHUNK]
                     stmt = sqlite_insert(StockDaily).values(chunk)
                     excluded = stmt.excluded
+                    set_: Dict[str, Any] = {
+                        "open": excluded.open,
+                        "high": excluded.high,
+                        "low": excluded.low,
+                        "close": excluded.close,
+                        "volume": excluded.volume,
+                        "amount": excluded.amount,
+                        "pct_chg": excluded.pct_chg,
+                        "data_source": excluded.data_source,
+                        "updated_at": excluded.updated_at,
+                    }
+                    # Only update indicator columns when the incoming value is
+                    # non-NULL; otherwise keep the existing DB value intact.
+                    if has_indicators:
+                        for col in _INDICATOR_COLS:
+                            if col in df.columns:
+                                set_[col] = case(
+                                    (getattr(excluded, col).isnot(None),
+                                     getattr(excluded, col)),
+                                    else_=getattr(StockDaily, col),
+                                )
                     session.execute(
                         stmt.on_conflict_do_update(
                             index_elements=["code", "date"],
-                            set_={
-                                "open": excluded.open,
-                                "high": excluded.high,
-                                "low": excluded.low,
-                                "close": excluded.close,
-                                "volume": excluded.volume,
-                                "amount": excluded.amount,
-                                "pct_chg": excluded.pct_chg,
-                                "data_source": excluded.data_source,
-                                "updated_at": excluded.updated_at,
-                            },
+                            set_=set_,
                         )
                     )
                 return len(records)
@@ -6298,6 +6322,11 @@ class DatabaseManager(metaclass=_DatabaseManagerMeta):
                         for col in ("open", "high", "low", "close", "volume",
                                      "amount", "pct_chg"):
                             setattr(existing, col, rec[col])
+                        # Only update indicators when incoming value is present
+                        if has_indicators:
+                            for col in _INDICATOR_COLS:
+                                if col in rec and rec[col] is not None:
+                                    setattr(existing, col, rec[col])
                         existing.data_source = rec["data_source"]
                         existing.updated_at = now
                     saved += 1
@@ -6640,6 +6669,35 @@ class DatabaseManager(metaclass=_DatabaseManagerMeta):
                 "brokers": json.loads(row.broker_returns_json or "[]"),
                 "stock_returns": json.loads(row.stock_returns_json or "[]"),
             }
+
+    def get_broker_backtest_months(self) -> List[str]:
+        """获取 broker_backtest_result 表中有回测结果的月份列表（升序）。"""
+        with self.get_session() as session:
+            months = session.execute(
+                select(BrokerBacktestResult.month).order_by(BrokerBacktestResult.month)
+            ).scalars().all()
+            return list(months)
+
+    def get_all_broker_backtests(self) -> List[Dict[str, Any]]:
+        """一次性获取所有月度回测结果，用于有记录以来复合计算。"""
+        import json
+        with self.get_session() as session:
+            rows = session.execute(
+                select(BrokerBacktestResult).order_by(BrokerBacktestResult.month)
+            ).scalars().all()
+            results = []
+            for row in rows:
+                results.append({
+                    "month": row.month,
+                    "buy_date": row.buy_date,
+                    "sell_date": row.sell_date,
+                    "total_recommendations": row.total_recommendations,
+                    "unique_stocks": row.unique_stocks,
+                    "unique_brokers": row.unique_brokers,
+                    "brokers": json.loads(row.broker_returns_json or "[]"),
+                    "stock_returns": json.loads(row.stock_returns_json or "[]"),
+                })
+            return results
 
     # ------------------------------------------------------------------
     # 机构调研

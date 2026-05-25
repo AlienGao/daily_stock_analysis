@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 5,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260525",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300457",
+      "stock_code": "300457",
+      "stock_name": "赢合科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 2,
+      "ts_code": "301587",
+      "stock_code": "301587",
+      "stock_name": "中瑞股份",
+      "lgb_score": 88.71,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 3,
+      "ts_code": "300890",
+      "stock_code": "300890",
+      "stock_name": "翔丰华",
+      "lgb_score": 87.08,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 4,
+      "ts_code": "300323",
+      "stock_code": "300323",
+      "stock_name": "华灿光电",
+      "lgb_score": 79.61,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 5,
+      "ts_code": "002062",
+      "stock_code": "002062",
+      "stock_name": "宏润建设",
+      "lgb_score": 79.52,
+      "raw_score": 0.12
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.21,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.000236,
+    "std": 0.020107,
+    "skew": -0.0091,
+    "kurtosis": 1.9907,
+    "min": -0.077098,
+    "max": 0.164486,
+    "median": 0.011327
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.07293047112790249,
+    "cv_rmse_std": 0.003796719450767962,
+    "cv_scores": [
+      0.0674,
+      0.070493,
+      0.074004,
+      0.074071,
+      0.078684
+    ],
+    "rank_ic_mean": 0.047685,
+    "rank_ic_std": 0.047815,
+    "icir": 0.9973,
+    "oof_corr": 0.033957,
+    "n_samples": 18327,
+    "n_features": 22
+  }
+}

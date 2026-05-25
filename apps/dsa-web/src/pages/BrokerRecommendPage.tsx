@@ -401,9 +401,8 @@ const BrokerRecommendPage: React.FC = () => {
   // Load YTD data when switching to YTD tab
   useEffect(() => {
     if (activeTab !== 'ytd' || ytdData) return;
-    const currentYear = String(dayjs().year());
     setYtdLoading(true);
-    getYtdBacktest(currentYear, 5)
+    getYtdBacktest(5)
       .then(setYtdData)
       .catch((e) => console.error('Failed to load YTD:', e))
       .finally(() => setYtdLoading(false));
@@ -1176,7 +1175,7 @@ const BrokerRecommendPage: React.FC = () => {
           },
           {
             key: 'ytd',
-            label: '年初至今',
+            label: '有记录以来',
             children: (
               <div className="space-y-4 pt-2">
         {/* YTD Loading */}
@@ -1202,7 +1201,7 @@ const BrokerRecommendPage: React.FC = () => {
               <div className={`text-lg font-bold ${(ytdData.brokers[0]?.cumulative_return ?? 0) >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                 {fmtPct(ytdData.brokers[0]?.cumulative_return)}
               </div>
-              <div className="text-xs text-secondary-text">最优 YTD 收益</div>
+              <div className="text-xs text-secondary-text">最优累计收益</div>
             </Card>
             <Card className="p-3 text-center">
               <div className="text-lg font-bold text-sm">
@@ -1216,7 +1215,7 @@ const BrokerRecommendPage: React.FC = () => {
         {/* YTD Chart */}
         {ytdData && ytdChartData.length > 0 && !ytdLoading && (
           <Card className="p-4">
-            <div className="text-sm font-medium mb-2">年初至今 Top 5 券商累计收益</div>
+            <div className="text-sm font-medium mb-2">有记录以来 Top 5 券商累计收益</div>
             <div className="flex flex-wrap gap-x-3 gap-y-1 mb-1">
               {ytdData.brokers.map((b, i) => (
                 <div key={b.broker} className="inline-flex items-center gap-1 text-xs">

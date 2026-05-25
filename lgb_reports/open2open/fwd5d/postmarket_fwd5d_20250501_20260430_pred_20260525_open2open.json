@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 5,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260525",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300890",
+      "stock_code": "300890",
+      "stock_name": "翔丰华",
+      "lgb_score": 100.0,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 2,
+      "ts_code": "001389",
+      "stock_code": "001389",
+      "stock_name": "广合科技",
+      "lgb_score": 99.21,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 3,
+      "ts_code": "300457",
+      "stock_code": "300457",
+      "stock_name": "赢合科技",
+      "lgb_score": 90.98,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 4,
+      "ts_code": "002125",
+      "stock_code": "002125",
+      "stock_name": "湘潭电化",
+      "lgb_score": 89.63,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 5,
+      "ts_code": "600218",
+      "stock_code": "600218",
+      "stock_name": "全柴动力",
+      "lgb_score": 82.72,
+      "raw_score": 0.1
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.95,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.016277,
+    "std": 0.018621,
+    "skew": 2.261,
+    "kurtosis": 6.713,
+    "min": -0.073119,
+    "max": 0.141938,
+    "median": -0.025956
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.07124132173817163,
+    "cv_rmse_std": 0.006784761945855149,
+    "cv_scores": [
+      0.067348,
+      0.071193,
+      0.07369,
+      0.061792,
+      0.082183
+    ],
+    "rank_ic_mean": 0.052323,
+    "rank_ic_std": 0.045517,
+    "icir": 1.1495,
+    "oof_corr": 0.039643,
+    "n_samples": 18659,
+    "n_features": 22
+  }
+}

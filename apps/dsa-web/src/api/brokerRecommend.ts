@@ -193,12 +193,11 @@ export async function getMonthlyEnrichment(
 }
 
 export async function getYtdBacktest(
-  year?: string,
   topN: number = 5
 ): Promise<YtdBacktestResponse> {
   const resp = await apiClient.get<YtdBacktestResponse>(
     '/api/v1/broker-recommend/ytd',
-    { params: { year, top_n: topN } }
+    { params: { top_n: topN } }
   );
   return resp.data;
 }

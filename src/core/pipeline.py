@@ -836,11 +836,13 @@ class StockAnalysisPipeline:
         # 添加趋势分析结果（Tushare stk_factor 优先，本地计算降级）
         if trend_result:
             tf = tech_factors if isinstance(tech_factors, dict) else {}
-            # 均线：Tushare 优先
-            ma5 = tf.get('ma_5') if tf.get('ma_5') is not None else trend_result.ma5
-            ma10 = tf.get('ma_10') if tf.get('ma_10') is not None else trend_result.ma10
-            ma20 = tf.get('ma_20') if tf.get('ma_20') is not None else trend_result.ma20
-            ma60 = tf.get('ma_60')  # 本地没有 MA60
+            # 均线：统一使用 trend_result 的 raw 价格 MA。
+            # Tushare stk_factor 返回的是前复权 MA（ma_qfq_*），与 raw 实时价格
+            # 混用会导致乖离率计算错误，因此不采用。
+            ma5 = trend_result.ma5
+            ma10 = trend_result.ma10
+            ma20 = trend_result.ma20
+            ma60 = trend_result.ma60
 
             # 乖离率：用最终选定的 MA 重算
             price = getattr(realtime_quote, 'price', 0) if realtime_quote else 0

@@ -571,29 +571,14 @@ class StopLossCalculator:
             current_price = float(closes[-1])
 
         # --- 预计算指标 ---
-        atr = None
-        ma20_db = None
-        ma60_db = None
-
-        if not is_today:
-            tech = self._fetch_tech_indicator(code, trade_date)
-            if tech:
-                atr = tech.get("atr")
-                ma20_db = tech.get("ma20")
-                ma60_db = tech.get("ma60")
-
-        if ma20_db is None and ohlcv:
-            ma20_db = ohlcv[-1].ma20
-
+        # 统一使用 raw close 本地计算 MA/ATR，不采用 Tushare 前复权指标，
+        # 避免前复权 MA 与 raw OHLCV 混用导致止损位失真。
         return compute_from_arrays(
             highs=highs,
             lows=lows,
             closes=closes,
             code=code,
             trade_date=trade_date,
-            ma20=ma20_db,
-            ma60=ma60_db,
-            atr=atr,
             factor_score=factor_score,
         )
 
@@ -640,13 +625,6 @@ class StopLossCalculator:
         db = DatabaseManager.get_instance()
         start = target_date - timedelta(days=DATA_LOOKBACK_DAYS)
         return db.get_data_range(code, start, target_date)
-
-    @staticmethod
-    def _fetch_tech_indicator(code: str, target_date: date):
-        from src.storage import DatabaseManager
-
-        db = DatabaseManager.get_instance()
-        return db.get_tech_indicator(code, target_date)
 
 
 def quick_stop_loss(code: str, trade_date: Optional[date] = None) -> StopLossResult:

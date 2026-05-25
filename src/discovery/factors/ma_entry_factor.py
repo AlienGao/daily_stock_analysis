@@ -66,6 +66,8 @@ class MaEntryFactor(BaseFactor):
             result["est_vol"] = result["vol"]
 
         # ── 近 5 日均量（stock_daily） ──
+        # 使用 raw close 价格，与 realtime_spot 的 raw price 保持一致，
+        # 避免后复权历史 + raw 实时混合导致 MA/BOLL 在除权日附近失真。
         close_matrix = db_mgr.get_recent_close_matrix(trade_date, 60)
         if close_matrix is not None and not close_matrix.empty:
             avg_vol = self._get_avg_volume(db_mgr, trade_date)

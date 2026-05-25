@@ -247,6 +247,9 @@ class StockTrendAnalyzer:
         # 确保数据按日期排序
         df = df.sort_values('date').reset_index(drop=True)
 
+        # 使用 raw close 价格计算技术指标，与 realtime_spot 的 raw price
+        # 保持一致，避免复权价格与盘面价格不匹配导致乖离/支撑位失真。
+
         # 计算均线（本地计算作为 Tushare 数据源降级）
         df = self._calculate_mas(df)
 

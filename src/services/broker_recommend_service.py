@@ -1528,41 +1528,26 @@ class BrokerRecommendService:
             "stock_returns": stock_returns_list,
         }
 
-    def compute_ytd_backtest(self, year: str, top_n: int = 5) -> Dict[str, Any]:
-        """年初至今累计回测：跨月复合月度回测结果。
+    def compute_ytd_backtest(self, year: Optional[str] = None, top_n: int = 5) -> Dict[str, Any]:
+        """跨月复合回测：遍历指定月份（或全部月份），将月度回测结果乘法复合。
 
-        遍历年内所有月份，将每个月的券商组合累计收益跨月乘法复合，
-        daily_returns 拼接为连续曲线。月度数据命中 SQLite 缓存，无额外 Tushare 调用。
+        year=None 时使用全部可用月份（有记录以来），
+        指定 year 时仅使用该年份内的月份（年初至今）。
+        直接从 broker_backtest_result 表读取预计算结果，无 Tushare 调用。
         """
-        available_months = self.get_available_months()
-        year_months = sorted([m for m in available_months if str(m).startswith(str(year))])
+        all_backtests = self.db.get_all_broker_backtests()
+        if year is not None:
+            month_data = [bt for bt in all_backtests if bt["month"].startswith(str(year))]
+        else:
+            month_data = all_backtests
 
-        if not year_months:
-            return {"error": f"Year {year} has no data"}
+        if not month_data:
+            return {"error": f"Year {year} has no data" if year else "No backtest data available"}
 
-        from datetime import datetime
-        today = datetime.now().strftime("%Y%m%d")
-        current_month = datetime.now().strftime("%Y%m")
         broker_ytd: Dict[str, Dict[str, Any]] = {}
 
-        for month in year_months:
-            is_current = month == current_month
-            # 当月始终实时计算，确保包含最新交易日；历史月优先读存储缓存
-            if is_current:
-                bt = self.compute_backtest(month, top_n_per_broker=10)
-            else:
-                stored = self.db.get_broker_backtest(month)
-                if stored and stored.get("brokers") and stored.get("sell_date", "99991231") <= today:
-                    bt = stored
-                elif stored and stored.get("sell_date", "99991231") > today:
-                    logger.info(f"[BrokerRecommend] YTD 跳过未完成月份 {month}")
-                    continue
-                else:
-                    bt = self.compute_backtest(month, top_n_per_broker=10)
-
-            if "error" in bt:
-                continue
-
+        for bt in month_data:
+            month = bt["month"]
             for b in bt.get("brokers", []):
                 broker_name = b["broker"]
                 if broker_name not in broker_ytd:
@@ -1614,14 +1599,15 @@ class BrokerRecommendService:
                 prev_cum = cum
                 all_dates.add(dr["date"])
 
-        start_date = min(all_dates) if all_dates else f"{year}0101"
-        end_date = max(all_dates) if all_dates else f"{year}1231"
+        start_date = min(all_dates) if all_dates else (f"{year}0101" if year else "20200101")
+        end_date = max(all_dates) if all_dates else (f"{year}1231" if year else "20991231")
 
-        logger.info(f"[BrokerRecommend] YTD {year}: {len(broker_ytd)} brokers, "
-                    f"top {len(sorted_brokers)}, {len(year_months)} months")
+        label = str(year) if year else "all"
+        logger.info(f"[BrokerRecommend] YTD {label}: {len(broker_ytd)} brokers, "
+                    f"top {len(sorted_brokers)}, {len(month_data)} months")
 
         return {
-            "year": str(year),
+            "year": label,
             "start_date": start_date,
             "end_date": end_date,
             "total_brokers": len(broker_ytd),

@@ -157,15 +157,10 @@ def get_available_months() -> List[str]:
 
 @router.get("/ytd", response_model=YtdBacktestResponse)
 def get_ytd_backtest(
-    year: Optional[str] = Query(default=None, description="4-digit year, defaults to current year"),
+    year: Optional[str] = Query(default=None, description="4-digit year; omit for all-time"),
     top_n: int = Query(default=5, ge=1, le=50, description="Number of top brokers"),
 ) -> YtdBacktestResponse:
-    """年初至今累计回测：跨月复合 Top-N 券商组合收益。"""
-    from datetime import datetime
-
-    if year is None:
-        year = str(datetime.now().year)
-
+    """跨月复合回测：指定 year 为年初至今，省略 year 为有记录以来。"""
     service = BrokerRecommendService()
     result = service.compute_ytd_backtest(year, top_n=top_n)
 
