@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 3,
   "train_start": "20241001",
   "train_end": "20250930",
@@ -7,43 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000949.SZ",
-      "stock_code": "000949",
-      "stock_name": "新乡化纤",
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
       "lgb_score": 100.0,
-      "raw_score": 0.09
+      "raw_score": 0.08
     },
     {
       "rank": 2,
-      "ts_code": "300308.SZ",
-      "stock_code": "300308",
-      "stock_name": "中际旭创",
-      "lgb_score": 92.93,
+      "ts_code": "002274.SZ",
+      "stock_code": "002274",
+      "stock_name": "华昌化工",
+      "lgb_score": 97.12,
       "raw_score": 0.08
     },
     {
       "rank": 3,
-      "ts_code": "002084.SZ",
-      "stock_code": "002084",
-      "stock_name": "海鸥住工",
-      "lgb_score": 89.96,
+      "ts_code": "000757.SZ",
+      "stock_code": "000757",
+      "stock_name": "浩物股份",
+      "lgb_score": 94.92,
       "raw_score": 0.07
     },
     {
       "rank": 4,
-      "ts_code": "603077.SH",
-      "stock_code": "603077",
-      "stock_name": "和邦生物",
-      "lgb_score": 88.52,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 94.28,
       "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "000757.SZ",
-      "stock_code": "000757",
-      "stock_name": "浩物股份",
-      "lgb_score": 88.22,
+      "ts_code": "002009.SZ",
+      "stock_code": "002009",
+      "stock_name": "天奇股份",
+      "lgb_score": 93.98,
       "raw_score": 0.07
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.97,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.05205,
+    "std": 0.03874,
+    "skew": 0.8679,
+    "kurtosis": -1.1111,
+    "min": -0.106861,
+    "max": 0.081517,
+    "median": -0.078049
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.05324670267180739,
+    "cv_rmse_std": 0.0058908948011171065,
+    "cv_scores": [
+      0.054719,
+      0.059862,
+      0.045444,
+      0.047331,
+      0.058878
+    ],
+    "rank_ic_mean": 0.03664,
+    "rank_ic_std": 0.027616,
+    "icir": 1.3268,
+    "oof_corr": 0.039089,
+    "n_samples": 44543,
+    "n_features": 24
+  }
 }

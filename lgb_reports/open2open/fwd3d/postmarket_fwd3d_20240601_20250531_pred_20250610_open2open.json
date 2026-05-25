@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 3,
   "train_start": "20240601",
   "train_end": "20250531",
@@ -7,43 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300230.SZ",
-      "stock_code": "300230",
-      "stock_name": "永利股份",
-      "lgb_score": 100.0,
-      "raw_score": 0.1
-    },
-    {
-      "rank": 2,
       "ts_code": "688256.SH",
       "stock_code": "688256",
       "stock_name": "寒武纪",
-      "lgb_score": 94.05,
+      "lgb_score": 100.0,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 2,
+      "ts_code": "300158.SZ",
+      "stock_code": "300158",
+      "stock_name": "振东制药",
+      "lgb_score": 99.31,
       "raw_score": 0.08
     },
     {
       "rank": 3,
-      "ts_code": "300158.SZ",
-      "stock_code": "300158",
-      "stock_name": "振东制药",
-      "lgb_score": 91.82,
+      "ts_code": "002291.SZ",
+      "stock_code": "002291",
+      "stock_name": "遥望科技",
+      "lgb_score": 98.42,
       "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "688111.SH",
-      "stock_code": "688111",
-      "stock_name": "金山办公",
-      "lgb_score": 91.68,
-      "raw_score": 0.08
+      "ts_code": "000981.SZ",
+      "stock_code": "000981",
+      "stock_name": "山子高科",
+      "lgb_score": 96.44,
+      "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "002546.SZ",
-      "stock_code": "002546",
-      "stock_name": "新联电子",
-      "lgb_score": 88.1,
+      "ts_code": "605123.SH",
+      "stock_code": "605123",
+      "stock_name": "派克新材",
+      "lgb_score": 95.77,
       "raw_score": 0.07
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.88,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.057259,
+    "std": 0.041593,
+    "skew": 0.8702,
+    "kurtosis": -1.1135,
+    "min": -0.154398,
+    "max": 0.082584,
+    "median": -0.084732
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.06092275565329407,
+    "cv_rmse_std": 0.022172488357101228,
+    "cv_scores": [
+      0.040759,
+      0.104151,
+      0.051562,
+      0.054889,
+      0.053252
+    ],
+    "rank_ic_mean": 0.002951,
+    "rank_ic_std": 0.029103,
+    "icir": 0.1014,
+    "oof_corr": -0.041073,
+    "n_samples": 46528,
+    "n_features": 24
+  }
 }

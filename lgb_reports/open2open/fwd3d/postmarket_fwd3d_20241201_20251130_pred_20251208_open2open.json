@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 3,
   "train_start": "20241201",
   "train_end": "20251130",
@@ -7,43 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002164.SZ",
-      "stock_code": "002164",
-      "stock_name": "宁波东力",
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
       "lgb_score": 100.0,
-      "raw_score": 0.12
+      "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "603191.SH",
-      "stock_code": "603191",
-      "stock_name": "望变电气",
-      "lgb_score": 84.22,
-      "raw_score": 0.09
+      "ts_code": "002164.SZ",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 95.23,
+      "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "603018.SH",
-      "stock_code": "603018",
-      "stock_name": "华设集团",
-      "lgb_score": 82.18,
-      "raw_score": 0.09
+      "ts_code": "920088.BJ",
+      "stock_code": "920088.BJ",
+      "stock_name": "",
+      "lgb_score": 85.91,
+      "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "300045.SZ",
-      "stock_code": "300045",
-      "stock_name": "华力创通",
-      "lgb_score": 81.25,
+      "ts_code": "603915.SH",
+      "stock_code": "603915",
+      "stock_name": "国茂股份",
+      "lgb_score": 85.35,
       "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "300007.SZ",
-      "stock_code": "300007",
-      "stock_name": "汉威科技",
-      "lgb_score": 78.08,
+      "ts_code": "600151.SH",
+      "stock_code": "600151",
+      "stock_name": "航天机电",
+      "lgb_score": 85.33,
       "raw_score": 0.08
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.81,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.042783,
+    "std": 0.033168,
+    "skew": 0.8747,
+    "kurtosis": -1.0483,
+    "min": -0.087472,
+    "max": 0.104778,
+    "median": -0.06514
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.053176547314183864,
+    "cv_rmse_std": 0.005973859414751521,
+    "cv_scores": [
+      0.060832,
+      0.045377,
+      0.047936,
+      0.058787,
+      0.05295
+    ],
+    "rank_ic_mean": 0.027287,
+    "rank_ic_std": 0.014581,
+    "icir": 1.8714,
+    "oof_corr": 0.017748,
+    "n_samples": 42717,
+    "n_features": 24
+  }
 }

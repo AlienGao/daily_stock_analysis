@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 3,
   "train_start": "20241001",
   "train_end": "20250930",
@@ -7,43 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688012.SH",
-      "stock_code": "688012",
-      "stock_name": "中微公司",
+      "ts_code": "002374.SZ",
+      "stock_code": "002374",
+      "stock_name": "中锐股份",
       "lgb_score": 100.0,
-      "raw_score": 0.1
+      "raw_score": 0.12
     },
     {
       "rank": 2,
-      "ts_code": "002108.SZ",
-      "stock_code": "002108",
-      "stock_name": "沧州明珠",
-      "lgb_score": 97.46,
-      "raw_score": 0.1
-    },
-    {
-      "rank": 3,
       "ts_code": "002611.SZ",
       "stock_code": "002611",
       "stock_name": "东方精工",
-      "lgb_score": 91.42,
-      "raw_score": 0.09
+      "lgb_score": 83.24,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 3,
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 80.84,
+      "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "300857.SZ",
-      "stock_code": "300857",
-      "stock_name": "协创数据",
-      "lgb_score": 90.2,
-      "raw_score": 0.08
+      "ts_code": "300502.SZ.SZ",
+      "stock_code": "300502",
+      "stock_name": "新易盛",
+      "lgb_score": 78.12,
+      "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "001301.SZ",
-      "stock_code": "001301",
-      "stock_name": "尚太科技",
-      "lgb_score": 88.74,
-      "raw_score": 0.08
+      "ts_code": "002234.SZ",
+      "stock_code": "002234",
+      "stock_name": "民和股份",
+      "lgb_score": 77.47,
+      "raw_score": 0.07
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.97,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.051972,
+    "std": 0.038752,
+    "skew": 0.8599,
+    "kurtosis": -1.1287,
+    "min": -0.10571,
+    "max": 0.118023,
+    "median": -0.078049
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.05324670267180739,
+    "cv_rmse_std": 0.0058908948011171065,
+    "cv_scores": [
+      0.054719,
+      0.059862,
+      0.045444,
+      0.047331,
+      0.058878
+    ],
+    "rank_ic_mean": 0.03664,
+    "rank_ic_std": 0.027616,
+    "icir": 1.3268,
+    "oof_corr": 0.039089,
+    "n_samples": 44543,
+    "n_features": 24
+  }
 }

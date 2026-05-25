@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 3,
   "train_start": "20241001",
   "train_end": "20250930",
@@ -7,43 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002219.SZ",
-      "stock_code": "002219",
-      "stock_name": "新里程",
+      "ts_code": "688403.SH",
+      "stock_code": "688403",
+      "stock_name": "汇成股份",
       "lgb_score": 100.0,
-      "raw_score": 0.08
+      "raw_score": 0.07
     },
     {
       "rank": 2,
-      "ts_code": "688627.SH",
-      "stock_code": "688627",
-      "stock_name": "精智达",
-      "lgb_score": 93.3,
+      "ts_code": "688507.SH",
+      "stock_code": "688507",
+      "stock_name": "索辰科技",
+      "lgb_score": 99.45,
       "raw_score": 0.07
     },
     {
       "rank": 3,
-      "ts_code": "603516.SH",
-      "stock_code": "603516",
-      "stock_name": "淳中科技",
-      "lgb_score": 92.93,
+      "ts_code": "688135.SH",
+      "stock_code": "688135",
+      "stock_name": "利扬芯片",
+      "lgb_score": 96.65,
       "raw_score": 0.07
     },
     {
       "rank": 4,
-      "ts_code": "688347.SH",
-      "stock_code": "688347",
-      "stock_name": "华虹公司",
-      "lgb_score": 90.06,
-      "raw_score": 0.06
-    },
-    {
-      "rank": 5,
       "ts_code": "688320.SH",
       "stock_code": "688320",
       "stock_name": "禾川科技",
-      "lgb_score": 88.37,
+      "lgb_score": 96.4,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 5,
+      "ts_code": "002009.SZ",
+      "stock_code": "002009",
+      "stock_name": "天奇股份",
+      "lgb_score": 95.33,
       "raw_score": 0.06
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.97,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.051698,
+    "std": 0.039167,
+    "skew": 0.8566,
+    "kurtosis": -1.1491,
+    "min": -0.097926,
+    "max": 0.072089,
+    "median": -0.078049
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.05324670267180739,
+    "cv_rmse_std": 0.0058908948011171065,
+    "cv_scores": [
+      0.054719,
+      0.059862,
+      0.045444,
+      0.047331,
+      0.058878
+    ],
+    "rank_ic_mean": 0.03664,
+    "rank_ic_std": 0.027616,
+    "icir": 1.3268,
+    "oof_corr": 0.039089,
+    "n_samples": 44543,
+    "n_features": 24
+  }
 }

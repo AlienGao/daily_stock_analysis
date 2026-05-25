@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 3,
   "train_start": "20240601",
   "train_end": "20250531",
@@ -7,43 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688775.SH",
-      "stock_code": "688775",
-      "stock_name": "影石创新",
+      "ts_code": "300870.SZ",
+      "stock_code": "300870",
+      "stock_name": "欧陆通",
       "lgb_score": 100.0,
-      "raw_score": 0.11
+      "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "002401.SZ",
-      "stock_code": "002401",
-      "stock_name": "中远海科",
-      "lgb_score": 89.27,
+      "ts_code": "920346.BJ",
+      "stock_code": "920346.BJ",
+      "stock_name": "",
+      "lgb_score": 93.58,
       "raw_score": 0.08
     },
     {
       "rank": 3,
-      "ts_code": "688320.SH",
-      "stock_code": "688320",
-      "stock_name": "禾川科技",
-      "lgb_score": 85.65,
+      "ts_code": "301662.SZ",
+      "stock_code": "301662",
+      "stock_name": "宏工科技",
+      "lgb_score": 90.36,
       "raw_score": 0.07
     },
     {
       "rank": 4,
-      "ts_code": "002165.SZ",
-      "stock_code": "002165",
-      "stock_name": "红 宝 丽",
-      "lgb_score": 84.71,
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 88.62,
       "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "300092.SZ",
-      "stock_code": "300092",
-      "stock_name": "科新机电",
-      "lgb_score": 84.48,
+      "ts_code": "688068.SH",
+      "stock_code": "688068",
+      "stock_name": "热景生物",
+      "lgb_score": 88.59,
       "raw_score": 0.07
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.88,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.057054,
+    "std": 0.041626,
+    "skew": 0.8522,
+    "kurtosis": -1.1701,
+    "min": -0.152604,
+    "max": 0.093988,
+    "median": -0.084732
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.06092275565329407,
+    "cv_rmse_std": 0.022172488357101228,
+    "cv_scores": [
+      0.040759,
+      0.104151,
+      0.051562,
+      0.054889,
+      0.053252
+    ],
+    "rank_ic_mean": 0.002951,
+    "rank_ic_std": 0.029103,
+    "icir": 0.1014,
+    "oof_corr": -0.041073,
+    "n_samples": 46528,
+    "n_features": 24
+  }
 }

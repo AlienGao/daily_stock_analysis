@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 3,
   "train_start": "20240601",
   "train_end": "20250531",
@@ -7,43 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "001296.SZ",
-      "stock_code": "001296",
-      "stock_name": "长江材料",
-      "lgb_score": 100.0,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 2,
-      "ts_code": "000617.SZ",
-      "stock_code": "000617",
-      "stock_name": "中油资本",
-      "lgb_score": 90.25,
-      "raw_score": 0.1
-    },
-    {
-      "rank": 3,
-      "ts_code": "920227.BJ",
-      "stock_code": "920227.BJ",
-      "stock_name": "",
-      "lgb_score": 89.79,
-      "raw_score": 0.1
-    },
-    {
-      "rank": 4,
-      "ts_code": "301330.SZ",
-      "stock_code": "301330",
-      "stock_name": "熵基科技",
-      "lgb_score": 84.89,
-      "raw_score": 0.09
-    },
-    {
-      "rank": 5,
       "ts_code": "002374.SZ",
       "stock_code": "002374",
       "stock_name": "中锐股份",
-      "lgb_score": 83.3,
+      "lgb_score": 98.55,
       "raw_score": 0.08
+    },
+    {
+      "rank": 2,
+      "ts_code": "920227.BJ",
+      "stock_code": "920227.BJ",
+      "stock_name": "",
+      "lgb_score": 96.76,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 3,
+      "ts_code": "301330.SZ",
+      "stock_code": "301330",
+      "stock_name": "熵基科技",
+      "lgb_score": 95.2,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 4,
+      "ts_code": "600076.SH",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 94.2,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 5,
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
+      "lgb_score": 93.97,
+      "raw_score": 0.07
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.88,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.057132,
+    "std": 0.041555,
+    "skew": 0.855,
+    "kurtosis": -1.1621,
+    "min": -0.166532,
+    "max": 0.081854,
+    "median": -0.084732
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.06092275565329407,
+    "cv_rmse_std": 0.022172488357101228,
+    "cv_scores": [
+      0.040759,
+      0.104151,
+      0.051562,
+      0.054889,
+      0.053252
+    ],
+    "rank_ic_mean": 0.002951,
+    "rank_ic_std": 0.029103,
+    "icir": 0.1014,
+    "oof_corr": -0.041073,
+    "n_samples": 46528,
+    "n_features": 24
+  }
 }

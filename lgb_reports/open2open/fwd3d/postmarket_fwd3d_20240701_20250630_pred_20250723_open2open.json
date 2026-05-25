@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 3,
   "train_start": "20240701",
   "train_end": "20250630",
@@ -7,43 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600820.SH",
-      "stock_code": "600820",
-      "stock_name": "隧道股份",
+      "ts_code": "300750.SZ",
+      "stock_code": "300750",
+      "stock_name": "宁德时代",
       "lgb_score": 100.0,
-      "raw_score": 0.19
+      "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "600425.SH",
-      "stock_code": "600425",
-      "stock_name": "青松建化",
-      "lgb_score": 90.01,
-      "raw_score": 0.16
+      "ts_code": "600502.SH",
+      "stock_code": "600502",
+      "stock_name": "安徽建工",
+      "lgb_score": 96.0,
+      "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "600853.SH",
-      "stock_code": "600853",
-      "stock_name": "龙建股份",
-      "lgb_score": 88.4,
-      "raw_score": 0.15
+      "ts_code": "600585.SH",
+      "stock_code": "600585",
+      "stock_name": "海螺水泥",
+      "lgb_score": 90.29,
+      "raw_score": 0.11
     },
     {
       "rank": 4,
-      "ts_code": "600802.SH",
-      "stock_code": "600802",
-      "stock_name": "福建水泥",
-      "lgb_score": 84.86,
-      "raw_score": 0.14
+      "ts_code": "603018.SH",
+      "stock_code": "603018",
+      "stock_name": "华设集团",
+      "lgb_score": 87.49,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
       "ts_code": "600558.SH",
       "stock_code": "600558",
       "stock_name": "大西洋",
-      "lgb_score": 82.53,
-      "raw_score": 0.13
+      "lgb_score": 86.8,
+      "raw_score": 0.1
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.9,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.053651,
+    "std": 0.040844,
+    "skew": 0.9056,
+    "kurtosis": -0.9463,
+    "min": -0.127679,
+    "max": 0.133207,
+    "median": -0.080709
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.06439503282104643,
+    "cv_rmse_std": 0.018585213374404032,
+    "cv_scores": [
+      0.099446,
+      0.063626,
+      0.055054,
+      0.058983,
+      0.044867
+    ],
+    "rank_ic_mean": 0.001954,
+    "rank_ic_std": 0.010393,
+    "icir": 0.188,
+    "oof_corr": -0.051224,
+    "n_samples": 44216,
+    "n_features": 24
+  }
 }

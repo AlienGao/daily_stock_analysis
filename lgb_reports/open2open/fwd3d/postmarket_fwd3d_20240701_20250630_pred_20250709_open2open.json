@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 3,
   "train_start": "20240701",
   "train_end": "20250630",
@@ -7,43 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "001296.SZ",
-      "stock_code": "001296",
-      "stock_name": "长江材料",
+      "ts_code": "601138.SH",
+      "stock_code": "601138",
+      "stock_name": "工业富联",
       "lgb_score": 100.0,
-      "raw_score": 0.14
+      "raw_score": 0.13
     },
     {
       "rank": 2,
       "ts_code": "002395.SZ",
       "stock_code": "002395",
       "stock_name": "双象股份",
-      "lgb_score": 99.35,
-      "raw_score": 0.14
-    },
-    {
-      "rank": 3,
-      "ts_code": "601138.SH",
-      "stock_code": "601138",
-      "stock_name": "工业富联",
-      "lgb_score": 95.99,
-      "raw_score": 0.13
-    },
-    {
-      "rank": 4,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
-      "lgb_score": 95.11,
+      "lgb_score": 93.81,
       "raw_score": 0.12
     },
     {
+      "rank": 3,
+      "ts_code": "001296.SZ",
+      "stock_code": "001296",
+      "stock_name": "长江材料",
+      "lgb_score": 88.2,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "688256.SH",
+      "stock_code": "688256",
+      "stock_name": "寒武纪",
+      "lgb_score": 86.85,
+      "raw_score": 0.1
+    },
+    {
       "rank": 5,
-      "ts_code": "600802.SH",
-      "stock_code": "600802",
-      "stock_name": "福建水泥",
-      "lgb_score": 91.21,
-      "raw_score": 0.11
+      "ts_code": "600704.SH",
+      "stock_code": "600704",
+      "stock_name": "物产中大",
+      "lgb_score": 86.26,
+      "raw_score": 0.09
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.9,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.053849,
+    "std": 0.040455,
+    "skew": 0.8743,
+    "kurtosis": -1.0733,
+    "min": -0.164279,
+    "max": 0.134471,
+    "median": -0.080709
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.06439503282104643,
+    "cv_rmse_std": 0.018585213374404032,
+    "cv_scores": [
+      0.099446,
+      0.063626,
+      0.055054,
+      0.058983,
+      0.044867
+    ],
+    "rank_ic_mean": 0.001954,
+    "rank_ic_std": 0.010393,
+    "icir": 0.188,
+    "oof_corr": -0.051224,
+    "n_samples": 44216,
+    "n_features": 24
+  }
 }

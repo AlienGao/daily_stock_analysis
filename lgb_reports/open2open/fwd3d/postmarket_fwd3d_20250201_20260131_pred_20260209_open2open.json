@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 3,
   "train_start": "20250201",
   "train_end": "20260131",
@@ -7,43 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301589.SZ",
-      "stock_code": "301589",
-      "stock_name": "诺瓦星云",
-      "lgb_score": 100.0,
-      "raw_score": 0.1
-    },
-    {
-      "rank": 2,
       "ts_code": "300166.SZ",
       "stock_code": "300166",
       "stock_name": "东方国信",
-      "lgb_score": 93.74,
+      "lgb_score": 100.0,
       "raw_score": 0.09
     },
     {
+      "rank": 2,
+      "ts_code": "301071.SZ",
+      "stock_code": "301071",
+      "stock_name": "力量钻石",
+      "lgb_score": 97.46,
+      "raw_score": 0.08
+    },
+    {
       "rank": 3,
-      "ts_code": "002929.SZ",
-      "stock_code": "002929",
-      "stock_name": "润建股份",
-      "lgb_score": 86.3,
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
+      "lgb_score": 94.77,
       "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "000554.SZ",
-      "stock_code": "000554",
-      "stock_name": "泰山石油",
-      "lgb_score": 86.01,
-      "raw_score": 0.08
+      "ts_code": "605255.SH",
+      "stock_code": "605255",
+      "stock_name": "天普股份",
+      "lgb_score": 89.31,
+      "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "603018.SH",
-      "stock_code": "603018",
-      "stock_name": "华设集团",
-      "lgb_score": 83.67,
+      "ts_code": "688727.SH",
+      "stock_code": "688727",
+      "stock_name": "恒坤新材",
+      "lgb_score": 89.09,
       "raw_score": 0.07
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.18,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.005763,
+    "std": 0.015861,
+    "skew": 1.2208,
+    "kurtosis": 0.4414,
+    "min": -0.061014,
+    "max": 0.086863,
+    "median": -0.015664
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.05153290979859049,
+    "cv_rmse_std": 0.0049952469836193345,
+    "cv_scores": [
+      0.045584,
+      0.048356,
+      0.058737,
+      0.056068,
+      0.04892
+    ],
+    "rank_ic_mean": 0.035434,
+    "rank_ic_std": 0.021126,
+    "icir": 1.6772,
+    "oof_corr": 0.004768,
+    "n_samples": 38025,
+    "n_features": 24
+  }
 }

@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 3,
   "train_start": "20250101",
   "train_end": "20251231",
@@ -7,43 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301023.SZ",
-      "stock_code": "301023",
-      "stock_name": "奕帆传动",
+      "ts_code": "000589.SZ",
+      "stock_code": "000589",
+      "stock_name": "贵州轮胎",
       "lgb_score": 100.0,
-      "raw_score": 0.11
+      "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "688615.SH",
-      "stock_code": "688615",
-      "stock_name": "合合信息",
-      "lgb_score": 91.32,
+      "ts_code": "301022.SZ",
+      "stock_code": "301022",
+      "stock_name": "海泰科",
+      "lgb_score": 96.07,
       "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "000589.SZ",
-      "stock_code": "000589",
-      "stock_name": "贵州轮胎",
-      "lgb_score": 89.16,
+      "ts_code": "002395.SZ",
+      "stock_code": "002395",
+      "stock_name": "双象股份",
+      "lgb_score": 90.73,
       "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "688787.SH",
-      "stock_code": "688787",
-      "stock_name": "海天瑞声",
-      "lgb_score": 83.31,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 89.24,
       "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "601678.SH",
-      "stock_code": "601678",
-      "stock_name": "滨化股份",
-      "lgb_score": 82.9,
+      "ts_code": "688129.SH",
+      "stock_code": "688129",
+      "stock_name": "东来技术",
+      "lgb_score": 89.0,
       "raw_score": 0.08
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.81,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.017493,
+    "std": 0.022877,
+    "skew": 1.0701,
+    "kurtosis": -0.2834,
+    "min": -0.055976,
+    "max": 0.100992,
+    "median": -0.032507
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.052452802628891945,
+    "cv_rmse_std": 0.00477153958031678,
+    "cv_scores": [
+      0.0542,
+      0.046212,
+      0.057508,
+      0.056974,
+      0.04737
+    ],
+    "rank_ic_mean": 0.012538,
+    "rank_ic_std": 0.05661,
+    "icir": 0.2215,
+    "oof_corr": -0.020949,
+    "n_samples": 39299,
+    "n_features": 24
+  }
 }

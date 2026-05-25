@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 3,
   "train_start": "20241001",
   "train_end": "20250930",
@@ -7,34 +8,34 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300179.SZ",
-      "stock_code": "300179",
-      "stock_name": "四方达",
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
       "lgb_score": 100.0,
       "raw_score": 0.09
     },
     {
       "rank": 2,
-      "ts_code": "688498.SH",
-      "stock_code": "688498",
-      "stock_name": "源杰科技",
-      "lgb_score": 96.96,
-      "raw_score": 0.08
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 99.02,
+      "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "603444.SH",
-      "stock_code": "603444",
-      "stock_name": "吉比特",
-      "lgb_score": 96.0,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 96.06,
       "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "688411.SH",
-      "stock_code": "688411",
-      "stock_name": "海博思创",
-      "lgb_score": 95.3,
+      "ts_code": "002291.SZ",
+      "stock_code": "002291",
+      "stock_name": "遥望科技",
+      "lgb_score": 93.58,
       "raw_score": 0.08
     },
     {
@@ -42,8 +43,40 @@
       "ts_code": "600545.SH",
       "stock_code": "600545",
       "stock_name": "卓郎智能",
-      "lgb_score": 94.8,
-      "raw_score": 0.08
+      "lgb_score": 91.33,
+      "raw_score": 0.07
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.97,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.051843,
+    "std": 0.039054,
+    "skew": 0.8685,
+    "kurtosis": -1.1035,
+    "min": -0.109162,
+    "max": 0.091294,
+    "median": -0.078049
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.05324670267180739,
+    "cv_rmse_std": 0.0058908948011171065,
+    "cv_scores": [
+      0.054719,
+      0.059862,
+      0.045444,
+      0.047331,
+      0.058878
+    ],
+    "rank_ic_mean": 0.03664,
+    "rank_ic_std": 0.027616,
+    "icir": 1.3268,
+    "oof_corr": 0.039089,
+    "n_samples": 44543,
+    "n_features": 24
+  }
 }

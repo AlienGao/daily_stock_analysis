@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 3,
   "train_start": "20240301",
   "train_end": "20250228",
@@ -7,43 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300166.SZ",
-      "stock_code": "300166",
-      "stock_name": "东方国信",
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
       "lgb_score": 100.0,
-      "raw_score": 0.09
+      "raw_score": 0.07
     },
     {
       "rank": 2,
-      "ts_code": "300073.SZ",
-      "stock_code": "300073",
-      "stock_name": "当升科技",
-      "lgb_score": 96.3,
-      "raw_score": 0.08
+      "ts_code": "600519.SH",
+      "stock_code": "600519",
+      "stock_name": "贵州茅台",
+      "lgb_score": 95.56,
+      "raw_score": 0.06
     },
     {
       "rank": 3,
-      "ts_code": "603915.SH",
-      "stock_code": "603915",
-      "stock_name": "国茂股份",
-      "lgb_score": 95.84,
-      "raw_score": 0.08
+      "ts_code": "688256.SH",
+      "stock_code": "688256",
+      "stock_name": "寒武纪",
+      "lgb_score": 94.32,
+      "raw_score": 0.06
     },
     {
       "rank": 4,
-      "ts_code": "002381.SZ",
-      "stock_code": "002381",
-      "stock_name": "双箭股份",
-      "lgb_score": 94.34,
-      "raw_score": 0.07
+      "ts_code": "003021.SZ",
+      "stock_code": "003021",
+      "stock_name": "兆威机电",
+      "lgb_score": 93.4,
+      "raw_score": 0.06
     },
     {
       "rank": 5,
-      "ts_code": "000159.SZ",
-      "stock_code": "000159",
-      "stock_name": "国际实业",
-      "lgb_score": 92.58,
-      "raw_score": 0.07
+      "ts_code": "002091.SZ",
+      "stock_code": "002091",
+      "stock_name": "江苏国泰",
+      "lgb_score": 92.45,
+      "raw_score": 0.06
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.2,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.083863,
+    "std": 0.058074,
+    "skew": 0.8485,
+    "kurtosis": -1.2429,
+    "min": -0.164266,
+    "max": 0.074345,
+    "median": -0.122516
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.05902692798608539,
+    "cv_rmse_std": 0.021412343191427697,
+    "cv_scores": [
+      0.042771,
+      0.042069,
+      0.100347,
+      0.055451,
+      0.054498
+    ],
+    "rank_ic_mean": 0.001881,
+    "rank_ic_std": 0.04294,
+    "icir": 0.0438,
+    "oof_corr": -0.059679,
+    "n_samples": 46970,
+    "n_features": 24
+  }
 }

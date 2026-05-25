@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 3,
   "train_start": "20240601",
   "train_end": "20250531",
@@ -7,43 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "603980.SH",
-      "stock_code": "603980",
-      "stock_name": "吉华集团",
+      "ts_code": "601975.SH",
+      "stock_code": "601975",
+      "stock_name": "招商南油",
       "lgb_score": 100.0,
-      "raw_score": 0.09
+      "raw_score": 0.08
     },
     {
       "rank": 2,
-      "ts_code": "002421.SZ",
-      "stock_code": "002421",
-      "stock_name": "达实智能",
-      "lgb_score": 96.7,
-      "raw_score": 0.08
-    },
-    {
-      "rank": 3,
       "ts_code": "688212.SH",
       "stock_code": "688212",
       "stock_name": "澳华内镜",
-      "lgb_score": 94.93,
-      "raw_score": 0.08
+      "lgb_score": 97.27,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 3,
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 96.56,
+      "raw_score": 0.07
     },
     {
       "rank": 4,
-      "ts_code": "002278.SZ",
-      "stock_code": "002278",
-      "stock_name": "神开股份",
-      "lgb_score": 93.82,
-      "raw_score": 0.08
+      "ts_code": "000995.SZ",
+      "stock_code": "000995",
+      "stock_name": "皇台酒业",
+      "lgb_score": 94.06,
+      "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "301219.SZ",
-      "stock_code": "301219",
-      "stock_name": "腾远钴业",
-      "lgb_score": 93.34,
-      "raw_score": 0.08
+      "ts_code": "920895.BJ",
+      "stock_code": "920895.BJ",
+      "stock_name": "",
+      "lgb_score": 92.3,
+      "raw_score": 0.06
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.88,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.057055,
+    "std": 0.04166,
+    "skew": 0.8593,
+    "kurtosis": -1.1515,
+    "min": -0.132765,
+    "max": 0.077902,
+    "median": -0.084732
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.06092275565329407,
+    "cv_rmse_std": 0.022172488357101228,
+    "cv_scores": [
+      0.040759,
+      0.104151,
+      0.051562,
+      0.054889,
+      0.053252
+    ],
+    "rank_ic_mean": 0.002951,
+    "rank_ic_std": 0.029103,
+    "icir": 0.1014,
+    "oof_corr": -0.041073,
+    "n_samples": 46528,
+    "n_features": 24
+  }
 }

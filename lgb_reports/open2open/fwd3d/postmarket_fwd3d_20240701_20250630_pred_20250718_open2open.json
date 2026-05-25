@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 3,
   "train_start": "20240701",
   "train_end": "20250630",
@@ -7,43 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
+      "ts_code": "688205.SH",
+      "stock_code": "688205",
+      "stock_name": "德科立",
       "lgb_score": 100.0,
-      "raw_score": 0.14
+      "raw_score": 0.09
     },
     {
       "rank": 2,
       "ts_code": "002394.SZ",
       "stock_code": "002394",
       "stock_name": "联发股份",
-      "lgb_score": 93.84,
-      "raw_score": 0.13
+      "lgb_score": 93.47,
+      "raw_score": 0.08
     },
     {
       "rank": 3,
       "ts_code": "688016.SH",
       "stock_code": "688016",
       "stock_name": "心脉医疗",
-      "lgb_score": 89.84,
-      "raw_score": 0.12
+      "lgb_score": 91.75,
+      "raw_score": 0.07
     },
     {
       "rank": 4,
       "ts_code": "002475.SZ",
       "stock_code": "002475",
       "stock_name": "立讯精密",
-      "lgb_score": 86.64,
-      "raw_score": 0.11
+      "lgb_score": 91.64,
+      "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "002915.SZ",
-      "stock_code": "002915",
-      "stock_name": "中欣氟材",
-      "lgb_score": 83.43,
-      "raw_score": 0.1
+      "ts_code": "688400.SH",
+      "stock_code": "688400",
+      "stock_name": "凌云光",
+      "lgb_score": 91.01,
+      "raw_score": 0.07
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.9,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.053741,
+    "std": 0.040431,
+    "skew": 0.8617,
+    "kurtosis": -1.136,
+    "min": -0.130528,
+    "max": 0.093054,
+    "median": -0.080709
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.06439503282104643,
+    "cv_rmse_std": 0.018585213374404032,
+    "cv_scores": [
+      0.099446,
+      0.063626,
+      0.055054,
+      0.058983,
+      0.044867
+    ],
+    "rank_ic_mean": 0.001954,
+    "rank_ic_std": 0.010393,
+    "icir": 0.188,
+    "oof_corr": -0.051224,
+    "n_samples": 44216,
+    "n_features": 24
+  }
 }

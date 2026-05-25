@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 3,
   "train_start": "20240301",
   "train_end": "20250228",
@@ -7,43 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002960.SZ",
-      "stock_code": "002960",
-      "stock_name": "青鸟智控",
+      "ts_code": "603300.SH",
+      "stock_code": "603300",
+      "stock_name": "海南华铁",
       "lgb_score": 100.0,
       "raw_score": 0.07
     },
     {
       "rank": 2,
-      "ts_code": "002165.SZ",
-      "stock_code": "002165",
-      "stock_name": "红 宝 丽",
-      "lgb_score": 98.39,
-      "raw_score": 0.07
+      "ts_code": "002960.SZ",
+      "stock_code": "002960",
+      "stock_name": "青鸟智控",
+      "lgb_score": 96.05,
+      "raw_score": 0.06
     },
     {
       "rank": 3,
-      "ts_code": "301117.SZ",
-      "stock_code": "301117",
-      "stock_name": "佳缘科技",
-      "lgb_score": 97.94,
-      "raw_score": 0.07
+      "ts_code": "002164.SZ",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 94.77,
+      "raw_score": 0.06
     },
     {
       "rank": 4,
-      "ts_code": "600343.SH",
-      "stock_code": "600343",
-      "stock_name": "航天动力",
-      "lgb_score": 97.88,
-      "raw_score": 0.07
+      "ts_code": "002446.SZ",
+      "stock_code": "002446",
+      "stock_name": "盛路通信",
+      "lgb_score": 94.63,
+      "raw_score": 0.06
     },
     {
       "rank": 5,
-      "ts_code": "002049.SZ",
-      "stock_code": "002049",
-      "stock_name": "紫光国微",
-      "lgb_score": 96.46,
+      "ts_code": "301022.SZ",
+      "stock_code": "301022",
+      "stock_name": "海泰科",
+      "lgb_score": 94.62,
       "raw_score": 0.06
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.2,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.083619,
+    "std": 0.058345,
+    "skew": 0.8494,
+    "kurtosis": -1.2338,
+    "min": -0.158513,
+    "max": 0.072826,
+    "median": -0.122516
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.05902692798608539,
+    "cv_rmse_std": 0.021412343191427697,
+    "cv_scores": [
+      0.042771,
+      0.042069,
+      0.100347,
+      0.055451,
+      0.054498
+    ],
+    "rank_ic_mean": 0.001881,
+    "rank_ic_std": 0.04294,
+    "icir": 0.0438,
+    "oof_corr": -0.059679,
+    "n_samples": 46970,
+    "n_features": 24
+  }
 }

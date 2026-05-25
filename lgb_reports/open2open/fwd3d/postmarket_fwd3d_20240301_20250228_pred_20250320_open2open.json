@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 3,
   "train_start": "20240301",
   "train_end": "20250228",
@@ -7,43 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "920580.BJ",
-      "stock_code": "920580.BJ",
-      "stock_name": "",
+      "ts_code": "301559.SZ",
+      "stock_code": "301559",
+      "stock_name": "中集环科",
       "lgb_score": 100.0,
       "raw_score": 0.08
     },
     {
       "rank": 2,
-      "ts_code": "600408.SH",
-      "stock_code": "600408",
-      "stock_name": "安泰集团",
-      "lgb_score": 99.13,
-      "raw_score": 0.08
+      "ts_code": "300842.SZ",
+      "stock_code": "300842",
+      "stock_name": "帝科股份",
+      "lgb_score": 98.48,
+      "raw_score": 0.07
     },
     {
       "rank": 3,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
-      "lgb_score": 97.03,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 96.15,
       "raw_score": 0.07
     },
     {
       "rank": 4,
-      "ts_code": "300842.SZ",
-      "stock_code": "300842",
-      "stock_name": "帝科股份",
-      "lgb_score": 96.32,
+      "ts_code": "603893.SH",
+      "stock_code": "603893",
+      "stock_name": "瑞芯微",
+      "lgb_score": 95.17,
       "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "002439.SZ",
-      "stock_code": "002439",
-      "stock_name": "启明星辰",
-      "lgb_score": 96.21,
-      "raw_score": 0.07
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
+      "lgb_score": 93.03,
+      "raw_score": 0.06
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.2,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.083707,
+    "std": 0.05822,
+    "skew": 0.8484,
+    "kurtosis": -1.2389,
+    "min": -0.158477,
+    "max": 0.077458,
+    "median": -0.122516
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.05902692798608539,
+    "cv_rmse_std": 0.021412343191427697,
+    "cv_scores": [
+      0.042771,
+      0.042069,
+      0.100347,
+      0.055451,
+      0.054498
+    ],
+    "rank_ic_mean": 0.001881,
+    "rank_ic_std": 0.04294,
+    "icir": 0.0438,
+    "oof_corr": -0.059679,
+    "n_samples": 46970,
+    "n_features": 24
+  }
 }
