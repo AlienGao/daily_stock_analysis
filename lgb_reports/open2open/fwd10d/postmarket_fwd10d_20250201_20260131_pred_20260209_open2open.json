@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 10,
   "train_start": "20250201",
   "train_end": "20260131",
@@ -7,43 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688025.SH",
-      "stock_code": "688025",
-      "stock_name": "杰普特",
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
       "lgb_score": 100.0,
-      "raw_score": 0.25
+      "raw_score": 0.27
     },
     {
       "rank": 2,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 96.76,
-      "raw_score": 0.24
-    },
-    {
-      "rank": 3,
       "ts_code": "002234.SZ",
       "stock_code": "002234",
       "stock_name": "民和股份",
-      "lgb_score": 95.29,
-      "raw_score": 0.23
+      "lgb_score": 96.73,
+      "raw_score": 0.26
     },
     {
-      "rank": 4,
+      "rank": 3,
       "ts_code": "002274.SZ",
       "stock_code": "002274",
       "stock_name": "华昌化工",
-      "lgb_score": 93.17,
+      "lgb_score": 91.58,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 4,
+      "ts_code": "603619.SH",
+      "stock_code": "603619",
+      "stock_name": "中曼石油",
+      "lgb_score": 86.4,
       "raw_score": 0.22
     },
     {
       "rank": 5,
-      "ts_code": "301516.SZ",
-      "stock_code": "301516",
-      "stock_name": "中远通",
-      "lgb_score": 90.77,
+      "ts_code": "603318.SH",
+      "stock_code": "603318",
+      "stock_name": "水发燃气",
+      "lgb_score": 82.09,
       "raw_score": 0.21
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.13,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.020679,
+    "std": 0.024279,
+    "skew": 2.6022,
+    "kurtosis": 8.5718,
+    "min": -0.055629,
+    "max": 0.267938,
+    "median": 0.009533
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.09878650833066321,
+    "cv_rmse_std": 0.010513214575114475,
+    "cv_scores": [
+      0.081037,
+      0.09878,
+      0.113803,
+      0.102197,
+      0.098116
+    ],
+    "rank_ic_mean": 0.052936,
+    "rank_ic_std": 0.040253,
+    "icir": 1.3151,
+    "oof_corr": 0.031838,
+    "n_samples": 38005,
+    "n_features": 24
+  }
 }

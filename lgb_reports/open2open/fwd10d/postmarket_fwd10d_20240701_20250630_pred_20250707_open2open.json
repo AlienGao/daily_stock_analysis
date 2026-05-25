@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 10,
   "train_start": "20240701",
   "train_end": "20250630",
@@ -18,32 +19,64 @@
       "ts_code": "600308.SH",
       "stock_code": "600308",
       "stock_name": "华泰股份",
-      "lgb_score": 97.04,
-      "raw_score": 0.25
+      "lgb_score": 98.5,
+      "raw_score": 0.26
     },
     {
       "rank": 3,
-      "ts_code": "301008.SZ",
-      "stock_code": "301008",
-      "stock_name": "宏昌科技",
-      "lgb_score": 89.77,
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 89.22,
       "raw_score": 0.22
     },
     {
       "rank": 4,
-      "ts_code": "002121.SZ",
-      "stock_code": "002121",
-      "stock_name": "科陆电子",
-      "lgb_score": 88.18,
-      "raw_score": 0.21
+      "ts_code": "002847.SZ",
+      "stock_code": "002847",
+      "stock_name": "盐津铺子",
+      "lgb_score": 88.04,
+      "raw_score": 0.22
     },
     {
       "rank": 5,
-      "ts_code": "002165.SZ",
-      "stock_code": "002165",
-      "stock_name": "红 宝 丽",
-      "lgb_score": 87.16,
+      "ts_code": "688108.SH",
+      "stock_code": "688108",
+      "stock_name": "赛诺医疗",
+      "lgb_score": 86.11,
       "raw_score": 0.21
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.99,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.006915,
+    "std": 0.021996,
+    "skew": 2.9896,
+    "kurtosis": 14.9211,
+    "min": -0.125111,
+    "max": 0.264682,
+    "median": -0.017224
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.10856515410180931,
+    "cv_rmse_std": 0.03291012510561803,
+    "cv_scores": [
+      0.172784,
+      0.089195,
+      0.097894,
+      0.101922,
+      0.081031
+    ],
+    "rank_ic_mean": 0.057088,
+    "rank_ic_std": 0.048389,
+    "icir": 1.1798,
+    "oof_corr": -0.066066,
+    "n_samples": 44179,
+    "n_features": 24
+  }
 }

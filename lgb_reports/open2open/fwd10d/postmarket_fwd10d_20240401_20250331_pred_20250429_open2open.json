@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 10,
   "train_start": "20240401",
   "train_end": "20250331",
@@ -7,43 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002121.SZ",
-      "stock_code": "002121",
-      "stock_name": "科陆电子",
+      "ts_code": "688181.SH",
+      "stock_code": "688181",
+      "stock_name": "八亿时空",
       "lgb_score": 100.0,
-      "raw_score": 0.29
+      "raw_score": 0.22
     },
     {
       "rank": 2,
-      "ts_code": "600802.SH",
-      "stock_code": "600802",
-      "stock_name": "福建水泥",
-      "lgb_score": 98.54,
-      "raw_score": 0.29
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 96.72,
+      "raw_score": 0.21
     },
     {
       "rank": 3,
-      "ts_code": "002395.SZ",
-      "stock_code": "002395",
-      "stock_name": "双象股份",
-      "lgb_score": 95.98,
-      "raw_score": 0.28
-    },
-    {
-      "rank": 4,
       "ts_code": "300885.SZ",
       "stock_code": "300885",
       "stock_name": "海昌新材",
-      "lgb_score": 95.06,
-      "raw_score": 0.27
+      "lgb_score": 88.65,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 4,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 88.0,
+      "raw_score": 0.18
     },
     {
       "rank": 5,
-      "ts_code": "301205.SZ",
-      "stock_code": "301205",
-      "stock_name": "联特科技",
-      "lgb_score": 94.79,
-      "raw_score": 0.27
+      "ts_code": "688108.SH",
+      "stock_code": "688108",
+      "stock_name": "赛诺医疗",
+      "lgb_score": 81.77,
+      "raw_score": 0.16
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.63,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.021343,
+    "std": 0.021321,
+    "skew": -1.1357,
+    "kurtosis": 4.8555,
+    "min": -0.128025,
+    "max": 0.219767,
+    "median": 0.031411
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.10285571838366347,
+    "cv_rmse_std": 0.020825212310450116,
+    "cv_scores": [
+      0.078582,
+      0.139646,
+      0.107944,
+      0.089316,
+      0.09879
+    ],
+    "rank_ic_mean": 0.099783,
+    "rank_ic_std": 0.074831,
+    "icir": 1.3334,
+    "oof_corr": 0.120654,
+    "n_samples": 45412,
+    "n_features": 24
+  }
 }

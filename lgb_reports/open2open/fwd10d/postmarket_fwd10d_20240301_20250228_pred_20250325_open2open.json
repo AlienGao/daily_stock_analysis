@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 10,
   "train_start": "20240301",
   "train_end": "20250228",
@@ -7,43 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688316.SH",
-      "stock_code": "688316",
-      "stock_name": "青云科技-U",
+      "ts_code": "002218.SZ",
+      "stock_code": "002218",
+      "stock_name": "拓日新能",
       "lgb_score": 100.0,
-      "raw_score": 0.29
+      "raw_score": 0.2
     },
     {
       "rank": 2,
-      "ts_code": "300007.SZ",
-      "stock_code": "300007",
-      "stock_name": "汉威科技",
-      "lgb_score": 96.05,
-      "raw_score": 0.28
+      "ts_code": "300182.SZ",
+      "stock_code": "300182",
+      "stock_name": "捷成股份",
+      "lgb_score": 95.88,
+      "raw_score": 0.19
     },
     {
       "rank": 3,
-      "ts_code": "920689.BJ",
-      "stock_code": "920689.BJ",
-      "stock_name": "",
-      "lgb_score": 93.76,
-      "raw_score": 0.27
+      "ts_code": "600589.SH",
+      "stock_code": "600589",
+      "stock_name": "大位科技",
+      "lgb_score": 93.18,
+      "raw_score": 0.18
     },
     {
       "rank": 4,
-      "ts_code": "301209.SZ",
-      "stock_code": "301209",
-      "stock_name": "联合化学",
-      "lgb_score": 85.96,
-      "raw_score": 0.23
+      "ts_code": "300638.SZ",
+      "stock_code": "300638",
+      "stock_name": "广和通",
+      "lgb_score": 92.52,
+      "raw_score": 0.18
     },
     {
       "rank": 5,
-      "ts_code": "301633.SZ",
-      "stock_code": "301633",
-      "stock_name": "港迪技术",
-      "lgb_score": 85.79,
-      "raw_score": 0.23
+      "ts_code": "300065.SZ",
+      "stock_code": "300065",
+      "stock_name": "海兰信",
+      "lgb_score": 90.12,
+      "raw_score": 0.17
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.94,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.00438,
+    "std": 0.015493,
+    "skew": 1.1891,
+    "kurtosis": 17.5331,
+    "min": -0.104118,
+    "max": 0.198976,
+    "median": 0.006696
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.09961663376724841,
+    "cv_rmse_std": 0.034741254358160195,
+    "cv_scores": [
+      0.079061,
+      0.070594,
+      0.167228,
+      0.086358,
+      0.094842
+    ],
+    "rank_ic_mean": 0.077116,
+    "rank_ic_std": 0.033475,
+    "icir": 2.3037,
+    "oof_corr": -0.008652,
+    "n_samples": 46945,
+    "n_features": 24
+  }
 }

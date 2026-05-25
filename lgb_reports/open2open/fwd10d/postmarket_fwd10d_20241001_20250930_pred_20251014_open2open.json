@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 10,
   "train_start": "20241001",
   "train_end": "20250930",
@@ -7,43 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
       "lgb_score": 100.0,
-      "raw_score": 0.31
+      "raw_score": 0.28
     },
     {
       "rank": 2,
-      "ts_code": "301117.SZ",
-      "stock_code": "301117",
-      "stock_name": "佳缘科技",
-      "lgb_score": 91.6,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 96.69,
       "raw_score": 0.27
     },
     {
       "rank": 3,
-      "ts_code": "300612.SZ",
-      "stock_code": "300612",
-      "stock_name": "宣亚国际",
-      "lgb_score": 88.43,
-      "raw_score": 0.25
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
+      "lgb_score": 93.15,
+      "raw_score": 0.26
     },
     {
       "rank": 4,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
-      "lgb_score": 88.31,
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 91.12,
       "raw_score": 0.25
     },
     {
       "rank": 5,
-      "ts_code": "603915.SH",
-      "stock_code": "603915",
-      "stock_name": "国茂股份",
-      "lgb_score": 87.91,
-      "raw_score": 0.25
+      "ts_code": "000859.SZ",
+      "stock_code": "000859",
+      "stock_name": "国风新材",
+      "lgb_score": 86.49,
+      "raw_score": 0.23
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.63,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.05501,
+    "std": 0.032733,
+    "skew": -0.9493,
+    "kurtosis": 1.0499,
+    "min": -0.102209,
+    "max": 0.283386,
+    "median": 0.074568
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.09969015727742839,
+    "cv_rmse_std": 0.009868997696095106,
+    "cv_scores": [
+      0.095468,
+      0.10799,
+      0.083355,
+      0.10042,
+      0.111218
+    ],
+    "rank_ic_mean": 0.029333,
+    "rank_ic_std": 0.031509,
+    "icir": 0.9309,
+    "oof_corr": 0.050107,
+    "n_samples": 44514,
+    "n_features": 24
+  }
 }

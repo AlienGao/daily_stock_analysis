@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 10,
   "train_start": "20240201",
   "train_end": "20250131",
@@ -7,43 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688583.SH",
-      "stock_code": "688583",
-      "stock_name": "思看科技",
+      "ts_code": "300182.SZ",
+      "stock_code": "300182",
+      "stock_name": "捷成股份",
       "lgb_score": 100.0,
-      "raw_score": 0.18
+      "raw_score": 0.16
     },
     {
       "rank": 2,
-      "ts_code": "300007.SZ",
-      "stock_code": "300007",
-      "stock_name": "汉威科技",
-      "lgb_score": 99.55,
-      "raw_score": 0.18
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 90.15,
+      "raw_score": 0.14
     },
     {
       "rank": 3,
-      "ts_code": "002029.SZ",
-      "stock_code": "002029",
-      "stock_name": "七 匹 狼",
-      "lgb_score": 99.26,
-      "raw_score": 0.18
-    },
-    {
-      "rank": 4,
       "ts_code": "300885.SZ",
       "stock_code": "300885",
       "stock_name": "海昌新材",
-      "lgb_score": 99.21,
-      "raw_score": 0.18
+      "lgb_score": 85.03,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 4,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 84.46,
+      "raw_score": 0.12
     },
     {
       "rank": 5,
-      "ts_code": "688368.SH",
-      "stock_code": "688368",
-      "stock_name": "晶丰明源",
-      "lgb_score": 95.58,
-      "raw_score": 0.17
+      "ts_code": "688320.SH",
+      "stock_code": "688320",
+      "stock_name": "禾川科技",
+      "lgb_score": 82.91,
+      "raw_score": 0.11
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.19,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.012044,
+    "std": 0.019904,
+    "skew": -1.4878,
+    "kurtosis": 3.9949,
+    "min": -0.122488,
+    "max": 0.163283,
+    "median": 0.020744
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.10240219249439245,
+    "cv_rmse_std": 0.030419349504758712,
+    "cv_scores": [
+      0.08724,
+      0.080663,
+      0.162357,
+      0.085223,
+      0.096528
+    ],
+    "rank_ic_mean": 0.042544,
+    "rank_ic_std": 0.034213,
+    "icir": 1.2435,
+    "oof_corr": -0.059617,
+    "n_samples": 47178,
+    "n_features": 24
+  }
 }
