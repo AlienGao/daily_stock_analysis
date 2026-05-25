@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 5,
   "train_start": "20240801",
   "train_end": "20250731",
@@ -7,43 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000601.SZ",
-      "stock_code": "000601",
-      "stock_name": "韶能股份",
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
       "lgb_score": 100.0,
-      "raw_score": 0.17
-    },
-    {
-      "rank": 2,
-      "ts_code": "002617.SZ",
-      "stock_code": "002617",
-      "stock_name": "露笑科技",
-      "lgb_score": 96.13,
-      "raw_score": 0.16
-    },
-    {
-      "rank": 3,
-      "ts_code": "300883.SZ",
-      "stock_code": "300883",
-      "stock_name": "龙利得",
-      "lgb_score": 95.66,
-      "raw_score": 0.16
-    },
-    {
-      "rank": 4,
-      "ts_code": "002121.SZ",
-      "stock_code": "002121",
-      "stock_name": "科陆电子",
-      "lgb_score": 92.33,
       "raw_score": 0.15
     },
     {
-      "rank": 5,
-      "ts_code": "603619.SH",
-      "stock_code": "603619",
-      "stock_name": "中曼石油",
-      "lgb_score": 91.04,
+      "rank": 2,
+      "ts_code": "002458.SZ",
+      "stock_code": "002458",
+      "stock_name": "益生股份",
+      "lgb_score": 95.62,
       "raw_score": 0.14
+    },
+    {
+      "rank": 3,
+      "ts_code": "000601.SZ",
+      "stock_code": "000601",
+      "stock_name": "韶能股份",
+      "lgb_score": 92.9,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 4,
+      "ts_code": "002164.SZ",
+      "stock_code": "002164",
+      "stock_name": "宁波东力",
+      "lgb_score": 92.08,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 5,
+      "ts_code": "300612.SZ",
+      "stock_code": "300612",
+      "stock_name": "宣亚国际",
+      "lgb_score": 90.6,
+      "raw_score": 0.12
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.74,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.077272,
+    "std": 0.066686,
+    "skew": 0.8997,
+    "kurtosis": -1.0451,
+    "min": -0.15863,
+    "max": 0.154275,
+    "median": -0.121684
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.07585257776238044,
+    "cv_rmse_std": 0.01972821347023725,
+    "cv_scores": [
+      0.113778,
+      0.068583,
+      0.075319,
+      0.060111,
+      0.061473
+    ],
+    "rank_ic_mean": 0.005086,
+    "rank_ic_std": 0.037093,
+    "icir": 0.1371,
+    "oof_corr": -0.007031,
+    "n_samples": 44438,
+    "n_features": 24
+  }
 }

@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 5,
   "train_start": "20240201",
   "train_end": "20250131",
@@ -7,43 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "300970.SZ",
-      "stock_code": "300970",
-      "stock_name": "华绿生物",
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
       "lgb_score": 100.0,
-      "raw_score": 0.14
+      "raw_score": 0.16
     },
     {
       "rank": 2,
-      "ts_code": "002165.SZ",
-      "stock_code": "002165",
-      "stock_name": "红 宝 丽",
-      "lgb_score": 92.55,
-      "raw_score": 0.12
+      "ts_code": "688016.SH",
+      "stock_code": "688016",
+      "stock_name": "心脉医疗",
+      "lgb_score": 82.24,
+      "raw_score": 0.1
     },
     {
       "rank": 3,
       "ts_code": "002445.SZ",
       "stock_code": "002445",
       "stock_name": "中南文化",
-      "lgb_score": 89.93,
-      "raw_score": 0.11
+      "lgb_score": 80.02,
+      "raw_score": 0.1
     },
     {
       "rank": 4,
-      "ts_code": "600510.SH",
-      "stock_code": "600510",
-      "stock_name": "黑牡丹",
-      "lgb_score": 87.08,
-      "raw_score": 0.1
+      "ts_code": "301109.SZ",
+      "stock_code": "301109",
+      "stock_name": "军信股份",
+      "lgb_score": 77.46,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "688368.SH",
-      "stock_code": "688368",
-      "stock_name": "晶丰明源",
-      "lgb_score": 87.06,
-      "raw_score": 0.1
+      "ts_code": "688010.SH",
+      "stock_code": "688010",
+      "stock_name": "福光股份",
+      "lgb_score": 76.46,
+      "raw_score": 0.09
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.96,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.071408,
+    "std": 0.051044,
+    "skew": 0.9255,
+    "kurtosis": -0.9531,
+    "min": -0.146214,
+    "max": 0.15765,
+    "median": -0.105162
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.0756890102993442,
+    "cv_rmse_std": 0.023646140527958902,
+    "cv_scores": [
+      0.059826,
+      0.057337,
+      0.121898,
+      0.069807,
+      0.069577
+    ],
+    "rank_ic_mean": 0.022676,
+    "rank_ic_std": 0.030997,
+    "icir": 0.7316,
+    "oof_corr": -0.040879,
+    "n_samples": 47199,
+    "n_features": 24
+  }
 }

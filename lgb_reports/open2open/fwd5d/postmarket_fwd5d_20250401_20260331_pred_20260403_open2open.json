@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 5,
   "train_start": "20250401",
   "train_end": "20260331",
@@ -7,43 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600704.SH",
-      "stock_code": "600704",
-      "stock_name": "物产中大",
+      "ts_code": "002234.SZ",
+      "stock_code": "002234",
+      "stock_name": "民和股份",
       "lgb_score": 100.0,
-      "raw_score": 0.11
+      "raw_score": 0.23
     },
     {
       "rank": 2,
-      "ts_code": "301383.SZ",
-      "stock_code": "301383",
-      "stock_name": "天键股份",
-      "lgb_score": 93.98,
-      "raw_score": 0.1
+      "ts_code": "688727.SH",
+      "stock_code": "688727",
+      "stock_name": "恒坤新材",
+      "lgb_score": 88.43,
+      "raw_score": 0.19
     },
     {
       "rank": 3,
-      "ts_code": "300976.SZ",
-      "stock_code": "300976",
-      "stock_name": "达瑞电子",
-      "lgb_score": 93.52,
-      "raw_score": 0.1
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 87.94,
+      "raw_score": 0.19
     },
     {
       "rank": 4,
-      "ts_code": "920125.BJ",
-      "stock_code": "920125.BJ",
-      "stock_name": "",
-      "lgb_score": 92.31,
-      "raw_score": 0.09
+      "ts_code": "002274.SZ",
+      "stock_code": "002274",
+      "stock_name": "华昌化工",
+      "lgb_score": 87.53,
+      "raw_score": 0.19
     },
     {
       "rank": 5,
-      "ts_code": "301118.SZ",
-      "stock_code": "301118",
-      "stock_name": "恒光股份",
-      "lgb_score": 90.38,
-      "raw_score": 0.09
+      "ts_code": "300046.SZ",
+      "stock_code": "300046",
+      "stock_name": "台基股份",
+      "lgb_score": 87.27,
+      "raw_score": 0.19
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.14,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.037325,
+    "std": 0.019916,
+    "skew": -0.6265,
+    "kurtosis": 3.9489,
+    "min": -0.058385,
+    "max": 0.227257,
+    "median": 0.047007
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.06919636877495695,
+    "cv_rmse_std": 0.005954617125665812,
+    "cv_scores": [
+      0.061393,
+      0.073407,
+      0.072383,
+      0.062751,
+      0.076049
+    ],
+    "rank_ic_mean": 0.047615,
+    "rank_ic_std": 0.025989,
+    "icir": 1.8321,
+    "oof_corr": 0.039564,
+    "n_samples": 40135,
+    "n_features": 24
+  }
 }

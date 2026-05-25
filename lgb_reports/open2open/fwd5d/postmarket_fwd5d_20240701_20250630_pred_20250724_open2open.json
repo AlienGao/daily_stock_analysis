@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 5,
   "train_start": "20240701",
   "train_end": "20250630",
@@ -11,39 +12,71 @@
       "stock_code": "002445",
       "stock_name": "中南文化",
       "lgb_score": 100.0,
-      "raw_score": 0.14
+      "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "002029.SZ",
-      "stock_code": "002029",
-      "stock_name": "七 匹 狼",
-      "lgb_score": 94.73,
-      "raw_score": 0.13
+      "ts_code": "688267.SH",
+      "stock_code": "688267",
+      "stock_name": "中触媒",
+      "lgb_score": 98.49,
+      "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "300502.SZ.SZ",
-      "stock_code": "300502",
-      "stock_name": "新易盛",
-      "lgb_score": 94.5,
-      "raw_score": 0.13
+      "ts_code": "688108.SH",
+      "stock_code": "688108",
+      "stock_name": "赛诺医疗",
+      "lgb_score": 98.43,
+      "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "000159.SZ",
-      "stock_code": "000159",
-      "stock_name": "国际实业",
-      "lgb_score": 92.29,
-      "raw_score": 0.12
+      "ts_code": "688506.SH",
+      "stock_code": "688506",
+      "stock_name": "百利天恒",
+      "lgb_score": 97.51,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "300885.SZ",
-      "stock_code": "300885",
-      "stock_name": "海昌新材",
-      "lgb_score": 92.25,
-      "raw_score": 0.12
+      "ts_code": "300179.SZ",
+      "stock_code": "300179",
+      "stock_name": "四方达",
+      "lgb_score": 96.7,
+      "raw_score": 0.09
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.56,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.069995,
+    "std": 0.05391,
+    "skew": 0.8815,
+    "kurtosis": -1.1018,
+    "min": -0.142286,
+    "max": 0.096807,
+    "median": -0.105979
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.08030550993398863,
+    "cv_rmse_std": 0.024400025088439973,
+    "cv_scores": [
+      0.127491,
+      0.074386,
+      0.070165,
+      0.072743,
+      0.056742
+    ],
+    "rank_ic_mean": 0.011881,
+    "rank_ic_std": 0.007342,
+    "icir": 1.6183,
+    "oof_corr": -0.056906,
+    "n_samples": 44208,
+    "n_features": 24
+  }
 }

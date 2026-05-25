@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 10,
   "train_start": "20240101",
   "train_end": "20241231",
@@ -7,43 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002009.SZ",
-      "stock_code": "002009",
-      "stock_name": "天奇股份",
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
       "lgb_score": 100.0,
-      "raw_score": 0.22
+      "raw_score": 0.15
     },
     {
       "rank": 2,
-      "ts_code": "300042.SZ",
-      "stock_code": "300042",
-      "stock_name": "朗科科技",
-      "lgb_score": 98.97,
-      "raw_score": 0.21
-    },
-    {
-      "rank": 3,
       "ts_code": "002445.SZ",
       "stock_code": "002445",
       "stock_name": "中南文化",
-      "lgb_score": 95.16,
-      "raw_score": 0.2
+      "lgb_score": 91.55,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 3,
+      "ts_code": "000001.SH.SZ",
+      "stock_code": "000001",
+      "stock_name": "平安银行",
+      "lgb_score": 86.3,
+      "raw_score": 0.12
     },
     {
       "rank": 4,
-      "ts_code": "002121.SZ",
-      "stock_code": "002121",
-      "stock_name": "科陆电子",
-      "lgb_score": 88.27,
-      "raw_score": 0.18
+      "ts_code": "600639.SH",
+      "stock_code": "600639",
+      "stock_name": "浦东金桥",
+      "lgb_score": 82.34,
+      "raw_score": 0.1
     },
     {
       "rank": 5,
-      "ts_code": "002165.SZ",
-      "stock_code": "002165",
-      "stock_name": "红 宝 丽",
-      "lgb_score": 85.61,
-      "raw_score": 0.17
+      "ts_code": "600797.SH",
+      "stock_code": "600797",
+      "stock_name": "浙大网新",
+      "lgb_score": 80.05,
+      "raw_score": 0.1
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.96,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.036608,
+    "std": 0.030555,
+    "skew": -1.266,
+    "kurtosis": 0.213,
+    "min": -0.119768,
+    "max": 0.152526,
+    "median": 0.055433
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.10012894796885889,
+    "cv_rmse_std": 0.02326802015931449,
+    "cv_scores": [
+      0.084557,
+      0.081879,
+      0.145426,
+      0.097013,
+      0.09177
+    ],
+    "rank_ic_mean": 0.075057,
+    "rank_ic_std": 0.048473,
+    "icir": 1.5484,
+    "oof_corr": 0.063905,
+    "n_samples": 48073,
+    "n_features": 24
+  }
 }

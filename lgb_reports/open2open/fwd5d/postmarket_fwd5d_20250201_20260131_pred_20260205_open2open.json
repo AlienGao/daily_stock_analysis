@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 5,
   "train_start": "20250201",
   "train_end": "20260131",
@@ -7,43 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600449.SH",
-      "stock_code": "600449",
-      "stock_name": "宁夏建材",
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
       "lgb_score": 100.0,
-      "raw_score": 0.14
+      "raw_score": 0.16
     },
     {
       "rank": 2,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 90.96,
-      "raw_score": 0.13
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 81.25,
+      "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "000589.SZ",
-      "stock_code": "000589",
-      "stock_name": "贵州轮胎",
-      "lgb_score": 88.48,
+      "ts_code": "002234.SZ",
+      "stock_code": "002234",
+      "stock_name": "民和股份",
+      "lgb_score": 77.82,
       "raw_score": 0.12
     },
     {
       "rank": 4,
-      "ts_code": "002374.SZ",
-      "stock_code": "002374",
-      "stock_name": "中锐股份",
-      "lgb_score": 86.41,
-      "raw_score": 0.12
+      "ts_code": "301372.SZ",
+      "stock_code": "301372",
+      "stock_name": "科净源",
+      "lgb_score": 74.87,
+      "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "000151.SZ",
-      "stock_code": "000151",
-      "stock_name": "中成股份",
-      "lgb_score": 82.7,
+      "ts_code": "688768.SH",
+      "stock_code": "688768",
+      "stock_name": "容知日新",
+      "lgb_score": 74.45,
       "raw_score": 0.11
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.86,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.009044,
+    "std": 0.022631,
+    "skew": 1.402,
+    "kurtosis": 1.1692,
+    "min": -0.042976,
+    "max": 0.163388,
+    "median": -0.023142
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.06667407588450737,
+    "cv_rmse_std": 0.006904764918250376,
+    "cv_scores": [
+      0.058268,
+      0.062924,
+      0.076772,
+      0.072681,
+      0.062725
+    ],
+    "rank_ic_mean": 0.029713,
+    "rank_ic_std": 0.030375,
+    "icir": 0.9782,
+    "oof_corr": -0.000908,
+    "n_samples": 38016,
+    "n_features": 24
+  }
 }

@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 5,
   "train_start": "20241001",
   "train_end": "20250930",
@@ -7,34 +8,34 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000159.SZ",
-      "stock_code": "000159",
-      "stock_name": "国际实业",
+      "ts_code": "600802.SH",
+      "stock_code": "600802",
+      "stock_name": "福建水泥",
       "lgb_score": 100.0,
-      "raw_score": 0.13
+      "raw_score": 0.16
     },
     {
       "rank": 2,
-      "ts_code": "002274.SZ",
-      "stock_code": "002274",
-      "stock_name": "华昌化工",
-      "lgb_score": 97.12,
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 90.61,
       "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "002165.SZ",
-      "stock_code": "002165",
-      "stock_name": "红 宝 丽",
-      "lgb_score": 96.08,
-      "raw_score": 0.12
+      "ts_code": "600410.SH",
+      "stock_code": "600410",
+      "stock_name": "华胜天成",
+      "lgb_score": 90.08,
+      "raw_score": 0.13
     },
     {
       "rank": 4,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 95.21,
+      "ts_code": "002229.SZ",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 86.5,
       "raw_score": 0.12
     },
     {
@@ -42,8 +43,40 @@
       "ts_code": "688135.SH",
       "stock_code": "688135",
       "stock_name": "利扬芯片",
-      "lgb_score": 94.84,
+      "lgb_score": 86.35,
       "raw_score": 0.12
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.76,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.002981,
+    "std": 0.011776,
+    "skew": 0.8479,
+    "kurtosis": 22.0026,
+    "min": -0.137717,
+    "max": 0.162148,
+    "median": -0.005013
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.06856473192725691,
+    "cv_rmse_std": 0.007101828112319707,
+    "cv_scores": [
+      0.06962,
+      0.074457,
+      0.058176,
+      0.063126,
+      0.077445
+    ],
+    "rank_ic_mean": 0.021335,
+    "rank_ic_std": 0.018146,
+    "icir": 1.1758,
+    "oof_corr": 0.029069,
+    "n_samples": 44534,
+    "n_features": 24
+  }
 }

@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 5,
   "train_start": "20240701",
   "train_end": "20250630",
@@ -11,39 +12,71 @@
       "stock_code": "000554",
       "stock_name": "泰山石油",
       "lgb_score": 100.0,
-      "raw_score": 0.12
+      "raw_score": 0.09
     },
     {
       "rank": 2,
       "ts_code": "002445.SZ",
       "stock_code": "002445",
       "stock_name": "中南文化",
-      "lgb_score": 97.45,
-      "raw_score": 0.11
+      "lgb_score": 99.26,
+      "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "300429.SZ",
-      "stock_code": "300429",
-      "stock_name": "强力新材",
-      "lgb_score": 95.26,
-      "raw_score": 0.1
+      "ts_code": "002511.SZ",
+      "stock_code": "002511",
+      "stock_name": "中顺洁柔",
+      "lgb_score": 98.88,
+      "raw_score": 0.09
     },
     {
       "rank": 4,
       "ts_code": "600308.SH",
       "stock_code": "600308",
       "stock_name": "华泰股份",
-      "lgb_score": 94.09,
-      "raw_score": 0.1
+      "lgb_score": 97.92,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "300774.SZ",
-      "stock_code": "300774",
-      "stock_name": "倍杰特",
-      "lgb_score": 93.02,
-      "raw_score": 0.1
+      "ts_code": "002150.SZ",
+      "stock_code": "002150",
+      "stock_name": "正泰电源",
+      "lgb_score": 97.25,
+      "raw_score": 0.09
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.56,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.070059,
+    "std": 0.053678,
+    "skew": 0.8729,
+    "kurtosis": -1.1304,
+    "min": -0.132777,
+    "max": 0.094384,
+    "median": -0.105979
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.08030550993398863,
+    "cv_rmse_std": 0.024400025088439973,
+    "cv_scores": [
+      0.127491,
+      0.074386,
+      0.070165,
+      0.072743,
+      0.056742
+    ],
+    "rank_ic_mean": 0.011881,
+    "rank_ic_std": 0.007342,
+    "icir": 1.6183,
+    "oof_corr": -0.056906,
+    "n_samples": 44208,
+    "n_features": 24
+  }
 }

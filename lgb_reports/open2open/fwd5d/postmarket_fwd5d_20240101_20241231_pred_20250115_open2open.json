@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 5,
   "train_start": "20240101",
   "train_end": "20241231",
@@ -11,39 +12,71 @@
       "stock_code": "301589",
       "stock_name": "诺瓦星云",
       "lgb_score": 100.0,
-      "raw_score": 0.17
+      "raw_score": 0.1
     },
     {
       "rank": 2,
-      "ts_code": "002165.SZ",
-      "stock_code": "002165",
-      "stock_name": "红 宝 丽",
-      "lgb_score": 93.19,
-      "raw_score": 0.14
+      "ts_code": "688020.SH",
+      "stock_code": "688020",
+      "stock_name": "方邦股份",
+      "lgb_score": 94.86,
+      "raw_score": 0.09
     },
     {
       "rank": 3,
-      "ts_code": "002445.SZ",
-      "stock_code": "002445",
-      "stock_name": "中南文化",
-      "lgb_score": 84.71,
-      "raw_score": 0.12
+      "ts_code": "301016.SZ",
+      "stock_code": "301016",
+      "stock_name": "雷尔伟",
+      "lgb_score": 94.58,
+      "raw_score": 0.09
     },
     {
       "rank": 4,
-      "ts_code": "603619.SH",
-      "stock_code": "603619",
-      "stock_name": "中曼石油",
-      "lgb_score": 82.86,
-      "raw_score": 0.11
+      "ts_code": "300935.SZ",
+      "stock_code": "300935",
+      "stock_name": "盈建科",
+      "lgb_score": 93.92,
+      "raw_score": 0.09
     },
     {
       "rank": 5,
-      "ts_code": "603658.SH",
-      "stock_code": "603658",
-      "stock_name": "安图生物",
-      "lgb_score": 81.33,
-      "raw_score": 0.11
+      "ts_code": "688433.SH",
+      "stock_code": "688433",
+      "stock_name": "XD华曙高",
+      "lgb_score": 89.75,
+      "raw_score": 0.08
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.54,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.066357,
+    "std": 0.048159,
+    "skew": 0.9288,
+    "kurtosis": -0.9688,
+    "min": -0.138056,
+    "max": 0.099701,
+    "median": -0.097824
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.07556038736482001,
+    "cv_rmse_std": 0.017463457894907785,
+    "cv_scores": [
+      0.0617,
+      0.058405,
+      0.085695,
+      0.104944,
+      0.067058
+    ],
+    "rank_ic_mean": 0.062301,
+    "rank_ic_std": 0.030207,
+    "icir": 2.0625,
+    "oof_corr": 0.044614,
+    "n_samples": 48094,
+    "n_features": 24
+  }
 }

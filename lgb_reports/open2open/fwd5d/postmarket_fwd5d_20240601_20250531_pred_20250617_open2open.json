@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 5,
   "train_start": "20240601",
   "train_end": "20250531",
@@ -7,43 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600519.SH",
-      "stock_code": "600519",
-      "stock_name": "贵州茅台",
+      "ts_code": "002445.SZ",
+      "stock_code": "002445",
+      "stock_name": "中南文化",
       "lgb_score": 100.0,
       "raw_score": 0.14
     },
     {
       "rank": 2,
-      "ts_code": "300885.SZ",
-      "stock_code": "300885",
-      "stock_name": "海昌新材",
-      "lgb_score": 96.65,
+      "ts_code": "600308.SH",
+      "stock_code": "600308",
+      "stock_name": "华泰股份",
+      "lgb_score": 93.73,
       "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "600410.SH",
-      "stock_code": "600410",
-      "stock_name": "华胜天成",
-      "lgb_score": 96.19,
-      "raw_score": 0.13
+      "ts_code": "600519.SH",
+      "stock_code": "600519",
+      "stock_name": "贵州茅台",
+      "lgb_score": 89.61,
+      "raw_score": 0.11
     },
     {
       "rank": 4,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
-      "lgb_score": 94.72,
-      "raw_score": 0.13
+      "ts_code": "002029.SZ",
+      "stock_code": "002029",
+      "stock_name": "七 匹 狼",
+      "lgb_score": 87.35,
+      "raw_score": 0.11
     },
     {
       "rank": 5,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 94.7,
-      "raw_score": 0.13
+      "ts_code": "688108.SH",
+      "stock_code": "688108",
+      "stock_name": "赛诺医疗",
+      "lgb_score": 87.27,
+      "raw_score": 0.11
     }
-  ]
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.73,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.071611,
+    "std": 0.052503,
+    "skew": 0.9302,
+    "kurtosis": -0.9055,
+    "min": -0.139772,
+    "max": 0.143668,
+    "median": -0.106397
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.07620652645116274,
+    "cv_rmse_std": 0.028765876880836448,
+    "cv_scores": [
+      0.050894,
+      0.132411,
+      0.063451,
+      0.069428,
+      0.064848
+    ],
+    "rank_ic_mean": 0.055424,
+    "rank_ic_std": 0.053986,
+    "icir": 1.0266,
+    "oof_corr": -0.013703,
+    "n_samples": 46522,
+    "n_features": 24
+  }
 }
