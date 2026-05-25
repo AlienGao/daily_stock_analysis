@@ -1,5 +1,6 @@
 {
   "mode": "postmarket",
+  "label_mode": "fixed",
   "forward_days": 20,
   "train_start": "20240901",
   "train_end": "20250831",
@@ -7,75 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000554.SZ",
-      "stock_code": "000554",
-      "stock_name": "泰山石油",
-      "lgb_score": 100.0,
-      "raw_score": 0.28
-    },
-    {
-      "rank": 2,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 99.73,
-      "raw_score": 0.28
-    },
-    {
-      "rank": 3,
       "ts_code": "000601.SZ",
       "stock_code": "000601",
       "stock_name": "韶能股份",
-      "lgb_score": 99.66,
-      "raw_score": 0.28
+      "lgb_score": 100.0,
+      "raw_score": 0.45
+    },
+    {
+      "rank": 2,
+      "ts_code": "000554.SZ",
+      "stock_code": "000554",
+      "stock_name": "泰山石油",
+      "lgb_score": 95.58,
+      "raw_score": 0.43
+    },
+    {
+      "rank": 3,
+      "ts_code": "300970.SZ",
+      "stock_code": "300970",
+      "stock_name": "华绿生物",
+      "lgb_score": 93.2,
+      "raw_score": 0.41
     },
     {
       "rank": 4,
-      "ts_code": "002164.SZ",
-      "stock_code": "002164",
-      "stock_name": "宁波东力",
-      "lgb_score": 96.11,
-      "raw_score": 0.26
+      "ts_code": "688217.SH",
+      "stock_code": "688217",
+      "stock_name": "睿昂基因",
+      "lgb_score": 92.47,
+      "raw_score": 0.41
     },
     {
       "rank": 5,
-      "ts_code": "600177.SH",
-      "stock_code": "600177",
-      "stock_name": "雅戈尔",
-      "lgb_score": 93.93,
-      "raw_score": 0.25
+      "ts_code": "002165.SZ",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 92.46,
+      "raw_score": 0.41
     }
   ],
   "tree_diagnostics": {
     "n_trees": 200,
-    "avg_depth": 10.52,
+    "avg_depth": 10.96,
     "avg_n_leaves": 31.0,
     "total_n_leaves": 6200
   },
   "prediction_stats": {
-    "mean": -0.014897,
-    "std": 0.027777,
-    "skew": 1.5662,
-    "kurtosis": 17.4572,
-    "min": -0.205767,
-    "max": 0.283132,
-    "median": -0.015652
+    "mean": -0.028975,
+    "std": 0.05185,
+    "skew": 2.2242,
+    "kurtosis": 7.8447,
+    "min": -0.174069,
+    "max": 0.454121,
+    "median": -0.058107
   },
   "training_metrics": {
-    "cv_rmse_mean": 0.15155301427825163,
-    "cv_rmse_std": 0.011362028641538974,
+    "cv_rmse_mean": 0.14599152586983982,
+    "cv_rmse_std": 0.013934803665285624,
     "cv_scores": [
-      0.138459,
-      0.166723,
-      0.15141,
-      0.139586,
-      0.161587
+      0.147036,
+      0.1389,
+      0.144965,
+      0.128393,
+      0.170664
     ],
-    "rank_ic_mean": 0.109946,
-    "rank_ic_std": 0.082849,
-    "icir": 1.3271,
-    "oof_corr": 0.066214,
-    "n_samples": 25429,
-    "n_features": 22
+    "rank_ic_mean": 0.130641,
+    "rank_ic_std": 0.077274,
+    "icir": 1.6906,
+    "oof_corr": 0.072679,
+    "n_samples": 44964,
+    "n_features": 24
   }
 }
