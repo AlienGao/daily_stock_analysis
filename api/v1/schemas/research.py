@@ -262,11 +262,14 @@ class LGBFactorSubsetResult(BaseModel):
     all_factors: List[str] = []
     final_subset: List[str] = []
     excluded_factors: List[str] = []
+    baseline_daily_return: float = 0.0
+    final_daily_return: float = 0.0
+    delta_daily_return: float = 0.0
     baseline_ic: float = 0.0
     final_ic: float = 0.0
     final_icir: float = 0.0
     final_rmse: float = 0.0
-    delta_ic: float = 0.0
+    top_n: int = 5
     elapsed_seconds: float = 0.0
     report_path: str = ""
 

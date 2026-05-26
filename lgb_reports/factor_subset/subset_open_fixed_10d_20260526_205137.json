@@ -1,0 +1,249 @@
+{
+  "all_factors": [
+    "alpha042",
+    "alpha60",
+    "broker_recommend",
+    "buyback",
+    "chip",
+    "concept_heat",
+    "fundamental",
+    "gap_reversal",
+    "gtja114",
+    "hot_money",
+    "insider_buy",
+    "institution_hold",
+    "limit",
+    "liquid_oversold",
+    "margin",
+    "money_flow",
+    "money_flow_osc",
+    "performance",
+    "popularity",
+    "profit_forecast",
+    "ranking_momentum",
+    "technical",
+    "vwap_deviation",
+    "vwap_reversal"
+  ],
+  "phase1": {
+    "baseline": {
+      "daily_return_mean": 0.064953,
+      "rank_ic_mean": 0.047231,
+      "rank_ic_std": 0.049946,
+      "icir": 0.9456,
+      "cv_rmse_mean": 0.103936,
+      "n_factors": 24,
+      "n_trading_days": 242,
+      "factors": [
+        "alpha042",
+        "alpha60",
+        "broker_recommend",
+        "buyback",
+        "chip",
+        "concept_heat",
+        "fundamental",
+        "gap_reversal",
+        "gtja114",
+        "hot_money",
+        "insider_buy",
+        "institution_hold",
+        "limit",
+        "liquid_oversold",
+        "margin",
+        "money_flow",
+        "money_flow_osc",
+        "performance",
+        "popularity",
+        "profit_forecast",
+        "ranking_momentum",
+        "technical",
+        "vwap_deviation",
+        "vwap_reversal"
+      ]
+    },
+    "importance_ranking": [
+      "broker_recommend",
+      "chip",
+      "margin",
+      "buyback",
+      "ranking_momentum",
+      "vwap_reversal",
+      "technical",
+      "fundamental",
+      "alpha042",
+      "gtja114",
+      "vwap_deviation",
+      "money_flow_osc",
+      "liquid_oversold",
+      "money_flow",
+      "hot_money",
+      "alpha60",
+      "gap_reversal",
+      "limit",
+      "concept_heat",
+      "insider_buy",
+      "institution_hold",
+      "performance",
+      "popularity",
+      "profit_forecast"
+    ],
+    "gain": {}
+  },
+  "phase2": {
+    "selected": [
+      "chip",
+      "hot_money",
+      "concept_heat",
+      "insider_buy",
+      "institution_hold"
+    ],
+    "best_subset": [
+      "chip",
+      "hot_money"
+    ],
+    "best_daily_return": 0.078323,
+    "trace": [
+      {
+        "round": 1,
+        "added": "chip",
+        "daily_return_mean": 0.076648,
+        "rank_ic_mean": 0.044486,
+        "icir": 1.0057,
+        "n_factors": 1,
+        "improved": true
+      },
+      {
+        "round": 2,
+        "added": "hot_money",
+        "daily_return_mean": 0.078323,
+        "rank_ic_mean": 0.045245,
+        "icir": 1.0638,
+        "n_factors": 2,
+        "improved": true
+      },
+      {
+        "round": 3,
+        "added": "concept_heat",
+        "daily_return_mean": 0.078323,
+        "rank_ic_mean": 0.045245,
+        "icir": 1.0638,
+        "n_factors": 3,
+        "improved": false
+      },
+      {
+        "round": 4,
+        "added": "insider_buy",
+        "daily_return_mean": 0.078323,
+        "rank_ic_mean": 0.045245,
+        "icir": 1.0638,
+        "n_factors": 4,
+        "improved": false
+      },
+      {
+        "round": 5,
+        "added": "institution_hold",
+        "daily_return_mean": 0.078323,
+        "rank_ic_mean": 0.045245,
+        "icir": 1.0638,
+        "n_factors": 5,
+        "improved": false
+      }
+    ]
+  },
+  "phase3": {
+    "best_subset": [
+      "alpha042",
+      "broker_recommend",
+      "buyback",
+      "chip",
+      "concept_heat",
+      "liquid_oversold",
+      "margin",
+      "money_flow_osc",
+      "popularity",
+      "profit_forecast",
+      "ranking_momentum",
+      "technical",
+      "vwap_reversal"
+    ],
+    "best_result": {
+      "daily_return_mean": 0.076872,
+      "rank_ic_mean": 0.058052,
+      "rank_ic_std": 0.048406,
+      "icir": 1.1993,
+      "cv_rmse_mean": 0.103886,
+      "n_factors": 13,
+      "n_trading_days": 242,
+      "factors": [
+        "alpha042",
+        "broker_recommend",
+        "buyback",
+        "chip",
+        "concept_heat",
+        "liquid_oversold",
+        "margin",
+        "money_flow_osc",
+        "popularity",
+        "profit_forecast",
+        "ranking_momentum",
+        "technical",
+        "vwap_reversal"
+      ]
+    },
+    "n_trials": 80
+  },
+  "final_subset": [
+    "chip",
+    "hot_money"
+  ],
+  "final_metrics": {
+    "daily_return_mean": 0.078323,
+    "rank_ic_mean": 0.045245,
+    "rank_ic_std": 0.042531,
+    "icir": 1.0638,
+    "cv_rmse_mean": 0.103361,
+    "n_factors": 2,
+    "n_trading_days": 242,
+    "factors": [
+      "chip",
+      "hot_money"
+    ]
+  },
+  "excluded_factors": [
+    "alpha042",
+    "alpha60",
+    "broker_recommend",
+    "buyback",
+    "concept_heat",
+    "fundamental",
+    "gap_reversal",
+    "gtja114",
+    "insider_buy",
+    "institution_hold",
+    "limit",
+    "liquid_oversold",
+    "margin",
+    "money_flow",
+    "money_flow_osc",
+    "performance",
+    "popularity",
+    "profit_forecast",
+    "ranking_momentum",
+    "technical",
+    "vwap_deviation",
+    "vwap_reversal"
+  ],
+  "elapsed_seconds": 1018.6,
+  "label_mode": "fixed",
+  "forward_days": 10,
+  "window_days": 20,
+  "exec_mode": "open",
+  "mode": "postmarket",
+  "top_n": 1,
+  "timestamp": "2026-05-26T20:37:16.410134",
+  "_config": {
+    "label_mode": "fixed",
+    "forward_days": 10,
+    "top_n": 1
+  }
+}

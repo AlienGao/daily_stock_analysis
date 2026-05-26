@@ -26,6 +26,7 @@ from src.storage import DatabaseManager, StockDaily
 REPORTS_ROOT = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lgb_reports"
 )
+FACTOR_SUBSET_DIR = os.path.join(REPORTS_ROOT, "factor_subset")
 # EXEC_SUBDIR is set in main() after EXEC_MODE is known
 
 TRAIN_START = "20240101"
@@ -37,6 +38,80 @@ WINDOW_DAYS = 20  # peak_speed 窗口天数
 MODE = "postmarket"
 EXEC_MODE_LIST = ["open"]  # "open" = open→open labels
 TOP_N = 5
+
+
+# ── 因子子集配置 ──
+# 从 factor_subset/ 目录自动读取最优因子配置
+# Key: (exec_mode, label_mode, forward_days_or_window)
+# Value: {"excluded": [...], "final_subset": [...]}
+
+def _parse_subset_filename(filename: str) -> tuple | None:
+    """Parse subset report filename.
+
+    Examples:
+      'subset_open_fixed_5d_20260526_193548.json' -> ('open', 'fixed', '5d')
+      'subset_open_peak20d_20260526_220650.json'  -> ('open', 'peak_speed', '20d')
+    """
+    if not filename.startswith("subset_") or not filename.endswith(".json"):
+        return None
+    inner = filename[7:-5]  # strip 'subset_' and '.json'
+    parts = inner.split("_")  # e.g. ['open', 'fixed', '5d', '20260526', '193548']
+    if len(parts) < 3:
+        return None
+    exec_mode = parts[0]
+    label_part = parts[1]
+    if label_part.startswith("peak"):
+        # 'peak20d' -> ('peak_speed', '20d')
+        label_mode = "peak_speed"
+        period = label_part[4:]  # strip 'peak' -> '20d'
+    else:
+        label_mode = label_part  # 'fixed'
+        period = parts[2]        # '5d', '10d', '20d'
+    return (exec_mode, label_mode, period)
+
+
+def load_factor_subsets() -> dict:
+    """Scan factor_subset/ directory and return latest config for each type.
+
+    Returns dict keyed by (exec_mode, label_mode, period) where period is like '5d' or '20d'.
+    Each value contains 'excluded_factors' and 'final_subset'.
+    """
+    if not os.path.isdir(FACTOR_SUBSET_DIR):
+        print(f"[WARN] factor_subset 目录不存在: {FACTOR_SUBSET_DIR}")
+        return {}
+
+    # Group files by (exec_mode, label_mode, period)
+    groups = {}
+    for fn in os.listdir(FACTOR_SUBSET_DIR):
+        parsed = _parse_subset_filename(fn)
+        if not parsed:
+            continue
+        key = parsed
+        if key not in groups:
+            groups[key] = []
+        groups[key].append(fn)
+
+    configs = {}
+    for key, files in groups.items():
+        # Use the latest file (sorted by filename, timestamp is embedded)
+        latest = sorted(files)[-1]
+        path = os.path.join(FACTOR_SUBSET_DIR, latest)
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            configs[key] = {
+                "excluded_factors": data.get("excluded_factors", []),
+                "final_subset": data.get("final_subset", []),
+                "report": latest,
+            }
+            exec_mode, label_mode, period = key
+            print(f"  [因子配置] {exec_mode} / {label_mode} / {period}: "
+                  f"使用 {len(data.get('final_subset', []))} 个因子 "
+                  f"(排除 {len(data.get('excluded_factors', []))} 个)")
+        except Exception as e:
+            print(f"  [WARN] 读取 {latest} 失败: {e}")
+
+    return configs
 
 
 def _ymd(d) -> str:
@@ -218,7 +293,7 @@ def generate_monthly_windows(pred_end: str):
 
 
 def run_window(trainer: LGBTrainer, train_s: str, train_e: str,
-               pred_s: str, pred_e: str) -> dict:
+               pred_s: str, pred_e: str, final_subset: list | None = None) -> dict:
     """Train on [train_s, train_e], predict every trading day in [pred_s, pred_e]."""
     trading_days = get_trading_days(pred_s, pred_e)
     if not trading_days:
@@ -228,6 +303,20 @@ def run_window(trainer: LGBTrainer, train_s: str, train_e: str,
     print(f"  预测期交易日: {len(trading_days)} ({pred_s} ~ {pred_e})")
 
     trainer.prepare_data(start_date=train_s, end_date=train_e)
+
+    # 如果指定了因子子集，只使用 final_subset 中的因子
+    if final_subset:
+        available = set(trainer.feature_names)
+        to_use = [f for f in final_subset if f in available]
+        skipped = [f for f in final_subset if f not in available]
+        if skipped:
+            print(f"  [因子子集] 跳过不可用因子: {skipped}")
+        if to_use:
+            trainer.feature_names = to_use
+            print(f"  [因子子集] 使用 {len(to_use)} 个因子训练")
+        else:
+            print(f"  [WARN] final_subset 中无可用因子，使用全部 {len(trainer.feature_names)} 个因子")
+
     trainer.train()
 
 
@@ -267,102 +356,122 @@ def main():
 
     windows = generate_monthly_windows(pred_end)
 
+    # ── 加载因子子集配置 ──
+    print("=" * 64)
+    print("加载因子子集配置...")
+    factor_configs = load_factor_subsets()
+    if not factor_configs:
+        print("[WARN] 未找到因子子集配置，将使用全部因子")
+    print("=" * 64)
+
     print("=" * 64)
     print(f"滚动窗口 LGB 回测")
     print(f"模式: {MODE} | exec: {EXEC_MODE_LIST} | Top {TOP_N}")
     print(f"训练起点: {TRAIN_START} (逐月右移 12 个月窗口)")
     print(f"预测范围: {PRED_START} ~ {pred_end}")
-    print(f"窗口数: {len(windows)} | Label: {LABEL_MODES}")
+    print(f"窗口数: {len(windows)}")
     print(f"报告目录: {REPORTS_ROOT}/open2open/{{peak20d,fwd3d,fwd5d,fwd10d,fwd20d}}")
     print("=" * 64)
 
     grand_total_ok = 0
     grand_total_fail = 0
 
-    for label_mode in LABEL_MODES:
+    # ── 从 factor_configs 提取所有可用的配置 ──
+    # 按 (exec_mode, label_mode, period) 组织
+    def _exec_label(k): return k[0]  # exec_mode
+    def _exec_suffix(k): return "open2open" if k == "open" else "close2close"
+
+    all_exec_modes = sorted({_exec_label(k) for k in factor_configs})
+    if not all_exec_modes:
+        all_exec_modes = EXEC_MODE_LIST  # fallback
+
+    # ── peak_speed ──
+    for exec_mode in all_exec_modes:
+        suffix = _exec_suffix(exec_mode)
+        # 提取该 exec_mode 下所有可用的 peak_speed 窗口天数
+        available_peaks = sorted({
+            int(key[2].rstrip("d"))
+            for key in factor_configs
+            if key[0] == exec_mode and key[1] == "peak_speed"
+        })
+
+        for window_days in available_peaks:
+            config_key = (exec_mode, "peak_speed", f"{window_days}d")
+            subset_cfg = factor_configs[config_key]
+            final_subset = subset_cfg["final_subset"]
+            print(f"\n{'#'*60}")
+            print(f"# EXEC = {exec_mode} ({suffix}) | peak_speed {window_days}d")
+            print(f"# 因子子集: {subset_cfg['report']} ({len(final_subset)} 因子)")
+            print(f"{'#'*60}")
+
+            exec_ok, exec_fail = 0, 0
+            for wi, (train_s, train_e, pred_s, pred_e) in enumerate(windows):
+                print(f"\n--- Window {wi + 1}/{len(windows)} "
+                      f"train={train_s}~{train_e}  pred={pred_s}~{pred_e} ---")
+                trainer = LGBTrainer(
+                    mode=MODE, exec_mode=exec_mode,
+                    label_mode="peak_speed", window_days=window_days,
+                )
+                result = run_window(trainer, train_s, train_e, pred_s, pred_e, final_subset)
+                if result["status"] == "skip":
+                    print(f"  跳过: {result['reason']}")
+                    continue
+                exec_ok += result["ok"]
+                exec_fail += result["fail"]
+                print(f"  成功: {result['ok']}/{result['total']}"
+                      + (f"  失败: {result['fail']}" if result["fail"] else ""))
+                trainer.save()
+                cleanup_old_models()
+            print(f"\n  {suffix} peak{window_days}d 汇总: 成功 {exec_ok}, 失败 {exec_fail}")
+            grand_total_ok += exec_ok
+            grand_total_fail += exec_fail
+
+    # ── fixed ──
+    for exec_mode in all_exec_modes:
+        suffix = _exec_suffix(exec_mode)
+        available_fwds = sorted({
+            int(key[2].rstrip("d"))
+            for key in factor_configs
+            if key[0] == exec_mode and key[1] == "fixed"
+        })
+        if not available_fwds:
+            continue
+
         print(f"\n{'#'*60}")
-        print(f"# LABEL_MODE = {label_mode}")
+        print(f"# EXEC = {exec_mode} ({suffix}) | fixed")
+        print(f"# 可用持有期: {available_fwds}")
         print(f"{'#'*60}")
 
-        if label_mode == "peak_speed":
-            print(f"  window_days = {WINDOW_DAYS}")
-            label_tag = f"peak{WINDOW_DAYS}d"
+        for fwd in available_fwds:
+            config_key = (exec_mode, "fixed", f"{fwd}d")
+            subset_cfg = factor_configs[config_key]
+            final_subset = subset_cfg["final_subset"]
+            print(f"\n{'='*50}")
+            print(f"  Forward = {fwd}d | 因子: {len(final_subset)} 个")
+            print(f"  报告: {subset_cfg['report']}")
             print(f"{'='*50}")
-            print(f"  Label = {label_mode} ({label_tag})")
-            print(f"{'='*50}")
 
-            for exec_mode in EXEC_MODE_LIST:
-                exec_suffix = "open2open" if exec_mode == "open" else "close2close"
-                print(f"\n-- EXEC = {exec_mode} ({exec_suffix}) --")
-
-                exec_ok = 0
-                exec_fail = 0
-
-                for wi, (train_s, train_e, pred_s, pred_e) in enumerate(windows):
-                    print(f"\n--- Window {wi + 1}/{len(windows)} "
-                          f"train={train_s}~{train_e}  pred={pred_s}~{pred_e} ---")
-
-                    trainer = LGBTrainer(
-                        mode=MODE, exec_mode=exec_mode,
-                        label_mode="peak_speed", window_days=WINDOW_DAYS,
-                    )
-                    result = run_window(trainer, train_s, train_e, pred_s, pred_e)
-
-                    if result["status"] == "skip":
-                        print(f"  跳过: {result['reason']}")
-                        continue
-
-                    exec_ok += result["ok"]
-                    exec_fail += result["fail"]
-                    print(f"  成功: {result['ok']}/{result['total']}"
-                          + (f"  失败: {result['fail']}" if result["fail"] else ""))
-
-                    trainer.save()
-                    cleanup_old_models()
-
-                print(f"\n  EXEC={exec_suffix} Label={label_mode} 汇总: 成功 {exec_ok}, 失败 {exec_fail}")
-                grand_total_ok += exec_ok
-                grand_total_fail += exec_fail
-        else:
-            for exec_mode in EXEC_MODE_LIST:
-                exec_suffix = "open2open" if exec_mode == "open" else "close2close"
-                print(f"\n{'#'*60}")
-                print(f"# EXEC = {exec_mode} ({exec_suffix})")
-                print(f"{'#'*60}")
-
-                for fwd in FORWARD_DAYS_LIST:
-                    print(f"\n{'='*50}")
-                    print(f"  Forward = {fwd} 日")
-                    print(f"{'='*50}")
-
-                    fwd_ok = 0
-                    fwd_fail = 0
-
-                    for wi, (train_s, train_e, pred_s, pred_e) in enumerate(windows):
-                        print(f"\n--- Window {wi + 1}/{len(windows)} "
-                              f"train={train_s}~{train_e}  pred={pred_s}~{pred_e} ---")
-
-                        trainer = LGBTrainer(
-                            mode=MODE, forward_days=fwd, exec_mode=exec_mode,
-                            label_mode="fixed",
-                        )
-                        result = run_window(trainer, train_s, train_e, pred_s, pred_e)
-
-                        if result["status"] == "skip":
-                            print(f"  跳过: {result['reason']}")
-                            continue
-
-                        fwd_ok += result["ok"]
-                        fwd_fail += result["fail"]
-                        print(f"  成功: {result['ok']}/{result['total']}"
-                              + (f"  失败: {result['fail']}" if result["fail"] else ""))
-
-                        trainer.save()
-                        cleanup_old_models()
-
-                    print(f"\n  EXEC={exec_suffix} Forward={fwd}d 汇总: 成功 {fwd_ok}, 失败 {fwd_fail}")
-                    grand_total_ok += fwd_ok
-                    grand_total_fail += fwd_fail
+            fwd_ok, fwd_fail = 0, 0
+            for wi, (train_s, train_e, pred_s, pred_e) in enumerate(windows):
+                print(f"\n--- Window {wi + 1}/{len(windows)} "
+                      f"train={train_s}~{train_e}  pred={pred_s}~{pred_e} ---")
+                trainer = LGBTrainer(
+                    mode=MODE, forward_days=fwd, exec_mode=exec_mode,
+                    label_mode="fixed",
+                )
+                result = run_window(trainer, train_s, train_e, pred_s, pred_e, final_subset)
+                if result["status"] == "skip":
+                    print(f"  跳过: {result['reason']}")
+                    continue
+                fwd_ok += result["ok"]
+                fwd_fail += result["fail"]
+                print(f"  成功: {result['ok']}/{result['total']}"
+                      + (f"  失败: {result['fail']}" if result["fail"] else ""))
+                trainer.save()
+                cleanup_old_models()
+            print(f"\n  {suffix} fwd{fwd}d 汇总: 成功 {fwd_ok}, 失败 {fwd_fail}")
+            grand_total_ok += fwd_ok
+            grand_total_fail += fwd_fail
 
     print(f"\n{'='*60}")
     print(f"全部完成: 成功 {grand_total_ok}, 失败 {grand_total_fail}")

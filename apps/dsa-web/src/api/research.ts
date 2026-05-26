@@ -264,11 +264,14 @@ export type LGBFactorSubsetResult = {
   all_factors: string[];
   final_subset: string[];
   excluded_factors: string[];
+  baseline_daily_return: number;
+  final_daily_return: number;
+  delta_daily_return: number;
   baseline_ic: number;
   final_ic: number;
   final_icir: number;
   final_rmse: number;
-  delta_ic: number;
+  top_n: number;
   elapsed_seconds: number;
   report_path: string;
 };
@@ -279,6 +282,30 @@ export type LGBFactorSubsetTaskStatus = {
   status_message: string;
   result: LGBFactorSubsetResult | null;
   error: string;
+};
+
+export type LGBFactorSubsetBatchSummaryItem = {
+  rank: number;
+  exec_mode: string;
+  label_mode: string;
+  forward_days: number;
+  top_n: number;
+  daily_return_mean: number;
+  baseline_daily_return: number;
+  delta_daily_return: number;
+  rank_ic_mean: number;
+  icir: number;
+  n_factors: number;
+  final_subset: string[];
+  excluded_factors: string[];
+  elapsed_seconds: number;
+};
+
+export type LGBFactorSubsetBatchResult = {
+  timestamp: string;
+  total_configs: number;
+  summary: LGBFactorSubsetBatchSummaryItem[];
+  best: LGBFactorSubsetBatchSummaryItem | null;
 };
 
 /* ── API ── */
@@ -436,6 +463,7 @@ export const researchApi = {
     exec_mode?: string;
     mode?: string;
     tpe_trials?: number;
+    top_n?: number;
   } = {}): Promise<{ task_id: string; status: string }> {
     const resp = await apiClient.post('/api/v1/research/lgb/factor-subset-search', null, {
       params,
@@ -454,6 +482,25 @@ export const researchApi = {
 
   async applyFactorSubsetResult(): Promise<{ applied: boolean; existing_excluded?: string[]; new_excluded?: string[]; env_value?: string; message?: string }> {
     const resp = await apiClient.post('/api/v1/research/lgb/factor-subset-apply', null, { timeout: 30000 });
+    return resp.data;
+  },
+
+  async startFactorSubsetBatch(): Promise<{ task_id: string; status: string; total_configs: number }> {
+    const resp = await apiClient.post('/api/v1/research/lgb/factor-subset-batch', null, { timeout: 120000 });
+    return resp.data;
+  },
+
+  async getFactorSubsetBatchStatus(taskId: string): Promise<{
+    task_id: string;
+    status: string;
+    status_message: string;
+    result: LGBFactorSubsetBatchResult | null;
+    error: string;
+  }> {
+    const resp = await apiClient.get('/api/v1/research/lgb/factor-subset-batch/status', {
+      params: { task_id: taskId },
+      timeout: 60000,
+    });
     return resp.data;
   },
 };

@@ -3304,9 +3304,28 @@ def _run_factor_subset_search(task_id: str, params: dict):
             end_date=params.get("end_date"),
             cv_folds=params.get("cv_folds", 5),
             tpe_trials=params.get("tpe_trials", 80),
+            top_n=5,
             progress_callback=progress,
         )
-        result = searcher.run()
+        # 加载数据一次，测试 top_n 1-5，取最优
+        searcher.load_data()
+        best_result = None
+        best_daily_return = -999.0
+        for tn in range(1, 6):
+            progress(f"测试 top_n={tn}...")
+            searcher.top_n = tn
+            result = searcher.run_search(save_report=False)
+            dr = result.get("final_metrics", {}).get("daily_return_mean", -999.0)
+            progress(f"  top_n={tn}: daily_return={dr:.6f}")
+            if dr > best_daily_return:
+                best_daily_return = dr
+                best_result = result
+                searcher.top_n = tn  # 确保 _save_report 使用最优 top_n
+
+        # 保存唯一报告（命名与批量模式一致，自动删除同类型旧报告）
+        if best_result is None:
+            raise RuntimeError("top_n 1-5 均未产生有效结果")
+        searcher._save_report(best_result)
 
         # 查找报告路径
         report_path = ""
@@ -3319,19 +3338,22 @@ def _run_factor_subset_search(task_id: str, params: dict):
             if json_files:
                 report_path = json_files[0]
 
-        fm = result.get("final_metrics", {})
-        bl = result.get("phase1", {}).get("baseline", {})
+        fm = best_result.get("final_metrics", {})
+        bl = best_result.get("phase1", {}).get("baseline", {})
         task["status"] = "completed"
         task["result"] = {
-            "all_factors": result.get("all_factors", []),
-            "final_subset": result.get("final_subset", []),
-            "excluded_factors": result.get("excluded_factors", []),
+            "all_factors": best_result.get("all_factors", []),
+            "final_subset": best_result.get("final_subset", []),
+            "excluded_factors": best_result.get("excluded_factors", []),
+            "baseline_daily_return": bl.get("daily_return_mean", 0.0),
+            "final_daily_return": fm.get("daily_return_mean", 0.0),
+            "delta_daily_return": fm.get("daily_return_mean", 0.0) - bl.get("daily_return_mean", 0.0),
             "baseline_ic": bl.get("rank_ic_mean", 0.0),
             "final_ic": fm.get("rank_ic_mean", 0.0),
             "final_icir": fm.get("icir", 0.0),
             "final_rmse": fm.get("cv_rmse_mean", 0.0),
-            "delta_ic": fm.get("rank_ic_mean", 0.0) - bl.get("rank_ic_mean", 0.0),
-            "elapsed_seconds": result.get("elapsed_seconds", 0.0),
+            "top_n": best_result.get("top_n", 5),
+            "elapsed_seconds": best_result.get("elapsed_seconds", 0.0),
             "report_path": report_path,
         }
     except Exception as e:
@@ -3352,6 +3374,7 @@ def lgb_factor_subset_search(
     exec_mode: str = Query("open", description="执行模式: open / close"),
     mode: str = Query("postmarket", description="postmarket / intraday"),
     tpe_trials: int = Query(80, description="TPE 精调试验次数"),
+    top_n: int = Query(5, description="每日买入 top N 股票"),
 ):
     task_id = str(uuid.uuid4())[:8]
     _factor_subset_tasks[task_id] = {
@@ -3366,6 +3389,7 @@ def lgb_factor_subset_search(
         "exec_mode": exec_mode,
         "mode": mode,
         "tpe_trials": tpe_trials,
+        "top_n": top_n,
     }
     threading.Thread(
         target=_run_factor_subset_search,
@@ -3436,4 +3460,108 @@ def lgb_factor_subset_apply():
         "existing_excluded": existing_excluded,
         "new_excluded": new_excluded,
         "env_value": env_value,
+    }
+
+
+# ── Factor Subset Batch Search ──
+
+_factor_subset_batch_tasks: Dict[str, dict] = {}
+
+
+def _run_factor_subset_batch(task_id: str, params: dict):
+    from src.discovery.ml.factor_subset_search import FactorSubsetSearcher
+
+    task = _factor_subset_batch_tasks.get(task_id)
+    if task is None:
+        return
+
+    task["status"] = "running"
+    task["status_message"] = "正在初始化批量搜索..."
+
+    def progress(msg: str):
+        task["status_message"] = msg
+
+    try:
+        configs = params.get("configs", [])
+        searcher = FactorSubsetSearcher(
+            mode=params.get("mode", "postmarket"),
+            exec_mode=params.get("exec_mode", "open"),
+            start_date=params.get("start_date"),
+            end_date=params.get("end_date"),
+            cv_folds=params.get("cv_folds", 5),
+            tpe_trials=params.get("tpe_trials", 80),
+            progress_callback=progress,
+        )
+        result = searcher.batch_run(
+            configs=configs,
+            start_date=params.get("start_date"),
+            end_date=params.get("end_date"),
+        )
+        task["status"] = "completed"
+        task["result"] = result
+    except Exception as e:
+        task["status"] = "failed"
+        task["error"] = str(e)
+        import traceback
+        traceback.print_exc()
+
+
+@router.post(
+    "/lgb/factor-subset-batch",
+    summary="启动因子子集批量搜索",
+)
+def lgb_factor_subset_batch(
+    exec_mode: str = Query("open", description="执行模式: open / close"),
+    mode: str = Query("postmarket", description="postmarket / intraday"),
+    start_date: str = Query("20250101", description="数据起始日期"),
+    end_date: str = Query("20260525", description="数据结束日期"),
+    tpe_trials: int = Query(80, description="TPE 精调试验次数"),
+):
+    # 构建全量配置: open/close × fixed(3/5/10/20d) × 2 top_n + peak_speed(20d) × 2 top_n
+    configs = []
+    for exec in ["open", "close"]:
+        for fwd in [3, 5, 10, 20]:
+            for tn in [1, 2]:
+                configs.append({"exec_mode": exec, "label_mode": "fixed", "forward_days": fwd, "top_n": tn})
+        for tn in [1, 2]:
+            configs.append({"exec_mode": exec, "label_mode": "peak_speed", "forward_days": 5, "window_days": 20, "top_n": tn})
+
+    task_id = str(uuid.uuid4())[:8]
+    _factor_subset_batch_tasks[task_id] = {
+        "status": "pending",
+        "status_message": "Queued...",
+        "started_at": datetime.now().isoformat(),
+    }
+    params = {
+        "configs": configs,
+        "exec_mode": exec_mode,
+        "mode": mode,
+        "start_date": start_date,
+        "end_date": end_date,
+        "tpe_trials": tpe_trials,
+    }
+    threading.Thread(
+        target=_run_factor_subset_batch,
+        args=(task_id, params),
+        daemon=True,
+    ).start()
+    return {"task_id": task_id, "status": "pending", "total_configs": len(configs)}
+
+
+@router.get(
+    "/lgb/factor-subset-batch/status",
+    summary="查询因子子集批量搜索任务状态",
+)
+def lgb_factor_subset_batch_status(
+    task_id: str = Query(..., description="任务 ID"),
+):
+    task = _factor_subset_batch_tasks.get(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务 ID 不存在")
+    return {
+        "task_id": task_id,
+        "status": task.get("status", "unknown"),
+        "status_message": task.get("status_message", ""),
+        "result": task.get("result"),
+        "error": task.get("error", ""),
     }

@@ -129,6 +129,9 @@ const LightGBMPage: React.FC = () => {
   const [subsetSearchStatus, setSubsetSearchStatus] = useState<LGBFactorSubsetTaskStatus | null>(null);
   const [subsetSearchLoading, setSubsetSearchLoading] = useState(false);
   const subsetSearchPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [batchSearchStatus, setBatchSearchStatus] = useState<{ task_id: string; status: string; status_message: string; result: any; error: string } | null>(null);
+  const [batchSearchLoading, setBatchSearchLoading] = useState(false);
+  const batchSearchPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const bfAutoAppliedRef = useRef(false);
   const bfModelAutoSelectedRef = useRef(false);
   const [diagnostics, setDiagnostics] = useState<LGBDiagnosticsResponse | null>(null);
@@ -208,7 +211,10 @@ const LightGBMPage: React.FC = () => {
       setLabelMode('fixed');
       setForwardDays(best.forward_days);
     }
-    setStopStrategy(best.stop_strategy);
+    // Map brute force stop_strategy to valid backtest-sim values
+    const rawSt = best.stop_strategy;
+    const validSt = (rawSt === 'loss_aversion' || rawSt === 'dead_hold') ? rawSt : 'none';
+    setStopStrategy(validSt);
     setBacktestTopN(best.top_n);
     setBacktestFwd(best.forward_days);
     // Reset model selection so auto-select picks the matching model
@@ -506,6 +512,7 @@ const LightGBMPage: React.FC = () => {
       if (pollRef.current) clearInterval(pollRef.current);
       if (bruteForcePollRef.current) clearInterval(bruteForcePollRef.current);
       if (subsetSearchPollRef.current) clearInterval(subsetSearchPollRef.current);
+      if (batchSearchPollRef.current) clearInterval(batchSearchPollRef.current);
     };
   }, []);
 
@@ -616,6 +623,7 @@ const LightGBMPage: React.FC = () => {
         exec_mode: trainExecMode,
         mode: 'postmarket',
         tpe_trials: 80,
+        top_n: backtestTopN,
       });
       localStorage.setItem(SS_TASK_KEY, task_id);
       const finalResult = await pollSubsetSearch(task_id);
@@ -625,7 +633,7 @@ const LightGBMPage: React.FC = () => {
     } finally {
       setSubsetSearchLoading(false);
     }
-  }, [pollSubsetSearch, labelMode, forwardDays, windowDays, trainExecMode]);
+  }, [pollSubsetSearch, labelMode, forwardDays, windowDays, trainExecMode, backtestTopN]);
 
   const handleSubsetApply = useCallback(async () => {
     const result = subsetSearchStatus?.result;
@@ -663,6 +671,48 @@ const LightGBMPage: React.FC = () => {
       },
     });
   }, [subsetSearchStatus]);
+
+  /* ── Factor Subset Batch Search ── */
+  const BS_TASK_KEY = 'lgb_batch_search_task_id';
+
+  const pollBatchSearch = useCallback((taskId: string) => {
+    batchSearchPollRef.current = setInterval(async () => {
+      try {
+        const status = await researchApi.getFactorSubsetBatchStatus(taskId);
+        setBatchSearchStatus(status);
+        if (status.status === 'completed' || status.status === 'failed') {
+          clearInterval(batchSearchPollRef.current!);
+          batchSearchPollRef.current = null;
+          localStorage.removeItem(BS_TASK_KEY);
+          setBatchSearchLoading(false);
+        }
+      } catch {
+        clearInterval(batchSearchPollRef.current!);
+        batchSearchPollRef.current = null;
+        localStorage.removeItem(BS_TASK_KEY);
+        setBatchSearchLoading(false);
+      }
+    }, 5000);
+  }, []);
+
+  useEffect(() => {
+    const stored = localStorage.getItem(BS_TASK_KEY);
+    if (!stored) return;
+    setBatchSearchLoading(true);
+    pollBatchSearch(stored);
+  }, [pollBatchSearch]);
+
+  const handleBatchSearchStart = useCallback(async () => {
+    setBatchSearchLoading(true);
+    setBatchSearchStatus(null);
+    try {
+      const { task_id } = await researchApi.startFactorSubsetBatch();
+      localStorage.setItem(BS_TASK_KEY, task_id);
+      pollBatchSearch(task_id);
+    } catch {
+      setBatchSearchLoading(false);
+    }
+  }, [pollBatchSearch]);
 
   /* ── Catch-up prediction ── */
   const CU_TASK_KEY = 'lgb_catchup_task';
@@ -1126,7 +1176,7 @@ const LightGBMPage: React.FC = () => {
             <div className="space-y-3">
               <div className="font-medium text-sm text-secondary-text">因子最优组合搜索</div>
               <div className="text-xs text-tertiary-text">
-                三阶段搜索: 基线重要性 → 贪心前向选择 → Optuna TPE 精调。自动寻找最优因子子集，结果保存至 lgb_reports/factor_subset/。
+                三阶段搜索: 基线重要性 → 贪心前向选择 → Optuna TPE 精调。优化目标: 日均收益率最高。自动寻找最优因子子集，结果保存至 lgb_reports/factor_subset/。
               </div>
 
               {subsetSearchStatus && subsetSearchStatus.status === 'completed' && subsetSearchStatus.result && (
@@ -1134,21 +1184,21 @@ const LightGBMPage: React.FC = () => {
                   <div className="border-t border-white/5" />
                   <div className="text-xs space-y-1">
                     <div className="flex justify-between">
-                      <span>基线 IC (全部因子)</span>
-                      <span>{subsetSearchStatus.result.baseline_ic.toFixed(4)}</span>
+                      <span>基线日均收益 (全部因子)</span>
+                      <span>{(subsetSearchStatus.result.baseline_daily_return * 100).toFixed(2)}%</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>最优 IC ({subsetSearchStatus.result.final_subset.length}因子)</span>
-                      <span className={subsetSearchStatus.result.delta_ic >= 0 ? 'text-green-400' : 'text-red-400'}>
-                        {subsetSearchStatus.result.final_ic.toFixed(4)}
+                      <span>最优日均收益 ({subsetSearchStatus.result.final_subset.length}因子)</span>
+                      <span className={subsetSearchStatus.result.delta_daily_return >= 0 ? 'text-green-400' : 'text-red-400'}>
+                        {(subsetSearchStatus.result.final_daily_return * 100).toFixed(2)}%
                         <span className="ml-1 text-[10px]">
-                          ({subsetSearchStatus.result.delta_ic >= 0 ? '+' : ''}{subsetSearchStatus.result.delta_ic.toFixed(4)})
+                          ({subsetSearchStatus.result.delta_daily_return >= 0 ? '+' : ''}{(subsetSearchStatus.result.delta_daily_return * 100).toFixed(2)}%)
                         </span>
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span>ICIR</span>
-                      <span>{subsetSearchStatus.result.final_icir.toFixed(4)}</span>
+                      <span>Rank IC</span>
+                      <span>{subsetSearchStatus.result.final_ic.toFixed(4)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>排除因子</span>
@@ -1190,6 +1240,91 @@ const LightGBMPage: React.FC = () => {
                 loading={subsetSearchLoading}
               >
                 {subsetSearchLoading ? '搜索中...' : '搜索最优因子组合'}
+              </Button>
+            </div>
+          </Card>
+
+          {/* Batch Factor Subset Search */}
+          <Card>
+            <div className="space-y-3">
+              <div className="font-medium text-sm text-secondary-text">批量因子搜索</div>
+              <div className="text-xs text-tertiary-text">
+                测试 20 种参数组合（open/close × fixed3d/5d/10d/20d + peak20d × 2种top_n），数据范围 2025-01-01 ~ 2026-05-25。按日均收益排名，每组内部自动选最优 top_n。
+              </div>
+
+              {batchSearchStatus && batchSearchStatus.status === 'completed' && batchSearchStatus.result && (
+                <div className="space-y-2">
+                  <div className="border-t border-white/5" />
+                  <div className="text-xs overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="text-tertiary-text">
+                          <th className="text-left pr-2">#</th>
+                          <th className="text-left pr-2">执行</th>
+                          <th className="text-left pr-2">模式</th>
+                          <th className="text-left pr-2">持有</th>
+                          <th className="text-left pr-2">Top</th>
+                          <th className="text-right pr-2">日均收益</th>
+                          <th className="text-right pr-2">IC</th>
+                          <th className="text-right">因子</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {batchSearchStatus.result.summary.slice(0, 20).map((item: any) => (
+                          <tr key={item.rank} className={item.rank === 1 ? 'text-green-400 font-medium' : ''}>
+                            <td className="pr-2">{item.rank}</td>
+                            <td className="pr-2">{item.exec_mode || '-'}</td>
+                            <td className="pr-2">{item.label_mode === 'fixed' ? 'fixed' : 'peak'}</td>
+                            <td className="pr-2">{item.label_mode === 'fixed' ? `${item.forward_days}d` : '-'}</td>
+                            <td className="pr-2">{item.top_n}</td>
+                            <td className="text-right pr-2">{(item.daily_return_mean * 100).toFixed(2)}%</td>
+                            <td className="text-right pr-2">{item.rank_ic_mean.toFixed(4)}</td>
+                            <td className="text-right">{item.n_factors}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {batchSearchStatus.result.best && (
+                    <div className="text-xs space-y-1">
+                      <div className="text-green-400 font-medium">
+                        最优: {batchSearchStatus.result.best.exec_mode || ''} {' '}
+                        {batchSearchStatus.result.best.label_mode === 'fixed' ? 'fixed' : 'peak'}
+                        {batchSearchStatus.result.best.label_mode === 'fixed' ? ` ${batchSearchStatus.result.best.forward_days}d` : ''}
+                        {' '}top{batchSearchStatus.result.best.top_n}
+                        {' '}{(batchSearchStatus.result.best.daily_return_mean * 100).toFixed(2)}%
+                      </div>
+                      <div className="text-tertiary-text">
+                        因子: {batchSearchStatus.result.best.final_subset.join(', ')}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {batchSearchStatus && batchSearchStatus.status === 'running' && (
+                <div className="text-xs text-blue-400 flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  {batchSearchStatus.status_message || '搜索中...'}
+                </div>
+              )}
+
+              {batchSearchStatus && batchSearchStatus.status === 'failed' && (
+                <div className="text-xs text-red-400">
+                  {batchSearchStatus.error || '搜索失败'}
+                </div>
+              )}
+
+              <Button
+                block
+                size="small"
+                type="primary"
+                icon={batchSearchLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                onClick={handleBatchSearchStart}
+                disabled={batchSearchLoading || batchSearchStatus?.status === 'running'}
+                loading={batchSearchLoading}
+              >
+                {batchSearchLoading ? '搜索中...' : '开始批量搜索'}
               </Button>
             </div>
           </Card>
