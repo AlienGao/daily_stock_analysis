@@ -1,16 +1,16 @@
 [
   {
     "rank": 1,
-    "stock_code": "001376",
-    "stock_name": "百通能源",
-    "score": 27.3,
-    "sector": "电力",
+    "stock_code": "603587",
+    "stock_name": "地素时尚",
+    "score": 53.4,
+    "sector": "服装家纺",
     "factor_scores": {
-      "sector": 68.07521385294936,
-      "momentum": 24.783051782838083,
-      "ranking_momentum": 75.14941654694667,
+      "sector": 38.81515668535326,
+      "momentum": 33.332381337857406,
+      "ranking_momentum": 70.9300806763226,
       "rebound": 0.0,
-      "popularity": 0.0
+      "popularity": 81.46328700848527
     },
     "factor_weights": {
       "sector": 25.0,
@@ -20,122 +20,37 @@
       "popularity": 18.0
     },
     "reasons": [
-      "趋势加速↑(13.1%/天)",
-      "今日强于98%个股",
-      "所属板块: 电力"
+      "趋势加速↑(6.3%/天)",
+      "今日强于78%个股",
+      "所属板块: 服装家纺"
     ],
-    "buy_price_low": 13.7,
-    "buy_price_high": 14.8,
-    "stop_loss": 14.65,
-    "take_profit_1": 15.91,
-    "take_profit_2": 17.74,
-    "discovered_at": "11:29:46",
-    "price_at_discovery": 14.75,
-    "pct_chg": 6.19,
-    "tech_score": 74.82,
-    "rr_score": 79.52987267384918,
-    "market_score": 50.45895735148571,
-    "sector_score": 99.27125507968194,
-    "volume_score": 89.99998706611242,
-    "position_score": 85,
+    "buy_price_low": 12.5,
+    "buy_price_high": 13.2,
+    "stop_loss": 12.96,
+    "take_profit_1": 13.48,
+    "take_profit_2": 14.01,
+    "discovered_at": "13:03:31",
+    "price_at_discovery": 13.09,
+    "pct_chg": -0.3,
+    "tech_score": 61.46,
+    "rr_score": 69.64285714285718,
+    "market_score": 50.791891156215065,
+    "sector_score": 89.27039074013865,
+    "volume_score": 60.09917698596803,
+    "position_score": 60,
     "formation_score": 20.0,
-    "composite_score": 60.56399999999999
+    "composite_score": 59.042
   },
   {
     "rank": 2,
-    "stock_code": "301305",
-    "stock_name": "朗坤科技",
-    "score": 34.3,
-    "sector": "环境治理",
-    "factor_scores": {
-      "sector": 59.57458177752439,
-      "momentum": 100.0,
-      "ranking_momentum": 73.98696542210956,
-      "rebound": 0.0,
-      "popularity": 0.0
-    },
-    "factor_weights": {
-      "sector": 25.0,
-      "momentum": 18.0,
-      "ranking_momentum": 15.0,
-      "rebound": 20.0,
-      "popularity": 18.0
-    },
-    "reasons": [
-      "排名连续上升(2天)",
-      "趋势加速↑(12.3%/天)",
-      "今日强于95%个股",
-      "所属板块: 环境治理"
-    ],
-    "buy_price_low": 24.6,
-    "buy_price_high": 26.2,
-    "stop_loss": 25.94,
-    "take_profit_1": 27.92,
-    "take_profit_2": 30.82,
-    "discovered_at": "11:29:46",
-    "price_at_discovery": 26.42,
-    "pct_chg": 3.16,
-    "tech_score": 70.79,
-    "rr_score": 75.6484149855908,
-    "market_score": 50.45895735148571,
-    "sector_score": 100.0,
-    "volume_score": 89.99999999993274,
-    "position_score": 75,
-    "formation_score": 20.0,
-    "composite_score": 59.843
-  },
-  {
-    "rank": 3,
-    "stock_code": "603368",
-    "stock_name": "柳药集团",
-    "score": 44.1,
-    "sector": "医药商业",
-    "factor_scores": {
-      "sector": 0.0,
-      "momentum": 35.96525133499706,
-      "ranking_momentum": 80.58793410634424,
-      "rebound": 0.0,
-      "popularity": 67.67766952966375
-    },
-    "factor_weights": {
-      "sector": 25.0,
-      "momentum": 18.0,
-      "ranking_momentum": 15.0,
-      "rebound": 20.0,
-      "popularity": 18.0
-    },
-    "reasons": [
-      "排名连续上升(2天)",
-      "趋势加速↑(21.2%/天)",
-      "今日强于74%个股"
-    ],
-    "buy_price_low": 15.4,
-    "buy_price_high": 16.3,
-    "stop_loss": 15.79,
-    "take_profit_1": 16.43,
-    "take_profit_2": 17.5,
-    "discovered_at": "11:29:46",
-    "price_at_discovery": 15.95,
-    "pct_chg": -0.68,
-    "tech_score": 64.53,
-    "rr_score": 75.0,
-    "market_score": 50.45895735148571,
-    "sector_score": 43.26722032218897,
-    "volume_score": 65.0,
-    "position_score": 85,
-    "formation_score": 20.0,
-    "composite_score": 58.400999999999996
-  },
-  {
-    "rank": 4,
     "stock_code": "600757",
     "stock_name": "长江传媒",
-    "score": 47.5,
+    "score": 47.4,
     "sector": "文化传媒",
     "factor_scores": {
       "sector": 0.0,
-      "momentum": 37.439138039560135,
-      "ranking_momentum": 88.05080451136162,
+      "momentum": 37.20986923332708,
+      "ranking_momentum": 87.52381479112361,
       "rebound": 0.0,
       "popularity": 72.57759404678575
     },
@@ -149,23 +64,107 @@
     "reasons": [
       "排名连续上升(2天)",
       "趋势加速↑(17.8%/天)",
-      "今日强于73%个股"
+      "今日强于71%个股"
     ],
     "buy_price_low": 7.7,
-    "buy_price_high": 8.1,
+    "buy_price_high": 8.0,
     "stop_loss": 7.81,
-    "take_profit_1": 8.14,
+    "take_profit_1": 8.13,
     "take_profit_2": 9.05,
-    "discovered_at": "11:29:46",
-    "price_at_discovery": 7.9,
-    "pct_chg": -0.75,
-    "tech_score": 61.07,
-    "rr_score": 66.66666666666617,
-    "market_score": 50.45895735148571,
-    "sector_score": 34.6295625601467,
-    "volume_score": 64.25487914004604,
+    "discovered_at": "13:03:31",
+    "price_at_discovery": 7.89,
+    "pct_chg": -0.88,
+    "tech_score": 64.03,
+    "rr_score": 75.00000000000028,
+    "market_score": 50.791891156215065,
+    "sector_score": 32.85319614258773,
+    "volume_score": 64.60251796991277,
     "position_score": 85,
     "formation_score": 20.0,
-    "composite_score": 56.998999999999995
+    "composite_score": 59.041
+  },
+  {
+    "rank": 3,
+    "stock_code": "603368",
+    "stock_name": "柳药集团",
+    "score": 44.2,
+    "sector": "医药商业",
+    "factor_scores": {
+      "sector": 0.0,
+      "momentum": 36.212687503701346,
+      "ranking_momentum": 80.64766812674404,
+      "rebound": 0.0,
+      "popularity": 67.67766952966375
+    },
+    "factor_weights": {
+      "sector": 25.0,
+      "momentum": 18.0,
+      "ranking_momentum": 15.0,
+      "rebound": 20.0,
+      "popularity": 18.0
+    },
+    "reasons": [
+      "排名连续上升(2天)",
+      "趋势加速↑(21.0%/天)",
+      "今日强于74%个股"
+    ],
+    "buy_price_low": 15.4,
+    "buy_price_high": 16.3,
+    "stop_loss": 15.8,
+    "take_profit_1": 16.44,
+    "take_profit_2": 17.5,
+    "discovered_at": "13:03:31",
+    "price_at_discovery": 15.96,
+    "pct_chg": -0.62,
+    "tech_score": 64.69,
+    "rr_score": 75.0,
+    "market_score": 50.791891156215065,
+    "sector_score": 44.23919730070986,
+    "volume_score": 65.17391023812998,
+    "position_score": 85,
+    "formation_score": 20.0,
+    "composite_score": 58.54299999999999
+  },
+  {
+    "rank": 4,
+    "stock_code": "603167",
+    "stock_name": "渤海轮渡",
+    "score": 31.4,
+    "sector": "港口航运",
+    "factor_scores": {
+      "sector": 0.0,
+      "momentum": 41.36782133230119,
+      "ranking_momentum": 80.0128887540594,
+      "rebound": 0.0,
+      "popularity": 32.32233047033631
+    },
+    "factor_weights": {
+      "sector": 25.0,
+      "momentum": 18.0,
+      "ranking_momentum": 15.0,
+      "rebound": 20.0,
+      "popularity": 18.0
+    },
+    "reasons": [
+      "排名连续上升(2天)",
+      "趋势加速↑(11.3%/天)",
+      "今日强于75%个股"
+    ],
+    "buy_price_low": 8.8,
+    "buy_price_high": 9.1,
+    "stop_loss": 9.03,
+    "take_profit_1": 9.36,
+    "take_profit_2": 9.73,
+    "discovered_at": "13:03:31",
+    "price_at_discovery": 9.09,
+    "pct_chg": -0.55,
+    "tech_score": 69.56,
+    "rr_score": 100.0,
+    "market_score": 50.791891156215065,
+    "sector_score": 61.55145839909589,
+    "volume_score": 64.47086183603851,
+    "position_score": 85,
+    "formation_score": 20.0,
+    "composite_score": 58.112
   }
 ]

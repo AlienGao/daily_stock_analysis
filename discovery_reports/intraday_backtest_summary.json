@@ -42,11 +42,11 @@
   {
     "date": "20260526",
     "mode": "intraday",
-    "cumulative_return": 0.0417168,
+    "cumulative_return": 0.0416146,
     "win_rate": 0.43243243243243246,
     "total_trades": 74,
     "total_days": 14,
-    "final_capital": 5208584.0,
+    "final_capital": 5208073.0,
     "initial_capital": 5000000.0
   }
 ]
