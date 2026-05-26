@@ -5,6 +5,7 @@
 """
 
 import multiprocessing
+import os
 import threading
 import uuid
 from datetime import datetime, timedelta
@@ -40,6 +41,8 @@ from api.v1.schemas.research import (
     LGBCrossModelOverlapStock,
     LGBFinBERTResponse,
     FinBERTNewsItem,
+    LGBFactorSubsetResult,
+    LGBFactorSubsetTaskStatus,
 )
 from src.discovery.ml.lgb_trainer import LGBTrainer
 from src.storage import DatabaseManager, FactorScoreSnapshot, StockAdjFactor, StockDaily
@@ -3268,3 +3271,169 @@ def _warmup_backtest_cache():
 # Fire-and-forget background warmup after module loads
 _t = threading.Thread(target=_warmup_backtest_cache, daemon=True)
 _t.start()
+
+
+# ------------------------------------------------------------------
+# 因子子集最优搜索
+# ------------------------------------------------------------------
+
+_factor_subset_tasks: Dict[str, dict] = {}
+
+
+def _run_factor_subset_search(task_id: str, params: dict):
+    from src.discovery.ml.factor_subset_search import FactorSubsetSearcher
+
+    task = _factor_subset_tasks.get(task_id)
+    if task is None:
+        return
+
+    task["status"] = "running"
+    task["status_message"] = "正在搜索最优因子组合..."
+
+    def progress(msg: str):
+        task["status_message"] = msg
+
+    try:
+        searcher = FactorSubsetSearcher(
+            mode=params.get("mode", "postmarket"),
+            label_mode=params.get("label_mode", "fixed"),
+            forward_days=params.get("forward_days", 5),
+            window_days=params.get("window_days", 20),
+            exec_mode=params.get("exec_mode", "open"),
+            start_date=params.get("start_date"),
+            end_date=params.get("end_date"),
+            cv_folds=params.get("cv_folds", 5),
+            tpe_trials=params.get("tpe_trials", 80),
+            progress_callback=progress,
+        )
+        result = searcher.run()
+
+        # 查找报告路径
+        report_path = ""
+        import glob as _glob
+        report_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
+            os.path.dirname(os.path.abspath(__file__))))), "lgb_reports", "factor_subset")
+        if os.path.isdir(report_dir):
+            json_files = sorted(_glob.glob(os.path.join(report_dir, "subset_*.json")),
+                                reverse=True)
+            if json_files:
+                report_path = json_files[0]
+
+        fm = result.get("final_metrics", {})
+        bl = result.get("phase1", {}).get("baseline", {})
+        task["status"] = "completed"
+        task["result"] = {
+            "all_factors": result.get("all_factors", []),
+            "final_subset": result.get("final_subset", []),
+            "excluded_factors": result.get("excluded_factors", []),
+            "baseline_ic": bl.get("rank_ic_mean", 0.0),
+            "final_ic": fm.get("rank_ic_mean", 0.0),
+            "final_icir": fm.get("icir", 0.0),
+            "final_rmse": fm.get("cv_rmse_mean", 0.0),
+            "delta_ic": fm.get("rank_ic_mean", 0.0) - bl.get("rank_ic_mean", 0.0),
+            "elapsed_seconds": result.get("elapsed_seconds", 0.0),
+            "report_path": report_path,
+        }
+    except Exception as e:
+        task["status"] = "failed"
+        task["error"] = str(e)
+        import traceback
+        traceback.print_exc()
+
+
+@router.post(
+    "/lgb/factor-subset-search",
+    summary="启动因子子集最优搜索",
+)
+def lgb_factor_subset_search(
+    label_mode: str = Query("fixed", description="标签模式: fixed / peak_speed"),
+    forward_days: int = Query(5, description="前瞻天数 (fixed 模式)"),
+    window_days: int = Query(20, description="窗口天数 (peak_speed 模式)"),
+    exec_mode: str = Query("open", description="执行模式: open / close"),
+    mode: str = Query("postmarket", description="postmarket / intraday"),
+    tpe_trials: int = Query(80, description="TPE 精调试验次数"),
+):
+    task_id = str(uuid.uuid4())[:8]
+    _factor_subset_tasks[task_id] = {
+        "status": "pending",
+        "status_message": "Queued...",
+        "started_at": datetime.now().isoformat(),
+    }
+    params = {
+        "label_mode": label_mode,
+        "forward_days": forward_days,
+        "window_days": window_days,
+        "exec_mode": exec_mode,
+        "mode": mode,
+        "tpe_trials": tpe_trials,
+    }
+    threading.Thread(
+        target=_run_factor_subset_search,
+        args=(task_id, params),
+        daemon=True,
+    ).start()
+    return {"task_id": task_id, "status": "pending"}
+
+
+@router.get(
+    "/lgb/factor-subset-search/status",
+    response_model=LGBFactorSubsetTaskStatus,
+    summary="查询因子子集搜索任务状态",
+)
+def lgb_factor_subset_search_status(
+    task_id: str = Query(..., description="任务 ID"),
+):
+    task = _factor_subset_tasks.get(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务 ID 不存在")
+    return LGBFactorSubsetTaskStatus(
+        task_id=task_id,
+        status=task.get("status", "unknown"),
+        status_message=task.get("status_message", ""),
+        result=task.get("result"),
+        error=task.get("error", ""),
+    )
+
+
+@router.post(
+    "/lgb/factor-subset-apply",
+    summary="应用因子子集搜索结果",
+)
+def lgb_factor_subset_apply():
+    """将最近一次搜索结果的排除因子写入 .env（与已有值合并）。"""
+    latest = None
+    for _tid, t in _factor_subset_tasks.items():
+        if t.get("status") == "completed" and t.get("result"):
+            if latest is None or t.get("started_at", "") > latest.get("started_at", ""):
+                latest = t
+    if latest is None:
+        raise HTTPException(status_code=404, detail="没有已完成的搜索结果")
+
+    result = latest["result"]
+    new_excluded = result.get("excluded_factors", [])
+    if not new_excluded:
+        return {"applied": False, "message": "无需排除任何因子"}
+
+    # 读取已有的 LGB_DISABLE_FACTOR
+    existing_excluded = []
+    env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
+        os.path.dirname(os.path.abspath(__file__))))), ".env")
+    if os.path.exists(env_path):
+        with open(env_path, "r", encoding="utf-8") as f:
+            for line in f:
+                stripped = line.strip()
+                if stripped.startswith("LGB_DISABLE_FACTOR=") or stripped.startswith("# LGB_DISABLE_FACTOR="):
+                    val = stripped.split("=", 1)[1].split("#")[0].strip()
+                    if val:
+                        existing_excluded = [f.strip() for f in val.split(",") if f.strip()]
+                    break
+
+    from src.discovery.ml.factor_subset_search import FactorSubsetSearcher
+    searcher = FactorSubsetSearcher()
+    env_value = searcher.apply_best_subset(result)
+    return {
+        "applied": True,
+        "existing_excluded": existing_excluded,
+        "new_excluded": new_excluded,
+        "env_value": env_value,
+    }

@@ -260,6 +260,27 @@ export type LGBCrossModelOverlapResponse = {
   stocks: LGBCrossModelOverlapStock[];
 };
 
+export type LGBFactorSubsetResult = {
+  all_factors: string[];
+  final_subset: string[];
+  excluded_factors: string[];
+  baseline_ic: number;
+  final_ic: number;
+  final_icir: number;
+  final_rmse: number;
+  delta_ic: number;
+  elapsed_seconds: number;
+  report_path: string;
+};
+
+export type LGBFactorSubsetTaskStatus = {
+  task_id: string;
+  status: string;
+  status_message: string;
+  result: LGBFactorSubsetResult | null;
+  error: string;
+};
+
 /* ── API ── */
 
 export const researchApi = {
@@ -405,6 +426,34 @@ export const researchApi = {
       params: { task_id: taskId },
       timeout: 60000,
     });
+    return resp.data;
+  },
+
+  async startFactorSubsetSearch(params: {
+    label_mode?: string;
+    forward_days?: number;
+    window_days?: number;
+    exec_mode?: string;
+    mode?: string;
+    tpe_trials?: number;
+  } = {}): Promise<{ task_id: string; status: string }> {
+    const resp = await apiClient.post('/api/v1/research/lgb/factor-subset-search', null, {
+      params,
+      timeout: 120000,
+    });
+    return resp.data;
+  },
+
+  async getFactorSubsetSearchStatus(taskId: string): Promise<LGBFactorSubsetTaskStatus> {
+    const resp = await apiClient.get('/api/v1/research/lgb/factor-subset-search/status', {
+      params: { task_id: taskId },
+      timeout: 60000,
+    });
+    return resp.data;
+  },
+
+  async applyFactorSubsetResult(): Promise<{ applied: boolean; existing_excluded?: string[]; new_excluded?: string[]; env_value?: string; message?: string }> {
+    const resp = await apiClient.post('/api/v1/research/lgb/factor-subset-apply', null, { timeout: 30000 });
     return resp.data;
   },
 };

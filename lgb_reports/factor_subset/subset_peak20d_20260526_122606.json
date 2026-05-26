@@ -1,0 +1,342 @@
+{
+  "all_factors": [
+    "alpha042",
+    "alpha60",
+    "broker_recommend",
+    "buyback",
+    "chip",
+    "fundamental",
+    "gap_reversal",
+    "gtja114",
+    "hot_money",
+    "limit",
+    "liquid_oversold",
+    "margin",
+    "money_flow",
+    "money_flow_osc",
+    "ranking_momentum",
+    "technical",
+    "vwap_deviation",
+    "vwap_reversal"
+  ],
+  "phase1": {
+    "baseline": {
+      "rank_ic_mean": 0.128047,
+      "rank_ic_std": 0.095728,
+      "icir": 1.3376,
+      "cv_rmse_mean": 0.116592,
+      "n_factors": 18,
+      "factors": [
+        "alpha042",
+        "alpha60",
+        "broker_recommend",
+        "buyback",
+        "chip",
+        "fundamental",
+        "gap_reversal",
+        "gtja114",
+        "hot_money",
+        "limit",
+        "liquid_oversold",
+        "margin",
+        "money_flow",
+        "money_flow_osc",
+        "ranking_momentum",
+        "technical",
+        "vwap_deviation",
+        "vwap_reversal"
+      ]
+    },
+    "importance_ranking": [
+      "broker_recommend",
+      "chip",
+      "margin",
+      "buyback",
+      "vwap_reversal",
+      "ranking_momentum",
+      "gtja114",
+      "fundamental",
+      "technical",
+      "alpha042",
+      "vwap_deviation",
+      "liquid_oversold",
+      "money_flow_osc",
+      "alpha60",
+      "gap_reversal",
+      "limit",
+      "money_flow",
+      "hot_money"
+    ],
+    "gain": {
+      "alpha042": 90.9,
+      "alpha60": 14.8,
+      "broker_recommend": 1299.4,
+      "buyback": 537.2,
+      "chip": 672.4,
+      "fundamental": 132.7,
+      "gap_reversal": 13.9,
+      "gtja114": 194.8,
+      "hot_money": 5.2,
+      "limit": 13.2,
+      "liquid_oversold": 36.4,
+      "margin": 660.5,
+      "money_flow": 8.4,
+      "money_flow_osc": 34.2,
+      "ranking_momentum": 233.2,
+      "technical": 92.6,
+      "vwap_deviation": 60.3,
+      "vwap_reversal": 323.7
+    }
+  },
+  "phase2": {
+    "selected": [
+      "gtja114",
+      "chip",
+      "ranking_momentum",
+      "buyback",
+      "vwap_reversal",
+      "fundamental",
+      "liquid_oversold",
+      "gap_reversal",
+      "alpha042",
+      "money_flow_osc",
+      "vwap_deviation",
+      "limit",
+      "hot_money",
+      "money_flow",
+      "alpha60"
+    ],
+    "best_subset": [
+      "gtja114",
+      "chip",
+      "ranking_momentum",
+      "buyback",
+      "vwap_reversal",
+      "fundamental",
+      "liquid_oversold",
+      "gap_reversal",
+      "alpha042",
+      "money_flow_osc",
+      "vwap_deviation",
+      "limit"
+    ],
+    "best_ic": 0.140197,
+    "trace": [
+      {
+        "round": 1,
+        "added": "gtja114",
+        "rank_ic_mean": 0.08668,
+        "icir": 1.1768,
+        "cv_rmse_mean": 0.116808,
+        "n_factors": 1,
+        "improved": true
+      },
+      {
+        "round": 2,
+        "added": "chip",
+        "rank_ic_mean": 0.105202,
+        "icir": 1.3693,
+        "cv_rmse_mean": 0.117149,
+        "n_factors": 2,
+        "improved": true
+      },
+      {
+        "round": 3,
+        "added": "ranking_momentum",
+        "rank_ic_mean": 0.115372,
+        "icir": 1.3472,
+        "cv_rmse_mean": 0.116853,
+        "n_factors": 3,
+        "improved": true
+      },
+      {
+        "round": 4,
+        "added": "buyback",
+        "rank_ic_mean": 0.126723,
+        "icir": 1.5323,
+        "cv_rmse_mean": 0.117228,
+        "n_factors": 4,
+        "improved": true
+      },
+      {
+        "round": 5,
+        "added": "vwap_reversal",
+        "rank_ic_mean": 0.129924,
+        "icir": 1.3993,
+        "cv_rmse_mean": 0.116792,
+        "n_factors": 5,
+        "improved": true
+      },
+      {
+        "round": 6,
+        "added": "fundamental",
+        "rank_ic_mean": 0.13251,
+        "icir": 1.4884,
+        "cv_rmse_mean": 0.116748,
+        "n_factors": 6,
+        "improved": true
+      },
+      {
+        "round": 7,
+        "added": "liquid_oversold",
+        "rank_ic_mean": 0.135463,
+        "icir": 1.5235,
+        "cv_rmse_mean": 0.116602,
+        "n_factors": 7,
+        "improved": true
+      },
+      {
+        "round": 8,
+        "added": "gap_reversal",
+        "rank_ic_mean": 0.137879,
+        "icir": 1.5422,
+        "cv_rmse_mean": 0.116601,
+        "n_factors": 8,
+        "improved": true
+      },
+      {
+        "round": 9,
+        "added": "alpha042",
+        "rank_ic_mean": 0.137642,
+        "icir": 1.6188,
+        "cv_rmse_mean": 0.116443,
+        "n_factors": 9,
+        "improved": false
+      },
+      {
+        "round": 10,
+        "added": "money_flow_osc",
+        "rank_ic_mean": 0.138075,
+        "icir": 1.5215,
+        "cv_rmse_mean": 0.116325,
+        "n_factors": 10,
+        "improved": true
+      },
+      {
+        "round": 11,
+        "added": "vwap_deviation",
+        "rank_ic_mean": 0.138875,
+        "icir": 1.5226,
+        "cv_rmse_mean": 0.116266,
+        "n_factors": 11,
+        "improved": true
+      },
+      {
+        "round": 12,
+        "added": "limit",
+        "rank_ic_mean": 0.140197,
+        "icir": 1.5658,
+        "cv_rmse_mean": 0.116243,
+        "n_factors": 12,
+        "improved": true
+      },
+      {
+        "round": 13,
+        "added": "hot_money",
+        "rank_ic_mean": 0.138683,
+        "icir": 1.5344,
+        "cv_rmse_mean": 0.116231,
+        "n_factors": 13,
+        "improved": false
+      },
+      {
+        "round": 14,
+        "added": "money_flow",
+        "rank_ic_mean": 0.138859,
+        "icir": 1.5479,
+        "cv_rmse_mean": 0.116227,
+        "n_factors": 14,
+        "improved": false
+      },
+      {
+        "round": 15,
+        "added": "alpha60",
+        "rank_ic_mean": 0.137975,
+        "icir": 1.4358,
+        "cv_rmse_mean": 0.116185,
+        "n_factors": 15,
+        "improved": false
+      }
+    ]
+  },
+  "phase3": {
+    "best_subset": [
+      "alpha60",
+      "buyback",
+      "chip",
+      "fundamental",
+      "gap_reversal",
+      "gtja114",
+      "hot_money",
+      "vwap_deviation"
+    ],
+    "best_result": {
+      "rank_ic_mean": 0.131072,
+      "rank_ic_std": 0.084713,
+      "icir": 1.5473,
+      "cv_rmse_mean": 0.116673,
+      "n_factors": 8,
+      "factors": [
+        "alpha60",
+        "buyback",
+        "chip",
+        "fundamental",
+        "gap_reversal",
+        "gtja114",
+        "hot_money",
+        "vwap_deviation"
+      ]
+    },
+    "n_trials": 80
+  },
+  "final_subset": [
+    "gtja114",
+    "chip",
+    "ranking_momentum",
+    "buyback",
+    "vwap_reversal",
+    "fundamental",
+    "liquid_oversold",
+    "gap_reversal",
+    "alpha042",
+    "money_flow_osc",
+    "vwap_deviation",
+    "limit"
+  ],
+  "final_metrics": {
+    "rank_ic_mean": 0.140197,
+    "rank_ic_std": 0.089538,
+    "icir": 1.5658,
+    "cv_rmse_mean": 0.116243,
+    "n_factors": 12,
+    "factors": [
+      "gtja114",
+      "chip",
+      "ranking_momentum",
+      "buyback",
+      "vwap_reversal",
+      "fundamental",
+      "liquid_oversold",
+      "gap_reversal",
+      "alpha042",
+      "money_flow_osc",
+      "vwap_deviation",
+      "limit"
+    ]
+  },
+  "excluded_factors": [
+    "alpha60",
+    "broker_recommend",
+    "hot_money",
+    "margin",
+    "money_flow",
+    "technical"
+  ],
+  "elapsed_seconds": 1674.4,
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "window_days": 20,
+  "exec_mode": "close",
+  "mode": "postmarket",
+  "timestamp": "2026-05-26T12:26:06.565690"
+}

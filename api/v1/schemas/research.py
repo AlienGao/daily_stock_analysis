@@ -256,3 +256,24 @@ class LGBBruteForceTaskStatus(BaseModel):
     status_message: str = ""
     result: Optional[LGBBruteForceResult] = None
     error: str = ""
+
+
+class LGBFactorSubsetResult(BaseModel):
+    all_factors: List[str] = []
+    final_subset: List[str] = []
+    excluded_factors: List[str] = []
+    baseline_ic: float = 0.0
+    final_ic: float = 0.0
+    final_icir: float = 0.0
+    final_rmse: float = 0.0
+    delta_ic: float = 0.0
+    elapsed_seconds: float = 0.0
+    report_path: str = ""
+
+
+class LGBFactorSubsetTaskStatus(BaseModel):
+    task_id: str
+    status: str  # running | completed | failed
+    status_message: str = ""
+    result: Optional[LGBFactorSubsetResult] = None
+    error: str = ""

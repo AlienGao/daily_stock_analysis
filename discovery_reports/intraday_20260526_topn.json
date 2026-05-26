@@ -1,16 +1,16 @@
 [
   {
     "rank": 1,
-    "stock_code": "300543",
-    "stock_name": "朗科智能",
-    "score": 32.4,
-    "sector": "消费电子",
+    "stock_code": "001376",
+    "stock_name": "百通能源",
+    "score": 27.3,
+    "sector": "电力",
     "factor_scores": {
-      "sector": 0.0,
-      "momentum": 29.442515446583332,
-      "ranking_momentum": 56.46584801458664,
+      "sector": 68.07521385294936,
+      "momentum": 24.783051782838083,
+      "ranking_momentum": 75.14941654694667,
       "rebound": 0.0,
-      "popularity": 50.0
+      "popularity": 0.0
     },
     "factor_weights": {
       "sector": 25.0,
@@ -20,37 +20,39 @@
       "popularity": 18.0
     },
     "reasons": [
-      "今日强于97%个股"
+      "趋势加速↑(13.1%/天)",
+      "今日强于98%个股",
+      "所属板块: 电力"
     ],
-    "buy_price_low": 8.9,
-    "buy_price_high": 9.6,
-    "stop_loss": 9.46,
-    "take_profit_1": 10.07,
-    "take_profit_2": 10.58,
-    "discovered_at": "09:59:46",
-    "price_at_discovery": 9.61,
-    "pct_chg": 3.78,
-    "tech_score": 70.26,
-    "rr_score": 76.66666666666754,
-    "market_score": 51.3008151467498,
-    "sector_score": 93.34235009248351,
-    "volume_score": 90.0,
-    "position_score": 75,
+    "buy_price_low": 13.7,
+    "buy_price_high": 14.8,
+    "stop_loss": 14.65,
+    "take_profit_1": 15.91,
+    "take_profit_2": 17.74,
+    "discovered_at": "11:29:46",
+    "price_at_discovery": 14.75,
+    "pct_chg": 6.19,
+    "tech_score": 74.82,
+    "rr_score": 79.52987267384918,
+    "market_score": 50.45895735148571,
+    "sector_score": 99.27125507968194,
+    "volume_score": 89.99998706611242,
+    "position_score": 85,
     "formation_score": 20.0,
-    "composite_score": 58.902
+    "composite_score": 60.56399999999999
   },
   {
     "rank": 2,
-    "stock_code": "603167",
-    "stock_name": "渤海轮渡",
-    "score": 31.2,
-    "sector": "港口航运",
+    "stock_code": "301305",
+    "stock_name": "朗坤科技",
+    "score": 34.3,
+    "sector": "环境治理",
     "factor_scores": {
-      "sector": 0.0,
-      "momentum": 39.50376100569725,
-      "ranking_momentum": 80.07712256908306,
+      "sector": 59.57458177752439,
+      "momentum": 100.0,
+      "ranking_momentum": 73.98696542210956,
       "rebound": 0.0,
-      "popularity": 32.32233047033631
+      "popularity": 0.0
     },
     "factor_weights": {
       "sector": 25.0,
@@ -61,25 +63,26 @@
     },
     "reasons": [
       "排名连续上升(2天)",
-      "趋势加速↑(10.9%/天)",
-      "今日强于72%个股"
+      "趋势加速↑(12.3%/天)",
+      "今日强于95%个股",
+      "所属板块: 环境治理"
     ],
-    "buy_price_low": 8.8,
-    "buy_price_high": 9.1,
-    "stop_loss": 9.03,
-    "take_profit_1": 9.36,
-    "take_profit_2": 9.73,
-    "discovered_at": "09:59:46",
-    "price_at_discovery": 9.09,
-    "pct_chg": -0.55,
-    "tech_score": 70.41,
-    "rr_score": 100.0,
-    "market_score": 51.3008151467498,
-    "sector_score": 62.499791732429216,
-    "volume_score": 68.50487761086787,
-    "position_score": 85,
+    "buy_price_low": 24.6,
+    "buy_price_high": 26.2,
+    "stop_loss": 25.94,
+    "take_profit_1": 27.92,
+    "take_profit_2": 30.82,
+    "discovered_at": "11:29:46",
+    "price_at_discovery": 26.42,
+    "pct_chg": 3.16,
+    "tech_score": 70.79,
+    "rr_score": 75.6484149855908,
+    "market_score": 50.45895735148571,
+    "sector_score": 100.0,
+    "volume_score": 89.99999999993274,
+    "position_score": 75,
     "formation_score": 20.0,
-    "composite_score": 58.64699999999999
+    "composite_score": 59.843
   },
   {
     "rank": 3,
@@ -89,8 +92,8 @@
     "sector": "医药商业",
     "factor_scores": {
       "sector": 0.0,
-      "momentum": 35.37851059927568,
-      "ranking_momentum": 80.98612149627304,
+      "momentum": 35.96525133499706,
+      "ranking_momentum": 80.58793410634424,
       "rebound": 0.0,
       "popularity": 67.67766952966375
     },
@@ -103,36 +106,36 @@
     },
     "reasons": [
       "排名连续上升(2天)",
-      "趋势加速↑(20.2%/天)",
-      "今日强于72%个股"
+      "趋势加速↑(21.2%/天)",
+      "今日强于74%个股"
     ],
     "buy_price_low": 15.4,
     "buy_price_high": 16.3,
-    "stop_loss": 15.82,
-    "take_profit_1": 16.46,
-    "take_profit_2": 17.49,
-    "discovered_at": "09:59:46",
-    "price_at_discovery": 15.98,
-    "pct_chg": -0.5,
-    "tech_score": 62.86,
+    "stop_loss": 15.79,
+    "take_profit_1": 16.43,
+    "take_profit_2": 17.5,
+    "discovered_at": "11:29:46",
+    "price_at_discovery": 15.95,
+    "pct_chg": -0.68,
+    "tech_score": 64.53,
     "rr_score": 75.0,
-    "market_score": 51.3008151467498,
-    "sector_score": 44.46002625775126,
-    "volume_score": 52.07159876337678,
+    "market_score": 50.45895735148571,
+    "sector_score": 43.26722032218897,
+    "volume_score": 65.0,
     "position_score": 85,
     "formation_score": 20.0,
-    "composite_score": 57.232
+    "composite_score": 58.400999999999996
   },
   {
     "rank": 4,
     "stock_code": "600757",
     "stock_name": "长江传媒",
-    "score": 46.5,
+    "score": 47.5,
     "sector": "文化传媒",
     "factor_scores": {
       "sector": 0.0,
-      "momentum": 37.99000556812254,
-      "ranking_momentum": 82.145090805082,
+      "momentum": 37.439138039560135,
+      "ranking_momentum": 88.05080451136162,
       "rebound": 0.0,
       "popularity": 72.57759404678575
     },
@@ -146,23 +149,23 @@
     "reasons": [
       "排名连续上升(2天)",
       "趋势加速↑(17.8%/天)",
-      "今日强于68%个股"
+      "今日强于73%个股"
     ],
     "buy_price_low": 7.7,
     "buy_price_high": 8.1,
     "stop_loss": 7.81,
     "take_profit_1": 8.14,
     "take_profit_2": 9.05,
-    "discovered_at": "09:59:46",
+    "discovered_at": "11:29:46",
     "price_at_discovery": 7.9,
     "pct_chg": -0.75,
-    "tech_score": 58.44,
+    "tech_score": 61.07,
     "rr_score": 66.66666666666617,
-    "market_score": 51.3008151467498,
-    "sector_score": 29.634033148382,
-    "volume_score": 46.979895903878194,
+    "market_score": 50.45895735148571,
+    "sector_score": 34.6295625601467,
+    "volume_score": 64.25487914004604,
     "position_score": 85,
     "formation_score": 20.0,
-    "composite_score": 54.85799999999999
+    "composite_score": 56.998999999999995
   }
 ]

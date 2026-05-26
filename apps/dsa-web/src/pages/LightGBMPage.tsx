@@ -4,10 +4,10 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
   BarChart, Bar, CartesianGrid,
 } from 'recharts';
-import { DatePicker, Segmented, Table, InputNumber, Button, Select, Input, Tooltip as AntTooltip } from 'antd';
-import { Brain, Play, Loader2, Search } from 'lucide-react';
+import { DatePicker, Segmented, Table, InputNumber, Button, Select, Input, Tooltip as AntTooltip, Modal, message } from 'antd';
+import { Brain, Play, Loader2, Search, Sparkles } from 'lucide-react';
 import { AppPage, Card, StatCard, EmptyState, ApiErrorAlert } from '../components/common';
-import { researchApi, type LGBTaskStatusResponse, type LGBPredictionItem, type LGBBacktestCompareResponse, type LGBModelInfo, type LGBDateRangeResponse, type LGBStockLookupItem, type LGBBacktestSimResponse, type LGBBacktestSimAvailableResponse, type LGBBruteForceTaskStatus, type LGBBruteForceItem, type LGBDiagnosticsResponse, type LGBCrossModelOverlapResponse, type CatchUpTaskStatus, type LGBBruteForceResult } from '../api/research';
+import { researchApi, type LGBTaskStatusResponse, type LGBPredictionItem, type LGBBacktestCompareResponse, type LGBModelInfo, type LGBDateRangeResponse, type LGBStockLookupItem, type LGBBacktestSimResponse, type LGBBacktestSimAvailableResponse, type LGBBruteForceTaskStatus, type LGBBruteForceItem, type LGBDiagnosticsResponse, type LGBCrossModelOverlapResponse, type CatchUpTaskStatus, type LGBBruteForceResult, type LGBFactorSubsetTaskStatus } from '../api/research';
 import type { ParsedApiError } from '../api/error';
 import { getParsedApiError } from '../api/error';
 import dayjs from 'dayjs';
@@ -125,6 +125,10 @@ const LightGBMPage: React.FC = () => {
   const [bfActiveBest, setBfActiveBest] = useState<'return' | 'sharpe'>('return');
   const [latestBfReport, setLatestBfReport] = useState<LGBBruteForceResult | null>(null);
   const [bfReportLoading, setBfReportLoading] = useState(false);
+
+  const [subsetSearchStatus, setSubsetSearchStatus] = useState<LGBFactorSubsetTaskStatus | null>(null);
+  const [subsetSearchLoading, setSubsetSearchLoading] = useState(false);
+  const subsetSearchPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const bfAutoAppliedRef = useRef(false);
   const bfModelAutoSelectedRef = useRef(false);
   const [diagnostics, setDiagnostics] = useState<LGBDiagnosticsResponse | null>(null);
@@ -501,6 +505,7 @@ const LightGBMPage: React.FC = () => {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
       if (bruteForcePollRef.current) clearInterval(bruteForcePollRef.current);
+      if (subsetSearchPollRef.current) clearInterval(subsetSearchPollRef.current);
     };
   }, []);
 
@@ -559,6 +564,105 @@ const LightGBMPage: React.FC = () => {
       setBruteForceLoading(false);
     }
   }, [pollBruteForce]);
+
+  /* ── Factor Subset Search ── */
+  const SS_TASK_KEY = 'lgb_subset_search_task_id';
+
+  const pollSubsetSearch = useCallback((taskId: string): Promise<LGBFactorSubsetTaskStatus> => {
+    return new Promise<LGBFactorSubsetTaskStatus>((resolve, reject) => {
+      subsetSearchPollRef.current = setInterval(async () => {
+        try {
+          const status = await researchApi.getFactorSubsetSearchStatus(taskId);
+          setSubsetSearchStatus(status);
+          if (status.status === 'completed') {
+            clearInterval(subsetSearchPollRef.current!);
+            subsetSearchPollRef.current = null;
+            localStorage.removeItem(SS_TASK_KEY);
+            resolve(status);
+          } else if (status.status === 'failed') {
+            clearInterval(subsetSearchPollRef.current!);
+            subsetSearchPollRef.current = null;
+            localStorage.removeItem(SS_TASK_KEY);
+            reject(new Error(status.error || '搜索失败'));
+          }
+        } catch (e) {
+          clearInterval(subsetSearchPollRef.current!);
+          subsetSearchPollRef.current = null;
+          localStorage.removeItem(SS_TASK_KEY);
+          reject(e);
+        }
+      }, 2000);
+    });
+  }, []);
+
+  useEffect(() => {
+    const stored = localStorage.getItem(SS_TASK_KEY);
+    if (!stored) return;
+    setSubsetSearchLoading(true);
+    pollSubsetSearch(stored)
+      .then((result) => setSubsetSearchStatus(result))
+      .catch(() => {})
+      .finally(() => setSubsetSearchLoading(false));
+  }, [pollSubsetSearch]);
+
+  const handleSubsetSearchStart = useCallback(async () => {
+    setSubsetSearchLoading(true);
+    setSubsetSearchStatus(null);
+    try {
+      const { task_id } = await researchApi.startFactorSubsetSearch({
+        label_mode: labelMode,
+        forward_days: forwardDays,
+        window_days: windowDays,
+        exec_mode: trainExecMode,
+        mode: 'postmarket',
+        tpe_trials: 80,
+      });
+      localStorage.setItem(SS_TASK_KEY, task_id);
+      const finalResult = await pollSubsetSearch(task_id);
+      setSubsetSearchStatus(finalResult);
+    } catch {
+      // error already set via polling
+    } finally {
+      setSubsetSearchLoading(false);
+    }
+  }, [pollSubsetSearch, labelMode, forwardDays, windowDays, trainExecMode]);
+
+  const handleSubsetApply = useCallback(async () => {
+    const result = subsetSearchStatus?.result;
+    if (!result) return;
+    Modal.confirm({
+      title: '应用因子子集搜索结果',
+      content: (
+        <div className="space-y-2">
+          <p>本次搜索将排除以下 {result.excluded_factors.length} 个因子：</p>
+          <div className="text-xs bg-gray-800 rounded p-2">
+            {result.excluded_factors.join(', ')}
+          </div>
+          <p className="text-xs text-gray-400">
+            保留 {result.final_subset.length} 个因子，Rank IC: {result.final_ic.toFixed(4)}
+            （基线: {result.baseline_ic.toFixed(4)}, Δ: {result.delta_ic >= 0 ? '+' : ''}{result.delta_ic.toFixed(4)}）
+          </p>
+          <p className="text-xs text-orange-400">
+            注意：将与 .env 中已有的 LGB_DISABLE_FACTOR 合并（取并集），写入后需重启服务生效。
+          </p>
+        </div>
+      ),
+      okText: '确认应用',
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          const resp = await researchApi.applyFactorSubsetResult();
+          if (resp.applied && resp.env_value) {
+            message.success(`已合并写入 .env: ${resp.env_value}，重启服务后生效`);
+          } else {
+            message.success(resp.message || '已应用');
+          }
+        } catch {
+          message.error('应用失败');
+        }
+      },
+    });
+  }, [subsetSearchStatus]);
 
   /* ── Catch-up prediction ── */
   const CU_TASK_KEY = 'lgb_catchup_task';
@@ -1013,6 +1117,79 @@ const LightGBMPage: React.FC = () => {
                 loading={bruteForceLoading}
               >
                 {bruteForceLoading ? '搜索中...' : '开始搜索'}
+              </Button>
+            </div>
+          </Card>
+
+          {/* Factor Subset Search */}
+          <Card>
+            <div className="space-y-3">
+              <div className="font-medium text-sm text-secondary-text">因子最优组合搜索</div>
+              <div className="text-xs text-tertiary-text">
+                三阶段搜索: 基线重要性 → 贪心前向选择 → Optuna TPE 精调。自动寻找最优因子子集，结果保存至 lgb_reports/factor_subset/。
+              </div>
+
+              {subsetSearchStatus && subsetSearchStatus.status === 'completed' && subsetSearchStatus.result && (
+                <div className="space-y-2">
+                  <div className="border-t border-white/5" />
+                  <div className="text-xs space-y-1">
+                    <div className="flex justify-between">
+                      <span>基线 IC (全部因子)</span>
+                      <span>{subsetSearchStatus.result.baseline_ic.toFixed(4)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>最优 IC ({subsetSearchStatus.result.final_subset.length}因子)</span>
+                      <span className={subsetSearchStatus.result.delta_ic >= 0 ? 'text-green-400' : 'text-red-400'}>
+                        {subsetSearchStatus.result.final_ic.toFixed(4)}
+                        <span className="ml-1 text-[10px]">
+                          ({subsetSearchStatus.result.delta_ic >= 0 ? '+' : ''}{subsetSearchStatus.result.delta_ic.toFixed(4)})
+                        </span>
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>ICIR</span>
+                      <span>{subsetSearchStatus.result.final_icir.toFixed(4)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>排除因子</span>
+                      <span className="text-tertiary-text">{subsetSearchStatus.result.excluded_factors.length} 个</span>
+                    </div>
+                  </div>
+                  <Button
+                    block
+                    size="small"
+                    type="default"
+                    icon={<Sparkles className="h-3.5 w-3.5" />}
+                    onClick={handleSubsetApply}
+                  >
+                    应用最优因子组合
+                  </Button>
+                </div>
+              )}
+
+              {subsetSearchStatus && subsetSearchStatus.status === 'running' && (
+                <div className="text-xs text-blue-400 flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  {subsetSearchStatus.status_message || '搜索中...'}
+                </div>
+              )}
+
+              {subsetSearchStatus && subsetSearchStatus.status === 'failed' && (
+                <div className="text-xs text-red-400">
+                  {subsetSearchStatus.error || '搜索失败'}
+                </div>
+              )}
+
+              <Button
+                block
+                size="small"
+                type="primary"
+                icon={subsetSearchLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                onClick={handleSubsetSearchStart}
+                disabled={subsetSearchLoading || subsetSearchStatus?.status === 'running'}
+                loading={subsetSearchLoading}
+              >
+                {subsetSearchLoading ? '搜索中...' : '搜索最优因子组合'}
               </Button>
             </div>
           </Card>
