@@ -8,75 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301205.SZ",
-      "stock_code": "301205",
-      "stock_name": "联特科技",
-      "lgb_score": 100.0,
-      "raw_score": 0.19
+      "ts_code": "601929.SH",
+      "stock_code": "601929",
+      "stock_name": "吉视传媒",
+      "lgb_score": 89.65,
+      "raw_score": 0.18
     },
     {
       "rank": 2,
-      "ts_code": "300263.SZ",
-      "stock_code": "300263",
-      "stock_name": "隆华科技",
-      "lgb_score": 99.3,
-      "raw_score": 0.19
+      "ts_code": "002663.SZ",
+      "stock_code": "002663",
+      "stock_name": "普邦股份",
+      "lgb_score": 83.53,
+      "raw_score": 0.15
     },
     {
       "rank": 3,
-      "ts_code": "600151.SH",
-      "stock_code": "600151",
-      "stock_name": "航天机电",
-      "lgb_score": 90.16,
-      "raw_score": 0.16
+      "ts_code": "002470.SZ",
+      "stock_code": "002470",
+      "stock_name": "金正大",
+      "lgb_score": 83.41,
+      "raw_score": 0.15
     },
     {
       "rank": 4,
-      "ts_code": "300885.SZ",
-      "stock_code": "300885",
-      "stock_name": "海昌新材",
-      "lgb_score": 88.63,
-      "raw_score": 0.16
+      "ts_code": "600533.SH",
+      "stock_code": "600533",
+      "stock_name": "栖霞建设",
+      "lgb_score": 78.94,
+      "raw_score": 0.13
     },
     {
       "rank": 5,
-      "ts_code": "002407.SZ",
-      "stock_code": "002407",
-      "stock_name": "多氟多",
-      "lgb_score": 87.9,
-      "raw_score": 0.16
+      "ts_code": "920719.BJ",
+      "stock_code": "920719.BJ",
+      "stock_name": "",
+      "lgb_score": 78.74,
+      "raw_score": 0.13
     }
   ],
   "tree_diagnostics": {
     "n_trees": 200,
-    "avg_depth": 10.56,
+    "avg_depth": 10.99,
     "avg_n_leaves": 31.0,
     "total_n_leaves": 6200
   },
   "prediction_stats": {
-    "mean": 0.003731,
-    "std": 0.015818,
-    "skew": 1.2148,
-    "kurtosis": 16.1968,
-    "min": -0.098288,
-    "max": 0.191233,
-    "median": 0.00596
+    "mean": -0.035311,
+    "std": 0.03341,
+    "skew": 1.0026,
+    "kurtosis": 0.0509,
+    "min": -0.188882,
+    "max": 0.218169,
+    "median": -0.056621
   },
   "training_metrics": {
-    "cv_rmse_mean": 0.10527162811899035,
-    "cv_rmse_std": 0.034536637382814574,
+    "cv_rmse_mean": 0.12012356270461293,
+    "cv_rmse_std": 0.04018402090354122,
     "cv_scores": [
-      0.073452,
-      0.171915,
-      0.086267,
-      0.093913,
-      0.100812
+      0.077197,
+      0.196414,
+      0.114126,
+      0.10596,
+      0.106921
     ],
-    "rank_ic_mean": 0.04872,
-    "rank_ic_std": 0.03431,
-    "icir": 1.42,
-    "oof_corr": -0.013359,
-    "n_samples": 44364,
-    "n_features": 18
+    "rank_ic_mean": 0.048551,
+    "rank_ic_std": 0.03589,
+    "icir": 1.3528,
+    "oof_corr": -0.022839,
+    "n_samples": 625214,
+    "n_features": 12
   }
 }

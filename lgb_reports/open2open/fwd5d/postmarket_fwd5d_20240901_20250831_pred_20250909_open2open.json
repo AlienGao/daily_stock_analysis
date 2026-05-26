@@ -8,75 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "002229.SZ",
-      "stock_code": "002229",
-      "stock_name": "鸿博股份",
-      "lgb_score": 100.0,
-      "raw_score": 0.18
+      "ts_code": "601588.SH",
+      "stock_code": "601588",
+      "stock_name": "北辰实业",
+      "lgb_score": 96.37,
+      "raw_score": 0.13
     },
     {
       "rank": 2,
-      "ts_code": "300017.SZ",
-      "stock_code": "300017",
-      "stock_name": "网宿科技",
-      "lgb_score": 93.21,
-      "raw_score": 0.16
+      "ts_code": "603077.SH",
+      "stock_code": "603077",
+      "stock_name": "和邦生物",
+      "lgb_score": 95.71,
+      "raw_score": 0.13
     },
     {
       "rank": 3,
-      "ts_code": "600076.SH",
-      "stock_code": "600076",
-      "stock_name": "康欣新材",
-      "lgb_score": 92.25,
-      "raw_score": 0.16
+      "ts_code": "002663.SZ",
+      "stock_code": "002663",
+      "stock_name": "普邦股份",
+      "lgb_score": 94.74,
+      "raw_score": 0.13
     },
     {
       "rank": 4,
-      "ts_code": "603915.SH",
-      "stock_code": "603915",
-      "stock_name": "国茂股份",
-      "lgb_score": 91.53,
-      "raw_score": 0.16
+      "ts_code": "000608.SZ",
+      "stock_code": "000608",
+      "stock_name": "阳光股份",
+      "lgb_score": 93.43,
+      "raw_score": 0.12
     },
     {
       "rank": 5,
-      "ts_code": "000601.SZ",
-      "stock_code": "000601",
-      "stock_name": "韶能股份",
-      "lgb_score": 90.93,
-      "raw_score": 0.16
+      "ts_code": "601992.SH",
+      "stock_code": "601992",
+      "stock_name": "金隅集团",
+      "lgb_score": 92.72,
+      "raw_score": 0.12
     }
   ],
   "tree_diagnostics": {
     "n_trees": 200,
-    "avg_depth": 11.01,
+    "avg_depth": 10.78,
     "avg_n_leaves": 31.0,
     "total_n_leaves": 6200
   },
   "prediction_stats": {
-    "mean": 0.006027,
-    "std": 0.015151,
-    "skew": 2.8966,
-    "kurtosis": 18.6173,
-    "min": -0.105346,
-    "max": 0.184501,
-    "median": 0.000771
+    "mean": -0.010165,
+    "std": 0.018376,
+    "skew": 1.3156,
+    "kurtosis": 3.0029,
+    "min": -0.073672,
+    "max": 0.13762,
+    "median": -0.021553
   },
   "training_metrics": {
-    "cv_rmse_mean": 0.07392712074514005,
-    "cv_rmse_std": 0.011150468213531882,
+    "cv_rmse_mean": 0.07693984537940281,
+    "cv_rmse_std": 0.013529276314801794,
     "cv_scores": [
-      0.092829,
-      0.076622,
-      0.070617,
-      0.058501,
-      0.071067
+      0.098343,
+      0.078925,
+      0.082485,
+      0.061083,
+      0.063863
     ],
-    "rank_ic_mean": 0.014255,
-    "rank_ic_std": 0.024212,
-    "icir": 0.5888,
-    "oof_corr": -0.041624,
-    "n_samples": 44994,
-    "n_features": 18
+    "rank_ic_mean": 0.029555,
+    "rank_ic_std": 0.023289,
+    "icir": 1.2691,
+    "oof_corr": 0.014701,
+    "n_samples": 558769,
+    "n_features": 12
   }
 }

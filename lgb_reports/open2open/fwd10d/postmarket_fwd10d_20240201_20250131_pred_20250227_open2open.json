@@ -8,75 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688535.SH",
-      "stock_code": "688535",
-      "stock_name": "华海诚科",
-      "lgb_score": 100.0,
-      "raw_score": 0.15
+      "ts_code": "000608.SZ",
+      "stock_code": "000608",
+      "stock_name": "阳光股份",
+      "lgb_score": 90.9,
+      "raw_score": 0.27
     },
     {
       "rank": 2,
-      "ts_code": "600308.SH",
-      "stock_code": "600308",
-      "stock_name": "华泰股份",
-      "lgb_score": 99.5,
-      "raw_score": 0.15
+      "ts_code": "000620.SZ",
+      "stock_code": "000620",
+      "stock_name": "盈新发展",
+      "lgb_score": 90.14,
+      "raw_score": 0.27
     },
     {
       "rank": 3,
-      "ts_code": "688016.SH",
-      "stock_code": "688016",
-      "stock_name": "心脉医疗",
-      "lgb_score": 89.79,
-      "raw_score": 0.13
+      "ts_code": "600569.SH",
+      "stock_code": "600569",
+      "stock_name": "安阳钢铁",
+      "lgb_score": 88.43,
+      "raw_score": 0.26
     },
     {
       "rank": 4,
-      "ts_code": "688320.SH",
-      "stock_code": "688320",
-      "stock_name": "禾川科技",
-      "lgb_score": 87.32,
-      "raw_score": 0.12
+      "ts_code": "600743.SH",
+      "stock_code": "600743",
+      "stock_name": "华远控股",
+      "lgb_score": 86.12,
+      "raw_score": 0.25
     },
     {
       "rank": 5,
-      "ts_code": "301589.SZ",
-      "stock_code": "301589",
-      "stock_name": "诺瓦星云",
-      "lgb_score": 85.93,
-      "raw_score": 0.12
+      "ts_code": "920810.BJ",
+      "stock_code": "920810.BJ",
+      "stock_name": "",
+      "lgb_score": 84.12,
+      "raw_score": 0.24
     }
   ],
   "tree_diagnostics": {
     "n_trees": 200,
-    "avg_depth": 11.19,
+    "avg_depth": 10.9,
     "avg_n_leaves": 31.0,
     "total_n_leaves": 6200
   },
   "prediction_stats": {
-    "mean": 0.013347,
-    "std": 0.019091,
-    "skew": -1.359,
-    "kurtosis": 4.4018,
-    "min": -0.097546,
-    "max": 0.153686,
-    "median": 0.020744
+    "mean": -0.008209,
+    "std": 0.02282,
+    "skew": 3.243,
+    "kurtosis": 25.7514,
+    "min": -0.143285,
+    "max": 0.314447,
+    "median": -0.020102
   },
   "training_metrics": {
-    "cv_rmse_mean": 0.10240219249439245,
-    "cv_rmse_std": 0.030419349504758712,
+    "cv_rmse_mean": 0.12022431345862702,
+    "cv_rmse_std": 0.024288918222724595,
     "cv_scores": [
-      0.08724,
-      0.080663,
-      0.162357,
-      0.085223,
-      0.096528
+      0.11016,
+      0.085464,
+      0.148638,
+      0.147114,
+      0.109746
     ],
-    "rank_ic_mean": 0.042544,
-    "rank_ic_std": 0.034213,
-    "icir": 1.2435,
-    "oof_corr": -0.059617,
-    "n_samples": 47178,
-    "n_features": 18
+    "rank_ic_mean": 0.038784,
+    "rank_ic_std": 0.02523,
+    "icir": 1.5372,
+    "oof_corr": -0.028956,
+    "n_samples": 648543,
+    "n_features": 12
   }
 }
