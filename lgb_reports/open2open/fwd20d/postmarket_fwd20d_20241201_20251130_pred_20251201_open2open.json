@@ -26,7 +26,7 @@
       "rank": 3,
       "ts_code": "603986.SH.SH",
       "stock_code": "603986",
-      "stock_name": "兆易创新",
+      "stock_name": "XD兆易创",
       "lgb_score": 98.94,
       "raw_score": 0.41
     },
@@ -77,6 +77,6 @@
     "icir": 1.3889,
     "oof_corr": 0.11079,
     "n_samples": 42677,
-    "n_features": 24
+    "n_features": 18
   }
 }

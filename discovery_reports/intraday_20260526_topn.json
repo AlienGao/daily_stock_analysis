@@ -1,16 +1,16 @@
 [
   {
     "rank": 1,
-    "stock_code": "000586",
-    "stock_name": "汇源通信",
-    "score": 31.9,
-    "sector": "通信设备",
+    "stock_code": "300543",
+    "stock_name": "朗科智能",
+    "score": 32.4,
+    "sector": "消费电子",
     "factor_scores": {
-      "sector": 56.27165760569229,
-      "momentum": 41.570776830073804,
-      "ranking_momentum": 100.0,
+      "sector": 0.0,
+      "momentum": 29.442515446583332,
+      "ranking_momentum": 56.46584801458664,
       "rebound": 0.0,
-      "popularity": 0.0
+      "popularity": 50.0
     },
     "factor_weights": {
       "sector": 25.0,
@@ -20,38 +20,77 @@
       "popularity": 18.0
     },
     "reasons": [
-      "排名连续上升(3天)",
-      "趋势加速↑(8.1%/天)",
-      "今日强于97%个股",
-      "所属板块: 通信设备"
+      "今日强于97%个股"
     ],
-    "buy_price_low": 17.4,
-    "buy_price_high": 18.8,
-    "stop_loss": 18.6,
-    "take_profit_1": 20.46,
-    "take_profit_2": 23.12,
-    "discovered_at": "09:36:45",
-    "price_at_discovery": 18.65,
-    "pct_chg": 3.67,
-    "tech_score": 70.62,
-    "rr_score": 74.35446009389683,
-    "market_score": 51.54801151930962,
-    "sector_score": 100.0,
+    "buy_price_low": 8.9,
+    "buy_price_high": 9.6,
+    "stop_loss": 9.46,
+    "take_profit_1": 10.07,
+    "take_profit_2": 10.58,
+    "discovered_at": "09:59:46",
+    "price_at_discovery": 9.61,
+    "pct_chg": 3.78,
+    "tech_score": 70.26,
+    "rr_score": 76.66666666666754,
+    "market_score": 51.3008151467498,
+    "sector_score": 93.34235009248351,
     "volume_score": 90.0,
     "position_score": 75,
     "formation_score": 20.0,
-    "composite_score": 59.004
+    "composite_score": 58.902
   },
   {
     "rank": 2,
+    "stock_code": "603167",
+    "stock_name": "渤海轮渡",
+    "score": 31.2,
+    "sector": "港口航运",
+    "factor_scores": {
+      "sector": 0.0,
+      "momentum": 39.50376100569725,
+      "ranking_momentum": 80.07712256908306,
+      "rebound": 0.0,
+      "popularity": 32.32233047033631
+    },
+    "factor_weights": {
+      "sector": 25.0,
+      "momentum": 18.0,
+      "ranking_momentum": 15.0,
+      "rebound": 20.0,
+      "popularity": 18.0
+    },
+    "reasons": [
+      "排名连续上升(2天)",
+      "趋势加速↑(10.9%/天)",
+      "今日强于72%个股"
+    ],
+    "buy_price_low": 8.8,
+    "buy_price_high": 9.1,
+    "stop_loss": 9.03,
+    "take_profit_1": 9.36,
+    "take_profit_2": 9.73,
+    "discovered_at": "09:59:46",
+    "price_at_discovery": 9.09,
+    "pct_chg": -0.55,
+    "tech_score": 70.41,
+    "rr_score": 100.0,
+    "market_score": 51.3008151467498,
+    "sector_score": 62.499791732429216,
+    "volume_score": 68.50487761086787,
+    "position_score": 85,
+    "formation_score": 20.0,
+    "composite_score": 58.64699999999999
+  },
+  {
+    "rank": 3,
     "stock_code": "603368",
     "stock_name": "柳药集团",
-    "score": 44.5,
+    "score": 44.1,
     "sector": "医药商业",
     "factor_scores": {
       "sector": 0.0,
-      "momentum": 35.38810027663522,
-      "ranking_momentum": 83.06679245803883,
+      "momentum": 35.37851059927568,
+      "ranking_momentum": 80.98612149627304,
       "rebound": 0.0,
       "popularity": 67.67766952966375
     },
@@ -64,78 +103,38 @@
     },
     "reasons": [
       "排名连续上升(2天)",
-      "趋势加速↑(18.1%/天)",
-      "今日强于68%个股"
+      "趋势加速↑(20.2%/天)",
+      "今日强于72%个股"
     ],
-    "buy_price_low": 15.5,
+    "buy_price_low": 15.4,
     "buy_price_high": 16.3,
     "stop_loss": 15.82,
-    "take_profit_1": 16.48,
+    "take_profit_1": 16.46,
     "take_profit_2": 17.49,
-    "discovered_at": "09:36:45",
-    "price_at_discovery": 16.0,
-    "pct_chg": -0.37,
-    "tech_score": 60.08,
-    "rr_score": 66.66666666666683,
-    "market_score": 51.54801151930962,
-    "sector_score": 44.75960521479264,
-    "volume_score": 52.45792263679406,
+    "discovered_at": "09:59:46",
+    "price_at_discovery": 15.98,
+    "pct_chg": -0.5,
+    "tech_score": 62.86,
+    "rr_score": 75.0,
+    "market_score": 51.3008151467498,
+    "sector_score": 44.46002625775126,
+    "volume_score": 52.07159876337678,
     "position_score": 85,
     "formation_score": 20.0,
-    "composite_score": 55.406
-  },
-  {
-    "rank": 3,
-    "stock_code": "300789",
-    "stock_name": "唐源电气",
-    "score": 37.6,
-    "sector": "计算机设备",
-    "factor_scores": {
-      "sector": 0.0,
-      "momentum": 67.27204243484613,
-      "ranking_momentum": 25.441706963936845,
-      "rebound": 0.0,
-      "popularity": 67.6776695296637
-    },
-    "factor_weights": {
-      "sector": 25.0,
-      "momentum": 18.0,
-      "ranking_momentum": 15.0,
-      "rebound": 20.0,
-      "popularity": 18.0
-    },
-    "reasons": [
-      "人气飙升(+492位)"
-    ],
-    "buy_price_low": 21.2,
-    "buy_price_high": 23.3,
-    "stop_loss": 22.81,
-    "take_profit_1": 24.18,
-    "take_profit_2": 25.79,
-    "discovered_at": "09:36:45",
-    "price_at_discovery": 23.06,
-    "pct_chg": -2.21,
-    "tech_score": 60.88,
-    "rr_score": 72.19152854511978,
-    "market_score": 51.54801151930962,
-    "sector_score": 51.142026464554654,
-    "volume_score": 42.81762285192464,
-    "position_score": 85,
-    "formation_score": 20.0,
-    "composite_score": 53.896
+    "composite_score": 57.232
   },
   {
     "rank": 4,
-    "stock_code": "688496",
-    "stock_name": "*ST清越",
-    "score": 14.3,
-    "sector": "光学光电子",
+    "stock_code": "600757",
+    "stock_name": "长江传媒",
+    "score": 46.5,
+    "sector": "文化传媒",
     "factor_scores": {
       "sector": 0.0,
-      "momentum": 32.987859357517536,
-      "ranking_momentum": 58.0847244437226,
+      "momentum": 37.99000556812254,
+      "ranking_momentum": 82.145090805082,
       "rebound": 0.0,
-      "popularity": 0.0
+      "popularity": 72.57759404678575
     },
     "factor_weights": {
       "sector": 25.0,
@@ -145,23 +144,25 @@
       "popularity": 18.0
     },
     "reasons": [
-      "今日强于98%个股"
+      "排名连续上升(2天)",
+      "趋势加速↑(17.8%/天)",
+      "今日强于68%个股"
     ],
-    "buy_price_low": 2.1,
-    "buy_price_high": 2.3,
-    "stop_loss": 1.2,
-    "take_profit_1": 2.73,
-    "take_profit_2": 6.64,
-    "discovered_at": "09:36:45",
-    "price_at_discovery": 1.25,
-    "pct_chg": 4.17,
-    "tech_score": 57.96,
-    "rr_score": 100.0,
-    "market_score": 51.54801151930962,
-    "sector_score": 0.0,
-    "volume_score": 40.0,
+    "buy_price_low": 7.7,
+    "buy_price_high": 8.1,
+    "stop_loss": 7.81,
+    "take_profit_1": 8.14,
+    "take_profit_2": 9.05,
+    "discovered_at": "09:59:46",
+    "price_at_discovery": 7.9,
+    "pct_chg": -0.75,
+    "tech_score": 58.44,
+    "rr_score": 66.66666666666617,
+    "market_score": 51.3008151467498,
+    "sector_score": 29.634033148382,
+    "volume_score": 46.979895903878194,
     "position_score": 85,
     "formation_score": 20.0,
-    "composite_score": 44.861999999999995
+    "composite_score": 54.85799999999999
   }
 ]
