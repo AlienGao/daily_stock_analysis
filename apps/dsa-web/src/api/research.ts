@@ -276,15 +276,15 @@ export const researchApi = {
     return resp.data;
   },
 
-  async getFeatureImportance(modelPath?: string): Promise<LGBFeatureImportanceResponse> {
+  async getFeatureImportance(modelPath?: string, signal?: AbortSignal): Promise<LGBFeatureImportanceResponse> {
     const params = modelPath ? { model_path: modelPath } : {};
-    const resp = await apiClient.get('/api/v1/research/lgb/feature-importance', { params, timeout: 120000 });
+    const resp = await apiClient.get('/api/v1/research/lgb/feature-importance', { params, timeout: 120000, signal });
     return resp.data;
   },
 
-  async getPredictions(modelPath?: string): Promise<LGBPredictionsResponse> {
+  async getPredictions(modelPath?: string, signal?: AbortSignal): Promise<LGBPredictionsResponse> {
     const params = modelPath ? { model_path: modelPath } : {};
-    const resp = await apiClient.get('/api/v1/research/lgb/predictions', { params, timeout: 120000 });
+    const resp = await apiClient.get('/api/v1/research/lgb/predictions', { params, timeout: 120000, signal });
     return resp.data;
   },
 
@@ -308,6 +308,27 @@ export const researchApi = {
 
   async getDateRange(): Promise<LGBDateRangeResponse> {
     const resp = await apiClient.get('/api/v1/research/lgb/date-range');
+    return resp.data;
+  },
+
+  async getFinbertForStock(stockCode: string, stockName?: string): Promise<{
+    stock_code: string;
+    finbert_label: string | null;
+    finbert_score: number | null;
+    finbert_summary: string | null;
+    news_items: Array<{
+      title: string;
+      snippet: string;
+      source: string;
+      url: string;
+      date: string;
+      sentiment_label?: string;
+      sentiment_score?: number;
+    }> | null;
+  }> {
+    const params: Record<string, string> = { stock_code: stockCode };
+    if (stockName) params.stock_name = stockName;
+    const resp = await apiClient.get('/api/v1/research/lgb/finbert', { params, timeout: 120000 });
     return resp.data;
   },
 

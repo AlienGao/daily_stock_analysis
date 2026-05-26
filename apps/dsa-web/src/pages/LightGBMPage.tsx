@@ -7,7 +7,7 @@ import {
 import { DatePicker, Segmented, Table, InputNumber, Button, Select, Input, Tooltip as AntTooltip } from 'antd';
 import { Brain, Play, Loader2, Search } from 'lucide-react';
 import { AppPage, Card, StatCard, EmptyState, ApiErrorAlert } from '../components/common';
-import { researchApi, type LGBTaskStatusResponse, type LGBPredictionItem, type LGBBacktestCompareResponse, type LGBModelInfo, type LGBDateRangeResponse, type LGBStockLookupItem, type LGBBacktestSimResponse, type LGBBacktestSimAvailableResponse, type LGBBruteForceTaskStatus, type LGBDiagnosticsResponse, type LGBCrossModelOverlapResponse, type CatchUpTaskStatus, type LGBBruteForceResult } from '../api/research';
+import { researchApi, type LGBTaskStatusResponse, type LGBPredictionItem, type LGBBacktestCompareResponse, type LGBModelInfo, type LGBDateRangeResponse, type LGBStockLookupItem, type LGBBacktestSimResponse, type LGBBacktestSimAvailableResponse, type LGBBruteForceTaskStatus, type LGBBruteForceItem, type LGBDiagnosticsResponse, type LGBCrossModelOverlapResponse, type CatchUpTaskStatus, type LGBBruteForceResult } from '../api/research';
 import type { ParsedApiError } from '../api/error';
 import { getParsedApiError } from '../api/error';
 import dayjs from 'dayjs';
@@ -101,7 +101,7 @@ const LightGBMPage: React.FC = () => {
   const [featureImportance, setFeatureImportance] = useState<{ name: string; gain: number; split: number }[]>([]);
   const [predictions, setPredictions] = useState<LGBPredictionItem[]>([]);
   const [expandedPredKeys, setExpandedPredKeys] = useState<React.Key[]>([]);
-  useEffect(() => { setExpandedPredKeys([]); }, [predictions]);
+  useEffect(() => { setExpandedPredKeys([]); setFinbertResults({}); }, [predictions]);
   const [backtest, setBacktest] = useState<LGBBacktestCompareResponse | null>(null);
   const [models, setModels] = useState<LGBModelInfo[]>([]);
   const [selectedModel, setSelectedModel] = useState<string | undefined>(undefined);
@@ -122,6 +122,7 @@ const LightGBMPage: React.FC = () => {
   const [bruteForceStatus, setBruteForceStatus] = useState<LGBBruteForceTaskStatus | null>(null);
   const [bruteForceLoading, setBruteForceLoading] = useState(false);
   const bruteForcePollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [bfActiveBest, setBfActiveBest] = useState<'return' | 'sharpe'>('return');
   const [latestBfReport, setLatestBfReport] = useState<LGBBruteForceResult | null>(null);
   const [bfReportLoading, setBfReportLoading] = useState(false);
   const bfAutoAppliedRef = useRef(false);
@@ -133,9 +134,27 @@ const LightGBMPage: React.FC = () => {
   // Cross-model overlap
   const [overlapData, setOverlapData] = useState<LGBCrossModelOverlapResponse | null>(null);
   const [overlapLoading, setOverlapLoading] = useState(false);
+
+  // Per-stock FinBERT on-demand
+  const [finbertResults, setFinbertResults] = useState<Record<string, { finbert_label: string | null; finbert_score: number | null; finbert_summary: string | null; news_items: Array<{ title: string; snippet: string; source: string; url: string; date: string; sentiment_label?: string; sentiment_score?: number }> | null }>>({});
+  const [finbertLoading, setFinbertLoading] = useState<Record<string, boolean>>({});
   const overlapHighlight = new Set(
     overlapData?.stocks.filter((s) => s.count >= 3).map((s) => s.ts_code) ?? [],
   );
+
+  const fetchFinbert = useCallback(async (stockCode: string, stockName?: string) => {
+    if (finbertResults[stockCode] || finbertLoading[stockCode]) return;
+    setFinbertLoading(prev => ({ ...prev, [stockCode]: true }));
+    try {
+      const resp = await researchApi.getFinbertForStock(stockCode, stockName);
+      const { finbert_label, finbert_score, finbert_summary, news_items } = resp;
+      setFinbertResults(prev => ({ ...prev, [stockCode]: { finbert_label, finbert_score, finbert_summary, news_items } }));
+      if (news_items?.length || finbert_summary) {
+        setExpandedPredKeys(prev => prev.includes(stockCode) ? prev : [...prev, stockCode]);
+      }
+    } catch { /* ignore */ }
+    finally { setFinbertLoading(prev => ({ ...prev, [stockCode]: false })); }
+  }, [finbertResults, finbertLoading]);
 
   const selectedExecMode = selectedModel
     ? (selectedModel.endsWith('open2open') ? 'open' : 'close')
@@ -175,11 +194,8 @@ const LightGBMPage: React.FC = () => {
       .finally(() => setBfReportLoading(false));
   }, []);
 
-  /* ── Auto-apply best return params from latest report ── */
-  useEffect(() => {
-    if (!latestBfReport?.best_by_return || bfAutoAppliedRef.current) return;
-    const best = latestBfReport.best_by_return;
-    bfAutoAppliedRef.current = true;
+  const applyBfBest = useCallback((best: LGBBruteForceItem | null | undefined) => {
+    if (!best) return;
     setTrainExecMode(best.exec_mode);
     if (best.label_mode === 'peak_speed') {
       setLabelMode('peak_speed');
@@ -191,7 +207,17 @@ const LightGBMPage: React.FC = () => {
     setStopStrategy(best.stop_strategy);
     setBacktestTopN(best.top_n);
     setBacktestFwd(best.forward_days);
-  }, [latestBfReport]);
+    // Reset model selection so auto-select picks the matching model
+    setSelectedModel(undefined);
+    bfModelAutoSelectedRef.current = false;
+  }, []);
+
+  /* ── Auto-apply best return params from latest report ── */
+  useEffect(() => {
+    if (!latestBfReport?.best_by_return || bfAutoAppliedRef.current) return;
+    bfAutoAppliedRef.current = true;
+    applyBfBest(latestBfReport.best_by_return);
+  }, [latestBfReport, applyBfBest]);
 
   /* ── Load model list ── */
   const loadModels = useCallback(async () => {
@@ -240,7 +266,15 @@ const LightGBMPage: React.FC = () => {
     }
   }, [selectedExecMode]);
 
+  const modelAbortRef = useRef<AbortController | null>(null);
+  const [modelLoading, setModelLoading] = useState(false);
+
   const loadModelResults = useCallback(async (modelPath: string) => {
+    // Cancel any in-flight request
+    if (modelAbortRef.current) modelAbortRef.current.abort();
+    const controller = new AbortController();
+    modelAbortRef.current = controller;
+
     setError(null);
     setPredictions([]);
     setFeatureImportance([]);
@@ -248,30 +282,42 @@ const LightGBMPage: React.FC = () => {
     setStockLookup(null);
     setOverlapData(null);
     setBacktest(null);
-    try {
-      const [fi, pred] = await Promise.all([
-        researchApi.getFeatureImportance(modelPath),
-        researchApi.getPredictions(modelPath),
-      ]);
-      const fiList = Object.keys(fi.gain).map((name) => ({
-        name,
-        gain: fi.gain[name],
-        split: fi.split[name] ?? 0,
-      })).sort((a, b) => b.gain - a.gain);
-      setFeatureImportance(fiList);
-      setPredictions(pred.predictions);
-      setPredictionDate(pred.model_date);
-    } catch (e) {
-      setError(getParsedApiError(e));
-    }
+    setModelLoading(true);
+
+    // Fire feature importance first — render as soon as it returns
+    const fiPromise = researchApi.getFeatureImportance(modelPath, controller.signal)
+      .then((fi) => {
+        if (controller.signal.aborted) return;
+        const fiList = Object.keys(fi.gain).map((name) => ({
+          name,
+          gain: fi.gain[name],
+          split: fi.split[name] ?? 0,
+        })).sort((a, b) => b.gain - a.gain);
+        setFeatureImportance(fiList);
+      })
+      .catch((e) => { if (!controller.signal.aborted) setError(getParsedApiError(e)); });
+
+    // Predictions in parallel, loading state shown until it resolves
+    const predPromise = researchApi.getPredictions(modelPath, controller.signal)
+      .then((pred) => {
+        if (controller.signal.aborted) return;
+        setPredictions(pred.predictions);
+        setPredictionDate(pred.model_date);
+      })
+      .catch((e) => { if (!controller.signal.aborted) setError(getParsedApiError(e)); });
+
+    await Promise.allSettled([fiPromise, predPromise]);
+    if (!controller.signal.aborted) setModelLoading(false);
+
+    if (controller.signal.aborted) return;
     researchApi.getDiagnostics(modelPath).then(setDiagnostics).catch(() => {});
   }, []);
 
-  /* ── Auto-select best model matching brute force best return ── */
+  /* ── Auto-select best model matching brute force best ── */
   useEffect(() => {
-    if (!latestBfReport?.best_by_return || !bfAutoAppliedRef.current || bfModelAutoSelectedRef.current) return;
-    if (models.length === 0 || selectedModel) return;
-    const best = latestBfReport.best_by_return;
+    const best = bfActiveBest === 'sharpe' ? latestBfReport?.best_by_sharpe : latestBfReport?.best_by_return;
+    if (!best || !bfAutoAppliedRef.current || bfModelAutoSelectedRef.current) return;
+    if (models.length === 0) return;
     const execSuffix = best.exec_mode === 'open' ? 'open2open' : 'close2close';
     const modePrefix = best.label_mode === 'peak_speed'
       ? `peak${best.window_days}d`
@@ -284,7 +330,7 @@ const LightGBMPage: React.FC = () => {
       setSelectedModel(match.path);
       loadModelResults(match.path);
     }
-  }, [latestBfReport, models, selectedModel, loadModelResults]);
+  }, [latestBfReport, models, selectedModel, loadModelResults, bfActiveBest]);
 
   /* ── Train ── */
   const handleTrain = useCallback(async () => {
@@ -609,23 +655,34 @@ const LightGBMPage: React.FC = () => {
         return tip ? <AntTooltip overlayStyle={{ maxWidth: 360 }} title={<pre className="text-[11px] leading-relaxed m-0 whitespace-pre-wrap">{tip}</pre>} placement="top">{el}</AntTooltip> : el;
       },
     }] : []),
-    ...(predictions.some(p => p.finbert_label != null) ? [{
+    {
       title: 'FinBERT 评价',
-      dataIndex: 'finbert_label',
       key: 'finbert',
-      width: 110,
+      width: 120,
       render: (_: unknown, r: LGBPredictionItem) => {
-        if (!r.finbert_label) return <span className="text-tertiary-text text-xs">-</span>;
+        const fb = finbertResults[r.ts_code] ?? (r.finbert_label != null ? r : null);
+        const loading = finbertLoading[r.ts_code];
+        if (loading) {
+          return <span className="text-xs text-tertiary-text"><Loader2 className="inline w-3.5 h-3.5 animate-spin" /> 分析中…</span>;
+        }
+        if (!fb?.finbert_label) {
+          return (
+            <Button size="small" type="link" className="p-0 h-auto text-xs"
+              onClick={(e) => { e.stopPropagation(); fetchFinbert(r.ts_code, r.stock_name || r.stock_code); }}>
+              评价
+            </Button>
+          );
+        }
         const labelMap: Record<string, string> = { positive: '正面', negative: '负面', neutral: '中性' };
         const colorMap: Record<string, string> = { positive: 'text-red-400', negative: 'text-green-400', neutral: 'text-purple-400' };
-        const label = labelMap[r.finbert_label] || r.finbert_label;
-        const score = r.finbert_score != null ? `${r.finbert_score >= 0 ? '+' : ''}${r.finbert_score.toFixed(2)}` : '';
+        const label = labelMap[fb.finbert_label] || fb.finbert_label;
+        const score = fb.finbert_score != null ? `${fb.finbert_score >= 0 ? '+' : ''}${fb.finbert_score.toFixed(2)}` : '';
         const isExpanded = expandedPredKeys.includes(r.ts_code);
-        const hasDetails = !!(r.news_items?.length || r.finbert_summary);
+        const hasDetails = !!(fb.news_items?.length || fb.finbert_summary);
         return (
           <button
             type="button"
-            className={`text-left ${hasDetails ? 'cursor-pointer hover:underline' : ''} ${colorMap[r.finbert_label] || ''} font-medium`}
+            className={`text-left ${hasDetails ? 'cursor-pointer hover:underline' : ''} ${colorMap[fb.finbert_label] || ''} font-medium`}
             onClick={hasDetails ? (e) => {
               e.stopPropagation();
               setExpandedPredKeys(prev =>
@@ -638,7 +695,7 @@ const LightGBMPage: React.FC = () => {
           </button>
         );
       },
-    }] : []),
+    },
   ];
 
   return (
@@ -852,7 +909,7 @@ const LightGBMPage: React.FC = () => {
                 )}
                 {latestBfReport && !bruteForceStatus && (
                   <span className="text-green-400 ml-1">
-                    （已加载最新报告{latestBfReport.report_path ? `: ${latestBfReport.report_path.split('/').pop()}` : ''}，已自动应用最佳收益参数）
+                    （已加载最新报告{latestBfReport.report_path ? `: ${latestBfReport.report_path.split('/').pop()}` : ''}，点击下方卡片切换最佳收益/夏普参数）
                   </span>
                 )}
                 {(() => {
@@ -896,26 +953,40 @@ const LightGBMPage: React.FC = () => {
                 return (
                 <div className="space-y-2 text-xs">
                   {displayResult.best_by_return && (
-                    <div className="p-2 rounded bg-green-500/10 border border-green-500/20">
-                      <div className="text-tertiary-text">最佳收益</div>
+                    <button
+                      type="button"
+                      className={`w-full p-2 rounded border text-left transition-colors ${bfActiveBest === 'return' ? 'bg-green-500/20 border-green-500/50' : 'bg-green-500/10 border-green-500/20 hover:bg-green-500/15 cursor-pointer'}`}
+                      onClick={() => { setBfActiveBest('return'); applyBfBest(displayResult.best_by_return); }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-tertiary-text">最佳收益</span>
+                        {bfActiveBest === 'return' && <span className="text-green-400 text-[10px]">● 已应用</span>}
+                      </div>
                       <div className="font-medium">
                         {displayResult.best_by_return.stop_strategy} {displayResult.best_by_return.exec_mode} {modeLabel(displayResult.best_by_return)} top={displayResult.best_by_return.top_n}
                       </div>
                       <div className="text-red-400">
                         {(displayResult.best_by_return.cumulative_return * 100).toFixed(1)}%
                       </div>
-                    </div>
+                    </button>
                   )}
                   {displayResult.best_by_sharpe && (
-                    <div className="p-2 rounded bg-blue-500/10 border border-blue-500/20">
-                      <div className="text-tertiary-text">最佳夏普</div>
+                    <button
+                      type="button"
+                      className={`w-full p-2 rounded border text-left transition-colors ${bfActiveBest === 'sharpe' ? 'bg-blue-500/20 border-blue-500/50' : 'bg-blue-500/10 border-blue-500/20 hover:bg-blue-500/15 cursor-pointer'}`}
+                      onClick={() => { setBfActiveBest('sharpe'); applyBfBest(displayResult.best_by_sharpe); }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-tertiary-text">最佳夏普</span>
+                        {bfActiveBest === 'sharpe' && <span className="text-blue-400 text-[10px]">● 已应用</span>}
+                      </div>
                       <div className="font-medium">
                         {displayResult.best_by_sharpe.stop_strategy} {displayResult.best_by_sharpe.exec_mode} {modeLabel(displayResult.best_by_sharpe)} top={displayResult.best_by_sharpe.top_n}
                       </div>
                       <div className="text-blue-400">
                         {displayResult.best_by_sharpe.sharpe_ratio.toFixed(2)}
                       </div>
-                    </div>
+                    </button>
                   )}
                   {displayResult.report_path && (
                     <div className="text-[10px] text-tertiary-text truncate" title={displayResult.report_path}>
@@ -951,7 +1022,7 @@ const LightGBMPage: React.FC = () => {
         <div className="flex-1 min-w-0 space-y-4">
           {error && <ApiErrorAlert error={error} />}
 
-          {!featureImportance.length && !predictions.length && !backtest && !training && (
+          {!featureImportance.length && !predictions.length && !backtest && !training && !modelLoading && (
             <EmptyState
               icon={<Brain className="h-12 w-12 text-tertiary-text" />}
               title="LightGBM 因子研究"
@@ -1162,12 +1233,13 @@ const LightGBMPage: React.FC = () => {
           )}
 
           {/* Predictions */}
-          {predictions.length > 0 && (
+          {(predictions.length > 0 || modelLoading) && (
             <Card>
               <div className="flex items-center justify-between mb-3">
                 <div className="font-medium text-sm text-secondary-text">
                   预测结果 Top 5{predictionDate ? <span className="text-tertiary-text ml-2 text-xs">数据日期: {predictionDate}</span> : ''}
                   {modelDisplayName ? <span className="text-tertiary-text ml-1 text-xs">| {modelDisplayName}</span> : ''}
+                  {modelLoading && predictions.length === 0 && <span className="text-blue-400 ml-2 inline-flex items-center gap-1 text-xs"><Loader2 className="h-3 w-3 animate-spin" />加载中…</span>}
                 </div>
                 <Button
                   size="small"
@@ -1201,17 +1273,18 @@ const LightGBMPage: React.FC = () => {
                     );
                   },
                   expandedRowRender: (r: LGBPredictionItem) => {
-                    if (!r.news_items?.length && !r.finbert_summary) return null;
+                    const fb = finbertResults[r.ts_code] ?? r;
+                    if (!fb.news_items?.length && !fb.finbert_summary) return null;
                     const sentimentColor: Record<string, string> = { positive: 'text-red-400', negative: 'text-green-400', neutral: 'text-purple-400' };
                     const sentimentLabel: Record<string, string> = { positive: '正面', negative: '负面', neutral: '中性' };
                     return (
                       <div className="px-2 py-2 space-y-2">
-                        {r.finbert_summary && (
-                          <div className="text-xs text-secondary-text">{r.finbert_summary}</div>
+                        {fb.finbert_summary && (
+                          <div className="text-xs text-secondary-text">{fb.finbert_summary}</div>
                         )}
-                        {r.news_items && r.news_items.length > 0 && (
+                        {fb.news_items && fb.news_items.length > 0 && (
                           <div className="space-y-1.5">
-                            {r.news_items.map((n, i) => (
+                            {fb.news_items.map((n, i) => (
                               <div key={i} className="flex gap-2 text-xs">
                                 <span className={`shrink-0 ${sentimentColor[n.sentiment_label || ''] || 'text-tertiary-text'}`}>
                                   {sentimentLabel[n.sentiment_label || ''] || '-'}

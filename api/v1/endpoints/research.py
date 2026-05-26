@@ -38,6 +38,8 @@ from api.v1.schemas.research import (
     LGBPredictionStats,
     LGBCrossModelOverlapResponse,
     LGBCrossModelOverlapStock,
+    LGBFinBERTResponse,
+    FinBERTNewsItem,
 )
 from src.discovery.ml.lgb_trainer import LGBTrainer
 from src.storage import DatabaseManager, FactorScoreSnapshot, StockAdjFactor, StockDaily
@@ -321,13 +323,96 @@ def lgb_predictions(
     predictions = _enrich_predictions_with_stats(
         predictions, trainer.forward_days, getattr(trainer, "exec_mode", "close")
     )
-    predictions = _enrich_predictions_with_finbert(predictions)
     return LGBPredictionsResponse(
         model_date=trainer._latest_date or "",
         forward_days=trainer.forward_days,
         mode=trainer.mode,
         predictions=[LGBPredictionItem(**p) for p in predictions],
     )
+
+
+@router.get(
+    "/lgb/finbert",
+    response_model=LGBFinBERTResponse,
+    summary="单只股票 FinBERT 新闻情感分析",
+)
+def lgb_finbert(
+    stock_code: str = Query(..., description="股票代码"),
+    stock_name: str = Query("", description="股票名称（可选，用于搜索回退）"),
+):
+    result = _fetch_finbert_for_stock(stock_code, stock_name)
+    return LGBFinBERTResponse(stock_code=stock_code, **result)
+
+
+def _fetch_finbert_for_stock(stock_code: str, stock_name: str = "") -> dict:
+    """获取单只股票的 FinBERT 新闻情感分析结果。"""
+    try:
+        from src.services.finbert_sentiment_service import get_finbert_service
+        service = get_finbert_service()
+        if not service or not service.is_available:
+            return {}
+    except Exception:
+        return {}
+
+    db = DatabaseManager.get_instance()
+    texts = []
+    items = []
+
+    try:
+        news_items = db.get_recent_news(code=stock_code, days=3, limit=5)
+        for item in news_items:
+            text = (item.title or "")
+            if item.snippet:
+                text += " " + item.snippet
+            if text.strip():
+                texts.append(text.strip())
+            items.append({
+                "title": (item.title or "").strip(),
+                "snippet": (item.snippet or "").strip(),
+                "source": getattr(item, "source", "") or "",
+                "url": getattr(item, "url", "") or "",
+                "date": str(getattr(item, "published_date", "") or ""),
+            })
+    except Exception:
+        pass
+
+    if not texts:
+        try:
+            search_svc = _get_search_service_instance()
+            texts, raw_results = _fetch_texts_from_search(stock_code, stock_name, search_svc)
+            items = []
+            for r in raw_results:
+                items.append({
+                    "title": (r.title or "").strip(),
+                    "snippet": (r.snippet or "").strip(),
+                    "source": r.source or "",
+                    "url": r.url or "",
+                    "date": r.published_date or "",
+                })
+        except Exception:
+            pass
+
+    if not texts:
+        return {}
+
+    try:
+        res = service.analyze_news_sentiment(texts)
+        if res:
+            fb_details = res.get("details", []) or []
+            for j, item in enumerate(items):
+                if j < len(fb_details):
+                    item["sentiment_label"] = fb_details[j].get("label", "")
+                    item["sentiment_score"] = fb_details[j].get("score")
+            return {
+                "finbert_label": res.get("overall_label"),
+                "finbert_score": res.get("overall_score"),
+                "finbert_summary": res.get("summary"),
+                "news_items": items if items else None,
+            }
+    except Exception:
+        pass
+
+    return {}
 
 
 @router.get(
@@ -2695,10 +2780,23 @@ def lgb_cross_model_overlap(
     stock_info: dict = {}  # ts_code -> {stock_code, stock_name, model_names: list}
     models_used = 0
 
+    # Load factor pivot once, share across all models
+    import pandas as pd
+    first_trainer = LGBTrainer.load(matched[0]["path"])
+    first_trainer.predict()
+    shared_pivot = first_trainer._X_latest
+    # Add stock_code/stock_name columns if missing
+    if "stock_code" not in shared_pivot.columns:
+        shared_pivot = shared_pivot.copy()
+        shared_pivot["stock_code"] = (
+            shared_pivot["ts_code"].str.replace(".SH", "").str.replace(".SZ", "")
+        )
+
     for m in matched:
         try:
             trainer = LGBTrainer.load(m["path"])
-            trainer.predict()
+            pivot_copy = shared_pivot.copy()
+            trainer.predict_from_pivot(pivot_copy)
             preds = trainer.get_latest_predictions(top_n=top_n)
             for p in preds:
                 code = p.get("ts_code", "")

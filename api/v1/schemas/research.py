@@ -72,6 +72,14 @@ class LGBPredictionsResponse(BaseModel):
     predictions: List[LGBPredictionItem]
 
 
+class LGBFinBERTResponse(BaseModel):
+    stock_code: str
+    finbert_label: Optional[str] = None
+    finbert_score: Optional[float] = None
+    finbert_summary: Optional[str] = None
+    news_items: Optional[List[FinBERTNewsItem]] = None
+
+
 class LGBBacktestCompareResponse(BaseModel):
     lgb_metrics: Dict = Field(default_factory=dict)
     factor_metrics: Dict = Field(default_factory=dict)

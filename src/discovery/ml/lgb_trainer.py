@@ -168,6 +168,21 @@ class LGBTrainer:
                     f"factor_score_snapshots 中没有 mode={self.mode} 的数据"
                 )
         factor_names = sorted(r[0] for r in factor_rows)
+
+        # Filter out disabled factors via env var
+        import os as _os
+        _disabled = _os.environ.get("LGB_DISABLE_FACTOR", "")
+        if _disabled:
+            _disabled_set = {f.strip() for f in _disabled.split(",") if f.strip()}
+            before = len(factor_names)
+            factor_names = [f for f in factor_names if f not in _disabled_set]
+            if len(factor_names) < before:
+                _skipped = sorted(_disabled_set & set(r[0] for r in factor_rows))
+                if cb:
+                    cb(f"LGB_DISABLE_FACTOR 禁用了 {before - len(factor_names)} 个因子: {', '.join(_skipped)}")
+                else:
+                    print(f"[LGB] LGB_DISABLE_FACTOR 禁用了 {before - len(factor_names)} 个因子: {', '.join(_skipped)}")
+
         self.feature_names = factor_names
 
         if cb:
@@ -716,13 +731,17 @@ class LGBTrainer:
                     target_date = None  # let fallback handle it
                 else:
                     target_date = row[0]
-            # 如果最新的快照日期早于今天交易日，优先使用今天实时计算
+            # 交易日 9:25 后使用今天实时数据，否则使用最近快照
             try:
+                from datetime import datetime as _dt
                 from data_provider.tushare_fetcher import TushareFetcher
                 fetcher = TushareFetcher()
-                today_str = fetcher.get_trade_time(early_time="18:01", late_time="04:59")
-                if today_str and target_date and today_str > target_date:
-                    target_date = today_str
+                china_now = fetcher._get_china_now()
+                china_date = china_now.strftime("%Y%m%d")
+                china_time = china_now.strftime("%H:%M")
+                if fetcher.is_trading_day() and china_time >= "09:25":
+                    if target_date and china_date > target_date:
+                        target_date = china_date
             except Exception:
                 pass
             if target_date is None:
@@ -795,6 +814,33 @@ class LGBTrainer:
         name_map = {s.code: s.name for s in spots if s.name}
         pivot["stock_name"] = pivot["stock_code"].map(name_map).fillna("")
 
+        self._X_latest = pivot
+        return pivot
+
+    def predict_from_pivot(self, pivot: pd.DataFrame) -> pd.DataFrame:
+        """使用已有的 pivot DataFrame 运行模型预测（跳过 DB 查询）。"""
+        for f in self.feature_names:
+            if f not in pivot.columns:
+                pivot[f] = 0.0
+
+        X_pred = pivot[self.feature_names].fillna(0).values
+        scores = self.model.predict(X_pred)
+        pivot["lgb_score"] = scores
+
+        smin, smax = scores.min(), scores.max()
+        if smax > smin:
+            pivot["lgb_score_norm"] = (scores - smin) / (smax - smin) * 100
+        else:
+            pivot["lgb_score_norm"] = 50.0
+
+        if self.label_mode == "peak_speed" and self.days_model is not None:
+            days_pred = self.days_model.predict(X_pred)
+            pivot["predicted_days"] = np.clip(
+                np.round(days_pred), 1, self.window_days
+            ).astype(int)
+
+        pivot = pivot.sort_values("lgb_score", ascending=False)
+        self._latest_codes = pivot["ts_code"].tolist()
         self._X_latest = pivot
         return pivot
 
