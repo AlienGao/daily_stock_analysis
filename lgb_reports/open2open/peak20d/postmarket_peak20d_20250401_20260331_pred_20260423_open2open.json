@@ -82,7 +82,7 @@
     "icir": 4.8568,
     "oof_corr": 0.232992,
     "n_samples": 40157,
-    "n_features": 24
+    "n_features": 18
   },
   "window_days": 20
 }

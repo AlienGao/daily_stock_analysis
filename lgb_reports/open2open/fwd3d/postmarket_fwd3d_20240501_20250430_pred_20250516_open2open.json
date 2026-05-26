@@ -77,6 +77,6 @@
     "icir": 0.365,
     "oof_corr": -0.021109,
     "n_samples": 44388,
-    "n_features": 24
+    "n_features": 18
   }
 }
