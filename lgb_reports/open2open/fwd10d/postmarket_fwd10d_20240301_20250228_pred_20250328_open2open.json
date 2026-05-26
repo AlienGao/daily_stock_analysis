@@ -12,71 +12,71 @@
       "stock_code": "920020.BJ",
       "stock_name": "",
       "lgb_score": 100.0,
-      "raw_score": 0.23
+      "raw_score": 0.04
     },
     {
       "rank": 2,
-      "ts_code": "002217.SZ",
-      "stock_code": "002217",
-      "stock_name": "合力泰",
-      "lgb_score": 57.42,
-      "raw_score": 0.1
+      "ts_code": "002446.SZ",
+      "stock_code": "002446",
+      "stock_name": "盛路通信",
+      "lgb_score": 100.0,
+      "raw_score": 0.04
     },
     {
       "rank": 3,
-      "ts_code": "000620.SZ",
-      "stock_code": "000620",
-      "stock_name": "盈新发展",
-      "lgb_score": 53.19,
-      "raw_score": 0.08
+      "ts_code": "920221.BJ",
+      "stock_code": "920221.BJ",
+      "stock_name": "",
+      "lgb_score": 100.0,
+      "raw_score": 0.04
     },
     {
       "rank": 4,
-      "ts_code": "920719.BJ",
-      "stock_code": "920719.BJ",
-      "stock_name": "",
-      "lgb_score": 52.38,
-      "raw_score": 0.08
+      "ts_code": "002657.SZ",
+      "stock_code": "002657",
+      "stock_name": "中科金财",
+      "lgb_score": 100.0,
+      "raw_score": 0.04
     },
     {
       "rank": 5,
-      "ts_code": "920174.BJ",
-      "stock_code": "920174.BJ",
+      "ts_code": "920212.BJ",
+      "stock_code": "920212.BJ",
       "stock_name": "",
-      "lgb_score": 48.55,
-      "raw_score": 0.07
+      "lgb_score": 100.0,
+      "raw_score": 0.04
     }
   ],
   "tree_diagnostics": {
     "n_trees": 200,
-    "avg_depth": 11.52,
+    "avg_depth": 15.25,
     "avg_n_leaves": 31.0,
     "total_n_leaves": 6200
   },
   "prediction_stats": {
-    "mean": -0.023593,
-    "std": 0.027404,
-    "skew": 0.9577,
-    "kurtosis": -0.4873,
-    "min": -0.08828,
-    "max": 0.231415,
-    "median": -0.041536
+    "mean": 0.014369,
+    "std": 0.003045,
+    "skew": -0.6307,
+    "kurtosis": 11.2717,
+    "min": -0.014692,
+    "max": 0.036968,
+    "median": 0.014827
   },
   "training_metrics": {
-    "cv_rmse_mean": 0.11349140645830233,
-    "cv_rmse_std": 0.03995897947365171,
+    "cv_rmse_mean": 0.11292739762343769,
+    "cv_rmse_std": 0.04018215222439572,
     "cv_scores": [
-      0.086834,
-      0.074356,
-      0.188722,
-      0.113088,
-      0.104458
+      0.084328,
+      0.074153,
+      0.188252,
+      0.113759,
+      0.104144
     ],
-    "rank_ic_mean": 0.047211,
-    "rank_ic_std": 0.045336,
-    "icir": 1.0414,
-    "oof_corr": -0.045215,
+    "rank_ic_mean": 0.000383,
+    "rank_ic_std": 0.013001,
+    "icir": 0.0295,
+    "oof_corr": -0.098782,
     "n_samples": 647699,
-    "n_features": 12
+    "n_features": 1
   }
 }

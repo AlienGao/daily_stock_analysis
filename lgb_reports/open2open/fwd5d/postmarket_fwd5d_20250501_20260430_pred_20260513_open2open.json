@@ -8,75 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000601.SZ",
-      "stock_code": "000601",
-      "stock_name": "韶能股份",
+      "ts_code": "002658.SZ",
+      "stock_code": "002658",
+      "stock_name": "雪迪龙",
       "lgb_score": 100.0,
-      "raw_score": 0.08
+      "raw_score": 0.07
     },
     {
       "rank": 2,
-      "ts_code": "600563.SH",
-      "stock_code": "600563",
-      "stock_name": "法拉电子",
-      "lgb_score": 97.22,
-      "raw_score": 0.08
+      "ts_code": "301292.SZ",
+      "stock_code": "301292",
+      "stock_name": "海科新源",
+      "lgb_score": 97.87,
+      "raw_score": 0.07
     },
     {
       "rank": 3,
-      "ts_code": "300738.SZ",
-      "stock_code": "300738",
-      "stock_name": "奥飞数据",
-      "lgb_score": 95.01,
-      "raw_score": 0.07
+      "ts_code": "001309.SZ",
+      "stock_code": "001309",
+      "stock_name": "德明利",
+      "lgb_score": 93.84,
+      "raw_score": 0.06
     },
     {
       "rank": 4,
-      "ts_code": "600530.SH",
-      "stock_code": "600530",
-      "stock_name": "交大昂立",
-      "lgb_score": 94.7,
-      "raw_score": 0.07
+      "ts_code": "300308.SZ",
+      "stock_code": "300308",
+      "stock_name": "中际旭创",
+      "lgb_score": 91.83,
+      "raw_score": 0.05
     },
     {
       "rank": 5,
-      "ts_code": "000767.SZ",
-      "stock_code": "000767",
-      "stock_name": "晋控电力",
-      "lgb_score": 94.67,
-      "raw_score": 0.07
+      "ts_code": "301205.SZ",
+      "stock_code": "301205",
+      "stock_name": "联特科技",
+      "lgb_score": 91.45,
+      "raw_score": 0.05
     }
   ],
   "tree_diagnostics": {
     "n_trees": 200,
-    "avg_depth": 11.12,
+    "avg_depth": 11.07,
     "avg_n_leaves": 31.0,
     "total_n_leaves": 6200
   },
   "prediction_stats": {
-    "mean": -0.000674,
-    "std": 0.00844,
-    "skew": 2.324,
-    "kurtosis": 16.788,
-    "min": -0.113232,
-    "max": 0.082181,
-    "median": -0.00478
+    "mean": -0.008798,
+    "std": 0.011945,
+    "skew": 0.6689,
+    "kurtosis": 2.3887,
+    "min": -0.154359,
+    "max": 0.070559,
+    "median": -0.016378
   },
   "training_metrics": {
-    "cv_rmse_mean": 0.06565200228491426,
-    "cv_rmse_std": 0.003874384102054584,
+    "cv_rmse_mean": 0.06563497745604963,
+    "cv_rmse_std": 0.00385164945696881,
     "cv_scores": [
-      0.061161,
-      0.068467,
-      0.064836,
-      0.062251,
-      0.071545
+      0.061167,
+      0.068427,
+      0.064713,
+      0.062341,
+      0.071527
     ],
-    "rank_ic_mean": 0.066618,
-    "rank_ic_std": 0.031841,
-    "icir": 2.0922,
-    "oof_corr": 0.021803,
+    "rank_ic_mean": 0.046475,
+    "rank_ic_std": 0.03486,
+    "icir": 1.3332,
+    "oof_corr": 0.010902,
     "n_samples": 402102,
-    "n_features": 12
+    "n_features": 4
   }
 }

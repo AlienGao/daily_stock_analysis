@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 10,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260526",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "603223",
+      "stock_code": "603223",
+      "stock_name": "恒通股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 2,
+      "ts_code": "600676",
+      "stock_code": "600676",
+      "stock_name": "交运股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 3,
+      "ts_code": "002016",
+      "stock_code": "002016",
+      "stock_name": "世荣兆业",
+      "lgb_score": 100.0,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 4,
+      "ts_code": "000009",
+      "stock_code": "000009",
+      "stock_name": "中国宝安",
+      "lgb_score": 100.0,
+      "raw_score": 0.04
+    },
+    {
+      "rank": 5,
+      "ts_code": "603939",
+      "stock_code": "603939",
+      "stock_name": "益丰药房",
+      "lgb_score": 100.0,
+      "raw_score": 0.04
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 15.25,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.022671,
+    "std": 0.009265,
+    "skew": -0.9077,
+    "kurtosis": -0.5094,
+    "min": -0.004069,
+    "max": 0.044141,
+    "median": 0.029423
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.09449712342954335,
+    "cv_rmse_std": 0.005350150811859561,
+    "cv_scores": [
+      0.090302,
+      0.09639,
+      0.090419,
+      0.091171,
+      0.104205
+    ],
+    "rank_ic_mean": 0.048508,
+    "rank_ic_std": 0.040573,
+    "icir": 1.1956,
+    "oof_corr": 0.01542,
+    "n_samples": 401915,
+    "n_features": 1
+  }
+}

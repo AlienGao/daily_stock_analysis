@@ -8,75 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301005.SZ",
-      "stock_code": "301005",
-      "stock_name": "超捷股份",
+      "ts_code": "688518.SH",
+      "stock_code": "688518",
+      "stock_name": "联赢激光",
       "lgb_score": 100.0,
-      "raw_score": 0.15
+      "raw_score": 0.03
     },
     {
       "rank": 2,
-      "ts_code": "002378.SZ",
-      "stock_code": "002378",
-      "stock_name": "章源钨业",
-      "lgb_score": 81.37,
-      "raw_score": 0.11
+      "ts_code": "002777.SZ",
+      "stock_code": "002777",
+      "stock_name": "久远银海",
+      "lgb_score": 100.0,
+      "raw_score": 0.03
     },
     {
       "rank": 3,
-      "ts_code": "301293.SZ",
-      "stock_code": "301293",
-      "stock_name": "三博脑科",
-      "lgb_score": 74.79,
-      "raw_score": 0.09
+      "ts_code": "300980.SZ",
+      "stock_code": "300980",
+      "stock_name": "祥源新材",
+      "lgb_score": 100.0,
+      "raw_score": 0.03
     },
     {
       "rank": 4,
-      "ts_code": "603300.SH",
-      "stock_code": "603300",
-      "stock_name": "海南华铁",
-      "lgb_score": 73.42,
-      "raw_score": 0.09
+      "ts_code": "002997.SZ",
+      "stock_code": "002997",
+      "stock_name": "瑞鹄模具",
+      "lgb_score": 100.0,
+      "raw_score": 0.03
     },
     {
       "rank": 5,
-      "ts_code": "301292.SZ",
-      "stock_code": "301292",
-      "stock_name": "海科新源",
-      "lgb_score": 70.38,
-      "raw_score": 0.08
+      "ts_code": "002961.SZ",
+      "stock_code": "002961",
+      "stock_name": "瑞达期货",
+      "lgb_score": 100.0,
+      "raw_score": 0.03
     }
   ],
   "tree_diagnostics": {
     "n_trees": 200,
-    "avg_depth": 10.77,
+    "avg_depth": 15.31,
     "avg_n_leaves": 31.0,
     "total_n_leaves": 6200
   },
   "prediction_stats": {
-    "mean": -0.001105,
-    "std": 0.010571,
-    "skew": 0.4825,
-    "kurtosis": 10.2091,
-    "min": -0.069574,
-    "max": 0.149086,
-    "median": -0.000628
+    "mean": 0.023124,
+    "std": 0.004393,
+    "skew": -2.0635,
+    "kurtosis": 3.8171,
+    "min": 0.000757,
+    "max": 0.033531,
+    "median": 0.025143
   },
   "training_metrics": {
-    "cv_rmse_mean": 0.0964297458809806,
-    "cv_rmse_std": 0.012876623511559337,
+    "cv_rmse_mean": 0.0961996923262265,
+    "cv_rmse_std": 0.01252235646030025,
     "cv_scores": [
-      0.121488,
-      0.084777,
-      0.090067,
-      0.092713,
-      0.093103
+      0.120543,
+      0.084921,
+      0.089636,
+      0.092995,
+      0.092904
     ],
-    "rank_ic_mean": 0.047216,
-    "rank_ic_std": 0.049075,
-    "icir": 0.9621,
-    "oof_corr": -0.052106,
+    "rank_ic_mean": -0.004281,
+    "rank_ic_std": 0.02418,
+    "icir": -0.177,
+    "oof_corr": -0.111054,
     "n_samples": 488020,
-    "n_features": 12
+    "n_features": 1
   }
 }

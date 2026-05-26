@@ -8,81 +8,81 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "920020.BJ",
-      "stock_code": "920020.BJ",
+      "ts_code": "920011.BJ",
+      "stock_code": "920011.BJ",
       "stock_name": "",
       "lgb_score": 100.0,
-      "raw_score": 0.48,
-      "predicted_days": 11
-    },
-    {
-      "rank": 2,
-      "ts_code": "600117.SH",
-      "stock_code": "600117",
-      "stock_name": "西宁特钢",
-      "lgb_score": 60.97,
-      "raw_score": 0.32,
-      "predicted_days": 14
-    },
-    {
-      "rank": 3,
-      "ts_code": "600569.SH",
-      "stock_code": "600569",
-      "stock_name": "安阳钢铁",
-      "lgb_score": 59.99,
-      "raw_score": 0.31,
+      "raw_score": 0.26,
       "predicted_days": 12
     },
     {
+      "rank": 2,
+      "ts_code": "002337.SZ",
+      "stock_code": "002337",
+      "stock_name": "赛象科技",
+      "lgb_score": 81.65,
+      "raw_score": 0.22,
+      "predicted_days": 13
+    },
+    {
+      "rank": 3,
+      "ts_code": "603312.SH",
+      "stock_code": "603312",
+      "stock_name": "西典新能",
+      "lgb_score": 77.41,
+      "raw_score": 0.21,
+      "predicted_days": 13
+    },
+    {
       "rank": 4,
-      "ts_code": "002217.SZ",
-      "stock_code": "002217",
-      "stock_name": "合力泰",
-      "lgb_score": 59.77,
-      "raw_score": 0.31,
-      "predicted_days": 15
+      "ts_code": "920779.BJ",
+      "stock_code": "920779.BJ",
+      "stock_name": "",
+      "lgb_score": 77.11,
+      "raw_score": 0.21,
+      "predicted_days": 13
     },
     {
       "rank": 5,
-      "ts_code": "601992.SH",
-      "stock_code": "601992",
-      "stock_name": "金隅集团",
-      "lgb_score": 59.76,
-      "raw_score": 0.31,
+      "ts_code": "920953.BJ",
+      "stock_code": "920953.BJ",
+      "stock_name": "",
+      "lgb_score": 77.0,
+      "raw_score": 0.21,
       "predicted_days": 13
     }
   ],
   "tree_diagnostics": {
     "n_trees": 200,
-    "avg_depth": 10.79,
+    "avg_depth": 10.69,
     "avg_n_leaves": 31.0,
     "total_n_leaves": 6200
   },
   "prediction_stats": {
-    "mean": 0.165264,
-    "std": 0.034481,
-    "skew": -0.9635,
-    "kurtosis": 0.4272,
-    "min": 0.060897,
-    "max": 0.482056,
-    "median": 0.186248
+    "mean": 0.137584,
+    "std": 0.014385,
+    "skew": -1.2231,
+    "kurtosis": 2.3215,
+    "min": 0.016445,
+    "max": 0.262881,
+    "median": 0.146066
   },
   "training_metrics": {
-    "cv_rmse_mean": 0.1501174047767992,
-    "cv_rmse_std": 0.05724369721673783,
+    "cv_rmse_mean": 0.14931119653406016,
+    "cv_rmse_std": 0.057067794371598805,
     "cv_scores": [
-      0.111104,
-      0.091741,
-      0.251802,
-      0.17148,
-      0.124461
+      0.10808,
+      0.09096,
+      0.24993,
+      0.171751,
+      0.125835
     ],
-    "rank_ic_mean": 0.071699,
-    "rank_ic_std": 0.042204,
-    "icir": 1.6989,
-    "oof_corr": -0.032906,
+    "rank_ic_mean": 0.03877,
+    "rank_ic_std": 0.031239,
+    "icir": 1.2411,
+    "oof_corr": -0.111242,
     "n_samples": 648991,
-    "n_features": 12
+    "n_features": 2
   },
   "window_days": 20
 }

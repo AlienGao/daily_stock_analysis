@@ -6,6 +6,7 @@
 
 import multiprocessing
 import os
+import sys
 import threading
 import uuid
 from datetime import datetime, timedelta
@@ -3584,14 +3585,16 @@ def _run_rolling_backtest(task_id: str):
 
     script_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
         os.path.dirname(os.path.abspath(__file__))))), "scripts", "rolling_lgb_backtest.py")
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(
+        os.path.dirname(os.path.abspath(__file__)))))
 
     try:
         proc = subprocess.Popen(
-            ["python", script_path],
+            [sys.executable, script_path],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            cwd=os.path.dirname(script_path),
+            cwd=project_root,
         )
 
         output_lines: list = []

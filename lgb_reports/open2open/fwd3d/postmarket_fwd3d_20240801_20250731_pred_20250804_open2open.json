@@ -8,75 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "688291.SH",
-      "stock_code": "688291",
-      "stock_name": "金橙子",
-      "lgb_score": 98.16,
-      "raw_score": 0.06
-    },
-    {
-      "rank": 2,
-      "ts_code": "601929.SH",
-      "stock_code": "601929",
-      "stock_name": "吉视传媒",
-      "lgb_score": 94.8,
-      "raw_score": 0.06
-    },
-    {
-      "rank": 3,
-      "ts_code": "001288.SZ",
-      "stock_code": "001288",
-      "stock_name": "运机集团",
-      "lgb_score": 89.34,
+      "ts_code": "920895.BJ",
+      "stock_code": "920895.BJ",
+      "stock_name": "",
+      "lgb_score": 100.0,
       "raw_score": 0.05
     },
     {
-      "rank": 4,
-      "ts_code": "000980.SZ",
-      "stock_code": "000980",
-      "stock_name": "众泰汽车",
-      "lgb_score": 87.5,
+      "rank": 2,
+      "ts_code": "920346.BJ",
+      "stock_code": "920346.BJ",
+      "stock_name": "",
+      "lgb_score": 77.11,
       "raw_score": 0.04
     },
     {
+      "rank": 3,
+      "ts_code": "301491.SZ",
+      "stock_code": "301491",
+      "stock_name": "汉桑科技",
+      "lgb_score": 74.31,
+      "raw_score": 0.03
+    },
+    {
+      "rank": 4,
+      "ts_code": "001236.SZ",
+      "stock_code": "001236",
+      "stock_name": "弘业期货",
+      "lgb_score": 70.2,
+      "raw_score": 0.03
+    },
+    {
       "rank": 5,
-      "ts_code": "002146.SZ",
-      "stock_code": "002146",
-      "stock_name": "荣盛发展",
-      "lgb_score": 87.43,
-      "raw_score": 0.04
+      "ts_code": "301618.SZ",
+      "stock_code": "301618",
+      "stock_name": "长联科技",
+      "lgb_score": 66.11,
+      "raw_score": 0.03
     }
   ],
   "tree_diagnostics": {
     "n_trees": 200,
-    "avg_depth": 11.34,
+    "avg_depth": 11.32,
     "avg_n_leaves": 31.0,
     "total_n_leaves": 6200
   },
   "prediction_stats": {
-    "mean": -0.007276,
-    "std": 0.010107,
-    "skew": 0.9251,
-    "kurtosis": 1.5932,
-    "min": -0.081898,
-    "max": 0.062779,
-    "median": -0.013371
+    "mean": 0.005516,
+    "std": 0.001869,
+    "skew": 2.2976,
+    "kurtosis": 46.1477,
+    "min": -0.015677,
+    "max": 0.051713,
+    "median": 0.004648
   },
   "training_metrics": {
-    "cv_rmse_mean": 0.06872368983601347,
-    "cv_rmse_std": 0.024294199782142263,
+    "cv_rmse_mean": 0.06807980043251295,
+    "cv_rmse_std": 0.02486276925999214,
     "cv_scores": [
-      0.115529,
-      0.06386,
-      0.054806,
-      0.063381,
-      0.046043
+      0.116198,
+      0.0622,
+      0.053358,
+      0.062854,
+      0.04579
     ],
-    "rank_ic_mean": 0.040935,
-    "rank_ic_std": 0.063126,
-    "icir": 0.6485,
-    "oof_corr": -0.003266,
+    "rank_ic_mean": 0.003608,
+    "rank_ic_std": 0.008256,
+    "icir": 0.437,
+    "oof_corr": -0.124269,
     "n_samples": 579939,
-    "n_features": 12
+    "n_features": 2
   }
 }

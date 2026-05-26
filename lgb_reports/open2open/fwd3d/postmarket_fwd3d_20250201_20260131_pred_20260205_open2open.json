@@ -8,75 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "601969.SH",
-      "stock_code": "601969",
-      "stock_name": "海南矿业",
+      "ts_code": "920396.BJ",
+      "stock_code": "920396.BJ",
+      "stock_name": "",
       "lgb_score": 100.0,
-      "raw_score": 0.09
+      "raw_score": 0.04
     },
     {
       "rank": 2,
-      "ts_code": "920866.BJ",
-      "stock_code": "920866.BJ",
+      "ts_code": "920346.BJ",
+      "stock_code": "920346.BJ",
       "stock_name": "",
-      "lgb_score": 64.61,
+      "lgb_score": 98.67,
       "raw_score": 0.04
     },
     {
       "rank": 3,
-      "ts_code": "603506.SH",
-      "stock_code": "603506",
-      "stock_name": "南都物业",
-      "lgb_score": 63.48,
+      "ts_code": "301491.SZ",
+      "stock_code": "301491",
+      "stock_name": "汉桑科技",
+      "lgb_score": 98.67,
       "raw_score": 0.04
     },
     {
       "rank": 4,
-      "ts_code": "688485.SH",
-      "stock_code": "688485",
-      "stock_name": "九州一轨",
-      "lgb_score": 62.15,
+      "ts_code": "300986.SZ",
+      "stock_code": "300986",
+      "stock_name": "志特新材",
+      "lgb_score": 83.77,
       "raw_score": 0.03
     },
     {
       "rank": 5,
-      "ts_code": "688435.SH",
-      "stock_code": "688435",
-      "stock_name": "英方软件",
-      "lgb_score": 59.1,
+      "ts_code": "688050.SH",
+      "stock_code": "688050",
+      "stock_name": "爱博医疗",
+      "lgb_score": 79.77,
       "raw_score": 0.03
     }
   ],
   "tree_diagnostics": {
     "n_trees": 200,
-    "avg_depth": 11.09,
+    "avg_depth": 11.61,
     "avg_n_leaves": 31.0,
     "total_n_leaves": 6200
   },
   "prediction_stats": {
-    "mean": -0.002659,
-    "std": 0.005809,
-    "skew": 1.0817,
-    "kurtosis": 6.9058,
-    "min": -0.062136,
-    "max": 0.09289,
-    "median": -0.006083
+    "mean": 0.004806,
+    "std": 0.001399,
+    "skew": 0.0712,
+    "kurtosis": 136.6651,
+    "min": -0.027378,
+    "max": 0.040289,
+    "median": 0.004794
   },
   "training_metrics": {
-    "cv_rmse_mean": 0.05225781690480493,
-    "cv_rmse_std": 0.0071220989249079665,
+    "cv_rmse_mean": 0.052248331766820325,
+    "cv_rmse_std": 0.007250940291026172,
     "cv_scores": [
-      0.065765,
-      0.044877,
-      0.051814,
-      0.04984,
-      0.048993
+      0.066007,
+      0.044765,
+      0.051817,
+      0.049737,
+      0.048916
     ],
-    "rank_ic_mean": 0.05987,
-    "rank_ic_std": 0.019898,
-    "icir": 3.0089,
-    "oof_corr": 0.045043,
+    "rank_ic_mean": 0.02359,
+    "rank_ic_std": 0.015557,
+    "icir": 1.5163,
+    "oof_corr": 0.001993,
     "n_samples": 467619,
-    "n_features": 12
+    "n_features": 2
   }
 }

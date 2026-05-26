@@ -12,71 +12,71 @@
       "stock_code": "301292",
       "stock_name": "海科新源",
       "lgb_score": 100.0,
-      "raw_score": 0.08
+      "raw_score": 0.15
     },
     {
       "rank": 2,
-      "ts_code": "300853.SZ",
-      "stock_code": "300853",
-      "stock_name": "申昊科技",
-      "lgb_score": 89.34,
-      "raw_score": 0.06
+      "ts_code": "301205.SZ",
+      "stock_code": "301205",
+      "stock_name": "联特科技",
+      "lgb_score": 78.07,
+      "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "688777.SH",
-      "stock_code": "688777",
-      "stock_name": "中控技术",
-      "lgb_score": 84.48,
-      "raw_score": 0.04
+      "ts_code": "002297.SZ",
+      "stock_code": "002297",
+      "stock_name": "博云新材",
+      "lgb_score": 56.77,
+      "raw_score": 0.05
     },
     {
       "rank": 4,
-      "ts_code": "301003.SZ",
-      "stock_code": "301003",
-      "stock_name": "江苏博云",
-      "lgb_score": 82.34,
-      "raw_score": 0.04
+      "ts_code": "000952.SZ",
+      "stock_code": "000952",
+      "stock_name": "广济药业",
+      "lgb_score": 56.58,
+      "raw_score": 0.05
     },
     {
       "rank": 5,
-      "ts_code": "300476.SZ",
-      "stock_code": "300476",
-      "stock_name": "胜宏科技",
-      "lgb_score": 81.95,
-      "raw_score": 0.04
+      "ts_code": "600707.SH",
+      "stock_code": "600707",
+      "stock_name": "彩虹股份",
+      "lgb_score": 54.63,
+      "raw_score": 0.05
     }
   ],
   "tree_diagnostics": {
     "n_trees": 200,
-    "avg_depth": 10.86,
+    "avg_depth": 10.93,
     "avg_n_leaves": 31.0,
     "total_n_leaves": 6200
   },
   "prediction_stats": {
-    "mean": -0.044612,
-    "std": 0.035687,
-    "skew": 0.7962,
-    "kurtosis": -1.2986,
-    "min": -0.167935,
-    "max": 0.084102,
-    "median": -0.068989
+    "mean": -0.010372,
+    "std": 0.013409,
+    "skew": 0.9958,
+    "kurtosis": 0.6679,
+    "min": -0.074921,
+    "max": 0.151197,
+    "median": -0.019281
   },
   "training_metrics": {
-    "cv_rmse_mean": 0.06439525467996764,
-    "cv_rmse_std": 0.003550445555865088,
+    "cv_rmse_mean": 0.06405450661179769,
+    "cv_rmse_std": 0.003906175315841637,
     "cv_scores": [
-      0.058433,
-      0.066041,
-      0.065689,
-      0.062864,
-      0.06895
+      0.057415,
+      0.065736,
+      0.065517,
+      0.062552,
+      0.069053
     ],
-    "rank_ic_mean": 0.067129,
-    "rank_ic_std": 0.016958,
-    "icir": 3.9586,
-    "oof_corr": 0.056748,
+    "rank_ic_mean": 0.039729,
+    "rank_ic_std": 0.025143,
+    "icir": 1.5801,
+    "oof_corr": 0.054813,
     "n_samples": 423832,
-    "n_features": 12
+    "n_features": 4
   }
 }

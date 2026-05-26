@@ -8,81 +8,81 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600539.SH",
-      "stock_code": "600539",
-      "stock_name": "狮头股份",
-      "lgb_score": 91.23,
-      "raw_score": 0.27,
-      "predicted_days": 13
+      "ts_code": "688125.SH",
+      "stock_code": "688125",
+      "stock_name": "安达智能",
+      "lgb_score": 98.38,
+      "raw_score": 0.29,
+      "predicted_days": 16
     },
     {
       "rank": 2,
-      "ts_code": "603156.SH",
-      "stock_code": "603156",
-      "stock_name": "养元饮品",
-      "lgb_score": 84.9,
-      "raw_score": 0.26,
-      "predicted_days": 13
+      "ts_code": "920028.BJ",
+      "stock_code": "920028.BJ",
+      "stock_name": "",
+      "lgb_score": 71.13,
+      "raw_score": 0.21,
+      "predicted_days": 15
     },
     {
       "rank": 3,
-      "ts_code": "002658.SZ",
-      "stock_code": "002658",
-      "stock_name": "雪迪龙",
-      "lgb_score": 83.5,
-      "raw_score": 0.25,
-      "predicted_days": 13
+      "ts_code": "300502.SZ",
+      "stock_code": "300502",
+      "stock_name": "新易盛",
+      "lgb_score": 68.14,
+      "raw_score": 0.2,
+      "predicted_days": 14
     },
     {
       "rank": 4,
-      "ts_code": "000657.SZ",
-      "stock_code": "000657",
-      "stock_name": "中钨高新",
-      "lgb_score": 83.45,
-      "raw_score": 0.25,
-      "predicted_days": 13
+      "ts_code": "301179.SZ",
+      "stock_code": "301179",
+      "stock_name": "泽宇智能",
+      "lgb_score": 66.73,
+      "raw_score": 0.2,
+      "predicted_days": 14
     },
     {
       "rank": 5,
-      "ts_code": "001207.SZ",
-      "stock_code": "001207",
-      "stock_name": "联科科技",
-      "lgb_score": 83.06,
-      "raw_score": 0.25,
-      "predicted_days": 13
+      "ts_code": "920036.BJ",
+      "stock_code": "920036.BJ",
+      "stock_name": "",
+      "lgb_score": 66.13,
+      "raw_score": 0.2,
+      "predicted_days": 16
     }
   ],
   "tree_diagnostics": {
     "n_trees": 200,
-    "avg_depth": 10.7,
+    "avg_depth": 10.87,
     "avg_n_leaves": 31.0,
     "total_n_leaves": 6200
   },
   "prediction_stats": {
-    "mean": 0.151688,
-    "std": 0.040199,
-    "skew": -1.0521,
-    "kurtosis": -0.5556,
-    "min": 0.040566,
-    "max": 0.296553,
-    "median": 0.177268
+    "mean": 0.137122,
+    "std": 0.032834,
+    "skew": -1.0199,
+    "kurtosis": -0.61,
+    "min": 0.016159,
+    "max": 0.29022,
+    "median": 0.15837
   },
   "training_metrics": {
-    "cv_rmse_mean": 0.1109106121139141,
-    "cv_rmse_std": 0.007616932670491603,
+    "cv_rmse_mean": 0.11148432232057152,
+    "cv_rmse_std": 0.00711685177008397,
     "cv_scores": [
-      0.103122,
-      0.116983,
-      0.115338,
-      0.100355,
-      0.118755
+      0.104816,
+      0.116827,
+      0.115195,
+      0.101247,
+      0.119337
     ],
-    "rank_ic_mean": 0.153386,
-    "rank_ic_std": 0.031425,
-    "icir": 4.881,
-    "oof_corr": 0.148514,
+    "rank_ic_mean": 0.119935,
+    "rank_ic_std": 0.041827,
+    "icir": 2.8674,
+    "oof_corr": 0.108221,
     "n_samples": 444386,
-    "n_features": 12
+    "n_features": 2
   },
   "window_days": 20
 }

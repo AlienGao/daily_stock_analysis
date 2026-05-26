@@ -8,75 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000880.SZ",
-      "stock_code": "000880",
-      "stock_name": "潍柴重机",
-      "lgb_score": 83.08,
-      "raw_score": 0.24
-    },
-    {
-      "rank": 2,
-      "ts_code": "301600.SZ",
-      "stock_code": "301600",
-      "stock_name": "慧翰股份",
-      "lgb_score": 80.12,
-      "raw_score": 0.23
-    },
-    {
-      "rank": 3,
-      "ts_code": "920726.BJ",
-      "stock_code": "920726.BJ",
-      "stock_name": "",
-      "lgb_score": 80.1,
-      "raw_score": 0.23
-    },
-    {
-      "rank": 4,
-      "ts_code": "301556.SZ",
-      "stock_code": "301556",
-      "stock_name": "托普云农",
-      "lgb_score": 78.82,
+      "ts_code": "300409.SZ",
+      "stock_code": "300409",
+      "stock_name": "道氏技术",
+      "lgb_score": 100.0,
       "raw_score": 0.22
     },
     {
+      "rank": 2,
+      "ts_code": "600287.SH",
+      "stock_code": "600287",
+      "stock_name": "苏豪时尚",
+      "lgb_score": 73.92,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 3,
+      "ts_code": "688068.SH",
+      "stock_code": "688068",
+      "stock_name": "热景生物",
+      "lgb_score": 67.68,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 4,
+      "ts_code": "688702.SH",
+      "stock_code": "688702",
+      "stock_name": "盛科通信-U",
+      "lgb_score": 67.66,
+      "raw_score": 0.11
+    },
+    {
       "rank": 5,
-      "ts_code": "300950.SZ",
-      "stock_code": "300950",
-      "stock_name": "德固特",
-      "lgb_score": 76.27,
-      "raw_score": 0.21
+      "ts_code": "600589.SH",
+      "stock_code": "600589",
+      "stock_name": "大位科技",
+      "lgb_score": 67.25,
+      "raw_score": 0.11
     }
   ],
   "tree_diagnostics": {
     "n_trees": 200,
-    "avg_depth": 11.24,
+    "avg_depth": 11.83,
     "avg_n_leaves": 31.0,
     "total_n_leaves": 6200
   },
   "prediction_stats": {
-    "mean": 0.024803,
-    "std": 0.015685,
-    "skew": 3.457,
-    "kurtosis": 38.5375,
-    "min": -0.113196,
-    "max": 0.311268,
-    "median": 0.020508
+    "mean": 0.068836,
+    "std": 0.019111,
+    "skew": -1.514,
+    "kurtosis": 3.8379,
+    "min": -0.118101,
+    "max": 0.2245,
+    "median": 0.080744
   },
   "training_metrics": {
-    "cv_rmse_mean": 0.18423314422263032,
-    "cv_rmse_std": 0.07287904811515761,
+    "cv_rmse_mean": 0.18459195020816052,
+    "cv_rmse_std": 0.0726304047351148,
     "cv_scores": [
-      0.324903,
-      0.17158,
-      0.15722,
-      0.153454,
-      0.114008
+      0.324545,
+      0.171862,
+      0.15749,
+      0.155513,
+      0.11355
     ],
-    "rank_ic_mean": 0.080899,
-    "rank_ic_std": 0.044711,
-    "icir": 1.8094,
-    "oof_corr": -0.242172,
+    "rank_ic_mean": 0.006999,
+    "rank_ic_std": 0.051891,
+    "icir": 0.1349,
+    "oof_corr": -0.305628,
     "n_samples": 597371,
-    "n_features": 12
+    "n_features": 5
   }
 }

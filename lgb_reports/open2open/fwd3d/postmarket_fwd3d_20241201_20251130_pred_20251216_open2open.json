@@ -8,75 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "600200.SH",
-      "stock_code": "600200",
-      "stock_name": "退市苏吴",
-      "lgb_score": 93.37,
+      "ts_code": "300520.SZ",
+      "stock_code": "300520",
+      "stock_name": "科大国创",
+      "lgb_score": 100.0,
       "raw_score": 0.04
     },
     {
       "rank": 2,
-      "ts_code": "301205.SZ.SZ",
-      "stock_code": "301205",
-      "stock_name": "联特科技",
-      "lgb_score": 88.91,
+      "ts_code": "688818.SH",
+      "stock_code": "688818",
+      "stock_name": "电科蓝天",
+      "lgb_score": 86.31,
       "raw_score": 0.03
     },
     {
       "rank": 3,
-      "ts_code": "002969.SZ",
-      "stock_code": "002969",
-      "stock_name": "嘉美包装",
-      "lgb_score": 88.35,
+      "ts_code": "600037.SH",
+      "stock_code": "600037",
+      "stock_name": "歌华有线",
+      "lgb_score": 86.13,
       "raw_score": 0.03
     },
     {
       "rank": 4,
-      "ts_code": "603538.SH.SH",
-      "stock_code": "603538",
-      "stock_name": "美诺华",
-      "lgb_score": 87.87,
-      "raw_score": 0.03
+      "ts_code": "600908.SH",
+      "stock_code": "600908",
+      "stock_name": "无锡银行",
+      "lgb_score": 83.0,
+      "raw_score": 0.02
     },
     {
       "rank": 5,
-      "ts_code": "688256.SH.SH",
-      "stock_code": "688256",
-      "stock_name": "寒武纪",
-      "lgb_score": 87.87,
-      "raw_score": 0.03
+      "ts_code": "301551.SZ",
+      "stock_code": "301551",
+      "stock_name": "无线传媒",
+      "lgb_score": 82.72,
+      "raw_score": 0.02
     }
   ],
   "tree_diagnostics": {
     "n_trees": 200,
-    "avg_depth": 11.07,
+    "avg_depth": 11.74,
     "avg_n_leaves": 31.0,
     "total_n_leaves": 6200
   },
   "prediction_stats": {
-    "mean": 0.000522,
-    "std": 0.004348,
-    "skew": -0.7301,
-    "kurtosis": 28.0958,
-    "min": -0.075183,
-    "max": 0.044344,
-    "median": -0.001502
+    "mean": 0.002326,
+    "std": 0.001691,
+    "skew": -3.4754,
+    "kurtosis": 115.7954,
+    "min": -0.042459,
+    "max": 0.036443,
+    "median": 0.001789
   },
   "training_metrics": {
-    "cv_rmse_mean": 0.053665220891338086,
-    "cv_rmse_std": 0.006865639327984337,
+    "cv_rmse_mean": 0.05355034134016221,
+    "cv_rmse_std": 0.0069070898789777655,
     "cv_scores": [
-      0.056734,
-      0.06506,
-      0.044873,
-      0.052062,
-      0.049598
+      0.056219,
+      0.065219,
+      0.044812,
+      0.052019,
+      0.049483
     ],
-    "rank_ic_mean": 0.059443,
-    "rank_ic_std": 0.017655,
-    "icir": 3.3669,
-    "oof_corr": 0.007132,
+    "rank_ic_mean": 0.018073,
+    "rank_ic_std": 0.015245,
+    "icir": 1.1855,
+    "oof_corr": -0.032569,
     "n_samples": 507201,
-    "n_features": 12
+    "n_features": 2
   }
 }

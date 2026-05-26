@@ -8,75 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "301308.SZ",
-      "stock_code": "301308",
-      "stock_name": "江波龙",
+      "ts_code": "603979.SH",
+      "stock_code": "603979",
+      "stock_name": "金诚信",
       "lgb_score": 100.0,
       "raw_score": 0.04
     },
     {
       "rank": 2,
-      "ts_code": "430476.BJ",
-      "stock_code": "430476.BJ",
-      "stock_name": "",
-      "lgb_score": 91.66,
+      "ts_code": "300986.SZ",
+      "stock_code": "300986",
+      "stock_name": "志特新材",
+      "lgb_score": 86.61,
       "raw_score": 0.03
     },
     {
       "rank": 3,
-      "ts_code": "920023.BJ",
-      "stock_code": "920023.BJ",
+      "ts_code": "920802.BJ",
+      "stock_code": "920802.BJ",
       "stock_name": "",
-      "lgb_score": 89.05,
+      "lgb_score": 81.86,
       "raw_score": 0.03
     },
     {
       "rank": 4,
-      "ts_code": "603056.SH",
-      "stock_code": "603056",
-      "stock_name": "德邦股份",
-      "lgb_score": 87.34,
+      "ts_code": "002727.SZ",
+      "stock_code": "002727",
+      "stock_name": "一心堂",
+      "lgb_score": 75.78,
       "raw_score": 0.02
     },
     {
       "rank": 5,
-      "ts_code": "834014.BJ",
-      "stock_code": "834014.BJ",
-      "stock_name": "",
-      "lgb_score": 86.27,
+      "ts_code": "002742.SZ",
+      "stock_code": "002742",
+      "stock_name": "三圣股份",
+      "lgb_score": 75.61,
       "raw_score": 0.02
     }
   ],
   "tree_diagnostics": {
     "n_trees": 200,
-    "avg_depth": 11.09,
+    "avg_depth": 11.61,
     "avg_n_leaves": 31.0,
     "total_n_leaves": 6200
   },
   "prediction_stats": {
-    "mean": -0.0029,
-    "std": 0.005371,
-    "skew": 0.493,
-    "kurtosis": 4.2495,
-    "min": -0.068027,
-    "max": 0.037871,
-    "median": -0.006083
+    "mean": 0.004814,
+    "std": 0.001317,
+    "skew": -0.8998,
+    "kurtosis": 87.2387,
+    "min": -0.018782,
+    "max": 0.03674,
+    "median": 0.004794
   },
   "training_metrics": {
-    "cv_rmse_mean": 0.05225781690480493,
-    "cv_rmse_std": 0.0071220989249079665,
+    "cv_rmse_mean": 0.052248331766820325,
+    "cv_rmse_std": 0.007250940291026172,
     "cv_scores": [
-      0.065765,
-      0.044877,
-      0.051814,
-      0.04984,
-      0.048993
+      0.066007,
+      0.044765,
+      0.051817,
+      0.049737,
+      0.048916
     ],
-    "rank_ic_mean": 0.05987,
-    "rank_ic_std": 0.019898,
-    "icir": 3.0089,
-    "oof_corr": 0.045043,
+    "rank_ic_mean": 0.02359,
+    "rank_ic_std": 0.015557,
+    "icir": 1.5163,
+    "oof_corr": 0.001993,
     "n_samples": 467619,
-    "n_features": 12
+    "n_features": 2
   }
 }

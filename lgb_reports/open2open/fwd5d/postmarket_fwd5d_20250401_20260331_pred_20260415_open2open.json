@@ -8,75 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "000959.SZ",
-      "stock_code": "000959",
-      "stock_name": "首钢股份",
+      "ts_code": "600572.SH",
+      "stock_code": "600572",
+      "stock_name": "康恩贝",
       "lgb_score": 100.0,
-      "raw_score": 0.1
+      "raw_score": 0.06
     },
     {
       "rank": 2,
       "ts_code": "605365.SH",
       "stock_code": "605365",
       "stock_name": "立达信",
-      "lgb_score": 82.5,
-      "raw_score": 0.06
+      "lgb_score": 89.35,
+      "raw_score": 0.05
     },
     {
       "rank": 3,
-      "ts_code": "688525.SH",
-      "stock_code": "688525",
-      "stock_name": "佰维存储",
-      "lgb_score": 76.78,
+      "ts_code": "000751.SZ",
+      "stock_code": "000751",
+      "stock_name": "锌业股份",
+      "lgb_score": 88.88,
       "raw_score": 0.05
     },
     {
       "rank": 4,
-      "ts_code": "300394.SZ",
-      "stock_code": "300394",
-      "stock_name": "天孚通信",
-      "lgb_score": 69.43,
+      "ts_code": "600408.SH",
+      "stock_code": "600408",
+      "stock_name": "安泰集团",
+      "lgb_score": 88.49,
       "raw_score": 0.04
     },
     {
       "rank": 5,
-      "ts_code": "300395.SZ",
-      "stock_code": "300395",
-      "stock_name": "菲利华",
-      "lgb_score": 68.28,
+      "ts_code": "301317.SZ",
+      "stock_code": "301317",
+      "stock_name": "鑫磊股份",
+      "lgb_score": 87.83,
       "raw_score": 0.04
     }
   ],
   "tree_diagnostics": {
     "n_trees": 200,
-    "avg_depth": 10.86,
+    "avg_depth": 10.93,
     "avg_n_leaves": 31.0,
     "total_n_leaves": 6200
   },
   "prediction_stats": {
-    "mean": -0.044407,
-    "std": 0.035932,
-    "skew": 0.8022,
-    "kurtosis": -1.3002,
-    "min": -0.094797,
-    "max": 0.098412,
-    "median": -0.068989
+    "mean": -0.010394,
+    "std": 0.013371,
+    "skew": 0.8495,
+    "kurtosis": -0.5194,
+    "min": -0.106154,
+    "max": 0.064049,
+    "median": -0.019281
   },
   "training_metrics": {
-    "cv_rmse_mean": 0.06439525467996764,
-    "cv_rmse_std": 0.003550445555865088,
+    "cv_rmse_mean": 0.06405450661179769,
+    "cv_rmse_std": 0.003906175315841637,
     "cv_scores": [
-      0.058433,
-      0.066041,
-      0.065689,
-      0.062864,
-      0.06895
+      0.057415,
+      0.065736,
+      0.065517,
+      0.062552,
+      0.069053
     ],
-    "rank_ic_mean": 0.067129,
-    "rank_ic_std": 0.016958,
-    "icir": 3.9586,
-    "oof_corr": 0.056748,
+    "rank_ic_mean": 0.039729,
+    "rank_ic_std": 0.025143,
+    "icir": 1.5801,
+    "oof_corr": 0.054813,
     "n_samples": 423832,
-    "n_features": 12
+    "n_features": 4
   }
 }

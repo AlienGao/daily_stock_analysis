@@ -12,71 +12,71 @@
       "stock_code": "000816",
       "stock_name": "智慧农业",
       "lgb_score": 100.0,
-      "raw_score": 0.14
+      "raw_score": 0.12
     },
     {
       "rank": 2,
       "ts_code": "002936.SZ",
       "stock_code": "002936",
       "stock_name": "郑州银行",
-      "lgb_score": 94.52,
+      "lgb_score": 99.86,
       "raw_score": 0.12
     },
     {
       "rank": 3,
-      "ts_code": "600408.SH",
-      "stock_code": "600408",
-      "stock_name": "安泰集团",
-      "lgb_score": 91.52,
-      "raw_score": 0.11
+      "ts_code": "002470.SZ",
+      "stock_code": "002470",
+      "stock_name": "金正大",
+      "lgb_score": 76.87,
+      "raw_score": 0.07
     },
     {
       "rank": 4,
-      "ts_code": "002356.SZ",
-      "stock_code": "002356",
-      "stock_name": "赫美集团",
-      "lgb_score": 90.65,
-      "raw_score": 0.11
+      "ts_code": "301389.SZ",
+      "stock_code": "301389",
+      "stock_name": "隆扬电子",
+      "lgb_score": 73.4,
+      "raw_score": 0.07
     },
     {
       "rank": 5,
-      "ts_code": "002047.SZ",
-      "stock_code": "002047",
-      "stock_name": "宝鹰股份",
-      "lgb_score": 85.81,
-      "raw_score": 0.1
+      "ts_code": "600843.SH",
+      "stock_code": "600843",
+      "stock_name": "上工申贝",
+      "lgb_score": 67.8,
+      "raw_score": 0.06
     }
   ],
   "tree_diagnostics": {
     "n_trees": 200,
-    "avg_depth": 11.05,
+    "avg_depth": 11.38,
     "avg_n_leaves": 31.0,
     "total_n_leaves": 6200
   },
   "prediction_stats": {
-    "mean": -0.076664,
-    "std": 0.060123,
-    "skew": 0.8363,
-    "kurtosis": -1.2106,
-    "min": -0.130295,
-    "max": 0.135311,
-    "median": -0.117283
+    "mean": -0.007495,
+    "std": 0.013998,
+    "skew": 0.9297,
+    "kurtosis": -0.1241,
+    "min": -0.070221,
+    "max": 0.117624,
+    "median": -0.016647
   },
   "training_metrics": {
-    "cv_rmse_mean": 0.08586694719821535,
-    "cv_rmse_std": 0.028535549121043467,
+    "cv_rmse_mean": 0.0854557326157378,
+    "cv_rmse_std": 0.029042585952079713,
     "cv_scores": [
-      0.140881,
-      0.081027,
-      0.070619,
-      0.077863,
-      0.058944
+      0.141621,
+      0.079737,
+      0.069343,
+      0.077804,
+      0.058774
     ],
-    "rank_ic_mean": 0.057753,
-    "rank_ic_std": 0.066306,
-    "icir": 0.871,
-    "oof_corr": 0.005166,
+    "rank_ic_mean": 0.025836,
+    "rank_ic_std": 0.01833,
+    "icir": 1.4095,
+    "oof_corr": -0.050279,
     "n_samples": 579749,
-    "n_features": 12
+    "n_features": 4
   }
 }

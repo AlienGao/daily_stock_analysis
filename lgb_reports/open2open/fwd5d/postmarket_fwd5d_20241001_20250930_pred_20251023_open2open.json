@@ -12,71 +12,71 @@
       "stock_code": "002482",
       "stock_name": "广田集团",
       "lgb_score": 100.0,
-      "raw_score": 0.2
+      "raw_score": 0.16
     },
     {
       "rank": 2,
       "ts_code": "002470.SZ",
       "stock_code": "002470",
       "stock_name": "金正大",
-      "lgb_score": 82.89,
-      "raw_score": 0.15
+      "lgb_score": 80.82,
+      "raw_score": 0.1
     },
     {
       "rank": 3,
-      "ts_code": "600022.SH",
-      "stock_code": "600022",
-      "stock_name": "山东钢铁",
-      "lgb_score": 81.9,
-      "raw_score": 0.15
-    },
-    {
-      "rank": 4,
       "ts_code": "601992.SH",
       "stock_code": "601992",
       "stock_name": "金隅集团",
-      "lgb_score": 81.59,
-      "raw_score": 0.14
+      "lgb_score": 80.81,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "002337.SZ",
+      "stock_code": "002337",
+      "stock_name": "赛象科技",
+      "lgb_score": 73.44,
+      "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "601588.SH",
-      "stock_code": "601588",
-      "stock_name": "北辰实业",
-      "lgb_score": 81.49,
-      "raw_score": 0.14
+      "ts_code": "603232.SH",
+      "stock_code": "603232",
+      "stock_name": "格尔软件",
+      "lgb_score": 70.68,
+      "raw_score": 0.07
     }
   ],
   "tree_diagnostics": {
     "n_trees": 200,
-    "avg_depth": 11.04,
+    "avg_depth": 11.02,
     "avg_n_leaves": 31.0,
     "total_n_leaves": 6200
   },
   "prediction_stats": {
-    "mean": -0.00368,
-    "std": 0.011952,
-    "skew": 2.5943,
-    "kurtosis": 30.6616,
-    "min": -0.119039,
-    "max": 0.203671,
-    "median": -0.010024
+    "mean": -0.006241,
+    "std": 0.01114,
+    "skew": 0.8231,
+    "kurtosis": 8.5615,
+    "min": -0.172023,
+    "max": 0.164884,
+    "median": -0.013348
   },
   "training_metrics": {
-    "cv_rmse_mean": 0.07151756346043703,
-    "cv_rmse_std": 0.00830183096001108,
+    "cv_rmse_mean": 0.07073455131471769,
+    "cv_rmse_std": 0.007311833312421632,
     "cv_scores": [
-      0.082301,
-      0.070515,
-      0.078528,
-      0.058809,
-      0.067435
+      0.078463,
+      0.070561,
+      0.078307,
+      0.05894,
+      0.067402
     ],
-    "rank_ic_mean": 0.042015,
-    "rank_ic_std": 0.04498,
-    "icir": 0.9341,
-    "oof_corr": -0.015309,
+    "rank_ic_mean": 0.018903,
+    "rank_ic_std": 0.018425,
+    "icir": 1.0259,
+    "oof_corr": -0.017524,
     "n_samples": 546598,
-    "n_features": 12
+    "n_features": 4
   }
 }
