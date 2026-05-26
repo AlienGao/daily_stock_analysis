@@ -66,6 +66,59 @@ def _cleanup_old_lgb_tasks():
         del _lgb_tasks[tid]
 
 
+def _apply_factor_subset(trainer, progress=None, fallback_disabled=None):
+    """从 factor_subset/ 加载匹配的因子子集；找不到则 fallback 到 LGB_DISABLE_FACTOR。"""
+    import glob as _glob
+    import json as _json
+
+    subset_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
+        os.path.dirname(os.path.abspath(__file__))))), "lgb_reports", "factor_subset")
+
+    exec_mode = getattr(trainer, "exec_mode", "open")
+    label_mode = getattr(trainer, "label_mode", "fixed")
+    if label_mode == "peak_speed":
+        period = f"peak{getattr(trainer, 'window_days', 20)}d"
+    else:
+        period = f"fixed_{getattr(trainer, 'forward_days', 5)}d"
+
+    # 1) 优先从 factor_subset/ 白名单
+    if os.path.isdir(subset_dir):
+        pattern = os.path.join(subset_dir, f"subset_{exec_mode}_{period}_*.json")
+        matches = sorted(_glob.glob(pattern), reverse=True)
+        if matches:
+            try:
+                with open(matches[0], "r", encoding="utf-8") as f:
+                    report = _json.load(f)
+                final_subset = report.get("final_subset", [])
+                if final_subset:
+                    available = set(trainer.feature_names)
+                    to_use = [f for f in final_subset if f in available]
+                    skipped = [f for f in final_subset if f not in available]
+                    if to_use:
+                        trainer.feature_names = to_use
+                        if progress:
+                            msg = f"[因子子集] 使用 {matches[0].split('/')[-1]} ({len(to_use)} 因子)"
+                            if skipped:
+                                msg += f"，跳过: {skipped}"
+                            progress(msg)
+                        return
+            except Exception:
+                pass
+
+    # 2) Fallback: 用 LGB_DISABLE_FACTOR 黑名单
+    disabled = fallback_disabled or os.environ.get("LGB_DISABLE_FACTOR", "")
+    if disabled:
+        disabled_set = {f.strip() for f in disabled.split(",") if f.strip()}
+        before = len(trainer.feature_names)
+        trainer.feature_names = [f for f in trainer.feature_names if f not in disabled_set]
+        removed = before - len(trainer.feature_names)
+        if progress:
+            progress(f"[因子子集] 未找到 {exec_mode}_{period} 报告，使用 LGB_DISABLE_FACTOR 过滤 ({removed} 因子禁用)" if removed else
+                     f"[因子子集] 未找到 {exec_mode}_{period} 报告，使用全部 {len(trainer.feature_names)} 因子")
+    elif progress:
+        progress(f"[因子子集] 未找到 {exec_mode}_{period} 报告，使用全部 {len(trainer.feature_names)} 因子")
+
+
 def _run_train_in_process(queue: multiprocessing.Queue, req_dict: dict):
     try:
         def _progress(msg: str):
@@ -80,10 +133,13 @@ def _run_train_in_process(queue: multiprocessing.Queue, req_dict: dict):
             peak_min_return=req_dict.get("peak_min_return", 0.01),
             progress_callback=_progress,
         )
+        # 先保存 LGB_DISABLE_FACTOR，再清除，避免 prepare_data 过滤因子
+        disabled_factors = os.environ.pop("LGB_DISABLE_FACTOR", None)
         trainer.prepare_data(
             start_date=req_dict.get("start_date"),
             end_date=req_dict.get("end_date"),
         )
+        _apply_factor_subset(trainer, _progress, fallback_disabled=disabled_factors)
 
         _progress(f"正在训练 (n_estimators={req_dict.get('n_estimators', 200)})...")
         trainer.train(
@@ -3589,12 +3645,15 @@ def _run_rolling_backtest(task_id: str):
         os.path.dirname(os.path.abspath(__file__)))))
 
     try:
+        env = os.environ.copy()
+        env.pop("LGB_DISABLE_FACTOR", None)  # 不继承黑名单，使用 factor_subset/ 白名单
         proc = subprocess.Popen(
             [sys.executable, script_path],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
             cwd=project_root,
+            env=env,
         )
 
         output_lines: list = []
