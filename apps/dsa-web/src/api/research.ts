@@ -503,6 +503,29 @@ export const researchApi = {
     });
     return resp.data;
   },
+
+  /* ── Rolling Backtest ── */
+
+  async startRollingBacktest(): Promise<{ task_id: string; status: string }> {
+    const resp = await apiClient.post('/api/v1/research/lgb/rolling-backtest', null, { timeout: 120000 });
+    return resp.data;
+  },
+
+  async getRollingBacktestStatus(taskId: string): Promise<RollingBacktestTaskStatus> {
+    const resp = await apiClient.get('/api/v1/research/lgb/rolling-backtest/status', {
+      params: { task_id: taskId },
+      timeout: 60000,
+    });
+    return resp.data;
+  },
+};
+
+export type RollingBacktestTaskStatus = {
+  task_id: string;
+  status: string;
+  status_message: string;
+  result?: { output: string } | null;
+  error: string;
 };
 
 export type CatchUpResultItem = {

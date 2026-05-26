@@ -70,6 +70,11 @@ class MaEntryFactor(BaseFactor):
         # 避免后复权历史 + raw 实时混合导致 MA/BOLL 在除权日附近失真。
         close_matrix = db_mgr.get_recent_close_matrix(trade_date, 60)
         if close_matrix is not None and not close_matrix.empty:
+            close_matrix = close_matrix.copy()
+            close_matrix.index = close_matrix.index.astype(str).str.replace(
+                r"\.(SH|SZ|BJ)$", "", regex=True
+            ).str.zfill(6)
+            close_matrix = close_matrix[~close_matrix.index.duplicated(keep="first")]
             avg_vol = self._get_avg_volume(db_mgr, trade_date)
             if avg_vol is not None and not avg_vol.empty:
                 result["avg_vol"] = avg_vol
@@ -87,14 +92,14 @@ class MaEntryFactor(BaseFactor):
         if close_matrix is not None and not close_matrix.empty:
             boll_mid = self._compute_boll_mid(close_matrix, spot)
             if boll_mid is not None and not boll_mid.empty:
-                result["boll_mid"] = boll_mid
+                result["boll_mid"] = boll_mid.reindex(result.index)
                 logger.debug("[MaEntryFactor] BOLL 中轨本地实时计算完成")
 
             mas_rt = self._compute_mas_realtime(close_matrix, spot)
             if mas_rt is not None and not mas_rt.empty:
                 for col in ["ma5", "ma10", "ma20"]:
                     if col in mas_rt.columns:
-                        m = mas_rt[col].notna()
+                        m = mas_rt[col].notna().reindex(result.index).fillna(False)
                         result.loc[m, col] = mas_rt.loc[m, col]
                 logger.debug("[MaEntryFactor] MA 实时计算完成")
 

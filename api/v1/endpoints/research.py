@@ -3312,20 +3312,19 @@ def _run_factor_subset_search(task_id: str, params: dict):
         best_result = None
         best_daily_return = -999.0
         for tn in range(1, 6):
-            progress(f"测试 top_n={tn}...")
+            progress(f"[top_n={tn}] 开始搜索...")
             searcher.top_n = tn
+            # 包装 progress_callback，确保所有内部日志都带 top_n 标识
+            searcher.cb = lambda msg, _tn=tn: progress(f"[top_n={_tn}] {msg}")
             result = searcher.run_search(save_report=False)
             dr = result.get("final_metrics", {}).get("daily_return_mean", -999.0)
-            progress(f"  top_n={tn}: daily_return={dr:.6f}")
+            progress(f"[top_n={tn}] 完成: daily_return={dr:.6f}")
             if dr > best_daily_return:
                 best_daily_return = dr
                 best_result = result
                 searcher.top_n = tn  # 确保 _save_report 使用最优 top_n
-
-        # 保存唯一报告（命名与批量模式一致，自动删除同类型旧报告）
-        if best_result is None:
-            raise RuntimeError("top_n 1-5 均未产生有效结果")
-        searcher._save_report(best_result)
+                # 增量保存当前最优（中断时也有一份已完成 top_n 中的最优报告）
+                searcher._save_report(best_result)
 
         # 查找报告路径
         report_path = ""
@@ -3556,6 +3555,97 @@ def lgb_factor_subset_batch_status(
     task_id: str = Query(..., description="任务 ID"),
 ):
     task = _factor_subset_batch_tasks.get(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务 ID 不存在")
+    return {
+        "task_id": task_id,
+        "status": task.get("status", "unknown"),
+        "status_message": task.get("status_message", ""),
+        "result": task.get("result"),
+        "error": task.get("error", ""),
+    }
+
+
+# ── Rolling Backtest ──
+
+_rolling_tasks: Dict[str, dict] = {}
+
+
+def _run_rolling_backtest(task_id: str):
+    """后台运行滚动窗口 LGB 回测脚本。"""
+    import subprocess
+
+    task = _rolling_tasks.get(task_id)
+    if task is None:
+        return
+
+    task["status"] = "running"
+    task["status_message"] = "正在启动滚动回测..."
+
+    script_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
+        os.path.dirname(os.path.abspath(__file__))))), "scripts", "rolling_lgb_backtest.py")
+
+    try:
+        proc = subprocess.Popen(
+            ["python", script_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            cwd=os.path.dirname(script_path),
+        )
+
+        output_lines: list = []
+        for line in proc.stdout:
+            line = line.rstrip()
+            if line:
+                output_lines.append(line)
+                task["status_message"] = line[-200:]
+                if len(output_lines) > 500:
+                    output_lines.pop(0)
+
+        proc.wait()
+        if proc.returncode == 0:
+            task["status"] = "completed"
+            task["status_message"] = "滚动回测完成"
+            task["result"] = {"output": "\n".join(output_lines[-100:])}
+        else:
+            task["status"] = "failed"
+            task["error"] = f"脚本退出码: {proc.returncode}"
+            task["result"] = {"output": "\n".join(output_lines[-100:])}
+    except Exception as e:
+        task["status"] = "failed"
+        task["error"] = str(e)
+        import traceback
+        traceback.print_exc()
+
+
+@router.post(
+    "/lgb/rolling-backtest",
+    summary="启动滚动窗口 LGB 回测",
+)
+def lgb_rolling_backtest():
+    task_id = str(uuid.uuid4())[:8]
+    _rolling_tasks[task_id] = {
+        "status": "pending",
+        "status_message": "Queued...",
+        "started_at": datetime.now().isoformat(),
+    }
+    threading.Thread(
+        target=_run_rolling_backtest,
+        args=(task_id,),
+        daemon=True,
+    ).start()
+    return {"task_id": task_id, "status": "pending"}
+
+
+@router.get(
+    "/lgb/rolling-backtest/status",
+    summary="查询滚动回测任务状态",
+)
+def lgb_rolling_backtest_status(
+    task_id: str = Query(..., description="任务 ID"),
+):
+    task = _rolling_tasks.get(task_id)
     if task is None:
         raise HTTPException(status_code=404, detail="任务 ID 不存在")
     return {

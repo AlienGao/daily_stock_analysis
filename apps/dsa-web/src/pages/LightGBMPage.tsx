@@ -132,6 +132,9 @@ const LightGBMPage: React.FC = () => {
   const [batchSearchStatus, setBatchSearchStatus] = useState<{ task_id: string; status: string; status_message: string; result: any; error: string } | null>(null);
   const [batchSearchLoading, setBatchSearchLoading] = useState(false);
   const batchSearchPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [rollingStatus, setRollingStatus] = useState<{ task_id: string; status: string; status_message: string; result?: { output: string } | null; error: string } | null>(null);
+  const [rollingLoading, setRollingLoading] = useState(false);
+  const rollingPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const bfAutoAppliedRef = useRef(false);
   const bfModelAutoSelectedRef = useRef(false);
   const [diagnostics, setDiagnostics] = useState<LGBDiagnosticsResponse | null>(null);
@@ -513,6 +516,7 @@ const LightGBMPage: React.FC = () => {
       if (bruteForcePollRef.current) clearInterval(bruteForcePollRef.current);
       if (subsetSearchPollRef.current) clearInterval(subsetSearchPollRef.current);
       if (batchSearchPollRef.current) clearInterval(batchSearchPollRef.current);
+      if (rollingPollRef.current) clearInterval(rollingPollRef.current);
     };
   }, []);
 
@@ -713,6 +717,48 @@ const LightGBMPage: React.FC = () => {
       setBatchSearchLoading(false);
     }
   }, [pollBatchSearch]);
+
+  /* ── Rolling Backtest ── */
+  const RB_TASK_KEY = 'lgb_rolling_task_id';
+
+  const pollRolling = useCallback((taskId: string) => {
+    rollingPollRef.current = setInterval(async () => {
+      try {
+        const status = await researchApi.getRollingBacktestStatus(taskId);
+        setRollingStatus(status);
+        if (status.status === 'completed' || status.status === 'failed') {
+          clearInterval(rollingPollRef.current!);
+          rollingPollRef.current = null;
+          localStorage.removeItem(RB_TASK_KEY);
+          setRollingLoading(false);
+        }
+      } catch {
+        clearInterval(rollingPollRef.current!);
+        rollingPollRef.current = null;
+        localStorage.removeItem(RB_TASK_KEY);
+        setRollingLoading(false);
+      }
+    }, 5000);
+  }, []);
+
+  useEffect(() => {
+    const stored = localStorage.getItem(RB_TASK_KEY);
+    if (!stored) return;
+    setRollingLoading(true);
+    pollRolling(stored);
+  }, [pollRolling]);
+
+  const handleRollingStart = useCallback(async () => {
+    setRollingLoading(true);
+    setRollingStatus(null);
+    try {
+      const { task_id } = await researchApi.startRollingBacktest();
+      localStorage.setItem(RB_TASK_KEY, task_id);
+      pollRolling(task_id);
+    } catch {
+      setRollingLoading(false);
+    }
+  }, [pollRolling]);
 
   /* ── Catch-up prediction ── */
   const CU_TASK_KEY = 'lgb_catchup_task';
@@ -1325,6 +1371,55 @@ const LightGBMPage: React.FC = () => {
                 loading={batchSearchLoading}
               >
                 {batchSearchLoading ? '搜索中...' : '开始批量搜索'}
+              </Button>
+            </div>
+          </Card>
+
+          {/* Rolling Backtest */}
+          <Card>
+            <div className="space-y-3">
+              <div className="font-medium text-sm text-secondary-text">滚动窗口回测</div>
+              <div className="text-xs text-tertiary-text">
+                自动发现 factor_subset/ 下的因子配置，按月滚动训练并预测每日 Top 5，报告保存至 lgb_reports/。
+              </div>
+
+              {rollingStatus && rollingStatus.status === 'completed' && (
+                <div className="space-y-2">
+                  <div className="border-t border-white/5" />
+                  <div className="text-xs text-green-400">
+                    滚动回测完成
+                  </div>
+                  {rollingStatus.result?.output && (
+                    <pre className="text-xs text-tertiary-text bg-gray-900 rounded p-2 max-h-40 overflow-y-auto whitespace-pre-wrap">
+                      {rollingStatus.result.output}
+                    </pre>
+                  )}
+                </div>
+              )}
+
+              {rollingStatus && rollingStatus.status === 'running' && (
+                <div className="text-xs text-blue-400 flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  {rollingStatus.status_message || '运行中...'}
+                </div>
+              )}
+
+              {rollingStatus && rollingStatus.status === 'failed' && (
+                <div className="text-xs text-red-400">
+                  {rollingStatus.error || '回测失败'}
+                </div>
+              )}
+
+              <Button
+                block
+                size="small"
+                type="primary"
+                icon={rollingLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                onClick={handleRollingStart}
+                disabled={rollingLoading || rollingStatus?.status === 'running'}
+                loading={rollingLoading}
+              >
+                {rollingLoading ? '运行中...' : '运行滚动回测'}
               </Button>
             </div>
           </Card>
