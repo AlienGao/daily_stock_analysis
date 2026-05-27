@@ -8,75 +8,75 @@
   "predictions": [
     {
       "rank": 1,
-      "ts_code": "603232.SH",
-      "stock_code": "603232",
-      "stock_name": "格尔软件",
+      "ts_code": "600572.SH",
+      "stock_code": "600572",
+      "stock_name": "康恩贝",
       "lgb_score": 100.0,
-      "raw_score": 0.04
+      "raw_score": 0.08
     },
     {
       "rank": 2,
-      "ts_code": "600843.SH",
-      "stock_code": "600843",
-      "stock_name": "上工申贝",
+      "ts_code": "002878.SZ",
+      "stock_code": "002878",
+      "stock_name": "元隆雅图",
       "lgb_score": 100.0,
-      "raw_score": 0.04
+      "raw_score": 0.08
     },
     {
       "rank": 3,
-      "ts_code": "301355.SZ",
-      "stock_code": "301355",
-      "stock_name": "南王科技",
+      "ts_code": "300340.SZ",
+      "stock_code": "300340",
+      "stock_name": "科恒股份",
       "lgb_score": 100.0,
-      "raw_score": 0.04
+      "raw_score": 0.08
     },
     {
       "rank": 4,
-      "ts_code": "920221.BJ",
-      "stock_code": "920221.BJ",
-      "stock_name": "",
+      "ts_code": "301293.SZ",
+      "stock_code": "301293",
+      "stock_name": "三博脑科",
       "lgb_score": 100.0,
-      "raw_score": 0.04
+      "raw_score": 0.08
     },
     {
       "rank": 5,
-      "ts_code": "002369.SZ",
-      "stock_code": "002369",
-      "stock_name": "卓翼科技",
+      "ts_code": "001278.SZ",
+      "stock_code": "001278",
+      "stock_name": "一彬科技",
       "lgb_score": 100.0,
-      "raw_score": 0.04
+      "raw_score": 0.08
     }
   ],
   "tree_diagnostics": {
     "n_trees": 200,
-    "avg_depth": 13.22,
+    "avg_depth": 15.0,
     "avg_n_leaves": 31.0,
     "total_n_leaves": 6200
   },
   "prediction_stats": {
-    "mean": 0.018468,
-    "std": 0.002923,
-    "skew": 0.3811,
-    "kurtosis": 12.8992,
-    "min": 0.005589,
-    "max": 0.044415,
-    "median": 0.01894
+    "mean": 0.009787,
+    "std": 0.0121,
+    "skew": -1.2906,
+    "kurtosis": 14.1602,
+    "min": -0.136646,
+    "max": 0.080509,
+    "median": 0.012525
   },
   "training_metrics": {
-    "cv_rmse_mean": 0.11805476950139089,
-    "cv_rmse_std": 0.02470519028171777,
+    "cv_rmse_mean": 0.10193002552197299,
+    "cv_rmse_std": 0.030741707739548287,
     "cv_scores": [
-      0.104981,
-      0.083041,
-      0.148187,
-      0.144145,
-      0.109919
+      0.087012,
+      0.075436,
+      0.161752,
+      0.087592,
+      0.097858
     ],
-    "rank_ic_mean": -0.005396,
-    "rank_ic_std": 0.007063,
-    "icir": -0.7641,
-    "oof_corr": -0.11102,
-    "n_samples": 648543,
-    "n_features": 1
+    "rank_ic_mean": 0.015662,
+    "rank_ic_std": 0.025584,
+    "icir": 0.6122,
+    "oof_corr": -0.075678,
+    "n_samples": 47178,
+    "n_features": 2
   }
 }
