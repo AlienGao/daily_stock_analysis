@@ -7,7 +7,7 @@ import {
 import { DatePicker, Segmented, Table, InputNumber, Button, Select, Input, Tooltip as AntTooltip, Modal, message } from 'antd';
 import { Brain, Play, Loader2, Search, Sparkles } from 'lucide-react';
 import { AppPage, Card, StatCard, EmptyState, ApiErrorAlert } from '../components/common';
-import { researchApi, type LGBTaskStatusResponse, type LGBPredictionItem, type LGBBacktestCompareResponse, type LGBModelInfo, type LGBDateRangeResponse, type LGBStockLookupItem, type LGBBacktestSimResponse, type LGBBacktestSimAvailableResponse, type LGBBruteForceTaskStatus, type LGBBruteForceItem, type LGBDiagnosticsResponse, type LGBCrossModelOverlapResponse, type CatchUpTaskStatus, type LGBBruteForceResult, type LGBFactorSubsetTaskStatus } from '../api/research';
+import { researchApi, type LGBTaskStatusResponse, type LGBPredictionItem, type LGBBacktestCompareResponse, type LGBModelInfo, type LGBDateRangeResponse, type LGBStockLookupItem, type LGBBacktestSimResponse, type LGBBacktestSimAvailableResponse, type LGBBruteForceTaskStatus, type LGBBruteForceItem, type LGBDiagnosticsResponse, type LGBCrossModelOverlapResponse, type LGBCrossModelOverlapStock, type CatchUpTaskStatus, type LGBBruteForceResult, type LGBFactorSubsetTaskStatus } from '../api/research';
 import type { ParsedApiError } from '../api/error';
 import { getParsedApiError } from '../api/error';
 import dayjs from 'dayjs';
@@ -1766,7 +1766,7 @@ const LightGBMPage: React.FC = () => {
                 size="small"
                 dataSource={predictions}
                 rowKey="ts_code"
-                pagination={{ pageSize: 20, size: 'small' }}
+                pagination={false}
                 columns={predColumns}
                 scroll={{ x: 400 }}
                 rowClassName={(r) => overlapHighlight.has(r.ts_code) ? 'bg-amber-500/10' : ''}
@@ -1811,6 +1811,32 @@ const LightGBMPage: React.FC = () => {
                   showExpandColumn: false,
                 }}
               />
+              {overlapData && overlapData.stocks.length > 0 && (
+                <div className="mt-4">
+                  <div className="font-medium text-sm text-secondary-text mb-2">
+                    交叉命中个股（≥3 个模型）
+                  </div>
+                  <Table
+                    size="small"
+                    dataSource={overlapData.stocks.filter(s => s.count >= 3)}
+                    rowKey="ts_code"
+                    pagination={false}
+                    columns={[
+                      { title: '股票', key: 'stock', width: 130, render: (_: unknown, r: LGBCrossModelOverlapStock) => (
+                        <div className="leading-tight">
+                          <div>{r.stock_name}</div>
+                          <div className="text-xs text-secondary-text">{r.ts_code}</div>
+                        </div>
+                      )},
+                      { title: '命中', dataIndex: 'count', key: 'count', width: 55 },
+                      { title: '来源模型', dataIndex: 'model_names', key: 'model_names', render: (_: unknown, r: LGBCrossModelOverlapStock) => (
+                        <div className="text-xs leading-snug">{r.model_names.join(', ')}</div>
+                      )},
+                    ]}
+                    scroll={{ x: 500 }}
+                  />
+                </div>
+              )}
             </Card>
           )}
 

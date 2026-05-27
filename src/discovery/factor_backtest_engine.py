@@ -430,7 +430,7 @@ class FactorBacktestEngine:
         benchmark_curve = self._build_benchmark_curve(trading_days, initial_capital)
 
         return FactorBacktestResult(
-            mode=mode, date_range={"start": sd, "end": ed}, factors=finfo,
+            mode=mode, date_range={"start": snap_filtered[0], "end": snap_filtered[-1]}, factors=finfo,
             params={"top_n": top_n, "hold_days": hold_days,
                     "initial_capital": initial_capital, "risk_free_rate": risk_free_rate,
                     "use_pipeline": use_pipeline},
@@ -996,7 +996,7 @@ class FactorBacktestEngine:
         benchmark_curve = self._build_benchmark_curve(trading_days, initial_capital)
 
         return FactorBacktestResult(
-            mode=mode, date_range={"start": sd, "end": ed}, factors=finfo,
+            mode=mode, date_range={"start": snap_filtered[0], "end": snap_filtered[-1]}, factors=finfo,
             params={"top_n": top_n, "hold_days": hold_days,
                     "initial_capital": initial_capital, "risk_free_rate": risk_free_rate,
                     "use_pipeline": use_pipeline,
@@ -1520,14 +1520,7 @@ class FactorBacktestEngine:
     def _get_trading_days(self, snap_dates):
         md = snap_dates[0]
         xd = (datetime.strptime(snap_dates[-1], "%Y%m%d") + timedelta(days=60)).strftime("%Y%m%d")
-        if self._fetcher:
-            try:
-                df = self._fetcher._call_api_with_rate_limit(
-                    "trade_cal", exchange="SSE", start_date=md, end_date=xd, is_open="1")
-                if df is not None and not df.empty:
-                    return sorted(df["cal_date"].tolist())
-            except Exception:
-                pass
+        # 优先用 exchange_calendars（本地，无 API 调用）
         try:
             import exchange_calendars as xc
             cal = xc.get_calendar("XSHG")
@@ -1537,6 +1530,16 @@ class FactorBacktestEngine:
             return [s.strftime("%Y%m%d") for s in ss]
         except Exception:
             pass
+        # fallback: Tushare
+        if self._fetcher:
+            try:
+                df = self._fetcher._call_api_with_rate_limit(
+                    "trade_cal", exchange="SSE", start_date=md, end_date=xd, is_open="1")
+                if df is not None and not df.empty:
+                    return sorted(df["cal_date"].tolist())
+            except Exception:
+                pass
+        # 最后兜底：工作日
         ds = []
         d = datetime.strptime(md, "%Y%m%d")
         e = datetime.strptime(xd, "%Y%m%d")

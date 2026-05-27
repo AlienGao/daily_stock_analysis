@@ -6,8 +6,10 @@
 
 import logging
 import multiprocessing
+import os
 import uuid
 from datetime import datetime
+from pathlib import Path
 from queue import Empty as QueueEmpty
 from typing import Dict, List, Optional
 
@@ -15,6 +17,148 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
+
+# api/v1/endpoints → api/v1 → api → project root
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+_REPORTS_DIR = _PROJECT_ROOT / "reports_simple_backtest"
+
+
+def _compute_period_stats(curve, trades, init_cap, rfr):
+    """从资金曲线和交易记录计算单个持有期的汇总指标。"""
+    closed = [t for t in trades if t.get("status") in ("closed", "extended")]
+    if not curve or len(curve) < 2:
+        return None
+    final_cap = curve[-1]["capital"]
+    total_ret = (final_cap - init_cap) / init_cap
+    n_periods = len(curve) - 1
+    ann_ret = (1 + total_ret) ** (252 / max(n_periods, 1)) - 1 if total_ret > -1 else total_ret
+    wins = sum(1 for t in closed if t.get("return_pct", 0) > 0)
+    win_rate = wins / len(closed) if closed else 0
+    peak = init_cap
+    mdd = 0.0
+    for pt in curve:
+        if pt["capital"] > peak:
+            peak = pt["capital"]
+        dd = (peak - pt["capital"]) / peak if peak > 0 else 0
+        if dd > mdd:
+            mdd = dd
+    dr = []
+    for i in range(1, len(curve)):
+        dr.append((curve[i]["capital"] - curve[i - 1]["capital"]) / curve[i - 1]["capital"])
+    mean_ret = sum(dr) / len(dr) if dr else 0
+    std_ret = (sum((r - mean_ret) ** 2 for r in dr) / (len(dr) - 1)) ** 0.5 if len(dr) > 1 else 0
+    daily_rf = (1 + rfr) ** (1 / 252) - 1
+    sharpe = (mean_ret - daily_rf) / std_ret * (252 ** 0.5) if std_ret > 0 else 0
+    return {
+        "total_return": total_ret,
+        "annual_return": ann_ret,
+        "win_rate": win_rate,
+        "max_drawdown": mdd,
+        "sharpe": sharpe,
+        "trade_count": len(closed),
+        "open_count": sum(1 for t in trades if t.get("status") == "open"),
+        "canceled_count": sum(1 for t in trades if t.get("status") == "canceled"),
+    }
+
+
+def _save_report(result_dict: dict):
+    """将回测汇总保存为 Markdown 到 reports_simple_backtest/ 目录。"""
+    try:
+        _REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        mode = result_dict.get("mode", "postmarket")
+        factors = result_dict.get("factors", [])
+        factor_names = [f.get("name", "") for f in factors]
+        factor_str = "_".join(factor_names[:3]) if factor_names else "unknown"
+        filename = f"backtest_{mode}_{factor_str}_{ts}.md"
+        filepath = _REPORTS_DIR / filename
+
+        params = result_dict.get("params", {})
+        hold_days = params.get("hold_days", [])
+        init_cap = params.get("initial_capital", 1_000_000)
+        rfr = params.get("risk_free_rate", 0.02)
+        date_range = result_dict.get("date_range", {})
+        curves = result_dict.get("capital_curves", {})
+        all_trades = result_dict.get("trade_records", [])
+        rank_ic = result_dict.get("rank_ic", {})
+
+        lines = []
+        lines.append(f"# 因子回测报告")
+        lines.append(f"")
+        lines.append(f"- **模式**: {mode}")
+        lines.append(f"- **回测区间**: {date_range.get('start', '?')} ~ {date_range.get('end', '?')}")
+        lines.append(f"- **初始资金**: {init_cap:,.0f}")
+        lines.append(f"- **无风险利率**: {rfr * 100:.1f}%")
+        lines.append(f"- **每期选股数**: {params.get('top_n', '-')}")
+        lines.append(f"- **生成时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        lines.append(f"")
+        lines.append(f"## 因子")
+        lines.append(f"")
+        lines.append(f"| 因子 | 权重 |")
+        lines.append(f"|------|------|")
+        for f in factors:
+            lines.append(f"| {f.get('name', '?')} | {f.get('weight', 0):.1f} |")
+        lines.append(f"")
+
+        # 因子标签映射
+        FLM = {"money_flow": "资金流向", "margin": "融资融券", "chip": "筹码分布",
+               "technical": "技术形态", "limit": "涨跌停", "fundamental": "基本面",
+               "institution_hold": "机构持股", "profit_forecast": "盈利预测",
+               "buyback": "回购", "insider_buy": "高管增持", "broker_recommend": "券商推荐",
+               "popularity": "人气", "hot_money": "游资", "performance": "业绩",
+               "momentum": "动量", "rebound": "反弹", "sector": "板块", "ma_entry": "均线",
+               "ranking_momentum": "排名动量", "concept_heat": "概念热度",
+               "alpha042": "均值回归Alpha042", "vwap_deviation": "VWAP偏离",
+               "gap_reversal": "跳空反转", "liquid_oversold": "流动性超卖",
+               "vwap_reversal": "VWAP动量反转", "gtja114": "GTJA114",
+               "alpha60": "Alpha60收盘位置", "money_flow_osc": "资金流振荡",
+               "market_cap": "小市值"}
+
+        lines.append(f"## 各持有期汇总")
+        lines.append(f"")
+        header = "| 持有期 | 总收益 | 年化收益 | 胜率 | 最大回撤 | Sharpe | 交易次数 | 持仓中 | 跳过 |"
+        lines.append(header)
+        lines.append("|--------|--------|----------|------|----------|--------|----------|--------|------|")
+        for hd in hold_days:
+            hd_str = str(hd)
+            curve = curves.get(hd_str, [])
+            trades_hd = [t for t in all_trades if t.get("hold_days") == hd]
+            stats = _compute_period_stats(curve, trades_hd, init_cap, rfr)
+            if stats:
+                lines.append(
+                    f"| {hd}日 | {stats['total_return'] * 100:+.2f}% | {stats['annual_return'] * 100:+.2f}% "
+                    f"| {stats['win_rate'] * 100:.1f}% | {stats['max_drawdown'] * 100:.2f}% "
+                    f"| {stats['sharpe']:+.2f} | {stats['trade_count']} "
+                    f"| {stats['open_count']} | {stats['canceled_count']} |")
+            else:
+                lines.append(f"| {hd}日 | - | - | - | - | - | - | - | - |")
+
+        lines.append(f"")
+        lines.append(f"## Rank IC（因子有效性）")
+        lines.append(f"")
+        if rank_ic:
+            all_factors = sorted(set(fn for hd_ic in rank_ic.values() for fn in hd_ic))
+            header_ic = "| 因子 | " + " | ".join(f"{h}日" for h in hold_days) + " |"
+            lines.append(header_ic)
+            lines.append("|------|" + "|".join("------" for _ in hold_days) + "|")
+            for fn in all_factors:
+                label = FLM.get(fn, fn)
+                vals = []
+                for hd in hold_days:
+                    ic = rank_ic.get(str(hd), {}).get(fn, 0)
+                    vals.append(f"{ic:+.4f}")
+                lines.append(f"| {label} | " + " | ".join(vals) + " |")
+        else:
+            lines.append("无 IC 数据")
+
+        lines.append("")
+
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines))
+        logger.info("回测报告已保存: %s", filepath)
+    except Exception:
+        logger.exception("保存回测报告失败")
+
 
 router = APIRouter()
 
@@ -66,7 +210,9 @@ def _run_in_process(queue: multiprocessing.Queue, req_dict: dict):
             queue.put(("failed", "回测数据不足，请检查日期范围或因子选择"))
         else:
             from dataclasses import asdict
-            queue.put(("completed", asdict(result)))
+            result_dict = asdict(result)
+            _save_report(result_dict)
+            queue.put(("completed", result_dict))
     except Exception as e:
         import traceback
         traceback.print_exc()

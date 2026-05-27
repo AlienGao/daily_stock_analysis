@@ -10,6 +10,7 @@ import { AppPage, Card, StatCard, EmptyState, ApiErrorAlert } from '../component
 import apiClient from '../api';
 import type { ParsedApiError } from '../api/error';
 import { getParsedApiError } from '../api/error';
+import { idbSet, idbGet, idbRemove } from '../utils/idbStore';
 
 const HOLD_DAY_OPTIONS = [
   { label: '1日', value: 1 },
@@ -126,12 +127,9 @@ const SimpleFactorBacktestPage: React.FC = () => {
     }).catch(() => {});
 
     // restore cached result
-    const cachedRaw = localStorage.getItem(RESULT_KEY);
-    if (cachedRaw) {
-      try {
-        setResult(JSON.parse(cachedRaw));
-      } catch { /* ignore */ }
-    }
+    idbGet<BacktestResult>(RESULT_KEY).then((cached) => {
+      if (cached) setResult(cached);
+    }).catch(() => {});
   }, []);
 
   const selectedCount = useMemo(
@@ -163,7 +161,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
       });
       const taskId = resp.data.task_id;
       taskIdRef.current = taskId;
-      localStorage.setItem(TASK_KEY, taskId);
+      idbSet(TASK_KEY, taskId);
       setProgressMsg('回测运行中...');
 
       // poll
@@ -179,14 +177,14 @@ const SimpleFactorBacktestPage: React.FC = () => {
             if (data.status_message) setProgressMsg(data.status_message);
             if (data.status === 'completed') {
               setResult(data.result);
-              localStorage.setItem(RESULT_KEY, JSON.stringify(data.result));
-              localStorage.removeItem(TASK_KEY);
+              idbSet(RESULT_KEY, data.result);
+              idbRemove(TASK_KEY);
               setLoading(false);
               return;
             }
             if (data.status === 'failed') {
               setError({ message: data.error || '回测失败' } as ParsedApiError);
-              localStorage.removeItem(TASK_KEY);
+              idbRemove(TASK_KEY);
               setLoading(false);
               return;
             }
@@ -205,7 +203,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
   const handleStop = useCallback(() => {
     abortRef.current = true;
     setLoading(false);
-    localStorage.removeItem(TASK_KEY);
+    idbRemove(TASK_KEY);
   }, []);
 
   // chart data
@@ -297,15 +295,13 @@ const SimpleFactorBacktestPage: React.FC = () => {
     { title: '股数', dataIndex: 'shares', key: 'shares', width: 70, render: (_: unknown, r: BacktestTrade) => r.shares > 0 ? r.shares.toLocaleString() : '--' },
     { title: '买入额', key: 'buy_amount', width: 90, render: (_: unknown, r: BacktestTrade) => {
       if (!r.shares) return '--';
-      const price = r.buy_price_adj || r.buy_price;
-      return Math.round(r.shares * price).toLocaleString();
+      return Math.round(r.allocated).toLocaleString();
     }},
     { title: '卖出日', dataIndex: 'sell_date', key: 'sell_date', width: 90 },
     { title: '卖出价', dataIndex: 'sell_price', key: 'sell_price', width: 75 },
     { title: '卖出额', key: 'sell_amount', width: 90, render: (_: unknown, r: BacktestTrade) => {
       if (!r.shares) return '--';
-      const price = r.sell_price_adj || r.sell_price;
-      return Math.round(r.shares * price).toLocaleString();
+      return Math.round(r.allocated + r.pnl).toLocaleString();
     }},
     { title: '收益', dataIndex: 'return_pct', key: 'return_pct', width: 75, render: (_: unknown, r: BacktestTrade) => (
       <span className={r.return_pct >= 0 ? 'text-red-400' : 'text-emerald-400'}>
