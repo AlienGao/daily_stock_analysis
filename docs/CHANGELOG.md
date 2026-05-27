@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- 新条目格式：- [类型] 描述（类型取值：新功能/改进/修复/文档/测试/chore）-->
 <!-- 每条独立一行追加到本段末尾，无需分类标题，合并时冲突最小 -->
+- [新功能] 新增小米 MiMo LLM 渠道支持：添加 `LLM_MIMO_*` 环境变量配置，使用 Token Plan 端点 `token-plan-sgp.xiaomimimo.com`，默认模型 `mimo-v2.5-pro`，优先级介于 Bailian 和 DeepSeek 之间。
 - [新功能] 因子最优组合搜索：LightGBM 页面新增「搜索最优因子组合」按钮，三阶段搜索（基线重要性 → 贪心前向选择 → Optuna TPE 精调）自动寻找最优因子子集，支持一键应用排除因子到 `.env` 的 `LGB_DISABLE_FACTOR`。报告保存至 `lgb_reports/factor_subset/`。
 - [新功能] Discovery Engine 因子信号注入单股分析：定时任务批次启动前运行一次 discovery engine，单股分析时将因子评分注入 LLM prompt（非 Agent 路径渲染为 Markdown 表格，Agent 路径注入 JSON 块）。通过 `DISCOVERY_FACTOR_SIGNALS_ENABLED` 控制。
 - [新功能] FinBERT 新闻情感分析：集成中文财经 BERT 模型对新闻文本做情感分类（正面/负面/中性），结果注入 LLM prompt 作为参考指标。通过 `FINBERT_ENABLED` 控制。
