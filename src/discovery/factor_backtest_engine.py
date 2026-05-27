@@ -124,6 +124,9 @@ class FactorBacktestTrade:
     status: str
     shares: int = 0
     reoptimized: bool = False
+    buy_date: str = ""
+    buy_price_raw: float = 0.0
+    sell_price_raw: float = 0.0
 
 
 @dataclass
@@ -302,10 +305,12 @@ class FactorBacktestEngine:
                     ranked = composite.nlargest(top_n)
                     for code, _sc in ranked.items():
                         all_trades[hd].append(FactorBacktestTrade(
-                            trade_date=snap_date, hold_days=hd, stock_code=code,
+                            trade_date=snap_date,
+                        buy_date=buy_date, hold_days=hd, stock_code=code,
                             stock_name=self._stock_names.get(code, code),
                             buy_price=0, sell_date=sell_date, sell_price=0,
-                            return_pct=0, pnl=0, allocated=0, status="pending"))
+                            return_pct=0, pnl=0, allocated=0, status="pending",
+                            buy_price_raw=0, sell_price_raw=0))
                     continue
 
                 # 两轮：先试买（涨停跳过顺延），后均分可用资金
@@ -344,18 +349,23 @@ class FactorBacktestEngine:
                         batch_final += final_val
                     else:
                         actual_cost = 0.0; final_val = 0.0; ret = 0.0; pnl = 0.0
+                    bp_raw = self._get_price_raw(code, buy_date, buy_field)
+                    sp_raw = self._get_price_raw(code, sd, sell_field)
                     all_trades[hd].append(FactorBacktestTrade(
-                        trade_date=snap_date, hold_days=hd, stock_code=code, stock_name=name,
-                        buy_price=round(bp, 2) if bp else 0, sell_date=sd,
+                        trade_date=snap_date,
+                        buy_date=buy_date, hold_days=hd, stock_code=code, stock_name=name,
+                        buy_price=round(bp, 2) if bp else 0, sell_date=sd, buy_price_raw=round(bp_raw, 2) if bp_raw else 0, sell_price_raw=round(sp_raw, 2) if sp_raw else 0,
                         sell_price=round(sp, 2) if sp else 0, return_pct=round(ret, 6),
                         pnl=round(pnl, 2), allocated=round(actual_cost, 2),
                         shares=shares, status=status))
                 for code in skipped:
                     all_trades[hd].append(FactorBacktestTrade(
-                        trade_date=snap_date, hold_days=hd, stock_code=code,
+                        trade_date=snap_date,
+                        buy_date=buy_date, hold_days=hd, stock_code=code,
                         stock_name=self._stock_names.get(code, code),
                         buy_price=0, sell_date=sell_date, sell_price=0,
-                        return_pct=0, pnl=0, allocated=0, shares=0, status="canceled"))
+                        return_pct=0, pnl=0, allocated=0, shares=0, status="canceled",
+                        buy_price_raw=0, sell_price_raw=0))
 
                 if batch_cost > 0:
                     available -= batch_cost
@@ -409,12 +419,13 @@ class FactorBacktestEngine:
         tds = []
         for hd in hold_days:
             for t in all_trades[hd]:
-                tds.append({"trade_date": t.trade_date, "hold_days": t.hold_days,
+                tds.append({"trade_date": t.trade_date, "buy_date": t.buy_date, "hold_days": t.hold_days,
                            "stock_code": t.stock_code, "stock_name": t.stock_name,
-                           "buy_price": t.buy_price, "sell_date": t.sell_date,
-                           "sell_price": t.sell_price, "return_pct": t.return_pct,
+                           "buy_price": t.buy_price_raw if t.buy_price_raw else t.buy_price, "sell_date": t.sell_date,
+                           "sell_price": t.sell_price_raw if t.sell_price_raw else t.sell_price, "return_pct": t.return_pct,
                            "pnl": t.pnl, "allocated": t.allocated,
-                           "shares": t.shares, "status": t.status})
+                           "shares": t.shares, "status": t.status,
+                           "buy_price_adj": t.buy_price, "sell_price_adj": t.sell_price})
 
         benchmark_curve = self._build_benchmark_curve(trading_days, initial_capital)
 
@@ -585,10 +596,12 @@ class FactorBacktestEngine:
                     ranked = composite.nlargest(top_n)
                     for code, _sc in ranked.items():
                         fixed_trades[hd].append(FactorBacktestTrade(
-                            trade_date=snap_date, hold_days=hd, stock_code=code,
+                            trade_date=snap_date,
+                        buy_date=buy_date, hold_days=hd, stock_code=code,
                             stock_name=self._stock_names.get(code, code),
                             buy_price=0, sell_date=sell_date, sell_price=0,
-                            return_pct=0, pnl=0, allocated=0, status="pending"))
+                            return_pct=0, pnl=0, allocated=0, status="pending",
+                            buy_price_raw=0, sell_price_raw=0))
                     continue
 
                 ranked = composite.nlargest(top_n * 5)
@@ -628,18 +641,23 @@ class FactorBacktestEngine:
                         batch_final += final_val
                     else:
                         actual_cost = 0.0; final_val = 0.0; ret = 0.0; pnl = 0.0
+                    bp_raw = self._get_price_raw(code, buy_date, buy_field)
+                    sp_raw = self._get_price_raw(code, sd_ext, sell_field)
                     fixed_trades[hd].append(FactorBacktestTrade(
-                        trade_date=snap_date, hold_days=hd, stock_code=code, stock_name=name,
-                        buy_price=round(bp, 2) if bp else 0, sell_date=sd_ext,
+                        trade_date=snap_date,
+                        buy_date=buy_date, hold_days=hd, stock_code=code, stock_name=name,
+                        buy_price=round(bp, 2) if bp else 0, sell_date=sd_ext, buy_price_raw=round(bp_raw, 2) if bp_raw else 0, sell_price_raw=round(sp_raw, 2) if sp_raw else 0,
                         sell_price=round(sp, 2) if sp else 0, return_pct=round(ret, 6),
                         pnl=round(pnl, 2), allocated=round(actual_cost, 2),
                         shares=shares, status=status))
                 for code in skipped:
                     fixed_trades[hd].append(FactorBacktestTrade(
-                        trade_date=snap_date, hold_days=hd, stock_code=code,
+                        trade_date=snap_date,
+                        buy_date=buy_date, hold_days=hd, stock_code=code,
                         stock_name=self._stock_names.get(code, code),
                         buy_price=0, sell_date=sell_date, sell_price=0,
-                        return_pct=0, pnl=0, allocated=0, shares=0, status="canceled"))
+                        return_pct=0, pnl=0, allocated=0, shares=0, status="canceled",
+                        buy_price_raw=0, sell_price_raw=0))
 
                 if batch_cost > 0:
                     available -= batch_cost
@@ -816,10 +834,12 @@ class FactorBacktestEngine:
                         ranked = composite.nlargest(top_n)
                         for code, _sc in ranked.items():
                             dynamic_trades[hd].append(FactorBacktestTrade(
-                                trade_date=snap_date, hold_days=hd, stock_code=code,
+                                trade_date=snap_date,
+                        buy_date=buy_date, hold_days=hd, stock_code=code,
                                 stock_name=self._stock_names.get(code, code),
                                 buy_price=0, sell_date=sell_date, sell_price=0,
-                                return_pct=0, pnl=0, allocated=0, status="pending"))
+                                return_pct=0, pnl=0, allocated=0, status="pending",
+                                buy_price_raw=0, sell_price_raw=0))
                         continue
 
                     ranked = composite.nlargest(top_n * 5)
@@ -859,20 +879,25 @@ class FactorBacktestEngine:
                             batch_final += final_val
                         else:
                             actual_cost = 0.0; final_val = 0.0; ret = 0.0; pnl = 0.0
+                        bp_raw = self._get_price_raw(code, buy_date, buy_field)
+                        sp_raw = self._get_price_raw(code, sd_ext, sell_field)
                         dynamic_trades[hd].append(FactorBacktestTrade(
-                            trade_date=snap_date, hold_days=hd, stock_code=code,
+                            trade_date=snap_date,
+                        buy_date=buy_date, hold_days=hd, stock_code=code,
                             stock_name=name, buy_price=round(bp, 2) if bp else 0,
-                            sell_date=sd_ext, sell_price=round(sp, 2) if sp else 0,
+                            sell_date=sd_ext, buy_price_raw=round(bp_raw, 2) if bp_raw else 0, sell_price_raw=round(sp_raw, 2) if sp_raw else 0, sell_price=round(sp, 2) if sp else 0,
                             return_pct=round(ret, 6), pnl=round(pnl, 2),
                             allocated=round(actual_cost, 2), shares=shares,
                             status=status, reoptimized=True))
                     for code in skipped:
                         dynamic_trades[hd].append(FactorBacktestTrade(
-                            trade_date=snap_date, hold_days=hd, stock_code=code,
+                            trade_date=snap_date,
+                        buy_date=buy_date, hold_days=hd, stock_code=code,
                             stock_name=self._stock_names.get(code, code),
                             buy_price=0, sell_date=sell_date, sell_price=0,
                             return_pct=0, pnl=0, allocated=0, shares=0,
-                            status="canceled", reoptimized=True))
+                            status="canceled", reoptimized=True,
+                            buy_price_raw=0, sell_price_raw=0))
 
                     if batch_cost > 0:
                         available -= batch_cost
@@ -950,21 +975,23 @@ class FactorBacktestEngine:
         tds = []
         for hd in hold_days:
             for t in fixed_trades[hd]:
-                tds.append({"trade_date": t.trade_date, "hold_days": t.hold_days,
+                tds.append({"trade_date": t.trade_date, "buy_date": t.buy_date, "hold_days": t.hold_days,
                            "stock_code": t.stock_code, "stock_name": t.stock_name,
-                           "buy_price": t.buy_price, "sell_date": t.sell_date,
-                           "sell_price": t.sell_price, "return_pct": t.return_pct,
+                           "buy_price": t.buy_price_raw if t.buy_price_raw else t.buy_price, "sell_date": t.sell_date,
+                           "sell_price": t.sell_price_raw if t.sell_price_raw else t.sell_price, "return_pct": t.return_pct,
                            "pnl": t.pnl, "allocated": t.allocated,
                            "shares": t.shares, "status": t.status,
-                           "reoptimized": False})
+                           "reoptimized": False,
+                           "buy_price_adj": t.buy_price, "sell_price_adj": t.sell_price})
             for t in dynamic_trades[hd]:
-                tds.append({"trade_date": t.trade_date, "hold_days": t.hold_days,
+                tds.append({"trade_date": t.trade_date, "buy_date": t.buy_date, "hold_days": t.hold_days,
                            "stock_code": t.stock_code, "stock_name": t.stock_name,
-                           "buy_price": t.buy_price, "sell_date": t.sell_date,
-                           "sell_price": t.sell_price, "return_pct": t.return_pct,
+                           "buy_price": t.buy_price_raw if t.buy_price_raw else t.buy_price, "sell_date": t.sell_date,
+                           "sell_price": t.sell_price_raw if t.sell_price_raw else t.sell_price, "return_pct": t.return_pct,
                            "pnl": t.pnl, "allocated": t.allocated,
                            "shares": t.shares, "status": t.status,
-                           "reoptimized": True})
+                           "reoptimized": True,
+                           "buy_price_adj": t.buy_price, "sell_price_adj": t.sell_price})
 
         benchmark_curve = self._build_benchmark_curve(trading_days, initial_capital)
 
@@ -1924,6 +1951,26 @@ class FactorBacktestEngine:
                 return float(close_val)
 
         # 当天 close 仍未命中 → 搜索缓存中最近交易日的 close（仅当天，未来日期无数据不降级）
+        if ds == today_str:
+            for d in sorted(self._price_cache.keys(), reverse=True):
+                cv = (self._price_cache.get(d, {}).get(code) or {}).get("close")
+                if cv is not None:
+                    return float(cv)
+
+        return None
+
+    def _get_price_raw(self, code, ds, field):
+        """获取原始（不复权）价格，用于前端展示。"""
+        v = (self._price_cache.get(ds, {}).get(code) or {}).get(field)
+        if v is not None:
+            return float(v)
+
+        today_str = date.today().strftime("%Y%m%d")
+        if ds == today_str and field != "close":
+            close_val = (self._price_cache.get(ds, {}).get(code) or {}).get("close")
+            if close_val is not None:
+                return float(close_val)
+
         if ds == today_str:
             for d in sorted(self._price_cache.keys(), reverse=True):
                 cv = (self._price_cache.get(d, {}).get(code) or {}).get("close")

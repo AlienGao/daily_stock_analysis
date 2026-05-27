@@ -109,6 +109,8 @@ const LightGBMPage: React.FC = () => {
   const [dateRange, setDateRange] = useState<LGBDateRangeResponse | null>(null);
   const [stockCode, setStockCode] = useState('');
   const [stockLookup, setStockLookup] = useState<LGBStockLookupItem | null>(null);
+  const [stockLookupItems, setStockLookupItems] = useState<LGBStockLookupItem[]>([]);
+  const [expandedLookupTsCode, setExpandedLookupTsCode] = useState<string | null>(null);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState('');
   const [newsExpanded, setNewsExpanded] = useState(false);
@@ -225,11 +227,13 @@ const LightGBMPage: React.FC = () => {
     bfModelAutoSelectedRef.current = false;
   }, []);
 
-  /* ── Auto-apply best return params from latest report ── */
+  /* ── Auto-apply best sharpe params from latest report ── */
   useEffect(() => {
-    if (!latestBfReport?.best_by_return || bfAutoAppliedRef.current) return;
+    const best = latestBfReport?.best_by_sharpe || latestBfReport?.best_by_return;
+    if (!best || bfAutoAppliedRef.current) return;
     bfAutoAppliedRef.current = true;
-    applyBfBest(latestBfReport.best_by_return);
+    applyBfBest(best);
+    setBfActiveBest(latestBfReport?.best_by_sharpe ? 'sharpe' : 'return');
   }, [latestBfReport, applyBfBest]);
 
   /* ── Load model list ── */
@@ -292,7 +296,7 @@ const LightGBMPage: React.FC = () => {
     setPredictions([]);
     setFeatureImportance([]);
     setDiagnostics(null);
-    setStockLookup(null);
+    setStockLookup(null); setStockLookupItems([]); setExpandedLookupTsCode(null);
     setOverlapData(null);
     setBacktest(null);
     setModelLoading(true);
@@ -434,11 +438,12 @@ const LightGBMPage: React.FC = () => {
     if (!code) return;
     setLookupLoading(true);
     setLookupError('');
-    setStockLookup(null);
+    setStockLookup(null); setStockLookupItems([]); setExpandedLookupTsCode(null);
     try {
       const resp = await researchApi.lookupStock(code, selectedModel);
       if (resp.found && resp.item) {
         setStockLookup(resp.item);
+        setStockLookupItems(resp.items && resp.items.length > 0 ? resp.items : []);
       } else {
         setLookupError(resp.message || '未找到该股票');
       }
@@ -909,7 +914,7 @@ const LightGBMPage: React.FC = () => {
               <Segmented
                 block
                 value={trainExecMode}
-                onChange={(v) => { setTrainExecMode(v as string); setSelectedModel(undefined); setPredictions([]); setFeatureImportance([]); setDiagnostics(null); setStockLookup(null); setOverlapData(null); }}
+                onChange={(v) => { setTrainExecMode(v as string); setSelectedModel(undefined); setPredictions([]); setFeatureImportance([]); setDiagnostics(null); setStockLookup(null); setStockLookupItems([]); setExpandedLookupTsCode(null); setOverlapData(null); }}
                 options={[
                   { label: '收盘→收盘', value: 'close' },
                   { label: '开盘→开盘', value: 'open' },
@@ -1534,7 +1539,91 @@ const LightGBMPage: React.FC = () => {
                 </Button>
               </div>
               {lookupError && <div className="text-red-400 text-xs mt-2">{lookupError}</div>}
-              {stockLookup && (
+              {stockLookupItems.length > 1 && (
+                <div className="mt-3 space-y-0.5">
+                  <div className="text-xs text-tertiary-text mb-1">匹配到 {stockLookupItems.length} 只股票：</div>
+                  {stockLookupItems.map((item) => {
+                    const expanded = expandedLookupTsCode === item.ts_code;
+                    const fb = finbertResults[item.ts_code];
+                    const fbLoading = finbertLoading[item.ts_code];
+                    return (
+                      <div key={item.ts_code} className="rounded border border-white/5 overflow-hidden">
+                        {/* Header row */}
+                        <div
+                          className="flex items-center gap-3 px-2 py-1.5 text-xs cursor-pointer hover:bg-white/5 transition-colors"
+                          onClick={() => {
+                            const next = expanded ? null : item.ts_code;
+                            setExpandedLookupTsCode(next);
+                            if (next) fetchFinbert(item.ts_code, item.stock_name);
+                          }}
+                        >
+                          <span className="text-tertiary-text w-3 shrink-0">{expanded ? '▼' : '▶'}</span>
+                          <span className="font-medium text-secondary-text w-20 shrink-0">{item.ts_code}</span>
+                          <span className="text-secondary-text truncate flex-1">{item.stock_name}</span>
+                          <span className="text-blue-400 w-14 text-right shrink-0">{item.lgb_score.toFixed(2)}</span>
+                          <span className="text-tertiary-text w-20 text-right shrink-0">{item.rank}/{item.total_stocks}</span>
+                        </div>
+                        {/* Expanded detail */}
+                        {expanded && (
+                          <div className="px-3 pb-3 pt-1 bg-blue-500/5 border-t border-white/5">
+                            <div className="grid grid-cols-3 md:grid-cols-5 gap-2 text-xs">
+                              <div>
+                                <span className="text-tertiary-text">LGB 评分</span>
+                                <div className="font-medium text-sm text-blue-400">{item.lgb_score.toFixed(2)}</div>
+                              </div>
+                              <div>
+                                <span className="text-tertiary-text">全市场排名</span>
+                                <div className="font-medium text-sm">{item.rank} / {item.total_stocks}</div>
+                              </div>
+                              <div>
+                                <span className="text-tertiary-text">百分位</span>
+                                <div className="font-medium text-sm">Top {(item.rank / item.total_stocks * 100).toFixed(1)}%</div>
+                              </div>
+                              <div>
+                                <span className="text-tertiary-text">原始分</span>
+                                <div className="font-medium text-sm">{item.raw_score.toFixed(4)}</div>
+                              </div>
+                              <div>
+                                <span className="text-tertiary-text">FinBERT</span>
+                                {fbLoading ? (
+                                  <div className="text-xs text-tertiary-text"><Loader2 className="h-3 w-3 animate-spin inline" /> 加载中</div>
+                                ) : fb ? (
+                                  <div>
+                                    <span className={`font-medium text-sm ${
+                                      fb.finbert_label === 'positive' ? 'text-green-400' :
+                                      fb.finbert_label === 'negative' ? 'text-red-400' : 'text-yellow-400'
+                                    }`}>
+                                      {fb.finbert_label === 'positive' ? '正面' :
+                                       fb.finbert_label === 'negative' ? '负面' : '中性'}
+                                      {fb.finbert_score != null && ` (${fb.finbert_score > 0 ? '+' : ''}${fb.finbert_score.toFixed(2)})`}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <div className="text-xs text-tertiary-text">-</div>
+                                )}
+                              </div>
+                            </div>
+                            {fb?.finbert_summary && (
+                              <div className="mt-2 text-xs text-secondary-text">{fb.finbert_summary}</div>
+                            )}
+                            {fb?.news_items && fb.news_items.length > 0 && (
+                              <div className="mt-2 max-h-32 overflow-y-auto space-y-1">
+                                {fb.news_items.map((n, i) => (
+                                  <div key={i} className="text-xs py-1 px-2 rounded bg-black/20 border border-white/5">
+                                    <div className="text-secondary-text">{n.title}</div>
+                                    {n.snippet && <div className="text-tertiary-text mt-0.5 line-clamp-1">{n.snippet}</div>}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {stockLookup && stockLookupItems.length === 0 && (
                 <div className="mt-3 p-3 rounded bg-blue-500/10 border border-blue-500/20">
                   <div className="grid grid-cols-3 md:grid-cols-6 gap-2 text-xs">
                     <div>
@@ -1648,14 +1737,25 @@ const LightGBMPage: React.FC = () => {
                   {modelDisplayName ? <span className="text-tertiary-text ml-1 text-xs">| {modelDisplayName}</span> : ''}
                   {modelLoading && predictions.length === 0 && <span className="text-blue-400 ml-2 inline-flex items-center gap-1 text-xs"><Loader2 className="h-3 w-3 animate-spin" />加载中…</span>}
                 </div>
-                <Button
-                  size="small"
-                  type="default"
-                  onClick={handleCrossModelOverlap}
-                  loading={overlapLoading}
-                >
-                  交叉验证 (全部)
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="small"
+                    type="default"
+                    icon={predictLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : undefined}
+                    onClick={handlePredictTop5}
+                    loading={predictLoading}
+                  >
+                    刷新
+                  </Button>
+                  <Button
+                    size="small"
+                    type="default"
+                    onClick={handleCrossModelOverlap}
+                    loading={overlapLoading}
+                  >
+                    交叉验证 (全部)
+                  </Button>
+                </div>
               </div>
               {overlapData && (
                 <div className="mb-2 text-xs text-tertiary-text">
@@ -1870,7 +1970,7 @@ const LightGBMPage: React.FC = () => {
                       size="small"
                       dataSource={backtestSim.trades.filter((t) => !t.skipped).sort((a, b) => a.pred_date.localeCompare(b.pred_date))}
                       rowKey={(r) => `${r.pred_date}_${r.stock_code}_${r.buy_date}_${r.sell_date}`}
-                      pagination={{ pageSize: 50, size: 'small', showSizeChanger: true, pageSizeOptions: ['20', '50', '100'], showTotal: (total) => `共 ${total} 笔` }}
+                      pagination={{ pageSize: 100, size: 'small', showSizeChanger: true, pageSizeOptions: ['20', '50', '100', '200'], showTotal: (total) => `共 ${total} 笔` }}
                       scroll={{ x: 900, y: 400 }}
                       columns={[
                         { title: '预测日', dataIndex: 'pred_date', key: 'pred_date', width: 85, render: (_: unknown, r: typeof backtestSim.trades[0]) => r.pred_date },

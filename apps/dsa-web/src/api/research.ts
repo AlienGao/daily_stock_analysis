@@ -131,6 +131,7 @@ export type LGBStockLookupItem = {
 export type LGBStockLookupResponse = {
   found: boolean;
   item: LGBStockLookupItem | null;
+  items?: LGBStockLookupItem[];
   message: string;
 };
 
@@ -269,6 +270,7 @@ export type LGBFactorSubsetResult = {
   delta_daily_return: number;
   baseline_ic: number;
   final_ic: number;
+  delta_ic: number;
   final_icir: number;
   final_rmse: number;
   top_n: number;

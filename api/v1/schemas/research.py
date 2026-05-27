@@ -118,6 +118,7 @@ class LGBStockLookupItem(BaseModel):
 class LGBStockLookupResponse(BaseModel):
     found: bool
     item: Optional[LGBStockLookupItem] = None
+    items: list[LGBStockLookupItem] = Field(default_factory=list, description="多结果列表（拼音匹配时返回全部）")
     message: str = ""
 
 

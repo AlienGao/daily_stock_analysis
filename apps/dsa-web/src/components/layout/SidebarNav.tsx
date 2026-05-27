@@ -28,6 +28,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'lgb', label: 'LGB', to: '/lgb', icon: Brain },
   { key: 'discovery', label: '寻股', to: '/discovery', icon: Compass, exact: true },
   { key: 'factor-backtest', label: '因子', to: '/factor-backtest', icon: Activity },
+  { key: 'simple-factor-backtest', label: '快测', to: '/simple-factor-backtest', icon: BarChart3 },
   { key: 'factor-tuning', label: '调优', to: '/factor-tuning', icon: Sliders },
   { key: 'broker-recommend', label: '金股', to: '/broker-recommend', icon: TrendingUp },
   { key: 'institution-survey', label: '调研', to: '/institution-survey', icon: Users },

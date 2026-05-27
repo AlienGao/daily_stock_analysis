@@ -780,19 +780,36 @@ def lgb_stock_lookup(
     except Exception:
         pass
 
-    return LGBStockLookupResponse(
-        found=True,
-        item=LGBStockLookupItem(
-            stock_code=str(row["stock_code"]),
-            ts_code=str(row["ts_code"]),
-            stock_name=stock_name_val,
-            rank=rank,
-            lgb_score=round(float(row["lgb_score_norm"]), 4),
-            raw_score=round(float(row["lgb_score"]), 4),
-            total_stocks=len(df),
-            finbert_sentiment=finbert_sentiment,
-        ),
+    matched_df = df[mask]
+    ranks = df["lgb_score"].rank(ascending=False)
+
+    first_item = LGBStockLookupItem(
+        stock_code=str(row["stock_code"]),
+        ts_code=str(row["ts_code"]),
+        stock_name=stock_name_val,
+        rank=rank,
+        lgb_score=round(float(row["lgb_score_norm"]), 4),
+        raw_score=round(float(row["lgb_score"]), 4),
+        total_stocks=len(df),
+        finbert_sentiment=finbert_sentiment,
     )
+
+    # 多结果：拼音匹配返回全部
+    if len(matched_df) > 1:
+        items = []
+        for _, r in matched_df.iterrows():
+            items.append(LGBStockLookupItem(
+                stock_code=str(r["stock_code"]),
+                ts_code=str(r["ts_code"]),
+                stock_name=str(r.get("stock_name", "")) if "stock_name" in df.columns else "",
+                rank=int(ranks.loc[r.name]),
+                lgb_score=round(float(r["lgb_score_norm"]), 4),
+                raw_score=round(float(r["lgb_score"]), 4),
+                total_stocks=len(df),
+            ))
+        return LGBStockLookupResponse(found=True, item=first_item, items=items)
+
+    return LGBStockLookupResponse(found=True, item=first_item)
 
 
 # ── Backtest Simulation ──

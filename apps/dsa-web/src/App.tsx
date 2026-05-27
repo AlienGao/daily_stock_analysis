@@ -24,6 +24,7 @@ const LightGBMPage = lazy(() => import('./pages/LightGBMPage'));
 const AlertsPage = lazy(() => import('./pages/AlertsPage'));
 const BrokerRecommendPage = lazy(() => import('./pages/BrokerRecommendPage'));
 const InstitutionSurveyPage = lazy(() => import('./pages/InstitutionSurveyPage'));
+const SimpleFactorBacktestPage = lazy(() => import('./pages/SimpleFactorBacktestPage'));
 
 const AppContent: React.FC = () => {
   const location = useLocation();
@@ -83,6 +84,7 @@ const AppContent: React.FC = () => {
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/discovery" element={<DiscoveryPage />} />
         <Route path="/factor-backtest" element={<FactorBacktestPage />} />
+        <Route path="/simple-factor-backtest" element={<SimpleFactorBacktestPage />} />
         <Route path="/factor-tuning" element={<FactorTuningPage />} />
         <Route path="/lgb" element={<LightGBMPage />} />
         <Route path="/backtest" element={<BacktestPage />} />

@@ -71,7 +71,7 @@ def is_trading_day(engine=None) -> bool:
 
 
 def _default_factors():
-    """返回所有内置因子实例列表（盘前+盘中+盘后）。"""
+    """返回选股因子实例列表（盘前+盘中+盘后）。"""
     from src.discovery.factors import (
         Alpha042Factor,
         Alpha60Factor,
@@ -106,17 +106,29 @@ def _default_factors():
     ]
 
 
+def _all_factors():
+    """返回所有因子实例列表（含测试因子）。用于快照保存。"""
+    factors = _default_factors()
+    from src.discovery.factors import MarketCapFactor
+    factors.append(MarketCapFactor())
+    return factors
+
+
 def create_discovery_engine(config=None, tushare_fetcher=None, akshare_fetcher=None):
     """创建已注册默认因子的 StockDiscoveryEngine。
 
     config 为 None 时自动加载 DiscoveryConfig()。
-    所有因子始终注册并落库；DISCOVERY_DISABLED_FACTORS 中的因子权重置 0，不参与排名。
+    所有因子始终注册并落库；选股只用 _default_factors()；测试因子（如 market_cap）
+    也会打分保存到快照，但不参与综合排名。
     """
     if config is None:
         from src.discovery.config import DiscoveryConfig
         config = DiscoveryConfig()
     engine = StockDiscoveryEngine(config, tushare_fetcher, akshare_fetcher)
-    engine.register_factors(_default_factors())
+    # 注册所有因子（含测试因子），全部落库
+    engine.register_factors(_all_factors())
+    # 记录选股因子名，综合评分时只使用这些因子
+    engine._selection_factor_names = {f.name for f in _default_factors()}
     if config.disabled_factors:
         engine._disabled_factor_names = config.disabled_factors
         logger.info("[Discovery] 以下因子权重置 0（仍会落库）: %s",
@@ -1119,9 +1131,12 @@ class StockDiscoveryEngine:
             score_columns = self._decorrelate_scores(score_columns)
             score_columns = self._apply_industry_neutral(score_columns, factor_data)
         from src.discovery.factor_backtest_engine import FactorBacktestEngine
+        # 选股只用 _selection_factor_names（测试因子如 market_cap 也计算保存但不参与排名）
+        selection_names = getattr(self, '_selection_factor_names', set(score_columns.keys()))
         effective_weights = {
             n: self._get_effective_weight(n, mode)
             for n in score_columns
+            if n in selection_names
         }
         # 应用动态权重调整（根据大盘走势调整因子权重）
         if dynamic_adjustments:
