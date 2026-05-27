@@ -2221,9 +2221,7 @@ def _simulate_peak_backtest(exec_mode: str, top_n: int, stop_loss_pct: float = -
                 held_days = date_to_idx.get(td, 0) - pos["entry_idx"]
 
                 exit_reason = None
-                if is_last_day:
-                    exit_reason = "force_exit"
-                elif adj_return <= stop_loss_pct:
+                if adj_return <= stop_loss_pct:
                     exit_reason = "stop_loss"
                 elif adj_return >= pos["pred_return"] * pos.get("win_rate", 0.5):
                     exit_reason = "take_profit"
@@ -2344,8 +2342,7 @@ def _simulate_peak_backtest(exec_mode: str, top_n: int, stop_loss_pct: float = -
             "daily_return": round(daily_ret, 6),
         })
 
-    # Force-close remaining positions at latest price.
-    # Positions opened on the last trading day are reported as holding (no sell_date).
+    # Remaining positions: report as holding (no exit triggered before data end)
     for pos in positions:
         cur_entry = price_map.get((pos["code"], latest_td)) if latest_td else None
         adj_b = pos.get("adj_buy", 1.0)
@@ -2359,44 +2356,23 @@ def _simulate_peak_backtest(exec_mode: str, top_n: int, stop_loss_pct: float = -
             sell_price = pos["buy_price"]
             ret = 0.0
 
-        if pos["buy_date"] == latest_td:
-            # Opened on last day: report as holding
-            trades.append({
-                "pred_date": pos.get("pred_date", ""),
-                "stock_code": pos["code"],
-                "ts_code": pos["ts_code"],
-                "stock_name": pos["stock_name"],
-                "rank": pos["rank"],
-                "buy_date": pos["buy_date"],
-                "buy_price": pos["buy_price"],
-                "sell_date": "",
-                "sell_price": sell_price,
-                "return_pct": round(ret, 6),
-                "skipped": False,
-                "expected_sell_date": pos.get("expected_sell_date", ""),
-                "target_return": round(pos["pred_return"] * pos.get("win_rate", 0.5), 4),
-                "shares": pos["shares"],
-                "actual_cost": round(pos["actual_cost"], 2),
-            })
-        else:
-            cash += pos["shares"] * sell_price * adj_ratio
-            trades.append({
-                "pred_date": pos.get("pred_date", ""),
-                "stock_code": pos["code"],
-                "ts_code": pos["ts_code"],
-                "stock_name": pos["stock_name"],
-                "rank": pos["rank"],
-                "buy_date": pos["buy_date"],
-                "buy_price": pos["buy_price"],
-                "sell_date": latest_td or pos["buy_date"],
-                "sell_price": sell_price,
-                "return_pct": round(ret, 6),
-                "skipped": False,
-                "expected_sell_date": pos.get("expected_sell_date", ""),
-                "target_return": round(pos["pred_return"] * pos.get("win_rate", 0.5), 4),
-                "shares": pos["shares"],
-                "actual_cost": round(pos["actual_cost"], 2),
-            })
+        trades.append({
+            "pred_date": pos.get("pred_date", ""),
+            "stock_code": pos["code"],
+            "ts_code": pos["ts_code"],
+            "stock_name": pos["stock_name"],
+            "rank": pos["rank"],
+            "buy_date": pos["buy_date"],
+            "buy_price": pos["buy_price"],
+            "sell_date": "",
+            "sell_price": sell_price,
+            "return_pct": round(ret, 6),
+            "skipped": False,
+            "expected_sell_date": pos.get("expected_sell_date", ""),
+            "target_return": round(pos["pred_return"] * pos.get("win_rate", 0.5), 4),
+            "shares": pos["shares"],
+            "actual_cost": round(pos["actual_cost"], 2),
+        })
     positions.clear()
 
     # Metrics
