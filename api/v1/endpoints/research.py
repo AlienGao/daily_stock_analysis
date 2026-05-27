@@ -288,6 +288,44 @@ def lgb_train(req: LGBTrainRequest):
     return {"task_id": task_id, "status": "running"}
 
 
+def _load_lgb_trainer(model_path: str | None) -> tuple[str, "LGBTrainer"]:
+    """Load an LGBTrainer by path or from the latest completed task.
+
+    Returns (resolved_model_path, trainer).
+    Raises HTTPException 404 if model file or task not found.
+    """
+    if model_path:
+        try:
+            return model_path, LGBTrainer.load(model_path)
+        except FileNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"模型文件不存在: {model_path}",
+            )
+    completed = [
+        (tid, t) for tid, t in _lgb_tasks.items()
+        if t.get("status") == "completed"
+        and t.get("result", {}).get("model_path")
+    ]
+    if not completed:
+        raise HTTPException(
+            status_code=404,
+            detail="没有已完成的训练任务，请先训练模型或指定 model_path",
+        )
+    _, latest_task = max(
+        completed,
+        key=lambda x: x[1].get("finished_at", ""),
+    )
+    resolved = latest_task["result"]["model_path"]
+    try:
+        return resolved, LGBTrainer.load(resolved)
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail=f"模型文件不存在: {resolved}",
+        )
+
+
 @router.get(
     "/lgb/status",
     response_model=LGBTaskStatusResponse,
@@ -325,25 +363,7 @@ def lgb_status(task_id: str = Query(..., description="任务 ID")):
 def lgb_feature_importance(
     model_path: str = Query(None, description="可选：指定模型路径"),
 ):
-    if model_path:
-        trainer = LGBTrainer.load(model_path)
-    else:
-        completed = [
-            (tid, t) for tid, t in _lgb_tasks.items()
-            if t.get("status") == "completed"
-            and t.get("result", {}).get("model_path")
-        ]
-        if not completed:
-            raise HTTPException(
-                status_code=404,
-                detail="没有已完成的训练任务，请先调用 POST /research/lgb/train",
-            )
-        _, latest_task = max(
-            completed,
-            key=lambda x: x[1].get("finished_at", ""),
-        )
-        model_path = latest_task["result"]["model_path"]
-        trainer = LGBTrainer.load(model_path)
+    _, trainer = _load_lgb_trainer(model_path)
 
     importance = trainer.get_feature_importance()
     return LGBFeatureImportanceResponse(**importance)
@@ -357,25 +377,7 @@ def lgb_feature_importance(
 def lgb_predictions(
     model_path: str = Query(None, description="可选：指定模型路径"),
 ):
-    if model_path:
-        trainer = LGBTrainer.load(model_path)
-    else:
-        completed = [
-            (tid, t) for tid, t in _lgb_tasks.items()
-            if t.get("status") == "completed"
-            and t.get("result", {}).get("model_path")
-        ]
-        if not completed:
-            raise HTTPException(
-                status_code=404,
-                detail="没有已完成的训练任务",
-            )
-        _, latest_task = max(
-            completed,
-            key=lambda x: x[1].get("finished_at", ""),
-        )
-        model_path = latest_task["result"]["model_path"]
-        trainer = LGBTrainer.load(model_path)
+    _, trainer = _load_lgb_trainer(model_path)
 
     if trainer._X_latest is None:
         trainer.predict()
@@ -490,7 +492,10 @@ def lgb_backtest_compare(
     exec_mode: str = Query("close", description="标签模式（仅无 model_path 时生效）"),
 ):
     if model_path:
-        trainer = LGBTrainer.load(model_path)
+        try:
+            trainer = LGBTrainer.load(model_path)
+        except FileNotFoundError:
+            raise HTTPException(status_code=404, detail=f"模型文件不存在: {model_path}")
     else:
         trainer = LGBTrainer(mode=mode, forward_days=forward_days, exec_mode=exec_mode)
         try:
@@ -560,25 +565,7 @@ def lgb_diagnostics(
     model_path: str = Query(None, description="模型路径，为空则使用最近训练的模型"),
 ):
     """返回训练指标、树结构诊断、预测分布统计。"""
-    if model_path:
-        trainer = LGBTrainer.load(model_path)
-    else:
-        completed = [
-            (tid, t) for tid, t in _lgb_tasks.items()
-            if t.get("status") == "completed"
-            and t.get("result", {}).get("model_path")
-        ]
-        if not completed:
-            raise HTTPException(
-                status_code=404,
-                detail="没有已完成的训练任务，请先训练模型或指定 model_path",
-            )
-        _, latest_task = max(
-            completed,
-            key=lambda x: x[1].get("finished_at", ""),
-        )
-        model_path = latest_task["result"]["model_path"]
-        trainer = LGBTrainer.load(model_path)
+    _, trainer = _load_lgb_trainer(model_path)
 
     tree_diag = trainer.get_tree_diagnostics()
     metrics_raw = trainer._training_metrics
@@ -650,7 +637,10 @@ def lgb_stock_lookup(
                     raise HTTPException(status_code=404, detail="没有已完成的训练任务，请先训练模型")
             else:
                 raise HTTPException(status_code=404, detail="没有已完成的训练任务，请先训练模型")
-        trainer = LGBTrainer.load(model_path)
+        try:
+            trainer = LGBTrainer.load(model_path)
+        except FileNotFoundError:
+            raise HTTPException(status_code=404, detail=f"模型文件不存在: {model_path}")
 
     df = trainer.predict()
     code = str(stock_code).strip().zfill(6)
