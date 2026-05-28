@@ -81,6 +81,22 @@ def _apply_factor_subset(trainer, progress=None, fallback_disabled=None):
     else:
         period = f"fixed_{getattr(trainer, 'forward_days', 5)}d"
 
+    # 0) LGB_ENABLED_FACTORS 白名单（最高优先级）
+    enabled = os.environ.get("LGB_ENABLED_FACTORS", "").strip()
+    if enabled:
+        enabled_set = {f.strip() for f in enabled.split(",") if f.strip()}
+        available = set(trainer.feature_names)
+        to_use = [f for f in enabled_set if f in available]
+        skipped = [f for f in enabled_set if f not in available]
+        if to_use:
+            trainer.feature_names = to_use
+            if progress:
+                progress(f"[因子白名单] LGB_ENABLED_FACTORS: {len(to_use)} 因子 {to_use}" +
+                         (f"，跳过不可用: {skipped}" if skipped else ""))
+            return
+        elif progress:
+            progress(f"[因子白名单] LGB_ENABLED_FACTORS 中无可用因子 (设置: {sorted(enabled_set)}，可用: {sorted(available)[:10]}...)")
+
     # 1) 优先从 factor_subset/ 白名单
     if os.path.isdir(subset_dir):
         pattern = os.path.join(subset_dir, f"subset_{exec_mode}_{period}_*.json")

@@ -99,7 +99,7 @@ def _update_combo_summary():
             rows.append((ret5, name, factor_labels, rets))
         rows.sort(key=lambda x: x[0], reverse=True)
         for ret5, name, factor_labels, rets in rows:
-            lines.append(f"| {name[:70]} | {', '.join(factor_labels[:4])} | " + " | ".join(rets) + " |")
+            lines.append(f"| {name} | {', '.join(factor_labels)} | " + " | ".join(rets) + " |")
         lines.append("")
         summary_path = combos_dir / "combo_summary.md"
         with open(summary_path, "w", encoding="utf-8") as f:

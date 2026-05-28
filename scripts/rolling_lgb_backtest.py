@@ -304,8 +304,22 @@ def run_window(trainer: LGBTrainer, train_s: str, train_e: str,
 
     trainer.prepare_data(start_date=train_s, end_date=train_e)
 
+    # LGB_ENABLED_FACTORS 白名单（最高优先级）
+    enabled = os.environ.get("LGB_ENABLED_FACTORS", "").strip()
+    if enabled:
+        enabled_set = {f.strip() for f in enabled.split(",") if f.strip()}
+        available = set(trainer.feature_names)
+        to_use = [f for f in enabled_set if f in available]
+        skipped = [f for f in enabled_set if f not in available]
+        if to_use:
+            trainer.feature_names = to_use
+            print(f"  [LGB_ENABLED_FACTORS] 使用 {len(to_use)} 个因子: {sorted(to_use)}" +
+                  (f" (跳过: {skipped})" if skipped else ""))
+        else:
+            print(f"  [LGB_ENABLED_FACTORS] 白名单中无可用因子 (设置: {sorted(enabled_set)}，可用前10: {sorted(available)[:10]}...)")
+
     # 如果指定了因子子集，只使用 final_subset 中的因子
-    if final_subset:
+    elif final_subset:
         available = set(trainer.feature_names)
         to_use = [f for f in final_subset if f in available]
         skipped = [f for f in final_subset if f not in available]
