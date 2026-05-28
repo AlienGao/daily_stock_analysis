@@ -351,6 +351,8 @@ class FactorBacktestEngine:
                         actual_cost = 0.0; final_val = 0.0; ret = 0.0; pnl = 0.0
                     bp_raw = self._get_price_raw(code, buy_date, buy_field)
                     sp_raw = self._get_price_raw(code, sd, sell_field)
+                    if sp_raw is None and status == "open":
+                        sp_raw = self._get_price_raw(code, today_str, "close")
                     all_trades[hd].append(FactorBacktestTrade(
                         trade_date=snap_date,
                         buy_date=buy_date, hold_days=hd, stock_code=code, stock_name=name,
@@ -643,6 +645,8 @@ class FactorBacktestEngine:
                         actual_cost = 0.0; final_val = 0.0; ret = 0.0; pnl = 0.0
                     bp_raw = self._get_price_raw(code, buy_date, buy_field)
                     sp_raw = self._get_price_raw(code, sd_ext, sell_field)
+                    if sp_raw is None and status == "open":
+                        sp_raw = self._get_price_raw(code, today_str_wf, "close")
                     fixed_trades[hd].append(FactorBacktestTrade(
                         trade_date=snap_date,
                         buy_date=buy_date, hold_days=hd, stock_code=code, stock_name=name,
@@ -881,6 +885,8 @@ class FactorBacktestEngine:
                             actual_cost = 0.0; final_val = 0.0; ret = 0.0; pnl = 0.0
                         bp_raw = self._get_price_raw(code, buy_date, buy_field)
                         sp_raw = self._get_price_raw(code, sd_ext, sell_field)
+                        if sp_raw is None and status == "open":
+                            sp_raw = self._get_price_raw(code, today_str_wf, "close")
                         dynamic_trades[hd].append(FactorBacktestTrade(
                             trade_date=snap_date,
                         buy_date=buy_date, hold_days=hd, stock_code=code,
@@ -1563,8 +1569,21 @@ class FactorBacktestEngine:
         """
         today_str = date.today().strftime("%Y%m%d")
 
-        # 卖出日未到：用最新收盘价估算持仓浮盈，卖出日保留原计划日期
+        # 卖出日未到：优先用 realtime_spot 实时价，无则 fallback 到缓存收盘价
         if sell_date > today_str:
+            spot_price = self._get_realtime_spot_price(code)
+            if spot_price is not None:
+                adj_max = self._adj_max.get(code)
+                adj_t = self._adj_cache.get(today_str, {}).get(code)
+                if (not adj_t) and adj_max:
+                    # today 的 adj factor 可能还没更新，用最近的
+                    for d in sorted(self._adj_cache.keys(), reverse=True):
+                        adj_t = self._adj_cache[d].get(code)
+                        if adj_t:
+                            break
+                if adj_t and adj_t > 0 and adj_max and adj_max > 0:
+                    spot_price = spot_price * adj_max / adj_t
+                return round(spot_price, 2), sell_date, "open"
             latest_price = self._get_price(code, today_str, "close")
             if latest_price is not None and latest_price > 0:
                 return latest_price, sell_date, "open"
@@ -1964,12 +1983,23 @@ class FactorBacktestEngine:
 
     def _get_price_raw(self, code, ds, field):
         """获取原始（不复权）价格，用于前端展示。"""
+        today_str = date.today().strftime("%Y%m%d")
+
+        # 当天 close：优先用 realtime_spot 实时价（取代 stock_daily 的盘中快照）
+        if ds == today_str and field == "close":
+            spot_price = self._get_realtime_spot_price(code)
+            if spot_price is not None:
+                return spot_price
+
         v = (self._price_cache.get(ds, {}).get(code) or {}).get(field)
         if v is not None:
             return float(v)
 
-        today_str = date.today().strftime("%Y%m%d")
         if ds == today_str and field != "close":
+            # 用 realtime close 作为 open/high/low 的近似值
+            spot_price = self._get_realtime_spot_price(code)
+            if spot_price is not None:
+                return spot_price
             close_val = (self._price_cache.get(ds, {}).get(code) or {}).get("close")
             if close_val is not None:
                 return float(close_val)
@@ -1981,6 +2011,38 @@ class FactorBacktestEngine:
                     return float(cv)
 
         return None
+
+    _spot_df_cache: tuple = ()
+
+    @classmethod
+    def _get_realtime_spot_price(cls, code):
+        """直接从 realtime_spot DB 取最新价，DataFrame 一次加载、按 code 提取。"""
+        try:
+            spot_df, spot_idx = cls._spot_df_cache
+        except (TypeError, ValueError):
+            spot_df, spot_idx = None, None
+
+        if spot_df is None:
+            try:
+                from src.storage import DatabaseManager
+                spot_df = DatabaseManager().get_realtime_spot()
+                if spot_df is None or spot_df.empty:
+                    spot_idx = pd.Index([])
+                else:
+                    spot_idx = spot_df.index.astype(str).str.strip().str.zfill(6)
+            except Exception:
+                spot_df = pd.DataFrame()
+                spot_idx = pd.Index([])
+            cls._spot_df_cache = (spot_df, spot_idx)
+
+        if spot_df is None or spot_df.empty:
+            return None
+        bare = str(code).strip().zfill(6)
+        matches = spot_df[spot_idx == bare]
+        if matches.empty:
+            return None
+        p = matches.iloc[0].get("price")
+        return float(p) if p is not None and float(p) > 0 else None
 
     @staticmethod
     def _get_limit_pct(code: str) -> float:
