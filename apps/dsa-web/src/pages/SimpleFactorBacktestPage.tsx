@@ -6,13 +6,11 @@ import {
 } from 'recharts';
 import { DatePicker, Table, InputNumber, Checkbox, Button } from 'antd';
 import dayjs from 'dayjs';
-import { Play, Loader2, Activity } from 'lucide-react';
+import { Play, Loader2, Activity, Download, Trash2 } from 'lucide-react';
 import { AppPage, Card, StatCard, EmptyState, ApiErrorAlert } from '../components/common';
 import apiClient from '../api';
 import type { ParsedApiError } from '../api/error';
 import { getParsedApiError } from '../api/error';
-import { idbSet, idbGet, idbRemove } from '../utils/idbStore';
-
 const HOLD_DAY_OPTIONS = [
   { label: '1日', value: 1 },
   { label: '3日', value: 3 },
@@ -84,7 +82,6 @@ interface BacktestResult {
 }
 
 const TASK_KEY = 'simple_factor_bt_task';
-const RESULT_KEY = 'simple_factor_bt_result';
 
 const SimpleFactorBacktestPage: React.FC = () => {
   const abortRef = useRef(false);
@@ -101,7 +98,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
 
   // params
   const [holdDays, setHoldDays] = useState<number[]>([1, 3, 5, 10, 20]);
-  const [topN, setTopN] = useState(3);
+  const [topN, setTopN] = useState(1);
   const [startDate, setStartDate] = useState<string>('20250101');
   const [endDate, setEndDate] = useState<string>('');
   const [initialCapital, setInitialCapital] = useState(5_000_000);
@@ -118,6 +115,14 @@ const SimpleFactorBacktestPage: React.FC = () => {
 
   // presets
   const [presets, setPresets] = useState<Array<{ name: string; factor_weights: Record<string, number> }>>([]);
+
+  // cache
+  const [forceRerun, setForceRerun] = useState(false);
+  const [cacheHistory, setCacheHistory] = useState<Array<{
+    id: number; factor_weights: Record<string, number>;
+    start_date: string | null; end_date: string | null;
+    top_n: number; hold_days: number[]; created_at: string;
+  }>>([]);
 
   // load available factors
   useEffect(() => {
@@ -138,16 +143,51 @@ const SimpleFactorBacktestPage: React.FC = () => {
       setPresets(resp.data.presets || []);
     }).catch(() => {});
 
-    // restore cached result
-    idbGet<BacktestResult>(RESULT_KEY).then((cached) => {
-      if (cached) setResult(cached);
-    }).catch(() => {});
+    // load latest cached result
+    apiClient.get('/api/v1/factor-backtest-simple/cache', { params: { limit: 1 } })
+      .then((resp) => {
+        const items = resp.data?.items || [];
+        if (items.length > 0) {
+          handleLoadFromCache(items[0].id);
+        }
+      })
+      .catch(() => {});
+
+    // load cache history
+    loadCacheHistory();
   }, []);
 
   const selectedCount = useMemo(
     () => Object.values(selectedFactors).filter(Boolean).length,
     [selectedFactors],
   );
+
+  const loadCacheHistory = useCallback(async () => {
+    try {
+      const resp = await apiClient.get('/api/v1/factor-backtest-simple/cache');
+      const items = (resp.data.items || []).sort((a: { factor_weights: Record<string, unknown>; created_at: string }, b: { factor_weights: Record<string, unknown>; created_at: string }) => {
+        const ac = Object.keys(a.factor_weights).length;
+        const bc = Object.keys(b.factor_weights).length;
+        if (ac !== bc) return bc - ac; // 多因子排前面
+        return (b.created_at || '').localeCompare(a.created_at || ''); // 同类按时间倒序
+      });
+      setCacheHistory(items);
+    } catch { /* ignore */ }
+  }, []);
+
+  const handleLoadFromCache = useCallback(async (cacheId: number) => {
+    try {
+      const resp = await apiClient.get(`/api/v1/factor-backtest-simple/cache/${cacheId}`);
+      setResult(resp.data.result);
+    } catch { /* ignore */ }
+  }, []);
+
+  const handleDeleteCache = useCallback(async (cacheId: number) => {
+    try {
+      await apiClient.delete(`/api/v1/factor-backtest-simple/cache/${cacheId}`);
+      setCacheHistory((prev) => prev.filter((item) => item.id !== cacheId));
+    } catch { /* ignore */ }
+  }, []);
 
   const handleRun = useCallback(async () => {
     if (selectedCount === 0) return;
@@ -162,18 +202,31 @@ const SimpleFactorBacktestPage: React.FC = () => {
     }
 
     try {
-      const resp = await apiClient.post('/api/v1/factor-backtest-simple/run', {
-        factor_weights: fw,
-        start_date: startDate || undefined,
-        end_date: endDate || undefined,
-        top_n: topN,
-        hold_days: holdDays,
-        initial_capital: initialCapital,
-        risk_free_rate: 0.02,
-      });
+      const resp = await apiClient.post(
+        `/api/v1/factor-backtest-simple/run${forceRerun ? '?force=true' : ''}`,
+        {
+          factor_weights: fw,
+          start_date: startDate || undefined,
+          end_date: endDate || undefined,
+          top_n: topN,
+          hold_days: holdDays,
+          initial_capital: initialCapital,
+          risk_free_rate: 0.02,
+        },
+      );
+
+      // 缓存命中：直接返回结果，无需轮询
+      if (resp.data.cache_hit && resp.data.status === 'completed') {
+        setResult(resp.data.result);
+        setLoading(false);
+        setProgressMsg('已从缓存加载');
+        loadCacheHistory();
+        return;
+      }
+
       const taskId = resp.data.task_id;
       taskIdRef.current = taskId;
-      idbSet(TASK_KEY, taskId);
+      localStorage.setItem(TASK_KEY, taskId);
       setProgressMsg('回测运行中...');
 
       // poll
@@ -189,14 +242,14 @@ const SimpleFactorBacktestPage: React.FC = () => {
             if (data.status_message) setProgressMsg(data.status_message);
             if (data.status === 'completed') {
               setResult(data.result);
-              idbSet(RESULT_KEY, data.result);
-              idbRemove(TASK_KEY);
+              localStorage.removeItem(TASK_KEY);
               setLoading(false);
+              loadCacheHistory();
               return;
             }
             if (data.status === 'failed') {
               setError({ message: data.error || '回测失败' } as ParsedApiError);
-              idbRemove(TASK_KEY);
+              localStorage.removeItem(TASK_KEY);
               setLoading(false);
               return;
             }
@@ -210,12 +263,12 @@ const SimpleFactorBacktestPage: React.FC = () => {
       setError(getParsedApiError(err));
       setLoading(false);
     }
-  }, [selectedFactors, factorWeights, startDate, endDate, topN, holdDays, initialCapital, selectedCount]);
+  }, [selectedFactors, factorWeights, startDate, endDate, topN, holdDays, initialCapital, selectedCount, forceRerun, loadCacheHistory]);
 
   const handleStop = useCallback(() => {
     abortRef.current = true;
     setLoading(false);
-    idbRemove(TASK_KEY);
+    localStorage.removeItem(TASK_KEY);
   }, []);
 
   const [batchLoading, setBatchLoading] = useState(false);
@@ -226,7 +279,18 @@ const SimpleFactorBacktestPage: React.FC = () => {
     setError(null);
     setBatchMsg('提交中...');
     try {
-      const resp = await apiClient.post('/api/v1/factor-backtest-simple/batch-test');
+      const resp = await apiClient.post(
+        `/api/v1/factor-backtest-simple/batch-test${forceRerun ? '?force=true' : ''}`,
+        {
+          factor_weights: {},
+          start_date: startDate || undefined,
+          end_date: endDate || undefined,
+          top_n: topN,
+          hold_days: holdDays,
+          initial_capital: initialCapital,
+          risk_free_rate: 0.02,
+        },
+      );
       const taskId = resp.data.task_id;
       const poll = async () => {
         await new Promise((r) => setTimeout(r, 2000));
@@ -234,8 +298,11 @@ const SimpleFactorBacktestPage: React.FC = () => {
           const s = await apiClient.get('/api/v1/factor-backtest-simple/status', { params: { task_id: taskId } });
           if (s.data.status_message) setBatchMsg(s.data.status_message);
           if (s.data.status === 'completed') {
+            const cached = s.data.result?.cached_count || 0;
+            const total = s.data.result?.factors_tested || 0;
             setBatchLoading(false);
-            setBatchMsg('批量测试完成，报告已保存至 reports_simple_backtest/');
+            setBatchMsg(`批量测试完成 (${cached}/${total} 命中缓存)，报告已保存`);
+            loadCacheHistory();
           } else if (s.data.status === 'failed') {
             setBatchLoading(false);
             setError({ message: s.data.error || '批量测试失败' } as ParsedApiError);
@@ -249,7 +316,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
       setBatchLoading(false);
       setError(getParsedApiError(err));
     }
-  }, []);
+  }, [startDate, endDate, topN, holdDays, initialCapital, forceRerun, loadCacheHistory]);
 
   const [cvLoading, setCvLoading] = useState(false);
   const [cvResult, setCvResult] = useState<{
@@ -483,28 +550,29 @@ const SimpleFactorBacktestPage: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <div className="text-xs text-secondary-text mb-1">每期选股数</div>
-                <InputNumber
-                  min={1}
-                  max={50}
-                  value={topN}
-                  onChange={(v) => v !== null && setTopN(v)}
-                  className="w-full"
-                />
-              </div>
-
-              <div>
-                <div className="text-xs text-secondary-text mb-1">初始资金</div>
-                <InputNumber
-                  min={10000}
-                  step={100000}
-                  value={initialCapital}
-                  onChange={(v) => v !== null && setInitialCapital(v)}
-                  className="w-full"
-                  formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                  parser={(v) => Number((v || '').replace(/,/g, '')) as unknown as 0}
-                />
+              <div className="flex gap-2">
+                <div className="w-24">
+                  <div className="text-xs text-secondary-text mb-1">选股数</div>
+                  <InputNumber
+                    min={1}
+                    max={50}
+                    value={topN}
+                    onChange={(v) => v !== null && setTopN(v)}
+                    className="w-full"
+                  />
+                </div>
+                <div className="flex-1">
+                  <div className="text-xs text-secondary-text mb-1">初始资金</div>
+                  <InputNumber
+                    min={10000}
+                    step={100000}
+                    value={initialCapital}
+                    onChange={(v) => v !== null && setInitialCapital(v)}
+                    className="w-full"
+                    formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                    parser={(v) => Number((v || '').replace(/,/g, '')) as unknown as 0}
+                  />
+                </div>
               </div>
 
               <div className="flex gap-2">
@@ -556,6 +624,15 @@ const SimpleFactorBacktestPage: React.FC = () => {
               </Button>
             )}
           </div>
+          <label className="flex items-center gap-1.5 text-xs text-secondary-text cursor-pointer">
+            <input
+              type="checkbox"
+              checked={forceRerun}
+              onChange={(e) => setForceRerun(e.target.checked)}
+              className="accent-blue-500"
+            />
+            强制重跑（忽略缓存）
+          </label>
 
           {loading && progressMsg && (
             <div className="text-xs text-blue-400 text-center">{progressMsg}</div>
@@ -599,6 +676,42 @@ const SimpleFactorBacktestPage: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* Cache History */}
+          {cacheHistory.length > 0 && (
+            <div className="pt-2 border-t border-divider">
+              <div className="text-xs text-secondary-text mb-2">历史记录</div>
+              <div className="space-y-1 max-h-[320px] overflow-y-auto">
+                {cacheHistory.map((item) => {
+                  const factorNames = Object.entries(item.factor_weights)
+                    .map(([fn, w]) => `${FACTOR_LABELS[fn] || fn}(${w})`)
+                    .join('+') || '默认因子';
+                  const dateStr = item.created_at ? item.created_at.slice(5, 16).replace('T', ' ') : '';
+                  return (
+                    <div key={item.id} className="flex items-center gap-1 group">
+                      <button
+                        type="button"
+                        className="flex-1 text-left px-2 py-1.5 rounded text-xs border border-divider hover:border-blue-500/50 hover:bg-blue-500/10 transition-colors truncate"
+                        onClick={() => handleLoadFromCache(item.id)}
+                      >
+                        <div className="truncate">{factorNames}</div>
+                        <div className="text-tertiary-text">
+                          {item.top_n}选 · {item.hold_days?.join('/')}日 · {dateStr}
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        className="p-1 rounded text-tertiary-text hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => { e.stopPropagation(); handleDeleteCache(item.id); }}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right Panel */}
@@ -764,6 +877,30 @@ const SimpleFactorBacktestPage: React.FC = () => {
               {/* Trade Records */}
               {displayTrades.length > 0 && (
                 <Card title={`交易记录 (${summaryPeriod}日持有)`}>
+                  <div className="flex justify-end mb-2">
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs text-secondary-text hover:text-foreground transition-colors"
+                      onClick={() => {
+                        const header = '发现日,股票代码,股票名称,买入日,买入价,股数,买入额,卖出日,卖出价,卖出额,收益率,盈亏,状态';
+                        const rows = displayTrades.map((t) => {
+                          const amount = Math.round(t.allocated || 0);
+                          const sellAmount = Math.round((t.allocated || 0) + (t.pnl || 0));
+                          const statusMap: Record<string, string> = { closed: '已平', extended: '延期', canceled: '取消', open: '持仓', pending: '待执行', locked: '锁仓' };
+                          return `${t.trade_date},${t.stock_code},"${t.stock_name}",${t.buy_date},${t.buy_price},${t.shares || 0},${amount},${t.sell_date},${t.sell_price},${sellAmount},${t.return_pct},${t.pnl},${statusMap[t.status] || t.status}`;
+                        }).join('\n');
+                        const blob = new Blob(['﻿' + header + '\n' + rows], { type: 'text/csv;charset=utf-8;' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `快测交易记录_${summaryPeriod}日_${result?.date_range?.start || ''}_${result?.date_range?.end || ''}.csv`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      }}
+                    >
+                      <Download className="h-3.5 w-3.5" />导出 Excel
+                    </button>
+                  </div>
                   <Table
                     dataSource={displayTrades}
                     columns={tradeColumns}

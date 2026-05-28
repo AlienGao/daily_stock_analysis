@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 10,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260527",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "605111",
+      "stock_code": "605111",
+      "stock_name": "新洁能",
+      "lgb_score": 100.0,
+      "raw_score": 0.2
+    },
+    {
+      "rank": 2,
+      "ts_code": "002056",
+      "stock_code": "002056",
+      "stock_name": "横店东磁",
+      "lgb_score": 100.0,
+      "raw_score": 0.2
+    },
+    {
+      "rank": 3,
+      "ts_code": "603663",
+      "stock_code": "603663",
+      "stock_name": "三祥新材",
+      "lgb_score": 83.04,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 4,
+      "ts_code": "001269",
+      "stock_code": "001269",
+      "stock_name": "欧晶科技",
+      "lgb_score": 82.14,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 5,
+      "ts_code": "001285",
+      "stock_code": "001285",
+      "stock_name": "瑞立科密",
+      "lgb_score": 82.14,
+      "raw_score": 0.13
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 17.2,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.021706,
+    "std": 0.020086,
+    "skew": -0.4151,
+    "kurtosis": 7.9592,
+    "min": -0.162087,
+    "max": 0.19874,
+    "median": 0.03067
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.10795584304158987,
+    "cv_rmse_std": 0.008719487846243736,
+    "cv_scores": [
+      0.106886,
+      0.113769,
+      0.091371,
+      0.114017,
+      0.113736
+    ],
+    "rank_ic_mean": 0.044827,
+    "rank_ic_std": 0.02808,
+    "icir": 1.5964,
+    "oof_corr": 0.021977,
+    "n_samples": 43072,
+    "n_features": 2
+  }
+}

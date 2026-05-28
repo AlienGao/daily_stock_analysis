@@ -99,8 +99,8 @@ class MaEntryFactor(BaseFactor):
             if mas_rt is not None and not mas_rt.empty:
                 for col in ["ma5", "ma10", "ma20"]:
                     if col in mas_rt.columns:
-                        m = mas_rt[col].notna()
-                        result.loc[m, col] = mas_rt.loc[m, col]
+                        common = result.index.intersection(mas_rt.index)
+                        result.loc[common, col] = mas_rt.loc[common, col]
                 logger.debug("[MaEntryFactor] MA 实时计算完成")
 
         mask = result["close"].notna() & (result["close"] > 0)

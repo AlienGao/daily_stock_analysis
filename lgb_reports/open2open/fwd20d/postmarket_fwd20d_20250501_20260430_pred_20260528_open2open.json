@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 20,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260528",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "920019",
+      "stock_code": "920019",
+      "stock_name": "铜冠矿建",
+      "lgb_score": 100.0,
+      "raw_score": 0.47
+    },
+    {
+      "rank": 2,
+      "ts_code": "300877",
+      "stock_code": "300877",
+      "stock_name": "金春股份",
+      "lgb_score": 87.77,
+      "raw_score": 0.4
+    },
+    {
+      "rank": 3,
+      "ts_code": "688783",
+      "stock_code": "688783",
+      "stock_name": "西安奕材-U",
+      "lgb_score": 77.75,
+      "raw_score": 0.35
+    },
+    {
+      "rank": 4,
+      "ts_code": "603527",
+      "stock_code": "603527",
+      "stock_name": "众源新材",
+      "lgb_score": 77.75,
+      "raw_score": 0.35
+    },
+    {
+      "rank": 5,
+      "ts_code": "002437",
+      "stock_code": "002437",
+      "stock_name": "誉衡药业",
+      "lgb_score": 77.71,
+      "raw_score": 0.35
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.85,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.090742,
+    "std": 0.057926,
+    "skew": -0.29,
+    "kurtosis": -1.0817,
+    "min": -0.094633,
+    "max": 0.473553,
+    "median": 0.138848
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.15926806033787186,
+    "cv_rmse_std": 0.019277340202330608,
+    "cv_scores": [
+      0.170835,
+      0.152525,
+      0.127636,
+      0.160044,
+      0.1853
+    ],
+    "rank_ic_mean": 0.116741,
+    "rank_ic_std": 0.033987,
+    "icir": 3.4349,
+    "oof_corr": 0.096985,
+    "n_samples": 41842,
+    "n_features": 4
+  }
+}

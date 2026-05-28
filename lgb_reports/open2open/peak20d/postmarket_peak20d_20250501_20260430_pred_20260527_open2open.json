@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260527",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688507",
+      "stock_code": "688507",
+      "stock_name": "索辰科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.46,
+      "predicted_days": 13
+    },
+    {
+      "rank": 2,
+      "ts_code": "002028",
+      "stock_code": "002028",
+      "stock_name": "思源电气",
+      "lgb_score": 98.38,
+      "raw_score": 0.45,
+      "predicted_days": 14
+    },
+    {
+      "rank": 3,
+      "ts_code": "600584",
+      "stock_code": "600584",
+      "stock_name": "长电科技",
+      "lgb_score": 96.67,
+      "raw_score": 0.44,
+      "predicted_days": 15
+    },
+    {
+      "rank": 4,
+      "ts_code": "603266",
+      "stock_code": "603266",
+      "stock_name": "天龙股份",
+      "lgb_score": 75.61,
+      "raw_score": 0.34,
+      "predicted_days": 14
+    },
+    {
+      "rank": 5,
+      "ts_code": "920174",
+      "stock_code": "920174",
+      "stock_name": "五新智能",
+      "lgb_score": 75.61,
+      "raw_score": 0.34,
+      "predicted_days": 13
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.97,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.136939,
+    "std": 0.052361,
+    "skew": -0.4106,
+    "kurtosis": -0.9709,
+    "min": -0.003908,
+    "max": 0.456765,
+    "median": 0.179845
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.12792834895426905,
+    "cv_rmse_std": 0.014561700139984129,
+    "cv_scores": [
+      0.148239,
+      0.12204,
+      0.104474,
+      0.129118,
+      0.135771
+    ],
+    "rank_ic_mean": 0.204978,
+    "rank_ic_std": 0.069088,
+    "icir": 2.9669,
+    "oof_corr": 0.159805,
+    "n_samples": 43111,
+    "n_features": 3
+  },
+  "window_days": 20
+}

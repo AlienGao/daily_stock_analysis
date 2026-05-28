@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 3,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260528",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000530",
+      "stock_code": "000530",
+      "stock_name": "冰山冷热",
+      "lgb_score": 100.0,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 2,
+      "ts_code": "603056",
+      "stock_code": "603056",
+      "stock_name": "德邦股份",
+      "lgb_score": 97.97,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 3,
+      "ts_code": "000932",
+      "stock_code": "000932",
+      "stock_name": "华菱钢铁",
+      "lgb_score": 96.39,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 4,
+      "ts_code": "300620",
+      "stock_code": "300620",
+      "stock_name": "光库科技",
+      "lgb_score": 90.52,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 5,
+      "ts_code": "002206",
+      "stock_code": "002206",
+      "stock_name": "海 利 得",
+      "lgb_score": 88.84,
+      "raw_score": 0.06
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.54,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.005256,
+    "std": 0.020335,
+    "skew": -0.4422,
+    "kurtosis": -1.4015,
+    "min": -0.0758,
+    "max": 0.07298,
+    "median": 0.022745
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.055494644535355,
+    "cv_rmse_std": 0.0026822351052827186,
+    "cv_scores": [
+      0.051145,
+      0.054109,
+      0.056014,
+      0.05731,
+      0.058896
+    ],
+    "rank_ic_mean": 0.028485,
+    "rank_ic_std": 0.028917,
+    "icir": 0.9851,
+    "oof_corr": 0.024021,
+    "n_samples": 18469,
+    "n_features": 22
+  }
+}

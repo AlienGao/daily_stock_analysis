@@ -4,6 +4,7 @@
 简化版因子回测：统一使用开盘价交易，不分 intraday/postmarket 模式。
 """
 
+import json as _json
 import logging
 import multiprocessing
 import os
@@ -16,6 +17,9 @@ from typing import Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
+
+from src.storage import compute_param_fingerprint
+from src.repositories.simple_factor_backtest_cache_repo import SimpleFactorBacktestCacheRepo
 
 logger = logging.getLogger(__name__)
 
@@ -281,11 +285,20 @@ def _monitor(task_id: str, queue: multiprocessing.Queue, proc: multiprocessing.P
                 if t:
                     t["status_message"] = payload
             elif msg_type == "completed":
+                # 保存 _req_dict 引用（task 即将被覆盖）
+                _req_dict = _tasks.get(task_id, {}).get("_req_dict")
                 _tasks[task_id] = {
                     "status": "completed",
                     "result": payload,
                     "finished_at": datetime.now().isoformat(),
                 }
+                # 存入缓存
+                try:
+                    if _req_dict:
+                        fp = compute_param_fingerprint(_req_dict)
+                        SimpleFactorBacktestCacheRepo().upsert(fp, _req_dict, payload)
+                except Exception:
+                    logger.exception("保存回测缓存失败")
                 break
             elif msg_type == "failed":
                 t = _tasks.get(task_id, {})
@@ -348,9 +361,28 @@ def list_factors():
 
 
 @router.post("/run", summary="提交因子回测任务")
-def run_backtest(req: BacktestRequest):
+def run_backtest(req: BacktestRequest, force: bool = Query(False)):
     """提交因子回测任务（异步执行，统一使用开盘价交易）。"""
     _cleanup_old()
+
+    req_dict = req.model_dump()
+
+    # 缓存查询
+    if not force:
+        try:
+            fp = compute_param_fingerprint(req_dict)
+            cached = SimpleFactorBacktestCacheRepo().get_by_fingerprint(fp)
+            if cached is not None:
+                result_dict = _json.loads(cached.result_json)
+                task_id = f"cache_{fp[:8]}"
+                _tasks[task_id] = {
+                    "status": "completed",
+                    "result": result_dict,
+                    "finished_at": datetime.now().isoformat(),
+                }
+                return {"task_id": task_id, "status": "completed", "cache_hit": True, "result": result_dict}
+        except Exception:
+            logger.exception("缓存查询失败，继续正常回测")
 
     # 检查是否已有任务在运行
     for tid, t in _tasks.items():
@@ -361,12 +393,13 @@ def run_backtest(req: BacktestRequest):
     _tasks[task_id] = {
         "status": "running",
         "started_at": datetime.now().isoformat(),
+        "_req_dict": req_dict,
     }
 
     queue = multiprocessing.Queue()
     proc = multiprocessing.Process(
         target=_run_in_process,
-        args=(queue, req.model_dump()),
+        args=(queue, req_dict),
         daemon=True,
     )
     proc.start()
@@ -616,16 +649,14 @@ def _save_summary_md(results: list):
 
 # ── Batch test: 逐一测试所有因子 ──
 
-def _run_batch_test(queue: multiprocessing.Queue):
-    """在独立进程中逐一测试所有因子，生成总结报告。"""
-    import numpy as np
+def _run_batch_test(queue: multiprocessing.Queue, req_dict: dict, force: bool):
+    """在独立进程中逐一测试所有因子，使用页面参数，支持缓存。"""
     try:
         from data_provider.tushare_fetcher import TushareFetcher
         from src.discovery.factor_backtest_engine import FactorBacktestEngine
         from src.discovery.factors import __all__ as all_factors
         from src.discovery.factors.base import BaseFactor
         from dataclasses import asdict
-        from datetime import datetime as dt
 
         fetcher = TushareFetcher.get_instance()
         engine = FactorBacktestEngine(fetcher)
@@ -646,30 +677,71 @@ def _run_batch_test(queue: multiprocessing.Queue):
                 pass
         factors = sorted(factor_weights_map.keys())
 
+        cache_repo = SimpleFactorBacktestCacheRepo() if not force else None
         results = []
+        cached_count = 0
+
         for i, fn in enumerate(factors):
             fw = factor_weights_map[fn]
-            queue.put(("progress", f"[{i + 1}/{len(factors)}] 测试: {fn}"))
-            try:
-                r = engine.compute(
-                    mode="postmarket",
-                    factor_weights={fn: fw},
-                    start_date="20250101",
-                    top_n=3,
-                    hold_days=[1, 3, 5, 10, 20],
-                    initial_capital=5_000_000,
-                    risk_free_rate=0.02,
-                )
-            except Exception as e:
-                results.append({"name": fn, "error": str(e)})
-                continue
 
-            if r is None:
-                results.append({"name": fn, "error": "数据不足"})
-                continue
+            # 用页面参数构建单因子请求
+            single_req = {
+                "factor_weights": {fn: fw},
+                "start_date": req_dict.get("start_date"),
+                "end_date": req_dict.get("end_date"),
+                "top_n": req_dict.get("top_n", 5),
+                "hold_days": req_dict.get("hold_days", [1, 3, 5, 10, 20]),
+                "initial_capital": req_dict.get("initial_capital", 1_000_000.0),
+                "risk_free_rate": req_dict.get("risk_free_rate", 0.02),
+            }
+            init_cap = single_req["initial_capital"]
+            rfr = single_req["risk_free_rate"]
 
-            rd = asdict(r)
-            _save_report(rd)
+            # 查缓存
+            rd = None
+            if cache_repo:
+                try:
+                    fp = compute_param_fingerprint(single_req)
+                    cached = cache_repo.get_by_fingerprint(fp)
+                    if cached:
+                        rd = _json.loads(cached.result_json)
+                        cached_count += 1
+                except Exception:
+                    pass
+
+            if rd is None:
+                # 缓存未命中，跑回测
+                queue.put(("progress", f"[{i + 1}/{len(factors)}] 测试: {fn}"))
+                try:
+                    r = engine.compute(
+                        mode="postmarket",
+                        factor_weights={fn: fw},
+                        start_date=single_req["start_date"],
+                        end_date=single_req["end_date"],
+                        top_n=single_req["top_n"],
+                        hold_days=single_req["hold_days"],
+                        initial_capital=init_cap,
+                        risk_free_rate=rfr,
+                    )
+                except Exception as e:
+                    results.append({"name": fn, "error": str(e)})
+                    continue
+
+                if r is None:
+                    results.append({"name": fn, "error": "数据不足"})
+                    continue
+
+                rd = asdict(r)
+                _save_report(rd)
+
+                # 存入缓存
+                try:
+                    fp = compute_param_fingerprint(single_req)
+                    SimpleFactorBacktestCacheRepo().upsert(fp, single_req, rd)
+                except Exception:
+                    logger.exception("保存因子 %s 缓存失败", fn)
+            else:
+                queue.put(("progress", f"[{i + 1}/{len(factors)}] 缓存命中: {fn}"))
 
             # 提取 5 日持有期指标
             curves = rd.get("capital_curves", {})
@@ -678,7 +750,7 @@ def _run_batch_test(queue: multiprocessing.Queue):
             stats = _compute_period_stats(
                 curves.get("5", []),
                 [t for t in trades if t.get("hold_days") == 5],
-                5_000_000, 0.02,
+                init_cap, rfr,
             )
             if stats:
                 results.append({
@@ -700,6 +772,7 @@ def _run_batch_test(queue: multiprocessing.Queue):
 
         queue.put(("completed", {
             "factors_tested": len(factors),
+            "cached_count": cached_count,
             "results": sorted(results, key=lambda x: x.get("total_return", -999), reverse=True),
         }))
     except Exception as e:
@@ -709,8 +782,8 @@ def _run_batch_test(queue: multiprocessing.Queue):
 
 
 @router.post("/batch-test", summary="逐一测试所有因子")
-def start_batch_test():
-    """逐一测试所有 postmarket 因子，生成单因子报告和总结。"""
+def start_batch_test(req: BacktestRequest, force: bool = Query(False)):
+    """逐一测试所有 postmarket 因子，使用页面参数，支持缓存。"""
     _cleanup_old()
     for tid, t in _tasks.items():
         if t.get("status") == "running":
@@ -720,7 +793,11 @@ def start_batch_test():
     _tasks[task_id] = {"status": "running", "started_at": datetime.now().isoformat()}
 
     queue = multiprocessing.Queue()
-    proc = multiprocessing.Process(target=_run_batch_test, args=(queue,), daemon=True)
+    proc = multiprocessing.Process(
+        target=_run_batch_test,
+        args=(queue, req.model_dump(), force),
+        daemon=True,
+    )
     proc.start()
 
     import threading
@@ -728,3 +805,45 @@ def start_batch_test():
     t.start()
 
     return {"task_id": task_id, "status": "running"}
+
+
+# ── 回测缓存管理 ──
+
+@router.get("/cache", summary="获取回测缓存列表")
+def list_cache(limit: Optional[int] = Query(None, ge=1)):
+    """返回历史回测缓存条目（不含完整结果），不传 limit 返回全部。"""
+    repo = SimpleFactorBacktestCacheRepo()
+    rows = repo.list_recent(limit=limit)
+    items = []
+    for r in rows:
+        items.append({
+            "id": r.id,
+            "factor_weights": _json.loads(r.factor_weights_json),
+            "start_date": r.start_date,
+            "end_date": r.end_date,
+            "top_n": r.top_n,
+            "hold_days": _json.loads(r.hold_days_json),
+            "initial_capital": r.initial_capital,
+            "risk_free_rate": r.risk_free_rate,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        })
+    return {"items": items, "total": len(items)}
+
+
+@router.get("/cache/{cache_id}", summary="加载指定缓存结果")
+def get_cache_item(cache_id: int):
+    """加载单条缓存的完整回测结果。"""
+    repo = SimpleFactorBacktestCacheRepo()
+    entry = repo.get_by_id(cache_id)
+    if not entry:
+        raise HTTPException(status_code=404, detail="缓存不存在")
+    return {"result": _json.loads(entry.result_json)}
+
+
+@router.delete("/cache/{cache_id}", summary="删除缓存")
+def delete_cache_item(cache_id: int):
+    """删除指定缓存条目。"""
+    repo = SimpleFactorBacktestCacheRepo()
+    if not repo.delete_by_id(cache_id):
+        raise HTTPException(status_code=404, detail="缓存不存在")
+    return {"ok": True}

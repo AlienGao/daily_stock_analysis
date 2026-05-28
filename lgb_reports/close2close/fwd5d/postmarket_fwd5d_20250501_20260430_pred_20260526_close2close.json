@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 5,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260526",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002446",
+      "stock_code": "002446",
+      "stock_name": "盛路通信",
+      "lgb_score": 100.0,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 2,
+      "ts_code": "002579",
+      "stock_code": "002579",
+      "stock_name": "中京电子",
+      "lgb_score": 90.74,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 3,
+      "ts_code": "002452",
+      "stock_code": "002452",
+      "stock_name": "长高电新",
+      "lgb_score": 86.28,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 4,
+      "ts_code": "002570",
+      "stock_code": "002570",
+      "stock_name": "贝因美",
+      "lgb_score": 80.25,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 5,
+      "ts_code": "300672",
+      "stock_code": "300672",
+      "stock_name": "国科微",
+      "lgb_score": 78.19,
+      "raw_score": 0.12
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.21,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.00371,
+    "std": 0.017815,
+    "skew": -0.3935,
+    "kurtosis": 3.8352,
+    "min": -0.082955,
+    "max": 0.171227,
+    "median": 0.011327
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.07293047112790249,
+    "cv_rmse_std": 0.003796719450767962,
+    "cv_scores": [
+      0.0674,
+      0.070493,
+      0.074004,
+      0.074071,
+      0.078684
+    ],
+    "rank_ic_mean": 0.047685,
+    "rank_ic_std": 0.047815,
+    "icir": 0.9973,
+    "oof_corr": 0.033957,
+    "n_samples": 18327,
+    "n_features": 22
+  }
+}

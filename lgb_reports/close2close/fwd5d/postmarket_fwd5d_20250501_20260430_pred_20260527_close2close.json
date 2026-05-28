@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 5,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260527",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688345",
+      "stock_code": "688345",
+      "stock_name": "博力威",
+      "lgb_score": 100.0,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 2,
+      "ts_code": "688627",
+      "stock_code": "688627",
+      "stock_name": "精智达",
+      "lgb_score": 92.58,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 3,
+      "ts_code": "002796",
+      "stock_code": "002796",
+      "stock_name": "世嘉科技",
+      "lgb_score": 90.34,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "601231",
+      "stock_code": "601231",
+      "stock_name": "环旭电子",
+      "lgb_score": 89.36,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "002860",
+      "stock_code": "002860",
+      "stock_name": "星帅尔",
+      "lgb_score": 89.08,
+      "raw_score": 0.07
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.21,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.002005,
+    "std": 0.018822,
+    "skew": -0.5894,
+    "kurtosis": -0.4436,
+    "min": -0.07812,
+    "max": 0.093564,
+    "median": 0.011327
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.07293047112790249,
+    "cv_rmse_std": 0.003796719450767962,
+    "cv_scores": [
+      0.0674,
+      0.070493,
+      0.074004,
+      0.074071,
+      0.078684
+    ],
+    "rank_ic_mean": 0.047685,
+    "rank_ic_std": 0.047815,
+    "icir": 0.9973,
+    "oof_corr": 0.033957,
+    "n_samples": 18327,
+    "n_features": 22
+  }
+}

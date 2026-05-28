@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 3,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260528",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300296",
+      "stock_code": "300296",
+      "stock_name": "利亚德",
+      "lgb_score": 100.0,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 2,
+      "ts_code": "002160",
+      "stock_code": "002160",
+      "stock_name": "常铝股份",
+      "lgb_score": 97.98,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 3,
+      "ts_code": "002606",
+      "stock_code": "002606",
+      "stock_name": "大连电瓷",
+      "lgb_score": 93.79,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 4,
+      "ts_code": "301195",
+      "stock_code": "301195",
+      "stock_name": "北路智控",
+      "lgb_score": 89.33,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 5,
+      "ts_code": "300039",
+      "stock_code": "300039",
+      "stock_name": "上海凯宝",
+      "lgb_score": 88.26,
+      "raw_score": 0.14
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.31,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.006903,
+    "std": 0.00894,
+    "skew": 6.9958,
+    "kurtosis": 81.2545,
+    "min": -0.032468,
+    "max": 0.166109,
+    "median": 0.007155
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.05483547764111024,
+    "cv_rmse_std": 0.0042120011373634435,
+    "cv_scores": [
+      0.048801,
+      0.059957,
+      0.051087,
+      0.056414,
+      0.057919
+    ],
+    "rank_ic_mean": 0.031971,
+    "rank_ic_std": 0.021447,
+    "icir": 1.4907,
+    "oof_corr": 0.019291,
+    "n_samples": 43094,
+    "n_features": 3
+  }
+}

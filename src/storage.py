@@ -755,6 +755,52 @@ class BacktestSummary(Base):
     )
 
 
+def compute_param_fingerprint(req_dict: dict) -> str:
+    """Compute a deterministic SHA-256 hash of backtest parameters.
+
+    Normalizes: sorts factor_weights keys and hold_days, compact JSON.
+    """
+    canonical = {
+        "factor_weights": dict(sorted(req_dict.get("factor_weights", {}).items())),
+        "start_date": req_dict.get("start_date"),
+        "end_date": req_dict.get("end_date"),
+        "top_n": req_dict.get("top_n", 5),
+        "hold_days": sorted(req_dict.get("hold_days", [1, 3, 5, 10, 20])),
+        "initial_capital": req_dict.get("initial_capital", 1_000_000.0),
+        "risk_free_rate": req_dict.get("risk_free_rate", 0.02),
+    }
+    raw = json.dumps(canonical, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+
+class SimpleFactorBacktestCache(Base):
+    """快测回测结果缓存，以参数指纹为唯一键。"""
+
+    __tablename__ = 'simple_factor_backtest_cache'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    param_fingerprint = Column(String(64), nullable=False, unique=True)
+
+    # 参数副本（用于列表展示，避免解析大 JSON）
+    factor_weights_json = Column(Text, nullable=False)
+    start_date = Column(String(16))
+    end_date = Column(String(16))
+    top_n = Column(Integer, nullable=False, default=5)
+    hold_days_json = Column(String(128), nullable=False)
+    initial_capital = Column(Float, nullable=False, default=1_000_000.0)
+    risk_free_rate = Column(Float, nullable=False, default=0.02)
+
+    # 完整回测结果
+    result_json = Column(Text, nullable=False)
+
+    created_at = Column(DateTime, default=datetime.now, nullable=False)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
+
+    __table_args__ = (
+        Index('ix_sfb_cache_created', 'created_at'),
+    )
+
+
 class PortfolioAccount(Base):
     """Portfolio account metadata."""
 
