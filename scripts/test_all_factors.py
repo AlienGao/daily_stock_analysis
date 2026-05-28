@@ -5,6 +5,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import logging
+import re
 import time
 import numpy as np
 from datetime import datetime
@@ -218,6 +219,26 @@ def save_summary(results):
     """生成所有因子横向对比的总结 MD。"""
     filepath = REPORTS_DIR / "summary_all_factors.md"
 
+    # 读取前一次排名
+    prev_rank: dict = {}
+    if filepath.exists():
+        with open(filepath, "r") as fh:
+            prev_content = fh.read()
+        for m in re.finditer(r'\|\s*(\d+)\s*\|\s*(.+?)\s*\|', prev_content):
+            rank = int(m.group(1))
+            label = m.group(2).strip()
+            # 跳过表头和非因子行
+            if label in ("排名", "因子", "------"):
+                continue
+            # reverse lookup label -> factor name
+            fn = None
+            for k, v in FLM.items():
+                if v == label:
+                    fn = k
+                    break
+            if fn:
+                prev_rank[fn] = rank
+
     # 收集有效结果
     valid = []
     for name, d, err in results:
@@ -229,7 +250,6 @@ def save_summary(results):
         params = d.get("params", {})
         init_cap = params.get("initial_capital", INITIAL_CAPITAL)
         rfr = params.get("risk_free_rate", RISK_FREE_RATE)
-        # 取所有持有期中最好和平均的（以 5 日为主）
         stats5 = _period_stats(
             curves.get("5", []),
             [t for t in all_trades if t.get("hold_days") == 5],
@@ -264,13 +284,22 @@ def save_summary(results):
         "",
         "## 综合排名（按 5 日持有期累计收益）",
         "",
-        "| 排名 | 因子 | 累计收益 | 年化收益 | 胜率 | 最大回撤 | Sharpe | IC(5日) | 交易数 |",
-        "|------|------|----------|----------|------|----------|--------|---------|--------|",
+        "| 排名 | 变化 | 因子 | 累计收益 | 年化收益 | 胜率 | 最大回撤 | Sharpe | IC(5日) | 交易数 |",
+        "|------|------|------|----------|----------|------|----------|--------|---------|--------|",
     ]
 
     for rank, v in enumerate(valid, 1):
+        prev = prev_rank.get(v["name"])
+        if prev is None:
+            change = "🆕"
+        elif rank < prev:
+            change = f"↑{prev - rank}"
+        elif rank > prev:
+            change = f"↓{rank - prev}"
+        else:
+            change = "-"
         lines.append(
-            f"| {rank} | {v['label']} | {v['tr'] * 100:+.2f}% | {v['ar'] * 100:+.2f}% "
+            f"| {rank} | {change} | {v['label']} | {v['tr'] * 100:+.2f}% | {v['ar'] * 100:+.2f}% "
             f"| {v['wr'] * 100:.1f}% | {v['mdd'] * 100:.2f}% "
             f"| {v['sh']:+.2f} | {v['ic5']:+.4f} | {v['trades']} |")
 
