@@ -271,9 +271,12 @@ def save_summary(results):
                 "ic5": ic5,
             })
 
+    # 按累计收益降序排列
+    valid.sort(key=lambda x: x["tr"], reverse=True)
+
     # 分类
-    effective = sorted([v for v in valid if v["tr"] > 0], key=lambda x: x["tr"], reverse=True)
-    ineffective = sorted([v for v in valid if v["tr"] <= 0], key=lambda x: x["tr"])
+    effective = [v for v in valid if v["tr"] > 0]
+    ineffective = [v for v in valid if v["tr"] <= 0]
 
     lines = [
         "# 因子全面测试总结",

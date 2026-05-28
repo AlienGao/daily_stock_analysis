@@ -7,6 +7,7 @@
 import logging
 import multiprocessing
 import os
+import re
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -61,6 +62,53 @@ def _compute_period_stats(curve, trades, init_cap, rfr):
     }
 
 
+def _update_combo_summary():
+    """扫描 combos/ 目录，生成 combo_summary.md。"""
+    try:
+        combos_dir = _REPORTS_DIR / "combos"
+        if not combos_dir.exists():
+            return
+        combo_files = sorted(combos_dir.glob("backtest_*.md"))
+        if not combo_files:
+            return
+
+        lines = [
+            "# 多因子组合总览", "",
+            f"- **组合数量**: {len(combo_files)}",
+            f"- **更新时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", "",
+            "| 组合 | 因子 | 1日 | 3日 | 5日 | 10日 | 20日 |",
+            "|------|------|------|------|------|------|------|",
+        ]
+        rows = []
+        for cf in combo_files:
+            with open(cf, "r") as fh:
+                content = fh.read()
+            ft_match = re.search(r'## 因子\n\n\| 因子 \| 权重 \|\n\|------\|------\|\n(.*?)\n\n', content, re.DOTALL)
+            factor_labels = []
+            if ft_match:
+                for row in ft_match.group(1).strip().split("\n"):
+                    m = re.match(r'\|\s*(.+?)\s*\|\s*([\d.]+)\s*\|', row)
+                    if m:
+                        factor_labels.append(f"{m.group(1)}({m.group(2)})")
+            returns = {}
+            for m in re.finditer(r'\|\s*(\d+)日\s*\|\s*([+-][\d.]+)%', content):
+                returns[m.group(1)] = float(m.group(2))
+            name = cf.stem.replace("backtest_postmarket_", "")
+            ret5 = returns.get("5", -9999)
+            rets = [f"{returns.get(str(h), 0):+.2f}%" for h in [1, 3, 5, 10, 20]]
+            rows.append((ret5, name, factor_labels, rets))
+        rows.sort(key=lambda x: x[0], reverse=True)
+        for ret5, name, factor_labels, rets in rows:
+            lines.append(f"| {name[:70]} | {', '.join(factor_labels[:4])} | " + " | ".join(rets) + " |")
+        lines.append("")
+        summary_path = combos_dir / "combo_summary.md"
+        with open(summary_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines))
+        logger.info("组合总览已更新: %s", summary_path)
+    except Exception:
+        logger.exception("更新组合总览失败")
+
+
 def _save_report(result_dict: dict):
     """将回测汇总保存为 Markdown 到 reports_simple_backtest/ 目录。"""
     try:
@@ -70,7 +118,10 @@ def _save_report(result_dict: dict):
         factor_parts = [f"w{int(f.get('weight', 0))}_{f.get('name', '')}" for f in factors]
         factor_str = "_".join(factor_parts) if factor_parts else "unknown"
         filename = f"backtest_{mode}_{factor_str}.md"
-        filepath = _REPORTS_DIR / filename
+        is_combo = len(factors) >= 2
+        save_dir = _REPORTS_DIR / "combos" if is_combo else _REPORTS_DIR
+        save_dir.mkdir(parents=True, exist_ok=True)
+        filepath = save_dir / filename
 
         params = result_dict.get("params", {})
         hold_days = params.get("hold_days", [])
@@ -121,8 +172,8 @@ def _save_report(result_dict: dict):
         lines.append(f"")
         lines.append(f"## Rank IC（因子有效性）")
         lines.append(f"")
-        if rank_ic:
-            all_factors = sorted(set(fn for hd_ic in rank_ic.values() for fn in hd_ic))
+        all_factors = sorted(set(fn for hd_ic in rank_ic.values() for fn in hd_ic)) if rank_ic else []
+        if all_factors:
             header_ic = "| 因子 | " + " | ".join(f"{h}日" for h in hold_days) + " |"
             lines.append(header_ic)
             lines.append("|------|" + "|".join("------" for _ in hold_days) + "|")
@@ -141,6 +192,8 @@ def _save_report(result_dict: dict):
         with open(filepath, "w", encoding="utf-8") as f:
             f.write("\n".join(lines))
         logger.info("回测报告已保存: %s", filepath)
+        if is_combo:
+            _update_combo_summary()
     except Exception:
         logger.exception("保存回测报告失败")
 
@@ -346,10 +399,11 @@ def task_status(task_id: str = Query(...)):
 
 @router.get("/presets", summary="获取多因子快捷组合")
 def list_presets():
-    """扫描 reports_simple_backtest/ 下的多因子组合文件，提取因子权重配置。"""
+    """扫描 reports_simple_backtest/combos/ 下的多因子组合文件，提取因子权重配置。"""
     presets = []
-    if _REPORTS_DIR.exists():
-        for f in sorted(_REPORTS_DIR.glob("backtest_*.md")):
+    combos_dir = _REPORTS_DIR / "combos"
+    if combos_dir.exists():
+        for f in sorted(combos_dir.glob("backtest_*.md")):
             name = f.stem  # without .md
             # 解析文件名中的 w{weight}_{factor} 对
             parts = name.split("_")
@@ -373,7 +427,18 @@ def list_presets():
                 else:
                     i += 1
             if len(factor_weights) >= 2:  # 只算多因子组合
-                presets.append({"name": name, "factor_weights": factor_weights})
+                # 读取 5 日持有期收益用于排序
+                ret5 = -9999.0
+                try:
+                    with open(f, "r") as fh:
+                        content = fh.read()
+                    m = re.search(r'\|\s*5日\s*\|\s*([+-][\d.]+)%', content)
+                    if m:
+                        ret5 = float(m.group(1))
+                except Exception:
+                    pass
+                presets.append({"name": name, "factor_weights": factor_weights, "ret5": ret5})
+    presets.sort(key=lambda x: x.get("ret5", -9999), reverse=True)
     return {"presets": presets}
 
 
@@ -382,13 +447,47 @@ def cross_validate():
     """对 presets 中的多因子组合，取最新快照日期，运行各组合选股，找出交叉命中个股。"""
     presets_data = list_presets()
     preset_list = presets_data.get("presets", [])
+
+    # 从 summary_all_factors 取排名第一的单因子加入交叉验证
+    top_factor = None
+    summary_path = _REPORTS_DIR / "summary_all_factors.md"
+    if summary_path.exists():
+        with open(summary_path, "r") as fh:
+            for line in fh:
+                m = re.match(r'\|\s*1\s*\|\s*\S+\s*\|\s*(.+?)\s*\|', line)
+                if m:
+                    label = m.group(1).strip()
+                    for fn, fl in FLM.items():
+                        if fl == label:
+                            top_factor = fn
+                            break
+                    break
+    if top_factor:
+        from src.discovery.factors import __all__ as all_factors
+        from src.discovery.factors.base import BaseFactor
+        for name in all_factors:
+            if name in ("BaseFactor", "DiscoveryResult"):
+                continue
+            try:
+                mod = __import__("src.discovery.factors", fromlist=[name])
+                cls = getattr(mod, name)
+                if isinstance(cls, type) and issubclass(cls, BaseFactor) and cls is not BaseFactor:
+                    inst = cls()
+                    if inst.name == top_factor:
+                        preset_list.insert(0, {
+                            "name": f"top1_{top_factor}",
+                            "factor_weights": {top_factor: inst.weight},
+                        })
+                        break
+            except Exception:
+                pass
+
     if not preset_list:
         raise HTTPException(status_code=404, detail="无多因子组合配置")
 
     try:
         from src.discovery.factor_backtest_engine import FactorBacktestEngine
         engine = FactorBacktestEngine()
-        # 获取最新快照日期（从第一个 preset 的因子推算）
         all_factors = list({fn for p in preset_list for fn in p["factor_weights"]})
         snap_dates = engine._get_available_dates(all_factors, "postmarket")
         if not snap_dates:
@@ -462,7 +561,6 @@ FLM = {
 
 def _save_summary_md(results: list):
     """生成 summary_all_factors.md。"""
-    import re
     try:
         filepath = _REPORTS_DIR / "summary_all_factors.md"
         # 读取前一次排名

@@ -111,6 +111,11 @@ const SimpleFactorBacktestPage: React.FC = () => {
   const [summaryPeriod, setSummaryPeriod] = useState('5');
   const [hiddenLines, setHiddenLines] = useState<Set<string>>(new Set());
 
+  // 切换持有期时，重置为只展示当前持有期曲线
+  useEffect(() => {
+    setHiddenLines(new Set(holdDays.filter(h => String(h) !== summaryPeriod).map(h => `hd${h}`)));
+  }, [summaryPeriod, holdDays]);
+
   // presets
   const [presets, setPresets] = useState<Array<{ name: string; factor_weights: Record<string, number> }>>([]);
 
@@ -396,7 +401,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
                       checked={!!selectedFactors[f.name]}
                       onChange={(e) => setSelectedFactors((p) => ({ ...p, [f.name]: e.target.checked }))}
                     />
-                    <span className="text-sm flex-1 truncate">{FACTOR_LABELS[f.name] || f.name}</span>
+                    <span className="text-sm flex-1 truncate">{FACTOR_LABELS[f.name] || f.name} <span className="text-tertiary-text text-xs">({f.name})</span></span>
                     {selectedFactors[f.name] && (
                       <InputNumber
                         size="small"
