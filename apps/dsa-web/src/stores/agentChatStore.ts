@@ -189,17 +189,23 @@ export const useAgentChatStore = create<AgentChatState & AgentChatActions>((set,
       progressStepsBySession,
     } = get();
     if (targetSessionId === sessionId && messages.length > 0) return;
-    set({
-      loading: !!loadingBySession[targetSessionId],
-      progressSteps: progressStepsBySession[targetSessionId] || [],
-      chatError: get().chatErrorBySession[targetSessionId] || null,
-    });
 
-    set({ messages: [], sessionId: targetSessionId });
+    abortController?.abort();
+    set({
+      messages: [],
+      sessionId: targetSessionId,
+      loading: false,
+      progressSteps: [],
+      chatError: null,
+      abortController: null,
+    });
     localStorage.setItem(STORAGE_KEY_SESSION, targetSessionId);
 
     try {
       const msgs = await agentApi.getChatSessionMessages(targetSessionId);
+      if (get().sessionId !== targetSessionId) {
+        return;
+      }
       set({
         messages: msgs.map((m) => ({
           id: m.id,

@@ -23,6 +23,7 @@ A股自选股智能分析系统 - 主调度程序
 """
 from __future__ import annotations
 
+import multiprocessing
 import os
 import atexit
 import subprocess
@@ -498,6 +499,23 @@ def _run_market_review_with_shared_lock(
         release_market_review_lock(lock_token)
 
 
+def _refresh_stock_index_cache_for_analysis(config: Config) -> None:
+    """Best-effort stock-index refresh for CLI/scheduled analysis paths."""
+    try:
+        from src.services.stock_index_remote_service import (
+            refresh_remote_stock_index_cache,
+            settings_from_config,
+        )
+
+        result = refresh_remote_stock_index_cache(settings_from_config(config))
+        if result.refreshed:
+            logger.info("[stock-index] 分析前已刷新股票索引缓存: %s", result.cache_path)
+        elif result.error:
+            logger.debug("[stock-index] 分析前刷新未完成，继续使用本地索引: %s", result.error)
+    except Exception as exc:  # noqa: BLE001 - stock index freshness must not block analysis.
+        logger.warning("[stock-index] 分析前刷新股票索引失败，继续执行分析: %s", exc)
+
+
 def run_full_analysis(
     config: Config,
     args: argparse.Namespace,
@@ -528,6 +546,9 @@ def run_full_analysis(
     fail_count = 0
 
     try:
+        _refresh_stock_index_cache_for_analysis(config)
+
+        # Issue #529: Hot-reload STOCK_LIST from .env on each scheduled run
         if stock_codes is None:
             config.refresh_stock_list()
 
@@ -1589,4 +1610,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
     sys.exit(main())
