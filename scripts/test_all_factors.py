@@ -93,7 +93,8 @@ def _period_stats(curve, trades, init_cap, rfr):
 def save_md(factor_name: str, d: dict):
     """保存单因子回测 Markdown 报告。"""
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    filepath = REPORTS_DIR / f"backtest_postmarket_{factor_name}.md"
+    weight = int(d.get('factors', [{}])[0].get('weight', 0)) if d.get('factors') else 0
+    filepath = REPORTS_DIR / f"backtest_postmarket_w{weight}_{factor_name}.md"
 
     params = d.get("params", {})
     hold_days = params.get("hold_days", [])

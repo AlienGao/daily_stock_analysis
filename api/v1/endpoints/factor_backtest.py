@@ -67,8 +67,8 @@ def _save_report(result_dict: dict):
         _REPORTS_DIR.mkdir(parents=True, exist_ok=True)
         mode = result_dict.get("mode", "postmarket")
         factors = result_dict.get("factors", [])
-        factor_names = [f.get("name", "") for f in factors]
-        factor_str = "_".join(factor_names) if factor_names else "unknown"
+        factor_parts = [f"w{int(f.get('weight', 0))}_{f.get('name', '')}" for f in factors]
+        factor_str = "_".join(factor_parts) if factor_parts else "unknown"
         filename = f"backtest_{mode}_{factor_str}.md"
         filepath = _REPORTS_DIR / filename
 
@@ -354,6 +354,108 @@ def task_status(task_id: str = Query(...)):
     if "result" in t:
         resp["result"] = t["result"]
     return resp
+
+
+# ── Presets: 读取多因子组合快捷配置 ──
+
+@router.get("/presets", summary="获取多因子快捷组合")
+def list_presets():
+    """扫描 reports_simple_backtest/ 下的多因子组合文件，提取因子权重配置。"""
+    presets = []
+    if _REPORTS_DIR.exists():
+        for f in sorted(_REPORTS_DIR.glob("backtest_*.md")):
+            name = f.stem  # without .md
+            # 解析文件名中的 w{weight}_{factor} 对
+            parts = name.split("_")
+            # 格式: backtest_postmarket_w10_margin_w20_profit_forecast...
+            # 跳过 backtest, postmarket 前缀，然后解析 wN_factor 对
+            factor_weights = {}
+            i = 2  # skip "backtest", "postmarket"
+            while i < len(parts):
+                if parts[i].startswith("w") and parts[i][1:].isdigit():
+                    weight = int(parts[i][1:])
+                    # 收集后续非 wN 的部分作为因子名
+                    j = i + 1
+                    factor_parts = []
+                    while j < len(parts) and not (parts[j].startswith("w") and parts[j][1:].isdigit()):
+                        factor_parts.append(parts[j])
+                        j += 1
+                    factor_name = "_".join(factor_parts)
+                    if factor_name:
+                        factor_weights[factor_name] = weight
+                    i = j
+                else:
+                    i += 1
+            if len(factor_weights) >= 2:  # 只算多因子组合
+                presets.append({"name": name, "factor_weights": factor_weights})
+    return {"presets": presets}
+
+
+@router.post("/cross-validate", summary="多因子组合交叉验证")
+def cross_validate():
+    """对 presets 中的多因子组合，取最新快照日期，运行各组合选股，找出交叉命中个股。"""
+    presets_data = list_presets()
+    preset_list = presets_data.get("presets", [])
+    if not preset_list:
+        raise HTTPException(status_code=404, detail="无多因子组合配置")
+
+    try:
+        from src.discovery.factor_backtest_engine import FactorBacktestEngine
+        engine = FactorBacktestEngine()
+        # 获取最新快照日期（从第一个 preset 的因子推算）
+        all_factors = list({fn for p in preset_list for fn in p["factor_weights"]})
+        snap_dates = engine._get_available_dates(all_factors, "postmarket")
+        if not snap_dates:
+            raise HTTPException(status_code=404, detail="无可用快照数据")
+        latest_date = snap_dates[-1]
+
+        # 加载最新日期的因子得分
+        scores_by_date = engine._load_snapshots(all_factors, "postmarket", [latest_date])
+        ss = scores_by_date.get(latest_date, {})
+        if not ss:
+            raise HTTPException(status_code=404, detail=f"快照日期 {latest_date} 无数据")
+
+        # 对每个 preset 计算 top 5
+        preset_tops = {}
+        for p in preset_list:
+            composite = engine._compute_composite(ss, p["factor_weights"])
+            if composite.empty:
+                continue
+            top5 = composite.nlargest(5)
+            preset_tops[p["name"]] = [
+                {"ts_code": code, "score": round(float(sc), 1)} for code, sc in top5.items()
+            ]
+
+        # 交叉命中: 统计每只股票出现在几个 preset 中
+        from collections import Counter
+        stock_presets: dict = {}
+        for preset_name, stocks in preset_tops.items():
+            for s in stocks:
+                ts = s["ts_code"]
+                if ts not in stock_presets:
+                    stock_presets[ts] = {"ts_code": ts, "count": 0, "presets": [], "scores": {}}
+                stock_presets[ts]["count"] += 1
+                stock_presets[ts]["presets"].append(preset_name)
+                stock_presets[ts]["scores"][preset_name] = s["score"]
+
+        # 补充股票名称
+        engine._prefetch_stock_names([s["ts_code"] for s in stock_presets.values()])
+
+        cross_stocks = sorted(stock_presets.values(), key=lambda x: x["count"], reverse=True)
+        for s in cross_stocks:
+            s["stock_name"] = engine._stock_names.get(s["ts_code"], s["ts_code"])
+
+        return {
+            "latest_date": latest_date,
+            "total_presets": len(preset_list),
+            "preset_tops": preset_tops,
+            "cross_stocks": cross_stocks,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("交叉验证失败")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ── Batch test: 逐一测试所有因子 ──

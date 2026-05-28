@@ -111,6 +111,9 @@ const SimpleFactorBacktestPage: React.FC = () => {
   const [summaryPeriod, setSummaryPeriod] = useState('5');
   const [hiddenLines, setHiddenLines] = useState<Set<string>>(new Set());
 
+  // presets
+  const [presets, setPresets] = useState<Array<{ name: string; factor_weights: Record<string, number> }>>([]);
+
   // load available factors
   useEffect(() => {
     apiClient.get('/api/v1/factor-backtest-simple/factors').then((resp: { data: { factors: FactorInfo[] } }) => {
@@ -124,6 +127,10 @@ const SimpleFactorBacktestPage: React.FC = () => {
       });
       setSelectedFactors(sel);
       setFactorWeights(w);
+    }).catch(() => {});
+    // load presets
+    apiClient.get('/api/v1/factor-backtest-simple/presets').then((resp: { data: { presets: Array<{ name: string; factor_weights: Record<string, number> }> } }) => {
+      setPresets(resp.data.presets || []);
     }).catch(() => {});
 
     // restore cached result
@@ -236,6 +243,25 @@ const SimpleFactorBacktestPage: React.FC = () => {
     } catch (err) {
       setBatchLoading(false);
       setError(getParsedApiError(err));
+    }
+  }, []);
+
+  const [cvLoading, setCvLoading] = useState(false);
+  const [cvResult, setCvResult] = useState<{
+    latest_date: string; total_presets: number;
+    cross_stocks: Array<{ ts_code: string; stock_name: string; count: number; presets: string[] }>;
+  } | null>(null);
+
+  const handleCrossValidate = useCallback(async () => {
+    setCvLoading(true);
+    setError(null);
+    try {
+      const resp = await apiClient.post('/api/v1/factor-backtest-simple/cross-validate');
+      setCvResult(resp.data);
+    } catch (err) {
+      setError(getParsedApiError(err));
+    } finally {
+      setCvLoading(false);
     }
   }, []);
 
@@ -385,6 +411,40 @@ const SimpleFactorBacktestPage: React.FC = () => {
                   </div>
                 ))}
               </div>
+
+              {presets.length > 0 && (
+                <div className="pt-3 border-t border-divider">
+                  <div className="text-xs text-secondary-text mb-2">快捷组合</div>
+                  <div className="space-y-1.5">
+                    {presets.map((p) => {
+                      const entries = Object.entries(p.factor_weights);
+                      const label = entries
+                        .map(([fn, w]) => `${FACTOR_LABELS[fn] || fn}(${w})`)
+                        .join(' + ');
+                      return (
+                        <button
+                          key={p.name}
+                          type="button"
+                          className="w-full text-left px-2 py-1.5 rounded text-xs border border-divider hover:border-blue-500/50 hover:bg-blue-500/10 transition-colors leading-relaxed"
+                          onClick={() => {
+                            const sel: Record<string, boolean> = {};
+                            const w: Record<string, number> = {};
+                            availableFactors.forEach((f) => { sel[f.name] = false; w[f.name] = f.weight; });
+                            for (const [fn, fw] of entries) {
+                              sel[fn] = true;
+                              w[fn] = fw;
+                            }
+                            setSelectedFactors(sel);
+                            setFactorWeights(w);
+                          }}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </Card>
 
@@ -504,7 +564,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
             <div className="text-xs text-blue-400 text-center">{progressMsg}</div>
           )}
 
-          <div className="pt-2 border-t border-divider">
+          <div className="pt-2 border-t border-divider space-y-2">
             <Button
               block
               size="small"
@@ -514,8 +574,32 @@ const SimpleFactorBacktestPage: React.FC = () => {
             >
               逐一测试所有因子
             </Button>
+            <Button
+              block
+              size="small"
+              onClick={handleCrossValidate}
+              loading={cvLoading}
+              disabled={loading || presets.length === 0}
+            >
+              交叉验证
+            </Button>
             {batchMsg && (
               <div className="text-xs text-blue-400 text-center mt-1">{batchMsg}</div>
+            )}
+            {cvResult && (
+              <div className="text-xs text-secondary-text mt-2 space-y-1">
+                <div>数据日期: {cvResult.latest_date}，共 {cvResult.total_presets} 个组合</div>
+                {cvResult.cross_stocks.filter(s => s.count >= 2).map(s => (
+                  <div key={s.ts_code} className="flex items-center gap-1">
+                    <span className="text-amber-400 font-medium">{s.count}✓</span>
+                    <span>{s.stock_name}</span>
+                    <span className="text-tertiary-text">{s.ts_code}</span>
+                  </div>
+                ))}
+                {cvResult.cross_stocks.filter(s => s.count >= 2).length === 0 && (
+                  <div className="text-tertiary-text">无交叉命中个股</div>
+                )}
+              </div>
             )}
           </div>
         </div>
