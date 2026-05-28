@@ -96,22 +96,8 @@ def _save_report(result_dict: dict):
         lines.append(f"| 因子 | 权重 |")
         lines.append(f"|------|------|")
         for f in factors:
-            lines.append(f"| {f.get('name', '?')} | {f.get('weight', 0):.1f} |")
+            lines.append(f"| {FLM.get(f.get('name', ''), f.get('name', '?'))} | {f.get('weight', 0):.1f} |")
         lines.append(f"")
-
-        # 因子标签映射
-        FLM = {"money_flow": "资金流向", "margin": "融资融券", "chip": "筹码分布",
-               "technical": "技术形态", "limit": "涨跌停", "fundamental": "基本面",
-               "institution_hold": "机构持股", "profit_forecast": "盈利预测",
-               "buyback": "回购", "insider_buy": "高管增持", "broker_recommend": "券商推荐",
-               "popularity": "人气", "hot_money": "游资", "performance": "业绩",
-               "momentum": "动量", "rebound": "反弹", "sector": "板块", "ma_entry": "均线",
-               "ranking_momentum": "排名动量", "concept_heat": "概念热度",
-               "alpha042": "均值回归Alpha042", "vwap_deviation": "VWAP偏离",
-               "gap_reversal": "跳空反转", "liquid_oversold": "流动性超卖",
-               "vwap_reversal": "VWAP动量反转", "gtja114": "GTJA114",
-               "alpha60": "Alpha60收盘位置", "money_flow_osc": "资金流振荡",
-               "market_cap": "小市值"}
 
         lines.append(f"## 各持有期汇总")
         lines.append(f"")
@@ -458,6 +444,78 @@ def cross_validate():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+FLM = {
+    "money_flow": "资金流向", "margin": "融资融券", "chip": "筹码分布",
+    "technical": "技术形态", "limit": "涨跌停", "fundamental": "基本面",
+    "institution_hold": "机构持股", "profit_forecast": "盈利预测",
+    "buyback": "回购", "insider_buy": "高管增持", "broker_recommend": "券商推荐",
+    "popularity": "人气", "hot_money": "游资", "performance": "业绩",
+    "momentum": "动量", "rebound": "反弹", "sector": "板块", "ma_entry": "均线",
+    "ranking_momentum": "排名动量", "concept_heat": "概念热度",
+    "alpha042": "均值回归Alpha042", "vwap_deviation": "VWAP偏离",
+    "gap_reversal": "跳空反转", "liquid_oversold": "流动性超卖",
+    "vwap_reversal": "VWAP动量反转", "gtja114": "GTJA114",
+    "alpha60": "Alpha60收盘位置", "money_flow_osc": "资金流振荡",
+    "market_cap": "小市值",
+}
+
+
+def _save_summary_md(results: list):
+    """生成 summary_all_factors.md。"""
+    import re
+    try:
+        filepath = _REPORTS_DIR / "summary_all_factors.md"
+        # 读取前一次排名
+        prev_rank: dict = {}
+        if filepath.exists():
+            with open(filepath, "r") as fh:
+                for m in re.finditer(r'\|\s*(\d+)\s*\|\s*(.+?)\s*\|', fh.read()):
+                    rank = int(m.group(1))
+                    label = m.group(2).strip()
+                    if label in ("排名", "因子", "------", "变化"):
+                        continue
+                    fn = None
+                    for k, v in FLM.items():
+                        if v == label:
+                            fn = k
+                            break
+                    if fn:
+                        prev_rank[fn] = rank
+
+        valid = sorted([r for r in results if "total_return" in r], key=lambda x: x["total_return"], reverse=True)
+        lines = [
+            "# 因子全面测试总结", "",
+            f"- **测试因子数**: {len(results)}",
+            f"- **有效因子 (累计收益>0)**: {sum(1 for v in valid if v['total_return'] > 0)}",
+            f"- **无效因子 (累计收益≤0)**: {sum(1 for v in valid if v['total_return'] <= 0)}",
+            f"- **生成时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", "",
+            "## 综合排名（按 5 日持有期累计收益）", "",
+            "| 排名 | 变化 | 因子 | 累计收益 | 年化收益 | 胜率 | 最大回撤 | Sharpe | IC(5日) | 交易数 |",
+            "|------|------|------|----------|----------|------|----------|--------|---------|--------|",
+        ]
+        for rank, v in enumerate(valid, 1):
+            prev = prev_rank.get(v["name"])
+            if prev is None:
+                change = "🆕"
+            elif rank < prev:
+                change = f"↑{prev - rank}"
+            elif rank > prev:
+                change = f"↓{rank - prev}"
+            else:
+                change = "-"
+            lines.append(
+                f"| {rank} | {change} | {FLM.get(v['name'], v['name'])} "
+                f"| {v['total_return'] * 100:+.2f}% | {v['annual_return'] * 100:+.2f}% "
+                f"| {v['win_rate'] * 100:.1f}% | {v['max_drawdown'] * 100:.2f}% "
+                f"| {v['sharpe']:+.2f} | {v['ic5']:+.4f} | {v['trade_count']} |")
+        lines.append("")
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines))
+        logger.info("总结报告已保存: %s", filepath)
+    except Exception:
+        logger.exception("保存总结报告失败")
+
+
 # ── Batch test: 逐一测试所有因子 ──
 
 def _run_batch_test(queue: multiprocessing.Queue):
@@ -474,8 +532,8 @@ def _run_batch_test(queue: multiprocessing.Queue):
         fetcher = TushareFetcher.get_instance()
         engine = FactorBacktestEngine(fetcher)
 
-        # 获取 postmarket 因子
-        factors = []
+        # 获取 postmarket 因子（名称 + 默认权重）
+        factor_weights_map: dict = {}
         for name in all_factors:
             if name in ("BaseFactor", "DiscoveryResult"):
                 continue
@@ -485,19 +543,21 @@ def _run_batch_test(queue: multiprocessing.Queue):
                 if isinstance(cls, type) and issubclass(cls, BaseFactor) and cls is not BaseFactor:
                     inst = cls()
                     if inst.available_postmarket:
-                        factors.append(inst.name)
+                        factor_weights_map[inst.name] = inst.weight
             except Exception:
                 pass
-        factors = sorted(factors)
+        factors = sorted(factor_weights_map.keys())
 
         results = []
         for i, fn in enumerate(factors):
+            fw = factor_weights_map[fn]
             queue.put(("progress", f"[{i + 1}/{len(factors)}] 测试: {fn}"))
             try:
                 r = engine.compute(
                     mode="postmarket",
-                    factor_weights={fn: 1.0},
-                    top_n=5,
+                    factor_weights={fn: fw},
+                    start_date="20250101",
+                    top_n=3,
                     hold_days=[1, 3, 5, 10, 20],
                     initial_capital=5_000_000,
                     risk_free_rate=0.02,
@@ -536,6 +596,9 @@ def _run_batch_test(queue: multiprocessing.Queue):
                 })
             else:
                 results.append({"name": fn, "error": "统计不足"})
+
+        # 生成总结报告
+        _save_summary_md(results)
 
         queue.put(("completed", {
             "factors_tested": len(factors),

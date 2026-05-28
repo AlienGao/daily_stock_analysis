@@ -20,15 +20,15 @@ from src.discovery.factors import __all__ as all_factor_names
 from src.discovery.factors.base import BaseFactor
 
 HOLD_DAYS = [1, 3, 5, 10, 20]
-TOP_N = 5
+TOP_N = 3
 INITIAL_CAPITAL = 5_000_000
 RISK_FREE_RATE = 0.02
 REPORTS_DIR = Path(__file__).resolve().parent.parent / "reports_simple_backtest"
 
 
 def get_available_factors():
-    """获取所有 postmarket 可用的因子。"""
-    factors = []
+    """获取所有 postmarket 可用的因子，返回 {name: weight}。"""
+    factors = {}
     for name in all_factor_names:
         if name in ("BaseFactor", "DiscoveryResult"):
             continue
@@ -38,10 +38,10 @@ def get_available_factors():
             if isinstance(cls, type) and issubclass(cls, BaseFactor) and cls is not BaseFactor:
                 inst = cls()
                 if inst.available_postmarket:
-                    factors.append(inst.name)
+                    factors[inst.name] = inst.weight
         except Exception:
             pass
-    return sorted(factors)
+    return factors
 
 
 FLM = {
@@ -159,16 +159,17 @@ def main():
     fetcher = TushareFetcher.get_instance()
     engine = FactorBacktestEngine(fetcher)
     factors = get_available_factors()
-    logger.info("共 %d 个 postmarket 可用因子: %s", len(factors), factors)
+    logger.info("共 %d 个 postmarket 可用因子: %s", len(factors), sorted(factors.keys()))
 
     results = []
-    for i, factor_name in enumerate(factors, 1):
-        logger.info("[%d/%d] 测试因子: %s", i, len(factors), factor_name)
+    for i, (factor_name, fw) in enumerate(factors.items(), 1):
+        logger.info("[%d/%d] 测试因子: %s (权重=%.1f)", i, len(factors), factor_name, fw)
         start_time = time.time()
         try:
             result = engine.compute(
                 mode="postmarket",
-                factor_weights={factor_name: 1.0},
+                factor_weights={factor_name: fw},
+                start_date="20250101",
                 top_n=TOP_N,
                 hold_days=HOLD_DAYS,
                 initial_capital=INITIAL_CAPITAL,

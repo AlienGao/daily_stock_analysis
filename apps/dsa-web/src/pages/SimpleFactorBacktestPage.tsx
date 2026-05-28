@@ -5,6 +5,7 @@ import {
   BarChart, Bar, CartesianGrid,
 } from 'recharts';
 import { DatePicker, Table, InputNumber, Checkbox, Button } from 'antd';
+import dayjs from 'dayjs';
 import { Play, Loader2, Activity } from 'lucide-react';
 import { AppPage, Card, StatCard, EmptyState, ApiErrorAlert } from '../components/common';
 import apiClient from '../api';
@@ -100,11 +101,10 @@ const SimpleFactorBacktestPage: React.FC = () => {
 
   // params
   const [holdDays, setHoldDays] = useState<number[]>([1, 3, 5, 10, 20]);
-  const [topN, setTopN] = useState(5);
-  const [startDate, setStartDate] = useState<string>('');
+  const [topN, setTopN] = useState(3);
+  const [startDate, setStartDate] = useState<string>('20250101');
   const [endDate, setEndDate] = useState<string>('');
   const [initialCapital, setInitialCapital] = useState(5_000_000);
-  const [riskFreeRate, setRiskFreeRate] = useState(2.0);
 
   // result
   const [result, setResult] = useState<BacktestResult | null>(null);
@@ -164,7 +164,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
         top_n: topN,
         hold_days: holdDays,
         initial_capital: initialCapital,
-        risk_free_rate: riskFreeRate / 100.0,
+        risk_free_rate: 0.02,
       });
       const taskId = resp.data.task_id;
       taskIdRef.current = taskId;
@@ -205,7 +205,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
       setError(getParsedApiError(err));
       setLoading(false);
     }
-  }, [selectedFactors, factorWeights, startDate, endDate, topN, holdDays, initialCapital, riskFreeRate, selectedCount]);
+  }, [selectedFactors, factorWeights, startDate, endDate, topN, holdDays, initialCapital, selectedCount]);
 
   const handleStop = useCallback(() => {
     abortRef.current = true;
@@ -507,6 +507,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
                   <div className="text-xs text-secondary-text mb-1">开始日期</div>
                   <DatePicker
                     className="w-full"
+                    value={startDate ? dayjs(startDate) : null}
                     onChange={(d) => setStartDate(d ? d.format('YYYYMMDD') : '')}
                     placeholder="最早"
                   />
@@ -515,23 +516,14 @@ const SimpleFactorBacktestPage: React.FC = () => {
                   <div className="text-xs text-secondary-text mb-1">结束日期</div>
                   <DatePicker
                     className="w-full"
+                    value={endDate ? dayjs(endDate) : null}
                     onChange={(d) => setEndDate(d ? d.format('YYYYMMDD') : '')}
+                    disabledDate={(d) => d.isAfter(dayjs(), 'day')}
                     placeholder="最新"
                   />
                 </div>
               </div>
 
-              <div>
-                <div className="text-xs text-secondary-text mb-1">无风险利率 (%)</div>
-                <InputNumber
-                  min={0}
-                  max={20}
-                  step={0.5}
-                  value={riskFreeRate}
-                  onChange={(v) => v !== null && setRiskFreeRate(v)}
-                  className="w-full"
-                />
-              </div>
             </div>
           </Card>
 
