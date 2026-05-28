@@ -65,12 +65,11 @@ def _save_report(result_dict: dict):
     """将回测汇总保存为 Markdown 到 reports_simple_backtest/ 目录。"""
     try:
         _REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         mode = result_dict.get("mode", "postmarket")
         factors = result_dict.get("factors", [])
         factor_names = [f.get("name", "") for f in factors]
-        factor_str = "_".join(factor_names[:3]) if factor_names else "unknown"
-        filename = f"backtest_{mode}_{factor_str}_{ts}.md"
+        factor_str = "_".join(factor_names) if factor_names else "unknown"
+        filename = f"backtest_{mode}_{factor_str}.md"
         filepath = _REPORTS_DIR / filename
 
         params = result_dict.get("params", {})
@@ -355,3 +354,114 @@ def task_status(task_id: str = Query(...)):
     if "result" in t:
         resp["result"] = t["result"]
     return resp
+
+
+# ── Batch test: 逐一测试所有因子 ──
+
+def _run_batch_test(queue: multiprocessing.Queue):
+    """在独立进程中逐一测试所有因子，生成总结报告。"""
+    import numpy as np
+    try:
+        from data_provider.tushare_fetcher import TushareFetcher
+        from src.discovery.factor_backtest_engine import FactorBacktestEngine
+        from src.discovery.factors import __all__ as all_factors
+        from src.discovery.factors.base import BaseFactor
+        from dataclasses import asdict
+        from datetime import datetime as dt
+
+        fetcher = TushareFetcher.get_instance()
+        engine = FactorBacktestEngine(fetcher)
+
+        # 获取 postmarket 因子
+        factors = []
+        for name in all_factors:
+            if name in ("BaseFactor", "DiscoveryResult"):
+                continue
+            try:
+                mod = __import__("src.discovery.factors", fromlist=[name])
+                cls = getattr(mod, name)
+                if isinstance(cls, type) and issubclass(cls, BaseFactor) and cls is not BaseFactor:
+                    inst = cls()
+                    if inst.available_postmarket:
+                        factors.append(inst.name)
+            except Exception:
+                pass
+        factors = sorted(factors)
+
+        results = []
+        for i, fn in enumerate(factors):
+            queue.put(("progress", f"[{i + 1}/{len(factors)}] 测试: {fn}"))
+            try:
+                r = engine.compute(
+                    mode="postmarket",
+                    factor_weights={fn: 1.0},
+                    top_n=5,
+                    hold_days=[1, 3, 5, 10, 20],
+                    initial_capital=5_000_000,
+                    risk_free_rate=0.02,
+                )
+            except Exception as e:
+                results.append({"name": fn, "error": str(e)})
+                continue
+
+            if r is None:
+                results.append({"name": fn, "error": "数据不足"})
+                continue
+
+            rd = asdict(r)
+            _save_report(rd)
+
+            # 提取 5 日持有期指标
+            curves = rd.get("capital_curves", {})
+            trades = rd.get("trade_records", [])
+            ic5 = rd.get("rank_ic", {}).get("5", {}).get(fn, 0)
+            stats = _compute_period_stats(
+                curves.get("5", []),
+                [t for t in trades if t.get("hold_days") == 5],
+                5_000_000, 0.02,
+            )
+            if stats:
+                results.append({
+                    "name": fn,
+                    "total_return": round(stats["total_return"], 4),
+                    "annual_return": round(stats["annual_return"], 4),
+                    "win_rate": round(stats["win_rate"], 4),
+                    "max_drawdown": round(stats["max_drawdown"], 4),
+                    "sharpe": round(stats["sharpe"], 4),
+                    "trade_count": stats["trade_count"],
+                    "ic5": round(ic5, 4),
+                    "date_range": rd.get("date_range", {}),
+                })
+            else:
+                results.append({"name": fn, "error": "统计不足"})
+
+        queue.put(("completed", {
+            "factors_tested": len(factors),
+            "results": sorted(results, key=lambda x: x.get("total_return", -999), reverse=True),
+        }))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        queue.put(("failed", str(e)))
+
+
+@router.post("/batch-test", summary="逐一测试所有因子")
+def start_batch_test():
+    """逐一测试所有 postmarket 因子，生成单因子报告和总结。"""
+    _cleanup_old()
+    for tid, t in _tasks.items():
+        if t.get("status") == "running":
+            raise HTTPException(status_code=429, detail="已有任务在运行，请等待完成")
+
+    task_id = uuid.uuid4().hex[:8]
+    _tasks[task_id] = {"status": "running", "started_at": datetime.now().isoformat()}
+
+    queue = multiprocessing.Queue()
+    proc = multiprocessing.Process(target=_run_batch_test, args=(queue,), daemon=True)
+    proc.start()
+
+    import threading
+    t = threading.Thread(target=_monitor, args=(task_id, queue, proc), daemon=True)
+    t.start()
+
+    return {"task_id": task_id, "status": "running"}

@@ -93,8 +93,7 @@ def _period_stats(curve, trades, init_cap, rfr):
 def save_md(factor_name: str, d: dict):
     """保存单因子回测 Markdown 报告。"""
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filepath = REPORTS_DIR / f"backtest_postmarket_{factor_name}_{ts}.md"
+    filepath = REPORTS_DIR / f"backtest_postmarket_{factor_name}.md"
 
     params = d.get("params", {})
     hold_days = params.get("hold_days", [])
@@ -114,6 +113,12 @@ def save_md(factor_name: str, d: dict):
         f"- **无风险利率**: {rfr * 100:.1f}%",
         f"- **每期选股数**: {params.get('top_n', '-')}",
         f"- **生成时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        "",
+        "## 因子",
+        "",
+        "| 因子 | 权重 |",
+        "|------|------|",
+        f"| {factor_name} | {d.get('factors', [{}])[0].get('weight', '-') if d.get('factors') else '-'} |",
         "",
         "## 各持有期汇总",
         "",
@@ -210,8 +215,7 @@ def main():
 
 def save_summary(results):
     """生成所有因子横向对比的总结 MD。"""
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filepath = REPORTS_DIR / f"summary_all_factors_{ts}.md"
+    filepath = REPORTS_DIR / "summary_all_factors.md"
 
     # 收集有效结果
     valid = []

@@ -1,7 +1,7 @@
 import type React from 'react';
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
+  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Brush,
   BarChart, Bar, CartesianGrid,
 } from 'recharts';
 import { DatePicker, Table, InputNumber, Checkbox, Button } from 'antd';
@@ -204,6 +204,39 @@ const SimpleFactorBacktestPage: React.FC = () => {
     abortRef.current = true;
     setLoading(false);
     idbRemove(TASK_KEY);
+  }, []);
+
+  const [batchLoading, setBatchLoading] = useState(false);
+  const [batchMsg, setBatchMsg] = useState('');
+
+  const handleBatchTest = useCallback(async () => {
+    setBatchLoading(true);
+    setError(null);
+    setBatchMsg('提交中...');
+    try {
+      const resp = await apiClient.post('/api/v1/factor-backtest-simple/batch-test');
+      const taskId = resp.data.task_id;
+      const poll = async () => {
+        await new Promise((r) => setTimeout(r, 2000));
+        try {
+          const s = await apiClient.get('/api/v1/factor-backtest-simple/status', { params: { task_id: taskId } });
+          if (s.data.status_message) setBatchMsg(s.data.status_message);
+          if (s.data.status === 'completed') {
+            setBatchLoading(false);
+            setBatchMsg('批量测试完成，报告已保存至 reports_simple_backtest/');
+          } else if (s.data.status === 'failed') {
+            setBatchLoading(false);
+            setError({ message: s.data.error || '批量测试失败' } as ParsedApiError);
+          } else {
+            poll();
+          }
+        } catch { poll(); }
+      };
+      poll();
+    } catch (err) {
+      setBatchLoading(false);
+      setError(getParsedApiError(err));
+    }
   }, []);
 
   // chart data
@@ -470,6 +503,21 @@ const SimpleFactorBacktestPage: React.FC = () => {
           {loading && progressMsg && (
             <div className="text-xs text-blue-400 text-center">{progressMsg}</div>
           )}
+
+          <div className="pt-2 border-t border-divider">
+            <Button
+              block
+              size="small"
+              onClick={handleBatchTest}
+              loading={batchLoading}
+              disabled={loading}
+            >
+              逐一测试所有因子
+            </Button>
+            {batchMsg && (
+              <div className="text-xs text-blue-400 text-center mt-1">{batchMsg}</div>
+            )}
+          </div>
         </div>
 
         {/* Right Panel */}
@@ -584,6 +632,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
                           hide={hiddenLines.has('benchmark')}
                         />
                       )}
+                      <Brush dataKey="date" height={24} stroke="#444" fill="#1a1a2e" />
                     </LineChart>
                   </ResponsiveContainer>
                 ) : (
