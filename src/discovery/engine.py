@@ -779,6 +779,48 @@ class StockDiscoveryEngine:
         if today_ohlc is not None:
             cache[-1] = today_ohlc
 
+
+    def _ensure_stock_scorer(self):
+        """懒初始化 StockScorer，供全量 tech 评分与 Phase 4.7 复用。"""
+        if getattr(self, '_scorer', None) is not None:
+            return self._scorer
+
+        from src.services.stock_scorer import StockScorer, StockScorerConfig
+
+        scorer_config = StockScorerConfig(
+            weight_rr=self.config.scorer_weight_rr,
+            weight_market=self.config.scorer_weight_market,
+            weight_sector=self.config.scorer_weight_sector,
+            weight_volume=self.config.scorer_weight_volume,
+            weight_position=self.config.scorer_weight_position,
+            weight_formation=self.config.scorer_weight_formation,
+        )
+        scorer = StockScorer(scorer_config)
+
+        if not hasattr(self, '_index_ohlcv_cache') or self._index_ohlcv_cache is None:
+            self._index_ohlcv_cache = self._build_index_ohlcv_cache()
+        else:
+            self._refresh_index_ohlcv_latest()
+        if self._index_ohlcv_cache is not None:
+            scorer.preload_index_ohlcv(self._index_ohlcv_cache)
+
+        spot_df = None
+        try:
+            spot_df = DatabaseManager().get_realtime_spot()
+            if spot_df is not None and not spot_df.empty:
+                ths_map = DatabaseManager().get_ths_industry_map()
+                if ths_map:
+                    spot_c = spot_df.copy()
+                    spot_c["sector_name"] = spot_c.index.map(ths_map)
+                    sector_pct = spot_c.groupby("sector_name")["pct_chg"].mean().dropna()
+                    scorer.preload_sector_pct(sector_pct.to_dict())
+        except Exception:
+            logger.debug("[Discovery] 预加载板块涨跌幅失败", exc_info=True)
+
+        self._scorer = scorer
+        self._spot_df = spot_df
+        return scorer
+
     @staticmethod
     def _fetch_index_today_sina() -> Optional[np.ndarray]:
         """从 Sina 实时接口获取上证指数当日 [open, high, low, close]。
@@ -1368,45 +1410,15 @@ class StockDiscoveryEngine:
             for ts_code, stock_code, _, _, _, _, _ in top300_for_bt:
                 tech_scores_map[ts_code] = tech_map_for_bt.get(stock_code, 50.0)
             logger.info("[Discovery] 盘后 StockScorer (Top300, 回测一致): %d 只", len(tech_scores_map))
+            # 批量路径只填充 tech_scores_map；初始化 scorer 供 Phase 4.7 写入各维度分
+            try:
+                self._ensure_stock_scorer()
+            except Exception:
+                logger.warning("[Discovery] 盘后 scorer 初始化失败，Phase 4.7 将跳过", exc_info=True)
 
         if use_pipeline and pass1_candidates and not tech_scores_map:
             try:
-                from src.services.stock_scorer import StockScorer, StockScorerConfig
-
-                scorer_config = StockScorerConfig(
-                    weight_rr=self.config.scorer_weight_rr,
-                    weight_market=self.config.scorer_weight_market,
-                    weight_sector=self.config.scorer_weight_sector,
-                    weight_volume=self.config.scorer_weight_volume,
-                    weight_position=self.config.scorer_weight_position,
-                    weight_formation=self.config.scorer_weight_formation,
-                )
-                scorer = StockScorer(scorer_config)
-
-                if not hasattr(self, '_index_ohlcv_cache') or self._index_ohlcv_cache is None:
-                    self._index_ohlcv_cache = self._build_index_ohlcv_cache()
-                else:
-                    self._refresh_index_ohlcv_latest()  # 每轮更新当日指数实时价
-                if self._index_ohlcv_cache is not None:
-                    scorer.preload_index_ohlcv(self._index_ohlcv_cache)
-
-                # 预加载板块涨跌幅
-                spot_df = None
-                try:
-                    spot_df = DatabaseManager().get_realtime_spot()
-                    if spot_df is not None and not spot_df.empty:
-                        ths_map = DatabaseManager().get_ths_industry_map()
-                        if ths_map:
-                            spot_c = spot_df.copy()
-                            spot_c["sector_name"] = spot_c.index.map(ths_map)
-                            sector_pct = spot_c.groupby("sector_name")["pct_chg"].mean().dropna()
-                            scorer.preload_sector_pct(sector_pct.to_dict())
-                except Exception:
-                    logger.debug("[Discovery] 预加载板块涨跌幅失败", exc_info=True)
-
-                # 存储供 Phase 4.7 复用
-                self._scorer = scorer
-                self._spot_df = spot_df
+                scorer = self._ensure_stock_scorer()
 
                 for ts_code, stock_code, stock_name, raw_score, _, sector, _ in pass1_candidates:
                     try:

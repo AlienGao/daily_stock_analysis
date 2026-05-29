@@ -124,6 +124,19 @@ const SimpleFactorBacktestPage: React.FC = () => {
     top_n: number; hold_days: number[]; created_at: string;
   }>>([]);
 
+  const loadCacheHistory = useCallback(async () => {
+    try {
+      const resp = await apiClient.get('/api/v1/factor-backtest-simple/cache');
+      const items = (resp.data.items || []).sort((a: { factor_weights: Record<string, unknown>; created_at: string }, b: { factor_weights: Record<string, unknown>; created_at: string }) => {
+        const ac = Object.keys(a.factor_weights).length;
+        const bc = Object.keys(b.factor_weights).length;
+        if (ac !== bc) return bc - ac; // 多因子排前面
+        return (b.created_at || '').localeCompare(a.created_at || ''); // 同类按时间倒序
+      });
+      setCacheHistory(items);
+    } catch { /* ignore */ }
+  }, []);
+
   // load available factors
   useEffect(() => {
     apiClient.get('/api/v1/factor-backtest-simple/factors').then((resp: { data: { factors: FactorInfo[] } }) => {
@@ -162,19 +175,6 @@ const SimpleFactorBacktestPage: React.FC = () => {
     [selectedFactors],
   );
 
-  const loadCacheHistory = useCallback(async () => {
-    try {
-      const resp = await apiClient.get('/api/v1/factor-backtest-simple/cache');
-      const items = (resp.data.items || []).sort((a: { factor_weights: Record<string, unknown>; created_at: string }, b: { factor_weights: Record<string, unknown>; created_at: string }) => {
-        const ac = Object.keys(a.factor_weights).length;
-        const bc = Object.keys(b.factor_weights).length;
-        if (ac !== bc) return bc - ac; // 多因子排前面
-        return (b.created_at || '').localeCompare(a.created_at || ''); // 同类按时间倒序
-      });
-      setCacheHistory(items);
-    } catch { /* ignore */ }
-  }, []);
-
   const handleLoadFromCache = useCallback(async (cacheId: number) => {
     try {
       const resp = await apiClient.get(`/api/v1/factor-backtest-simple/cache/${cacheId}`);
@@ -183,11 +183,29 @@ const SimpleFactorBacktestPage: React.FC = () => {
   }, []);
 
   const handleDeleteCache = useCallback(async (cacheId: number) => {
+    if (!confirm('确定要删除该历史记录吗？')) {
+      return;
+    }
     try {
       await apiClient.delete(`/api/v1/factor-backtest-simple/cache/${cacheId}`);
       setCacheHistory((prev) => prev.filter((item) => item.id !== cacheId));
     } catch { /* ignore */ }
   }, []);
+
+  const handleDeletePreset = useCallback(async (presetName: string) => {
+    if (!confirm(`确定要删除预设 "${presetName}" 及其历史记录吗？`)) {
+      return;
+    }
+    try {
+      await apiClient.delete(`/api/v1/factor-backtest-simple/presets/${presetName}`);
+      setPresets((prev) => prev.filter((p) => p.name !== presetName));
+      // 刷新缓存历史记录，因为后端已删除对应的 DB 缓存
+      loadCacheHistory();
+    } catch (err) {
+      const apiError = getParsedApiError(err as ParsedApiError);
+      console.error('删除预设失败:', apiError?.message || err);
+    }
+  }, [loadCacheHistory]);
 
   const handleRun = useCallback(async () => {
     if (selectedCount === 0) return;
@@ -494,24 +512,39 @@ const SimpleFactorBacktestPage: React.FC = () => {
                         .map(([fn, w]) => `${FACTOR_LABELS[fn] || fn}(${w})`)
                         .join(' + ');
                       return (
-                        <button
+                        <div
                           key={p.name}
-                          type="button"
-                          className="w-full text-left px-2 py-1.5 rounded text-xs border border-divider hover:border-blue-500/50 hover:bg-blue-500/10 transition-colors leading-relaxed"
-                          onClick={() => {
-                            const sel: Record<string, boolean> = {};
-                            const w: Record<string, number> = {};
-                            availableFactors.forEach((f) => { sel[f.name] = false; w[f.name] = f.weight; });
-                            for (const [fn, fw] of entries) {
-                              sel[fn] = true;
-                              w[fn] = fw;
-                            }
-                            setSelectedFactors(sel);
-                            setFactorWeights(w);
-                          }}
+                          className="group flex items-center gap-1"
                         >
-                          {label}
-                        </button>
+                          <button
+                            type="button"
+                            className="flex-1 text-left px-2 py-1.5 rounded text-xs border border-divider hover:border-blue-500/50 hover:bg-blue-500/10 transition-colors leading-relaxed"
+                            onClick={() => {
+                              const sel: Record<string, boolean> = {};
+                              const w: Record<string, number> = {};
+                              availableFactors.forEach((f) => { sel[f.name] = false; w[f.name] = f.weight; });
+                              for (const [fn, fw] of entries) {
+                                sel[fn] = true;
+                                w[fn] = fw;
+                              }
+                              setSelectedFactors(sel);
+                              setFactorWeights(w);
+                            }}
+                          >
+                            {label}
+                          </button>
+                          <button
+                            type="button"
+                            className="px-1.5 py-1.5 rounded text-xs opacity-0 group-hover:opacity-100 hover:bg-red-500/20 hover:text-red-400 transition-all"
+                            title="删除该预设"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeletePreset(p.name);
+                            }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       );
                     })}
                   </div>
@@ -799,7 +832,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
                           setHiddenLines((prev) => {
                             const next = new Set(prev);
                             const dk = String(e.dataKey);
-                            next.has(dk) ? next.delete(dk) : next.add(dk);
+                            if (next.has(dk)) next.delete(dk); else next.add(dk);
                             return next;
                           });
                         }}

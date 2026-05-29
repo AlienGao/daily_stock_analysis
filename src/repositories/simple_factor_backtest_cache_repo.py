@@ -111,3 +111,18 @@ class SimpleFactorBacktestCacheRepo:
             session.delete(entry)
             session.commit()
             return True
+
+    def delete_by_factor_weights(self, factor_weights: dict) -> int:
+        """Delete all cache entries matching the given factor_weights dict.
+        
+        Returns the number of rows deleted.
+        """
+        target_json = json.dumps(factor_weights, ensure_ascii=False)
+        with self.db.get_session() as session:
+            deleted = (
+                session.query(SimpleFactorBacktestCache)
+                .filter(SimpleFactorBacktestCache.factor_weights_json == target_json)
+                .delete(synchronize_session='fetch')
+            )
+            session.commit()
+            return deleted

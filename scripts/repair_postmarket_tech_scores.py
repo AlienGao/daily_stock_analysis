@@ -15,7 +15,7 @@ from typing import Dict, List
 
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 logger = logging.getLogger(__name__)
 
@@ -35,10 +35,14 @@ def repair_postmarket_tech_scores(date_str: str = "20260513") -> None:
         logger.warning("空文件: %s", json_file)
         return
 
-    # 检查是否已有完整 tech_score
-    has_all = all(d.get("tech_score") is not None for d in raw_items)
-    if has_all:
-        logger.info("tech_score 已完整，无需修复")
+    # 检查是否已有完整技术评分（总分 + 六维明细）
+    needs_repair = any(
+        (d.get("tech_score") or 0) <= 0
+        or (d.get("tech_score", 0) > 0 and (d.get("rr_score") or 0) <= 0)
+        for d in raw_items
+    )
+    if not needs_repair:
+        logger.info("技术评分已完整，无需修复")
         return
 
     from src.services.stock_scorer import StockScorer, StockScorerConfig

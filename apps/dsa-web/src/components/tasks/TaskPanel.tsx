@@ -1,5 +1,5 @@
 import type React from 'react';
-import { ChevronDown, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { Badge, Card, StatusDot } from '../common';
 import { DashboardPanelHeader } from '../dashboard';
 import type { TaskInfo } from '../../types/analysis';
@@ -60,6 +60,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
             {progress}%
           </span>
         </div>
+        {/* 运行诊断（暂时注释掉）
         {traceId ? (
           <details className="group/task mt-2 text-xs">
             <summary className="flex cursor-pointer list-none items-center gap-2 text-muted-text">
@@ -77,6 +78,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
             </div>
           </details>
         ) : null}
+        */}
       </div>
 
       {/* 状态标签 */}

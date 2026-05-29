@@ -332,6 +332,30 @@ def _cleanup_old():
         _tasks.pop(tid, None)
 
 
+def _parse_fw_from_preset_name(preset_name: str) -> dict:
+    """从预设文件名解析因子权重字典。
+    例如: backtest_postmarket_w10_margin_w20_performance → {'margin': 10, 'performance': 20}
+    """
+    result = {}
+    parts = preset_name.split("_")
+    i = 2  # skip "backtest", "postmarket"
+    while i < len(parts):
+        if parts[i].startswith("w") and parts[i][1:].isdigit():
+            w = float(parts[i][1:])
+            j = i + 1
+            fp = []
+            while j < len(parts) and not (parts[j].startswith("w") and parts[j][1:].isdigit()):
+                fp.append(parts[j])
+                j += 1
+            fn = "_".join(fp)
+            if fn:
+                result[fn] = w
+            i = j
+        else:
+            i += 1
+    return result
+
+
 @router.get("/factors", summary="获取可用因子列表")
 def list_factors():
     """返回所有可用因子及其默认权重。"""
@@ -438,27 +462,7 @@ def list_presets():
     if combos_dir.exists():
         for f in sorted(combos_dir.glob("backtest_*.md")):
             name = f.stem  # without .md
-            # 解析文件名中的 w{weight}_{factor} 对
-            parts = name.split("_")
-            # 格式: backtest_postmarket_w10_margin_w20_profit_forecast...
-            # 跳过 backtest, postmarket 前缀，然后解析 wN_factor 对
-            factor_weights = {}
-            i = 2  # skip "backtest", "postmarket"
-            while i < len(parts):
-                if parts[i].startswith("w") and parts[i][1:].isdigit():
-                    weight = int(parts[i][1:])
-                    # 收集后续非 wN 的部分作为因子名
-                    j = i + 1
-                    factor_parts = []
-                    while j < len(parts) and not (parts[j].startswith("w") and parts[j][1:].isdigit()):
-                        factor_parts.append(parts[j])
-                        j += 1
-                    factor_name = "_".join(factor_parts)
-                    if factor_name:
-                        factor_weights[factor_name] = weight
-                    i = j
-                else:
-                    i += 1
+            factor_weights = _parse_fw_from_preset_name(name)
             if len(factor_weights) >= 2:  # 只算多因子组合
                 # 读取 5 日持有期收益用于排序
                 ret5 = -9999.0
@@ -473,6 +477,127 @@ def list_presets():
                 presets.append({"name": name, "factor_weights": factor_weights, "ret5": ret5})
     presets.sort(key=lambda x: x.get("ret5", -9999), reverse=True)
     return {"presets": presets}
+
+
+@router.delete("/presets/{preset_name}", summary="删除快捷组合预设")
+def delete_preset(preset_name: str):
+    """删除指定的快捷组合预设文件及其 DB 缓存记录。
+    
+    删除内容：
+    - reports_simple_backtest/combos/{preset_name}.md （快捷组合文件）
+    - 数据库缓存中匹配该因子组合的记录
+    - 更新 combos/combo_summary.md 移除该组合条目
+    """
+    from pathlib import Path
+    
+    try:
+        combos_dir = _REPORTS_DIR / "combos"
+        preset_file = combos_dir / f"{preset_name}.md"
+        
+        # 安全检查：只允许删除 combos/ 目录下的文件
+        if not preset_file.exists():
+            raise HTTPException(status_code=404, detail=f"预设 '{preset_name}' 不存在")
+        
+        try:
+            if not preset_file.is_relative_to(combos_dir):
+                raise HTTPException(status_code=400, detail="路径无效")
+        except ValueError:
+            # Python < 3.12 不支持 is_relative_to
+            if not str(preset_file).startswith(str(combos_dir)):
+                raise HTTPException(status_code=400, detail="路径无效")
+        
+        # 从预设文件名解析因子权重，用于后续清除 DB 缓存
+        preset_fw = _parse_fw_from_preset_name(preset_name)
+        
+        # 删除预设文件
+        preset_file.unlink()
+        logger.info(f"[DeletePreset] 已删除预设文件: {preset_file}")
+        
+        deleted_files = []
+        deleted_cache_count = 0
+        try:
+            # 更新 combos/combo_summary.md：移除包含该预设的条目
+            combo_summary = combos_dir / "combo_summary.md"
+            if combo_summary.exists():
+                try:
+                    txt = combo_summary.read_text(encoding='utf-8')
+                    short_name = preset_name.replace('backtest_postmarket_', '')
+                    lines = txt.splitlines()
+                    new_lines = []
+                    removed = 0
+                    for ln in lines:
+                        if short_name in ln or preset_name in ln:
+                            removed += 1
+                            continue
+                        new_lines.append(ln)
+
+                    if removed > 0:
+                        out_txt = "\n".join(new_lines)
+                        m = re.search(r"\*\*组合数量\*\*:\s*(\d+)", out_txt)
+                        if m:
+                            try:
+                                cur = int(m.group(1))
+                                new_count = max(0, cur - removed)
+                                out_txt = re.sub(r"(\*\*组合数量\*\*:\s*)\d+", r"\g<1>%d" % new_count, out_txt)
+                            except Exception:
+                                pass
+                        combo_summary.write_text(out_txt, encoding='utf-8')
+                        deleted_files.append(str(combo_summary))
+                        logger.info(f"[DeletePreset] 从组合汇总中移除 {removed} 行并更新: {combo_summary}")
+                except Exception as e:
+                    logger.warning(f"[DeletePreset] 更新组合汇总失败: {e}")
+            
+            if deleted_files:
+                logger.info(f"[DeletePreset] 共删除 {len(deleted_files)} 个文件")
+            
+            # 删除 DB 缓存中匹配该因子组合的记录
+            if preset_fw:
+                try:
+                    repo = SimpleFactorBacktestCacheRepo()
+                    deleted_cache_count = repo.delete_by_factor_weights(preset_fw)
+                    logger.info(f"[DeletePreset] 已删除 {deleted_cache_count} 条 DB 缓存记录")
+                except Exception as e:
+                    logger.warning(f"[DeletePreset] 删除 DB 缓存失败: {e}")
+        
+        except Exception as e:
+            logger.warning(f"[DeletePreset] 删除历史记录时出错: {e}")
+        
+        return {
+            "ok": True, 
+            "message": f"已删除预设 '{preset_name}' 及其历史记录",
+            "deleted_files": deleted_files,
+            "deleted_cache_count": deleted_cache_count,
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[DeletePreset] 删除预设失败: {e}")
+        raise HTTPException(status_code=500, detail=f"删除失败: {str(e)}")
+
+
+def extract_factors_from_preset_name(preset_name: str) -> set:
+    """从预设名中提取因子名称列表。
+    
+    例如：backtest_postmarket_w10_ranking_momentum_w20_margin_w5_performance
+    提取: {ranking_momentum, margin, performance}
+    """
+    factors = set()
+    parts = preset_name.split("_")
+    i = 0
+    while i < len(parts):
+        if parts[i].startswith("w") and i + 1 < len(parts):
+            j = i + 1
+            factor_parts = []
+            while j < len(parts) and not (parts[j].startswith("w") and len(parts[j]) > 1 and parts[j][1].isdigit()):
+                factor_parts.append(parts[j])
+                j += 1
+            if factor_parts:
+                factors.add("_".join(factor_parts))
+            i = j
+        else:
+            i += 1
+    return factors
 
 
 @router.post("/cross-validate", summary="多因子组合交叉验证")
