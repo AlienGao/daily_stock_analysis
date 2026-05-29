@@ -185,8 +185,7 @@ export const useAgentChatStore = create<AgentChatState & AgentChatActions>((set,
     const {
       sessionId,
       messages,
-      loadingBySession,
-      progressStepsBySession,
+      abortController,
     } = get();
     if (targetSessionId === sessionId && messages.length > 0) return;
 

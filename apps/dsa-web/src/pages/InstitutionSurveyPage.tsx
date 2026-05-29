@@ -4,7 +4,7 @@ import { DatePicker, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import zhCN from 'antd/locale/zh_CN';
 import { type Dayjs } from 'dayjs';
-import { Users, Loader2, Calendar } from 'lucide-react';
+import { Users, Loader2, Calendar, ArrowLeftToLine } from 'lucide-react';
 import { AppPage, Card, EmptyState } from '../components/common';
 import {
   getInstitutionSurvey,
@@ -35,8 +35,10 @@ const fmtDate = (d: string) => {
   return `${d.slice(4, 6)}-${d.slice(6, 8)}`;
 };
 
-/** 日期范围格式化 */
+/** 日期范围格式化：单天显示具体日期，多天显示范围 */
 const fmtRange = (s: string, e: string) => {
+  if (!s || !e) return '';
+  if (s === e) return fmtDate(s);
   return `${fmtDate(s)} ~ ${fmtDate(e)}`;
 };
 
@@ -79,6 +81,11 @@ const InstitutionSurveyPage: React.FC = () => {
       });
     return () => { cancelled = true; };
   }, []);
+
+  const goToday = useCallback(() => {
+    setSelectedDate(null);
+    fetchData();
+  }, [fetchData]);
 
   const handleDateChange = (d: Dayjs | null) => {
     setSelectedDate(d);
@@ -192,6 +199,15 @@ const InstitutionSurveyPage: React.FC = () => {
               disabledDate={(d) => !availableDateSet.has(d.format('YYYYMMDD'))}
               className="h-9 w-40"
             />
+            {selectedDate && (
+              <button
+                onClick={goToday}
+                className="flex h-9 items-center gap-1 rounded-md border border-zinc-700/50 bg-zinc-800/50 px-3 text-xs text-cyan-400 hover:bg-zinc-700/50 transition-colors"
+              >
+                <ArrowLeftToLine className="h-3.5 w-3.5" />
+                今天
+              </button>
+            )}
           </div>
         </div>
 
@@ -213,7 +229,7 @@ const InstitutionSurveyPage: React.FC = () => {
               <Card className="p-3 text-center">
                 <div className="text-lg font-bold">{fmtRange(data.start_date, data.end_date)}</div>
                 <div className="text-xs text-secondary-text">
-                  {selectedDate ? '查询周期（两周）' : '统计周期（近两周）'}
+                  {selectedDate ? '查询日期' : '当天'}
                 </div>
               </Card>
               <Card className="p-3 text-center">
@@ -233,7 +249,7 @@ const InstitutionSurveyPage: React.FC = () => {
                 <EmptyState
                   icon={<Users className="h-8 w-8" />}
                   title="暂无调研数据"
-                  description={selectedDate ? '该日期前后两周无机构调研记录' : '近两周无机构调研记录'}
+                  description={selectedDate ? '该日期无机构调研记录' : '当天无机构调研记录'}
                 />
               ) : (
                 <Table

@@ -1759,14 +1759,86 @@ class BrokerRecommendService:
             return 1.0
         return 0.3
 
+    def refresh_institution_survey(self, start_date: Optional[str] = None, end_date: Optional[str] = None) -> int:
+        """从 Tushare 拉取机构调研数据并落库，自动补全缺失交易日。
+
+        Args:
+            start_date: 起始日期 YYYYMMDD（可选，默认 7 天前）
+            end_date: 截止日期 YYYYMMDD（可选，默认今天）
+
+        Returns:
+            落库的记录数，失败返回 0。
+        """
+        from datetime import datetime
+
+        if end_date:
+            _end = end_date
+        else:
+            _end = datetime.now().strftime("%Y%m%d")
+        if start_date:
+            _start = start_date
+        else:
+            _start = (datetime.strptime(_end, "%Y%m%d") - timedelta(days=14)).strftime("%Y%m%d")
+
+        from data_provider.tushare_fetcher import TushareFetcher
+        tf = TushareFetcher.get_instance()
+        if not tf or not tf.is_available():
+            logger.warning("[InstitutionSurvey] Tushare 未配置，跳过刷新")
+            return 0
+
+        # 1. 批量拉取区间数据
+        df = tf.get_stk_surv(_start, _end)
+        total = 0
+        if df is not None and not df.empty:
+            df["weight"] = df["rece_mode"].apply(
+                lambda m: self._calc_survey_weight(str(m) if m else "")
+            )
+            for surv_day in df["surv_date"].dropna().unique():
+                day_df = df[df["surv_date"] == surv_day]
+                try:
+                    saved = self.db.save_institution_survey(day_df, clear_date=str(surv_day))
+                    total += saved
+                except Exception:
+                    pass
+
+        # 2. 检查缺失交易日，逐日补全
+        try:
+            import exchange_calendars as xcals
+            import pandas as pd
+
+            cal = xcals.get_calendar("XSHG")
+            dates = pd.date_range(_start, _end)
+            trading_days = [d.strftime("%Y%m%d") for d in dates if cal.is_session(d)]
+            existing = set(self.db.get_institution_survey_dates())
+            missing = [d for d in trading_days if d not in existing]
+
+            if missing:
+                logger.info("[InstitutionSurvey] 补全缺失交易日: %s", missing)
+                for date in missing:
+                    try:
+                        day_df = tf.get_stk_surv(start_date=date, end_date=date)
+                        if day_df is not None and not day_df.empty:
+                            day_df["weight"] = day_df["rece_mode"].apply(
+                                lambda m: self._calc_survey_weight(str(m) if m else "")
+                            )
+                            saved = self.db.save_institution_survey(day_df, clear_date=date)
+                            total += saved
+                    except Exception:
+                        logger.debug("[InstitutionSurvey] 补全 %s 失败", date)
+        except Exception:
+            logger.debug("[InstitutionSurvey] 缺失日补全检查失败", exc_info=True)
+
+        logger.info("[InstitutionSurvey] 落库完成: %s ~ %s, %d 条", _start, _end, total)
+        return total
+
     def get_institution_survey_top10(
         self, start_date: Optional[str] = None, end_date: Optional[str] = None
     ) -> Dict[str, Any]:
         """获取机构调研加权 Top 10。
 
         Args:
-            start_date: 起始日期 YYYYMMDD（可选，默认 14 天前）
-            end_date: 截止日期 YYYYMMDD（可选，默认今天）
+            start_date: 起始日期 YYYYMMDD（可选，默认当天）
+            end_date: 截止日期 YYYYMMDD（可选，默认当天）
         """
         import json as _json
         from datetime import datetime
@@ -1781,7 +1853,7 @@ class BrokerRecommendService:
         if start_date:
             _start = start_date
         else:
-            _start = (datetime.strptime(_end, "%Y%m%d") - timedelta(days=14)).strftime("%Y%m%d")
+            _start = _end
 
         use_db = end_date is not None or start_date is not None
 
@@ -1791,7 +1863,11 @@ class BrokerRecommendService:
             try:
                 with open(self._SURVEY_CACHE_PATH, "r", encoding="utf-8") as f:
                     cached = _json.load(f)
-                if cached.get("date") == today_str:
+                if (
+                    cached.get("date") == today_str
+                    and cached.get("start_date") == _start
+                    and cached.get("end_date") == _end
+                ):
                     logger.info("[InstitutionSurvey] 命中缓存")
                     return cached
             except (FileNotFoundError, _json.JSONDecodeError, KeyError):

@@ -896,8 +896,8 @@ const FactorTuningPage: React.FC = () => {
             />
           )}
 
-          {/* Report viewer — renders independently so history "查看报告" works */}
-          {(reportExpanded || reportContent) && (
+          {/* Report viewer — fallback when no result.report_path */}
+          {(reportExpanded || reportContent) && !result?.report_path && (
             <Card>
               <div className="space-y-3">
                 <button

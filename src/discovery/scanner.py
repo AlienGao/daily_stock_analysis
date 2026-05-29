@@ -1617,6 +1617,21 @@ def refresh_broker_recommend_postmarket(tushare_fetcher=None) -> int:
         return 0
 
 
+def refresh_institution_survey_postmarket() -> int:
+    """盘后拉取当天机构调研数据并落库。
+
+    Returns:
+        落库条数，失败返回 0
+    """
+    try:
+        from src.services.broker_recommend_service import BrokerRecommendService
+        svc = BrokerRecommendService()
+        return svc.refresh_institution_survey()
+    except Exception as e:
+        logger.warning("[Scanner] 盘后机构调研刷新失败: %s", e)
+        return 0
+
+
 def refresh_popularity_postmarket(tushare_fetcher) -> int:
     """盘后用 Tushare dc_hot 全量刷新 popularity_rank 表。
 
@@ -2044,6 +2059,7 @@ def ensure_postmarket_scan(
         ("popularity", lambda: refresh_popularity_postmarket(tushare_fetcher)),
         ("tech_indicator", lambda: refresh_tech_indicator_postmarket(tushare_fetcher)),
         ("adj_factor", lambda: refresh_adj_factor_postmarket(tushare_fetcher)),
+        ("institution_survey", lambda: refresh_institution_survey_postmarket()),
     ]
     refresher_counts: Dict[str, int] = {}
     integrity_warnings: List[str] = []
