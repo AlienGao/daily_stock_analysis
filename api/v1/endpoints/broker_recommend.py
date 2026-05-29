@@ -238,7 +238,7 @@ def get_institution_survey(
     start_date: Optional[str] = Query(None, description="起始日期 YYYYMMDD"),
     end_date: Optional[str] = Query(None, description="截止日期 YYYYMMDD"),
 ) -> InstitutionSurveyResponse:
-    """机构调研加权 Top 10（默认当天，传日期参数则查历史）。"""
+    """机构调研加权 Top 10（默认最近一个有数据的日期，传日期参数则查历史）。"""
     service = BrokerRecommendService()
     result = service.get_institution_survey_top10(start_date=start_date, end_date=end_date)
 

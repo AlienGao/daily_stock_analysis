@@ -951,6 +951,7 @@ def list_cache(limit: Optional[int] = Query(None, ge=1)):
             "initial_capital": r.initial_capital,
             "risk_free_rate": r.risk_free_rate,
             "created_at": r.created_at.isoformat() if r.created_at else None,
+            "updated_at": r.updated_at.isoformat() if r.updated_at else None,
         })
     return {"items": items, "total": len(items)}
 

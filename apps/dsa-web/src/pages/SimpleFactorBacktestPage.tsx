@@ -4,7 +4,7 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Brush,
   BarChart, Bar, CartesianGrid,
 } from 'recharts';
-import { DatePicker, Table, InputNumber, Checkbox, Button } from 'antd';
+import { DatePicker, Table, InputNumber, Checkbox, Button, Tooltip as AntTooltip } from 'antd';
 import dayjs from 'dayjs';
 import { Play, Loader2, Activity, Download, Trash2 } from 'lucide-react';
 import { AppPage, Card, StatCard, EmptyState, ApiErrorAlert } from '../components/common';
@@ -27,6 +27,88 @@ function fmtMoney(v: number): string {
   if (Math.abs(v) >= 1e8) return `${(v / 1e8).toFixed(2)}亿`;
   if (Math.abs(v) >= 1e4) return `${(v / 1e4).toFixed(0)}万`;
   return v.toFixed(0);
+}
+
+function fmtSignedPct(v: number): string {
+  return `${v >= 0 ? '+' : ''}${(v * 100).toFixed(2)}%`;
+}
+
+function formatCurveSeriesLabel(dataKey: string): string {
+  return dataKey === 'benchmark' ? '基准' : `${dataKey.replace('hd', '')}日`;
+}
+
+interface CapitalCurveTooltipProps {
+  active?: boolean;
+  payload?: Array<{ dataKey?: string | number; value?: number; color?: string }>;
+  label?: string;
+  latestByKey: Record<string, number>;
+  latestDate: string;
+}
+
+function CapitalCurveTooltip({
+  active,
+  payload,
+  label,
+  latestByKey,
+  latestDate,
+}: CapitalCurveTooltipProps) {
+  if (!active || !payload?.length) return null;
+  const hoverDate = String(label ?? '');
+  const showTailReturn = hoverDate && latestDate && hoverDate !== latestDate;
+
+  return (
+    <div
+      style={{
+        backgroundColor: '#000',
+        border: '1px solid #333',
+        borderRadius: 6,
+        padding: '8px 12px',
+        fontSize: 12,
+        minWidth: 180,
+      }}
+    >
+      <div style={{ color: '#fff', marginBottom: 6 }}>{hoverDate}</div>
+      {payload
+        .filter((p) => p.value != null && p.dataKey != null)
+        .map((p) => {
+          const key = String(p.dataKey);
+          const value = Number(p.value);
+          const latest = latestByKey[key];
+          const tailReturn = showTailReturn && latest != null && value > 0
+            ? (latest - value) / value
+            : null;
+          return (
+            <div key={key} style={{ marginBottom: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#fff' }}>
+                <span
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    backgroundColor: p.color || '#888',
+                    flexShrink: 0,
+                  }}
+                />
+                <span style={{ color: '#aaa' }}>{formatCurveSeriesLabel(key)}</span>
+                <span style={{ marginLeft: 'auto' }}>{fmtMoney(value)}</span>
+              </div>
+              {tailReturn != null && (
+                <div
+                  style={{
+                    marginLeft: 16,
+                    marginTop: 2,
+                    color: tailReturn >= 0 ? '#f87171' : '#34d399',
+                    fontSize: 11,
+                  }}
+                >
+                  至最新({latestDate.slice(5)}) {fmtSignedPct(tailReturn)}
+                </div>
+              )}
+            </div>
+          );
+        })}
+    </div>
+  );
 }
 
 const CAPITAL_COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444'];
@@ -81,6 +163,69 @@ interface BacktestResult {
   benchmark_curve: Array<{ date: string; capital: number }>;
 }
 
+
+interface CacheHistoryItem {
+  id: number;
+  factor_weights: Record<string, number>;
+  start_date: string | null;
+  end_date: string | null;
+  top_n: number;
+  hold_days: number[];
+  initial_capital?: number;
+  created_at: string;
+  updated_at?: string;
+}
+
+
+function cacheItemTime(item: CacheHistoryItem): string {
+  return item.updated_at || item.created_at || '';
+}
+
+function formatCacheHistoryTooltip(item: CacheHistoryItem): string {
+  const factors = Object.entries(item.factor_weights)
+    .map(([fn, w]) => `${FACTOR_LABELS[fn] || fn}(${w})`)
+    .join(' + ') || '默认因子';
+  const start = item.start_date || '最早';
+  const end = item.end_date || '最新';
+  const capital = item.initial_capital != null ? fmtMoney(item.initial_capital) : '--';
+  const time = cacheItemTime(item);
+  const cachedAt = time ? time.slice(0, 16).replace('T', ' ') : '--';
+  return [
+    `因子: ${factors}`,
+    `选股: ${item.top_n}只`,
+    `持有: ${(item.hold_days || []).join('/')}日`,
+    `区间: ${start} ~ ${end}`,
+    `资金: ${capital}`,
+    `缓存: ${cachedAt}`,
+  ].join('\n');
+}
+
+function cacheParamsMatch(
+  item: CacheHistoryItem,
+  factorWeights: Record<string, number>,
+  startDate: string,
+  endDate: string,
+  topN: number,
+  holdDays: number[],
+  initialCapital: number,
+): boolean {
+  const keys = new Set([...Object.keys(item.factor_weights), ...Object.keys(factorWeights)]);
+  for (const key of keys) {
+    if ((item.factor_weights[key] ?? 0) !== (factorWeights[key] ?? 0)) return false;
+  }
+  const itemStart = item.start_date || null;
+  const itemEnd = item.end_date || null;
+  const reqStart = startDate || null;
+  const reqEnd = endDate || null;
+  if (itemStart !== reqStart || itemEnd !== reqEnd || item.top_n !== topN) return false;
+  const a = [...(item.hold_days || [])].sort((x, y) => x - y).join(',');
+  const b = [...holdDays].sort((x, y) => x - y).join(',');
+  if (a !== b) return false;
+  if (item.initial_capital != null && item.initial_capital !== initialCapital) return false;
+  return true;
+}
+
+
 const TASK_KEY = 'simple_factor_bt_task';
 
 const SimpleFactorBacktestPage: React.FC = () => {
@@ -118,22 +263,38 @@ const SimpleFactorBacktestPage: React.FC = () => {
 
   // cache
   const [forceRerun, setForceRerun] = useState(false);
-  const [cacheHistory, setCacheHistory] = useState<Array<{
-    id: number; factor_weights: Record<string, number>;
-    start_date: string | null; end_date: string | null;
-    top_n: number; hold_days: number[]; created_at: string;
-  }>>([]);
+  const [cacheHistory, setCacheHistory] = useState<CacheHistoryItem[]>([]);
+  const [activeCacheId, setActiveCacheId] = useState<number | null>(null);
 
-  const loadCacheHistory = useCallback(async () => {
+  const loadCacheHistory = useCallback(async (highlight?: {
+    factor_weights: Record<string, number>;
+    start_date?: string;
+    end_date?: string;
+    top_n: number;
+    hold_days: number[];
+    initial_capital: number;
+  }) => {
     try {
       const resp = await apiClient.get('/api/v1/factor-backtest-simple/cache');
-      const items = (resp.data.items || []).sort((a: { factor_weights: Record<string, unknown>; created_at: string }, b: { factor_weights: Record<string, unknown>; created_at: string }) => {
+      const items: CacheHistoryItem[] = (resp.data.items || []).sort((a: CacheHistoryItem, b: CacheHistoryItem) => {
         const ac = Object.keys(a.factor_weights).length;
         const bc = Object.keys(b.factor_weights).length;
         if (ac !== bc) return bc - ac; // 多因子排前面
-        return (b.created_at || '').localeCompare(a.created_at || ''); // 同类按时间倒序
+        return cacheItemTime(b).localeCompare(cacheItemTime(a)); // 同类按最近更新时间倒序
       });
       setCacheHistory(items);
+      if (highlight) {
+        const match = items.find((item) => cacheParamsMatch(
+          item,
+          highlight.factor_weights,
+          highlight.start_date || '',
+          highlight.end_date || '',
+          highlight.top_n,
+          highlight.hold_days,
+          highlight.initial_capital,
+        ));
+        setActiveCacheId(match?.id ?? null);
+      }
     } catch { /* ignore */ }
   }, []);
 
@@ -179,6 +340,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
     try {
       const resp = await apiClient.get(`/api/v1/factor-backtest-simple/cache/${cacheId}`);
       setResult(resp.data.result);
+      setActiveCacheId(cacheId);
     } catch { /* ignore */ }
   }, []);
 
@@ -189,6 +351,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
     try {
       await apiClient.delete(`/api/v1/factor-backtest-simple/cache/${cacheId}`);
       setCacheHistory((prev) => prev.filter((item) => item.id !== cacheId));
+      setActiveCacheId((prev) => (prev === cacheId ? null : prev));
     } catch { /* ignore */ }
   }, []);
 
@@ -238,7 +401,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
         setResult(resp.data.result);
         setLoading(false);
         setProgressMsg('已从缓存加载');
-        loadCacheHistory();
+        loadCacheHistory({ factor_weights: fw, start_date: startDate, end_date: endDate, top_n: topN, hold_days: holdDays, initial_capital: initialCapital });
         return;
       }
 
@@ -262,7 +425,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
               setResult(data.result);
               localStorage.removeItem(TASK_KEY);
               setLoading(false);
-              loadCacheHistory();
+              loadCacheHistory({ factor_weights: fw, start_date: startDate, end_date: endDate, top_n: topN, hold_days: holdDays, initial_capital: initialCapital });
               return;
             }
             if (data.status === 'failed') {
@@ -375,6 +538,16 @@ const SimpleFactorBacktestPage: React.FC = () => {
       return point;
     });
   }, [result]);
+
+  const chartLatestMeta = useMemo(() => {
+    if (chartData.length === 0) return { latestDate: '', latestByKey: {} as Record<string, number> };
+    const last = chartData[chartData.length - 1];
+    const latestByKey: Record<string, number> = {};
+    for (const [key, value] of Object.entries(last)) {
+      if (key !== 'date' && typeof value === 'number') latestByKey[key] = value;
+    }
+    return { latestDate: String(last.date ?? ''), latestByKey };
+  }, [chartData]);
 
   // summary stats: compute per hold period from capital curve + trades
   const currentStats = useMemo(() => {
@@ -518,7 +691,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
                         >
                           <button
                             type="button"
-                            className="flex-1 text-left px-2 py-1.5 rounded text-xs border border-divider hover:border-blue-500/50 hover:bg-blue-500/10 transition-colors leading-relaxed"
+                            className="flex-1 cursor-pointer text-left px-2 py-1.5 rounded text-xs border border-divider hover:border-blue-500/50 hover:bg-blue-500/10 transition-colors leading-relaxed"
                             onClick={() => {
                               const sel: Record<string, boolean> = {};
                               const w: Record<string, number> = {};
@@ -535,7 +708,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
                           </button>
                           <button
                             type="button"
-                            className="px-1.5 py-1.5 rounded text-xs opacity-0 group-hover:opacity-100 hover:bg-red-500/20 hover:text-red-400 transition-all"
+                            className="cursor-pointer px-1.5 py-1.5 rounded text-xs opacity-0 group-hover:opacity-100 hover:bg-red-500/20 hover:text-red-400 transition-all"
                             title="删除该预设"
                             onClick={(e) => {
                               e.stopPropagation();
@@ -564,7 +737,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
                     <button
                       key={opt.value}
                       type="button"
-                      className={`px-2 py-1 text-xs rounded border ${
+                      className={`cursor-pointer px-2 py-1 text-xs rounded border ${
                         holdDays.includes(opt.value)
                           ? 'bg-blue-500/20 border-blue-500 text-blue-400'
                           : 'border-divider text-secondary-text hover:border-secondary-text'
@@ -719,22 +892,36 @@ const SimpleFactorBacktestPage: React.FC = () => {
                   const factorNames = Object.entries(item.factor_weights)
                     .map(([fn, w]) => `${FACTOR_LABELS[fn] || fn}(${w})`)
                     .join('+') || '默认因子';
-                  const dateStr = item.created_at ? item.created_at.slice(5, 16).replace('T', ' ') : '';
+                  const dateStr = cacheItemTime(item) ? cacheItemTime(item).slice(5, 16).replace('T', ' ') : '';
                   return (
                     <div key={item.id} className="flex items-center gap-1 group">
-                      <button
-                        type="button"
-                        className="flex-1 text-left px-2 py-1.5 rounded text-xs border border-divider hover:border-blue-500/50 hover:bg-blue-500/10 transition-colors truncate"
-                        onClick={() => handleLoadFromCache(item.id)}
+                      <AntTooltip
+                        title={(
+                          <pre className="m-0 whitespace-pre-wrap text-[11px] leading-relaxed">
+                            {formatCacheHistoryTooltip(item)}
+                          </pre>
+                        )}
+                        placement="right"
+                        mouseEnterDelay={0.3}
                       >
-                        <div className="truncate">{factorNames}</div>
-                        <div className="text-tertiary-text">
-                          {item.top_n}选 · {item.hold_days?.join('/')}日 · {dateStr}
-                        </div>
-                      </button>
+                        <button
+                          type="button"
+                          className={`flex-1 cursor-pointer text-left px-2 py-1.5 rounded text-xs border transition-colors truncate ${
+                            item.id === activeCacheId
+                              ? 'border-blue-500 bg-blue-500/15 ring-1 ring-blue-500/40'
+                              : 'border-divider hover:border-blue-500/50 hover:bg-blue-500/10'
+                          }`}
+                          onClick={() => handleLoadFromCache(item.id)}
+                        >
+                          <div className="truncate">{factorNames}</div>
+                          <div className="text-tertiary-text">
+                            {item.top_n}选 · {item.hold_days?.join('/')}日 · {dateStr}
+                          </div>
+                        </button>
+                      </AntTooltip>
                       <button
                         type="button"
-                        className="p-1 rounded text-tertiary-text hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="cursor-pointer p-1 rounded text-tertiary-text hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity"
                         onClick={(e) => { e.stopPropagation(); handleDeleteCache(item.id); }}
                       >
                         <Trash2 className="h-3 w-3" />
@@ -766,7 +953,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
                   <button
                     key={hd}
                     type="button"
-                    className={`px-2 py-0.5 text-xs rounded ${
+                    className={`cursor-pointer px-2 py-0.5 text-xs rounded ${
                       summaryPeriod === String(hd)
                         ? 'bg-blue-500/20 text-blue-400'
                         : 'text-secondary-text hover:text-primary-text'
@@ -820,13 +1007,15 @@ const SimpleFactorBacktestPage: React.FC = () => {
                         tickFormatter={(v: number) => fmtMoney(v)}
                       />
                       <Tooltip
-                        contentStyle={{ backgroundColor: '#000', border: '1px solid #333' }}
-                        labelStyle={{ color: '#fff' }}
-                        itemStyle={{ color: '#fff' }}
-                        labelFormatter={(v) => String(v)}
-                        formatter={(v, name) => [fmtMoney(Number(v)), String(name) === 'benchmark' ? '基准' : `${String(name).replace('hd', '')}日`]}
+                        content={(
+                          <CapitalCurveTooltip
+                            latestByKey={chartLatestMeta.latestByKey}
+                            latestDate={chartLatestMeta.latestDate}
+                          />
+                        )}
                       />
                       <Legend
+                        wrapperStyle={{ cursor: 'pointer' }}
                         formatter={(v) => String(v) === 'benchmark' ? '基准' : `${String(v).replace('hd', '')}日持有`}
                         onClick={(e) => {
                           setHiddenLines((prev) => {
@@ -909,11 +1098,14 @@ const SimpleFactorBacktestPage: React.FC = () => {
 
               {/* Trade Records */}
               {displayTrades.length > 0 && (
-                <Card title={`交易记录 (${summaryPeriod}日持有)`}>
-                  <div className="flex justify-end mb-2">
+                <Card>
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <h3 className="text-lg font-semibold text-foreground">
+                      交易记录 ({summaryPeriod}日持有)
+                    </h3>
                     <button
                       type="button"
-                      className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs text-secondary-text hover:text-foreground transition-colors"
+                      className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-lg border px-2 py-1 text-xs text-secondary-text hover:text-foreground transition-colors"
                       onClick={() => {
                         const header = '发现日,股票代码,股票名称,买入日,买入价,股数,买入额,卖出日,卖出价,卖出额,收益率,盈亏,状态';
                         const rows = displayTrades.map((t) => {
@@ -939,7 +1131,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
                     columns={tradeColumns}
                     rowKey={(r) => `${r.trade_date}_${r.stock_code}_${r.hold_days}`}
                     size="small"
-                    scroll={{ x: 1060, y: 480 }}
+                    scroll={{ x: 1060, y: 640 }}
                     pagination={{ pageSize: 100, showSizeChanger: true, showTotal: (t) => `共 ${t} 条` }}
                   />
                 </Card>

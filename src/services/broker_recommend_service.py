@@ -1837,17 +1837,20 @@ class BrokerRecommendService:
         """获取机构调研加权 Top 10。
 
         Args:
-            start_date: 起始日期 YYYYMMDD（可选，默认当天）
-            end_date: 截止日期 YYYYMMDD（可选，默认当天）
+            start_date: 起始日期 YYYYMMDD（可选，默认与 end_date 相同）
+            end_date: 截止日期 YYYYMMDD（可选，默认最近一个有数据的日期）
         """
         import json as _json
         from datetime import datetime
 
         today_str = datetime.now().strftime("%Y-%m-%d")
+        latest_db_dates = self.db.get_institution_survey_dates()
 
-        # 计算日期范围
+        # 计算日期范围：未指定时默认最近一个有数据的日期
         if end_date:
             _end = end_date
+        elif latest_db_dates:
+            _end = latest_db_dates[0]
         else:
             _end = datetime.now().strftime("%Y%m%d")
         if start_date:
@@ -1855,7 +1858,7 @@ class BrokerRecommendService:
         else:
             _start = _end
 
-        use_db = end_date is not None or start_date is not None
+        use_db = bool(start_date or end_date or latest_db_dates)
 
         # 默认模式：走 Tushare API + 缓存
         if not use_db:

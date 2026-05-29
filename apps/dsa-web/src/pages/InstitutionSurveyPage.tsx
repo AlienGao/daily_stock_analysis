@@ -3,8 +3,8 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { DatePicker, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import zhCN from 'antd/locale/zh_CN';
-import { type Dayjs } from 'dayjs';
-import { Users, Loader2, Calendar, ArrowLeftToLine } from 'lucide-react';
+import dayjs, { type Dayjs } from 'dayjs';
+import { Users, Loader2, Calendar } from 'lucide-react';
 import { AppPage, Card, EmptyState } from '../components/common';
 import {
   getInstitutionSurvey,
@@ -42,6 +42,8 @@ const fmtRange = (s: string, e: string) => {
   return `${fmtDate(s)} ~ ${fmtDate(e)}`;
 };
 
+const parseSurveyDate = (value: string): Dayjs => dayjs(value, 'YYYYMMDD');
+
 const InstitutionSurveyPage: React.FC = () => {
   const [data, setData] = useState<InstitutionSurveyResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -64,36 +66,54 @@ const InstitutionSurveyPage: React.FC = () => {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([
-      getInstitutionSurveyDates(),
-      getInstitutionSurvey(),
-    ])
-      .then(([dates, surveyData]) => {
+
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const dates = await getInstitutionSurveyDates();
         if (cancelled) return;
+
         setAvailableDates(dates);
+        const latestDate = dates[0] ?? null;
+        if (latestDate) {
+          setSelectedDate(parseSurveyDate(latestDate));
+        } else {
+          setSelectedDate(null);
+        }
+
+        const surveyData = await getInstitutionSurvey(
+          latestDate ? { end_date: latestDate } : undefined,
+        );
+        if (cancelled) return;
         setData(surveyData);
-      })
-      .catch((err) => {
-        if (cancelled) setError(err?.response?.data?.detail || err.message || '加载失败');
-      })
-      .finally(() => {
+      } catch (err: any) {
+        if (!cancelled) {
+          setError(err?.response?.data?.detail || err.message || '加载失败');
+        }
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    })();
+
     return () => { cancelled = true; };
   }, []);
 
-  const goToday = useCallback(() => {
-    setSelectedDate(null);
-    fetchData();
-  }, [fetchData]);
-
   const handleDateChange = (d: Dayjs | null) => {
-    setSelectedDate(d);
-    if (d) {
-      fetchData(d.format('YYYYMMDD'));
-    } else {
-      fetchData();
+    if (!d) {
+      const latestDate = availableDates[0];
+      if (latestDate) {
+        setSelectedDate(parseSurveyDate(latestDate));
+        fetchData(latestDate);
+      } else {
+        setSelectedDate(null);
+        fetchData();
+      }
+      return;
     }
+
+    setSelectedDate(d);
+    fetchData(d.format('YYYYMMDD'));
   };
 
   const availableDateSet = useMemo(() => new Set(availableDates), [availableDates]);
@@ -199,15 +219,6 @@ const InstitutionSurveyPage: React.FC = () => {
               disabledDate={(d) => !availableDateSet.has(d.format('YYYYMMDD'))}
               className="h-9 w-40"
             />
-            {selectedDate && (
-              <button
-                onClick={goToday}
-                className="flex h-9 items-center gap-1 rounded-md border border-zinc-700/50 bg-zinc-800/50 px-3 text-xs text-cyan-400 hover:bg-zinc-700/50 transition-colors"
-              >
-                <ArrowLeftToLine className="h-3.5 w-3.5" />
-                今天
-              </button>
-            )}
           </div>
         </div>
 
@@ -224,13 +235,10 @@ const InstitutionSurveyPage: React.FC = () => {
 
         {data && !loading && !error && (
           <>
-            {/* 概览卡片 */}
             <div className="grid grid-cols-3 gap-3">
               <Card className="p-3 text-center">
                 <div className="text-lg font-bold">{fmtRange(data.start_date, data.end_date)}</div>
-                <div className="text-xs text-secondary-text">
-                  {selectedDate ? '查询日期' : '当天'}
-                </div>
+                <div className="text-xs text-secondary-text">数据日期</div>
               </Card>
               <Card className="p-3 text-center">
                 <div className="text-lg font-bold">{data.total_stocks}</div>
@@ -242,14 +250,13 @@ const InstitutionSurveyPage: React.FC = () => {
               </Card>
             </div>
 
-            {/* Top 10 表格 */}
             <Card className="p-4">
               <div className="text-sm font-medium mb-3">调研热度 Top 10（加权排序）</div>
               {data.items.length === 0 ? (
                 <EmptyState
                   icon={<Users className="h-8 w-8" />}
                   title="暂无调研数据"
-                  description={selectedDate ? '该日期无机构调研记录' : '当天无机构调研记录'}
+                  description="该日期无机构调研记录"
                 />
               ) : (
                 <Table

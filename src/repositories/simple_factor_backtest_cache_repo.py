@@ -82,7 +82,7 @@ class SimpleFactorBacktestCacheRepo:
                     SimpleFactorBacktestCache.created_at,
                     SimpleFactorBacktestCache.updated_at,
                 )
-                .order_by(desc(SimpleFactorBacktestCache.created_at))
+                .order_by(desc(SimpleFactorBacktestCache.updated_at))
             )
             if limit is not None:
                 query = query.limit(limit)

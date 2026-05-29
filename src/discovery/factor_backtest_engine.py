@@ -264,8 +264,7 @@ class FactorBacktestEngine:
                 progress_cb(f"回测计算中 (持有期 {hd_i + 1}/{len(hold_days)})…")
             # 滚动资金管理：跟踪每批持仓占用的资金和卖出日
             available = initial_capital   # 可用资金
-            locked = 0.0                  # 锁定在持仓中的资金
-            # batches: [(sell_date, cost, final_value), ...] 待释放的批次
+            # batches: [positions...] 待释放批次，曲线按市值计价
             batches: list = []
             total_capital = initial_capital
             curve = [{"date": snap_filtered[0], "capital": total_capital}]
@@ -286,15 +285,11 @@ class FactorBacktestEngine:
                 sell_field = "close" if is_intra else "open"
 
                 # 释放已到期的批次（卖出日 <= 买入日）
-                new_batches = []
-                for sd, cost, fv in batches:
-                    if sd <= buy_date:
-                        available += fv
-                        locked -= cost
-                    else:
-                        new_batches.append((sd, cost, fv))
-                batches = new_batches
-                total_capital = available + locked
+                released, batches = self._release_due_position_batches(
+                    batches, buy_date, sell_field, trading_days,
+                )
+                available += released
+                total_capital = available + self._position_batches_mtm(batches, snap_date)
                 curve.append({"date": snap_date, "capital": round(total_capital, 2)})
 
                 composite = cached_composites.get(snap_date, pd.Series())
@@ -336,17 +331,17 @@ class FactorBacktestEngine:
                 # 首轮分批部署初始资金；滚动轮用平仓释放的全部资金
                 alloc = (initial_capital / hd / top_n) if buy_count < hd else (available / top_n)
                 buy_count += 1
-                batch_cost = 0.0
-                batch_final = 0.0
+                batch_positions = []
                 for code, name, bp, sp, sd, status in bought:
                     shares = _calc_shares(alloc, bp, code) if bp and bp > 0 else 0
-                    if shares > 0 and bp and sp and bp > 0 and status not in ("locked",):
+                    if shares > 0 and bp and bp > 0 and status not in ("locked",):
                         actual_cost = shares * bp
-                        final_val = shares * sp
-                        ret = (sp - bp) / bp
+                        final_val = shares * sp if sp and sp > 0 else 0.0
+                        ret = (sp - bp) / bp if sp and sp > 0 else 0.0
                         pnl = final_val - actual_cost
-                        batch_cost += actual_cost
-                        batch_final += final_val
+                        batch_positions.append({
+                            "code": code, "shares": shares, "cost": actual_cost, "sell_date": sd,
+                        })
                     else:
                         actual_cost = 0.0; final_val = 0.0; ret = 0.0; pnl = 0.0
                     bp_raw = self._get_price_raw(code, buy_date, buy_field)
@@ -369,11 +364,13 @@ class FactorBacktestEngine:
                         return_pct=0, pnl=0, allocated=0, shares=0, status="canceled",
                         buy_price_raw=0, sell_price_raw=0))
 
-                if batch_cost > 0:
+                if batch_positions:
+                    batch_cost = sum(p["cost"] for p in batch_positions)
                     available -= batch_cost
-                    locked += batch_cost
-                    batches.append((sell_date, batch_cost, batch_final))
+                    batches.append(batch_positions)
 
+            self._finalize_capital_curve_mtm(curve, available, batches, today_str)
+            self._refresh_open_trades_mtm(all_trades[hd], today_str)
             capital_curves[str(hd)] = curve
 
         phd = min(hold_days)  # 优先用最短持有期
@@ -559,7 +556,6 @@ class FactorBacktestEngine:
 
         for hd in hold_days:
             available = initial_capital
-            locked = 0.0
             batches: list = []
             total_capital = initial_capital
             buy_count = 0
@@ -579,15 +575,11 @@ class FactorBacktestEngine:
                 sell_field = "close" if is_intra else "open"
 
                 # 释放已到期的批次（卖出日 <= 买入日）
-                new_batches = []
-                for sd_b, cost_b, fv_b in batches:
-                    if sd_b <= buy_date:
-                        available += fv_b
-                        locked -= cost_b
-                    else:
-                        new_batches.append((sd_b, cost_b, fv_b))
-                batches = new_batches
-                total_capital = available + locked
+                released, batches = self._release_due_position_batches(
+                    batches, buy_date, sell_field, trading_days,
+                )
+                available += released
+                total_capital = available + self._position_batches_mtm(batches, snap_date)
                 curve.append({"date": snap_date, "capital": round(total_capital, 2)})
 
                 composite = cached_composites.get(snap_date, pd.Series())
@@ -630,17 +622,17 @@ class FactorBacktestEngine:
                     continue
                 alloc = (initial_capital / hd / top_n) if buy_count < hd else (available / top_n)
                 buy_count += 1
-                batch_cost = 0.0
-                batch_final = 0.0
+                batch_positions = []
                 for code, name, bp, sp, sd_ext, status in bought:
                     shares = _calc_shares(alloc, bp, code) if bp and bp > 0 else 0
-                    if shares > 0 and bp and sp and bp > 0 and status not in ("locked",):
+                    if shares > 0 and bp and bp > 0 and status not in ("locked",):
                         actual_cost = shares * bp
-                        final_val = shares * sp
-                        ret = (sp - bp) / bp
+                        final_val = shares * sp if sp and sp > 0 else 0.0
+                        ret = (sp - bp) / bp if sp and sp > 0 else 0.0
                         pnl = final_val - actual_cost
-                        batch_cost += actual_cost
-                        batch_final += final_val
+                        batch_positions.append({
+                            "code": code, "shares": shares, "cost": actual_cost, "sell_date": sd_ext,
+                        })
                     else:
                         actual_cost = 0.0; final_val = 0.0; ret = 0.0; pnl = 0.0
                     bp_raw = self._get_price_raw(code, buy_date, buy_field)
@@ -663,11 +655,13 @@ class FactorBacktestEngine:
                         return_pct=0, pnl=0, allocated=0, shares=0, status="canceled",
                         buy_price_raw=0, sell_price_raw=0))
 
-                if batch_cost > 0:
+                if batch_positions:
+                    batch_cost = sum(p["cost"] for p in batch_positions)
                     available -= batch_cost
-                    locked += batch_cost
-                    batches.append((sell_date, batch_cost, batch_final))
+                    batches.append(batch_positions)
 
+            self._finalize_capital_curve_mtm(curve, available, batches, today_str)
+            self._refresh_open_trades_mtm(fixed_trades[hd], today_str)
             fixed_curves[str(hd)] = curve
 
         # ── 2. Dynamic walk-forward (按窗口 TPE + DB 持久化缓存) ──
@@ -789,7 +783,6 @@ class FactorBacktestEngine:
             if progress_cb:
                 progress_cb(f"评估动态权重 · {hd}日持有期…")
             available = initial_capital
-            locked = 0.0
             batches: list = []
             total_capital = initial_capital
             curve = [{"date": snap_filtered[0], "capital": total_capital}]
@@ -819,15 +812,11 @@ class FactorBacktestEngine:
                     sell_field = "close" if is_intra else "open"
 
                     # 释放已到期的批次（卖出日 <= 买入日）
-                    new_batches = []
-                    for sd_b, cost_b, fv_b in batches:
-                        if sd_b <= buy_date:
-                            available += fv_b
-                            locked -= cost_b
-                        else:
-                            new_batches.append((sd_b, cost_b, fv_b))
-                    batches = new_batches
-                    total_capital = available + locked
+                    released, batches = self._release_due_position_batches(
+                        batches, buy_date, sell_field, trading_days,
+                    )
+                    available += released
+                    total_capital = available + self._position_batches_mtm(batches, snap_date)
                     curve.append({"date": snap_date, "capital": round(total_capital, 2)})
 
                     composite = comps.get(snap_date, pd.Series())
@@ -870,17 +859,17 @@ class FactorBacktestEngine:
                         continue
                     alloc = (initial_capital / hd / top_n) if buy_count < hd else (available / top_n)
                     buy_count += 1
-                    batch_cost = 0.0
-                    batch_final = 0.0
+                    batch_positions = []
                     for code, name, bp, sp, sd_ext, status in bought:
                         shares = _calc_shares(alloc, bp, code) if bp and bp > 0 else 0
-                        if shares > 0 and bp and sp and bp > 0 and status not in ("locked",):
+                        if shares > 0 and bp and bp > 0 and status not in ("locked",):
                             actual_cost = shares * bp
-                            final_val = shares * sp
-                            ret = (sp - bp) / bp
+                            final_val = shares * sp if sp and sp > 0 else 0.0
+                            ret = (sp - bp) / bp if sp and sp > 0 else 0.0
                             pnl = final_val - actual_cost
-                            batch_cost += actual_cost
-                            batch_final += final_val
+                            batch_positions.append({
+                                "code": code, "shares": shares, "cost": actual_cost, "sell_date": sd_ext,
+                            })
                         else:
                             actual_cost = 0.0; final_val = 0.0; ret = 0.0; pnl = 0.0
                         bp_raw = self._get_price_raw(code, buy_date, buy_field)
@@ -905,11 +894,13 @@ class FactorBacktestEngine:
                             status="canceled", reoptimized=True,
                             buy_price_raw=0, sell_price_raw=0))
 
-                    if batch_cost > 0:
+                    if batch_positions:
+                        batch_cost = sum(p["cost"] for p in batch_positions)
                         available -= batch_cost
-                        locked += batch_cost
-                        batches.append((sell_date, batch_cost, batch_final))
+                        batches.append(batch_positions)
 
+            self._finalize_capital_curve_mtm(curve, available, batches, today_str_wf)
+            self._refresh_open_trades_mtm(dynamic_trades[hd], today_str_wf)
             dynamic_curves[str(hd)] = curve
 
         # ── 3. Build result with dual curves ──
@@ -1560,6 +1551,91 @@ class FactorBacktestEngine:
             if td > ds:
                 return td
         return None
+
+
+    def _get_mark_price(self, code: str, as_of_date: str) -> Optional[float]:
+        """按估值日取收盘价；当天优先 realtime_spot（后复权对齐）。"""
+        today_str = date.today().strftime("%Y%m%d")
+        mark_date = as_of_date if as_of_date <= today_str else today_str
+        if mark_date >= today_str:
+            spot_price = self._get_realtime_spot_price(code)
+            if spot_price is not None:
+                adj_max = self._adj_max.get(code)
+                adj_t = self._adj_cache.get(today_str, {}).get(code)
+                if (not adj_t) and adj_max:
+                    for d in sorted(self._adj_cache.keys(), reverse=True):
+                        adj_t = self._adj_cache[d].get(code)
+                        if adj_t:
+                            break
+                if adj_t and adj_t > 0 and adj_max and adj_max > 0:
+                    return float(spot_price) * adj_max / adj_t
+                return float(spot_price)
+            p = self._get_price(code, today_str, "close")
+            if p and p > 0:
+                return float(p)
+        p = self._get_price(code, mark_date, "close")
+        if p and p > 0:
+            return float(p)
+        p = self._get_price(code, mark_date, "open")
+        return float(p) if p and p > 0 else None
+
+    def _position_batches_mtm(self, batches, as_of_date: str) -> float:
+        """未释放批次按估值日市值汇总（含未平仓浮盈）。"""
+        total = 0.0
+        for positions in batches:
+            for pos in positions:
+                price = self._get_mark_price(pos["code"], as_of_date)
+                if price and price > 0 and pos["shares"] > 0:
+                    total += pos["shares"] * price
+                else:
+                    total += pos["cost"]
+        return total
+
+    def _release_due_position_batches(self, batches, buy_date: str, sell_field: str, trading_days):
+        """释放卖出日已到的批次，按实际/顺延卖出价结算。"""
+        released = 0.0
+        kept = []
+        for positions in batches:
+            if not positions:
+                continue
+            sd = positions[0]["sell_date"]
+            if sd <= buy_date:
+                for pos in positions:
+                    sp, _, _status = self._resolve_sell_price(
+                        pos["code"], pos["sell_date"], sell_field, trading_days,
+                    )
+                    if sp and sp > 0 and pos["shares"] > 0:
+                        released += pos["shares"] * sp
+                    else:
+                        released += pos["cost"]
+            else:
+                kept.append(positions)
+        return released, kept
+
+    def _finalize_capital_curve_mtm(self, curve, available: float, batches, today_str: str) -> None:
+        """曲线末点补最新市值（未平仓按最新价计入）。"""
+        if not curve:
+            return
+        total = round(available + self._position_batches_mtm(batches, today_str), 2)
+        if curve[-1]["date"] == today_str:
+            curve[-1]["capital"] = total
+        else:
+            curve.append({"date": today_str, "capital": total})
+
+    def _refresh_open_trades_mtm(self, trades, today_str: str) -> None:
+        """刷新未平仓交易的最新估值，供前端展示。"""
+        for t in trades:
+            if t.status != "open" or t.shares <= 0 or t.buy_price <= 0:
+                continue
+            sp = self._get_mark_price(t.stock_code, today_str)
+            if sp is None or sp <= 0:
+                continue
+            t.sell_price = round(sp, 2)
+            t.return_pct = round((sp - t.buy_price) / t.buy_price, 6)
+            t.pnl = round(t.shares * sp - t.allocated, 2)
+            sp_raw = self._get_price_raw(t.stock_code, today_str, "close")
+            if sp_raw:
+                t.sell_price_raw = round(sp_raw, 2)
 
     def _resolve_sell_price(self, code, sell_date, sell_field, trading_days, max_ext=5):
         """解析卖出价：若卖出日在跌停板或缺失价格，顺延至下一个可交易日。

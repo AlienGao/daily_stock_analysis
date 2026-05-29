@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- 新条目格式：- [类型] 描述（类型取值：新功能/改进/修复/文档/测试/chore）-->
 <!-- 每条独立一行追加到本段末尾，无需分类标题，合并时冲突最小 -->
+- [改进] 快测资金曲线按市值计价（含未平仓持仓）；胜率与交易次数仍仅统计已平仓（closed/extended），总收益与夏普基于含最新持仓的资金曲线。
+- [改进] 机构调研页默认展示最近一个有数据的日期，移除「今天」快捷按钮。
 - [修复] 盘后发现技术评分明细全为 0：盘后批量 StockScorer 路径未初始化 scorer，Phase 4.7 被跳过；修复后写入六维分项，并增强 `repair_postmarket_tech_scores.py` 对已有 JSON 的补算逻辑。
 - [新功能] 新增独立因子回测页面 `/simple-factor-backtest`：支持自由勾选单因子或多因子组合回测，统一使用开盘价交易（无 intraday/postmarket 模式区分），新增 `MarketCapFactor`（小市值因子）作为测试因子。
 - [改进] 测试因子机制：`_all_factors()` 注册所有因子（含测试因子），`_default_factors()` 仅用于选股；测试因子计算得分并保存到 `factor_score_snapshots`，但不参与综合评分和选股排名。
