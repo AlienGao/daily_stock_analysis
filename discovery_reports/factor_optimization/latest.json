@@ -1,27 +1,23 @@
 {
   "mode": "postmarket",
-  "timestamp": "2026-05-25T22:48:05.540692",
+  "timestamp": "2026-05-30T23:02:11.934157",
   "deltas": {
-    "gap_reversal": 16.0,
-    "liquid_oversold": 14.0,
-    "gtja114": 13.0,
-    "money_flow": -10.0,
-    "hot_money": -3.0,
-    "margin": -9.0,
-    "insider_buy": 2.0,
-    "concept_heat": 16.0
+    "liquid_oversold": 3.0,
+    "gtja114": 8.0,
+    "insider_buy": 12.0,
+    "institution_hold": 14.0,
+    "performance": -3.0,
+    "buyback": 27.0,
+    "profit_forecast": 2.0
   },
   "recommendation": {
-    "gap_reversal": 26,
-    "liquid_oversold": 27,
-    "gtja114": 27,
-    "money_flow": 13,
-    "hot_money": 6,
-    "margin": 17,
-    "insider_buy": 21,
-    "performance": 29,
-    "profit_forecast": 30,
-    "concept_heat": 23
+    "liquid_oversold": 30,
+    "gtja114": 35,
+    "insider_buy": 33,
+    "institution_hold": 22,
+    "performance": 26,
+    "buyback": 32,
+    "profit_forecast": 32
   },
   "applied": true
 }

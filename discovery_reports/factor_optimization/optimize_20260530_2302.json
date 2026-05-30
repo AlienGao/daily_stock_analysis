@@ -1,0 +1,41 @@
+{
+  "report_path": "/Users/justingao/Documents/daily_stock_analysis/discovery_reports/factor_optimization/optimize_20260530_2302.md",
+  "timestamp": "2026-05-30T23:02:11.934157",
+  "mode": "postmarket",
+  "recommendation": {
+    "liquid_oversold": 30,
+    "gtja114": 35,
+    "insider_buy": 33,
+    "institution_hold": 22,
+    "performance": 26,
+    "buyback": 32,
+    "profit_forecast": 32
+  },
+  "baseline": {
+    "alpha042": 6.0,
+    "alpha60": 10.0,
+    "vwap_deviation": 13.0,
+    "gap_reversal": 26.0,
+    "liquid_oversold": 27.0,
+    "vwap_reversal": 10.0,
+    "gtja114": 27.0,
+    "money_flow_osc": 10.0,
+    "money_flow": 13.0,
+    "technical": 21.25,
+    "broker_recommend": 22.0,
+    "fundamental": 5.0,
+    "hot_money": 6.0,
+    "margin": 17.0,
+    "chip": 12.75,
+    "insider_buy": 21.0,
+    "institution_hold": 8.0,
+    "limit": 15.0,
+    "performance": 29.0,
+    "popularity": 15.0,
+    "ranking_momentum": 28.0,
+    "buyback": 5.0,
+    "profit_forecast": 30.0,
+    "concept_heat": 23.0
+  },
+  "applied": true
+}

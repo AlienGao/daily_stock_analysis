@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 10,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260529",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300088",
+      "stock_code": "300088",
+      "stock_name": "长信科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 2,
+      "ts_code": "688004",
+      "stock_code": "688004",
+      "stock_name": "博汇科技",
+      "lgb_score": 99.69,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 3,
+      "ts_code": "300258",
+      "stock_code": "300258",
+      "stock_name": "精锻科技",
+      "lgb_score": 96.41,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 4,
+      "ts_code": "688299",
+      "stock_code": "688299",
+      "stock_name": "长阳科技",
+      "lgb_score": 92.87,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 5,
+      "ts_code": "300041",
+      "stock_code": "300041",
+      "stock_name": "回天新材",
+      "lgb_score": 90.39,
+      "raw_score": 0.18
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.12,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.000927,
+    "std": 0.03234,
+    "skew": 0.2641,
+    "kurtosis": 2.3747,
+    "min": -0.143435,
+    "max": 0.218732,
+    "median": 0.010842
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.10555796166006633,
+    "cv_rmse_std": 0.004759488059331734,
+    "cv_scores": [
+      0.101733,
+      0.105965,
+      0.103919,
+      0.101645,
+      0.114528
+    ],
+    "rank_ic_mean": 0.083807,
+    "rank_ic_std": 0.064875,
+    "icir": 1.2918,
+    "oof_corr": 0.071869,
+    "n_samples": 17972,
+    "n_features": 22
+  }
+}

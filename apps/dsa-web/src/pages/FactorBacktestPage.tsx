@@ -7,6 +7,7 @@ import {
 } from 'recharts';
 import { DatePicker, Segmented, Table, InputNumber, Checkbox, Switch } from 'antd';
 import { Activity, Download, Play, Loader2 } from 'lucide-react';
+import { CapitalCurveTooltip, buildCapitalCurveChartMeta } from '../components/charts/CapitalCurveTooltip';
 import { AppPage, Card, StatCard, EmptyState, ApiErrorAlert } from '../components/common';
 import { discoveryApi, type FactorSnapshotDatesResponse, type FactorBacktestResultResponse, type FactorBacktestCapitalPoint, type FactorBacktestTrade } from '../api/discovery';
 import type { ParsedApiError } from '../api/error';
@@ -628,6 +629,11 @@ const FactorBacktestPage: React.FC = () => {
     return chartData.filter((d) => (d.date as string).replace(/-/g, '') >= recentCutoffDate);
   }, [chartData, recentCutoffDate]);
 
+  const chartLatestMeta = useMemo(
+    () => buildCapitalCurveChartMeta(displayChartData ?? []),
+    [displayChartData],
+  );
+
   const displayTrades = useMemo(() => {
     if (!result) return [];
     const hd = Number(summaryPeriod);
@@ -1043,7 +1049,15 @@ const FactorBacktestPage: React.FC = () => {
                       <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                       <XAxis dataKey="date" tick={{ fontSize: 11 }} />
                       <YAxis tick={{ fontSize: 11 }} domain={['auto', 'auto']} />
-                      <Tooltip contentStyle={{ background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', fontSize: 12 }} />
+                      <Tooltip
+                        content={(
+                          <CapitalCurveTooltip
+                            latestByKey={chartLatestMeta.latestByKey}
+                            latestDate={chartLatestMeta.latestDate}
+                            baseByKey={chartLatestMeta.baseByKey}
+                          />
+                        )}
+                      />
                       <Legend onClick={(e) => {
                         if (!e.dataKey || typeof e.dataKey !== 'string') return;
                         if (e.dataKey === 'h_benchmark') return; // 基准线不可切换

@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 20,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260529",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688818",
+      "stock_code": "688818",
+      "stock_name": "电科蓝天",
+      "lgb_score": 100.0,
+      "raw_score": 0.51
+    },
+    {
+      "rank": 2,
+      "ts_code": "601166",
+      "stock_code": "601166",
+      "stock_name": "兴业银行",
+      "lgb_score": 93.05,
+      "raw_score": 0.47
+    },
+    {
+      "rank": 3,
+      "ts_code": "688443",
+      "stock_code": "688443",
+      "stock_name": "智翔金泰-U",
+      "lgb_score": 81.56,
+      "raw_score": 0.41
+    },
+    {
+      "rank": 4,
+      "ts_code": "002149",
+      "stock_code": "002149",
+      "stock_name": "西部材料",
+      "lgb_score": 75.92,
+      "raw_score": 0.37
+    },
+    {
+      "rank": 5,
+      "ts_code": "600237",
+      "stock_code": "600237",
+      "stock_name": "铜峰电子",
+      "lgb_score": 63.95,
+      "raw_score": 0.3
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.85,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.08929,
+    "std": 0.058287,
+    "skew": -0.2402,
+    "kurtosis": -1.0524,
+    "min": -0.067373,
+    "max": 0.513955,
+    "median": 0.138848
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.15926806033787186,
+    "cv_rmse_std": 0.019277340202330608,
+    "cv_scores": [
+      0.170835,
+      0.152525,
+      0.127636,
+      0.160044,
+      0.1853
+    ],
+    "rank_ic_mean": 0.116741,
+    "rank_ic_std": 0.033987,
+    "icir": 3.4349,
+    "oof_corr": 0.096985,
+    "n_samples": 41842,
+    "n_features": 4
+  }
+}

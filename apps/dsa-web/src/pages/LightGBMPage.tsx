@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
   BarChart, Bar, CartesianGrid,
@@ -7,6 +7,7 @@ import {
 import { DatePicker, Segmented, Table, InputNumber, Button, Select, Input, Tooltip as AntTooltip, Modal, message } from 'antd';
 import { Brain, Play, Loader2, Search, Sparkles } from 'lucide-react';
 import { AppPage, Card, StatCard, EmptyState, ApiErrorAlert } from '../components/common';
+import { CapitalCurveTooltip, buildCapitalCurveChartMeta } from '../components/charts/CapitalCurveTooltip';
 import { researchApi, type LGBTaskStatusResponse, type LGBPredictionItem, type LGBBacktestCompareResponse, type LGBModelInfo, type LGBDateRangeResponse, type LGBStockLookupItem, type LGBBacktestSimResponse, type LGBBacktestSimAvailableResponse, type LGBBruteForceTaskStatus, type LGBBruteForceItem, type LGBDiagnosticsResponse, type LGBCrossModelOverlapResponse, type LGBCrossModelOverlapStock, type CatchUpTaskStatus, type LGBBruteForceResult, type LGBFactorSubsetTaskStatus } from '../api/research';
 import type { ParsedApiError } from '../api/error';
 import { getParsedApiError } from '../api/error';
@@ -816,6 +817,11 @@ const LightGBMPage: React.FC = () => {
     lgb: p.lgb,
     benchmark: p.benchmark,
   })) ?? [];
+
+  const backtestSimChartMeta = useMemo(
+    () => buildCapitalCurveChartMeta(backtestSim?.capital_curve ?? []),
+    [backtestSim?.capital_curve],
+  );
 
   const predColumns = [
     { title: '排名', dataIndex: 'rank', key: 'rank', width: 50 },
@@ -1962,8 +1968,13 @@ const LightGBMPage: React.FC = () => {
                       <XAxis dataKey="date" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
                       <YAxis tick={{ fontSize: 11 }} domain={['auto', 'auto']} />
                       <Tooltip
-                        contentStyle={{ background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', fontSize: 12 }}
-                        formatter={(value) => [Number(value).toFixed(4), '资金']}
+                        content={(
+                          <CapitalCurveTooltip
+                            latestByKey={backtestSimChartMeta.latestByKey}
+                            latestDate={backtestSimChartMeta.latestDate}
+                            baseByKey={backtestSimChartMeta.baseByKey}
+                          />
+                        )}
                       />
                       <Line
                         type="monotone"

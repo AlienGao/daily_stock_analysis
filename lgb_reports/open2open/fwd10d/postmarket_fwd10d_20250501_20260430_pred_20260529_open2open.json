@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 10,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260529",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002251",
+      "stock_code": "002251",
+      "stock_name": "步步高",
+      "lgb_score": 100.0,
+      "raw_score": 0.2
+    },
+    {
+      "rank": 2,
+      "ts_code": "920078",
+      "stock_code": "920078",
+      "stock_name": "族兴新材",
+      "lgb_score": 82.43,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 3,
+      "ts_code": "920075",
+      "stock_code": "920075",
+      "stock_name": "柏星龙",
+      "lgb_score": 81.72,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 4,
+      "ts_code": "002728",
+      "stock_code": "002728",
+      "stock_name": "特一药业",
+      "lgb_score": 81.72,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 5,
+      "ts_code": "300771",
+      "stock_code": "300771",
+      "stock_name": "智莱科技",
+      "lgb_score": 81.72,
+      "raw_score": 0.13
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 17.2,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.022057,
+    "std": 0.0195,
+    "skew": -0.4957,
+    "kurtosis": 7.0761,
+    "min": -0.153772,
+    "max": 0.19874,
+    "median": 0.03067
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.10795584304158987,
+    "cv_rmse_std": 0.008719487846243736,
+    "cv_scores": [
+      0.106886,
+      0.113769,
+      0.091371,
+      0.114017,
+      0.113736
+    ],
+    "rank_ic_mean": 0.044827,
+    "rank_ic_std": 0.02808,
+    "icir": 1.5964,
+    "oof_corr": 0.021977,
+    "n_samples": 43072,
+    "n_features": 2
+  }
+}

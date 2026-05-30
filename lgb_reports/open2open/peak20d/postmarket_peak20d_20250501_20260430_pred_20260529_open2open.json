@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260529",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300976",
+      "stock_code": "300976",
+      "stock_name": "达瑞电子",
+      "lgb_score": 100.0,
+      "raw_score": 0.48,
+      "predicted_days": 15
+    },
+    {
+      "rank": 2,
+      "ts_code": "688012",
+      "stock_code": "688012",
+      "stock_name": "DR中微公",
+      "lgb_score": 91.76,
+      "raw_score": 0.44,
+      "predicted_days": 14
+    },
+    {
+      "rank": 3,
+      "ts_code": "002922",
+      "stock_code": "002922",
+      "stock_name": "伊戈尔",
+      "lgb_score": 86.24,
+      "raw_score": 0.41,
+      "predicted_days": 14
+    },
+    {
+      "rank": 4,
+      "ts_code": "603696",
+      "stock_code": "603696",
+      "stock_name": "安记食品",
+      "lgb_score": 71.33,
+      "raw_score": 0.34,
+      "predicted_days": 14
+    },
+    {
+      "rank": 5,
+      "ts_code": "920166",
+      "stock_code": "920166",
+      "stock_name": "海圣医疗",
+      "lgb_score": 69.45,
+      "raw_score": 0.34,
+      "predicted_days": 14
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.97,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.137853,
+    "std": 0.051871,
+    "skew": -0.418,
+    "kurtosis": -0.9196,
+    "min": 0.008614,
+    "max": 0.479375,
+    "median": 0.179845
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.12792834895426905,
+    "cv_rmse_std": 0.014561700139984129,
+    "cv_scores": [
+      0.148239,
+      0.12204,
+      0.104474,
+      0.129118,
+      0.135771
+    ],
+    "rank_ic_mean": 0.204978,
+    "rank_ic_std": 0.069088,
+    "icir": 2.9669,
+    "oof_corr": 0.159805,
+    "n_samples": 43111,
+    "n_features": 3
+  },
+  "window_days": 20
+}

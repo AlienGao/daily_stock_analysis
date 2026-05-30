@@ -8,6 +8,7 @@ import { DatePicker, Table, InputNumber, Checkbox, Button, Tooltip as AntTooltip
 import dayjs from 'dayjs';
 import { Play, Loader2, Activity, Download, Trash2 } from 'lucide-react';
 import { AppPage, Card, StatCard, EmptyState, ApiErrorAlert } from '../components/common';
+import { CapitalCurveTooltip, fmtMoney, fmtSignedPct, buildCapitalCurveChartMeta } from '../components/charts/CapitalCurveTooltip';
 import apiClient from '../api';
 import type { ParsedApiError } from '../api/error';
 import { getParsedApiError } from '../api/error';
@@ -21,94 +22,6 @@ const HOLD_DAY_OPTIONS = [
 
 function pct(v: number): string {
   return `${(v * 100).toFixed(2)}%`;
-}
-
-function fmtMoney(v: number): string {
-  if (Math.abs(v) >= 1e8) return `${(v / 1e8).toFixed(2)}亿`;
-  if (Math.abs(v) >= 1e4) return `${(v / 1e4).toFixed(0)}万`;
-  return v.toFixed(0);
-}
-
-function fmtSignedPct(v: number): string {
-  return `${v >= 0 ? '+' : ''}${(v * 100).toFixed(2)}%`;
-}
-
-function formatCurveSeriesLabel(dataKey: string): string {
-  return dataKey === 'benchmark' ? '基准' : `${dataKey.replace('hd', '')}日`;
-}
-
-interface CapitalCurveTooltipProps {
-  active?: boolean;
-  payload?: Array<{ dataKey?: string | number; value?: number; color?: string }>;
-  label?: string;
-  latestByKey: Record<string, number>;
-  latestDate: string;
-}
-
-function CapitalCurveTooltip({
-  active,
-  payload,
-  label,
-  latestByKey,
-  latestDate,
-}: CapitalCurveTooltipProps) {
-  if (!active || !payload?.length) return null;
-  const hoverDate = String(label ?? '');
-  const showTailReturn = hoverDate && latestDate && hoverDate !== latestDate;
-
-  return (
-    <div
-      style={{
-        backgroundColor: '#000',
-        border: '1px solid #333',
-        borderRadius: 6,
-        padding: '8px 12px',
-        fontSize: 12,
-        minWidth: 180,
-      }}
-    >
-      <div style={{ color: '#fff', marginBottom: 6 }}>{hoverDate}</div>
-      {payload
-        .filter((p) => p.value != null && p.dataKey != null)
-        .map((p) => {
-          const key = String(p.dataKey);
-          const value = Number(p.value);
-          const latest = latestByKey[key];
-          const tailReturn = showTailReturn && latest != null && value > 0
-            ? (latest - value) / value
-            : null;
-          return (
-            <div key={key} style={{ marginBottom: 4 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#fff' }}>
-                <span
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    backgroundColor: p.color || '#888',
-                    flexShrink: 0,
-                  }}
-                />
-                <span style={{ color: '#aaa' }}>{formatCurveSeriesLabel(key)}</span>
-                <span style={{ marginLeft: 'auto' }}>{fmtMoney(value)}</span>
-              </div>
-              {tailReturn != null && (
-                <div
-                  style={{
-                    marginLeft: 16,
-                    marginTop: 2,
-                    color: tailReturn >= 0 ? '#f87171' : '#34d399',
-                    fontSize: 11,
-                  }}
-                >
-                  至最新({latestDate.slice(5)}) {fmtSignedPct(tailReturn)}
-                </div>
-              )}
-            </div>
-          );
-        })}
-    </div>
-  );
 }
 
 const CAPITAL_COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444'];
@@ -571,15 +484,10 @@ const SimpleFactorBacktestPage: React.FC = () => {
     });
   }, [result]);
 
-  const chartLatestMeta = useMemo(() => {
-    if (chartData.length === 0) return { latestDate: '', latestByKey: {} as Record<string, number> };
-    const last = chartData[chartData.length - 1];
-    const latestByKey: Record<string, number> = {};
-    for (const [key, value] of Object.entries(last)) {
-      if (key !== 'date' && typeof value === 'number') latestByKey[key] = value;
-    }
-    return { latestDate: String(last.date ?? ''), latestByKey };
-  }, [chartData]);
+  const chartLatestMeta = useMemo(
+    () => buildCapitalCurveChartMeta(chartData),
+    [chartData],
+  );
 
   // summary stats: compute per hold period from capital curve + trades
   const currentStats = useMemo(() => {
@@ -1197,6 +1105,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
                           <CapitalCurveTooltip
                             latestByKey={chartLatestMeta.latestByKey}
                             latestDate={chartLatestMeta.latestDate}
+                            baseByKey={chartLatestMeta.baseByKey}
                           />
                         )}
                       />

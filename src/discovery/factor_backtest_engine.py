@@ -1260,43 +1260,98 @@ class FactorBacktestEngine:
         except Exception:
             return None
 
-    @staticmethod
-    def _build_benchmark_curve(trading_days, initial_capital):
-        """构建上证指数归一化曲线（按初始资金等比例缩放）。"""
+    _SSE_INDEX_CODE = "000001.SH"
+
+    def _load_index_close_map(self, trading_days: List[str]) -> Dict[str, float]:
+        """加载上证指数收盘价；DB 缺口时降级 Tushare 并回填。"""
+        if not trading_days:
+            return {}
+        td_min = datetime.strptime(min(trading_days), "%Y%m%d").date()
+        td_max = datetime.strptime(max(trading_days), "%Y%m%d").date()
+        close_map: Dict[str, float] = {}
         try:
-            from datetime import datetime
             from src.storage import DatabaseManager, StockDaily
             db = DatabaseManager()
-            td_min = datetime.strptime(min(trading_days), "%Y%m%d").date()
-            td_max = datetime.strptime(max(trading_days), "%Y%m%d").date()
-            s = db.get_session()
-            try:
-                rows = s.query(StockDaily).filter(
-                    StockDaily.code == "000001.SH",
+            with db.get_session() as sess:
+                rows = sess.query(StockDaily).filter(
+                    StockDaily.code == self._SSE_INDEX_CODE,
                     StockDaily.date >= td_min,
                     StockDaily.date <= td_max,
                 ).order_by(StockDaily.date).all()
-            finally:
-                s.close()
-            if not rows or len(rows) < 2:
+            for row in rows:
+                ds = row.date.strftime("%Y%m%d")
+                close_map[ds] = float(row.close or 0)
+        except Exception as exc:
+            logger.debug("[FactorBacktest] 读取 %s 失败: %s", self._SSE_INDEX_CODE, exc)
+
+        missing = [td for td in trading_days if close_map.get(td, 0) <= 0]
+        if not missing:
+            return close_map
+
+        fetcher = self._fetcher
+        if fetcher is None:
+            try:
+                from data_provider.tushare_fetcher import TushareFetcher
+                fetcher = TushareFetcher.get_instance()
+            except Exception:
+                fetcher = None
+        if fetcher is None or getattr(fetcher, "_api", None) is None:
+            return close_map
+
+        gap_start = min(missing)
+        gap_end = max(missing)
+        try:
+            fetcher._check_rate_limit()
+            raw_df = fetcher._api.index_daily(
+                ts_code=self._SSE_INDEX_CODE,
+                start_date=gap_start,
+                end_date=gap_end,
+            )
+            if raw_df is None or raw_df.empty:
+                return close_map
+
+            df = pd.DataFrame()
+            df["date"] = pd.to_datetime(raw_df["trade_date"], format="%Y%m%d")
+            df["open"] = pd.to_numeric(raw_df["open"], errors="coerce")
+            df["high"] = pd.to_numeric(raw_df["high"], errors="coerce")
+            df["low"] = pd.to_numeric(raw_df["low"], errors="coerce")
+            df["close"] = pd.to_numeric(raw_df["close"], errors="coerce")
+            df["volume"] = pd.to_numeric(raw_df["vol"], errors="coerce")
+            df["amount"] = pd.to_numeric(raw_df["amount"], errors="coerce") * 1000
+            df["pct_chg"] = pd.to_numeric(raw_df["pct_chg"], errors="coerce")
+
+            from src.storage import DatabaseManager
+            DatabaseManager().save_daily_data(
+                df, code=self._SSE_INDEX_CODE, data_source="TushareFetcher-index",
+            )
+            for _, row in df.iterrows():
+                ds = row["date"].strftime("%Y%m%d")
+                close_map[ds] = float(row["close"] or 0)
+            logger.info(
+                "[FactorBacktest] 回填 %s 指数数据 %d 行 (%s ~ %s)",
+                self._SSE_INDEX_CODE, len(df), gap_start, gap_end,
+            )
+        except Exception as exc:
+            logger.debug("[FactorBacktest] Tushare 降级拉取 %s 失败: %s", self._SSE_INDEX_CODE, exc)
+        return close_map
+
+    def _build_benchmark_curve(self, trading_days, initial_capital):
+        """构建上证指数归一化曲线（按初始资金等比例缩放）。"""
+        try:
+            close_map = self._load_index_close_map(trading_days)
+            if not close_map:
                 return []
-            close_map = {}
-            for r in rows:
-                ds = r.date.strftime("%Y%m%d")
-                close_map[ds] = float(r.close or 0)
             curve = []
             first_close = None
             for td in trading_days:
-                if td not in close_map:
+                close = close_map.get(td, 0)
+                if close <= 0:
                     continue
                 if first_close is None:
-                    first_close = close_map[td]
-                if first_close and first_close > 0:
-                    capital = initial_capital * (close_map[td] / first_close)
-                else:
-                    capital = float(initial_capital)
+                    first_close = close
+                capital = initial_capital * (close / first_close) if first_close > 0 else float(initial_capital)
                 curve.append({"date": td, "capital": round(capital, 2)})
-            return curve
+            return curve if len(curve) >= 2 else []
         except Exception:
             return []
 

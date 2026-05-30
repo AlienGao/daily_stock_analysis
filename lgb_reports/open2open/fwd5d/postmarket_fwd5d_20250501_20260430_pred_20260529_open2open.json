@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 5,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260529",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "001257",
+      "stock_code": "001257",
+      "stock_name": "盛龙股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.31
+    },
+    {
+      "rank": 2,
+      "ts_code": "920012",
+      "stock_code": "920012",
+      "stock_name": "创达新材",
+      "lgb_score": 94.26,
+      "raw_score": 0.29
+    },
+    {
+      "rank": 3,
+      "ts_code": "002585",
+      "stock_code": "002585",
+      "stock_name": "双星新材",
+      "lgb_score": 79.35,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 4,
+      "ts_code": "688602",
+      "stock_code": "688602",
+      "stock_name": "康鹏科技",
+      "lgb_score": 77.07,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 5,
+      "ts_code": "300916",
+      "stock_code": "300916",
+      "stock_name": "朗特智能",
+      "lgb_score": 74.25,
+      "raw_score": 0.21
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.84,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.030833,
+    "std": 0.024352,
+    "skew": 0.6428,
+    "kurtosis": 6.9368,
+    "min": -0.065066,
+    "max": 0.309418,
+    "median": 0.047184
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.07157337579612405,
+    "cv_rmse_std": 0.0059717243711547244,
+    "cv_scores": [
+      0.065775,
+      0.077161,
+      0.06314,
+      0.074318,
+      0.077473
+    ],
+    "rank_ic_mean": 0.048099,
+    "rank_ic_std": 0.03161,
+    "icir": 1.5216,
+    "oof_corr": 0.050045,
+    "n_samples": 43083,
+    "n_features": 12
+  }
+}
