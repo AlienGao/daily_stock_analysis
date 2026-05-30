@@ -398,6 +398,8 @@ def run_backtest(req: BacktestRequest, force: bool = Query(False)):
             cached = SimpleFactorBacktestCacheRepo().get_by_fingerprint(fp)
             if cached is not None:
                 result_dict = _json.loads(cached.result_json)
+                if len(result_dict.get("factors") or []) >= 2:
+                    _save_report(result_dict)
                 task_id = f"cache_{fp[:8]}"
                 _tasks[task_id] = {
                     "status": "completed",
@@ -658,15 +660,15 @@ def cross_validate():
         if not ss:
             raise HTTPException(status_code=404, detail=f"快照日期 {latest_date} 无数据")
 
-        # 对每个 preset 计算 top 5
+        # 对每个 preset 计算 top 3
         preset_tops = {}
         for p in preset_list:
             composite = engine._compute_composite(ss, p["factor_weights"])
             if composite.empty:
                 continue
-            top5 = composite.nlargest(5)
+            top3 = composite.nlargest(3)
             preset_tops[p["name"]] = [
-                {"ts_code": code, "score": round(float(sc), 1)} for code, sc in top5.items()
+                {"ts_code": code, "score": round(float(sc), 1)} for code, sc in top3.items()
             ]
 
         # 交叉命中: 统计每只股票出现在几个 preset 中

@@ -226,6 +226,26 @@ function cacheParamsMatch(
 }
 
 
+function formatTradePrice(raw: number): string {
+  if (!raw || raw <= 0) return '--';
+  return raw.toFixed(2);
+}
+
+function priceDiffersFromAdj(raw: number, adj?: number): boolean {
+  return !!adj && adj > 0 && Math.abs(adj - raw) > 0.01;
+}
+
+function renderTradePrice(raw: number, adj?: number, label = '后复权') {
+  const text = formatTradePrice(raw);
+  if (text === '--') return text;
+  if (!priceDiffersFromAdj(raw, adj)) return text;
+  return (
+    <AntTooltip title={`${label}: ${adj!.toFixed(2)}（含权收益，用于盈亏计算）`}>
+      <span className="cursor-help border-b border-dotted border-secondary-text/40">{text}</span>
+    </AntTooltip>
+  );
+}
+
 const TASK_KEY = 'simple_factor_bt_task';
 
 const SimpleFactorBacktestPage: React.FC = () => {
@@ -265,6 +285,15 @@ const SimpleFactorBacktestPage: React.FC = () => {
   const [forceRerun, setForceRerun] = useState(false);
   const [cacheHistory, setCacheHistory] = useState<CacheHistoryItem[]>([]);
   const [activeCacheId, setActiveCacheId] = useState<number | null>(null);
+  const rightPanelRef = useRef<HTMLDivElement>(null);
+  const [leftMaxHeight, setLeftMaxHeight] = useState<number | null>(null);
+
+  const loadPresets = useCallback(async () => {
+    try {
+      const resp = await apiClient.get('/api/v1/factor-backtest-simple/presets');
+      setPresets(resp.data.presets || []);
+    } catch { /* ignore */ }
+  }, []);
 
   const loadCacheHistory = useCallback(async (highlight?: {
     factor_weights: Record<string, number>;
@@ -312,10 +341,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
       setSelectedFactors(sel);
       setFactorWeights(w);
     }).catch(() => {});
-    // load presets
-    apiClient.get('/api/v1/factor-backtest-simple/presets').then((resp: { data: { presets: Array<{ name: string; factor_weights: Record<string, number> }> } }) => {
-      setPresets(resp.data.presets || []);
-    }).catch(() => {});
+    loadPresets();
 
     // load latest cached result
     apiClient.get('/api/v1/factor-backtest-simple/cache', { params: { limit: 1 } })
@@ -329,7 +355,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
 
     // load cache history
     loadCacheHistory();
-  }, []);
+  }, [loadPresets, loadCacheHistory]);
 
   const selectedCount = useMemo(
     () => Object.values(selectedFactors).filter(Boolean).length,
@@ -402,6 +428,9 @@ const SimpleFactorBacktestPage: React.FC = () => {
         setLoading(false);
         setProgressMsg('已从缓存加载');
         loadCacheHistory({ factor_weights: fw, start_date: startDate, end_date: endDate, top_n: topN, hold_days: holdDays, initial_capital: initialCapital });
+        if (Object.keys(fw).length >= 2) {
+          loadPresets();
+        }
         return;
       }
 
@@ -426,6 +455,9 @@ const SimpleFactorBacktestPage: React.FC = () => {
               localStorage.removeItem(TASK_KEY);
               setLoading(false);
               loadCacheHistory({ factor_weights: fw, start_date: startDate, end_date: endDate, top_n: topN, hold_days: holdDays, initial_capital: initialCapital });
+              if (Object.keys(fw).length >= 2) {
+                loadPresets();
+              }
               return;
             }
             if (data.status === 'failed') {
@@ -444,7 +476,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
       setError(getParsedApiError(err));
       setLoading(false);
     }
-  }, [selectedFactors, factorWeights, startDate, endDate, topN, holdDays, initialCapital, selectedCount, forceRerun, loadCacheHistory]);
+  }, [selectedFactors, factorWeights, startDate, endDate, topN, holdDays, initialCapital, selectedCount, forceRerun, loadCacheHistory, loadPresets]);
 
   const handleStop = useCallback(() => {
     abortRef.current = true;
@@ -592,6 +624,74 @@ const SimpleFactorBacktestPage: React.FC = () => {
     return result.trade_records.filter((t) => t.hold_days === hd);
   }, [result, summaryPeriod]);
 
+  // 按个股汇总已平仓盈亏，取贡献 Top5
+  const topContributionStocks = useMemo(() => {
+    const closed = displayTrades.filter((t) => t.status === 'closed' || t.status === 'extended');
+    if (closed.length === 0) return [];
+
+    const byCode = new Map<string, {
+      stock_code: string;
+      stock_name: string;
+      trade_count: number;
+      win_count: number;
+      total_pnl: number;
+      total_return_pct: number;
+    }>();
+
+    for (const t of closed) {
+      const prev = byCode.get(t.stock_code) ?? {
+        stock_code: t.stock_code,
+        stock_name: t.stock_name,
+        trade_count: 0,
+        win_count: 0,
+        total_pnl: 0,
+        total_return_pct: 0,
+      };
+      prev.trade_count += 1;
+      if (t.pnl > 0) prev.win_count += 1;
+      prev.total_pnl += t.pnl;
+      prev.total_return_pct += t.return_pct;
+      prev.stock_name = t.stock_name || prev.stock_name;
+      byCode.set(t.stock_code, prev);
+    }
+
+    const totalPnl = [...byCode.values()].reduce((s, r) => s + r.total_pnl, 0);
+
+    return [...byCode.values()]
+      .map((r) => ({
+        ...r,
+        avg_return_pct: r.trade_count > 0 ? r.total_return_pct / r.trade_count : 0,
+        win_rate: r.trade_count > 0 ? r.win_count / r.trade_count : 0,
+        contribution_pct: totalPnl !== 0 ? r.total_pnl / totalPnl : 0,
+      }))
+      .sort((a, b) => b.total_pnl - a.total_pnl)
+      .slice(0, 5)
+      .map((r, i) => ({ ...r, rank: i + 1 }));
+  }, [displayTrades]);
+
+  // 大屏：左侧栏高度跟随右侧内容，历史记录在栏内滚动
+  useEffect(() => {
+    const el = rightPanelRef.current;
+    if (!el) return;
+
+    const syncHeight = () => {
+      if (window.innerWidth < 1024) {
+        setLeftMaxHeight(null);
+        return;
+      }
+      setLeftMaxHeight(el.offsetHeight);
+    };
+
+    syncHeight();
+    const ro = new ResizeObserver(syncHeight);
+    ro.observe(el);
+    window.addEventListener('resize', syncHeight);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', syncHeight);
+    };
+  }, [result, summaryPeriod, cacheHistory.length, loading, displayTrades.length, topContributionStocks.length]);
+
   // IC data
   const icData = useMemo(() => {
     if (!result?.rank_ic) return null;
@@ -613,23 +713,71 @@ const SimpleFactorBacktestPage: React.FC = () => {
       </div>
     )},
     { title: '买入日', dataIndex: 'buy_date', key: 'buy_date', width: 90 },
-    { title: '买入价', dataIndex: 'buy_price', key: 'buy_price', width: 75 },
+    {
+      title: (
+        <AntTooltip title="表格为不复权价；盈亏、收益率、买卖金额按后复权价计算（含分红送转）">
+          <span className="cursor-help border-b border-dotted border-secondary-text/40">买入价</span>
+        </AntTooltip>
+      ),
+      dataIndex: 'buy_price',
+      key: 'buy_price',
+      width: 75,
+      render: (_: unknown, r: BacktestTrade) => renderTradePrice(r.buy_price, r.buy_price_adj),
+    },
     { title: '股数', dataIndex: 'shares', key: 'shares', width: 70, render: (_: unknown, r: BacktestTrade) => r.shares > 0 ? r.shares.toLocaleString() : '--' },
-    { title: '买入额', key: 'buy_amount', width: 90, render: (_: unknown, r: BacktestTrade) => {
-      if (!r.shares) return '--';
-      return Math.round(r.allocated).toLocaleString();
-    }},
+    {
+      title: (
+        <AntTooltip title="后复权买入价 × 股数（除权日前后与不复权价可能不一致）">
+          <span className="cursor-help border-b border-dotted border-secondary-text/40">买入额</span>
+        </AntTooltip>
+      ),
+      key: 'buy_amount',
+      width: 90,
+      render: (_: unknown, r: BacktestTrade) => {
+        if (!r.shares) return '--';
+        return Math.round(r.allocated).toLocaleString();
+      },
+    },
     { title: '卖出日', dataIndex: 'sell_date', key: 'sell_date', width: 90 },
-    { title: '卖出价', dataIndex: 'sell_price', key: 'sell_price', width: 75 },
-    { title: '卖出额', key: 'sell_amount', width: 90, render: (_: unknown, r: BacktestTrade) => {
-      if (!r.shares) return '--';
-      return Math.round(r.allocated + r.pnl).toLocaleString();
-    }},
-    { title: '收益', dataIndex: 'return_pct', key: 'return_pct', width: 75, render: (_: unknown, r: BacktestTrade) => (
-      <span className={r.return_pct >= 0 ? 'text-red-400' : 'text-emerald-400'}>
-        {r.return_pct >= 0 ? '+' : ''}{pct(r.return_pct)}
-      </span>
-    )},
+    {
+      title: (
+        <AntTooltip title="表格为不复权价；盈亏、收益率按后复权价计算">
+          <span className="cursor-help border-b border-dotted border-secondary-text/40">卖出价</span>
+        </AntTooltip>
+      ),
+      dataIndex: 'sell_price',
+      key: 'sell_price',
+      width: 75,
+      render: (_: unknown, r: BacktestTrade) => renderTradePrice(r.sell_price, r.sell_price_adj),
+    },
+    {
+      title: (
+        <AntTooltip title="后复权卖出价 × 股数">
+          <span className="cursor-help border-b border-dotted border-secondary-text/40">卖出额</span>
+        </AntTooltip>
+      ),
+      key: 'sell_amount',
+      width: 90,
+      render: (_: unknown, r: BacktestTrade) => {
+        if (!r.shares) return '--';
+        return Math.round(r.allocated + r.pnl).toLocaleString();
+      },
+    },
+    {
+      title: (
+        <AntTooltip title="按后复权买卖价计算（除权日连续），非不复权价直接相除">
+          <span className="cursor-help border-b border-dotted border-secondary-text/40">收益</span>
+        </AntTooltip>
+      ),
+      dataIndex: 'return_pct',
+      key: 'return_pct',
+      width: 75,
+      render: (_: unknown, r: BacktestTrade) => (
+        <span className={r.return_pct >= 0 ? 'text-red-400' : 'text-emerald-400'}>
+          {r.return_pct >= 0 ? '+' : ''}{pct(r.return_pct)}
+        </span>
+      ),
+    },
     { title: '盈亏', dataIndex: 'pnl', key: 'pnl', width: 90, render: (_: unknown, r: BacktestTrade) => (
       <span className={r.pnl >= 0 ? 'text-red-400' : 'text-emerald-400'}>
         {r.pnl >= 0 ? '+' : ''}{r.pnl.toFixed(0)}
@@ -641,11 +789,48 @@ const SimpleFactorBacktestPage: React.FC = () => {
     }},
   ];
 
+  const contributionColumns = [
+    { title: '#', dataIndex: 'rank', key: 'rank', width: 40 },
+    { title: '股票', key: 'stock', width: 120, render: (_: unknown, r: typeof topContributionStocks[0]) => (
+      <div className="leading-tight">
+        <div>{r.stock_name}</div>
+        <div className="text-xs text-secondary-text">{r.stock_code}</div>
+      </div>
+    )},
+    { title: '交易次数', dataIndex: 'trade_count', key: 'trade_count', width: 80 },
+    { title: '累计盈亏', dataIndex: 'total_pnl', key: 'total_pnl', width: 100, render: (_: unknown, r: typeof topContributionStocks[0]) => (
+      <span className={r.total_pnl >= 0 ? 'text-red-400' : 'text-emerald-400'}>
+        {r.total_pnl >= 0 ? '+' : ''}{r.total_pnl.toFixed(0)}
+      </span>
+    )},
+    {
+      title: (
+        <AntTooltip title="该股累计盈亏占全部已平仓盈亏之和的比例">
+          <span className="cursor-help border-b border-dotted border-secondary-text/40">贡献占比</span>
+        </AntTooltip>
+      ),
+      dataIndex: 'contribution_pct',
+      key: 'contribution_pct',
+      width: 90,
+      render: (_: unknown, r: typeof topContributionStocks[0]) => pct(r.contribution_pct),
+    },
+    { title: '胜率', dataIndex: 'win_rate', key: 'win_rate', width: 70, render: (_: unknown, r: typeof topContributionStocks[0]) => pct(r.win_rate) },
+    { title: '均收益', dataIndex: 'avg_return_pct', key: 'avg_return_pct', width: 80, render: (_: unknown, r: typeof topContributionStocks[0]) => (
+      <span className={r.avg_return_pct >= 0 ? 'text-red-400' : 'text-emerald-400'}>
+        {fmtSignedPct(r.avg_return_pct)}
+      </span>
+    )},
+  ];
+
   return (
     <AppPage className="max-w-none px-2 md:px-3">
-      <div className="flex flex-col lg:flex-row gap-5">
+      <div className="flex flex-col lg:flex-row lg:items-start gap-5">
         {/* Left Panel */}
-        <div className="lg:w-[260px] shrink-0 space-y-4">
+        <div
+          className="lg:w-[260px] shrink-0 flex flex-col lg:min-h-0 lg:overflow-hidden"
+          style={leftMaxHeight != null ? { maxHeight: leftMaxHeight } : undefined}
+        >
+          <div className="flex shrink-0 flex-col gap-4">
           <Card>
             <div className="space-y-3">
               <div className="font-medium text-sm text-secondary-text">选择因子</div>
@@ -882,12 +1067,13 @@ const SimpleFactorBacktestPage: React.FC = () => {
               </div>
             )}
           </div>
+          </div>
 
           {/* Cache History */}
           {cacheHistory.length > 0 && (
-            <div className="pt-2 border-t border-divider">
-              <div className="text-xs text-secondary-text mb-2">历史记录</div>
-              <div className="space-y-1 max-h-[320px] overflow-y-auto">
+            <div className="flex min-h-0 flex-1 flex-col border-t border-divider pt-2">
+              <div className="mb-2 shrink-0 text-xs text-secondary-text">历史记录</div>
+              <div className="min-h-0 flex-1 space-y-1 overflow-y-auto">
                 {cacheHistory.map((item) => {
                   const factorNames = Object.entries(item.factor_weights)
                     .map(([fn, w]) => `${FACTOR_LABELS[fn] || fn}(${w})`)
@@ -935,7 +1121,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
         </div>
 
         {/* Right Panel */}
-        <div className="flex-1 space-y-4 min-w-0">
+        <div ref={rightPanelRef} className="flex-1 space-y-4 min-w-0">
           {!result ? (
             <Card>
               <EmptyState
@@ -1100,19 +1286,24 @@ const SimpleFactorBacktestPage: React.FC = () => {
               {displayTrades.length > 0 && (
                 <Card>
                   <div className="mb-3 flex items-center justify-between gap-3">
-                    <h3 className="text-lg font-semibold text-foreground">
-                      交易记录 ({summaryPeriod}日持有)
-                    </h3>
+                    <div>
+                      <h3 className="text-lg font-semibold text-foreground">
+                        交易记录 ({summaryPeriod}日持有)
+                      </h3>
+                      <p className="mt-1 text-xs text-secondary-text">
+                        买入价/卖出价为不复权价；盈亏、收益率、买卖金额按后复权价计算（除权除息日价格连续，含分红送转）
+                      </p>
+                    </div>
                     <button
                       type="button"
                       className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-lg border px-2 py-1 text-xs text-secondary-text hover:text-foreground transition-colors"
                       onClick={() => {
-                        const header = '发现日,股票代码,股票名称,买入日,买入价,股数,买入额,卖出日,卖出价,卖出额,收益率,盈亏,状态';
+                        const header = '发现日,股票代码,股票名称,买入日,买入价(不复权),后复权买入价,股数,买入额(复权),卖出日,卖出价(不复权),后复权卖出价,卖出额(复权),收益率(复权),盈亏,状态';
                         const rows = displayTrades.map((t) => {
                           const amount = Math.round(t.allocated || 0);
                           const sellAmount = Math.round((t.allocated || 0) + (t.pnl || 0));
                           const statusMap: Record<string, string> = { closed: '已平', extended: '延期', canceled: '取消', open: '持仓', pending: '待执行', locked: '锁仓' };
-                          return `${t.trade_date},${t.stock_code},"${t.stock_name}",${t.buy_date},${t.buy_price},${t.shares || 0},${amount},${t.sell_date},${t.sell_price},${sellAmount},${t.return_pct},${t.pnl},${statusMap[t.status] || t.status}`;
+                          return `${t.trade_date},${t.stock_code},"${t.stock_name}",${t.buy_date},${t.buy_price},${t.buy_price_adj ?? t.buy_price},${t.shares || 0},${amount},${t.sell_date},${t.sell_price},${t.sell_price_adj ?? t.sell_price},${sellAmount},${t.return_pct},${t.pnl},${statusMap[t.status] || t.status}`;
                         }).join('\n');
                         const blob = new Blob(['﻿' + header + '\n' + rows], { type: 'text/csv;charset=utf-8;' });
                         const url = URL.createObjectURL(blob);
@@ -1134,6 +1325,23 @@ const SimpleFactorBacktestPage: React.FC = () => {
                     scroll={{ x: 1060, y: 640 }}
                     pagination={{ pageSize: 100, showSizeChanger: true, showTotal: (t) => `共 ${t} 条` }}
                   />
+                  {topContributionStocks.length > 0 && (
+                    <div className="mt-6 border-t border-divider pt-4">
+                      <h4 className="mb-1 text-sm font-semibold text-foreground">
+                        收益贡献 Top5 个股
+                      </h4>
+                      <p className="mb-3 text-xs text-secondary-text">
+                        按已平仓/延期交易累计盈亏排序；贡献占比 = 该股盈亏 ÷ 全部已平仓盈亏之和
+                      </p>
+                      <Table
+                        dataSource={topContributionStocks}
+                        columns={contributionColumns}
+                        rowKey="stock_code"
+                        size="small"
+                        pagination={false}
+                      />
+                    </div>
+                  )}
                 </Card>
               )}
             </>

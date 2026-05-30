@@ -57,10 +57,21 @@ def pct_rank(series: pd.Series, index: pd.Index) -> pd.Series:
     return ranks.reindex(index).fillna(50.0)
 
 
+def _lookup_adj_factor_map(adj_by_code: Dict[str, Dict[str, float]], code: str, ds: str) -> Optional[float]:
+    """按日期查 Tushare adj_factor；无精确匹配时取最近一个 ≤ ds 的值。"""
+    per_code = adj_by_code.get(code) or {}
+    if ds in per_code and per_code[ds] > 0:
+        return per_code[ds]
+    prev = [d for d in per_code if d <= ds and per_code[d] > 0]
+    if prev:
+        return per_code[max(prev)]
+    return None
+
+
 def apply_hfq_to_prices(db, df: pd.DataFrame) -> pd.DataFrame:
     """后复权修正 stock_daily 价格列 (in-place)。
 
-    hfq_price = raw_price × adj_max / adj_t
+    hfq_price = raw_price × adj_factor（Tushare 口径）
     df 需包含 code、date 列以及需要修正的价格列 (open/high/low/close)。
     缺失 adj_factor 的行保持原价不变。
     """
@@ -86,23 +97,22 @@ def apply_hfq_to_prices(db, df: pd.DataFrame) -> pd.DataFrame:
         if not do:
             return df
 
-        adj_map: Dict[str, float] = {}       # code|date_str → adj_factor
-        adj_max: Dict[str, float] = {}       # code → max adj_factor
+        adj_by_code: Dict[str, Dict[str, float]] = {}
+        min_do, max_do = min(do), max(do)
 
         with dm.get_session() as s:
             rows = s.query(StockAdjFactor).filter(
                 StockAdjFactor.code.in_(codes),
-                StockAdjFactor.trade_date.in_(do),
+                StockAdjFactor.trade_date >= min_do,
+                StockAdjFactor.trade_date <= max_do,
             ).all()
             for r in rows:
                 ds = r.trade_date.strftime("%Y%m%d")
-                key = f"{r.code}|{ds}"
                 val = float(r.adj_factor)
-                adj_map[key] = val
-                if val > adj_max.get(r.code, 0.0):
-                    adj_max[r.code] = val
+                if val > 0:
+                    adj_by_code.setdefault(str(r.code).strip().zfill(6), {})[ds] = val
 
-        if not adj_map:
+        if not adj_by_code:
             return df
 
         price_cols = [c for c in ["open", "high", "low", "close"] if c in df.columns]
@@ -112,14 +122,12 @@ def apply_hfq_to_prices(db, df: pd.DataFrame) -> pd.DataFrame:
         for idx, row in df.iterrows():
             code = str(row["code"]).strip().zfill(6)
             ds = str(row["date"]).strip()[:8]
-            adj_t = adj_map.get(f"{code}|{ds}")
-            am = adj_max.get(code)
-            if adj_t and adj_t > 0 and am and am > 0:
-                factor = am / adj_t
+            adj_t = _lookup_adj_factor_map(adj_by_code, code, ds)
+            if adj_t and adj_t > 0:
                 for pc in price_cols:
                     v = row[pc]
                     if v is not None and pd.notna(v):
-                        df.at[idx, pc] = float(v) * factor
+                        df.at[idx, pc] = float(v) * adj_t
     except Exception as e:
         logger.debug("[hfq] 复权修正跳过: %s", e)
 

@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- 新条目格式：- [类型] 描述（类型取值：新功能/改进/修复/文档/测试/chore）-->
 <!-- 每条独立一行追加到本段末尾，无需分类标题，合并时冲突最小 -->
+- [修复] 快测与因子后复权修正统一为 Tushare 口径（hfq=raw×adj_factor），修复误用 adj_max/adj_t 导致除权日前后收益率失真；同步修正 apply_hfq_to_prices 与相关注释。
+- [新功能] 新增 `scripts/search_factor_combos.py`：七因子池方案 A 权重下自动搜索 3/4/5 因子组合并输出排名报告。
 - [改进] 快测资金曲线按市值计价（含未平仓持仓）；胜率与交易次数仍仅统计已平仓（closed/extended），总收益与夏普基于含最新持仓的资金曲线。
 - [改进] 机构调研页默认展示最近一个有数据的日期，移除「今天」快捷按钮。
 - [修复] 盘后发现技术评分明细全为 0：盘后批量 StockScorer 路径未初始化 scorer，Phase 4.7 被跳过；修复后写入六维分项，并增强 `repair_postmarket_tech_scores.py` 对已有 JSON 的补算逻辑。

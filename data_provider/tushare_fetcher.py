@@ -2426,7 +2426,7 @@ class TushareFetcher(BaseFetcher):
         """获取单只股票的复权因子历史 (Tushare adj_factor)。
 
         返回 DataFrame with columns: ts_code, trade_date, adj_factor。
-        adj_factor: 前复权因子，qfq_price = unadj_price × adj_factor。
+        adj_factor: Tushare 复权因子；后复权 hfq = unadj × adj_factor，前复权 qfq = unadj × adj_factor / adj_latest。
         """
         if self._api is None:
             return None

@@ -1560,16 +1560,7 @@ class FactorBacktestEngine:
         if mark_date >= today_str:
             spot_price = self._get_realtime_spot_price(code)
             if spot_price is not None:
-                adj_max = self._adj_max.get(code)
-                adj_t = self._adj_cache.get(today_str, {}).get(code)
-                if (not adj_t) and adj_max:
-                    for d in sorted(self._adj_cache.keys(), reverse=True):
-                        adj_t = self._adj_cache[d].get(code)
-                        if adj_t:
-                            break
-                if adj_t and adj_t > 0 and adj_max and adj_max > 0:
-                    return float(spot_price) * adj_max / adj_t
-                return float(spot_price)
+                return self._apply_hfq(code, today_str, float(spot_price))
             p = self._get_price(code, today_str, "close")
             if p and p > 0:
                 return float(p)
@@ -1649,17 +1640,7 @@ class FactorBacktestEngine:
         if sell_date > today_str:
             spot_price = self._get_realtime_spot_price(code)
             if spot_price is not None:
-                adj_max = self._adj_max.get(code)
-                adj_t = self._adj_cache.get(today_str, {}).get(code)
-                if (not adj_t) and adj_max:
-                    # today 的 adj factor 可能还没更新，用最近的
-                    for d in sorted(self._adj_cache.keys(), reverse=True):
-                        adj_t = self._adj_cache[d].get(code)
-                        if adj_t:
-                            break
-                if adj_t and adj_t > 0 and adj_max and adj_max > 0:
-                    spot_price = spot_price * adj_max / adj_t
-                return round(spot_price, 2), sell_date, "open"
+                return round(self._apply_hfq(code, today_str, float(spot_price)), 2), sell_date, "open"
             latest_price = self._get_price(code, today_str, "close")
             if latest_price is not None and latest_price > 0:
                 return latest_price, sell_date, "open"
@@ -1761,25 +1742,22 @@ class FactorBacktestEngine:
         return {k: v * multipliers.get(k, 1.0) for k, v in base_weights.items()}
 
     def _prefetch_adj_factors(self, codes, tds):
-        """预取复权因子用于后复权价格计算。
+        """预取 Tushare 复权因子用于盈亏计算。
 
-        hfq_price = raw_price × adj_max / adj_t
+        hfq_price = raw_price × adj_factor（除权日前后连续，收益率含分红送转）
         """
         if not codes or not tds:
-            return
-        need = [c for c in codes if c not in self._adj_max]
-        if not need and all(
-            c in self._adj_cache.get(d, {}) for d in tds for c in codes
-        ):
             return
         try:
             from src.storage import DatabaseManager, StockAdjFactor
             db = DatabaseManager()
             do = [datetime.strptime(d, "%Y%m%d").date() for d in tds]
+            min_do, max_do = min(do), max(do)
             with db.get_session() as s:
                 rows = s.query(StockAdjFactor).filter(
                     StockAdjFactor.code.in_(codes),
-                    StockAdjFactor.trade_date.in_(do),
+                    StockAdjFactor.trade_date >= min_do,
+                    StockAdjFactor.trade_date <= max_do,
                 ).order_by(StockAdjFactor.trade_date.desc()).all()
                 for r in rows:
                     ds = r.trade_date.strftime("%Y%m%d") if isinstance(r.trade_date, date) else str(r.trade_date)[:8]
@@ -2030,15 +2008,30 @@ class FactorBacktestEngine:
                 fw[pair] = fr
         return fw
 
+    def _lookup_adj_factor(self, code: str, ds: str) -> Optional[float]:
+        """查找指定日期的 Tushare adj_factor；无精确匹配时取最近一个 ≤ ds 的值。"""
+        direct = (self._adj_cache.get(ds) or {}).get(code)
+        if direct and direct > 0:
+            return float(direct)
+        prev = [
+            d for d in self._adj_cache
+            if d <= ds and (self._adj_cache.get(d) or {}).get(code, 0) > 0
+        ]
+        if prev:
+            return float(self._adj_cache[max(prev)][code])
+        return None
+
+    def _apply_hfq(self, code: str, ds: str, raw: float) -> float:
+        """将不复权价转为后复权价（Tushare 口径）：hfq = raw × adj_factor。"""
+        adj_t = self._lookup_adj_factor(code, ds)
+        if adj_t and adj_t > 0:
+            return raw * adj_t
+        return raw
+
     def _get_price(self, code, ds, field):
         v = (self._price_cache.get(ds, {}).get(code) or {}).get(field)
         if v is not None:
-            raw = float(v)
-            adj_t = self._adj_cache.get(ds, {}).get(code)
-            adj_max = self._adj_max.get(code)
-            if adj_t and adj_t > 0 and adj_max and adj_max > 0:
-                return raw * adj_max / adj_t
-            return raw
+            return self._apply_hfq(code, ds, float(v))
 
         # Fallback：当天非 close 字段（open/high/low）未命中缓存时，
         # 优先用当天 close（实时价）作为近似值，避免盘中静默丢弃未平仓交易。
@@ -2046,14 +2039,14 @@ class FactorBacktestEngine:
         if ds == today_str and field != "close":
             close_val = (self._price_cache.get(ds, {}).get(code) or {}).get("close")
             if close_val is not None:
-                return float(close_val)
+                return self._apply_hfq(code, ds, float(close_val))
 
         # 当天 close 仍未命中 → 搜索缓存中最近交易日的 close（仅当天，未来日期无数据不降级）
         if ds == today_str:
             for d in sorted(self._price_cache.keys(), reverse=True):
                 cv = (self._price_cache.get(d, {}).get(code) or {}).get("close")
                 if cv is not None:
-                    return float(cv)
+                    return self._apply_hfq(code, d, float(cv))
 
         return None
 
