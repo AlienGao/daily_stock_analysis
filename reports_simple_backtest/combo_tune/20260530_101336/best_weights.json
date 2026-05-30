@@ -1,0 +1,77 @@
+[
+  {
+    "label": "排名动量+融资融券+回购",
+    "baseline_weights": {
+      "buyback": 5.0,
+      "margin": 20.0,
+      "ranking_momentum": 10.0
+    },
+    "best_weights": {
+      "buyback": 5.0,
+      "margin": 25.0,
+      "ranking_momentum": 10.0
+    },
+    "best_min_ret5": 0.08409385600000005,
+    "best_worst_mdd": 0.21652010912517533
+  },
+  {
+    "label": "机构持股+回购+高管增持",
+    "baseline_weights": {
+      "buyback": 5.0,
+      "insider_buy": 5.0,
+      "institution_hold": 15.0
+    },
+    "best_weights": {
+      "buyback": 5.0,
+      "insider_buy": 5.0,
+      "institution_hold": 11.2
+    },
+    "best_min_ret5": 1.54643988,
+    "best_worst_mdd": 0.20957948588535885
+  },
+  {
+    "label": "机构持股+业绩+回购",
+    "baseline_weights": {
+      "buyback": 5.0,
+      "institution_hold": 15.0,
+      "performance": 5.0
+    },
+    "best_weights": {
+      "buyback": 5.0,
+      "institution_hold": 18.8,
+      "performance": 5.0
+    },
+    "best_min_ret5": 1.3405988760000003,
+    "best_worst_mdd": 0.2344559100701779
+  },
+  {
+    "label": "盈利预测+业绩+回购",
+    "baseline_weights": {
+      "buyback": 5.0,
+      "performance": 5.0,
+      "profit_forecast": 20.0
+    },
+    "best_weights": {
+      "buyback": 5.0,
+      "performance": 5.0,
+      "profit_forecast": 25.0
+    },
+    "best_min_ret5": 1.429380526,
+    "best_worst_mdd": 0.45906096000773533
+  },
+  {
+    "label": "盈利预测+业绩+高管增持",
+    "baseline_weights": {
+      "insider_buy": 5.0,
+      "performance": 5.0,
+      "profit_forecast": 20.0
+    },
+    "best_weights": {
+      "insider_buy": 6.2,
+      "performance": 5.0,
+      "profit_forecast": 15.0
+    },
+    "best_min_ret5": 2.079507618,
+    "best_worst_mdd": 0.24784149310912232
+  }
+]
