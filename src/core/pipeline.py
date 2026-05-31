@@ -2411,10 +2411,6 @@ class StockAnalysisPipeline:
             save_snapshot=save_snapshot,
             query_source=self.query_source,
         )
-        if self.query_source in INTERACTIVE_ANALYSIS_QUERY_SOURCES:
-            from src.home_report_file import write_home_interactive_analysis_markdown
-
-            write_home_interactive_analysis_markdown(result)
     
     def process_single_stock(
         self,

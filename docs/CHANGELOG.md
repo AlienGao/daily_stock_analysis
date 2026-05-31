@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- 新条目格式：- [类型] 描述（类型取值：新功能/改进/修复/文档/测试/chore）-->
 <!-- 每条独立一行追加到本段末尾，无需分类标题，合并时冲突最小 -->
+- [改进] 筹码因子（chip）评分改为趋势主线：winner_rate 以 85% 为峰；深套反弹副线满分 9 且需近成本低点+成本企稳；dist_low 加分降至 +10/+5；移除 wr_pressure。改后需对 chip 回补 `factor_score_snapshots`（`scripts/backfill_factor_snapshots.py --factors chip`）。
+- [改进] `backfill_factor_snapshots.py` 默认每 50 个交易日执行 `WAL checkpoint(TRUNCATE)`，避免回补时 `-wal` 膨胀占满磁盘。
 - [修复] 快测与因子后复权修正统一为 Tushare 口径（hfq=raw×adj_factor），修复误用 adj_max/adj_t 导致除权日前后收益率失真；同步修正 apply_hfq_to_prices 与相关注释。
 - [新功能] 新增 `scripts/search_factor_combos.py`：七因子池方案 A 权重下自动搜索 3/4/5 因子组合并输出排名报告。
 - [改进] 快测资金曲线按市值计价（含未平仓持仓）；胜率与交易次数仍仅统计已平仓（closed/extended），总收益与夏普基于含最新持仓的资金曲线。

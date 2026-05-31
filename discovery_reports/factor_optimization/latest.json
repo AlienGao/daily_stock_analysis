@@ -1,23 +1,18 @@
 {
   "mode": "postmarket",
-  "timestamp": "2026-05-30T23:02:11.934157",
+  "timestamp": "2026-05-31T17:46:53.984977",
   "deltas": {
-    "liquid_oversold": 3.0,
-    "gtja114": 8.0,
-    "insider_buy": 12.0,
-    "institution_hold": 14.0,
-    "performance": -3.0,
-    "buyback": 27.0,
-    "profit_forecast": 2.0
+    "margin": 11.0,
+    "performance": -2.0,
+    "profit_forecast": 2.0,
+    "concept_heat": -3.0
   },
   "recommendation": {
-    "liquid_oversold": 30,
-    "gtja114": 35,
-    "insider_buy": 33,
-    "institution_hold": 22,
-    "performance": 26,
-    "buyback": 32,
-    "profit_forecast": 32
+    "money_flow": 13,
+    "margin": 28,
+    "performance": 24,
+    "profit_forecast": 34,
+    "concept_heat": 20
   },
   "applied": true
 }

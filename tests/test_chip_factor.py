@@ -74,32 +74,44 @@ class TestChipFactor:
 
     # -- 梯度评分 --
 
-    def test_wr_50_gives_max_moderate(self, factor):
-        """wr=50% 获最大值 (15 分)."""
+    def test_wr_85_gives_max_moderate(self, factor):
+        """wr=85% 获 moderate 最大值 (15 分)."""
         df = _make_df(
             ["A.SH", "B.SZ"],
-            d0_winner_rate=[50, 50], d1_winner_rate=[50, 50],
+            d0_winner_rate=[85, 85], d1_winner_rate=[85, 85],
             d0_cost_5pct=[10, 20], d1_cost_5pct=[10, 20],
             d0_cost_95pct=[30, 40], d1_cost_95pct=[30, 40],
             d0_weight_avg=[20, 30], d1_weight_avg=[20, 30],
         )
-        scores = factor.score(df)
-        assert scores["A.SH"] >= 15.0
+        signals = factor._compute_signals(df)
+        assert signals["wr_moderate"]["A.SH"] == pytest.approx(15.0)
+        assert signals["wr_deep"]["A.SH"] == pytest.approx(0.0)
 
-    def test_wr_0_gives_max_deep(self, factor):
-        """wr=0% (全部套牢) 获深套满分 15."""
+    def test_wr_0_deep_requires_confirmation(self, factor):
+        """wr=0 仅当近低点且成本未下移时获 deep 满分 9."""
+        codes = ["A.SH", "B.SZ", "C.SH", "D.SZ", "E.SH"]
         df = _make_df(
-            ["A.SH"],
-            d0_winner_rate=[0], d1_winner_rate=[0],
-            d0_cost_5pct=[10], d1_cost_5pct=[10],
-            d0_cost_95pct=[30], d1_cost_95pct=[30],
-            d0_weight_avg=[20], d1_weight_avg=[20],
+            codes,
+            d0_winner_rate=[0] * 5,
+            d1_winner_rate=[0] * 5,
+            d0_cost_5pct=[10] * 5,
+            d1_cost_5pct=[10] * 5,
+            d0_cost_95pct=[30] * 5,
+            d1_cost_95pct=[30] * 5,
+            d0_weight_avg=[20] * 5,
+            d1_weight_avg=[20] * 5,
+            d0_cost_50pct=[15, 15, 15, 15, 10],
+            d1_cost_50pct=[15, 15, 15, 15, 8],  # E: cost50 下移 → 无 deep
+            his_low=[10] * 5,
+            close=[10.2, 11.0, 12.0, 13.0, 10.2],  # A/E 最接近 his_low
+            avg_range=[0.03] * 5,
         )
-        scores = factor.score(df)
-        assert scores["A.SH"] >= 15.0
+        signals = factor._compute_signals(df)
+        assert signals["wr_deep"]["A.SH"] == pytest.approx(9.0)
+        assert signals["wr_deep"]["E.SH"] == pytest.approx(0.0)
 
-    def test_wr_100_gives_max_pressure(self, factor):
-        """wr=100% (全部获利) 扣满 15 分."""
+    def test_wr_100_low_moderate_only(self, factor):
+        """wr=100% moderate 归零，无 wr_pressure 扣分."""
         df = _make_df(
             ["A.SH"],
             d0_winner_rate=[100], d1_winner_rate=[100],
@@ -107,8 +119,10 @@ class TestChipFactor:
             d0_cost_95pct=[30], d1_cost_95pct=[30],
             d0_weight_avg=[20], d1_weight_avg=[20],
         )
+        signals = factor._compute_signals(df)
+        assert signals["wr_moderate"]["A.SH"] == pytest.approx(0.0)
         scores = factor.score(df)
-        assert scores["A.SH"] <= 0
+        assert scores["A.SH"] >= 0.0
 
     # -- 多日趋势 --
 
@@ -147,9 +161,7 @@ class TestChipFactor:
         scores = factor.score(df)
         # E: wr_change=+133% → wr_change_pct=20 (rank 1/5), cost50_pct=60
         # wr_change_pct >= 20 & < 40 → -5 penalty
-        # wr_moderate: |70-50|=20 → 15-20/50*15=9
-        # E total ≈ 9 - 5 + 5(cost50) = 9
-        # Others: wr_moderate=15 + 5(cost50) = 20
+        # wr_moderate@70 ≈ 12.4
         assert scores["E.SH"] < scores["A.SH"]
 
     def test_wr_decline_outflow_penalty(self, factor):
@@ -221,7 +233,7 @@ class TestChipFactor:
             avg_range=[0.03]*5,  # 日均振幅 3%
         )
         scores = factor.score(df)
-        # A: dist_to_low=2%, norm=2/3=0.67 → dist_low_pct=100 (>80 → +15)
+        # A: dist_to_low=2%, norm=2/3=0.67 → dist_low_pct=100 (>80 → +10)
         # E: dist_to_low=40%, norm=40/3=13.3 → dist_low_pct=20 → no bonus
         assert scores["A.SH"] > scores["E.SH"]
 
@@ -262,7 +274,6 @@ class TestChipFactor:
         scores = factor.score(df)
         # E: cost50_trend=100% → cost50_pct=100 (>80 → +10)
         # A: cost50_trend=0% → cost50_pct=20 → no bonus
-        # E total = 15 + 10 = 25, A total = 15
         assert scores["E.SH"] > scores["A.SH"]
 
     def test_cost50_downtrend_no_bonus(self, factor):
@@ -360,7 +371,7 @@ class TestChipFactor:
             d0_cost_95pct=[30], d1_cost_95pct=[30],
             d0_weight_avg=[20], d1_weight_avg=[20],
         )
-        scores = pd.Series(0.0, index=["A.SH"], name="chip")
+        scores = factor.score(df)
         reasons = factor.describe(df, scores)
         assert "A.SH" not in reasons
 

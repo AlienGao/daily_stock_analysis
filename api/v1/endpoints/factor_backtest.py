@@ -119,7 +119,7 @@ def _save_report(result_dict: dict):
         _REPORTS_DIR.mkdir(parents=True, exist_ok=True)
         mode = result_dict.get("mode", "postmarket")
         factors = result_dict.get("factors", [])
-        factor_parts = [f"w{int(f.get('weight', 0))}_{f.get('name', '')}" for f in factors]
+        factor_parts = [f"w{f.get('weight', 0):g}_{f.get('name', '')}" for f in factors]
         factor_str = "_".join(factor_parts) if factor_parts else "unknown"
         filename = f"backtest_{mode}_{factor_str}.md"
         is_combo = len(factors) >= 2
@@ -198,6 +198,7 @@ def _save_report(result_dict: dict):
         logger.info("回测报告已保存: %s", filepath)
         if is_combo:
             _update_combo_summary()
+        _update_summary_all_factors_from_files()
     except Exception:
         logger.exception("保存回测报告失败")
 
@@ -340,11 +341,11 @@ def _parse_fw_from_preset_name(preset_name: str) -> dict:
     parts = preset_name.split("_")
     i = 2  # skip "backtest", "postmarket"
     while i < len(parts):
-        if parts[i].startswith("w") and parts[i][1:].isdigit():
+        if parts[i].startswith("w") and re.match(r"^\d+(\.\d+)?$", parts[i][1:]):
             w = float(parts[i][1:])
             j = i + 1
             fp = []
-            while j < len(parts) and not (parts[j].startswith("w") and parts[j][1:].isdigit()):
+            while j < len(parts) and not (parts[j].startswith("w") and re.match(r"^\d+(\.\d+)?$", parts[j][1:])):
                 fp.append(parts[j])
                 j += 1
             fn = "_".join(fp)
@@ -727,11 +728,17 @@ def _save_summary_md(results: list):
         prev_rank: dict = {}
         if filepath.exists():
             with open(filepath, "r") as fh:
-                for m in re.finditer(r'\|\s*(\d+)\s*\|\s*(.+?)\s*\|', fh.read()):
-                    rank = int(m.group(1))
-                    label = m.group(2).strip()
-                    if label in ("排名", "因子", "------", "变化"):
+                for line in fh.read().split('\n'):
+                    line = line.strip()
+                    if not line.startswith('|'):
                         continue
+                    parts = [p.strip() for p in line.split('|')]
+                    if len(parts) < 4:
+                        continue
+                    if not parts[1].isdigit():
+                        continue
+                    rank = int(parts[1])
+                    label = parts[3]
                     fn = None
                     for k, v in FLM.items():
                         if v == label:
@@ -975,3 +982,89 @@ def delete_cache_item(cache_id: int):
     if not repo.delete_by_id(cache_id):
         raise HTTPException(status_code=404, detail="缓存不存在")
     return {"ok": True}
+
+def _update_summary_all_factors_from_files():
+    """扫描已存在的单因子报告文件，更新 summary_all_factors.md。"""
+    try:
+        results = []
+        for fpath in sorted(_REPORTS_DIR.glob("backtest_postmarket_w*.md")):
+            content = fpath.read_text(encoding="utf-8")
+            # 读取因子名（中文）-> 转 key
+            ft_match = re.search(r'## 因子\n\n\| 因子 \| 权重 \|\n\|------\|------\|\n(.*?)\n\n', content, re.DOTALL)
+            if not ft_match:
+                continue
+            label_row = ft_match.group(1).strip()
+            m = re.match(r'\|\s*(.+?)\s*\|\s*([\d.]+)\s*\|', label_row)
+            if not m:
+                continue
+            label = m.group(1).strip()
+            fn = None
+            for k, v in FLM.items():
+                if v == label:
+                    fn = k
+                    break
+            if not fn:
+                continue
+
+            # 读取回测参数
+            date_m = re.search(r'- \*\*回测区间\*\*: (\d+) ~ (\d+)', content)
+            init_m = re.search(r'- \*\*初始资金\*\*: ([\d,]+)', content)
+            rfr_m = re.search(r'- \*\*无风险利率\*\*: ([\d.]+)%', content)
+            if not date_m or not init_m:
+                continue
+
+            # 读取 5 日持有期汇总
+            lines = content.split("\n")
+            hd5_found = False
+            for line in lines:
+                if not line.startswith("| 5日 "):
+                    continue
+                parts = [p.strip() for p in line.split("|")]
+                # | 5日 | +751.73% | +398.57% | 61.3% | 39.15% | +5.33 | 331 | 5 | 3 |
+                if len(parts) >= 8:
+                    total_ret = float(parts[2].replace("%", "")) / 100
+                    ann_ret = float(parts[3].replace("%", "")) / 100
+                    win_rate = float(parts[4].replace("%", "")) / 100
+                    mdd = float(parts[5].replace("%", "")) / 100
+                    sharpe = float(parts[6])
+                    trade_count = int(parts[7])
+                    hd5_found = True
+                break
+
+            if not hd5_found:
+                continue
+
+            # 读取 IC(5日)
+            ic5 = 0.0
+            ic_section = re.search(r'## Rank IC（因子有效性）\n\n(.*?)(?:\n\n|\Z)', content, re.DOTALL)
+            if ic_section:
+                for ic_line in ic_section.group(1).split("\n"):
+                    ic_parts = [p.strip() for p in ic_line.split("|")]
+                    if len(ic_parts) >= 4 and ic_parts[1] == label:
+                        # 第4列是 5 日 IC
+                        ic5 = float(ic_parts[3]) if ic_parts[3] else 0.0
+                        break
+
+            init_cap = float(init_m.group(1).replace(",", ""))
+            results.append({
+                "name": fn,
+                "total_return": round(total_ret, 4),
+                "annual_return": round(ann_ret, 4),
+                "win_rate": round(win_rate, 4),
+                "max_drawdown": round(mdd, 4),
+                "sharpe": round(sharpe, 4),
+                "trade_count": trade_count,
+                "ic5": round(ic5, 4),
+                "date_range": {"start": date_m.group(1), "end": date_m.group(2)},
+            })
+
+        if not results:
+            logger.warning("没有单因子报告文件，跳过 summary_all_factors.md 更新")
+            return
+
+        logger.info("从 %d 个单因子报告文件更新 summary_all_factors.md", len(results))
+        # 调用与 batch-test 相同的 _save_summary_md
+        _save_summary_md(results)
+
+    except Exception:
+        logger.exception("更新 summary_all_factors.md 失败")

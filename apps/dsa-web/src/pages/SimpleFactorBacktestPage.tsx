@@ -253,6 +253,22 @@ const SimpleFactorBacktestPage: React.FC = () => {
       });
       setSelectedFactors(sel);
       setFactorWeights(w);
+
+      // 检查缓存历史记录中是否有匹配项，有则自动加载
+      const matched = cacheHistory.find((item) =>
+        cacheParamsMatch(
+          item,
+          Object.fromEntries(entries),
+          startDate || '',
+          endDate || '',
+          topN,
+          holdDays,
+          initialCapital,
+        ),
+      );
+      if (matched) {
+        handleLoadFromCache(matched.id);
+      }    
     }).catch(() => {});
     loadPresets();
 
@@ -268,6 +284,47 @@ const SimpleFactorBacktestPage: React.FC = () => {
 
     // load cache history
     loadCacheHistory();
+
+    // 检查是否有未完成的回测任务，恢复轮询
+    const savedTaskId = localStorage.getItem(TASK_KEY);
+    if (savedTaskId) {
+      apiClient.get('/api/v1/factor-backtest-simple/status', { params: { task_id: savedTaskId } })
+        .then((statusResp) => {
+          const data = statusResp.data;
+          if (data.status === 'running' || data.status === 'queued') {
+            setLoading(true);
+            if (data.status_message) setProgressMsg(data.status_message);
+            // 启动轮询恢复
+            const poll = async () => {
+              const abort = () => {};
+              while (true) {
+                await new Promise((r) => setTimeout(r, 2000));
+                try {
+                  const resp = await apiClient.get('/api/v1/factor-backtest-simple/status', { params: { task_id: savedTaskId } });
+                  const d = resp.data;
+                  if (d.status_message) setProgressMsg(d.status_message);
+                  if (d.status === 'completed') {
+                    setResult(d.result);
+                    localStorage.removeItem(TASK_KEY);
+                    setLoading(false);
+                    return;
+                  }
+                  if (d.status === 'failed') {
+                    setError({ message: d.error || '回测失败' } as ParsedApiError);
+                    localStorage.removeItem(TASK_KEY);
+                    setLoading(false);
+                    return;
+                  }
+                } catch { /* retry */ }
+              }
+            };
+            poll();
+          } else if (data.status === 'completed' || data.status === 'failed') {
+            localStorage.removeItem(TASK_KEY);
+          }
+        })
+        .catch(() => { localStorage.removeItem(TASK_KEY); });
+    }
   }, [loadPresets, loadCacheHistory]);
 
   const selectedCount = useMemo(
@@ -795,7 +852,22 @@ const SimpleFactorBacktestPage: React.FC = () => {
                               }
                               setSelectedFactors(sel);
                               setFactorWeights(w);
-                            }}
+
+                              // 检查缓存历史记录中是否有匹配项，有则自动加载
+                              const matched = cacheHistory.find((item) =>
+                                cacheParamsMatch(
+                                  item,
+                                  Object.fromEntries(entries),
+                                  startDate || '',
+                                  endDate || '',
+                                  topN,
+                                  holdDays,
+                                  initialCapital,
+                                ),
+                              );
+                              if (matched) {
+                                handleLoadFromCache(matched.id);
+                              }                            }}
                           >
                             {label}
                           </button>
@@ -937,7 +1009,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
             <div className="text-xs text-blue-400 text-center">{progressMsg}</div>
           )}
 
-          <div className="pt-2 border-t border-divider space-y-2">
+          <div className="pt-2 pb-2 border-t border-divider space-y-2">
             <Button
               block
               size="small"
@@ -988,7 +1060,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
                     .join('+') || '默认因子';
                   const dateStr = cacheItemTime(item) ? cacheItemTime(item).slice(5, 16).replace('T', ' ') : '';
                   return (
-                    <div key={item.id} className="flex items-center gap-1 group">
+                    <div key={item.id} className="mb-2 flex items-center gap-1 group">
                       <AntTooltip
                         title={(
                           <pre className="m-0 whitespace-pre-wrap text-[11px] leading-relaxed">

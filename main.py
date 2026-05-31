@@ -1318,7 +1318,7 @@ def main() -> int:
             import sys
             sys.path.insert(0, 'scripts')
             from clean_logs import clean_all_logs, clean_replay_logs, clean_wal_files, get_trading_days_ago
-            cutoff = get_trading_days_ago(7)
+            cutoff = get_trading_days_ago(3)
             log_removed, log_size = clean_all_logs(cutoff, dry_run=False)
             replay_removed = clean_replay_logs(dry_run=False)
             wal_removed, wal_size = clean_wal_files(dry_run=False)
@@ -1520,7 +1520,7 @@ def main() -> int:
                     import sys
                     sys.path.insert(0, 'scripts')
                     from clean_logs import clean_all_logs, clean_replay_logs, clean_wal_files, get_trading_days_ago
-                    cutoff = get_trading_days_ago(7)
+                    cutoff = get_trading_days_ago(3)
                     log_removed, log_size = clean_all_logs(cutoff, dry_run=False)
                     replay_removed = clean_replay_logs(dry_run=False)
                     wal_removed, wal_size = clean_wal_files(dry_run=False)

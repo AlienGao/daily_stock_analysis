@@ -251,6 +251,28 @@ gh run view <run_id> --log-failed
 - 手动打 tag 必须使用 annotated tag。
 - 用户可见变更优先通过 PR 合入，并补齐 label 与验证说明。
 
+## Learned User Preferences
+
+- 与用户沟通默认使用中文。
+- 资金曲线 tooltip 展示收益率（%）而非金额，并展示从 hover/高亮日到最新交易日的区间收益。
+- 前端展示不复权价格，盈亏与回测计算需使用 Tushare 后复权价格（`adj_factor`）。
+- 快测回测：胜率与交易次数基于已平仓记录；累计收益与夏普基于含未平仓的最新持仓。
+- 鼠标移入可点击 UI 元素应使用 `cursor: pointer`。
+- 大规模批量回测或因子搜索前，先小范围验证逻辑再全量跑。
+- 因子权重优化默认优先提收益：回撤 slack +3pp，目标函数用 `min(两区间 ret5)`。
+- 定时任务（含「立即分析」）默认关闭 LLM 深度思考；手动单股分析开启深度思考。
+- 多因子搜索完成后，前端快捷组合列表应即时更新，无需手动刷新页面。
+
+## Learned Workspace Facts
+
+- 多因子组合 YAML 存放在 `combos/`；六基准因子加业绩因子，支持 3/4/5 因子组合搜索与权重微调优化。
+- 因子组合搜索与权重优化报告分别输出到 `reports_simple_backtest/` 与 `discovery_reports/factor_optimization/`。
+- 快测历史记录按累计收益降序排列；交叉验证每个组合保留 Top 3。
+- 首页批量/临时分析报告目录为 `reports_temp/`（`HOME_ANALYSIS_REPORTS_DIR`）。
+- 多 Agent 复核在定时批跑结束后触发，结果写入 `reports_multi_agent/`。
+- 新闻检索 Provider 优先级：Bocha > MiniMax > Anspire > Tavily > Brave > SerpAPI > SearXNG。
+- `AGENT_SKILLS` 采用 4–6 策略精简方案，非全开所有策略。
+
 
 <claude-mem-context>
 # Memory Context

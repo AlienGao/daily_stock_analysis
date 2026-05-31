@@ -9,6 +9,8 @@
     python scripts/backfill_factor_snapshots.py --start 20260101   # 指定起始
     python scripts/backfill_factor_snapshots.py --start 20260324 --end 20260515
     python scripts/backfill_factor_snapshots.py --dry-run          # 预览不写入
+    python scripts/backfill_factor_snapshots.py --factors chip     # 仅回补 chip 快照
+    # 默认每 50 个交易日 WAL checkpoint(TRUNCATE)，可用 --wal-checkpoint-every 调整
 """
 
 import argparse
@@ -148,10 +150,32 @@ def load_all_factors():
 
 
 # ---------------------------------------------------------------------------
+# WAL maintenance
+# ---------------------------------------------------------------------------
+
+def _wal_checkpoint_truncate(db_path: Path) -> None:
+    """合并 WAL 并截断，避免大批量回补时 -wal 无限膨胀占满磁盘。"""
+    import sqlite3
+
+    conn = sqlite3.connect(str(db_path), timeout=120)
+    try:
+        row = conn.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone()
+        logger.info("WAL checkpoint(TRUNCATE): %s", row)
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
 # Main backfill
 # ---------------------------------------------------------------------------
 
-def backfill(start_date: str, end_date: str, dry_run: bool = False):
+def backfill(
+    start_date: str,
+    end_date: str,
+    dry_run: bool = False,
+    factor_filter: Optional[List[str]] = None,
+    wal_checkpoint_every: int = 50,
+):
     trading_dates = get_trading_dates(start_date, end_date)
     if not trading_dates:
         logger.error("无交易日数据，区间 %s ~ %s", start_date, end_date)
@@ -162,9 +186,17 @@ def backfill(start_date: str, end_date: str, dry_run: bool = False):
     tushare_mock = MockTushareFetcher(trading_dates)
     akshare_mock = MockAkshareFetcher()
     all_factors = load_all_factors()
+    if factor_filter:
+        want = set(factor_filter)
+        all_factors = [f for f in all_factors if f.name in want]
+        if not all_factors:
+            logger.error("未找到指定因子: %s", ", ".join(sorted(want)))
+            return
+        logger.info("仅回补因子: %s", ", ".join(f.name for f in all_factors))
 
     from src.storage import DatabaseManager
     db = DatabaseManager()
+    db_path = Path(db._engine.url.database) if getattr(db, "_engine", None) else None
 
     total_saved = 0
     for i, trade_date in enumerate(trading_dates):
@@ -210,9 +242,20 @@ def backfill(start_date: str, end_date: str, dry_run: bool = False):
                 except Exception:
                     logger.warning("[%s] 保存失败", mode, exc_info=True)
 
+        if (
+            not dry_run
+            and db_path
+            and db_path.exists()
+            and wal_checkpoint_every > 0
+            and (i + 1) % wal_checkpoint_every == 0
+        ):
+            _wal_checkpoint_truncate(db_path)
+
     if dry_run:
         logger.info("DRY-RUN 完成（未写入）")
     else:
+        if db_path and db_path.exists():
+            _wal_checkpoint_truncate(db_path)
         logger.info("回补完成，共写入 %d 条", total_saved)
 
 
@@ -225,7 +268,22 @@ def main():
     parser.add_argument("--start", default="20260324", help="起始日期 YYYYMMDD (默认 20260324)")
     parser.add_argument("--end", default=None, help="结束日期 YYYYMMDD (默认今天)")
     parser.add_argument("--dry-run", action="store_true", help="预览不写入")
+    parser.add_argument(
+        "--factors",
+        default=None,
+        help="逗号分隔因子名，仅回补指定因子（如 chip）",
+    )
+    parser.add_argument(
+        "--wal-checkpoint-every",
+        type=int,
+        default=50,
+        help="每处理 N 个交易日执行 WAL checkpoint(TRUNCATE)，0=仅结束时执行",
+    )
     args = parser.parse_args()
+
+    factor_filter = None
+    if args.factors:
+        factor_filter = [x.strip() for x in args.factors.split(",") if x.strip()]
 
     end_date = args.end or datetime.now().strftime("%Y-%m-%d")
     start_date = f"{args.start[:4]}-{args.start[4:6]}-{args.start[6:]}"
@@ -233,7 +291,13 @@ def main():
         end_date = f"{args.end[:4]}-{args.end[4:6]}-{args.end[6:]}"
 
     logger.info("回补区间: %s ~ %s, dry_run=%s", start_date, end_date, args.dry_run)
-    backfill(start_date, end_date, dry_run=args.dry_run)
+    backfill(
+        start_date,
+        end_date,
+        dry_run=args.dry_run,
+        factor_filter=factor_filter,
+        wal_checkpoint_every=args.wal_checkpoint_every,
+    )
 
 
 if __name__ == "__main__":

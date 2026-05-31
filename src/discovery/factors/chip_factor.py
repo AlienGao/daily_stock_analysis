@@ -15,13 +15,34 @@ from src.discovery.factors.base import BaseFactor, safe_pct_change, pct_rank, ap
 
 logger = logging.getLogger(__name__)
 
+_WR_OPT = 85.0
+_WR_MODERATE_MAX = 15.0
+_WR_DEEP_MAX = 9.0
+_WR_DEEP_DIST_LOW_MIN = 60.0
+
+
+def _wr_moderate_score(wr: pd.Series) -> pd.Series:
+    """winner_rate 以 85% 为峰，向两侧递减（0~100）。"""
+    left = (wr / _WR_OPT * _WR_MODERATE_MAX).clip(0, _WR_MODERATE_MAX)
+    right = (
+        _WR_MODERATE_MAX
+        - (wr - _WR_OPT) / (100.0 - _WR_OPT) * _WR_MODERATE_MAX
+    ).clip(0, _WR_MODERATE_MAX)
+    return pd.Series(np.where(wr <= _WR_OPT, left, right), index=wr.index)
+
+
+def _wr_deep_base(wr: pd.Series) -> pd.Series:
+    """深套基础分（wr < 15%），满分 9，需后续 gate 确认。"""
+    base = ((15.0 - wr) / 15.0 * _WR_DEEP_MAX).clip(0, _WR_DEEP_MAX)
+    return base.where(wr < 15, 0.0)
+
 
 class ChipFactor(BaseFactor):
     """筹码胜率因子。
 
     基于 5 日 winner_rate 趋势 + 全市场百分位归一化，判断筹码结构和多空方向。
-    多头：获利适中、深度套牢反弹、筹码集中、洗盘松动、成本上移、靠近历史低点。
-    空头：获利盘过大、追高堆积、成本下移、靠近历史高点、筹码结构偏散。
+    主线：中高胜率（85% 附近）+ 筹码集中 + 成本上移 + 洗盘确认。
+    副线：深套反弹（wr<15%，需近成本低点且成本未下移，最多 +9）。
     """
 
     name = "chip"
@@ -203,7 +224,7 @@ class ChipFactor(BaseFactor):
     def _compute_signals(self, df: pd.DataFrame) -> Dict[str, pd.Series]:
         """计算所有信号，返回信号名 → Series 的映射。
 
-        绝对值信号（有经济含义）：wr_moderate, wr_deep, wr_pressure
+        绝对值信号（有经济含义）：wr_moderate, wr_deep
         波动率归一化百分位信号：wr_change_pct, dist_low_pct, dist_high_pct,
                                cost50_pct, skew_pct, conc_pct
         """
@@ -247,25 +268,6 @@ class ChipFactor(BaseFactor):
         else:
             wr_vol = pd.Series(1.0, index=idx)
         wr_vol = wr_vol.fillna(1.0)
-
-        # ================================================================
-        # 绝对值信号（经济含义明确，不做百分位）
-        # ================================================================
-
-        # winner_rate 适中（钟形：50% 最优, 0-15 渐变）
-        wr_dist = (wr_last - 50).abs()
-        wr_moderate = (15.0 - wr_dist / 50.0 * 15.0).clip(0, 15)
-        signals["wr_moderate"] = wr_moderate
-
-        # 深度套牢（wr < 15%，越低越加分, 0-15 渐变）
-        wr_deep = ((15.0 - wr_last) / 15.0 * 15.0).clip(0, 15)
-        wr_deep[wr_last >= 15] = 0
-        signals["wr_deep"] = wr_deep
-
-        # 获利盘过大抛压（wr > 85%，越高越扣分, 0-15 渐变）
-        wr_pressure = ((wr_last - 85.0) / 15.0 * 15.0).clip(0, 15)
-        wr_pressure[wr_last <= 85] = 0
-        signals["wr_pressure"] = wr_pressure
 
         # 筹码集中度（已是百分位，保持不变）
         cost_range = (cost_95 - cost_5).abs()
@@ -311,6 +313,16 @@ class ChipFactor(BaseFactor):
         signals["cost50_trend"] = cost50_trend
         signals["cost50_pct"] = pct_rank(cost50_trend, idx)
 
+        # ================================================================
+        # 绝对值信号（依赖 dist_low / cost 的 deep 在百分位信号之后计算）
+        # ================================================================
+
+        signals["wr_moderate"] = _wr_moderate_score(wr_last)
+
+        wr_deep_base = _wr_deep_base(wr_last)
+        deep_confirmed = (signals["dist_low_pct"] > _WR_DEEP_DIST_LOW_MIN) & (cost50_trend >= 0)
+        signals["wr_deep"] = wr_deep_base.where(deep_confirmed, 0.0)
+
         # 筹码结构不对称性（上方越松散分位越高）
         upper_range = (cost_85 - cost_50).abs()
         lower_range = (cost_50 - cost_15).abs()
@@ -347,18 +359,6 @@ class ChipFactor(BaseFactor):
         close = df.get("close", pd.Series(np.nan, index=idx))
         avg_range = df.get("avg_range", pd.Series(np.nan, index=idx))
 
-        # 绝对值信号
-        wr_dist = (wr - 50).abs()
-        signals["wr_moderate"] = (15.0 - wr_dist / 50.0 * 15.0).clip(0, 15)
-
-        wr_deep = ((15.0 - wr) / 15.0 * 15.0).clip(0, 15)
-        wr_deep[wr >= 15] = 0
-        signals["wr_deep"] = wr_deep
-
-        wr_pressure = ((wr - 85.0) / 15.0 * 15.0).clip(0, 15)
-        wr_pressure[wr <= 85] = 0
-        signals["wr_pressure"] = wr_pressure
-
         cost_range = (cost_95 - cost_5).abs()
         concentration = cost_range / weight_avg.replace(0, np.nan)
         signals["conc_pct"] = pct_rank(-concentration, idx)
@@ -391,6 +391,10 @@ class ChipFactor(BaseFactor):
         signals["cost50_trend"] = pd.Series(0.0, index=idx)
         signals["cost50_pct"] = pd.Series(50.0, index=idx)
 
+        signals["wr_moderate"] = _wr_moderate_score(wr)
+        # 单日无 5 日成本趋势，不发 deep 副线分
+        signals["wr_deep"] = pd.Series(0.0, index=idx)
+
         upper_range = (cost_85 - cost_50).abs()
         lower_range = (cost_50 - cost_15).abs()
         lower_safe = lower_range.replace(0, np.nan)
@@ -415,7 +419,6 @@ class ChipFactor(BaseFactor):
         # ================================================================
         scores = scores + signals.get("wr_moderate", pd.Series(0.0, index=df.index))
         scores = scores + signals.get("wr_deep", pd.Series(0.0, index=df.index))
-        scores = scores - signals.get("wr_pressure", pd.Series(0.0, index=df.index))
 
         # 筹码集中度（保持百分位分档）
         conc_pct = signals.get("conc_pct", pd.Series(50.0, index=df.index))
@@ -426,10 +429,10 @@ class ChipFactor(BaseFactor):
         # 百分位信号（替换硬阈值）
         # ================================================================
 
-        # 距历史低点 (0-15)：越近分位越高
+        # 距历史低点 (0-10)：越近分位越高（弱化抄底，主线跟趋势）
         dist_low_pct = signals.get("dist_low_pct", pd.Series(50.0, index=df.index))
-        scores.loc[dist_low_pct > 80] += 15.0
-        scores.loc[(dist_low_pct > 60) & (dist_low_pct <= 80)] += 7.0
+        scores.loc[dist_low_pct > 80] += 10.0
+        scores.loc[(dist_low_pct > 60) & (dist_low_pct <= 80)] += 5.0
 
         # 距历史高点 (-15-0)：越近分位越低
         dist_high_pct = signals.get("dist_high_pct", pd.Series(50.0, index=df.index))
@@ -483,7 +486,6 @@ class ChipFactor(BaseFactor):
 
         wr_moderate = signals.get("wr_moderate", pd.Series(0.0, index=df.index))
         wr_deep = signals.get("wr_deep", pd.Series(0.0, index=df.index))
-        wr_pressure = signals.get("wr_pressure", pd.Series(0.0, index=df.index))
         wr_change = signals.get("wr_change", pd.Series(0.0, index=df.index))
         wr_change_pct = signals.get("wr_change_pct", pd.Series(50.0, index=df.index))
         conc_pct = signals.get("conc_pct", pd.Series(50.0, index=df.index))
@@ -516,11 +518,14 @@ class ChipFactor(BaseFactor):
 
             # 获利结构
             if wr_deep.get(ts_code, 0) > 0:
-                r.append(f"深度套牢(获利{wr:.0f}%)，反弹潜力大")
+                r.append(f"深度套牢(获利{wr:.0f}%)，近成本低点且成本企稳，反弹潜力")
             elif wr_moderate.get(ts_code, 0) > 5:
-                r.append(f"获利适中({wr:.0f}%)，抛压不大")
-            elif wr_pressure.get(ts_code, 0) > 0:
-                r.append(f"获利盘过大({wr:.0f}%)，注意抛压")
+                if wr >= 75:
+                    r.append(f"获利结构佳({wr:.0f}%)，惜售支撑")
+                else:
+                    r.append(f"获利偏低({wr:.0f}%)，待趋势确认")
+            elif wr > 90:
+                r.append(f"获利盘偏高({wr:.0f}%)，注意兑现")
 
             # 筹码集中度
             cp = conc_pct.get(ts_code, 50)
@@ -548,9 +553,9 @@ class ChipFactor(BaseFactor):
             ar = avg_range.get(ts_code, np.nan)
             if not np.isnan(dtl) and dlp > 80:
                 rng_info = f"，日均振幅{ar*100:.1f}%" if not np.isnan(ar) else ""
-                r.append(f"距历史成本低点{dtl:.0f}%{rng_info}，强反弹信号")
+                r.append(f"距历史成本低点{dtl:.0f}%{rng_info}，接近低位")
             elif not np.isnan(dtl) and dlp > 60:
-                r.append(f"距历史成本低点{dtl:.0f}%，有反弹空间")
+                r.append(f"距历史成本低点{dtl:.0f}%，偏低位置")
 
             # 距历史高点（波动率归一化后）
             dth = dist_to_high.get(ts_code, np.nan)
