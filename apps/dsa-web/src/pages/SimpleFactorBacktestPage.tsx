@@ -802,7 +802,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
               <div className="text-xs text-secondary-text">
                 已选 {selectedCount} 个因子
               </div>
-              <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+              <div className="grid grid-cols-1 gap-1.5">
                 {availableFactors.map((f) => (
                   <div key={f.name} className="flex items-center gap-2">
                     <Checkbox

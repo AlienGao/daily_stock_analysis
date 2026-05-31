@@ -723,7 +723,7 @@ const FactorBacktestPage: React.FC = () => {
                 </div>
               )}
 
-              <div className="max-h-[560px] overflow-y-auto space-y-1.5 pr-1">
+              <div className="space-y-1.5 ">
                 {[...(snapData?.factors ?? [])].sort((a, b) => (factorWeights[b.name] ?? 0) - (factorWeights[a.name] ?? 0)).map((f) => (
                   <div key={f.name} className="flex items-center gap-2 py-1">
                     <Checkbox

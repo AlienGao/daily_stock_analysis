@@ -1,0 +1,20 @@
+{
+  "report_path": "/Users/justingao/Documents/daily_stock_analysis/discovery_reports/factor_optimization/optimize_20260601_0727.md",
+  "timestamp": "2026-06-01T07:27:12.258762",
+  "mode": "intraday",
+  "recommendation": {
+    "ma_entry": 24,
+    "momentum": 9,
+    "sector": 5,
+    "popularity": 32
+  },
+  "baseline": {
+    "ma_entry": 29.0,
+    "momentum": 10.0,
+    "sector": 14.0,
+    "popularity": 33.0,
+    "ranking_momentum": 16.0,
+    "rebound": 15.0
+  },
+  "applied": true
+}
