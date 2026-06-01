@@ -2699,7 +2699,7 @@ class StockAnalysisPipeline:
                                 from datetime import date
                                 from pathlib import Path
                                 report = engine.format_report(discovered, mode="postmarket")
-                                reports_dir = Path(__file__).resolve().parent.parent.parent / "discovery_reports"
+                                reports_dir = Path(__file__).resolve().parent.parent.parent / "reports_discovery"
                                 reports_dir.mkdir(parents=True, exist_ok=True)
                                 date_str = (
                                     tushare_fetcher.get_trade_time(early_time="00:00", late_time="18:00")

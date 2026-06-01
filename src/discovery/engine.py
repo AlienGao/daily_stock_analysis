@@ -55,7 +55,7 @@ _FACTOR_DISPLAY: Dict[str, str] = {
     "gtja114": "GTJA114",
 }
 
-_REPORTS_DIR = Path(__file__).resolve().parent.parent.parent / "discovery_reports"
+_REPORTS_DIR = Path(__file__).resolve().parent.parent.parent / "reports_discovery"
 _SELECTION_HISTORY_FILE = _REPORTS_DIR / "selection_history.json"
 
 

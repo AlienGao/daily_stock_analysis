@@ -31,7 +31,7 @@ from src.discovery.factors.base import DiscoveryResult
 logger = logging.getLogger(__name__)
 
 _OUTPUT_PATH = "/tmp/discovery_top10.json"
-_REPORTS_DIR = Path(__file__).resolve().parent.parent.parent / "discovery_reports"
+_REPORTS_DIR = Path(__file__).resolve().parent.parent.parent / "reports_discovery"
 _PID_FILE = Path("/tmp/discovery_scanner.pid")
 
 
@@ -765,7 +765,7 @@ class IntradayScanner:
         except Exception as e:
             logger.warning("[Scanner] 写入 %s 失败: %s", _OUTPUT_PATH, e)
 
-        # 落盘 Markdown 报告到 discovery_reports
+        # 落盘 Markdown 报告到 reports_discovery
         # 交易日 → 直接保存（供回测使用）；非交易日 → non_trading/ 子目录（仅展示，不回测）
         try:
             date_str = date.today().strftime('%Y%m%d')
@@ -827,7 +827,7 @@ class IntradayScanner:
             with open(_OUTPUT_PATH, "w", encoding="utf-8") as f:
                 json.dump(payload, f, ensure_ascii=False, indent=2)
 
-            # 同步清空 discovery_reports 下的 topn JSON
+            # 同步清空 reports_discovery 下的 topn JSON
             if self._is_trading_day():
                 save_dir = _REPORTS_DIR
             else:

@@ -1084,13 +1084,13 @@ def start_bot_stream_clients(config: Config) -> None:
 
 
 def _save_discovery_report(report: str, results=None, date_str: str = None) -> Optional[Path]:
-    """Save discovery report to discovery_reports/postmarket_YYYYMMDD.md + _topn.json.
-    非交易日 → discovery_reports/non_trading/ 子目录（仅展示，不回测）。
+    """Save discovery report to reports_discovery/postmarket_YYYYMMDD.md + _topn.json.
+    非交易日 → reports_discovery/non_trading/ 子目录（仅展示，不回测）。
     """
     try:
         from datetime import date
         from src.discovery.engine import is_trading_day
-        base_dir = Path(__file__).resolve().parent / "discovery_reports"
+        base_dir = Path(__file__).resolve().parent / "reports_discovery"
         if is_trading_day():
             reports_dir = base_dir
         else:
@@ -1112,7 +1112,7 @@ def _save_discovery_report(report: str, results=None, date_str: str = None) -> O
 
 
 def _save_topn_json(reports_dir: Path, date_str: str, results) -> None:
-    """保存 Top N 结构化 JSON 到 discovery_reports/postmarket_YYYYMMDD_topn.json。"""
+    """保存 Top N 结构化 JSON 到 reports_discovery/postmarket_YYYYMMDD_topn.json。"""
     import json
     topn = []
     for i, r in enumerate(results, 1):

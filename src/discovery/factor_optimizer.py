@@ -23,7 +23,7 @@ from src.discovery.factor_backtest_engine import FactorBacktestEngine
 
 logger = logging.getLogger(__name__)
 
-_REPORT_DIR = Path(__file__).resolve().parent.parent.parent / "discovery_reports" / "factor_optimization"
+_REPORT_DIR = Path(__file__).resolve().parent.parent.parent / "reports_discovery" / "factor_optimization"
 _LATEST_JSON = _REPORT_DIR / "latest.json"
 _ENV_PATH = Path(__file__).resolve().parents[2] / ".env"
 _TPE_STORAGE = Path(__file__).resolve().parent.parent.parent / "optuna_cache" / "factor_opt.db"

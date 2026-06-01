@@ -7044,7 +7044,7 @@ class DatabaseManager(metaclass=_DatabaseManagerMeta):
     ) -> List[str]:
         """获取指定日期扫描结果的 Top N stock_code 列表。
 
-        优先读取 discovery_reports/{mode}_{date}_topn.json（已过滤超买/ST/低盈亏比），
+        优先读取 reports_discovery/{mode}_{date}_topn.json（已过滤超买/ST/低盈亏比），
         文件不存在或日期不一致时降级读 DB。
 
         Args:
@@ -7057,7 +7057,7 @@ class DatabaseManager(metaclass=_DatabaseManagerMeta):
         """
         # 优先读 JSON（过滤后的准确结果）
         try:
-            reports_dir = Path(__file__).resolve().parent.parent / "discovery_reports"
+            reports_dir = Path(__file__).resolve().parent.parent / "reports_discovery"
             json_file = reports_dir / f"{mode}_{scan_date}_topn.json"
             if json_file.exists():
                 data = json.loads(json_file.read_text(encoding="utf-8"))

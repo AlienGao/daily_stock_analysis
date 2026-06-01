@@ -22,7 +22,7 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-_REPORTS_DIR = Path(__file__).resolve().parent.parent.parent / "discovery_reports"
+_REPORTS_DIR = Path(__file__).resolve().parent.parent.parent / "reports_discovery"
 _DEFAULT_INITIAL_CAPITAL = 5_000_000.0
 
 
@@ -149,7 +149,7 @@ class DiscoveryBacktest:
         else:
             sd = ed - timedelta(days=lookback_days)
 
-        # 扫描 discovery_reports 下所有匹配的 JSON 文件
+        # 扫描 reports_discovery 下所有匹配的 JSON 文件
         files = sorted(_REPORTS_DIR.glob(f"{prefix}*_topn.json"))
         discovery_dates: List[date] = []
         for fp in files:

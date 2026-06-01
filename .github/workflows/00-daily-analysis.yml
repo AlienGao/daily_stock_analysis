@@ -382,7 +382,7 @@ jobs:
 
           # 拼接当日盘后发现股票到 STOCK_LIST 前面
           TODAY=$(TZ='Asia/Shanghai' date '+%Y%m%d')
-          DISCOVERY_FILE="discovery_reports/postmarket_${TODAY}_topn.json"
+          DISCOVERY_FILE="reports_discovery/postmarket_${TODAY}_topn.json"
           if [ -f "$DISCOVERY_FILE" ]; then
             DISCOVERED=$(jq -r '[.[].stock_code] | join(",")' "$DISCOVERY_FILE" 2>/dev/null)
             if [ -n "$DISCOVERED" ] && [ "$DISCOVERED" != "null" ] && [ "$DISCOVERED" != "" ]; then

@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 def repair_postmarket_tech_scores(date_str: str = "20260513") -> None:
-    reports_dir = Path(__file__).resolve().parent.parent / "discovery_reports"
+    reports_dir = Path(__file__).resolve().parent.parent / "reports_discovery"
     json_file = reports_dir / f"postmarket_{date_str}_topn.json"
 
     if not json_file.exists():

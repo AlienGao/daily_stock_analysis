@@ -56,7 +56,7 @@
 
 ### 护栏 B: 稳定性检查
 
-- 每次优化结果保存到 `discovery_reports/factor_optimization/latest.json`
+- 每次优化结果保存到 `reports_discovery/factor_optimization/latest.json`
 - 下次运行时，对比每个因子的推荐方向
 - 若同一因子**连续两次推荐方向相反**（前次+5，本次-5 或前次-10，本次+5）：
   - 该因子本轮不调整，保持原权重
@@ -88,7 +88,7 @@
 
 ## 变更报告
 
-每次 `--factor-optimize` 生成 `discovery_reports/factor_optimization/optimize_YYYYMMDD_HHMM.md`：
+每次 `--factor-optimize` 生成 `reports_discovery/factor_optimization/optimize_YYYYMMDD_HHMM.md`：
 
 ```markdown
 # 因子权重优化报告
@@ -147,7 +147,7 @@
 ## 应用指令
 
 ```
-python main.py --factor-apply discovery_reports/factor_optimization/optimize_20260516_2130.md
+python main.py --factor-apply reports_discovery/factor_optimization/optimize_20260516_2130.md
 ```
 ```
 

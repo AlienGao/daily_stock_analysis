@@ -1480,7 +1480,7 @@ class LGBTrainer:
         return models
 
     def save_report(self, top_n: int = 5) -> str:
-        """保存训练报告到 discovery_reports/lgb_report_*.md/json。
+        """保存训练报告到 reports_discovery/lgb_report_*.md/json。
 
         包含模型摘要、特征重要性、Top N 预测。
         """

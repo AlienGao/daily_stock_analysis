@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 _SCAN_OUTPUT = "/tmp/discovery_top10.json"
-_INTRADAY_REPORTS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "discovery_reports"
+_INTRADAY_REPORTS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "reports_discovery"
 _SNAPSHOT_CACHE_FILE = _INTRADAY_REPORTS_DIR / ".snapshot_dates_cache.json"
 
 
@@ -909,7 +909,7 @@ def update_whitelist(body: UpdateWhitelistRequest):
 
 def _find_latest_report_date(candidate: str, pattern: str = "postmarket_") -> str:
     """从 candidate 向前查找最近一个存在报告文件的日期（最多 14 天）。"""
-    reports_dir = Path(__file__).resolve().parent.parent.parent.parent / "discovery_reports"
+    reports_dir = Path(__file__).resolve().parent.parent.parent.parent / "reports_discovery"
     for offset in range(14):
         d = (datetime.strptime(candidate, "%Y%m%d") - timedelta(days=offset)).strftime("%Y%m%d")
         for subdir in (reports_dir, reports_dir / "non_trading"):
@@ -931,7 +931,7 @@ def get_postmarket_report(
         report_date = date.today().strftime("%Y%m%d")
 
     from datetime import timedelta
-    reports_dir = Path(__file__).resolve().parent.parent.parent.parent / "discovery_reports"
+    reports_dir = Path(__file__).resolve().parent.parent.parent.parent / "reports_discovery"
     effective_date = report_date
 
     # 按优先级查找报告文件：交易日目录 → 前一天 → non_trading/ 目录 → 内存缓存
@@ -1357,14 +1357,14 @@ def run_postmarket_discovery():
                     "formation_score": getattr(r, "formation_score", 0.0),
                 })
 
-            # 保存报告 + 结构化数据到 discovery_reports
+            # 保存报告 + 结构化数据到 reports_discovery
             # 交易日 → 直接保存（供回测使用）；非交易日 → non_trading/ 子目录（仅展示，不回测）
             from src.discovery.engine import is_trading_day
             date_str = (
                 tushare_fetcher.get_trade_time(early_time="00:00", late_time="18:00")
                 or date.today().strftime('%Y%m%d')
             )
-            base_dir = Path(__file__).resolve().parent.parent.parent.parent / "discovery_reports"
+            base_dir = Path(__file__).resolve().parent.parent.parent.parent / "reports_discovery"
             if is_trading_day(engine):
                 reports_dir = base_dir
             else:
@@ -2618,7 +2618,7 @@ def factor_optimize_apply(req: FactorApplyRequest):
 def factor_optimize_history(
     mode: Optional[str] = Query(None, description="筛选模式：intraday 或 postmarket"),
 ):
-    """扫描 discovery_reports/factor_optimization/ 目录下所有元数据 JSON，返回优化历史列表。"""
+    """扫描 reports_discovery/factor_optimization/ 目录下所有元数据 JSON，返回优化历史列表。"""
     import glob
 
     opt_dir = _INTRADAY_REPORTS_DIR / "factor_optimization"

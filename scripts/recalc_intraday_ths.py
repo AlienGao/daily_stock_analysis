@@ -7,8 +7,8 @@
 更新内容:
     1. factor_score_snapshots 表中 sector 因子分
     2. ScanResultIntraday 表中 total_score / rank / factor_scores_json
-    3. discovery_reports/intraday_{date}_topn.json
-    4. discovery_reports/intraday_{date}.md
+    3. reports_discovery/intraday_{date}_topn.json
+    4. reports_discovery/intraday_{date}.md
 """
 import json
 import logging
@@ -314,7 +314,7 @@ def main():
     print(f"  ScanResultIntraday: 更新 {updated_scan} 条, 重排")
 
     # ── 9. 更新本地文件 ──
-    reports_dir = Path(__file__).resolve().parent.parent / "discovery_reports"
+    reports_dir = Path(__file__).resolve().parent.parent / "reports_discovery"
     reports_dir.mkdir(parents=True, exist_ok=True)
 
     # 9a. Top N JSON

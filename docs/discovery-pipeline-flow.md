@@ -72,7 +72,7 @@
 
 5. _write_output()
    ├─ 写 /tmp/discovery_top10.json (实时输出)
-   └─ 写 discovery_reports/intraday_*.json / *.md
+   └─ 写 reports_discovery/intraday_*.json / *.md
 
 6. _notify_new_stocks()
    └─ 推送新上榜股票 (企业微信/webhook)

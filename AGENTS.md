@@ -266,7 +266,7 @@ gh run view <run_id> --log-failed
 ## Learned Workspace Facts
 
 - 多因子组合 YAML 存放在 `combos/`；六基准因子加业绩因子，支持 3/4/5 因子组合搜索与权重微调优化。
-- 因子组合搜索与权重优化报告分别输出到 `reports_simple_backtest/` 与 `discovery_reports/factor_optimization/`。
+- 因子组合搜索与权重优化报告分别输出到 `reports_simple_backtest/` 与 `reports_discovery/factor_optimization/`。
 - 快测历史记录按累计收益降序排列；交叉验证每个组合保留 Top 3。
 - 首页批量/临时分析报告目录为 `reports_temp/`（`HOME_ANALYSIS_REPORTS_DIR`）。
 - 多 Agent 复核在定时批跑结束后触发，结果写入 `reports_multi_agent/`。

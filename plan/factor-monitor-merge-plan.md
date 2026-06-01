@@ -9,7 +9,7 @@
 | 文件 | `src/discovery/factor_monitor.py` | `src/discovery/factor_backtest_engine.py` |
 | 触发 | 每日自动（Phase 5.6） | 手动（Web UI 按钮） |
 | 核心指标 | forward return（实际涨跌幅） | Rank IC（Spearman 秩相关） |
-| 存储 | `discovery_reports/factor_monitor/picks/*.json` + `performance.json` | score snapshots（DB） |
+| 存储 | `reports_discovery/factor_monitor/picks/*.json` + `performance.json` | score snapshots（DB） |
 | 报告 | Markdown（`format_report()`） | 前端图表（资金曲线 + IC 表格） |
 | 额外功能 | 因子变化检测 + 历史回放 | 多持有期、管线模式、分位数收益 |
 | 下游消费 | Phase 5.7 FactorTuner 读取 `performance.json` | 无 |
@@ -79,7 +79,7 @@ FactorTuner 当前读取 `performance.json`。建议直接删除 FactorTuner —
 |------|------|
 | `src/discovery/factor_monitor.py` | 功能被 `quick_monitor()` 替代 |
 | `src/discovery/factor_tuner.py` | 自动调优改为手动 |
-| `discovery_reports/factor_monitor/` | picks JSON + performance.json 不再需要 |
+| `reports_discovery/factor_monitor/` | picks JSON + performance.json 不再需要 |
 
 ### 5. 改动清单
 

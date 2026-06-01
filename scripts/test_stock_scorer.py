@@ -5,7 +5,7 @@ from pathlib import Path
 from datetime import date, timedelta
 
 # 读取今日盘中 Top N
-report_path = Path(__file__).parent.parent / "discovery_reports/intraday_20260513_topn.json"
+report_path = Path(__file__).parent.parent / "reports_discovery/intraday_20260513_topn.json"
 topn = json.loads(report_path.read_text())
 
 from src.storage import DatabaseManager

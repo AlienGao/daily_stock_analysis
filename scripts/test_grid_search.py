@@ -247,7 +247,7 @@ def main():
 
     out_path = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "..",
-        "discovery_reports", f"grid_search_{date.today().strftime('%Y%m%d')}.json")
+        "reports_discovery", f"grid_search_{date.today().strftime('%Y%m%d')}.json")
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(results, f, ensure_ascii=False, indent=2)
