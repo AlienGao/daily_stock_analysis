@@ -1705,6 +1705,10 @@ class StockDiscoveryEngine:
 
         # Phase 5.5: 拥挤度惩罚
         results = self._apply_crowding_penalty(results, trade_date)
+        # 拥挤度惩罚修改了 r.score，需要重算 composite_score 并重新排序
+        for r in results:
+            r.composite_score = alpha * r.score + (1 - alpha) * r.tech_score
+        results.sort(key=lambda r: r.composite_score, reverse=True)
 
         # Phase 5.6: 因子 IC 监控（盘中模式不触发，盘后统一检查 intraday+postmarket）
         if not skip_monitor and mode == "postmarket":
@@ -1807,7 +1811,7 @@ class StockDiscoveryEngine:
 
         for i, r in enumerate(results, 1):
             sector_tag = f" · {r.sector}" if r.sector else ""
-            lines.append(f"### #{i} {r.stock_code} {r.stock_name}{sector_tag} — 综合评分 {r.score:.1f}")
+            lines.append(f"### #{i} {r.stock_code} {r.stock_name}{sector_tag} — 综合评分 {r.composite_score:.1f}")
             if r.discovered_at:
                 price_str = f"¥{r.price_at_discovery:.2f}" if r.price_at_discovery else "-"
                 lines.append(f"*发现 {r.discovered_at} · {price_str}*")
