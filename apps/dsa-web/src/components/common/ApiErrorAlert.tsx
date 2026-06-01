@@ -18,7 +18,7 @@ export const ApiErrorAlert: React.FC<ApiErrorAlertProps> = ({
   dismissLabel = '关闭',
   onDismiss,
 }) => {
-  const showDetails = error.rawMessage.trim() && error.rawMessage.trim() !== error.message.trim();
+  const showDetails = error.rawMessage?.trim() && error.rawMessage.trim() !== error.message?.trim();
 
   return (
     <div

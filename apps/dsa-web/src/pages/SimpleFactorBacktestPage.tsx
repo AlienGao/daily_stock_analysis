@@ -507,6 +507,9 @@ const SimpleFactorBacktestPage: React.FC = () => {
     cross_stocks: Array<{ ts_code: string; stock_name: string; count: number; presets: string[] }>;
   } | null>(null);
 
+  const [batchCombosLoading, setBatchCombosLoading] = useState(false);
+  const [batchCombosMsg, setBatchCombosMsg] = useState("");
+
   const handleCrossValidate = useCallback(async () => {
     setCvLoading(true);
     setError(null);
@@ -519,6 +522,52 @@ const SimpleFactorBacktestPage: React.FC = () => {
       setCvLoading(false);
     }
   }, []);
+
+  const handleBatchTestCombos = useCallback(async () => {
+    setBatchCombosLoading(true);
+    setError(null);
+    setBatchCombosMsg('提交中...');
+    try {
+      const resp = await apiClient.post(
+        `/api/v1/factor-backtest-simple/batch-test-combos${forceRerun ? '?force=true' : ''}`,
+        {
+          factor_weights: {},
+          start_date: startDate || undefined,
+          end_date: endDate || undefined,
+          top_n: topN,
+          hold_days: holdDays,
+          initial_capital: initialCapital,
+          risk_free_rate: 0.02,
+        },
+      );
+      const taskId = resp.data.task_id;
+      const poll = async () => {
+        await new Promise((r) => setTimeout(r, 2000));
+        try {
+          const s = await apiClient.get('/api/v1/factor-backtest-simple/status', { params: { task_id: taskId } });
+          if (s.data.status_message) setBatchCombosMsg(s.data.status_message);
+          if (s.data.status === 'completed') {
+            const cached = s.data.result?.cached_count || 0;
+            const total = s.data.result?.total || 0;
+            const errs = s.data.result?.errors || 0;
+            setBatchCombosLoading(false);
+            setBatchCombosMsg(`组合测试完成 (${cached}/${total} 命中缓存${errs ? `，${errs} 个失败` : ''})`);
+            loadCacheHistory();
+            loadPresets();
+          } else if (s.data.status === 'failed') {
+            setBatchCombosLoading(false);
+            setError({ title: '批量回测组合失败', message: s.data.error || '批量测试多因子组合失败', rawMessage: s.data.error || '批量测试多因子组合失败' } as ParsedApiError);
+          } else {
+            poll();
+          }
+        } catch { poll(); }
+      };
+      poll();
+    } catch (err) {
+      setBatchCombosLoading(false);
+      setError(getParsedApiError(err));
+    }
+  }, [startDate, endDate, topN, holdDays, initialCapital, forceRerun, loadCacheHistory, loadPresets]);
 
   // chart data
   const chartData = useMemo(() => {
@@ -1028,6 +1077,18 @@ const SimpleFactorBacktestPage: React.FC = () => {
             >
               交叉验证
             </Button>
+            <Button
+              block
+              size="small"
+              onClick={handleBatchTestCombos}
+              loading={batchCombosLoading}
+              disabled={loading || presets.length === 0}
+            >
+              补全预测
+            </Button>
+            {batchCombosMsg && (
+              <div className="text-xs text-blue-400 text-center mt-1">{batchCombosMsg}</div>
+            )}
             {batchMsg && (
               <div className="text-xs text-blue-400 text-center mt-1">{batchMsg}</div>
             )}

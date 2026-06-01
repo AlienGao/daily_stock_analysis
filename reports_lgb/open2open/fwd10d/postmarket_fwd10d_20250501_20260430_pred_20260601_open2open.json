@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 10,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260601",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002080",
+      "stock_code": "002080",
+      "stock_name": "中材科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 2,
+      "ts_code": "000037",
+      "stock_code": "000037",
+      "stock_name": "深南电A",
+      "lgb_score": 100.0,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 3,
+      "ts_code": "002181",
+      "stock_code": "002181",
+      "stock_name": "粤 传 媒",
+      "lgb_score": 79.12,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 4,
+      "ts_code": "002384",
+      "stock_code": "002384",
+      "stock_name": "东山精密",
+      "lgb_score": 73.62,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 5,
+      "ts_code": "600981",
+      "stock_code": "600981",
+      "stock_name": "苏豪汇鸿",
+      "lgb_score": 73.62,
+      "raw_score": 0.14
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 17.2,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.025351,
+    "std": 0.016482,
+    "skew": 0.1702,
+    "kurtosis": 14.7798,
+    "min": -0.104767,
+    "max": 0.22441,
+    "median": 0.03067
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.10795584304158987,
+    "cv_rmse_std": 0.008719487846243736,
+    "cv_scores": [
+      0.106886,
+      0.113769,
+      0.091371,
+      0.114017,
+      0.113736
+    ],
+    "rank_ic_mean": 0.044827,
+    "rank_ic_std": 0.02808,
+    "icir": 1.5964,
+    "oof_corr": 0.021977,
+    "n_samples": 43072,
+    "n_features": 2
+  }
+}

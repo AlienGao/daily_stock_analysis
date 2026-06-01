@@ -704,6 +704,33 @@ def cross_validate():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+
+@router.post("/batch-test-combos", summary="批量回测所有多因子组合")
+def start_batch_test_combos(req: BacktestRequest, force: bool = Query(False)):
+    """对快捷组合中所有多因子组合逐一跑历史回测，更新缓存。"""
+    _cleanup_old()
+    for tid, t in _tasks.items():
+        if t.get("status") == "running":
+            raise HTTPException(status_code=429, detail="已有任务在运行，请等待完成")
+
+    task_id = uuid.uuid4().hex[:8]
+    _tasks[task_id] = {"status": "running", "started_at": datetime.now().isoformat()}
+
+    queue = multiprocessing.Queue()
+    proc = multiprocessing.Process(
+        target=_run_batch_test_combos,
+        args=(queue, req.model_dump(), force),
+        daemon=True,
+    )
+    proc.start()
+
+    import threading
+    t = threading.Thread(target=_monitor, args=(task_id, queue, proc), daemon=True)
+    t.start()
+
+    return {"task_id": task_id, "status": "running"}
+
+
 FLM = {
     "money_flow": "资金流向", "margin": "融资融券", "chip": "筹码分布",
     "technical": "技术形态", "limit": "涨跌停", "fundamental": "基本面",
@@ -782,6 +809,133 @@ def _save_summary_md(results: list):
 
 
 # ── Batch test: 逐一测试所有因子 ──
+
+def _run_batch_test_combos(queue: multiprocessing.Queue, req_dict: dict, force: bool):
+    """在独立进程中逐一测试所有多因子组合，使用页面参数，支持缓存。"""
+    try:
+        # 子进程 fork 后强制重建数据库连接（SQLite 多进程问题）
+        from src.storage import DatabaseManager
+        import atexit
+        # 清理父进程的引擎注册
+        db = DatabaseManager.get_instance()
+        if hasattr(db, '_engine') and db._engine is not None:
+            try:
+                db._engine.dispose()
+            except Exception:
+                pass
+        DatabaseManager._instance = None
+        DatabaseManager()
+
+        from data_provider.tushare_fetcher import TushareFetcher
+        from src.discovery.factor_backtest_engine import FactorBacktestEngine
+        from dataclasses import asdict
+
+        fetcher = TushareFetcher.get_instance()
+        engine = FactorBacktestEngine(fetcher)
+
+        # 从 presets 获取所有多因子组合（内联，避免循环导入）
+        preset_list = []
+        combos_dir = _REPORTS_DIR / "combos"
+        if combos_dir.exists():
+            for f in sorted(combos_dir.glob("backtest_*.md")):
+                name = f.stem
+                factor_weights = _parse_fw_from_preset_name(name)
+                if len(factor_weights) >= 2:
+                    preset_list.append({"name": name, "factor_weights": factor_weights})
+        if not preset_list:
+            queue.put(("progress", "无多因子组合配置"))
+            queue.put(("failed", "无多因子组合配置"))
+            return
+
+        cache_repo = SimpleFactorBacktestCacheRepo() if not force else None
+        results = []
+        cached_count = 0
+        err_count = 0
+
+        for i, p in enumerate(preset_list):
+            name = p["name"]
+            fw = p["factor_weights"]
+            label = "+".join(f"{fn}({w})" for fn, w in fw.items())
+
+            single_req = {
+                "factor_weights": fw,
+                "start_date": req_dict.get("start_date"),
+                "end_date": req_dict.get("end_date"),
+                "top_n": req_dict.get("top_n", 5),
+                "hold_days": req_dict.get("hold_days", [1, 3, 5, 10, 20]),
+                "initial_capital": req_dict.get("initial_capital", 1_000_000.0),
+                "risk_free_rate": req_dict.get("risk_free_rate", 0.02),
+            }
+            init_cap = single_req["initial_capital"]
+            rfr = single_req["risk_free_rate"]
+
+            queue.put(("progress", f"[{i + 1}/{len(preset_list)}] {label}"))
+
+            # 查缓存
+            rd = None
+            if cache_repo:
+                try:
+                    fp = compute_param_fingerprint(single_req)
+                    cached = cache_repo.get_by_fingerprint(fp)
+                    if cached:
+                        rd = _json.loads(cached.result_json)
+                        cached_count += 1
+                except Exception:
+                    pass
+
+            if rd is None:
+                try:
+                    r = engine.compute(
+                        mode="postmarket",
+                        factor_weights=fw,
+                        start_date=single_req["start_date"],
+                        end_date=single_req["end_date"],
+                        top_n=single_req["top_n"],
+                        hold_days=single_req["hold_days"],
+                        initial_capital=init_cap,
+                        risk_free_rate=rfr,
+                    )
+                except Exception as e:
+                    err_count += 1
+                    results.append({"name": name, "error": str(e)})
+                    continue
+
+                if r is None:
+                    err_count += 1
+                    results.append({"name": name, "error": "数据不足"})
+                    continue
+
+                rd = asdict(r)
+
+                # 保存到缓存
+                try:
+                    fp = compute_param_fingerprint(single_req)
+                    SimpleFactorBacktestCacheRepo().upsert(fp, single_req, rd)
+                except Exception:
+                    pass
+
+                # 保存报告
+                if len(fw) >= 2:
+                    try:
+                        _save_report(rd)
+                    except Exception:
+                        pass
+
+            total_ret = rd.get("summary", {}).get("cumulative_return", 0.0)
+            results.append({"name": name, "total_return": total_ret})
+
+        queue.put(("completed", {
+            "total": len(preset_list),
+            "cached": cached_count,
+            "errors": err_count,
+            "results": results,
+        }))
+    except Exception as e:
+        logger.exception("批量测多因子组合失败")
+        import traceback
+        traceback.print_exc()
+        queue.put(("failed", str(e)))
+
 
 def _run_batch_test(queue: multiprocessing.Queue, req_dict: dict, force: bool):
     """在独立进程中逐一测试所有因子，使用页面参数，支持缓存。"""

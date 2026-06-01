@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 20,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260601",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301176",
+      "stock_code": "301176",
+      "stock_name": "逸豪新材",
+      "lgb_score": 100.0,
+      "raw_score": 0.54
+    },
+    {
+      "rank": 2,
+      "ts_code": "688183",
+      "stock_code": "688183",
+      "stock_name": "生益电子",
+      "lgb_score": 81.38,
+      "raw_score": 0.42
+    },
+    {
+      "rank": 3,
+      "ts_code": "002384",
+      "stock_code": "002384",
+      "stock_name": "东山精密",
+      "lgb_score": 81.3,
+      "raw_score": 0.42
+    },
+    {
+      "rank": 4,
+      "ts_code": "688072",
+      "stock_code": "688072",
+      "stock_name": "拓荆科技",
+      "lgb_score": 79.3,
+      "raw_score": 0.4
+    },
+    {
+      "rank": 5,
+      "ts_code": "301362",
+      "stock_code": "301362",
+      "stock_name": "民爆光电",
+      "lgb_score": 79.3,
+      "raw_score": 0.4
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.85,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.090195,
+    "std": 0.058791,
+    "skew": -0.1888,
+    "kurtosis": -0.7039,
+    "min": -0.099711,
+    "max": 0.536336,
+    "median": 0.138848
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.15926806033787186,
+    "cv_rmse_std": 0.019277340202330608,
+    "cv_scores": [
+      0.170835,
+      0.152525,
+      0.127636,
+      0.160044,
+      0.1853
+    ],
+    "rank_ic_mean": 0.116741,
+    "rank_ic_std": 0.033987,
+    "icir": 3.4349,
+    "oof_corr": 0.096985,
+    "n_samples": 41842,
+    "n_features": 4
+  }
+}

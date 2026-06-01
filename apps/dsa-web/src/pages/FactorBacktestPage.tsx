@@ -339,7 +339,7 @@ const FactorBacktestPage: React.FC = () => {
 
   const dateOutOfRange = useMemo(() => {
     if (!dateRangeIntersection[0]) return false;
-    return startDate < dateRangeIntersection[0] || endDate > dateRangeIntersection[1];
+    return startDate < dateRangeIntersection[0];
   }, [startDate, endDate, dateRangeIntersection]);
 
   const activeFactors = useMemo(() => {
@@ -827,7 +827,7 @@ const FactorBacktestPage: React.FC = () => {
                     disabled={!!quickRange || activeFactors.length === 0 || !dateRangeIntersection[0]}
                     disabledDate={(d) => {
                       if (!dateRangeIntersection[0]) return true;
-                      return d.isBefore(dayjs(dateRangeIntersection[0], 'YYYYMMDD')) || d.isAfter(dayjs(dateRangeIntersection[1], 'YYYYMMDD')) || d.isSame(dayjs(), 'day') || d.isAfter(dayjs(), 'day');
+                      return d.isAfter(dayjs(dateRangeIntersection[1], 'YYYYMMDD')) || d.isAfter(dayjs(), 'day');
                     }}
                   />
                 </div>
@@ -842,8 +842,7 @@ const FactorBacktestPage: React.FC = () => {
                     status={dateOutOfRange ? 'error' : undefined}
                     disabled={!!quickRange || activeFactors.length === 0 || !dateRangeIntersection[0]}
                     disabledDate={(d) => {
-                      if (!dateRangeIntersection[0]) return true;
-                      return d.isBefore(dayjs(dateRangeIntersection[0], 'YYYYMMDD')) || d.isAfter(dayjs(dateRangeIntersection[1], 'YYYYMMDD')) || d.isSame(dayjs(), 'day') || d.isAfter(dayjs(), 'day');
+                      return d.isAfter(dayjs(), 'day');
                     }}
                   />
                 </div>
