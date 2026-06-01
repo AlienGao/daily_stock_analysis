@@ -6,6 +6,7 @@ import { ReportMatchedSkills } from './ReportMatchedSkills';
 import { ReportNews } from './ReportNews';
 import { ReportDetails } from './ReportDetails';
 import { ReportDiagnostics } from './ReportDiagnostics';
+import { AnalysisContextSummary } from './AnalysisContextSummary';
 import { getReportText, normalizeReportLanguage } from '../../utils/reportLanguage';
 
 interface ReportSummaryProps {
@@ -15,7 +16,7 @@ interface ReportSummaryProps {
 
 /**
  * 完整报告展示组件
- * 整合概览、策略、资讯、详情四个区域
+ * 按主体内容优先、透明度信息后置的顺序展示报告。
  */
 export const ReportSummary: React.FC<ReportSummaryProps> = ({
   data,
@@ -45,6 +46,18 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({
         isHistory={isHistory}
       />
 
+      {/* 策略点位区 */}
+      <ReportStrategy strategy={strategy} language={reportLanguage} />
+
+      {/* 资讯区 */}
+      <ReportNews recordId={recordId} limit={8} language={reportLanguage} />
+
+      {/* 输入数据块低敏摘要 */}
+      <AnalysisContextSummary
+        overview={details?.analysisContextPackOverview}
+        language={reportLanguage}
+      />
+
       {/* 运行诊断摘要 */}
       <ReportDiagnostics
         recordId={recordId}
@@ -60,6 +73,7 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({
 
       {/* 资讯区 */}
       <ReportNews recordId={recordId} limit={8} language={reportLanguage} />
+
 
       {/* 透明度与追溯区 */}
       <ReportDetails details={details} recordId={recordId} language={reportLanguage} />

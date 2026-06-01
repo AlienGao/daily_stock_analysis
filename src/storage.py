@@ -22,7 +22,7 @@ import time
 from datetime import datetime, date, time as dt_time, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
-from typing import Optional, List, Dict, Any, TYPE_CHECKING, Tuple, Callable, TypeVar
+from typing import Optional, List, Dict, Any, TYPE_CHECKING, Tuple, Callable, TypeVar, Union
 
 import pandas as pd
 from sqlalchemy import (
@@ -3179,7 +3179,7 @@ class DatabaseManager(metaclass=_DatabaseManagerMeta):
     
     def get_analysis_history_paginated(
         self,
-        code: Optional[str] = None,
+        code: Optional[Union[str, List[str]]] = None,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
         offset: int = 0,
@@ -3204,7 +3204,12 @@ class DatabaseManager(metaclass=_DatabaseManagerMeta):
             conditions = []
             
             if code:
-                conditions.append(AnalysisHistory.code == code)
+                if isinstance(code, list):
+                    codes = [c for c in code if c]
+                    if codes:
+                        conditions.append(AnalysisHistory.code.in_(codes))
+                else:
+                    conditions.append(AnalysisHistory.code == code)
             if start_date:
                 # created_at >= start_date 00:00:00
                 conditions.append(AnalysisHistory.created_at >= datetime.combine(start_date, datetime.min.time()))

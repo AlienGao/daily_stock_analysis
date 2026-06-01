@@ -25,7 +25,8 @@ const AlertsPage = lazy(() => import('./pages/AlertsPage'));
 const BrokerRecommendPage = lazy(() => import('./pages/BrokerRecommendPage'));
 const InstitutionSurveyPage = lazy(() => import('./pages/InstitutionSurveyPage'));
 const SimpleFactorBacktestPage = lazy(() => import('./pages/SimpleFactorBacktestPage'));
-
+const StockScreeningPage = lazy(() => import('./pages/StockScreeningPage'));
+const PortfolioPage = lazy(() => import('./pages/PortfolioPage'));
 const AppContent: React.FC = () => {
   const location = useLocation();
   const { authEnabled, loggedIn, isLoading, loadError, refreshStatus } = useAuth();
@@ -87,6 +88,8 @@ const AppContent: React.FC = () => {
         <Route path="/simple-factor-backtest" element={<SimpleFactorBacktestPage />} />
         <Route path="/factor-tuning" element={<FactorTuningPage />} />
         <Route path="/lgb" element={<LightGBMPage />} />
+        <Route path="/portfolio" element={<PortfolioPage />} />
+        <Route path="/screening" element={<StockScreeningPage />} />
         <Route path="/backtest" element={<BacktestPage />} />
         <Route path="/broker-recommend" element={<Suspense fallback={<div className="flex justify-center py-12"><div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan/20 border-t-cyan" /></div>}><BrokerRecommendPage /></Suspense>} />
         <Route path="/institution-survey" element={<Suspense fallback={<div className="flex justify-center py-12"><div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan/20 border-t-cyan" /></div>}><InstitutionSurveyPage /></Suspense>} />

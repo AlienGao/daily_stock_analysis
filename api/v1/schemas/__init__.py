@@ -14,6 +14,7 @@ from api.v1.schemas.common import (
     ErrorResponse,
     SuccessResponse,
 )
+from api.v1.schemas.market_phase import MarketPhaseSummary
 from api.v1.schemas.analysis import (
     AnalyzeRequest,
     AnalysisResultResponse,
@@ -131,6 +132,8 @@ __all__ = [
     "HealthResponse",
     "ErrorResponse",
     "SuccessResponse",
+    # market phase
+    "MarketPhaseSummary",
     # analysis
     "AnalyzeRequest",
     "AnalysisResultResponse",

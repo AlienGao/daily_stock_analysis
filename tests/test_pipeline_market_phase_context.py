@@ -269,7 +269,12 @@ class PipelineMarketPhaseContextTestCase(unittest.TestCase):
         snapshot = save_kwargs["context_snapshot"]
         self.assertNotIn("market_phase_context", snapshot["enhanced_context"])
         self.assertNotIn("analysis_context_pack_summary", snapshot["enhanced_context"])
-        self.assertNotIn("analysis_context_pack", str(snapshot))
+        self.assertEqual(snapshot["market_phase_summary"]["phase"], "intraday")
+        self.assertEqual(snapshot["market_phase_summary"]["market"], "cn")
+        self.assertIn("analysis_context_pack_overview", snapshot)
+        self.assertEqual(snapshot["analysis_context_pack_overview"]["subject"]["code"], "600519")
+        self.assertTrue(snapshot["analysis_context_pack_overview"]["blocks"])
+        self.assertNotIn("items", str(snapshot["analysis_context_pack_overview"]))
         self.assertNotIn("分析上下文包摘要", str(snapshot))
 
     def test_legacy_pipeline_fail_open_when_pack_summary_generation_fails(self):
@@ -296,9 +301,12 @@ class PipelineMarketPhaseContextTestCase(unittest.TestCase):
         analyze_kwargs = pipeline.analyzer.analyze.call_args.kwargs
         self.assertEqual(analyze_kwargs["analysis_context_pack_summary"], "")
         self.assertIn(
-            "AnalysisContextPack summary generation failed for 600519 query_id=q-runtime",
+            "AnalysisContextPack output generation failed for 600519 query_id=q-runtime",
             "\n".join(logs.output),
         )
+        save_kwargs = pipeline.db.save_analysis_history.call_args.kwargs
+        self.assertEqual(save_kwargs["context_snapshot"]["market_phase_summary"]["phase"], "intraday")
+        self.assertNotIn("analysis_context_pack_overview", save_kwargs["context_snapshot"])
 
     def test_agent_legacy_context_gets_runtime_key_but_history_snapshot_strips_it(self):
         pipeline = _make_pipeline(agent_mode=True, save_context_snapshot=True)
@@ -333,6 +341,7 @@ class PipelineMarketPhaseContextTestCase(unittest.TestCase):
                 fundamental_context={"market": "cn"},
                 trend_result=None,
                 market_phase_context=phase_payload,
+                market_phase_summary=phase_payload,
             )
 
         self.assertIsNotNone(result)
@@ -346,7 +355,17 @@ class PipelineMarketPhaseContextTestCase(unittest.TestCase):
         self.assertTrue(save_kwargs["save_snapshot"])
         self.assertNotIn("market_phase_context", save_kwargs["context_snapshot"])
         self.assertNotIn("analysis_context_pack_summary", save_kwargs["context_snapshot"])
-        self.assertNotIn("analysis_context_pack", str(save_kwargs["context_snapshot"]))
+        self.assertEqual(save_kwargs["context_snapshot"]["market_phase_summary"]["phase"], "intraday")
+        self.assertIn("analysis_context_pack_overview", save_kwargs["context_snapshot"])
+        self.assertEqual(
+            save_kwargs["context_snapshot"]["analysis_context_pack_overview"]["subject"]["code"],
+            "600519",
+        )
+        self.assertTrue(save_kwargs["context_snapshot"]["analysis_context_pack_overview"]["blocks"])
+        self.assertNotIn(
+            "items",
+            str(save_kwargs["context_snapshot"]["analysis_context_pack_overview"]),
+        )
         self.assertNotIn("分析上下文包摘要", str(save_kwargs["context_snapshot"]))
         enhanced_context = save_kwargs["context_snapshot"]["enhanced_context"]
         self.assertEqual(enhanced_context["stock_name"], "贵州茅台")
@@ -399,7 +418,11 @@ class PipelineMarketPhaseContextTestCase(unittest.TestCase):
 
         save_kwargs = pipeline.db.save_analysis_history.call_args.kwargs
         self.assertNotIn("analysis_context_pack_summary", save_kwargs["context_snapshot"])
-        self.assertNotIn("analysis_context_pack", str(save_kwargs["context_snapshot"]))
+        self.assertIn("analysis_context_pack_overview", save_kwargs["context_snapshot"])
+        self.assertNotIn(
+            "items",
+            str(save_kwargs["context_snapshot"]["analysis_context_pack_overview"]),
+        )
 
     def test_agent_pipeline_fail_open_when_pack_summary_generation_fails(self):
         pipeline = _make_pipeline(agent_mode=True, save_context_snapshot=True)
@@ -440,15 +463,19 @@ class PipelineMarketPhaseContextTestCase(unittest.TestCase):
                 fundamental_context={"market": "cn"},
                 trend_result=None,
                 market_phase_context=phase_payload,
+                market_phase_summary=phase_payload,
             )
 
         self.assertIsNotNone(result)
         run_context = executor.run.call_args.kwargs["context"]
         self.assertNotIn("analysis_context_pack_summary", run_context)
         self.assertIn(
-            "AnalysisContextPack summary generation failed for 600519 query_id=q-agent",
+            "AnalysisContextPack output generation failed for 600519 query_id=q-agent",
             "\n".join(logs.output),
         )
+        save_kwargs = pipeline.db.save_analysis_history.call_args.kwargs
+        self.assertEqual(save_kwargs["context_snapshot"]["market_phase_summary"]["phase"], "intraday")
+        self.assertNotIn("analysis_context_pack_overview", save_kwargs["context_snapshot"])
 
     def test_agent_history_snapshot_contains_diagnostics_context_when_active(self):
         pipeline = _make_pipeline(agent_mode=True, save_context_snapshot=True)
@@ -497,7 +524,7 @@ class PipelineMarketPhaseContextTestCase(unittest.TestCase):
             snapshot = save_kwargs["context_snapshot"]
             self.assertIn("diagnostics", snapshot)
             self.assertNotIn("analysis_context_pack_summary", snapshot)
-            self.assertNotIn("analysis_context_pack", str(snapshot))
+            self.assertIn("analysis_context_pack_overview", snapshot)
             diagnostics = snapshot["diagnostics"]
             self.assertIsNotNone(diagnostics)
             self.assertEqual(diagnostics["trace_id"], "trace-agent")

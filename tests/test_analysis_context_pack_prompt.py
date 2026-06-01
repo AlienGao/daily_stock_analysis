@@ -12,6 +12,10 @@ from src.schemas.analysis_context_pack import (
     ContextFieldStatus,
     DataQuality,
 )
+from src.services.analysis_context_builder import (
+    AnalysisContextBuilder,
+    PipelineAnalysisArtifacts,
+)
 
 
 def _pack() -> AnalysisContextPack:
@@ -71,13 +75,48 @@ def _pack() -> AnalysisContextPack:
                 },
             ),
         },
-        data_quality=DataQuality(warnings=["intraday_realtime_overlay"]),
+        data_quality=DataQuality(
+            overall_score=76,
+            level="usable",
+            block_scores={
+                "quote": 65,
+                "daily_bars": 100,
+                "technical": 75,
+                "news": 35,
+                "fundamentals": 100,
+                "chip": 100,
+            },
+            limitations=["quote: fallback", "technical: partial"],
+            warnings=["intraday_realtime_overlay"],
+        ),
         metadata={
             "query_id": "q-1",
             "trigger_source": "api",
             "news_result_count": 3,
             "webhook_url": "https://hooks.example.test/secret",
         },
+    )
+
+
+def _builder_artifacts(*, fundamental_context: dict) -> PipelineAnalysisArtifacts:
+    return PipelineAnalysisArtifacts(
+        code="600519",
+        stock_name="贵州茅台",
+        market="cn",
+        phase=None,
+        base_context={
+            "today": {"close": 1880.0},
+            "yesterday": {"close": 1870.0},
+            "date": "2026-03-26",
+        },
+        enhanced_context={},
+        realtime_quote={"price": 1880.0, "source": "mock_quote"},
+        trend_result={"trend_status": "available"},
+        chip_data={"source": "mock_chip", "date": "2026-03-26"},
+        fundamental_context=fundamental_context,
+        news_context="新闻摘要",
+        news_result_count=1,
+        metadata={"trigger_source": "api"},
     )
 
 
@@ -100,6 +139,10 @@ def test_chinese_summary_renders_low_sensitivity_pack_statuses() -> None:
     assert "news_context_missing" in section
     assert "新闻结果数：3" in section
     assert "intraday_realtime_overlay" in section
+    assert "数据限制" in section
+    assert "数据质量评分：76/100（可用）" in section
+    assert "已知限制：行情：降级、技术：部分可用" in section
+    assert "confidence_level 不得为高" in section
 
 
 def test_english_summary_renders_readable_statuses() -> None:
@@ -113,6 +156,10 @@ def test_english_summary_renders_readable_statuses() -> None:
     assert "quote: fallback" in section
     assert "news: missing" in section
     assert "News result count: 3" in section
+    assert "Data Limitations" in section
+    assert "Data quality score: 76/100 (usable)" in section
+    assert "Known limitations: quote: fallback, technical: partial" in section
+    assert "confidence_level must not be High" in section
 
 
 def test_summary_does_not_dump_values_or_sensitive_payloads() -> None:
@@ -125,3 +172,28 @@ def test_summary_does_not_dump_values_or_sensitive_payloads() -> None:
     assert "hooks.example.test" not in section
     assert "webhook_url" not in section
     assert "access_token" not in section
+    assert "N/A" not in section
+    assert "None" not in section
+
+
+def test_builder_to_prompt_renders_aux_fetch_failed_without_confidence_cap() -> None:
+    pack = AnalysisContextBuilder.build(
+        _builder_artifacts(
+            fundamental_context={
+                "status": "failed",
+                "coverage": {"valuation": "failed"},
+                "source_chain": [
+                    {"provider": "fundamental_pipeline", "result": "failed"}
+                ],
+            }
+        )
+    )
+
+    section = format_analysis_context_pack_prompt_section(pack)
+
+    assert pack.data_quality.limitations == ["fundamentals: fetch_failed"]
+    assert "数据限制" in section
+    assert "数据质量评分：92/100（良好）" in section
+    assert "已知限制：基本面：抓取失败" in section
+    assert "置信度规则" not in section
+    assert "confidence_level" not in section
