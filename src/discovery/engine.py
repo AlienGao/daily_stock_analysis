@@ -199,6 +199,14 @@ class StockDiscoveryEngine:
     def register_factor(self, factor: BaseFactor) -> None:
         if not factor.name:
             raise ValueError(f"Factor {factor!r} must have a non-empty name")
+        # 应用 config 权重（尝试通用→intraday→postmarket），覆盖因子类硬编码默认值
+        cfg_val = getattr(self.config, f"weight_{factor.name}", None)
+        if cfg_val is None:
+            cfg_val = getattr(self.config, f"weight_{factor.name}_intraday", None)
+        if cfg_val is None:
+            cfg_val = getattr(self.config, f"weight_{factor.name}_postmarket", None)
+        if cfg_val is not None:
+            factor.weight = cfg_val
         self._factors[factor.name] = factor
         logger.info(f"[Discovery] 注册因子: {factor.name} (weight={factor.weight})")
 
