@@ -40,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - [新功能] 新增独立因子回测页面 `/simple-factor-backtest`：支持自由勾选单因子或多因子组合回测，统一使用开盘价交易（无 intraday/postmarket 模式区分），新增 `MarketCapFactor`（小市值因子）作为测试因子。
 - [改进] 测试因子机制：`_all_factors()` 注册所有因子（含测试因子），`_default_factors()` 仅用于选股；测试因子计算得分并保存到 `factor_score_snapshots`，但不参与综合评分和选股排名。
 - [新功能] 新增小米 MiMo LLM 渠道支持：添加 `LLM_MIMO_*` 环境变量配置，使用 Token Plan 端点 `token-plan-sgp.xiaomimimo.com`，默认模型 `mimo-v2.5-pro`，优先级介于 Bailian 和 DeepSeek 之间。
-- [新功能] 因子最优组合搜索：LightGBM 页面新增「搜索最优因子组合」按钮，三阶段搜索（基线重要性 → 贪心前向选择 → Optuna TPE 精调）自动寻找最优因子子集，支持一键应用排除因子到 `.env` 的 `LGB_DISABLE_FACTOR`。报告保存至 `lgb_reports/factor_subset/`。
+- [新功能] 因子最优组合搜索：LightGBM 页面新增「搜索最优因子组合」按钮，三阶段搜索（基线重要性 → 贪心前向选择 → Optuna TPE 精调）自动寻找最优因子子集，支持一键应用排除因子到 `.env` 的 `LGB_DISABLE_FACTOR`。报告保存至 `reports_lgb/factor_subset/`。
 - [新功能] Discovery Engine 因子信号注入单股分析：定时任务批次启动前运行一次 discovery engine，单股分析时将因子评分注入 LLM prompt（非 Agent 路径渲染为 Markdown 表格，Agent 路径注入 JSON 块）。通过 `DISCOVERY_FACTOR_SIGNALS_ENABLED` 控制。
 - [新功能] FinBERT 新闻情感分析：集成中文财经 BERT 模型对新闻文本做情感分类（正面/负面/中性），结果注入 LLM prompt 作为参考指标。通过 `FINBERT_ENABLED` 控制。
 - [改进] FinBERT 情感分析扩展支持 Agent 模式：Agent 分析链路在调用 LLM 前同样注入 FinBERT 情感摘要；若 initial_context 尚无新闻则主动搜索一次供 FinBERT 使用，失败静默降级不影响主流程。

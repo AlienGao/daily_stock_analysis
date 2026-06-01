@@ -72,7 +72,7 @@ def _apply_factor_subset(trainer, progress=None, fallback_disabled=None):
     import json as _json
 
     subset_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
-        os.path.dirname(os.path.abspath(__file__))))), "lgb_reports", "factor_subset")
+        os.path.dirname(os.path.abspath(__file__))))), "reports_lgb", "factor_subset")
 
     exec_mode = getattr(trainer, "exec_mode", "open")
     label_mode = getattr(trainer, "label_mode", "fixed")
@@ -1205,9 +1205,9 @@ def _enrich_predictions_with_stats(
 
 
 def _build_historical_stats(forward_days: int, exec_mode: str) -> dict:
-    """Build historical prediction stats from lgb_reports/ + DB prices."""
+    """Build historical prediction stats from reports_lgb/ + DB prices."""
     project_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
-    reports_dir = _os.path.join(project_root, "lgb_reports")
+    reports_dir = _os.path.join(project_root, "reports_lgb")
     exec_suffix = "open2open" if exec_mode == "open" else "close2close"
     fwd_dir = f"fwd{forward_days}d"
     search_dir = _os.path.join(reports_dir, exec_suffix, fwd_dir)
@@ -1397,7 +1397,7 @@ def _simulate_backtest(exec_mode: str, forward_days: int, top_n: int, stop_strat
     If error is not None, the simulation failed and metrics is None.
     """
     project_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
-    reports_dir = _os.path.join(project_root, "lgb_reports")
+    reports_dir = _os.path.join(project_root, "reports_lgb")
 
     exec_suffix = "open2open" if exec_mode == "open" else "close2close"
     fwd_dir = f"fwd{forward_days}d"
@@ -2001,7 +2001,7 @@ def _simulate_peak_backtest(exec_mode: str, top_n: int, stop_loss_pct: float = -
     退出优先级: 止损 → 止盈(预测收益 × 历史胜率) → 到期窗口(±2天) → 强制退出(20天)
     """
     project_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
-    reports_dir = _os.path.join(project_root, "lgb_reports")
+    reports_dir = _os.path.join(project_root, "reports_lgb")
     exec_suffix = "open2open" if exec_mode == "open" else "close2close"
 
     search_dir = _os.path.join(reports_dir, exec_suffix, "peak20d")
@@ -2507,12 +2507,12 @@ def lgb_backtest_sim(
 @router.get(
     "/lgb/backtest-sim/available",
     response_model=LGBBacktestSimAvailableResponse,
-    summary="可用回测模拟的 forward_days（基于本地 lgb_reports 目录）",
+    summary="可用回测模拟的 forward_days（基于本地 reports_lgb 目录）",
 )
 def lgb_backtest_sim_available():
-    """扫描 lgb_reports/ 返回每个 exec_mode 下实际可用的 forward_days 以及是否有 peak 数据。"""
+    """扫描 reports_lgb/ 返回每个 exec_mode 下实际可用的 forward_days 以及是否有 peak 数据。"""
     project_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
-    reports_dir = _os.path.join(project_root, "lgb_reports")
+    reports_dir = _os.path.join(project_root, "reports_lgb")
     exec_dirs = {"open2open": "open", "close2close": "close"}
     result = {"open": [], "close": [], "has_peak": False}
     for dir_name, exec_key in exec_dirs.items():
@@ -2553,9 +2553,9 @@ def _run_brute_force_search(task_id: str):
 
     try:
         stop_strategies = ["none", "loss_aversion", "dead_hold"]
-        # ── Discover everything from lgb_reports/ cache files ──
+        # ── Discover everything from reports_lgb/ cache files ──
         project_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
-        reports_root = _os.path.join(project_root, "lgb_reports")
+        reports_root = _os.path.join(project_root, "reports_lgb")
 
         # 1) exec_modes from directory names (open2open→open, close2close→close)
         exec_mode_map: Dict[str, str] = {}
@@ -2721,7 +2721,7 @@ def _run_brute_force_search(task_id: str):
         # Generate Markdown report
         now_str = datetime.now().strftime("%Y%m%d_%H%M%S")
         project_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
-        reports_dir = _os.path.join(project_root, "lgb_reports")
+        reports_dir = _os.path.join(project_root, "reports_lgb")
         _os.makedirs(reports_dir, exist_ok=True)
         report_path = _os.path.join(reports_dir, f"brute_force_{now_str}.md")
 
@@ -3004,10 +3004,10 @@ def _parse_old_brute_force_md(md_path: str):
     summary="获取最新的全方案搜索报告",
 )
 def lgb_brute_force_report_latest():
-    """扫描 lgb_reports/ 目录，返回最新的 brute_force_*.json 解析结果。
+    """扫描 reports_lgb/ 目录，返回最新的 brute_force_*.json 解析结果。
     若无 JSON，则回退解析最新的 .md 文件。"""
     project_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
-    reports_dir = _os.path.join(project_root, "lgb_reports")
+    reports_dir = _os.path.join(project_root, "reports_lgb")
 
     json_files = sorted(
         [f for f in _os.listdir(reports_dir) if f.startswith("brute_force_") and f.endswith(".json")],
@@ -3052,7 +3052,7 @@ def _run_catch_up(task_id: str):
     task["status"] = "running"
 
     project_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
-    reports_root = _os.path.join(project_root, "lgb_reports")
+    reports_root = _os.path.join(project_root, "reports_lgb")
     models_dir = _os.path.join(project_root, "src", "data", "lgb_models")
 
     db = DatabaseManager.get_instance()
@@ -3270,11 +3270,11 @@ def lgb_catch_up_status(task_id: str = Query(..., description="任务 ID")):
 
 def _warmup_backtest_cache():
     """Pre-warm backtest-sim cache in background to avoid first-request timeout.
-    Discovers available combos dynamically from lgb_reports/ directory."""
+    Discovers available combos dynamically from reports_lgb/ directory."""
     import logging
     _log = logging.getLogger(__name__)
     project_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
-    reports_root = _os.path.join(project_root, "lgb_reports")
+    reports_root = _os.path.join(project_root, "reports_lgb")
 
     combos: list = []
     exec_dirs = {"open2open": "open", "close2close": "close"}
@@ -3386,7 +3386,7 @@ def _run_factor_subset_search(task_id: str, params: dict):
         report_path = ""
         import glob as _glob
         report_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
-            os.path.dirname(os.path.abspath(__file__))))), "lgb_reports", "factor_subset")
+            os.path.dirname(os.path.abspath(__file__))))), "reports_lgb", "factor_subset")
         if os.path.isdir(report_dir):
             json_files = sorted(_glob.glob(os.path.join(report_dir, "subset_*.json")),
                                 reverse=True)

@@ -1112,7 +1112,7 @@ const LightGBMPage: React.FC = () => {
             <div className="space-y-3">
               <div className="font-medium text-sm text-secondary-text">全方案搜索</div>
               <div className="text-xs text-tertiary-text">
-                遍历 lgb_reports/ 缓存中所有参数组合（止损策略 × 执行模式 × 持有期 × top_n），寻找收益/夏普最优方案。后台运行，结果保存至 lgb_reports/。
+                遍历 reports_lgb/ 缓存中所有参数组合（止损策略 × 执行模式 × 持有期 × top_n），寻找收益/夏普最优方案。后台运行，结果保存至 reports_lgb/。
                 {bfReportLoading && !latestBfReport && (
                   <span className="text-blue-400 ml-1 inline-flex items-center gap-1">
                     <Loader2 className="h-3 w-3 animate-spin" />加载报告中...
@@ -1233,7 +1233,7 @@ const LightGBMPage: React.FC = () => {
             <div className="space-y-3">
               <div className="font-medium text-sm text-secondary-text">因子最优组合搜索</div>
               <div className="text-xs text-tertiary-text">
-                三阶段搜索: 基线重要性 → 贪心前向选择 → Optuna TPE 精调。优化目标: 日均收益率最高。自动寻找最优因子子集，结果保存至 lgb_reports/factor_subset/。
+                三阶段搜索: 基线重要性 → 贪心前向选择 → Optuna TPE 精调。优化目标: 日均收益率最高。自动寻找最优因子子集，结果保存至 reports_lgb/factor_subset/。
               </div>
 
               {subsetSearchStatus && subsetSearchStatus.status === 'completed' && subsetSearchStatus.result && (
@@ -1391,7 +1391,7 @@ const LightGBMPage: React.FC = () => {
             <div className="space-y-3">
               <div className="font-medium text-sm text-secondary-text">滚动窗口回测</div>
               <div className="text-xs text-tertiary-text">
-                自动发现 factor_subset/ 下的因子配置，按月滚动训练并预测每日 Top 5，报告保存至 lgb_reports/。
+                自动发现 factor_subset/ 下的因子配置，按月滚动训练并预测每日 Top 5，报告保存至 reports_lgb/。
               </div>
 
               {rollingStatus && rollingStatus.status === 'completed' && (

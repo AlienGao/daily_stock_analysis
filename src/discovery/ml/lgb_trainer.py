@@ -29,7 +29,7 @@ warnings.filterwarnings("ignore", category=UserWarning, module="lightgbm")
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
 MODEL_DIR = os.path.join(_PROJECT_ROOT, "data", "lgb_models")
-_REPORTS_DIR = os.path.join(_PROJECT_ROOT, "lgb_reports")
+_REPORTS_DIR = os.path.join(_PROJECT_ROOT, "reports_lgb")
 
 
 def _get_db() -> DatabaseManager:

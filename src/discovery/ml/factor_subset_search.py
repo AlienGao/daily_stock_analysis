@@ -28,7 +28,7 @@ from src.discovery.ml.lgb_trainer import LGBTrainer
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.dirname(os.path.abspath(__file__)))))
-_REPORTS_DIR = os.path.join(_PROJECT_ROOT, "lgb_reports", "factor_subset")
+_REPORTS_DIR = os.path.join(_PROJECT_ROOT, "reports_lgb", "factor_subset")
 
 
 class FactorSubsetSearcher:

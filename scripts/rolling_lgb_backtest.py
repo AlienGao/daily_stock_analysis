@@ -4,7 +4,7 @@
 
 训练窗口从 2024-01-01 开始每月向后滑动，用当月模型预测后续每日 Top 5。
 支持 fixed（固定持有期）和 peak_speed（峰值速度）两种标签模式。
-每日预测结果保存为独立 MD + JSON 报告到 lgb_reports/。
+每日预测结果保存为独立 MD + JSON 报告到 reports_lgb/。
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ from src.discovery.ml.lgb_trainer import LGBTrainer
 from src.storage import DatabaseManager, StockDaily
 
 REPORTS_ROOT = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lgb_reports"
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "reports_lgb"
 )
 FACTOR_SUBSET_DIR = os.path.join(REPORTS_ROOT, "factor_subset")
 # EXEC_SUBDIR is set in main() after EXEC_MODE is known
