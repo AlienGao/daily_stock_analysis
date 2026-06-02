@@ -1999,7 +1999,7 @@ const LightGBMPage: React.FC = () => {
                   <details open>
                     <summary className="cursor-pointer text-xs text-tertiary-text mb-2 select-none flex items-center gap-2">
                       <span>交易明细（{done.length} 笔已平仓{holding.length > 0 ? `，${holding.length} 笔持仓中 均收益 ${pctNum(holdingAvgRet)}` : ''}{skipped.length > 0 ? `，${skipped.length} 笔涨停跳过` : ''}）</span>
-                      <Button size="small" type="link" onClick={() => exportBacktestExcel(backtestSim.trades, backtestSim.forward_days, backtestSim.top_n, backtestSim.exec_mode)}>
+                      <Button size="small" type="link" onClick={() => exportBacktestExcel(backtestSim.trades, backtestSim.forward_days, backtestSim.top_n, backtestSim.exec_mode, stopStrategy)}>
                         导出 Excel
                       </Button>
                     </summary>

@@ -1,6 +1,6 @@
 {
   "intraday_scan_universe": "full_market",
-  "postmarket_scan_universe": "full_market",
+  "postmarket_scan_universe": "broker_gold",
   "discover_whitelist": [
     "000063",
     "000066",

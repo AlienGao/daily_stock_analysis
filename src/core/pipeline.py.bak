@@ -543,27 +543,6 @@ class StockAnalysisPipeline:
             # Look up pre-computed discovery factor signals for this stock
             factor_signals = self._factor_signals_cache.get(code)
 
-            # Step 5: 获取分析上下文（技术面数据）— 提前，在 agent/non-agent 分支前执行
-            _daily_code = normalize_stock_code(code)
-            context = self.db.get_analysis_context(_daily_code)
-
-            if context is not None:
-                _today_close = context.get("today", {}).get("close")
-                logger.info("[DBG] %s(%s) get_analysis_context: data_missing=%s today_close=%s", stock_name, code, context.get("data_missing"), _today_close)
-            if context is None:
-                logger.warning(f"{stock_name}({code}) 无法获取历史行情数据，将仅基于新闻和实时行情分析")
-                _mkt_date = get_market_now(
-                    get_market_for_stock(normalize_stock_code(code))
-                ).date()
-                context = {
-                    'code': code,
-                    'stock_name': stock_name,
-                    'date': _mkt_date.isoformat(),
-                    'data_missing': True,
-                    'today': {},
-                    'yesterday': {}
-                }
-
             if use_agent:
                 logger.info(f"{stock_name}({code}) 启用 Agent 模式进行分析")
                 self._emit_progress(58, f"{stock_name}：正在切换 Agent 分析链路")
@@ -582,7 +561,6 @@ class StockAnalysisPipeline:
                     tech_factors=tech_factors,
                     factor_signals=factor_signals,
                     agent_exec_config=agent_exec_config,
-                    base_context=context,
                     replace_history=replace_history,
                     persist_history=persist_history,
                     market_phase_context=market_phase_context_dict,
@@ -688,7 +666,29 @@ class StockAnalysisPipeline:
                 except Exception as e:
                     logger.debug(f"{stock_name}({code}) FinBERT情感分析失败: {e}")
 
-# Step 6: 增强上下文数据
+            # Step 5: 获取分析上下文（技术面数据）
+            self._emit_progress(58, f"{stock_name}：正在整理分析上下文")
+            _daily_code = normalize_stock_code(code)
+            context = self.db.get_analysis_context(_daily_code)
+
+            if context is not None:
+                _today_close = context.get("today", {}).get("close")
+                logger.info("[DBG] %s(%s) get_analysis_context: data_missing=%s today_close=%s", stock_name, code, context.get("data_missing"), _today_close)
+            if context is None:
+                logger.warning(f"{stock_name}({code}) 无法获取历史行情数据，将仅基于新闻和实时行情分析")
+                _mkt_date = get_market_now(
+                    get_market_for_stock(normalize_stock_code(code))
+                ).date()
+                context = {
+                    'code': code,
+                    'stock_name': stock_name,
+                    'date': _mkt_date.isoformat(),
+                    'data_missing': True,
+                    'today': {},
+                    'yesterday': {}
+                }
+            
+            # Step 6: 增强上下文数据
             enhanced_context = self._enhance_context(
                 context,
                 realtime_quote,
@@ -1270,7 +1270,6 @@ class StockAnalysisPipeline:
         tech_factors: Optional[Dict[str, Any]] = None,
         factor_signals: Optional[Dict[str, Any]] = None,
         agent_exec_config: Optional[Config] = None,
-        base_context: Optional[Dict[str, Any]] = None,
         replace_history: bool = False,
         persist_history: bool = True,
         *,
@@ -1387,7 +1386,6 @@ class StockAnalysisPipeline:
                 self._build_agent_analysis_artifacts(
                     code=code,
                     stock_name=stock_name,
-                    base_context=base_context or None,
                     market=market,
                     phase=market_phase_context,
                     initial_context=initial_context,
@@ -2299,21 +2297,24 @@ class StockAnalysisPipeline:
         *,
         code: str,
         stock_name: str,
-        base_context: Optional[Dict[str, Any]] = None,
         market: str,
         phase: Optional[Dict[str, Any]],
         initial_context: Dict[str, Any],
         fundamental_context: Optional[Dict[str, Any]],
         query_id: str,
     ) -> PipelineAnalysisArtifacts:
-        if base_context is None:
-            base_context = {"code": code, "stock_name": stock_name, "data_missing": True, "today": {}, "yesterday": {}}
         return PipelineAnalysisArtifacts(
             code=code,
             stock_name=stock_name,
             market=market,
             phase=phase,
-            base_context=base_context,
+            base_context={
+                "code": code,
+                "stock_name": stock_name,
+                "data_missing": True,
+                "today": {},
+                "yesterday": {},
+            },
             enhanced_context={},
             realtime_quote=initial_context.get("realtime_quote"),
             trend_result=initial_context.get("trend_result"),

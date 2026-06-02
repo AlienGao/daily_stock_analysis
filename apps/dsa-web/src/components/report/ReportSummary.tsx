@@ -46,22 +46,16 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({
         isHistory={isHistory}
       />
 
-      {/* 策略点位区 */}
-      <ReportStrategy strategy={strategy} language={reportLanguage} />
-
-      {/* 资讯区 */}
-      <ReportNews recordId={recordId} limit={8} language={reportLanguage} />
-
-      {/* 输入数据块低敏摘要 */}
-      <AnalysisContextSummary
-        overview={details?.analysisContextPackOverview}
-        language={reportLanguage}
-      />
-
       {/* 运行诊断摘要 */}
       <ReportDiagnostics
         recordId={recordId}
         summary={diagnosticSummary}
+        language={reportLanguage}
+      />
+
+      {/* 输入数据块低敏摘要 */}
+      <AnalysisContextSummary
+        overview={details?.analysisContextPackOverview}
         language={reportLanguage}
       />
 
@@ -73,7 +67,6 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({
 
       {/* 资讯区 */}
       <ReportNews recordId={recordId} limit={8} language={reportLanguage} />
-
 
       {/* 透明度与追溯区 */}
       <ReportDetails details={details} recordId={recordId} language={reportLanguage} />
