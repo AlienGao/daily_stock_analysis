@@ -1987,3 +1987,13 @@ class BrokerRecommendService:
     def get_institution_survey_dates(self) -> List[str]:
         """获取数据库中所有有机构调研数据的日期列表（降序）。"""
         return self.db.get_institution_survey_dates()
+
+
+    def get_alltime_top_brokers(self, top_n: int = 5) -> List[str]:
+        """返回有史以来累计收益前 N 的券商名称列表。
+
+        直接基于 broker_backtest_result 表计算，无额外 API 调用。
+        """
+        result = self.compute_ytd_backtest(year=None, top_n=top_n)
+        brokers = result.get("brokers", [])
+        return [b["broker"] for b in brokers]

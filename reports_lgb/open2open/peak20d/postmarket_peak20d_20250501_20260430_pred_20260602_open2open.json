@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260602",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "000062",
+      "stock_code": "000062",
+      "stock_name": "深圳华强",
+      "lgb_score": 100.0,
+      "raw_score": 0.33,
+      "predicted_days": 15
+    },
+    {
+      "rank": 2,
+      "ts_code": "688183",
+      "stock_code": "688183",
+      "stock_name": "生益电子",
+      "lgb_score": 93.98,
+      "raw_score": 0.31,
+      "predicted_days": 14
+    },
+    {
+      "rank": 3,
+      "ts_code": "603666",
+      "stock_code": "603666",
+      "stock_name": "亿嘉和",
+      "lgb_score": 90.67,
+      "raw_score": 0.3,
+      "predicted_days": 14
+    },
+    {
+      "rank": 4,
+      "ts_code": "688630",
+      "stock_code": "688630",
+      "stock_name": "芯碁微装",
+      "lgb_score": 90.43,
+      "raw_score": 0.3,
+      "predicted_days": 15
+    },
+    {
+      "rank": 5,
+      "ts_code": "688411",
+      "stock_code": "688411",
+      "stock_name": "海博思创",
+      "lgb_score": 88.65,
+      "raw_score": 0.29,
+      "predicted_days": 15
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.97,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.140335,
+    "std": 0.047145,
+    "skew": -0.488,
+    "kurtosis": -1.217,
+    "min": 0.022199,
+    "max": 0.32801,
+    "median": 0.179845
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.12792834895426905,
+    "cv_rmse_std": 0.014561700139984129,
+    "cv_scores": [
+      0.148239,
+      0.12204,
+      0.104474,
+      0.129118,
+      0.135771
+    ],
+    "rank_ic_mean": 0.204978,
+    "rank_ic_std": 0.069088,
+    "icir": 2.9669,
+    "oof_corr": 0.159805,
+    "n_samples": 43111,
+    "n_features": 3
+  },
+  "window_days": 20
+}

@@ -148,6 +148,15 @@ class YtdBacktestResponse(BaseModel):
     brokers: List[YtdBrokerItem]
 
 
+@router.get("/top-brokers", response_model=List[str])
+def get_top_brokers(
+    top_n: int = Query(default=5, ge=1, le=20, description="Number of top brokers"),
+) -> List[str]:
+    """获取有史以来累计收益排名前 N 的券商名称列表。"""
+    service = BrokerRecommendService()
+    return service.get_alltime_top_brokers(top_n=top_n)
+
+
 @router.get("/months", response_model=List[str])
 def get_available_months() -> List[str]:
     """获取有券商金股数据的月份列表。"""

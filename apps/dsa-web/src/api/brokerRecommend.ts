@@ -242,6 +242,14 @@ export type InstitutionSurveyResponse = {
   items: InstitutionSurveyItem[];
 };
 
+export async function getTopBrokers(topN: number = 5): Promise<string[]> {
+  const resp = await apiClient.get<string[]>(
+    '/api/v1/broker-recommend/top-brokers',
+    { params: { top_n: topN } }
+  );
+  return resp.data;
+}
+
 export async function getInstitutionSurvey(params?: {
   start_date?: string;
   end_date?: string;

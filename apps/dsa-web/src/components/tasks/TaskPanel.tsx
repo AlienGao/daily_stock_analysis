@@ -21,7 +21,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
   const statusVariant = isProcessing ? 'info' : 'default';
   const statusTone = isProcessing ? 'info' : 'neutral';
   const progress = Math.max(0, Math.min(100, task.progress || 0));
-  const traceId = (task.traceId || '').trim();
+  // const traceId = (task.traceId || '').trim();
 
   return (
     <div className="home-subpanel flex items-center gap-3 px-3 py-2.5">

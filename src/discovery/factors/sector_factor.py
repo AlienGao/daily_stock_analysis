@@ -345,12 +345,10 @@ class SectorFactor(BaseFactor):
         降级方案：_compute_intraday_momentum_from_stocks() 个股聚合。
         返回 Series (index=stock_code, dtype=float)。
         """
-        try:
-            result = self._compute_intraday_momentum_from_board(trade_date)
-            if result is not None and not result.empty and len(result) > 0:
-                return result
-        except Exception as e:
-            logger.warning("[SectorFactor] 同花顺板块接口失败，降级到个股聚合: %s", e)
+        result = self._compute_intraday_momentum_from_board(trade_date)
+        if result is not None and not result.empty and len(result) > 0:
+            return result
+        logger.info("[SectorFactor] 同花顺板块接口不可用，降级到个股聚合计算板块动量")
         return self._compute_intraday_momentum_from_stocks(trade_date)
 
     def _compute_intraday_momentum_from_board(self, trade_date: str) -> pd.Series:
@@ -485,7 +483,7 @@ class SectorFactor(BaseFactor):
             return stock_momentum
 
         except Exception as e:
-            logger.warning("[SectorFactor] THS 板块动量计算失败: %s", e)
+            logger.debug("[SectorFactor] THS 板块动量接口异常（降级到个股聚合）: %s", e)
             return pd.Series(dtype=float)
 
     def _compute_intraday_momentum_from_stocks(self, trade_date: str) -> pd.Series:

@@ -52,7 +52,7 @@ function factorLabel(name: string): string {
   return FACTOR_LABELS[name] || name;
 }
 
-function exportBacktestExcel(trades: LGBBacktestSimResponse['trades'], forwardDays: number, topN: number, execMode: string) {
+function exportBacktestExcel(trades: LGBBacktestSimResponse['trades'], forwardDays: number, topN: number, execMode: string, _stopStrategy?: string) {
   const rows = trades.filter((t) => !t.skipped);
   const header = ['预测日', '股票名称', '股票代码', '买入日', '买入价', '股数', '买入金额', '卖出日', '卖出价', '收益%'];
   const tf = (v: string | number) => `<td style="mso-number-format:\\@">${v}</td>`;

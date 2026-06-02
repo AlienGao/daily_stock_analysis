@@ -90,7 +90,7 @@ function renderFieldControl(
       return (
         <div className="space-y-4">
           <div className="flex flex-wrap gap-2">
-            {normalizeSelectOptions(schema.options).map((option) => (
+            {normalizeSelectOptions(item.key, schema.options).map((option) => (
               <label key={option.value} className="inline-flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"

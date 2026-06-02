@@ -191,6 +191,7 @@ import {
   getMonthlyEnrichment,
   getYtdBacktest,
   getConsecutiveStocks,
+  getTopBrokers,
   type BrokerRecommendResponse,
   type BrokerRecommendItem,
   type BrokerBacktestResponse,
@@ -327,6 +328,7 @@ const BrokerRecommendPage: React.FC = () => {
   const expandedKeyRef = useRef<string>('');
   const [activeTab, setActiveTab] = useState<string>('monthly');
   const [ytdData, setYtdData] = useState<YtdBacktestResponse | null>(null);
+  const [topBrokers, setTopBrokers] = useState<string[]>([]);
   const [ytdLoading, setYtdLoading] = useState(false);
   const [consecutiveData, setConsecutiveData] = useState<ConsecutiveStockItem[]>([]);
   const consecutiveSet = useMemo(() => new Set(consecutiveData.map(c => c.ts_code)), [consecutiveData]);
@@ -353,16 +355,18 @@ const BrokerRecommendPage: React.FC = () => {
         setTableKey(k => k + 1);
       }
       try {
-        const data = await getMonthlyRecommendations(monthStr);
-        setRecommendData(data);
-        const [bt, enrich, cons] = await Promise.all([
+        const [data, bt, enrich, cons, top] = await Promise.all([
+          getMonthlyRecommendations(monthStr),
           getBacktest(monthStr),
           getMonthlyEnrichment(monthStr),
           getConsecutiveStocks(monthStr),
+          getTopBrokers(5).catch(() => [] as string[]),
         ]);
+        setRecommendData(data);
         setBacktestData(bt);
         setEnrichmentData(enrich);
         setConsecutiveData(cons);
+        setTopBrokers(top);
       } catch (e) {
         console.error('Failed to load:', e);
       } finally {
@@ -979,7 +983,12 @@ const BrokerRecommendPage: React.FC = () => {
                           className="w-2 h-2 rounded-full shrink-0"
                           style={{ backgroundColor: BROKER_COLORS[idx % BROKER_COLORS.length] }}
                         />
-                        <span className="text-sm font-medium flex-1 text-left">{broker}</span>
+                        <span className="text-sm font-medium flex-1 text-left">
+                          {broker}
+                          {topBrokers.includes(broker) && (
+                            <span className="ml-1.5 px-1 py-0.5 text-[10px] bg-yellow-500/20 text-yellow-400 rounded font-bold">历史 Top5</span>
+                          )}
+                        </span>
                         <span className="text-xs text-secondary-text">{items.length}只</span>
                         <span className={`text-xs font-medium ${(brokerBt?.cumulative_return ?? 0) >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                           {fmtPct(brokerBt?.cumulative_return)}

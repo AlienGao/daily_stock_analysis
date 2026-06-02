@@ -258,7 +258,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
       const matched = cacheHistory.find((item) =>
         cacheParamsMatch(
           item,
-          Object.fromEntries(entries),
+          Object.fromEntries(Object.entries(sel).map(([k, v]) => [k, v ? 1 : 0])),
           startDate || '',
           endDate || '',
           topN,
@@ -296,7 +296,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
             if (data.status_message) setProgressMsg(data.status_message);
             // 启动轮询恢复
             const poll = async () => {
-              const abort = () => {};
+              // const abort = () => {};
               while (true) {
                 await new Promise((r) => setTimeout(r, 2000));
                 try {
