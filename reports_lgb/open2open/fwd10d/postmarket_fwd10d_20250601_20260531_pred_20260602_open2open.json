@@ -12,14 +12,14 @@
       "stock_code": "605277",
       "stock_name": "新亚电子",
       "lgb_score": 100.0,
-      "raw_score": 0.38
+      "raw_score": 0.32
     },
     {
       "rank": 2,
       "ts_code": "688639",
       "stock_code": "688639",
       "stock_name": "华恒生物",
-      "lgb_score": 77.55,
+      "lgb_score": 90.17,
       "raw_score": 0.28
     },
     {
@@ -27,7 +27,7 @@
       "ts_code": "002169",
       "stock_code": "002169",
       "stock_name": "智光电气",
-      "lgb_score": 64.19,
+      "lgb_score": 74.63,
       "raw_score": 0.22
     },
     {
@@ -35,7 +35,7 @@
       "ts_code": "605399",
       "stock_code": "605399",
       "stock_name": "晨光新材",
-      "lgb_score": 61.53,
+      "lgb_score": 71.55,
       "raw_score": 0.21
     },
     {
@@ -43,7 +43,7 @@
       "ts_code": "002346",
       "stock_code": "002346",
       "stock_name": "柘中股份",
-      "lgb_score": 61.47,
+      "lgb_score": 71.48,
       "raw_score": 0.21
     }
   ],
@@ -54,28 +54,28 @@
     "total_n_leaves": 6200
   },
   "prediction_stats": {
-    "mean": 0.03338,
-    "std": 0.020604,
-    "skew": 1.2744,
-    "kurtosis": 14.4743,
+    "mean": 0.033402,
+    "std": 0.020622,
+    "skew": 1.1417,
+    "kurtosis": 10.891,
     "min": -0.061472,
-    "max": 0.384412,
+    "max": 0.321989,
     "median": 0.045605
   },
   "training_metrics": {
-    "cv_rmse_mean": 0.10937274140954634,
-    "cv_rmse_std": 0.006244251606293534,
+    "cv_rmse_mean": 0.10937376075492311,
+    "cv_rmse_std": 0.006244601234265029,
     "cv_scores": [
-      0.108944,
-      0.111243,
+      0.108945,
+      0.111244,
       0.097923,
-      0.112132,
+      0.112135,
       0.116622
     ],
-    "rank_ic_mean": 0.046165,
-    "rank_ic_std": 0.024352,
-    "icir": 1.8957,
-    "oof_corr": 0.060152,
+    "rank_ic_mean": 0.046119,
+    "rank_ic_std": 0.024408,
+    "icir": 1.8895,
+    "oof_corr": 0.060092,
     "n_samples": 38974,
     "n_features": 4
   }

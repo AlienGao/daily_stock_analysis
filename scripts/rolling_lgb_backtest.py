@@ -36,7 +36,7 @@ LABEL_MODES = ["peak_speed", "fixed"]
 WINDOW_DAYS = 20  # peak_speed 窗口天数
 # PRED_END is computed dynamically from StockDaily in main()
 MODE = "postmarket"
-EXEC_MODE_LIST = ["open"]  # "open" = open→open labels
+EXEC_MODE_LIST = ["open", "close"]  # "open" = open→open labels
 TOP_N = 5
 
 # ── 增量模式配置 ──
@@ -333,9 +333,30 @@ def generate_incremental_window(pred_end: str) -> list[tuple[str, str, str, str]
             if already_done:
                 break
 
+    # 去重检查：确认当前 exec_mode 是否已跑过
+    # 文件名含 open2open/close2open/close2close 后缀可区分 exec_mode
     if already_done:
-        print(f"[增量] 跳过：{pred_month_start.strftime('%Y%m')} 已有报告")
-        return []
+        # 需要确认是否当前 exec_mode 也跑过
+        # 最简单：重新扫描验证该模式下的报告是否确实存在
+        mode_suffixes = {
+            "open": "open2open",
+            "close": "close2close",
+        }
+        mode_suffix = mode_suffixes.get(EXEC_MODE_LIST[0] if len(EXEC_MODE_LIST) == 1 else "", "")
+        already_done_for_this_mode = False
+        if mode_suffix and os.path.isdir(REPORTS_ROOT):
+            for root, _dirs, files in os.walk(REPORTS_ROOT):
+                for fn in files:
+                    if not fn.endswith(".json"):
+                        continue
+                    if f"_{expected_train_e_str}_" in fn and mode_suffix in fn:
+                        already_done_for_this_mode = True
+                        break
+                if already_done_for_this_mode:
+                    break
+        if already_done_for_this_mode:
+            print(f"[增量] 跳过：{pred_month_start.strftime('%Y%m')} {mode_suffix} 已有报告")
+            return []
 
     # 计算训练窗口：预测月前 12 个完整月份
     train_e = pred_month_start - timedelta(days=1)

@@ -63,19 +63,19 @@
     "median": 0.010727
   },
   "training_metrics": {
-    "cv_rmse_mean": 0.05648708996806464,
-    "cv_rmse_std": 0.003948140965228465,
+    "cv_rmse_mean": 0.05648778430896621,
+    "cv_rmse_std": 0.003947112657991144,
     "cv_scores": [
       0.057185,
       0.058159,
-      0.048734,
+      0.048737,
       0.059016,
       0.059343
     ],
-    "rank_ic_mean": 0.017402,
-    "rank_ic_std": 0.022238,
-    "icir": 0.7825,
-    "oof_corr": 0.024415,
+    "rank_ic_mean": 0.017385,
+    "rank_ic_std": 0.02222,
+    "icir": 0.7824,
+    "oof_corr": 0.024388,
     "n_samples": 39382,
     "n_features": 4
   }

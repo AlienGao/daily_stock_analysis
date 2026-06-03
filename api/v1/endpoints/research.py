@@ -3568,10 +3568,63 @@ def _run_factor_subset_batch(task_id: str, params: dict):
 def lgb_factor_subset_batch(
     exec_mode: str = Query("open", description="执行模式: open / close"),
     mode: str = Query("postmarket", description="postmarket / intraday"),
-    start_date: str = Query("20250101", description="数据起始日期"),
-    end_date: str = Query("20260525", description="数据结束日期"),
+    start_date: Optional[str] = Query(None, description="数据起始日期，默认用最新交易日往前 250 个交易日"),
+    end_date: Optional[str] = Query(None, description="数据结束日期，默认最新交易日"),
     tpe_trials: int = Query(80, description="TPE 精调试验次数"),
 ):
+    # 动态计算日期范围：end_date = 最新交易日，start_date = 往前 250 个交易日
+    if end_date is None:
+        db = DatabaseManager.get_instance()
+        with db.get_session() as session:
+            from sqlalchemy import func as _func2
+            dates_raw = (
+                session.query(StockDaily.date)
+                .group_by(StockDaily.date)
+                .having(_func2.count(StockDaily.code) >= 3000)
+                .order_by(StockDaily.date.desc())
+                .first()
+            )
+        if dates_raw:
+            end_date = dates_raw[0].strftime("%Y%m%d") if hasattr(dates_raw[0], "strftime") else str(dates_raw[0]).replace("-", "")[:8]
+        else:
+            end_date = "20260602"
+    if start_date is None:
+        from datetime import timedelta
+        from dateutil.relativedelta import relativedelta
+        end_dt = datetime.strptime(end_date, "%Y%m%d")
+        # 往前推约 14 个自然月确保有 250 个交易日
+        approx_start = end_dt - relativedelta(months=14)
+        # 从 StockDaily 精确取 250 个交易日
+        db = DatabaseManager.get_instance()
+        with db.get_session() as session:
+            from sqlalchemy import func as _func3
+            rows = (
+                session.query(StockDaily.date)
+                .filter(StockDaily.date >= approx_start.strftime("%Y-%m-%d"))
+                .filter(StockDaily.date <= end_dt.strftime("%Y-%m-%d"))
+                .group_by(StockDaily.date)
+                .having(_func3.count(StockDaily.code) >= 3000)
+                .order_by(StockDaily.date.asc())
+                .limit(250)
+                .all()
+            )
+        if rows and len(rows) >= 250:
+            start_date = rows[0][0].strftime("%Y%m%d") if hasattr(rows[0][0], "strftime") else str(rows[0][0]).replace("-", "")[:8]
+        else:
+            # fallback: 从 end_date 往前推 250 个交易日
+            rows2 = (
+                session.query(StockDaily.date)
+                .filter(StockDaily.date <= end_dt.strftime("%Y-%m-%d"))
+                .group_by(StockDaily.date)
+                .having(_func3.count(StockDaily.code) >= 3000)
+                .order_by(StockDaily.date.desc())
+                .limit(250)
+                .all()
+            )
+            if rows2:
+                start_date = rows2[-1][0].strftime("%Y%m%d") if hasattr(rows2[-1][0], "strftime") else str(rows2[-1][0]).replace("-", "")[:8]
+            else:
+                start_date = "20250402"
     # 构建全量配置: open/close × fixed(3/5/10/20d) × 2 top_n + peak_speed(20d) × 2 top_n
     configs = []
     for exec in ["open", "close"]:

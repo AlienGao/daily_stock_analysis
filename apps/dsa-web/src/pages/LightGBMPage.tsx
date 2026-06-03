@@ -1306,7 +1306,7 @@ const LightGBMPage: React.FC = () => {
             <div className="space-y-3">
               <div className="font-medium text-sm text-secondary-text">批量因子搜索</div>
               <div className="text-xs text-tertiary-text">
-                测试 20 种参数组合（open/close × fixed3d/5d/10d/20d + peak20d × 2种top_n），数据范围 2025-01-01 ~ 2026-05-25。按日均收益排名，每组内部自动选最优 top_n。
+                测试 20 种参数组合（open/close × fixed3d/5d/10d/20d + peak20d × 2种top_n），数据使用最新 250 个交易日。按日均收益排名，每组内部自动选最优 top_n。
               </div>
 
               {batchSearchStatus && batchSearchStatus.status === 'completed' && batchSearchStatus.result && (
