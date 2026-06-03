@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 10,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260602",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "605277",
+      "stock_code": "605277",
+      "stock_name": "新亚电子",
+      "lgb_score": 100.0,
+      "raw_score": 0.38
+    },
+    {
+      "rank": 2,
+      "ts_code": "688639",
+      "stock_code": "688639",
+      "stock_name": "华恒生物",
+      "lgb_score": 77.55,
+      "raw_score": 0.28
+    },
+    {
+      "rank": 3,
+      "ts_code": "002169",
+      "stock_code": "002169",
+      "stock_name": "智光电气",
+      "lgb_score": 64.19,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 4,
+      "ts_code": "605399",
+      "stock_code": "605399",
+      "stock_name": "晨光新材",
+      "lgb_score": 61.53,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 5,
+      "ts_code": "002346",
+      "stock_code": "002346",
+      "stock_name": "柘中股份",
+      "lgb_score": 61.47,
+      "raw_score": 0.21
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.72,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.03338,
+    "std": 0.020604,
+    "skew": 1.2744,
+    "kurtosis": 14.4743,
+    "min": -0.061472,
+    "max": 0.384412,
+    "median": 0.045605
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.10937274140954634,
+    "cv_rmse_std": 0.006244251606293534,
+    "cv_scores": [
+      0.108944,
+      0.111243,
+      0.097923,
+      0.112132,
+      0.116622
+    ],
+    "rank_ic_mean": 0.046165,
+    "rank_ic_std": 0.024352,
+    "icir": 1.8957,
+    "oof_corr": 0.060152,
+    "n_samples": 38974,
+    "n_features": 4
+  }
+}

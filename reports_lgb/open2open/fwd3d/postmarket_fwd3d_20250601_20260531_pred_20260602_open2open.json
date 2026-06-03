@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 3,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260602",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "605277",
+      "stock_code": "605277",
+      "stock_name": "新亚电子",
+      "lgb_score": 100.0,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 2,
+      "ts_code": "000533",
+      "stock_code": "000533",
+      "stock_name": "顺钠股份",
+      "lgb_score": 85.24,
+      "raw_score": 0.06
+    },
+    {
+      "rank": 3,
+      "ts_code": "301106",
+      "stock_code": "301106",
+      "stock_name": "骏成科技",
+      "lgb_score": 81.62,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 4,
+      "ts_code": "002169",
+      "stock_code": "002169",
+      "stock_name": "智光电气",
+      "lgb_score": 79.8,
+      "raw_score": 0.05
+    },
+    {
+      "rank": 5,
+      "ts_code": "002909",
+      "stock_code": "002909",
+      "stock_name": "集泰股份",
+      "lgb_score": 79.6,
+      "raw_score": 0.05
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.62,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.00188,
+    "std": 0.014764,
+    "skew": -1.31,
+    "kurtosis": 1.3941,
+    "min": -0.066941,
+    "max": 0.079819,
+    "median": 0.010727
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.05648708996806464,
+    "cv_rmse_std": 0.003948140965228465,
+    "cv_scores": [
+      0.057185,
+      0.058159,
+      0.048734,
+      0.059016,
+      0.059343
+    ],
+    "rank_ic_mean": 0.017402,
+    "rank_ic_std": 0.022238,
+    "icir": 0.7825,
+    "oof_corr": 0.024415,
+    "n_samples": 39382,
+    "n_features": 4
+  }
+}

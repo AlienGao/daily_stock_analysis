@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 5,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260602",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002169",
+      "stock_code": "002169",
+      "stock_name": "智光电气",
+      "lgb_score": 100.0,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 2,
+      "ts_code": "605277",
+      "stock_code": "605277",
+      "stock_name": "新亚电子",
+      "lgb_score": 88.27,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 3,
+      "ts_code": "000533",
+      "stock_code": "000533",
+      "stock_name": "顺钠股份",
+      "lgb_score": 80.36,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 4,
+      "ts_code": "301263",
+      "stock_code": "301263",
+      "stock_name": "泰恩康",
+      "lgb_score": 73.81,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 5,
+      "ts_code": "301106",
+      "stock_code": "301106",
+      "stock_name": "骏成科技",
+      "lgb_score": 69.8,
+      "raw_score": 0.1
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.0,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.01171,
+    "std": 0.025833,
+    "skew": -1.3201,
+    "kurtosis": 1.2126,
+    "min": -0.074857,
+    "max": 0.16938,
+    "median": 0.029359
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.07368825211559613,
+    "cv_rmse_std": 0.005442329651027175,
+    "cv_scores": [
+      0.072458,
+      0.076226,
+      0.063658,
+      0.07719,
+      0.07891
+    ],
+    "rank_ic_mean": 0.031051,
+    "rank_ic_std": 0.026863,
+    "icir": 1.1559,
+    "oof_corr": 0.042216,
+    "n_samples": 39111,
+    "n_features": 4
+  }
+}

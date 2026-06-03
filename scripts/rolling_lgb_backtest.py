@@ -293,40 +293,57 @@ def get_last_predicted_month() -> str | None:
 def generate_incremental_window(pred_end: str) -> list[tuple[str, str, str, str]]:
     """生成增量模式单窗口：(train_s, train_e, pred_s, pred_e)。
 
-    训练窗口 = 预测月减 1 个月前的 12 个月，预测窗口 = 完整月份。
-    预测月份从已有报告中推断：如果已有报告覆盖到 M 月，则预测 M+1 月。
+    训练窗口 = 预测月前 12 个完整月份（1 日到月末），
+    预测窗口 = 预测月的所有交易日（到最新交易日为止）。
+    
+    预测月份 = 当前最新完整月份（最新交易日所在月份）。
+    如果该月份已有对应训练窗口的报告（训练结束于该月前一个月末），则跳过。
     首次运行时（无报告），从 PRED_START 对应的月份开始。
     """
+    import re as _re
     final_pred_e = datetime.strptime(pred_end, "%Y%m%d")
 
-    # 推断要预测的月份
-    last_month_str = get_last_predicted_month()
-    if last_month_str is None:
-        # 首次运行，从 PRED_START 所在的月份开始
-        pred_month_start = datetime.strptime(PRED_START[:6] + "01", "%Y%m%d")
-    else:
-        pred_month_start = datetime.strptime(last_month_str + "01", "%Y%m%d") + relativedelta(months=1)
+    # 预测月份 = 最新交易日所在月份
+    pred_month_start = datetime(final_pred_e.year, final_pred_e.month, 1)
 
-    # 验证：如果最新要预测的月份已结束但尚未被跑过，或者该月已经有交易日了
-    # 如果 pred_month_start 超出了最新交易日所在的完整月，跳过
-    latest_full_month = datetime(final_pred_e.year, final_pred_e.month, 1)
-    if pred_month_start > latest_full_month:
-        print(f"[增量] 跳过：最新已预测到 {last_month_str or '无'}，"
-              f"下个月 {pred_month_start.strftime('%Y%m')} 尚未到来")
+    # 检查是否已跑过该月：报告文件名中存在对应的训练窗口
+    # 对应训练窗口结束 = pred_month_start 前一天
+    expected_train_e = pred_month_start - timedelta(days=1)
+    expected_train_e_str = expected_train_e.strftime("%Y%m%d")
+    
+    # 扫描报告文件，看是否已有训练结束于该日期的报告
+    already_done = False
+    if os.path.isdir(REPORTS_ROOT):
+        for root, _dirs, files in os.walk(REPORTS_ROOT):
+            for fn in files:
+                if not fn.endswith(".json"):
+                    continue
+                if f"_{expected_train_e_str}_" in fn or fn.endswith(f"_{expected_train_e_str}.json"):
+                    already_done = True
+                    break
+                # 更精确匹配：文件名含 _YYYYMMDD_pred_
+                parts = fn.split("_")
+                try:
+                    pred_idx = next(i for i, p in enumerate(parts) if p == "pred")
+                except StopIteration:
+                    continue
+                if pred_idx >= 1 and parts[pred_idx - 1] == expected_train_e_str:
+                    already_done = True
+                    break
+            if already_done:
+                break
+
+    if already_done:
+        print(f"[增量] 跳过：{pred_month_start.strftime('%Y%m')} 已有报告")
         return []
 
-    # 计算训练窗口：预测月前推 12 个月
-    train_e = pred_month_start - timedelta(days=1)  # 预测月之前一天的日期就是上一个月的最后一天
-    train_s = datetime(train_e.year, train_e.month, 1) - relativedelta(months=11)
+    # 计算训练窗口：预测月前 12 个完整月份
+    train_e = pred_month_start - timedelta(days=1)
+    train_s = (pred_month_start - relativedelta(months=12)).replace(day=1)
 
-    # 预测窗口：完整月份
+    # 预测窗口：当前月所有交易日（到最新交易日为止）
     pred_e_month = pred_month_start + relativedelta(months=1) - timedelta(days=1)
-    if pred_e_month > final_pred_e:
-        pred_e = final_pred_e
-        print(f"[增量] 警告：预测窗口 {pred_month_start.strftime('%Y%m')} 尚未结束，"
-              f"只预测到最新交易日 {final_pred_e.strftime('%Y%m%d')}")
-    else:
-        pred_e = pred_e_month
+    pred_e = pred_e_month if pred_e_month <= final_pred_e else final_pred_e
 
     train_s_s = train_s.strftime("%Y%m%d")
     train_e_s = train_e.strftime("%Y%m%d")

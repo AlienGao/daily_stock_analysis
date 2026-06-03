@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 20,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260601",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301176",
+      "stock_code": "301176",
+      "stock_name": "逸豪新材",
+      "lgb_score": 100.0,
+      "raw_score": 0.53
+    },
+    {
+      "rank": 2,
+      "ts_code": "000422",
+      "stock_code": "000422",
+      "stock_name": "湖北宜化",
+      "lgb_score": 84.41,
+      "raw_score": 0.43
+    },
+    {
+      "rank": 3,
+      "ts_code": "603225",
+      "stock_code": "603225",
+      "stock_name": "新凤鸣",
+      "lgb_score": 81.25,
+      "raw_score": 0.41
+    },
+    {
+      "rank": 4,
+      "ts_code": "600584",
+      "stock_code": "600584",
+      "stock_name": "长电科技",
+      "lgb_score": 78.83,
+      "raw_score": 0.4
+    },
+    {
+      "rank": 5,
+      "ts_code": "301217",
+      "stock_code": "301217",
+      "stock_name": "铜冠铜箔",
+      "lgb_score": 78.28,
+      "raw_score": 0.4
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.79,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.103699,
+    "std": 0.069488,
+    "skew": -0.3034,
+    "kurtosis": -1.246,
+    "min": -0.080341,
+    "max": 0.527741,
+    "median": 0.162274
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.1631394638071595,
+    "cv_rmse_std": 0.01809463181079599,
+    "cv_scores": [
+      0.16451,
+      0.151585,
+      0.142632,
+      0.161018,
+      0.195952
+    ],
+    "rank_ic_mean": 0.118124,
+    "rank_ic_std": 0.035676,
+    "icir": 3.311,
+    "oof_corr": 0.125477,
+    "n_samples": 38083,
+    "n_features": 4
+  }
+}

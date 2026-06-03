@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 10,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260601",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688233",
+      "stock_code": "688233",
+      "stock_name": "神工股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.39
+    },
+    {
+      "rank": 2,
+      "ts_code": "002639",
+      "stock_code": "002639",
+      "stock_name": "雪人集团",
+      "lgb_score": 100.0,
+      "raw_score": 0.39
+    },
+    {
+      "rank": 3,
+      "ts_code": "688388",
+      "stock_code": "688388",
+      "stock_name": "嘉元科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.39
+    },
+    {
+      "rank": 4,
+      "ts_code": "920971",
+      "stock_code": "920971",
+      "stock_name": "天马新材",
+      "lgb_score": 99.2,
+      "raw_score": 0.39
+    },
+    {
+      "rank": 5,
+      "ts_code": "688416",
+      "stock_code": "688416",
+      "stock_name": "恒烁股份",
+      "lgb_score": 88.29,
+      "raw_score": 0.34
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.72,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.03391,
+    "std": 0.022632,
+    "skew": 3.016,
+    "kurtosis": 37.1409,
+    "min": -0.070469,
+    "max": 0.392511,
+    "median": 0.045605
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.10937274140954634,
+    "cv_rmse_std": 0.006244251606293534,
+    "cv_scores": [
+      0.108944,
+      0.111243,
+      0.097923,
+      0.112132,
+      0.116622
+    ],
+    "rank_ic_mean": 0.046165,
+    "rank_ic_std": 0.024352,
+    "icir": 1.8957,
+    "oof_corr": 0.060152,
+    "n_samples": 38974,
+    "n_features": 4
+  }
+}

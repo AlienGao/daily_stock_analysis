@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260602",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301236",
+      "stock_code": "301236",
+      "stock_name": "软通动力",
+      "lgb_score": 100.0,
+      "raw_score": 0.39,
+      "predicted_days": 14
+    },
+    {
+      "rank": 2,
+      "ts_code": "002062",
+      "stock_code": "002062",
+      "stock_name": "宏润建设",
+      "lgb_score": 84.69,
+      "raw_score": 0.32,
+      "predicted_days": 10
+    },
+    {
+      "rank": 3,
+      "ts_code": "301107",
+      "stock_code": "301107",
+      "stock_name": "瑜欣电子",
+      "lgb_score": 83.27,
+      "raw_score": 0.32,
+      "predicted_days": 14
+    },
+    {
+      "rank": 4,
+      "ts_code": "300679",
+      "stock_code": "300679",
+      "stock_name": "电连技术",
+      "lgb_score": 77.97,
+      "raw_score": 0.29,
+      "predicted_days": 15
+    },
+    {
+      "rank": 5,
+      "ts_code": "688565",
+      "stock_code": "688565",
+      "stock_name": "力源科技",
+      "lgb_score": 77.76,
+      "raw_score": 0.29,
+      "predicted_days": 15
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.89,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.109911,
+    "std": 0.061402,
+    "skew": -0.4319,
+    "kurtosis": -1.3972,
+    "min": -0.05046,
+    "max": 0.392584,
+    "median": 0.159467
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.12712523719316796,
+    "cv_rmse_std": 0.012999983636836143,
+    "cv_scores": [
+      0.136423,
+      0.115272,
+      0.123245,
+      0.11328,
+      0.147406
+    ],
+    "rank_ic_mean": 0.17342,
+    "rank_ic_std": 0.034979,
+    "icir": 4.9578,
+    "oof_corr": 0.178651,
+    "n_samples": 39397,
+    "n_features": 4
+  },
+  "window_days": 20
+}
