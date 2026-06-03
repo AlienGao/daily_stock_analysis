@@ -1,0 +1,181 @@
+[
+  {
+    "rank": 1,
+    "stock_code": "600688",
+    "stock_name": "上海石化",
+    "score": 41.5,
+    "sector": "炼化及贸",
+    "factor_scores": {
+      "ma_entry": 27.940162395942224,
+      "sector": 50.0,
+      "momentum": 39.88405746754364,
+      "ranking_momentum": 46.92941489207716,
+      "rebound": 0.0,
+      "popularity": 67.67766952966369
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "排名连续上升(2天)",
+      "趋势加速↑(5.3%/天)",
+      "今日强于99%个股",
+      "人气核心圈(排名49)",
+      "人气股上涨(+10.0%)",
+      "所属板块: 炼化及贸"
+    ],
+    "buy_price_low": 2.8,
+    "buy_price_high": 2.9,
+    "stop_loss": 3.05,
+    "take_profit_1": 3.2,
+    "take_profit_2": 3.41,
+    "discovered_at": "10:43:23",
+    "price_at_discovery": 3.07,
+    "pct_chg": 10.04,
+    "tech_score": 70.67,
+    "rr_score": 89.21568627451008,
+    "market_score": 48.260496971758656,
+    "sector_score": 100.0,
+    "volume_score": 65.0,
+    "position_score": 75,
+    "formation_score": 20.0,
+    "composite_score": 61.919
+  },
+  {
+    "rank": 2,
+    "stock_code": "603087",
+    "stock_name": "甘李药业",
+    "score": 37.3,
+    "sector": "生物制品",
+    "factor_scores": {
+      "ma_entry": 100.0,
+      "sector": 0.0,
+      "momentum": 100.0,
+      "ranking_momentum": 29.47815086580433,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "刚突破MA5",
+      "今日强于63%个股"
+    ],
+    "buy_price_low": 50.7,
+    "buy_price_high": 55.9,
+    "stop_loss": 54.82,
+    "take_profit_1": 57.42,
+    "take_profit_2": 63.78,
+    "discovered_at": "10:43:23",
+    "price_at_discovery": 54.99,
+    "pct_chg": 0.0,
+    "tech_score": 64.7,
+    "rr_score": 70.61021170610215,
+    "market_score": 48.260496971758656,
+    "sector_score": 50.0,
+    "volume_score": 65.0,
+    "position_score": 85,
+    "formation_score": 20.0,
+    "composite_score": 56.48
+  },
+  {
+    "rank": 3,
+    "stock_code": "300347",
+    "stock_name": "泰格医药",
+    "score": 45.4,
+    "sector": "医疗服务",
+    "factor_scores": {
+      "ma_entry": 39.25581220559656,
+      "sector": 0.0,
+      "momentum": 33.366674201190904,
+      "ranking_momentum": 73.43797786923541,
+      "rebound": 0.0,
+      "popularity": 67.67766952966369
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "趋势加速↑(18.6%/天)",
+      "今日强于64%个股",
+      "人气核心圈(排名815)"
+    ],
+    "buy_price_low": 35.9,
+    "buy_price_high": 39.7,
+    "stop_loss": 38.21,
+    "take_profit_1": 41.64,
+    "take_profit_2": 57.74,
+    "discovered_at": "10:43:23",
+    "price_at_discovery": 38.97,
+    "pct_chg": -0.56,
+    "tech_score": 61.15,
+    "rr_score": 68.78910563121097,
+    "market_score": 48.260496971758656,
+    "sector_score": 30.133950103740048,
+    "volume_score": 65.0,
+    "position_score": 85,
+    "formation_score": 20.0,
+    "composite_score": 56.425
+  },
+  {
+    "rank": 4,
+    "stock_code": "300943",
+    "stock_name": "春晖智控",
+    "score": 40.8,
+    "sector": "通用设备",
+    "factor_scores": {
+      "ma_entry": 100.0,
+      "sector": 39.034291348742066,
+      "momentum": 35.389719492220785,
+      "ranking_momentum": 75.69526497638248,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "回踩MA5均线",
+      "趋势加速↑(11.2%/天)",
+      "今日强于90%个股",
+      "所属板块: 通用设备"
+    ],
+    "buy_price_low": 35.9,
+    "buy_price_high": 38.2,
+    "stop_loss": 37.47,
+    "take_profit_1": 43.22,
+    "take_profit_2": 49.55,
+    "discovered_at": "10:43:23",
+    "price_at_discovery": 38.95,
+    "pct_chg": 3.26,
+    "tech_score": 57.54,
+    "rr_score": 72.12837837837812,
+    "market_score": 48.260496971758656,
+    "sector_score": 33.35424835398903,
+    "volume_score": 65.0,
+    "position_score": 75,
+    "formation_score": 40.0,
+    "composite_score": 52.518
+  }
+]

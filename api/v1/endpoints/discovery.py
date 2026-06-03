@@ -1113,14 +1113,24 @@ def postmarket_followup(
             top_n=items, live_rescored=False,
         )
 
-    # TTL 内直接返回缓存
+    # TTL 内直接返回缓存（但实时价格每次都刷新）
     now = time.time()
     if _followup_cache is not None and now - _followup_cache_ts < _FOLLOWUP_TTL:
+        # 重新注入最新实时价格，避免用户看到 60 秒前的缓存价格
+        items = _followup_cache.top_n
+        if items:
+            _enrich_live_quotes(items)
+            _enrich_recent_counts(items)
         return _followup_cache
 
     # 另一个线程正在跑 discover()，返回上一次缓存
     if not _followup_lock.acquire(blocking=False):
         if _followup_cache is not None:
+            # 另一线程正在重评，先返回缓存但刷新实时价格
+            items = _followup_cache.top_n
+            if items:
+                _enrich_live_quotes(items)
+                _enrich_recent_counts(items)
             return _followup_cache
         return PostmarketReportResponse(date=report_date or "", report="", exists=False)
 

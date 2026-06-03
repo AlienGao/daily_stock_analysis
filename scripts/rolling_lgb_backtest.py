@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""滚动窗口 LightGBM 回测。
+"""滚动窗口 LightGBM 回测（增量模式）。
 
-训练窗口从 2024-01-01 开始每月向后滑动，用当月模型预测后续每日 Top 5。
-支持 fixed（固定持有期）和 peak_speed（峰值速度）两种标签模式。
+每次运行只预测最新未预测的完整月份：训练窗口 = 预测月前 12 个月，
+预测窗口 = 完整月份的所有交易日。支持 fixed 和 peak_speed 两种标签模式。
 每日预测结果保存为独立 MD + JSON 报告到 reports_lgb/。
 """
 
@@ -38,6 +38,13 @@ WINDOW_DAYS = 20  # peak_speed 窗口天数
 MODE = "postmarket"
 EXEC_MODE_LIST = ["open"]  # "open" = open→open labels
 TOP_N = 5
+
+# ── 增量模式配置 ──
+# 每次运行只预测最新未预测的完整月份。
+# 训练窗口 = 预测月前 12 个月（不含预测月），预测窗口 = 完整月份的所有交易日。
+# 设为 False 回到原行为（从 TRAIN_START / PRED_START 开始逐月滑动）。
+INCREMENTAL_MODE = True
+
 
 
 # ── 因子子集配置 ──
@@ -261,11 +268,82 @@ def save_daily_report(trainer: LGBTrainer, pred_date: str) -> str:
     return md_path
 
 
+def get_last_predicted_month() -> str | None:
+    """扫描报告目录，找到已预测到的最大月份（YYYYMM 格式）。
+
+    从报告文件名 _pred_YYYYMMDD_ 中提取预测日期，推断其所属月份。
+    如果没有任何报告，返回 None。
+    """
+    import re as _re
+    latest: str | None = None
+    if not os.path.isdir(REPORTS_ROOT):
+        return None
+    for root, _dirs, files in os.walk(REPORTS_ROOT):
+        for fn in files:
+            if not fn.endswith(".json"):
+                continue
+            m = _re.search(r'_pred_(\d{8})_', fn)
+            if m:
+                month = m.group(1)[:6]  # YYYYMM
+                if latest is None or month > latest:
+                    latest = month
+    return latest
+
+
+def generate_incremental_window(pred_end: str) -> list[tuple[str, str, str, str]]:
+    """生成增量模式单窗口：(train_s, train_e, pred_s, pred_e)。
+
+    训练窗口 = 预测月减 1 个月前的 12 个月，预测窗口 = 完整月份。
+    预测月份从已有报告中推断：如果已有报告覆盖到 M 月，则预测 M+1 月。
+    首次运行时（无报告），从 PRED_START 对应的月份开始。
+    """
+    final_pred_e = datetime.strptime(pred_end, "%Y%m%d")
+
+    # 推断要预测的月份
+    last_month_str = get_last_predicted_month()
+    if last_month_str is None:
+        # 首次运行，从 PRED_START 所在的月份开始
+        pred_month_start = datetime.strptime(PRED_START[:6] + "01", "%Y%m%d")
+    else:
+        pred_month_start = datetime.strptime(last_month_str + "01", "%Y%m%d") + relativedelta(months=1)
+
+    # 验证：如果最新要预测的月份已结束但尚未被跑过，或者该月已经有交易日了
+    # 如果 pred_month_start 超出了最新交易日所在的完整月，跳过
+    latest_full_month = datetime(final_pred_e.year, final_pred_e.month, 1)
+    if pred_month_start > latest_full_month:
+        print(f"[增量] 跳过：最新已预测到 {last_month_str or '无'}，"
+              f"下个月 {pred_month_start.strftime('%Y%m')} 尚未到来")
+        return []
+
+    # 计算训练窗口：预测月前推 12 个月
+    train_e = pred_month_start - timedelta(days=1)  # 预测月之前一天的日期就是上一个月的最后一天
+    train_s = datetime(train_e.year, train_e.month, 1) - relativedelta(months=11)
+
+    # 预测窗口：完整月份
+    pred_e_month = pred_month_start + relativedelta(months=1) - timedelta(days=1)
+    if pred_e_month > final_pred_e:
+        pred_e = final_pred_e
+        print(f"[增量] 警告：预测窗口 {pred_month_start.strftime('%Y%m')} 尚未结束，"
+              f"只预测到最新交易日 {final_pred_e.strftime('%Y%m%d')}")
+    else:
+        pred_e = pred_e_month
+
+    train_s_s = train_s.strftime("%Y%m%d")
+    train_e_s = train_e.strftime("%Y%m%d")
+    pred_s_s = pred_month_start.strftime("%Y%m%d")
+    pred_e_s = pred_e.strftime("%Y%m%d")
+
+    print(f"[增量] 训练窗口: {train_s_s} ~ {train_e_s}")
+    print(f"[增量] 预测窗口: {pred_s_s} ~ {pred_e_s}")
+    return [(train_s_s, train_e_s, pred_s_s, pred_e_s)]
+
+
 def generate_monthly_windows(pred_end: str):
     """Yield (train_start, train_end, pred_start, pred_end) YYYYMMDD tuples.
 
     Training window ends the day before prediction starts, and slides
     forward monthly along with the prediction window.
+    非增量模式（INCREMENTAL_MODE=False）时使用。
     """
     train_s = datetime.strptime(TRAIN_START, "%Y%m%d")
     pred_s = datetime.strptime(PRED_START, "%Y%m%d")
@@ -368,7 +446,10 @@ def main():
         return
     pred_end = dates_raw[0].strftime("%Y%m%d") if hasattr(dates_raw[0], "strftime") else str(dates_raw[0]).replace("-", "")[:8]
 
-    windows = generate_monthly_windows(pred_end)
+    if INCREMENTAL_MODE:
+        windows = generate_incremental_window(pred_end)
+    else:
+        windows = generate_monthly_windows(pred_end)
 
     # ── 加载因子子集配置 ──
     print("=" * 64)
@@ -381,9 +462,16 @@ def main():
     print("=" * 64)
     print(f"滚动窗口 LGB 回测")
     print(f"模式: {MODE} | exec: {EXEC_MODE_LIST} | Top {TOP_N}")
-    print(f"训练起点: {TRAIN_START} (逐月右移 12 个月窗口)")
-    print(f"预测范围: {PRED_START} ~ {pred_end}")
-    print(f"窗口数: {len(windows)}")
+    if INCREMENTAL_MODE:
+        last_month = get_last_predicted_month() or "无"
+        print(f"增量模式 | 上次预测月份: {last_month} | 窗口数: {len(windows)}")
+        if windows:
+            ts, te, ps, pe = windows[0]
+            print(f"训练窗口: {ts} ~ {te}  |  预测窗口: {ps} ~ {pe}")
+    else:
+        print(f"训练起点: {TRAIN_START} (逐月右移 12 个月窗口)")
+        print(f"预测范围: {PRED_START} ~ {pred_end}")
+        print(f"窗口数: {len(windows)}")
     print(f"报告目录: {REPORTS_ROOT}/open2open/{{peak20d,fwd3d,fwd5d,fwd10d,fwd20d}}")
     print("=" * 64)
 

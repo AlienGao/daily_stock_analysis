@@ -1826,3 +1826,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [1.2.0]: https://github.com/ZhuLinsen/daily_stock_analysis/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/ZhuLinsen/daily_stock_analysis/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/ZhuLinsen/daily_stock_analysis/releases/tag/v1.0.0
+
+- [改进] 滚动 LGB 回测改为增量模式：每次运行只预测最新未预测的完整月份，训练窗口 = 预测月前 12 个月，自动从已有报告推断断点续跑。
