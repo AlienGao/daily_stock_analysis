@@ -1029,14 +1029,16 @@ const FactorTopsCard: React.FC<{
 const BacktestCard: React.FC<{
   data: BacktestResponse | null;
   loading: boolean;
+  error?: string | null;
   startDate: string;
   endDate: string;
   onStartDate: (v: string) => void;
   onEndDate: (v: string) => void;
   onRefresh: () => void;
-}> = ({ data, loading, startDate, endDate, onStartDate, onEndDate, onRefresh }) => {
+}> = ({ data, loading, error, startDate, endDate, onStartDate, onEndDate, onRefresh }) => {
   const [section, setSection] = useState<'chart' | 'trades'>('chart');
-  const [collapsed, setCollapsed] = useState(true);
+  const [collapsed, setCollapsed] = useState(false);
+  const tradeRows = data?.trade_records ?? [];
 
   const exportTrades = useCallback(() => {
     if (!data?.trade_records?.length) return;
@@ -1081,7 +1083,11 @@ const BacktestCard: React.FC<{
   if (!data) {
     return (
       <div className="rounded-xl border border-border/20 bg-card/40 px-4 py-3 text-[12px] text-tertiary-text min-h-[48px]">
-        暂无回测数据
+        {loading ? (
+          <><Loader2 className="inline h-3 w-3 animate-spin mr-1.5" />加载回测数据...</>
+        ) : (
+          <>{error || '暂无回测数据'}</>
+        )}
       </div>
     );
   }
@@ -1110,6 +1116,9 @@ const BacktestCard: React.FC<{
       >
         <span className="text-tertiary-text text-[11px] font-medium tracking-wide">回测</span>
         {loading && <Loader2 className="h-3 w-3 animate-spin text-cyan/60" />}
+        {error && !loading && (
+          <span className="text-amber-400/90 text-[11px]">{error}</span>
+        )}
 
         <div className="flex items-center gap-3">
           <span className={`font-bold text-sm tabular-nums ${isPositive ? 'text-red-400' : 'text-emerald-400'}`}>
@@ -1186,12 +1195,12 @@ const BacktestCard: React.FC<{
               收益曲线
             </button>
             <button
-              onClick={() => setSection('trades')}
+              onClick={() => { setCollapsed(false); setSection('trades'); }}
               className={`px-4 py-1.5 text-[11px] font-medium transition-colors ${section === 'trades' ? 'text-cyan border-b border-cyan' : 'text-tertiary-text hover:text-secondary-text'}`}
             >
-              交易记录
+              交易记录{tradeRows.length > 0 ? ` (${tradeRows.length})` : ''}
             </button>
-            {section === 'trades' && data?.trade_records?.length > 0 && (
+            {section === 'trades' && tradeRows.length > 0 && (
               <button
                 onClick={e => { e.stopPropagation(); exportTrades(); }}
                 className="ml-auto mr-2 flex items-center gap-1 px-2 py-1 rounded text-[11px] text-tertiary-text hover:text-cyan hover:bg-cyan/5 transition-colors"
@@ -1248,6 +1257,11 @@ const BacktestCard: React.FC<{
           {/* ── Trade records ── */}
           {section === 'trades' && (
             <div className="max-h-64 overflow-y-auto">
+              {tradeRows.length === 0 ? (
+                <div className="px-4 py-6 text-center text-[12px] text-tertiary-text">
+                  暂无交易记录{data.total_trades > 0 ? '（数据加载不完整，请点「查询」重试）' : ''}
+                </div>
+              ) : (
               <table className="w-full text-[11px]">
                 <thead className="sticky top-0 bg-card/90 text-tertiary-text">
                   <tr>
@@ -1261,32 +1275,41 @@ const BacktestCard: React.FC<{
                     <th className="px-2 py-2 text-right font-medium">卖出金额</th>
                     <th className="px-2 py-2 text-right font-medium">收益%</th>
                     <th className="px-2 py-2 text-right font-medium">盈亏</th>
+                    <th className="px-2 py-2 text-right font-medium">状态</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {[...data.trade_records].reverse().map((t, i) => (
+                  {[...tradeRows].reverse().map((t, i) => {
+                    const retPct = Number(t.return_pct);
+                    const pnl = Number(t.pnl);
+                    const buyPx = Number(t.buy_price);
+                    const sellPx = Number(t.sell_price);
+                    return (
                     <tr key={`${t.stock_code}-${t.buy_date}-${i}`} className="border-t border-border/10 hover:bg-foreground/[0.02]">
                       <td className="px-3 py-1.5">
                         <span className="font-medium text-foreground">{t.stock_code}</span>
                         <span className="text-tertiary-text ml-1">{t.stock_name}</span>
                       </td>
                       <td className="px-2 py-1.5 text-right text-tertiary-text">{fmtDate(t.buy_date)}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">{t.buy_price.toFixed(2)}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">{Number.isFinite(buyPx) ? buyPx.toFixed(2) : '--'}</td>
                       <td className="px-2 py-1.5 text-right tabular-nums">{t.shares ? t.shares.toLocaleString() : '--'}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">{t.shares ? `${(t.shares * t.buy_price / 10000).toFixed(2)}万` : '--'}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">{t.shares && Number.isFinite(buyPx) ? `${(t.shares * buyPx / 10000).toFixed(2)}万` : '--'}</td>
                       <td className="px-2 py-1.5 text-right text-tertiary-text">{t.is_open ? '--' : fmtDate(t.sell_date)}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">{t.is_open ? '--' : t.sell_price.toFixed(2)}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">{t.is_open ? '--' : (t.shares ? `${(t.shares * t.sell_price / 10000).toFixed(2)}万` : '--')}</td>
-                      <td className={`px-2 py-1.5 text-right font-medium tabular-nums ${t.return_pct >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                        {t.return_pct >= 0 ? '+' : ''}{(t.return_pct * 100).toFixed(2)}%
+                      <td className="px-2 py-1.5 text-right tabular-nums">{t.is_open ? '--' : (Number.isFinite(sellPx) ? sellPx.toFixed(2) : '--')}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">{t.is_open ? '--' : (t.shares && Number.isFinite(sellPx) ? `${(t.shares * sellPx / 10000).toFixed(2)}万` : '--')}</td>
+                      <td className={`px-2 py-1.5 text-right font-medium tabular-nums ${retPct >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                        {t.is_open ? '--' : (Number.isFinite(retPct) ? `${retPct >= 0 ? '+' : ''}${(retPct * 100).toFixed(2)}%` : '--')}
                       </td>
-                      <td className={`px-2 py-1.5 text-right font-medium tabular-nums ${t.pnl >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                        {t.pnl >= 0 ? '+' : ''}{t.pnl.toFixed(0)}
+                      <td className={`px-2 py-1.5 text-right font-medium tabular-nums ${pnl >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                        {t.is_open ? '--' : (Number.isFinite(pnl) ? `${pnl >= 0 ? '+' : ''}${pnl.toFixed(0)}` : '--')}
                       </td>
+                      <td className="px-2 py-1.5 text-right text-tertiary-text">{t.is_open ? '持仓中' : '已平仓'}</td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
+              )}
             </div>
           )}
         </>
@@ -1311,8 +1334,9 @@ const DiscoveryPage: React.FC = () => {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [backtest, setBacktest] = useState<BacktestResponse | null>(null);
   const [backtestLoading, setBacktestLoading] = useState(false);
+  const [backtestByTab, setBacktestByTab] = useState<Record<string, BacktestResponse | null>>({});
+  const [backtestError, setBacktestError] = useState<string | null>(null);
   const [btStartDate, setBtStartDate] = useState<string>('');
   const [btEndDate, setBtEndDate] = useState<string>('');
   const intradayFetchInFlightRef = useRef(false);
@@ -1456,15 +1480,18 @@ const DiscoveryPage: React.FC = () => {
 
   const fetchBacktest = useCallback(async (mode: 'intraday' | 'postmarket') => {
     setBacktestLoading(true);
+    setBacktestError(null);
     try {
       const opts: { days?: number; start_date?: string; end_date?: string } = {};
       if (btStartDate) opts.start_date = btStartDate;
       if (btEndDate) opts.end_date = btEndDate;
       if (!btStartDate && !btEndDate) opts.days = 60;
       const d = await discoveryApi.getBacktest(mode, opts);
-      setBacktest(d);
-    } catch { /* silent */ }
-    finally { setBacktestLoading(false); }
+      setBacktestByTab(prev => ({ ...prev, [mode]: d }));
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : '回测加载失败';
+      setBacktestError(msg.includes('timeout') || msg.includes('Timeout') ? '回测计算超时，请稍后重试' : msg);
+    } finally { setBacktestLoading(false); }
   }, [btStartDate, btEndDate]);
 
   const fetchScanMode = useCallback((mode: 'intraday' | 'postmarket') => {
@@ -1506,6 +1533,7 @@ const DiscoveryPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    setBacktestLoading(true);
     if (tab === 'intraday') { fetchIntraday(); fetchBacktest('intraday'); fetchScanMode('intraday'); }
     else {
       // 优先用内存缓存（含盘中最后一次重评），没有再加载静态报告
@@ -1863,8 +1891,9 @@ const DiscoveryPage: React.FC = () => {
           </div>
 
           <BacktestCard
-            data={backtest}
+            data={backtestByTab['intraday'] ?? null}
             loading={backtestLoading}
+            error={tab === 'intraday' ? backtestError : null}
             startDate={btStartDate}
             endDate={btEndDate}
             onStartDate={setBtStartDate}
@@ -1957,8 +1986,9 @@ const DiscoveryPage: React.FC = () => {
           </div>
 
           <BacktestCard
-            data={backtest}
+            data={backtestByTab['postmarket'] ?? null}
             loading={backtestLoading}
+            error={tab === 'postmarket' ? backtestError : null}
             startDate={btStartDate}
             endDate={btEndDate}
             onStartDate={setBtStartDate}

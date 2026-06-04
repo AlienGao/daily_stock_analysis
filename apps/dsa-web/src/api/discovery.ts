@@ -401,8 +401,15 @@ export const discoveryApi = {
   ): Promise<BacktestResponse> {
     const resp = await apiClient.get('/api/v1/discovery/backtest', {
       params: { mode, days: options?.days ?? 60, ...options },
+      timeout: 120_000,
     });
-    return resp.data as BacktestResponse;
+    const raw = resp.data as BacktestResponse;
+    return {
+      ...raw,
+      trade_records: raw.trade_records ?? [],
+      capital_curve: raw.capital_curve ?? [],
+      daily_results: raw.daily_results ?? [],
+    };
   },
 
   async getScanMode(mode: 'intraday' | 'postmarket' = 'intraday'): Promise<ScanModeResponse> {

@@ -1482,6 +1482,37 @@ class BacktestResponse(BaseModel):
     capital_curve: List[CapitalCurvePoint] = []
 
 
+_DEFAULT_BACKTEST_CAPITAL = 5_000_000.0
+_DISCOVERY_BACKTEST_CACHE: Dict[str, Tuple[float, BacktestResponse]] = {}
+_DISCOVERY_BACKTEST_CACHE_TTL_SEC = 300
+
+
+def _backtest_cache_key(
+    mode: str,
+    days: int,
+    start_date: Optional[str],
+    end_date: Optional[str],
+) -> str:
+    return f"{mode}:{days}:{start_date or ''}:{end_date or ''}"
+
+
+def _empty_backtest_response(mode: str) -> BacktestResponse:
+    return BacktestResponse(
+        mode=mode,
+        initial_capital=_DEFAULT_BACKTEST_CAPITAL,
+        final_capital=_DEFAULT_BACKTEST_CAPITAL,
+        cumulative_return=0.0,
+        total_pnl=0.0,
+        win_rate=0.0,
+        max_drawdown=0.0,
+        total_days=0,
+        total_trades=0,
+        daily_results=[],
+        trade_records=[],
+        capital_curve=[],
+    )
+
+
 @router.get(
     "/backtest",
     response_model=BacktestResponse,
@@ -1499,6 +1530,12 @@ def get_backtest(
 
     if mode not in ("intraday", "postmarket"):
         raise HTTPException(status_code=400, detail="mode 仅支持 intraday 或 postmarket")
+
+    cache_key = _backtest_cache_key(mode, days, start_date, end_date)
+    now = time.time()
+    cached = _DISCOVERY_BACKTEST_CACHE.get(cache_key)
+    if cached and cached[0] > now:
+        return cached[1]
 
     try:
         fetcher = TushareFetcher.get_instance()
@@ -1518,7 +1555,9 @@ def get_backtest(
         raise HTTPException(status_code=500, detail=f"回测计算失败: {str(e)}")
 
     if summary is None:
-        return BacktestResponse(mode=mode)
+        resp = _empty_backtest_response(mode)
+        _DISCOVERY_BACKTEST_CACHE[cache_key] = (now + _DISCOVERY_BACKTEST_CACHE_TTL_SEC, resp)
+        return resp
 
     daily = [
         BacktestDailyItem(
@@ -1561,7 +1600,7 @@ def get_backtest(
         for p in summary.capital_curve
     ]
 
-    return BacktestResponse(
+    resp = BacktestResponse(
         mode=summary.mode,
         initial_capital=summary.initial_capital,
         final_capital=summary.final_capital,
@@ -1575,6 +1614,8 @@ def get_backtest(
         trade_records=trades,
         capital_curve=curve,
     )
+    _DISCOVERY_BACKTEST_CACHE[cache_key] = (now + _DISCOVERY_BACKTEST_CACHE_TTL_SEC, resp)
+    return resp
 
 
 # ------------------------------------------------------------------
