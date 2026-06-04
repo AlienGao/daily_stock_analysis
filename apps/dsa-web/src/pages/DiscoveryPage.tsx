@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Compass, RefreshCw, TrendingUp, TrendingDown,
   Loader2, ArrowUp, ArrowDown, Sparkles,
-  ChevronDown, Target, Shield, Zap, Gauge,
+  ChevronDown, Target, Shield, Zap, Gauge, Download,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
@@ -1038,6 +1038,37 @@ const BacktestCard: React.FC<{
   const [section, setSection] = useState<'chart' | 'trades'>('chart');
   const [collapsed, setCollapsed] = useState(true);
 
+  const exportTrades = useCallback(() => {
+    if (!data?.trade_records?.length) return;
+    const header = '股票代码,股票名称,买入日,买入价,股数,买入金额,卖出日,卖出价,卖出金额,收益%,盈亏,状态';
+    const rows = data.trade_records.map(t => {
+      const buyAmount = t.shares ? (t.shares * t.buy_price).toFixed(2) : '--';
+      const sellAmount = t.is_open ? '--' : (t.shares ? (t.shares * t.sell_price).toFixed(2) : '--');
+      return [
+        t.stock_code,
+        t.stock_name,
+        fmtDate(t.buy_date),
+        t.buy_price.toFixed(2),
+        t.shares ? t.shares.toString() : '--',
+        buyAmount,
+        t.is_open ? '--' : fmtDate(t.sell_date),
+        t.is_open ? '--' : t.sell_price.toFixed(2),
+        sellAmount,
+        t.is_open ? '--' : `${(t.return_pct >= 0 ? '+' : '')}${(t.return_pct * 100).toFixed(2)}%`,
+        t.is_open ? '--' : `${(t.pnl >= 0 ? '+' : '')}${t.pnl.toFixed(0)}`,
+        t.is_open ? '持仓中' : '已平仓',
+      ].join(',');
+    }).join('\n');
+    const bom = '﻿';
+    const blob = new Blob([bom + header + '\n' + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `backtest_trades_${data.mode}_${fmtDate(startDate || '')}_${fmtDate(endDate || '')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [data, startDate, endDate]);
+
   // Only show full loading skeleton when there's no data yet — prevent height collapse on refresh
   if (!data && loading) {
     return (
@@ -1147,7 +1178,7 @@ const BacktestCard: React.FC<{
       {!collapsed && (
         <>
           {/* ── Tab switcher ── */}
-          <div className="flex border-b border-border/10">
+          <div className="flex items-center border-b border-border/10">
             <button
               onClick={() => setSection('chart')}
               className={`px-4 py-1.5 text-[11px] font-medium transition-colors ${section === 'chart' ? 'text-cyan border-b border-cyan' : 'text-tertiary-text hover:text-secondary-text'}`}
@@ -1160,6 +1191,16 @@ const BacktestCard: React.FC<{
             >
               交易记录
             </button>
+            {section === 'trades' && data?.trade_records?.length > 0 && (
+              <button
+                onClick={e => { e.stopPropagation(); exportTrades(); }}
+                className="ml-auto mr-2 flex items-center gap-1 px-2 py-1 rounded text-[11px] text-tertiary-text hover:text-cyan hover:bg-cyan/5 transition-colors"
+                title="导出 CSV"
+              >
+                <Download className="h-3 w-3" />
+                导出
+              </button>
+            )}
           </div>
 
           {/* ── Chart ── */}

@@ -142,11 +142,11 @@
   {
     "date": "20260522",
     "mode": "postmarket",
-    "cumulative_return": 0.05838974541894291,
-    "win_rate": 0.5194805194805194,
-    "total_trades": 77,
-    "total_days": 13,
-    "final_capital": 5291948.73,
+    "cumulative_return": 0.038466,
+    "win_rate": 0.4782608695652174,
+    "total_trades": 46,
+    "total_days": 10,
+    "final_capital": 5192330.0,
     "initial_capital": 5000000.0
   },
   {
@@ -227,6 +227,26 @@
     "total_trades": 109,
     "total_days": 21,
     "final_capital": 5641062.0,
+    "initial_capital": 5000000.0
+  },
+  {
+    "date": "20260604",
+    "mode": "postmarket",
+    "cumulative_return": 0.1237232,
+    "win_rate": 0.5132743362831859,
+    "total_trades": 113,
+    "total_days": 22,
+    "final_capital": 5618616.0,
+    "initial_capital": 5000000.0
+  },
+  {
+    "date": "20260531",
+    "mode": "postmarket",
+    "cumulative_return": 0.1141184,
+    "win_rate": 0.5274725274725275,
+    "total_trades": 91,
+    "total_days": 18,
+    "final_capital": 5570592.0,
     "initial_capital": 5000000.0
   }
 ]

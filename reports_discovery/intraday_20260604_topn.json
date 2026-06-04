@@ -1,0 +1,182 @@
+[
+  {
+    "rank": 1,
+    "stock_code": "300943",
+    "stock_name": "春晖智控",
+    "score": 40.3,
+    "sector": "通用设备",
+    "factor_scores": {
+      "ma_entry": 100.0,
+      "sector": 23.536332569117068,
+      "momentum": 48.42201399225549,
+      "ranking_momentum": 70.10705759455675,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "回踩MA5均线",
+      "排名连续上升(2天)",
+      "趋势加速↑(5.0%/天)",
+      "今日强于90%个股",
+      "所属板块: 通用设备"
+    ],
+    "buy_price_low": 36.1,
+    "buy_price_high": 38.6,
+    "stop_loss": 37.82,
+    "take_profit_1": 43.48,
+    "take_profit_2": 49.59,
+    "discovered_at": "15:01:01",
+    "price_at_discovery": 39.18,
+    "pct_chg": 2.62,
+    "tech_score": 68.78,
+    "rr_score": 73.66617719040622,
+    "market_score": 46.190427227020024,
+    "sector_score": 93.22375397667021,
+    "volume_score": 65.0,
+    "position_score": 75,
+    "formation_score": 40.0,
+    "composite_score": 60.236
+  },
+  {
+    "rank": 2,
+    "stock_code": "002263",
+    "stock_name": "大东南",
+    "score": 36.8,
+    "sector": "塑料制品",
+    "factor_scores": {
+      "ma_entry": 81.60193624177226,
+      "sector": 0.0,
+      "momentum": 47.187280247684946,
+      "ranking_momentum": 83.5971686854873,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "回踩MA5均线",
+      "趋势加速↑(11.3%/天)",
+      "今日强于92%个股"
+    ],
+    "buy_price_low": 3.6,
+    "buy_price_high": 4.0,
+    "stop_loss": 3.88,
+    "take_profit_1": 4.17,
+    "take_profit_2": 4.78,
+    "discovered_at": "15:01:01",
+    "price_at_discovery": 3.9,
+    "pct_chg": 3.17,
+    "tech_score": 69.24,
+    "rr_score": 72.97297297297295,
+    "market_score": 46.190427227020024,
+    "sector_score": 80.23663196838844,
+    "volume_score": 65.0,
+    "position_score": 85,
+    "formation_score": 40.0,
+    "composite_score": 59.507999999999996
+  },
+  {
+    "rank": 3,
+    "stock_code": "603806",
+    "stock_name": "福斯特",
+    "score": 41.4,
+    "sector": "光伏设备",
+    "factor_scores": {
+      "ma_entry": 100.0,
+      "sector": 0.0,
+      "momentum": 50.0,
+      "ranking_momentum": 83.52566293449513,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "回踩MA5均线",
+      "排名连续上升(2天)",
+      "趋势加速↑(10.9%/天)",
+      "今日强于85%个股"
+    ],
+    "buy_price_low": 16.4,
+    "buy_price_high": 18.0,
+    "stop_loss": 17.69,
+    "take_profit_1": 19.34,
+    "take_profit_2": 21.77,
+    "discovered_at": "15:01:01",
+    "price_at_discovery": 17.79,
+    "pct_chg": 1.37,
+    "tech_score": 66.13,
+    "rr_score": 67.14108910891096,
+    "market_score": 46.190427227020024,
+    "sector_score": 89.50087057457918,
+    "volume_score": 65.0,
+    "position_score": 75,
+    "formation_score": 40.0,
+    "composite_score": 58.711
+  },
+  {
+    "rank": 4,
+    "stock_code": "300109",
+    "stock_name": "新开源",
+    "score": 47.6,
+    "sector": "化学制品",
+    "factor_scores": {
+      "ma_entry": 37.16067912611184,
+      "sector": 0.0,
+      "momentum": 50.0,
+      "ranking_momentum": 42.23232290807605,
+      "rebound": 0.0,
+      "popularity": 87.22613567638271
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "今日强于72%个股",
+      "人气飙升(+1008位)",
+      "人气核心圈(排名2309)",
+      "人气排名持续改善"
+    ],
+    "buy_price_low": 15.6,
+    "buy_price_high": 17.1,
+    "stop_loss": 16.56,
+    "take_profit_1": 17.84,
+    "take_profit_2": 21.96,
+    "discovered_at": "15:01:01",
+    "price_at_discovery": 16.8,
+    "pct_chg": -0.36,
+    "tech_score": 60.58,
+    "rr_score": 69.99999999999996,
+    "market_score": 46.190427227020024,
+    "sector_score": 14.009269988412486,
+    "volume_score": 65.0,
+    "position_score": 85,
+    "formation_score": 20.0,
+    "composite_score": 56.686
+  }
+]
