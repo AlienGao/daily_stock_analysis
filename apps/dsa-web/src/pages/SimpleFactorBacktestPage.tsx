@@ -139,6 +139,41 @@ function cacheParamsMatch(
 }
 
 
+
+function factorWeightsOnlyMatch(
+  a: Record<string, number>,
+  b: Record<string, number>,
+): boolean {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  if (keys.size === 0) return false;
+  for (const key of keys) {
+    if ((a[key] ?? 0) !== (b[key] ?? 0)) return false;
+  }
+  return true;
+}
+
+function buildFactorSelectionFromWeights(
+  factorWeights: Record<string, number>,
+  availableFactors: FactorInfo[],
+): { selected: Record<string, boolean>; weights: Record<string, number> } {
+  const defaultWeightByName = new Map(availableFactors.map((f) => [f.name, f.weight]));
+  const allNames = new Set([
+    ...availableFactors.map((f) => f.name),
+    ...Object.keys(factorWeights),
+  ]);
+  const selected: Record<string, boolean> = {};
+  const weights: Record<string, number> = {};
+  for (const name of allNames) {
+    selected[name] = false;
+    weights[name] = defaultWeightByName.get(name) ?? factorWeights[name] ?? 1;
+  }
+  for (const [fn, fw] of Object.entries(factorWeights)) {
+    selected[fn] = true;
+    weights[fn] = fw;
+  }
+  return { selected, weights };
+}
+
 function formatTradePrice(raw: number): string {
   if (!raw || raw <= 0) return '--';
   return raw.toFixed(2);
@@ -198,8 +233,11 @@ const SimpleFactorBacktestPage: React.FC = () => {
   const [forceRerun, setForceRerun] = useState(false);
   const [cacheHistory, setCacheHistory] = useState<CacheHistoryItem[]>([]);
   const [activeCacheId, setActiveCacheId] = useState<number | null>(null);
+  const [activePresetName, setActivePresetName] = useState<string | null>(null);
   const rightPanelRef = useRef<HTMLDivElement>(null);
   const [leftMaxHeight, setLeftMaxHeight] = useState<number | null>(null);
+  const pendingCacheApplyRef = useRef<CacheHistoryItem | null>(null);
+  const initDoneRef = useRef(false);
 
   const loadPresets = useCallback(async () => {
     try {
@@ -215,7 +253,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
     top_n: number;
     hold_days: number[];
     initial_capital: number;
-  }) => {
+  }): Promise<CacheHistoryItem | null> => {
     try {
       const resp = await apiClient.get('/api/v1/factor-backtest-simple/cache');
       const items: CacheHistoryItem[] = (resp.data.items || []).sort((a: CacheHistoryItem, b: CacheHistoryItem) => {
@@ -225,23 +263,28 @@ const SimpleFactorBacktestPage: React.FC = () => {
         return cacheItemTime(b).localeCompare(cacheItemTime(a)); // 同类按最近更新时间倒序
       });
       setCacheHistory(items);
-      if (highlight) {
-        const match = items.find((item) => cacheParamsMatch(
-          item,
-          highlight.factor_weights,
-          highlight.start_date || '',
-          highlight.end_date || '',
-          highlight.top_n,
-          highlight.hold_days,
-          highlight.initial_capital,
-        ));
-        setActiveCacheId(match?.id ?? null);
-      }
-    } catch { /* ignore */ }
+      if (!highlight) return null;
+      const match = items.find((item) => cacheParamsMatch(
+        item,
+        highlight.factor_weights,
+        highlight.start_date || '',
+        highlight.end_date || '',
+        highlight.top_n,
+        highlight.hold_days,
+        highlight.initial_capital,
+      )) ?? null;
+      setActiveCacheId(match?.id ?? null);
+      return match;
+    } catch {
+      return null;
+    }
   }, []);
 
-  // load available factors
+  // 仅挂载时初始化一次，避免 loadCacheHistory ↔ availableFactors 循环触发重跑
   useEffect(() => {
+    if (initDoneRef.current) return;
+    initDoneRef.current = true;
+
     apiClient.get('/api/v1/factor-backtest-simple/factors').then((resp: { data: { factors: FactorInfo[] } }) => {
       const factors: FactorInfo[] = resp.data.factors || [];
       setAvailableFactors(factors);
@@ -253,39 +296,23 @@ const SimpleFactorBacktestPage: React.FC = () => {
       });
       setSelectedFactors(sel);
       setFactorWeights(w);
-
-      // 检查缓存历史记录中是否有匹配项，有则自动加载
-      const matched = cacheHistory.find((item) =>
-        cacheParamsMatch(
-          item,
-          Object.fromEntries(Object.entries(sel).map(([k, v]) => [k, v ? 1 : 0])),
-          startDate || '',
-          endDate || '',
-          topN,
-          holdDays,
-          initialCapital,
-        ),
-      );
-      if (matched) {
-        handleLoadFromCache(matched.id);
-      }    
     }).catch(() => {});
-    loadPresets();
 
-    // load latest cached result
-    apiClient.get('/api/v1/factor-backtest-simple/cache', { params: { limit: 1 } })
-      .then((resp) => {
-        const items = resp.data?.items || [];
+    void loadPresets();
+    void (async () => {
+      await loadCacheHistory();
+      try {
+        const resp = await apiClient.get('/api/v1/factor-backtest-simple/cache', { params: { limit: 1 } });
+        const items: CacheHistoryItem[] = resp.data?.items || [];
         if (items.length > 0) {
-          handleLoadFromCache(items[0].id);
+          pendingCacheApplyRef.current = items[0];
+          const detail = await apiClient.get(`/api/v1/factor-backtest-simple/cache/${items[0].id}`);
+          setResult(detail.data.result);
+          setActiveCacheId(items[0].id);
         }
-      })
-      .catch(() => {});
+      } catch { /* ignore */ }
+    })();
 
-    // load cache history
-    loadCacheHistory();
-
-    // 检查是否有未完成的回测任务，恢复轮询
     const savedTaskId = localStorage.getItem(TASK_KEY);
     if (savedTaskId) {
       apiClient.get('/api/v1/factor-backtest-simple/status', { params: { task_id: savedTaskId } })
@@ -294,9 +321,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
           if (data.status === 'running' || data.status === 'queued') {
             setLoading(true);
             if (data.status_message) setProgressMsg(data.status_message);
-            // 启动轮询恢复
             const poll = async () => {
-              // const abort = () => {};
               while (true) {
                 await new Promise((r) => setTimeout(r, 2000));
                 try {
@@ -325,20 +350,61 @@ const SimpleFactorBacktestPage: React.FC = () => {
         })
         .catch(() => { localStorage.removeItem(TASK_KEY); });
     }
-  }, [loadPresets, loadCacheHistory]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const selectedCount = useMemo(
     () => Object.values(selectedFactors).filter(Boolean).length,
     [selectedFactors],
   );
 
-  const handleLoadFromCache = useCallback(async (cacheId: number) => {
+  const applyCacheItemToForm = useCallback((item: CacheHistoryItem) => {
+    if (!item.factor_weights || Object.keys(item.factor_weights).length === 0) return;
+    const { selected, weights } = buildFactorSelectionFromWeights(item.factor_weights, availableFactors);
+    setSelectedFactors(selected);
+    setFactorWeights(weights);
+    if (item.start_date) setStartDate(item.start_date);
+    setEndDate(item.end_date || '');
+    if (item.top_n) setTopN(item.top_n);
+    if (item.hold_days?.length) {
+      setHoldDays([...item.hold_days].sort((a, b) => a - b));
+    }
+    if (item.initial_capital != null) setInitialCapital(item.initial_capital);
+    const matchedPreset = presets.find((pr) => factorWeightsOnlyMatch(pr.factor_weights, item.factor_weights));
+    setActivePresetName(matchedPreset?.name ?? null);
+  }, [availableFactors, presets]);
+
+  const applyFactorWeightsToForm = useCallback((fw: Record<string, number>, presetName?: string | null) => {
+    if (!fw || Object.keys(fw).length === 0) return;
+    const { selected, weights } = buildFactorSelectionFromWeights(fw, availableFactors);
+    setSelectedFactors(selected);
+    setFactorWeights(weights);
+    setActivePresetName(presetName ?? presets.find((pr) => factorWeightsOnlyMatch(pr.factor_weights, fw))?.name ?? null);
+  }, [availableFactors, presets]);
+
+  const handleLoadFromCache = useCallback(async (cacheId: number, itemOverride?: CacheHistoryItem) => {
+    const item = itemOverride ?? cacheHistory.find((i) => i.id === cacheId);
+    if (item) {
+      if (availableFactors.length > 0) {
+        applyCacheItemToForm(item);
+      } else {
+        pendingCacheApplyRef.current = item;
+      }
+    }
     try {
       const resp = await apiClient.get(`/api/v1/factor-backtest-simple/cache/${cacheId}`);
       setResult(resp.data.result);
       setActiveCacheId(cacheId);
     } catch { /* ignore */ }
-  }, []);
+  }, [cacheHistory, applyCacheItemToForm, availableFactors.length]);
+
+  // 因子列表就绪后，应用挂载/历史选中时暂存的缓存参数
+  useEffect(() => {
+    const pending = pendingCacheApplyRef.current;
+    if (!pending || availableFactors.length === 0) return;
+    applyCacheItemToForm(pending);
+    pendingCacheApplyRef.current = null;
+  }, [availableFactors, applyCacheItemToForm]);
 
   const handleDeleteCache = useCallback(async (cacheId: number) => {
     if (!confirm('确定要删除该历史记录吗？')) {
@@ -397,10 +463,11 @@ const SimpleFactorBacktestPage: React.FC = () => {
         setResult(resp.data.result);
         setLoading(false);
         setProgressMsg('已从缓存加载');
-        loadCacheHistory({ factor_weights: fw, start_date: startDate, end_date: endDate, top_n: topN, hold_days: holdDays, initial_capital: initialCapital });
-        if (Object.keys(fw).length >= 2) {
-          loadPresets();
-        }
+        void (async () => {
+          const match = await loadCacheHistory({ factor_weights: fw, start_date: startDate, end_date: endDate, top_n: topN, hold_days: holdDays, initial_capital: initialCapital });
+          if (match) applyCacheItemToForm(match);
+          if (Object.keys(fw).length >= 2) loadPresets();
+        })();
         return;
       }
 
@@ -424,10 +491,11 @@ const SimpleFactorBacktestPage: React.FC = () => {
               setResult(data.result);
               localStorage.removeItem(TASK_KEY);
               setLoading(false);
-              loadCacheHistory({ factor_weights: fw, start_date: startDate, end_date: endDate, top_n: topN, hold_days: holdDays, initial_capital: initialCapital });
-              if (Object.keys(fw).length >= 2) {
-                loadPresets();
-              }
+              void (async () => {
+                const match = await loadCacheHistory({ factor_weights: fw, start_date: startDate, end_date: endDate, top_n: topN, hold_days: holdDays, initial_capital: initialCapital });
+                if (match) applyCacheItemToForm(match);
+                if (Object.keys(fw).length >= 2) loadPresets();
+              })();
               return;
             }
             if (data.status === 'failed') {
@@ -446,7 +514,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
       setError(getParsedApiError(err));
       setLoading(false);
     }
-  }, [selectedFactors, factorWeights, startDate, endDate, topN, holdDays, initialCapital, selectedCount, forceRerun, loadCacheHistory, loadPresets]);
+  }, [selectedFactors, factorWeights, startDate, endDate, topN, holdDays, initialCapital, selectedCount, forceRerun, loadCacheHistory, loadPresets, applyCacheItemToForm]);
 
   const handleStop = useCallback(() => {
     abortRef.current = true;
@@ -481,8 +549,8 @@ const SimpleFactorBacktestPage: React.FC = () => {
           const s = await apiClient.get('/api/v1/factor-backtest-simple/status', { params: { task_id: taskId } });
           if (s.data.status_message) setBatchMsg(s.data.status_message);
           if (s.data.status === 'completed') {
-            const cached = s.data.result?.cached_count || 0;
-            const total = s.data.result?.factors_tested || 0;
+            const cached = s.data.result?.cached_count ?? s.data.result?.cached ?? 0;
+            const total = s.data.result?.factors_tested ?? s.data.result?.total ?? 0;
             setBatchLoading(false);
             setBatchMsg(`批量测试完成 (${cached}/${total} 命中缓存)，报告已保存`);
             loadCacheHistory();
@@ -547,8 +615,8 @@ const SimpleFactorBacktestPage: React.FC = () => {
           const s = await apiClient.get('/api/v1/factor-backtest-simple/status', { params: { task_id: taskId } });
           if (s.data.status_message) setBatchCombosMsg(s.data.status_message);
           if (s.data.status === 'completed') {
-            const cached = s.data.result?.cached_count || 0;
-            const total = s.data.result?.total || 0;
+            const cached = s.data.result?.cached_count ?? s.data.result?.cached ?? 0;
+            const total = s.data.result?.total ?? s.data.result?.factors_tested ?? 0;
             const errs = s.data.result?.errors || 0;
             setBatchCombosLoading(false);
             setBatchCombosMsg(`组合测试完成 (${cached}/${total} 命中缓存${errs ? `，${errs} 个失败` : ''})`);
@@ -856,7 +924,10 @@ const SimpleFactorBacktestPage: React.FC = () => {
                   <div key={f.name} className="flex items-center gap-2">
                     <Checkbox
                       checked={!!selectedFactors[f.name]}
-                      onChange={(e) => setSelectedFactors((p) => ({ ...p, [f.name]: e.target.checked }))}
+                      onChange={(e) => {
+                        setActivePresetName(null);
+                        setSelectedFactors((p) => ({ ...p, [f.name]: e.target.checked }));
+                      }}
                     />
                     <span className="text-sm flex-1 truncate">{FACTOR_LABELS[f.name] || f.name} <span className="text-tertiary-text text-xs">({f.name})</span></span>
                     {selectedFactors[f.name] && (
@@ -866,7 +937,12 @@ const SimpleFactorBacktestPage: React.FC = () => {
                         max={100}
                         step={0.5}
                         value={factorWeights[f.name]}
-                        onChange={(v) => v !== null && setFactorWeights((p) => ({ ...p, [f.name]: v }))}
+                        onChange={(v) => {
+                          if (v !== null) {
+                            setActivePresetName(null);
+                            setFactorWeights((p) => ({ ...p, [f.name]: v }));
+                          }
+                        }}
                         className="w-16"
                       />
                     )}
@@ -890,19 +966,13 @@ const SimpleFactorBacktestPage: React.FC = () => {
                         >
                           <button
                             type="button"
-                            className="flex-1 cursor-pointer text-left px-2 py-1.5 rounded text-xs border border-divider hover:border-blue-500/50 hover:bg-blue-500/10 transition-colors leading-relaxed"
+                            className={`flex-1 cursor-pointer text-left px-2 py-1.5 rounded text-xs border transition-colors leading-relaxed ${
+                              p.name === activePresetName
+                                ? 'border-blue-500 bg-blue-500/15 ring-1 ring-blue-500/40'
+                                : 'border-divider hover:border-blue-500/50 hover:bg-blue-500/10'
+                            }`}
                             onClick={() => {
-                              const sel: Record<string, boolean> = {};
-                              const w: Record<string, number> = {};
-                              availableFactors.forEach((f) => { sel[f.name] = false; w[f.name] = f.weight; });
-                              for (const [fn, fw] of entries) {
-                                sel[fn] = true;
-                                w[fn] = fw;
-                              }
-                              setSelectedFactors(sel);
-                              setFactorWeights(w);
-
-                              // 检查缓存历史记录中是否有匹配项，有则自动加载
+                              applyFactorWeightsToForm(Object.fromEntries(entries), p.name);
                               const matched = cacheHistory.find((item) =>
                                 cacheParamsMatch(
                                   item,
@@ -915,8 +985,9 @@ const SimpleFactorBacktestPage: React.FC = () => {
                                 ),
                               );
                               if (matched) {
-                                handleLoadFromCache(matched.id);
-                              }                            }}
+                                void handleLoadFromCache(matched.id, matched);
+                              }
+                            }}
                           >
                             {label}
                           </button>
@@ -1138,7 +1209,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
                               ? 'border-blue-500 bg-blue-500/15 ring-1 ring-blue-500/40'
                               : 'border-divider hover:border-blue-500/50 hover:bg-blue-500/10'
                           }`}
-                          onClick={() => handleLoadFromCache(item.id)}
+                          onClick={() => { void handleLoadFromCache(item.id, item); }}
                         >
                           <div className="truncate">{factorNames}</div>
                           <div className="text-tertiary-text">

@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 10,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260603",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600266",
+      "stock_code": "600266",
+      "stock_name": "城建发展",
+      "lgb_score": 100.0,
+      "raw_score": 0.39
+    },
+    {
+      "rank": 2,
+      "ts_code": "301312",
+      "stock_code": "301312",
+      "stock_name": "智立方",
+      "lgb_score": 92.81,
+      "raw_score": 0.36
+    },
+    {
+      "rank": 3,
+      "ts_code": "300917",
+      "stock_code": "300917",
+      "stock_name": "特发服务",
+      "lgb_score": 89.97,
+      "raw_score": 0.35
+    },
+    {
+      "rank": 4,
+      "ts_code": "002216",
+      "stock_code": "002216",
+      "stock_name": "三全食品",
+      "lgb_score": 80.39,
+      "raw_score": 0.3
+    },
+    {
+      "rank": 5,
+      "ts_code": "603191",
+      "stock_code": "603191",
+      "stock_name": "望变电气",
+      "lgb_score": 73.08,
+      "raw_score": 0.27
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.72,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.034116,
+    "std": 0.021784,
+    "skew": 2.2972,
+    "kurtosis": 25.7929,
+    "min": -0.068044,
+    "max": 0.392511,
+    "median": 0.045605
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.10937376075492311,
+    "cv_rmse_std": 0.006244601234265029,
+    "cv_scores": [
+      0.108945,
+      0.111244,
+      0.097923,
+      0.112135,
+      0.116622
+    ],
+    "rank_ic_mean": 0.046119,
+    "rank_ic_std": 0.024408,
+    "icir": 1.8895,
+    "oof_corr": 0.060092,
+    "n_samples": 38974,
+    "n_features": 4
+  }
+}

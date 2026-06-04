@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 20,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260603",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "920252",
+      "stock_code": "920252",
+      "stock_name": "天宏锂电",
+      "lgb_score": 100.0,
+      "raw_score": 0.52
+    },
+    {
+      "rank": 2,
+      "ts_code": "600546",
+      "stock_code": "600546",
+      "stock_name": "山煤国际",
+      "lgb_score": 90.91,
+      "raw_score": 0.47
+    },
+    {
+      "rank": 3,
+      "ts_code": "600732",
+      "stock_code": "600732",
+      "stock_name": "爱旭股份",
+      "lgb_score": 87.24,
+      "raw_score": 0.44
+    },
+    {
+      "rank": 4,
+      "ts_code": "000521",
+      "stock_code": "000521",
+      "stock_name": "长虹美菱",
+      "lgb_score": 80.81,
+      "raw_score": 0.4
+    },
+    {
+      "rank": 5,
+      "ts_code": "301107",
+      "stock_code": "301107",
+      "stock_name": "瑜欣电子",
+      "lgb_score": 80.51,
+      "raw_score": 0.4
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.79,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.103938,
+    "std": 0.069385,
+    "skew": -0.3082,
+    "kurtosis": -1.1624,
+    "min": -0.099165,
+    "max": 0.522317,
+    "median": 0.162274
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.16314034724567866,
+    "cv_rmse_std": 0.018094067756429827,
+    "cv_scores": [
+      0.16451,
+      0.151589,
+      0.142632,
+      0.161018,
+      0.195952
+    ],
+    "rank_ic_mean": 0.118118,
+    "rank_ic_std": 0.035681,
+    "icir": 3.3104,
+    "oof_corr": 0.125467,
+    "n_samples": 38083,
+    "n_features": 4
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 20,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260604",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002532",
+      "stock_code": "002532",
+      "stock_name": "天山铝业",
+      "lgb_score": 100.0,
+      "raw_score": 0.52
+    },
+    {
+      "rank": 2,
+      "ts_code": "688599",
+      "stock_code": "688599",
+      "stock_name": "天合光能",
+      "lgb_score": 78.16,
+      "raw_score": 0.38
+    },
+    {
+      "rank": 3,
+      "ts_code": "603032",
+      "stock_code": "603032",
+      "stock_name": "XD德新科",
+      "lgb_score": 77.67,
+      "raw_score": 0.38
+    },
+    {
+      "rank": 4,
+      "ts_code": "002436",
+      "stock_code": "002436",
+      "stock_name": "兴森科技",
+      "lgb_score": 73.93,
+      "raw_score": 0.36
+    },
+    {
+      "rank": 5,
+      "ts_code": "300001",
+      "stock_code": "300001",
+      "stock_name": "特锐德",
+      "lgb_score": 73.9,
+      "raw_score": 0.36
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.79,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.103579,
+    "std": 0.069176,
+    "skew": -0.3414,
+    "kurtosis": -1.3381,
+    "min": -0.102684,
+    "max": 0.519934,
+    "median": 0.162274
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.16314034724567866,
+    "cv_rmse_std": 0.018094067756429827,
+    "cv_scores": [
+      0.16451,
+      0.151589,
+      0.142632,
+      0.161018,
+      0.195952
+    ],
+    "rank_ic_mean": 0.118118,
+    "rank_ic_std": 0.035681,
+    "icir": 3.3104,
+    "oof_corr": 0.125467,
+    "n_samples": 38083,
+    "n_features": 4
+  }
+}

@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- [修复] 快测页因 loadCacheHistory 与因子列表依赖循环导致反复请求、页面像卡住刷新；历史记录回填改为挂载一次与延迟应用。
+- [修复] 快测组合测试完成提示缓存命中数始终为 0：后端统一返回 cached_count 字段。
+- [改进] 快测页选中历史记录时自动回填对应因子组合、回测参数，并高亮匹配的快捷组合卡片。
 - [修复] 寻股页盘中/盘后回测交易记录无法查看：延长回测接口超时、修复空响应与 trade_records 防护、回测区默认展开并提示加载失败。
 - [改进] AlphaSift 选股入口在 Web 侧边栏中移动到“问股”下方，贴近 Agent/研究辅助工作流。
 - [改进] Docker 镜像构建阶段预置默认 AlphaSift 适配层，与桌面发布包一样避免运行期额外安装。

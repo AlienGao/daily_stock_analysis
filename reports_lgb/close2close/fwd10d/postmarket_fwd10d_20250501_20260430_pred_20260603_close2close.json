@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 10,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260603",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002328",
+      "stock_code": "002328",
+      "stock_name": "新朋股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.27
+    },
+    {
+      "rank": 2,
+      "ts_code": "600266",
+      "stock_code": "600266",
+      "stock_name": "城建发展",
+      "lgb_score": 96.09,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 3,
+      "ts_code": "301046",
+      "stock_code": "301046",
+      "stock_name": "能辉科技",
+      "lgb_score": 92.89,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 4,
+      "ts_code": "603296",
+      "stock_code": "603296",
+      "stock_name": "华勤技术",
+      "lgb_score": 91.57,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 5,
+      "ts_code": "301312",
+      "stock_code": "301312",
+      "stock_name": "智立方",
+      "lgb_score": 88.26,
+      "raw_score": 0.22
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.12,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.014036,
+    "std": 0.035486,
+    "skew": 0.6537,
+    "kurtosis": 2.7097,
+    "min": -0.126224,
+    "max": 0.269,
+    "median": 0.010842
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.10555796166006633,
+    "cv_rmse_std": 0.004759488059331734,
+    "cv_scores": [
+      0.101733,
+      0.105965,
+      0.103919,
+      0.101645,
+      0.114528
+    ],
+    "rank_ic_mean": 0.083807,
+    "rank_ic_std": 0.064875,
+    "icir": 1.2918,
+    "oof_corr": 0.071869,
+    "n_samples": 17972,
+    "n_features": 22
+  }
+}

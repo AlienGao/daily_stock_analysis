@@ -926,6 +926,7 @@ def _run_batch_test_combos(queue: multiprocessing.Queue, req_dict: dict, force: 
 
         queue.put(("completed", {
             "total": len(preset_list),
+            "cached_count": cached_count,
             "cached": cached_count,
             "errors": err_count,
             "results": results,

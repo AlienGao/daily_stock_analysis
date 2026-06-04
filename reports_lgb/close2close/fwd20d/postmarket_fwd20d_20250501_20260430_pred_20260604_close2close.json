@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 20,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260604",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "603986",
+      "stock_code": "603986",
+      "stock_name": "兆易创新",
+      "lgb_score": 100.0,
+      "raw_score": 0.36
+    },
+    {
+      "rank": 2,
+      "ts_code": "688256",
+      "stock_code": "688256",
+      "stock_name": "寒武纪",
+      "lgb_score": 94.88,
+      "raw_score": 0.33
+    },
+    {
+      "rank": 3,
+      "ts_code": "688017",
+      "stock_code": "688017",
+      "stock_name": "绿的谐波",
+      "lgb_score": 75.42,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 4,
+      "ts_code": "688702",
+      "stock_code": "688702",
+      "stock_name": "盛科通信-U",
+      "lgb_score": 71.96,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 5,
+      "ts_code": "688498",
+      "stock_code": "688498",
+      "stock_name": "源杰科技",
+      "lgb_score": 70.36,
+      "raw_score": 0.2
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.49,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.09358,
+    "std": 0.055128,
+    "skew": 0.7317,
+    "kurtosis": 0.0111,
+    "min": -0.166093,
+    "max": 0.356411,
+    "median": -0.140855
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.14923084789533686,
+    "cv_rmse_std": 0.012018799506010995,
+    "cv_scores": [
+      0.160246,
+      0.16325,
+      0.136074,
+      0.134327,
+      0.152258
+    ],
+    "rank_ic_mean": 0.166802,
+    "rank_ic_std": 0.041574,
+    "icir": 4.0121,
+    "oof_corr": 0.134501,
+    "n_samples": 17257,
+    "n_features": 22
+  }
+}
