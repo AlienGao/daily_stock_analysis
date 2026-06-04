@@ -6714,6 +6714,34 @@ class DatabaseManager(metaclass=_DatabaseManagerMeta):
             ).scalars().all()
             return list(months)
 
+    def get_broker_recommend_by_stock(self, ts_code: str) -> List[Dict[str, Any]]:
+        """获取单只股票历次被推荐的月度记录（按月份降序）。"""
+        with self.get_session() as session:
+            rows = session.execute(
+                select(BrokerRecommendMonthly).where(
+                    BrokerRecommendMonthly.ts_code == str(ts_code)
+                ).order_by(desc(BrokerRecommendMonthly.month))
+            ).scalars().all()
+            return [r.to_dict() for r in rows]
+
+
+    def get_broker_recommend_month_counts(self, ts_codes: List[str]) -> Dict[str, int]:
+        """统计各股票历史上被推荐的月份数（去重 month）。"""
+        if not ts_codes:
+            return {}
+        from sqlalchemy import func
+        codes = [str(c) for c in ts_codes]
+        with self.get_session() as session:
+            rows = session.execute(
+                select(
+                    BrokerRecommendMonthly.ts_code,
+                    func.count(func.distinct(BrokerRecommendMonthly.month)),
+                ).where(
+                    BrokerRecommendMonthly.ts_code.in_(codes)
+                ).group_by(BrokerRecommendMonthly.ts_code)
+            ).all()
+            return {str(r[0]): int(r[1]) for r in rows}
+
     def get_consecutive_monthly_stocks(self, month: str) -> List[Dict[str, Any]]:
         """获取连续两个月都被券商推荐的金股。
 

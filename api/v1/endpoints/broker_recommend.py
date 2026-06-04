@@ -122,6 +122,39 @@ class BrokerBacktestResponse(BaseModel):
     stock_returns: List[StockReturnItem]
 
 
+
+class StockHistoryEntry(BaseModel):
+    """单只股票在某推荐月的持仓期走势。"""
+    month: str
+    brokers: List[str]
+    broker_count: int
+    buy_date: str
+    sell_date: str
+    cumulative_return: Optional[float] = None
+    daily_returns: List[BrokerDailyReturn]
+
+
+class StockHistoryResponse(BaseModel):
+    ts_code: str
+    name: str
+    entries: List[StockHistoryEntry]
+
+
+class HistoricalMonthCountItem(BaseModel):
+    ts_code: str
+    month_count: int
+
+
+class HistoricalRecommendStatsItem(BaseModel):
+    ts_code: str
+    month_count: int = 0
+    period_count: int = 0
+    win_rate: Optional[float] = None
+    max_return: Optional[float] = None
+    max_drawdown: Optional[float] = None
+
+
+
 class YtdMonthlyReturn(BaseModel):
     """券商在单个月份的回测表现。"""
     month: str
@@ -281,6 +314,80 @@ def get_institution_survey_dates() -> List[str]:
     """获取所有有机构调研数据的日期列表（降序）。"""
     service = BrokerRecommendService()
     return service.get_institution_survey_dates()
+
+
+
+
+@router.get("/historical-month-counts", response_model=List[HistoricalMonthCountItem])
+def get_historical_month_counts(
+    codes: str = Query(..., description="逗号分隔的股票代码列表"),
+) -> List[HistoricalMonthCountItem]:
+    """批量查询股票历史上被推荐的月份数。"""
+    ts_codes = [c.strip() for c in codes.split(",") if c.strip()]
+    service = BrokerRecommendService()
+    counts = service.get_historical_month_counts(ts_codes)
+    return [
+        HistoricalMonthCountItem(ts_code=tc, month_count=counts.get(tc, 0))
+        for tc in ts_codes
+    ]
+
+
+
+
+@router.get("/historical-recommend-stats", response_model=List[HistoricalRecommendStatsItem])
+def get_historical_recommend_stats(
+    codes: str = Query(..., description="逗号分隔的股票代码列表"),
+) -> List[HistoricalRecommendStatsItem]:
+    """批量查询股票历史推荐胜率、最高/最低期末收益（与展开历史一致）。"""
+    ts_codes = [c.strip() for c in codes.split(",") if c.strip()]
+    service = BrokerRecommendService()
+    stats = service.get_historical_recommend_stats(ts_codes)
+    return [
+        HistoricalRecommendStatsItem(
+            ts_code=tc,
+            month_count=stats.get(tc, {}).get("month_count", 0),
+            period_count=stats.get(tc, {}).get("period_count", 0),
+            win_rate=stats.get(tc, {}).get("win_rate"),
+            max_return=stats.get(tc, {}).get("max_return"),
+            max_drawdown=stats.get(tc, {}).get("max_drawdown"),
+        )
+        for tc in ts_codes
+    ]
+
+
+@router.get("/stock/{ts_code}/history", response_model=StockHistoryResponse)
+def get_stock_recommend_history(ts_code: str) -> StockHistoryResponse:
+    """获取单只股票历次推荐月份及对应持仓期 K 线数据。"""
+    service = BrokerRecommendService()
+    result = service.get_stock_recommend_history(ts_code)
+    entries = [
+        StockHistoryEntry(
+            month=e["month"],
+            brokers=e.get("brokers", []),
+            broker_count=e.get("broker_count", 0),
+            buy_date=e.get("buy_date", ""),
+            sell_date=e.get("sell_date", ""),
+            cumulative_return=e.get("cumulative_return"),
+            daily_returns=[
+                BrokerDailyReturn(
+                    date=dr["date"],
+                    price=dr.get("price"),
+                    daily_return=dr.get("return"),
+                    cumulative=dr.get("cumulative"),
+                    open=dr.get("open"),
+                    high=dr.get("high"),
+                    low=dr.get("low"),
+                )
+                for dr in e.get("daily_returns", [])
+            ],
+        )
+        for e in result.get("entries", [])
+    ]
+    return StockHistoryResponse(
+        ts_code=result.get("ts_code", ts_code),
+        name=result.get("name", ""),
+        entries=entries,
+    )
 
 
 @router.get("/{month}", response_model=BrokerRecommendResponse)

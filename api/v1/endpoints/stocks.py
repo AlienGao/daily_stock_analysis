@@ -322,7 +322,9 @@ def get_stock_quote(stock_code: str) -> StockQuote:
 def get_stock_history(
     stock_code: str,
     period: str = Query("daily", description="K 线周期", pattern="^(daily|weekly|monthly)$"),
-    days: int = Query(30, ge=1, le=730, description="获取天数")
+    days: int = Query(30, ge=1, le=730, description="获取天数"),
+    start_date: Optional[str] = Query(None, description="开始日期 YYYYMMDD"),
+    end_date: Optional[str] = Query(None, description="结束日期 YYYYMMDD"),
 ) -> StockHistoryResponse:
     """
     获取股票历史行情
@@ -344,7 +346,9 @@ def get_stock_history(
         result = service.get_history_data(
             stock_code=stock_code,
             period=period,
-            days=days
+            days=days,
+            start_date=start_date,
+            end_date=end_date,
         )
         
         # 转换为响应模型

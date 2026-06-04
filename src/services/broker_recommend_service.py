@@ -949,6 +949,52 @@ class BrokerRecommendService:
             return adj_map[prev_dates[-1]]
         return 1.0
 
+    @staticmethod
+    def _norm_trade_date(date_str: str) -> str:
+        """统一为 YYYYMMDD。"""
+        s = str(date_str or "").strip()
+        if len(s) >= 10 and s[4] == "-":
+            return f"{s[:4]}{s[5:7]}{s[8:10]}"
+        return s[:8]
+
+    def _period_return_from_daily_returns(
+        self,
+        ts_code: str,
+        daily_returns: List[Dict[str, Any]],
+        adj_all: Optional[Dict[str, Dict[str, float]]] = None,
+    ) -> Optional[float]:
+        """从持仓期日序列推算期末收益（后复权收盘价，不预取 OHLC，供批量历史统计）。"""
+        bars: List[tuple] = []
+        for d in daily_returns or []:
+            dt = self._norm_trade_date(d.get("date", ""))
+            if len(dt) != 8:
+                continue
+            price = d.get("price")
+            if price is None:
+                continue
+            try:
+                bars.append((dt, float(price)))
+            except (TypeError, ValueError):
+                continue
+        if len(bars) < 2:
+            return _holding_final_return(daily_returns)
+
+        bars.sort(key=lambda x: x[0])
+        code = ts_code.split(".")[0] if "." in ts_code else ts_code
+        if adj_all is None:
+            adj_all = self._load_all_adj_factors([ts_code])
+        adj_map = adj_all.get(code, {})
+
+        adj_closes: List[float] = []
+        for dt, p in bars:
+            f = self._lookup_adj_factor(adj_map, dt) if adj_map else 1.0
+            adj_closes.append(p * f)
+
+        buy_adj = adj_closes[0]
+        if buy_adj <= 0:
+            return _holding_final_return(daily_returns)
+        return round((adj_closes[-1] - buy_adj) / buy_adj, 4)
+
     def _get_stock_prices(
         self, ts_code: str, start_date: str, end_date: str, skip_tushare: bool = False, adj_all: dict | None = None
     ) -> Dict[str, float]:
@@ -1245,18 +1291,20 @@ class BrokerRecommendService:
             # 补充 OHLC 数据用于蜡烛图
             stored_stocks = {sr["ts_code"]: sr for sr in stored.get("stock_returns", [])}
             if stored_stocks:
-                ohlc_cache = self._prefetch_ohlc(list(stored_stocks.keys()), stored.get("buy_date", f"{month}01"), stored.get("sell_date", effective_end), use_adj=True)
                 ohlc_merged = 0
                 for sr in stored["stock_returns"]:
-                    ohlc = ohlc_cache.get(sr["ts_code"], {})
-                    for dr in sr.get("daily_returns", []):
-                        d = dr.get("date", "")
-                        if d in ohlc:
-                            dr["open"] = ohlc[d].get("open")
-                            dr["high"] = ohlc[d].get("high")
-                            dr["low"] = ohlc[d].get("low")
-                            ohlc_merged += 1
-                logger.info(f"[BrokerRecommend] 回测 {month} OHLC 合并 {ohlc_merged} 条 (ohlc_cache 覆盖 {len(ohlc_cache)} 只股票)")
+                    before = len([d for d in sr.get("daily_returns", []) if d.get("open")])
+                    sr["daily_returns"] = self._sync_daily_returns_from_ohlc(
+                        sr["ts_code"],
+                        sr.get("daily_returns", []),
+                        stored.get("buy_date", f"{month}01"),
+                        stored.get("sell_date", effective_end),
+                    )
+                    ohlc_merged += len([d for d in sr.get("daily_returns", []) if d.get("open")]) - before
+                logger.info(
+                    f"[BrokerRecommend] 回测 {month} OHLC 同步 {ohlc_merged} 条 "
+                    f"(覆盖 {len(stored_stocks)} 只股票)"
+                )
 
             stored["next_month"] = self._next_month_str(month)
             logger.info(f"[BrokerRecommend] 回测 {month} 命中存储")
@@ -1485,15 +1533,12 @@ class BrokerRecommendService:
 
         # 并行预取 OHLC 数据用于蜡烛图展示
         if stock_returns_list:
-            ohlc_cache = self._prefetch_ohlc(list(stock_results.keys()), month_start, month_end, use_adj=True)
+            ohlc_cache = self._prefetch_ohlc(list(stock_results.keys()), month_start, month_end, use_adj=False)
             for sr in stock_returns_list:
                 ohlc = ohlc_cache.get(sr["ts_code"], {})
-                for dr in sr["daily_returns"]:
-                    d = dr.get("date", "")
-                    if d in ohlc:
-                        dr["open"] = ohlc[d].get("open")
-                        dr["high"] = ohlc[d].get("high")
-                        dr["low"] = ohlc[d].get("low")
+                sr["daily_returns"] = self._sync_daily_returns_from_ohlc(
+                    sr["ts_code"], sr["daily_returns"], buy_date, sell_date,
+                )
 
         # 持久化存储（仅历史月份；当月不存，避免 sell_date 不完整）
         if not is_current:
@@ -1527,6 +1572,291 @@ class BrokerRecommendService:
             "brokers": brokers_result,
             "stock_returns": stock_returns_list,
         }
+
+
+
+    def _sync_daily_returns_from_ohlc(
+        self,
+        ts_code: str,
+        daily_returns: List[Dict[str, Any]],
+        start_date: str,
+        end_date: str,
+    ) -> List[Dict[str, Any]]:
+        """用不复权 OHLC 补 K 线字段；用后复权收盘价重算日收益/累计收益（避免除权月假回撤）。"""
+        if not daily_returns:
+            return daily_returns
+        ohlc = self._prefetch_ohlc([ts_code], start_date, end_date, use_adj=False).get(ts_code, {})
+        if not ohlc:
+            return daily_returns
+
+        code = ts_code.split(".")[0] if "." in ts_code else ts_code
+        adj_map = self._load_all_adj_factors([ts_code]).get(code, {})
+
+        bars: List[Dict[str, Any]] = []
+        adj_closes: List[float] = []
+        for dr in sorted(daily_returns, key=lambda x: str(x.get("date", ""))):
+            d = str(dr.get("date", ""))
+            if not d or d not in ohlc:
+                continue
+            bar = ohlc[d]
+            close = bar.get("close")
+            if close is None:
+                close = dr.get("price")
+            if close is None:
+                continue
+            close_f = float(close)
+            f = self._lookup_adj_factor(adj_map, d) if adj_map else 1.0
+            adj_close = round(close_f * f, 4)
+            bars.append({
+                "date": d,
+                "price": round(close_f, 4),
+                "open": bar.get("open"),
+                "high": bar.get("high"),
+                "low": bar.get("low"),
+            })
+            adj_closes.append(adj_close)
+
+        if not bars:
+            return daily_returns
+
+        buy_adj = adj_closes[0]
+        prev_adj: Optional[float] = None
+        for b, adj_p in zip(bars, adj_closes):
+            if buy_adj > 0:
+                b["cumulative"] = round((adj_p - buy_adj) / buy_adj, 4)
+            else:
+                b["cumulative"] = 0.0
+            if prev_adj and prev_adj > 0:
+                b["return"] = round((adj_p - prev_adj) / prev_adj, 4)
+            else:
+                b["return"] = 0.0
+            prev_adj = adj_p
+        return bars
+
+
+    def _build_single_stock_window_returns(
+        self,
+        ts_code: str,
+        month: str,
+        buy_date: Optional[str] = None,
+        sell_date: Optional[str] = None,
+    ) -> tuple:
+        """计算单只股票在指定推荐月的持仓期日收益与 OHLC。"""
+        effective_end = self._effective_month_end(month)
+        is_current = month == date.today().strftime("%Y%m")
+        month_start = f"{month}01"
+        month_end = effective_end
+
+        if not buy_date or not sell_date:
+            trading_days = self._get_trading_days(month_start, month_end)
+            if len(trading_days) < 2:
+                return [], buy_date or month_start, sell_date or month_end, None
+            buy_date = trading_days[0]
+            sell_date = trading_days[-1]
+        else:
+            trading_days = self._get_trading_days(buy_date, sell_date)
+            if len(trading_days) < 2:
+                return [], buy_date, sell_date, None
+
+        prices = self._prefetch_prices(
+            [ts_code], month_start, month_end, skip_tushare=is_current, use_adj=True,
+        ).get(ts_code, {})
+        if not prices:
+            return [], buy_date, sell_date, None
+
+        available_dates = sorted(prices.keys())
+        buy_dates = [d for d in available_dates if d >= buy_date]
+        sell_dates = [d for d in available_dates if d <= sell_date]
+        if not buy_dates or not sell_dates:
+            return [], buy_date, sell_date, None
+        buy_price = prices[buy_dates[0]]
+        sell_price = prices[sell_dates[-1]]
+        if not buy_price or not sell_price or buy_price <= 0:
+            return [], buy_date, sell_date, None
+        if buy_dates[0] == sell_dates[-1]:
+            return [], buy_date, sell_date, None
+
+        daily_rets: List[Dict[str, Any]] = []
+        prev_p = None
+        cum_ret = None
+        for td in trading_days:
+            p = prices.get(td)
+            if p and buy_price > 0:
+                cumulative = (p - buy_price) / buy_price
+                if prev_p and prev_p > 0:
+                    d_ret = (p - prev_p) / prev_p
+                else:
+                    d_ret = 0.0
+                daily_rets.append({
+                    "date": td,
+                    "price": round(p, 2),
+                    "return": round(d_ret, 4),
+                    "cumulative": round(cumulative, 4),
+                })
+                prev_p = p
+                cum_ret = cumulative
+
+        daily_rets = self._sync_daily_returns_from_ohlc(ts_code, daily_rets, buy_date, sell_date)
+        return daily_rets, buy_date, sell_date, cum_ret
+
+
+    @staticmethod
+    def _sanitize_daily_returns_bars(daily_returns: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """过滤无收盘价占位行，按日期升序，供 K 线与累计收益展示。"""
+        bars: List[Dict[str, Any]] = []
+        for d in daily_returns or []:
+            if not d.get("date"):
+                continue
+            if d.get("price") is None:
+                continue
+            bars.append(d)
+        bars.sort(key=lambda x: str(x["date"]))
+        return bars
+
+    def _resolve_stock_holding_daily_returns(
+        self,
+        ts_code: str,
+        month: str,
+        stored: Optional[Dict[str, Any]] = None,
+        stock_return: Optional[Dict[str, Any]] = None,
+    ) -> tuple:
+        """与展开历史 K 线一致：必要时重算、OHLC 同步、清洗后返回持仓期序列与期末收益。"""
+        buy_date: Optional[str] = None
+        sell_date: Optional[str] = None
+        daily_returns: List[Dict[str, Any]] = []
+        cum_ret = None
+
+        if stored:
+            buy_date = stored.get("buy_date")
+            sell_date = stored.get("sell_date")
+        if stock_return:
+            daily_returns = list(stock_return.get("daily_returns") or [])
+            with_cum = [d for d in daily_returns if d.get("cumulative") is not None]
+            if with_cum:
+                cum_ret = with_cum[-1].get("cumulative")
+
+        need_compute = not daily_returns or not any(d.get("price") for d in daily_returns)
+        if need_compute:
+            daily_returns, buy_date, sell_date, cum_ret = self._build_single_stock_window_returns(
+                ts_code, month, buy_date=buy_date, sell_date=sell_date,
+            )
+        sync_start = buy_date or f"{month}01"
+        sync_end = sell_date or self._effective_month_end(month)
+        if daily_returns:
+            daily_returns = self._sync_daily_returns_from_ohlc(
+                ts_code, daily_returns, sync_start, sync_end,
+            )
+
+        daily_returns = self._sanitize_daily_returns_bars(daily_returns)
+        if daily_returns:
+            cum_ret = self._period_return_from_daily_returns(ts_code, daily_returns)
+            if cum_ret is None:
+                cum_ret = _holding_final_return(daily_returns)
+            buy_date = buy_date or daily_returns[0]["date"]
+            sell_date = sell_date or daily_returns[-1]["date"]
+
+        return daily_returns, cum_ret, buy_date, sell_date
+
+
+    def get_historical_recommend_stats(self, ts_codes: List[str]) -> Dict[str, Dict[str, Any]]:
+        """统计各股票历次推荐持仓期胜率、最高/最低期末收益（与展开历史口径一致）。"""
+        if not ts_codes:
+            return {}
+        month_counts = self.db.get_broker_recommend_month_counts(ts_codes)
+        codes_set = set(ts_codes)
+        bucket: Dict[str, Dict[str, Any]] = {
+            tc: {
+                "month_count": month_counts.get(tc, 0),
+                "returns": [],
+            }
+            for tc in ts_codes
+        }
+        adj_all = self._load_all_adj_factors(ts_codes)
+        for bt in self.db.get_all_broker_backtests():
+            month = str(bt.get("month") or "")
+            if not month:
+                continue
+            for sr in bt.get("stock_returns") or []:
+                tc = str(sr.get("ts_code") or "")
+                if tc not in codes_set:
+                    continue
+                daily = list(sr.get("daily_returns") or [])
+                if daily and any(d.get("price") is not None for d in daily):
+                    ret = self._period_return_from_daily_returns(tc, daily, adj_all)
+                else:
+                    _drs, ret, _bd, _sd = self._resolve_stock_holding_daily_returns(
+                        tc, month, stored=bt, stock_return=sr,
+                    )
+                if ret is None:
+                    continue
+                bucket[tc]["returns"].append(ret)
+
+        out: Dict[str, Dict[str, Any]] = {}
+        for tc, acc in bucket.items():
+            returns: List[float] = acc["returns"]
+            if not returns:
+                out[tc] = {
+                    "month_count": acc["month_count"],
+                    "period_count": 0,
+                    "win_rate": None,
+                    "max_return": None,
+                    "max_drawdown": None,
+                }
+                continue
+            wins = sum(1 for r in returns if r > 0)
+            out[tc] = {
+                "month_count": acc["month_count"],
+                "period_count": len(returns),
+                "win_rate": round(wins / len(returns), 4),
+                "max_return": round(max(returns), 4),
+                "max_drawdown": round(min(returns), 4),
+            }
+        return out
+
+    def get_historical_month_counts(self, ts_codes: List[str]) -> Dict[str, int]:
+        """返回股票历史上被推荐的月份次数。"""
+        return self.db.get_broker_recommend_month_counts(ts_codes)
+
+    def get_stock_recommend_history(self, ts_code: str) -> Dict[str, Any]:
+        """返回单只股票历次推荐月份及对应持仓期 K 线数据。"""
+        rows = self.db.get_broker_recommend_by_stock(ts_code)
+        if not rows:
+            return {"ts_code": ts_code, "name": "", "entries": []}
+
+        months = sorted({r["month"] for r in rows}, reverse=True)
+        name = str(rows[0].get("name") or "")
+        entries: List[Dict[str, Any]] = []
+
+        for month in months:
+            month_rows = [r for r in rows if r["month"] == month]
+            brokers = sorted({str(r.get("broker") or "") for r in month_rows if r.get("broker")})
+            broker_count = max(
+                (int(r.get("broker_count") or 1) for r in month_rows),
+                default=len(brokers),
+            )
+
+            stored = self.db.get_broker_backtest(month)
+            sr = None
+            if stored:
+                sr = next(
+                    (x for x in stored.get("stock_returns", []) if x.get("ts_code") == ts_code),
+                    None,
+                )
+            daily_returns, cum_ret, buy_date, sell_date = self._resolve_stock_holding_daily_returns(
+                ts_code, month, stored=stored, stock_return=sr,
+            )
+
+            entries.append({
+                "month": month,
+                "brokers": brokers,
+                "broker_count": broker_count,
+                "buy_date": buy_date or f"{month}01",
+                "sell_date": sell_date or self._effective_month_end(month),
+                "cumulative_return": cum_ret,
+                "daily_returns": daily_returns,
+            })
+
+        return {"ts_code": ts_code, "name": name, "entries": entries}
 
     def compute_ytd_backtest(self, year: Optional[str] = None, top_n: int = 5) -> Dict[str, Any]:
         """跨月复合回测：遍历指定月份（或全部月份），将月度回测结果乘法复合。
@@ -1997,3 +2327,35 @@ class BrokerRecommendService:
         result = self.compute_ytd_backtest(year=None, top_n=top_n)
         brokers = result.get("brokers", [])
         return [b["broker"] for b in brokers]
+
+
+def _holding_final_return(daily_returns: List[Dict[str, Any]]) -> Optional[float]:
+    """持仓期期末累计收益（与金股回测口径一致）。"""
+    with_cum = [d for d in daily_returns if d.get("cumulative") is not None]
+    if with_cum:
+        return float(with_cum[-1]["cumulative"])
+    prices = [d.get("price") for d in daily_returns if d.get("price")]
+    if len(prices) >= 2 and prices[0] and float(prices[0]) > 0:
+        return round((float(prices[-1]) - float(prices[0])) / float(prices[0]), 4)
+    return None
+
+
+def _holding_max_drawdown(daily_returns: List[Dict[str, Any]]) -> Optional[float]:
+    """持仓期路径最大回撤（相对累计收益峰值，非正数）。"""
+    values: List[float] = []
+    for d in daily_returns:
+        c = d.get("cumulative")
+        if c is not None:
+            values.append(float(c))
+    if len(values) < 2:
+        return None
+    peak = values[0]
+    max_dd = 0.0
+    for v in values:
+        if v > peak:
+            peak = v
+        dd = v - peak
+        if dd < max_dd:
+            max_dd = dd
+    return round(max_dd, 4)
+

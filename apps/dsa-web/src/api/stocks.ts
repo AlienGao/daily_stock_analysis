@@ -63,10 +63,19 @@ export const stocksApi = {
     throw new Error('请提供文件或粘贴文本');
   },
 
-  async getHistory(stockCode: string, days = 90): Promise<KLineItem[]> {
+  async getHistory(
+    stockCode: string,
+    days = 90,
+    range?: { startDate?: string; endDate?: string },
+  ): Promise<KLineItem[]> {
     const response = await apiClient.get(`/api/v1/stocks/${stockCode}/history`, {
-      params: { period: 'daily', days },
-      timeout: 10000,
+      params: {
+        period: 'daily',
+        days,
+        start_date: range?.startDate,
+        end_date: range?.endDate,
+      },
+      timeout: 15000,
     });
     const data = response.data as { data?: KLineItem[]; klines?: KLineItem[] };
     return data.data ?? data.klines ?? [];

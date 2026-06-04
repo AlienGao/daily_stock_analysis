@@ -262,6 +262,9 @@ gh run view <run_id> --log-failed
 - 因子权重优化默认优先提收益：回撤 slack +3pp，目标函数用 `min(两区间 ret5)`。
 - 定时任务（含「立即分析」）默认关闭 LLM 深度思考；手动单股分析开启深度思考。
 - 多因子搜索完成后，前端快捷组合列表应即时更新，无需手动刷新页面。
+- 快测页选中历史记录时，因子卡片默认回填该记录对应的因子组合。
+- 金股页表格：名称与代码同列（名称在上），标签独立列换行展示，无标签显示 `--`；不以红色背景高亮历史高频推荐，仅保留标签。
+- 金股页个股展开：所选推荐月之前展示最近 6 个自然月 K 线，再展示该月持仓期 K 线；月末价/九转/盈利预测/累计收益与所选月份一致。
 
 ## Learned Workspace Facts
 
@@ -272,6 +275,9 @@ gh run view <run_id> --log-failed
 - 多 Agent 复核在定时批跑结束后触发，结果写入 `reports_multi_agent/`。
 - 新闻检索 Provider 优先级：Bocha > MiniMax > Anspire > Tavily > Brave > SerpAPI > SearXNG。
 - `AGENT_SKILLS` 采用 4–6 策略精简方案，非全开所有策略。
+- 券商金股 API 前缀 `/api/v1/broker-recommend/`，月度推荐数据表 `broker_recommend_monthly`。
+- 筹码因子 `chip`：`winner_rate` 以 85% 为峰向两侧递减；`deep` 满分 9 分且需 `dist_low`/成本确认。
+- 因子快照回填脚本默认每 50 个交易日执行 `wal_checkpoint(TRUNCATE)`，避免 WAL 占满磁盘。
 
 
 <claude-mem-context>

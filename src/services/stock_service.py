@@ -60,6 +60,58 @@ def _append_today_kl(data: list, stock_code: str) -> None:
         pass
 
 
+
+
+def _parse_history_date(value: Optional[str]) -> Optional[date]:
+    if not value:
+        return None
+    digits = "".join(ch for ch in str(value) if ch.isdigit())[:8]
+    if len(digits) != 8:
+        return None
+    return datetime.strptime(digits, "%Y%m%d").date()
+
+
+def _filter_history_rows(
+    rows: List[Dict[str, Any]],
+    start_dt: Optional[date],
+    end_dt: Optional[date],
+) -> List[Dict[str, Any]]:
+    if not start_dt and not end_dt:
+        return rows
+    out: List[Dict[str, Any]] = []
+    for row in rows:
+        d = _parse_history_date(str(row.get("date") or ""))
+        if d is None:
+            continue
+        if start_dt and d < start_dt:
+            continue
+        if end_dt and d > end_dt:
+            continue
+        out.append(row)
+    return out
+
+
+def _dataframe_to_history_rows(df) -> List[Dict[str, Any]]:
+    """将日线 DataFrame 转为 API 响应行列表。"""
+    rows: List[Dict[str, Any]] = []
+    for _, row in df.iterrows():
+        date_val = row.get("date")
+        if hasattr(date_val, "strftime"):
+            date_str = date_val.strftime("%Y-%m-%d")
+        else:
+            date_str = str(date_val)
+        rows.append({
+            "date": date_str,
+            "open": float(row.get("open", 0) or 0),
+            "high": float(row.get("high", 0) or 0),
+            "low": float(row.get("low", 0) or 0),
+            "close": float(row.get("close", 0) or 0),
+            "volume": float(row.get("volume", 0)) if row.get("volume") else None,
+            "amount": float(row.get("amount", 0)) if row.get("amount") else None,
+            "change_percent": float(row.get("pct_chg", 0)) if row.get("pct_chg") else None,
+        })
+    return rows
+
 class StockService:
     """
     股票数据服务
@@ -131,7 +183,9 @@ class StockService:
         self,
         stock_code: str,
         period: str = "daily",
-        days: int = 30
+        days: int = 30,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         获取股票历史行情
@@ -155,85 +209,38 @@ class StockService:
             )
         
         try:
-            # 1. 优先从本地 DB 读取
+            from src.services.history_loader import load_history_df
             from src.storage import DatabaseManager
-            db = DatabaseManager()
-            end_dt = date.today()
-            # 请求 N 个交易日，DB 按日历日扩宽范围（周末/节假日无数据）
-            start_dt = end_dt - timedelta(days=days * 2)
-            db_rows = db.get_data_range(stock_code, start_dt, end_dt)
 
-            # 至少要有 60% 的期望交易日才算命中
-            min_expected = max(5, int(days * 0.6))
-            if db_rows and len(db_rows) >= min_expected:
-                data = []
-                for row in db_rows:
-                    row_dict = row.to_dict() if hasattr(row, 'to_dict') else row
-                    date_val = row_dict.get('date')
-                    if hasattr(date_val, 'strftime'):
-                        date_str = date_val.strftime("%Y-%m-%d")
-                    else:
-                        date_str = str(date_val)
-                    data.append({
-                        "date": date_str,
-                        "open": float(row_dict.get("open", 0) or 0),
-                        "high": float(row_dict.get("high", 0) or 0),
-                        "low": float(row_dict.get("low", 0) or 0),
-                        "close": float(row_dict.get("close", 0) or 0),
-                        "volume": float(row_dict.get("volume", 0)) if row_dict.get("volume") else None,
-                        "amount": float(row_dict.get("amount", 0)) if row_dict.get("amount") else None,
-                        "change_percent": float(row_dict.get("pct_chg", 0)) if row_dict.get("pct_chg") else None,
-                    })
-                logger.info(f"[{stock_code}] DB 命中: {len(data)} 条, 请求 {days} 天")
-                _append_today_kl(data, stock_code)
-                return {
-                    "stock_code": stock_code,
-                    "stock_name": stock_code,
-                    "period": period,
-                    "data": data,
-                }
-
-            # 2. DB 数据不足，回退到外部数据源
-            logger.info(f"[{stock_code}] DB 数据不足 ({len(db_rows) if db_rows else 0} 条), 回退外部 API")
-            from data_provider.base import DataFetcherManager
-
-            manager = DataFetcherManager()
-            df, source = manager.get_daily_data(stock_code, days=days)
-
+            start_dt = _parse_history_date(start_date)
+            end_dt = _parse_history_date(end_date)
+            df, source = load_history_df(
+                stock_code,
+                days=days,
+                target_date=end_dt,
+                start_date=start_dt,
+            )
             if df is None or df.empty:
                 logger.warning(f"获取 {stock_code} 历史数据失败")
                 return {"stock_code": stock_code, "period": period, "data": []}
 
-            # 获取股票名称
-            stock_name = manager.get_stock_name(stock_code)
+            if source != "db_cache":
+                try:
+                    DatabaseManager().save_daily_data(df, stock_code, source)
+                except Exception:
+                    pass
 
-            # 写入 DB 缓存供后续请求使用
+            stock_name = stock_code
             try:
-                db.save_daily_data(df, stock_code, source)
+                from data_provider.base import DataFetcherManager
+                stock_name = DataFetcherManager().get_stock_name(stock_code) or stock_code
             except Exception:
                 pass
 
-            # 转换为响应格式
-            data = []
-            for _, row in df.iterrows():
-                date_val = row.get("date")
-                if hasattr(date_val, "strftime"):
-                    date_str = date_val.strftime("%Y-%m-%d")
-                else:
-                    date_str = str(date_val)
-
-                data.append({
-                    "date": date_str,
-                    "open": float(row.get("open", 0)),
-                    "high": float(row.get("high", 0)),
-                    "low": float(row.get("low", 0)),
-                    "close": float(row.get("close", 0)),
-                    "volume": float(row.get("volume", 0)) if row.get("volume") else None,
-                    "amount": float(row.get("amount", 0)) if row.get("amount") else None,
-                    "change_percent": float(row.get("pct_chg", 0)) if row.get("pct_chg") else None,
-                })
-
+            data = _dataframe_to_history_rows(df)
+            data = _filter_history_rows(data, start_dt, end_dt)
             _append_today_kl(data, stock_code)
+            logger.info(f"[{stock_code}] 历史行情 {len(data)} 条, source={source}, 请求 {days} 天")
             return {
                 "stock_code": stock_code,
                 "stock_name": stock_name,

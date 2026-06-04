@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import dayjs, { type Dayjs } from 'dayjs';
 import { DatePicker, Table, Tabs } from 'antd';
@@ -14,15 +14,39 @@ import { AppPage, Button, Card, EmptyState } from '../components/common';
 const CandlestickMiniChart: React.FC<{
   data: Array<{ date: string; price?: number | null; open?: number | null; high?: number | null; low?: number | null }>;
   height?: number;
-}> = ({ data, height = 160 }) => {
+  /** 长区间（如近 6 个月）：K 线横向撑满容器宽度 */
+  longSeriesScroll?: boolean;
+  barPitch?: number;
+}> = ({ data, height = 160, longSeriesScroll = false, barPitch }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [containerW, setContainerW] = useState(0);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const validData = data.filter(d => d.price != null);
-  if (validData.length < 2) return null;
-
   const pads = { t: 14, r: 6, b: 20, l: 42 };
   const count = validData.length;
-  const chartW = Math.max(count * 14 + pads.l + pads.r, pads.l + pads.r + 40);
+  const pitch = barPitch ?? 14;
+  const fallbackW = count > 0
+    ? Math.max(count * pitch + pads.l + pads.r, pads.l + pads.r + 40)
+    : pads.l + pads.r + 40;
+
+  useLayoutEffect(() => {
+    if (!longSeriesScroll) return;
+    const el = containerRef.current;
+    if (!el) return;
+    const apply = () => {
+      const w = Math.floor(el.clientWidth);
+      if (w > 0) setContainerW(w);
+    };
+    apply();
+    const ro = new ResizeObserver(() => apply());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [longSeriesScroll, count]);
+
+  if (count < 1) return null;
+
+  const chartW = longSeriesScroll && containerW > 0 ? containerW : fallbackW;
+
   const chartH = height - pads.t - pads.b;
   const xStep = (chartW - pads.l - pads.r) / Math.max(count - 1, 1);
 
@@ -59,12 +83,19 @@ const CandlestickMiniChart: React.FC<{
     yTicks.push(yMax - (yRange * i) / gridLines);
   }
 
-  const xTickInterval = Math.max(Math.ceil(count / 5), 1);
+  const xTickInterval = Math.max(Math.ceil(count / (longSeriesScroll ? 8 : 5)), 1);
 
-  return (
-    <div ref={containerRef} style={{ position: 'relative', width: '100%', overflowX: 'auto' }}>
-      <svg width={chartW} height={height} viewBox={`0 0 ${chartW} ${height}`}
-        style={{ display: 'block', minWidth: '100%' }}>
+  const svgEl = (
+      <svg
+        width={chartW}
+        height={height}
+        viewBox={`0 0 ${chartW} ${height}`}
+        style={
+          longSeriesScroll
+            ? { display: 'block', width: '100%', height }
+            : { display: 'block', minWidth: '100%' }
+        }
+      >
         <defs>
           <filter id="tipShadow" x="-10%" y="-10%" width="130%" height="130%">
             <feDropShadow dx={0} dy={1} stdDeviation={2} floodColor="#000" floodOpacity={0.4} />
@@ -181,6 +212,19 @@ const CandlestickMiniChart: React.FC<{
           );
         })()}
       </svg>
+  );
+
+  if (longSeriesScroll) {
+    return (
+      <div ref={containerRef} className="w-full max-w-full min-w-0" style={{ height }}>
+        {containerW > 0 ? svgEl : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full overflow-x-auto">
+      {svgEl}
     </div>
   );
 };
@@ -192,13 +236,23 @@ import {
   getYtdBacktest,
   getConsecutiveStocks,
   getTopBrokers,
+  getStockHistory,
+  getHistoricalRecommendStats,
+  type HistoricalRecommendStatsItem,
   type BrokerRecommendResponse,
+  type StockHistoryResponse,
+  type StockHistoryEntry,
+  type BrokerDailyReturn,
   type BrokerRecommendItem,
   type BrokerBacktestResponse,
   type EnrichmentResponse,
   type YtdBacktestResponse,
   type ConsecutiveStockItem,
 } from '../api/brokerRecommend';
+import { stocksApi } from '../api/stocks';
+
+/** 当前月：历史推荐月份数最多的股票行数（红色高亮） */
+const HISTORY_RECOMMEND_TOP_N = 10;
 
 const BROKER_COLORS = [
   '#34d399', '#60a5fa', '#f472b6', '#fbbf24', '#a78bfa',
@@ -208,6 +262,57 @@ const BROKER_COLORS = [
 function fmtDate(s: string): string {
   if (!s || s.length < 8) return s;
   return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
+}
+
+
+
+
+function HistoryStatsCell({ row }: { row: StockRow }) {
+  if (!row.historyPeriodCount) {
+    return <span className="text-xs text-tertiary-text">--</span>;
+  }
+  const winColor = row.historyWinRate != null && row.historyWinRate >= 0.5 ? 'text-red-400' : 'text-emerald-400';
+  const maxRetColor = row.historyMaxReturn != null && row.historyMaxReturn >= 0 ? 'text-red-400' : 'text-emerald-400';
+  const minRetColor = row.historyMaxDrawdown != null && row.historyMaxDrawdown >= 0 ? 'text-red-400' : 'text-emerald-400';
+  return (
+    <div className="text-[10px] leading-relaxed space-y-0.5 tabular-nums">
+      <div>
+        <span className="text-tertiary-text">胜率 </span>
+        <span className={winColor}>
+          {row.historyWinRate != null ? `${(row.historyWinRate * 100).toFixed(0)}%` : '--'}
+        </span>
+        <span className="text-tertiary-text ml-1">({row.historyPeriodCount}期)</span>
+      </div>
+      <div>
+        <span className="text-tertiary-text">最高 </span>
+        <span className={maxRetColor}>{fmtPct(row.historyMaxReturn)}</span>
+      </div>
+      <div>
+        <span className="text-tertiary-text">最低 </span>
+        <span className={minRetColor}>{fmtPct(row.historyMaxDrawdown)}</span>
+      </div>
+    </div>
+  );
+}
+
+function StockTagsCell({ row }: { row: StockRow }) {
+  const tags: React.ReactNode[] = [];
+  if (row.isHistoryTop) {
+    tags.push(
+      <span key="hist" className="px-1 py-0.5 text-[10px] bg-red-500/20 text-red-400 rounded font-medium">
+        历史推荐{row.historyMonthCount != null ? `×${row.historyMonthCount}` : ''}
+      </span>,
+    );
+  }
+  if (row.isConsecutive) {
+    tags.push(
+      <span key="cons" className="px-1 py-0.5 text-[10px] bg-amber-500/15 text-amber-400 rounded">连续</span>,
+    );
+  }
+  if (tags.length === 0) {
+    return <span className="text-xs text-tertiary-text">--</span>;
+  }
+  return <div className="flex flex-col gap-0.5 items-start">{tags}</div>;
 }
 
 function fmtPct(v?: number | null): string {
@@ -294,7 +399,402 @@ type StockRow = {
   } | null;
   sector?: string | null;
   isTopPick?: boolean;
+  isHistoryTop?: boolean;
+  historyMonthCount?: number;
+  historyWinRate?: number | null;
+  historyMaxReturn?: number | null;
+  historyMaxDrawdown?: number | null;
+  historyPeriodCount?: number;
 };
+
+function brokerStockRowStyle(record: StockRow): React.CSSProperties | undefined {
+  if (record.isTopPick) {
+    return { background: 'linear-gradient(90deg, rgba(251,191,36,0.08) 0%, rgba(245,158,11,0.04) 100%)' };
+  }
+  return undefined;
+}
+
+
+
+const stockHistoryCache = new Map<string, StockHistoryResponse>();
+
+
+function sanitizeChartBars(drs: BrokerDailyReturn[]): BrokerDailyReturn[] {
+  return drs
+    .filter(d => Boolean(d.date) && d.price != null)
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function pickCumulativeReturn(drs: BrokerDailyReturn[]): number | null | undefined {
+  if (!drs.length) return null;
+  const withCum = drs.filter(d => d.cumulative != null);
+  if (withCum.length) return withCum[withCum.length - 1].cumulative;
+  const p0 = drs[0].price;
+  const p1 = drs[drs.length - 1].price;
+  if (p0 != null && p1 != null && p0 > 0) return (p1 - p0) / p0;
+  return null;
+}
+
+
+const PRE_MONTH_KLINE_COUNT = 6;
+
+function normTradeDate(s: string): string {
+  return (s || '').replace(/\D/g, '').slice(0, 8);
+}
+
+type PreKlineBar = { date: string; price: number; open: number; high: number; low: number };
+
+function filterPreKlineBars(apiBars: PreKlineBar[], window: { start: string; end: string }): PreKlineBar[] {
+  return apiBars
+    .filter(d => d.date.length === 8 && d.date >= window.start && d.date <= window.end)
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function supplementPreKlineTail(
+  bars: PreKlineBar[],
+  tail: BrokerDailyReturn[] | undefined,
+  window: { start: string; end: string },
+): PreKlineBar[] {
+  if (!tail?.length) return bars;
+  // 连续日 K 不足时不用持仓期顶替整段（否则只剩当月）
+  if (bars.length < minPreKlineBars(window)) return bars;
+  const map = new Map(bars.map(b => [b.date, b]));
+  const lastDate = bars.length ? bars[bars.length - 1].date : '';
+  for (const d of tail) {
+    const date = normTradeDate(d.date);
+    if (date.length !== 8 || date < window.start || date > window.end) continue;
+    if (lastDate && date <= lastDate) continue;
+    if (d.price == null || Number.isNaN(d.price)) continue;
+    map.set(date, {
+      date,
+      price: d.price,
+      open: d.open ?? d.price,
+      high: d.high ?? d.price,
+      low: d.low ?? d.price,
+    });
+  }
+  return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function parseBrokerMonth(month: string): Dayjs {
+  const digits = (month || '').replace(/\D/g, '');
+  if (digits.length >= 6) {
+    return dayjs(`${digits.slice(0, 4)}-${digits.slice(4, 6)}-01`);
+  }
+  return dayjs().startOf('month');
+}
+
+function minPreKlineBars(window: { start: string; end: string }): number {
+  const span = dayjs(window.end, 'YYYYMMDD').diff(dayjs(window.start, 'YYYYMMDD'), 'day') + 1;
+  return Math.max(20, Math.floor(span * 0.28));
+}
+
+function preSixMonthWindow(highlightMonth: string): { start: string; end: string; label: string } {
+  const anchor = parseBrokerMonth(highlightMonth);
+  const now = dayjs();
+  // 含所选月：共 6 个自然月，截止所选月最新交易日（当前月则为今天）
+  const start = anchor.subtract(PRE_MONTH_KLINE_COUNT - 1, 'month').startOf('month');
+  const end = anchor.isSame(now, 'month') ? now : anchor.endOf('month');
+  const labelEnd = anchor.isSame(now, 'month') ? '至今' : end.format('YYYY-MM');
+  return {
+    start: start.format('YYYYMMDD'),
+    end: end.format('YYYYMMDD'),
+    label: `${start.format('YYYY-MM')} ~ ${labelEnd}`,
+  };
+}
+
+function fmtMonthLabel(month: string): string {
+  if (!month || month.length < 6) return month;
+  return `${month.slice(0, 4)}-${month.slice(4, 6)}`;
+}
+
+function StockHistoryExpandPanel({
+  tsCode,
+  name,
+  highlightMonth,
+}: {
+  tsCode: string;
+  name: string;
+  highlightMonth: string;
+}) {
+  const [data, setData] = useState<StockHistoryResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showAllMonths, setShowAllMonths] = useState(false);
+  const [preKlineBase, setPreKlineBase] = useState<
+    Array<{ date: string; price: number; open: number; high: number; low: number }>
+  >([]);
+  const [preKlineLoading, setPreKlineLoading] = useState(true);
+  const [preKlineError, setPreKlineError] = useState<string | null>(null);
+  const preWindow = useMemo(() => preSixMonthWindow(highlightMonth), [highlightMonth]);
+  const preKlineMinBars = useMemo(() => minPreKlineBars(preWindow), [preWindow]);
+
+  const preKlineBars = useMemo(() => {
+    const base = filterPreKlineBars(preKlineBase, preWindow);
+    const highlightEntry = data?.entries?.find(e => e.month === highlightMonth);
+    return supplementPreKlineTail(base, highlightEntry?.daily_returns, preWindow);
+  }, [preKlineBase, data, highlightMonth, preWindow]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const cached = stockHistoryCache.get(tsCode);
+    if (cached) {
+      setData(cached);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    getStockHistory(tsCode)
+      .then(resp => {
+        if (cancelled) return;
+        stockHistoryCache.set(tsCode, resp);
+        setData(resp);
+      })
+      .catch(() => {
+        if (!cancelled) setError('加载历史推荐走势失败，请稍后重试');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [tsCode]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setPreKlineLoading(true);
+    setPreKlineError(null);
+    setPreKlineBase([]);
+
+    const load = async (attempt: number) => {
+      const calendarSpan = dayjs(preWindow.end, 'YYYYMMDD').diff(dayjs(preWindow.start, 'YYYYMMDD'), 'day') + 1;
+      const days = Math.min(730, Math.max(150, Math.ceil(calendarSpan * 1.6) + 30));
+      try {
+        const klines = await stocksApi.getHistory(tsCode, days, {
+          startDate: preWindow.start,
+          endDate: preWindow.end,
+        });
+        if (cancelled) return;
+        const bars = filterPreKlineBars(
+          klines
+            .map(k => ({
+              date: normTradeDate(k.date),
+              price: k.close,
+              open: k.open,
+              high: k.high,
+              low: k.low,
+            }))
+            .filter(d => d.price != null && !Number.isNaN(d.price)),
+          preWindow,
+        );
+        if (bars.length >= preKlineMinBars || attempt >= 1) {
+          setPreKlineBase(bars);
+          if (bars.length < preKlineMinBars) {
+            setPreKlineError(`仅加载到 ${bars.length} 个交易日，少于近 6 个月预期`);
+          }
+          return;
+        }
+        await load(1);
+      } catch {
+        if (cancelled) return;
+        if (attempt < 1) {
+          await load(1);
+          return;
+        }
+        setPreKlineBase([]);
+        setPreKlineError('加载近 6 个月日 K 失败，请稍后重试');
+      }
+    };
+
+    void load(0).finally(() => {
+      if (!cancelled) setPreKlineLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [tsCode, highlightMonth, preWindow.start, preWindow.end, preKlineMinBars]);
+
+  useEffect(() => {
+    setShowAllMonths(false);
+  }, [highlightMonth, tsCode]);
+
+  const entries = useMemo((): StockHistoryEntry[] => {
+    if (!data?.entries?.length) return [];
+    const normalized = data.entries.map(e => {
+      const bars = sanitizeChartBars(e.daily_returns ?? []);
+      return {
+        ...e,
+        daily_returns: bars,
+        cumulative_return: e.cumulative_return ?? pickCumulativeReturn(bars),
+        buy_date: e.buy_date || bars[0]?.date || e.buy_date,
+        sell_date: e.sell_date || bars[bars.length - 1]?.date || e.sell_date,
+      };
+    });
+    return normalized.sort((a, b) => {
+      if (a.month === highlightMonth) return -1;
+      if (b.month === highlightMonth) return 1;
+      return b.month.localeCompare(a.month);
+    });
+  }, [data, highlightMonth]);
+
+  const visibleEntries = useMemo(() => {
+    if (showAllMonths) return entries;
+    const current = entries.find(e => e.month === highlightMonth);
+    return current ? [current] : [];
+  }, [entries, showAllMonths, highlightMonth]);
+
+  if (loading) {
+    return (
+      <div className="p-4 flex items-center justify-center gap-2 text-xs text-secondary-text">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        加载历史推荐 K 线…
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="p-3 border border-border/20 rounded-lg bg-muted/10 text-xs text-secondary-text">{error}</div>
+    );
+  }
+  if (visibleEntries.length === 0) {
+    return (
+      <div className="p-3 border border-border/20 rounded-lg bg-muted/10 text-xs text-secondary-text">
+        {name || tsCode} — {fmtMonthLabel(highlightMonth)} 暂无持仓期 K 线（与表格累计收益区间一致）
+      </div>
+    );
+  }
+  const displayName = data?.name || name || tsCode;
+  const otherCount = entries.length - (entries.some(e => e.month === highlightMonth) ? 1 : 0);
+
+  return (
+    <div className="p-3 border border-border/20 rounded-lg bg-muted/10 space-y-3 min-w-0 max-w-full overflow-hidden">
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <span className="font-medium text-secondary-text">
+          {displayName} · {fmtMonthLabel(highlightMonth)} 持仓期 K 线
+        </span>
+        {entries.length > 1 && (
+          <button
+            type="button"
+            className="text-cyan-400 hover:text-cyan-300 cursor-pointer"
+            onClick={() => setShowAllMonths(v => !v)}
+          >
+            {showAllMonths ? '仅看当前月' : `查看全部推荐月 (${entries.length})`}
+          </button>
+        )}
+        {!showAllMonths && otherCount > 0 && (
+          <span className="text-tertiary-text">另有 {otherCount} 个历史推荐月可展开</span>
+        )}
+      </div>
+      <div className="rounded-lg border border-border/10 p-2">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs mb-2">
+          <span className="font-medium text-secondary-text">近 6 个月行情</span>
+          <span className="text-tertiary-text font-mono">{preWindow.label}</span>
+          <span className="text-tertiary-text">（连续日 K，非持仓片段）</span>
+        </div>
+        {preKlineLoading ? (
+          <div className="flex items-center gap-2 py-6 text-xs text-tertiary-text">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            加载近 6 个月 K 线…
+          </div>
+        ) : preKlineBars.length >= preKlineMinBars ? (
+          <div className="min-w-0 max-w-full overflow-hidden">
+            <CandlestickMiniChart data={preKlineBars} height={160} longSeriesScroll />
+            {preKlineError ? (
+              <div className="text-[10px] text-amber-400/90 mt-1">{preKlineError}</div>
+            ) : null}
+          </div>
+        ) : (
+          <div className="text-xs text-tertiary-text py-2">
+            {preKlineError || '该区间暂无足够连续日 K 数据'}
+          </div>
+        )}
+      </div>
+      {visibleEntries.map(entry => {
+        const isHighlight = entry.month === highlightMonth;
+        const cum = entry.cumulative_return;
+        const cumColor = cum != null ? (cum >= 0 ? 'text-red-400' : 'text-emerald-400') : 'text-secondary-text';
+        const bars = entry.daily_returns ?? [];
+        const hasOHLC = bars.length >= 2 && bars.some(d => d.open != null && d.high != null && d.low != null);
+        return (
+          <div
+            key={entry.month}
+            className={
+              isHighlight
+                ? 'rounded-lg border border-amber-500/30 bg-amber-500/5 p-2'
+                : 'rounded-lg border border-border/10 p-2'
+            }
+          >
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs mb-2">
+              <span className="font-medium">{fmtMonthLabel(entry.month)}</span>
+              {entry.broker_count > 0 && (
+                <span className="text-secondary-text">{entry.broker_count} 家券商推荐</span>
+              )}
+              {entry.brokers?.length > 0 && (
+                <span className="text-tertiary-text truncate max-w-[280px]" title={entry.brokers.join('、')}>
+                  {entry.brokers.slice(0, 3).join('、')}
+                  {entry.brokers.length > 3 ? ` 等${entry.brokers.length}家` : ''}
+                </span>
+              )}
+              {(entry.buy_date || entry.sell_date) && (
+                <span className="text-tertiary-text font-mono">
+                  {fmtDate(entry.buy_date)} → {fmtDate(entry.sell_date)}
+                </span>
+              )}
+              <span className={`font-medium ml-auto tabular-nums ${cumColor}`}>{fmtPct(cum)}</span>
+            </div>
+            {bars.length >= 2 && hasOHLC ? (
+              <CandlestickMiniChart
+                data={bars.map(d => ({
+                  date: d.date,
+                  price: d.price,
+                  open: d.open,
+                  high: d.high,
+                  low: d.low,
+                }))}
+                height={140}
+              />
+            ) : bars.length >= 2 ? (
+              <ResponsiveContainer width="100%" height={120}>
+                <LineChart
+                  margin={{ top: 2, right: 0, bottom: 4, left: -20 }}
+                  data={bars.map(d => ({
+                    date: fmtDate(d.date),
+                    cumulative: d.cumulative,
+                    daily_return: d.daily_return,
+                    price: d.price,
+                  }))}
+                >
+                  <XAxis dataKey="date" tick={{ fontSize: 8, fill: '#9ca3af' }} stroke="#6b7280" interval={3} />
+                  <YAxis tick={{ fontSize: 8, fill: '#9ca3af' }} stroke="#6b7280" tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`} />
+                  <Tooltip
+                    content={({ active, payload, label }: any) => {
+                      if (!active || !payload?.length) return null;
+                      const row = payload[0]?.payload;
+                      const dr = row?.daily_return;
+                      const drColor = dr != null ? (dr >= 0 ? '#ef4444' : '#10b981') : '#9ca3af';
+                      const cumVal = row?.cumulative;
+                      const cumCol = cumVal != null ? (cumVal >= 0 ? '#ef4444' : '#10b981') : '#9ca3af';
+                      return (
+                        <div style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 6, padding: '6px 10px', fontSize: 11 }}>
+                          <div style={{ marginBottom: 2, color: '#9ca3af' }}>{label}</div>
+                          <div>涨跌幅: <span style={{ color: drColor }}>{dr != null ? `${(dr * 100).toFixed(2)}%` : '--'}</span></div>
+                          <div>价格: <span style={{ color: '#e2e8f0' }}>{row?.price != null ? row.price.toFixed(2) : '--'}</span></div>
+                          <div>累计: <span style={{ color: cumCol }}>{cumVal != null ? `${(cumVal * 100).toFixed(2)}%` : '--'}</span></div>
+                        </div>
+                      );
+                    }}
+                  />
+                  <Line type="monotone" dataKey="cumulative" stroke="#f59e0b" strokeWidth={1.5} dot={false} connectNulls />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="text-xs text-tertiary-text py-2">该月持仓期不足 2 个交易日，暂无 K 线</div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 
 const BrokerRecommendPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -321,6 +821,10 @@ const BrokerRecommendPage: React.FC = () => {
   const monthStr = selectedMonth.format('YYYYMM');
   const isCurrentMonth = monthStr === dayjs().format('YYYYMM');
 
+  useEffect(() => {
+    stockHistoryCache.clear();
+  }, [monthStr]);
+
   const prevMonthRef = useRef(monthStr);
   const [visibleChartBrokers, setVisibleChartBrokers] = useState<Set<string>>(new Set());
   const [expandedKey, setExpandedKey] = useState<string>('');
@@ -332,6 +836,63 @@ const BrokerRecommendPage: React.FC = () => {
   const [ytdLoading, setYtdLoading] = useState(false);
   const [consecutiveData, setConsecutiveData] = useState<ConsecutiveStockItem[]>([]);
   const consecutiveSet = useMemo(() => new Set(consecutiveData.map(c => c.ts_code)), [consecutiveData]);
+  const [historicalStats, setHistoricalStats] = useState<Record<string, HistoricalRecommendStatsItem>>({});
+
+  /** 仅当 API 返回的 month 与当前选择一致时才用于表格，避免切换月份时旧请求覆盖。 */
+  const activeBacktest = useMemo(
+    () => (backtestData?.month === monthStr ? backtestData : null),
+    [backtestData, monthStr],
+  );
+  const activeRecommend = useMemo(
+    () => (recommendData?.month === monthStr ? recommendData : null),
+    [recommendData, monthStr],
+  );
+  const activeEnrichment = useMemo(
+    () => (enrichmentData?.month === monthStr ? enrichmentData : null),
+    [enrichmentData, monthStr],
+  );
+  const enrichAsOfLabel = useMemo(() => {
+    const qd = activeEnrichment?.query_date;
+    if (!qd || qd.length < 8) return '';
+    return `(${qd.slice(4, 6)}-${qd.slice(6, 8)})`;
+  }, [activeEnrichment]);
+  const holdPeriodLabel = useMemo(() => {
+    if (!activeBacktest?.buy_date || !activeBacktest?.sell_date) return '';
+    return `(${fmtDate(activeBacktest.buy_date).slice(5)}~${fmtDate(activeBacktest.sell_date).slice(5)})`;
+  }, [activeBacktest]);
+
+
+  useEffect(() => {
+    if (!activeRecommend?.items?.length) {
+      setHistoricalStats({});
+      return;
+    }
+    const codes = [...new Set(activeRecommend.items.map((i) => i.ts_code))];
+    let cancelled = false;
+    getHistoricalRecommendStats(codes)
+      .then((items) => {
+        if (cancelled) return;
+        const map: Record<string, HistoricalRecommendStatsItem> = {};
+        for (const it of items) map[it.ts_code] = it;
+        setHistoricalStats(map);
+      })
+      .catch(() => {
+        if (!cancelled) setHistoricalStats({});
+      });
+    return () => { cancelled = true; };
+  }, [activeRecommend]);
+  const historyTopCodes = useMemo(() => {
+    if (!isCurrentMonth || !activeRecommend?.items?.length) return new Set<string>();
+    if (!Object.keys(historicalStats).length) return new Set<string>();
+    const codes = dedupStocks(activeRecommend.items).map((i) => i.ts_code);
+    const ranked = codes
+      .map((tc) => ({ ts_code: tc, count: historicalStats[tc]?.month_count ?? 0 }))
+      .filter((x) => x.count > 0)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, HISTORY_RECOMMEND_TOP_N);
+    return new Set(ranked.map((x) => x.ts_code));
+  }, [isCurrentMonth, activeRecommend, historicalStats]);
+
 
   // Controlled sort state to preserve across data refreshes
   const [tableSort, setTableSort] = useState<{ columnKey?: string; order?: 'ascend' | 'descend' }>({
@@ -343,6 +904,8 @@ const BrokerRecommendPage: React.FC = () => {
     if (!monthStr) return;
     const isMonthChange = prevMonthRef.current !== monthStr;
     prevMonthRef.current = monthStr;
+    const loadMonth = monthStr;
+    let cancelled = false;
 
     async function load() {
       setLoadingData(true);
@@ -356,25 +919,29 @@ const BrokerRecommendPage: React.FC = () => {
       }
       try {
         const [data, bt, enrich, cons, top] = await Promise.all([
-          getMonthlyRecommendations(monthStr),
-          getBacktest(monthStr),
-          getMonthlyEnrichment(monthStr),
-          getConsecutiveStocks(monthStr),
+          getMonthlyRecommendations(loadMonth),
+          getBacktest(loadMonth),
+          getMonthlyEnrichment(loadMonth),
+          getConsecutiveStocks(loadMonth),
           getTopBrokers(5).catch(() => [] as string[]),
         ]);
-        setRecommendData(data);
-        setBacktestData(bt);
-        setEnrichmentData(enrich);
+        if (cancelled || loadMonth !== monthStr) return;
+        setRecommendData(data.month === loadMonth ? data : null);
+        setBacktestData(bt.month === loadMonth ? bt : null);
+        setEnrichmentData(enrich.month === loadMonth ? enrich : null);
         setConsecutiveData(cons);
         setTopBrokers(top);
       } catch (e) {
-        console.error('Failed to load:', e);
+        if (!cancelled) console.error('Failed to load:', e);
       } finally {
-        setLoadingData(false);
-        setLoadingEnrichment(false);
+        if (!cancelled) {
+          setLoadingData(false);
+          setLoadingEnrichment(false);
+        }
       }
     }
     load();
+    return () => { cancelled = true; };
   }, [monthStr, fetchTrigger]);
 
   const handleFetch = useCallback(async () => {
@@ -393,14 +960,14 @@ const BrokerRecommendPage: React.FC = () => {
 
   // Init chart to top 5 brokers by cumulative return
   useEffect(() => {
-    if (backtestData?.brokers?.length) {
-      const top5 = [...backtestData.brokers]
+    if (activeBacktest?.brokers?.length) {
+      const top5 = [...activeBacktest.brokers]
         .sort((a, b) => b.cumulative_return - a.cumulative_return)
         .slice(0, 5)
         .map(b => b.broker);
       setVisibleChartBrokers(new Set(top5));
     }
-  }, [backtestData]);
+  }, [activeBacktest]);
 
   // Load YTD data when switching to YTD tab
   useEffect(() => {
@@ -432,15 +999,15 @@ const BrokerRecommendPage: React.FC = () => {
 
   // Chart data
   const chartData = (() => {
-    if (!backtestData) return [];
+    if (!activeBacktest) return [];
     const dateSet = new Set<string>();
-    backtestData.brokers.forEach(b => {
+    activeBacktest.brokers.forEach(b => {
       b.daily_returns.forEach(d => dateSet.add(d.date));
     });
     const dates = Array.from(dateSet).sort();
     return dates.map(date => {
       const entry: Record<string, string | number | undefined> = { date: fmtDate(date) };
-      backtestData.brokers.forEach((b) => {
+      activeBacktest.brokers.forEach((b) => {
         const dr = b.daily_returns.find(d => d.date === date);
         entry[b.broker] = dr?.cumulative;
       });
@@ -468,9 +1035,9 @@ const BrokerRecommendPage: React.FC = () => {
 
   // Build deduped stock rows with enrichment
   const stockRows = useMemo((): StockRow[] => {
-    if (!recommendData?.items) return [];
-    const rows: StockRow[] = dedupStocks(recommendData.items).map(item => {
-      const stockRet = backtestData?.stock_returns?.find(
+    if (!activeRecommend?.items) return [];
+    const rows: StockRow[] = dedupStocks(activeRecommend.items).map(item => {
+      const stockRet = activeBacktest?.stock_returns?.find(
         s => s.ts_code === item.ts_code
       );
       const cumRet = stockRet?.daily_returns?.length
@@ -485,14 +1052,28 @@ const BrokerRecommendPage: React.FC = () => {
         endPrice: stockRet?.end_price,
         endDate: stockRet?.end_date,
         cumRet,
-        nineturn: enrichmentData?.data[item.ts_code]?.nineturn ?? null,
-        forecast: enrichmentData?.data[item.ts_code]?.forecast ?? null,
-        cyq_perf: enrichmentData?.data[item.ts_code]?.cyq_perf ?? null,
-        sector: enrichmentData?.data[item.ts_code]?.sector ?? null,
+        nineturn: activeEnrichment?.data[item.ts_code]?.nineturn ?? null,
+        forecast: activeEnrichment?.data[item.ts_code]?.forecast ?? null,
+        cyq_perf: activeEnrichment?.data[item.ts_code]?.cyq_perf ?? null,
+        sector: activeEnrichment?.data[item.ts_code]?.sector ?? null,
       };
     });
 
-    // Current month: highlight top 3 by 50% concentration + 50% winner_rate
+    for (const r of rows) {
+      const hist = historicalStats[r.ts_code];
+      if (hist) {
+        r.historyMonthCount = hist.month_count;
+        r.historyPeriodCount = hist.period_count;
+        r.historyWinRate = hist.win_rate ?? null;
+        r.historyMaxReturn = hist.max_return ?? null;
+        r.historyMaxDrawdown = hist.max_drawdown ?? null;
+      }
+      if (historyTopCodes.has(r.ts_code)) {
+        r.isHistoryTop = true;
+      }
+    }
+
+    // 当前月：筹码集中度 + 胜率综合 Top3（金色行背景，与历史 Top 可并存）
     if (isCurrentMonth) {
       const scored = rows
         .filter(r => {
@@ -500,8 +1081,8 @@ const BrokerRecommendPage: React.FC = () => {
           return conc != null && r.cyq_perf?.winner_rate != null;
         })
         .map(r => {
-          const rawConc = (r.cyq_perf!.scr90 ?? r.cyq_perf!.concentration)!;  {/* always % */}
-          const normConc = rawConc / 100;  {/* normalize to 0-1 */}
+          const rawConc = (r.cyq_perf!.scr90 ?? r.cyq_perf!.concentration)!;
+          const normConc = rawConc / 100;
           const score = 0.5 * (1 - normConc) + 0.5 * r.cyq_perf!.winner_rate!;
           return { ts_code: r.ts_code, score };
         })
@@ -515,27 +1096,37 @@ const BrokerRecommendPage: React.FC = () => {
     }
 
     return rows;
-  }, [recommendData, backtestData, enrichmentData, isCurrentMonth]);
+  }, [activeRecommend, activeBacktest, activeEnrichment, isCurrentMonth, consecutiveSet, historicalStats, historyTopCodes]);
 
   // --- Table column definitions ---
   const stockColumns: ColumnsType<StockRow> = useMemo(() => [
     {
-      title: '代码', dataIndex: 'ts_code', key: 'ts_code',
-      render: (v: string) => <span className="font-mono text-xs">{v}</span>,
-    },
-    {
-      title: '名称', dataIndex: 'name', key: 'name',
-      sorter: (a, b) => (a.isConsecutive ? 0 : 1) - (b.isConsecutive ? 0 : 1),
-      sortOrder: tableSort.columnKey === 'name' ? tableSort.order : undefined,
-      render: (v: string, row: StockRow) => (
-        <span className="text-xs text-secondary-text">
-          {v}
-          {row.isConsecutive && (
-            <span className="ml-1 px-1 py-0.5 text-[10px] bg-amber-500/15 text-amber-400 rounded">连续</span>
-          )}
-        </span>
+      title: '股票', key: 'stock',
+      sorter: (a, b) => {
+        const pri = (r: StockRow) => (r.isConsecutive ? 0 : 1);
+        const d = pri(a) - pri(b);
+        if (d !== 0) return d;
+        return (a.name || '').localeCompare(b.name || '', 'zh-CN');
+      },
+      sortOrder: tableSort.columnKey === 'stock' ? tableSort.order : undefined,
+      render: (_: unknown, row: StockRow) => (
+        <div className="leading-tight min-w-[4.5rem]">
+          <div className="text-xs text-secondary-text">{row.name}</div>
+          <div className="font-mono text-[10px] text-tertiary-text">{row.ts_code}</div>
+        </div>
       ),
     },
+    {
+      title: '标签', key: 'tags', width: 92,
+      render: (_: unknown, row: StockRow) => <StockTagsCell row={row} />,
+    },
+    {
+      title: '历史统计', key: 'historyStats', width: 108,
+      sorter: (a: StockRow, b: StockRow) => (a.historyWinRate ?? -1) - (b.historyWinRate ?? -1),
+      sortOrder: tableSort.columnKey === 'historyStats' ? tableSort.order : undefined,
+      render: (_: unknown, row: StockRow) => <HistoryStatsCell row={row} />,
+    },
+
     ...(isCurrentMonth ? [{
       title: '当天涨幅', dataIndex: 'dailyChange', key: 'dailyChange',
       sorter: (a: StockRow, b: StockRow) => (a.dailyChange ?? -Infinity) - (b.dailyChange ?? -Infinity),
@@ -574,7 +1165,7 @@ const BrokerRecommendPage: React.FC = () => {
       },
     }] : []),
     {
-      title: <span>九转信号{loadingEnrichment ? <Loader2 className="h-3 w-3 animate-spin inline ml-1" /> : null}</span>,
+      title: <span>九转信号{enrichAsOfLabel ? <span className="text-tertiary-text font-normal ml-0.5">{enrichAsOfLabel}</span> : null}{loadingEnrichment ? <Loader2 className="h-3 w-3 animate-spin inline ml-1" /> : null}</span>,
       key: 'nineturn',
       render: (_, row) => {
         const nt = row.nineturn;
@@ -592,7 +1183,7 @@ const BrokerRecommendPage: React.FC = () => {
       },
     },
     {
-      title: <span>盈利预测{loadingEnrichment ? <Loader2 className="h-3 w-3 animate-spin inline ml-1" /> : null}</span>,
+      title: <span>盈利预测{enrichAsOfLabel ? <span className="text-tertiary-text font-normal ml-0.5">{enrichAsOfLabel}</span> : null}{loadingEnrichment ? <Loader2 className="h-3 w-3 animate-spin inline ml-1" /> : null}</span>,
       key: 'forecast',
       render: (_, row) => {
         const fc = row.forecast;
@@ -627,9 +1218,9 @@ const BrokerRecommendPage: React.FC = () => {
             {cyq.winner_rate != null && (
               <div className={cyq.winner_rate >= 0.5 ? 'text-red-400' : 'text-emerald-400'}>
                 {(cyq.winner_rate * 100).toFixed(1)}%
-                {enrichmentData?.query_date && (
+                {activeEnrichment?.query_date && (
                   <span className="text-tertiary-text ml-1">
-                    ({enrichmentData.query_date.slice(4, 6)}-{enrichmentData.query_date.slice(6)})
+                    ({activeEnrichment.query_date.slice(4, 6)}-{activeEnrichment.query_date.slice(6)})
                   </span>
                 )}
               </div>
@@ -646,9 +1237,14 @@ const BrokerRecommendPage: React.FC = () => {
       sorter: (a, b) => (a.cumRet ?? -Infinity) - (b.cumRet ?? -Infinity),
       sortOrder: tableSort.columnKey === 'cumRet' ? (tableSort.order ?? 'descend') : undefined,
       render: (_, row) => (
-        <span className={`text-xs font-medium ${row.cumRet != null ? (row.cumRet >= 0 ? 'text-red-400' : 'text-emerald-400') : 'text-tertiary-text'}`}>
-          {fmtPct(row.cumRet)}
-        </span>
+        <div className="text-xs leading-snug tabular-nums">
+          <span className={`font-medium ${row.cumRet != null ? (row.cumRet >= 0 ? 'text-red-400' : 'text-emerald-400') : 'text-tertiary-text'}`}>
+            {fmtPct(row.cumRet)}
+          </span>
+          {holdPeriodLabel ? (
+            <div className="text-[10px] text-tertiary-text font-normal mt-0.5">{holdPeriodLabel}</div>
+          ) : null}
+        </div>
       ),
     },
     {
@@ -665,19 +1261,19 @@ const BrokerRecommendPage: React.FC = () => {
       sortOrder: tableSort.columnKey === 'broker_count' ? tableSort.order : undefined,
       render: (v: number) => <span className="text-xs text-tertiary-text whitespace-nowrap">{v}</span>,
     },
-  ], [loadingEnrichment, monthStr, tableSort, isCurrentMonth]);
+  ], [loadingEnrichment, monthStr, tableSort, isCurrentMonth, enrichAsOfLabel, holdPeriodLabel, activeEnrichment]);
 
   // Broker groups
   const brokerGroups = useMemo((): Map<string, BrokerRecommendItem[]> => {
-    if (!recommendData?.items?.length) return new Map();
+    if (!activeRecommend?.items?.length) return new Map();
     const map = new Map<string, BrokerRecommendItem[]>();
-    for (const item of recommendData.items) {
+    for (const item of activeRecommend.items) {
       const existing = map.get(item.broker) || [];
       existing.push(item);
       map.set(item.broker, existing);
     }
     return map;
-  }, [recommendData]);
+  }, [activeRecommend]);
 
   return (
     <AppPage className="max-w-none px-2 md:px-3">
@@ -719,9 +1315,9 @@ const BrokerRecommendPage: React.FC = () => {
             )}
 
             <span className="text-xs text-tertiary-text ml-auto">
-              {backtestData
-                ? `回测区间: ${fmtDate(backtestData.buy_date)} → ${fmtDate(backtestData.sell_date)}`
-                : recommendData
+              {activeBacktest
+                ? `回测区间: ${fmtDate(activeBacktest.buy_date)} → ${fmtDate(activeBacktest.sell_date)}`
+                : activeRecommend
                 ? `${monthStr} 月券商金股`
                 : '--'}
             </span>
@@ -729,7 +1325,7 @@ const BrokerRecommendPage: React.FC = () => {
         </Card>
 
         {/* Loading - only show full skeleton when no cached data */}
-        {loadingData && !recommendData && (
+        {loadingData && !activeRecommend && (
           <Card className="p-4 text-center text-sm text-tertiary-text">
             <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
             加载中...
@@ -737,7 +1333,7 @@ const BrokerRecommendPage: React.FC = () => {
         )}
 
         {/* Subtle refresh indicator when loading with existing data */}
-        {loadingData && recommendData && (
+        {loadingData && activeRecommend && (
           <div className="text-xs text-tertiary-text flex items-center gap-1 mb-1">
             <Loader2 className="h-3 w-3 animate-spin" />
             更新中...
@@ -745,29 +1341,29 @@ const BrokerRecommendPage: React.FC = () => {
         )}
 
         {/* Overview */}
-        {recommendData && (
+        {activeRecommend && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <Card className="p-3 text-center">
-              <div className="text-lg font-bold">{recommendData.total_recommendations}</div>
+              <div className="text-lg font-bold">{activeRecommend.total_recommendations}</div>
               <div className="text-xs text-secondary-text">推荐总数</div>
             </Card>
             <button
               className={`rounded-2xl terminal-card p-3 text-center cursor-pointer transition-colors w-full ${viewMode === 'stock' ? 'ring-2 ring-cyan/50 bg-cyan/[0.05]' : 'hover:bg-muted/50'}`}
               onClick={() => setViewMode('stock')}
             >
-              <div className="text-lg font-bold">{recommendData.unique_stocks}</div>
+              <div className="text-lg font-bold">{activeRecommend.unique_stocks}</div>
               <div className="text-xs text-secondary-text">涉及股票</div>
             </button>
             <button
               className={`rounded-2xl terminal-card p-3 text-center cursor-pointer transition-colors w-full ${viewMode === 'broker' ? 'ring-2 ring-cyan/50 bg-cyan/[0.05]' : 'hover:bg-muted/50'}`}
               onClick={() => setViewMode('broker')}
             >
-              <div className="text-lg font-bold">{recommendData.unique_brokers}</div>
+              <div className="text-lg font-bold">{activeRecommend.unique_brokers}</div>
               <div className="text-xs text-secondary-text">券商数量</div>
             </button>
             <Card className="p-3 text-center">
-              <div className={`text-lg font-bold ${(backtestData?.brokers[0]?.cumulative_return || 0) >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                {fmtPct(backtestData?.brokers[0]?.cumulative_return ?? 0)}
+              <div className={`text-lg font-bold ${(activeBacktest?.brokers[0]?.cumulative_return || 0) >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                {fmtPct(activeBacktest?.brokers[0]?.cumulative_return ?? 0)}
               </div>
               <div className="text-xs text-secondary-text">最优券商收益</div>
             </Card>
@@ -775,12 +1371,12 @@ const BrokerRecommendPage: React.FC = () => {
         )}
 
         {/* Chart */}
-        {backtestData && chartData.length > 0 && backtestData.brokers.length > 0 && (
+        {activeBacktest && chartData.length > 0 && activeBacktest.brokers.length > 0 && (
           <Card className="p-4">
             <div className="text-sm font-medium mb-2">券商组合收益曲线</div>
             {/* Legend: click to toggle, greyed out when hidden */}
             <div className="flex flex-wrap gap-x-3 gap-y-1 mb-1">
-              {backtestData.brokers.map((b, i) => {
+              {activeBacktest.brokers.map((b, i) => {
                 const visible = visibleChartBrokers.has(b.broker);
                 return (
                   <button
@@ -808,7 +1404,7 @@ const BrokerRecommendPage: React.FC = () => {
                   tickFormatter={v => `${(v * 100).toFixed(0)}%`}
                 />
                 <Tooltip content={<CustomTooltip />} />
-                {backtestData.brokers.map((b, i) => (
+                {activeBacktest.brokers.map((b, i) => (
                   <Line
                     key={b.broker}
                     type="monotone"
@@ -826,7 +1422,7 @@ const BrokerRecommendPage: React.FC = () => {
         )}
 
         {/* Tables - keep visible during refresh to preserve sort state */}
-        {recommendData && brokerGroups.size > 0 && (
+        {activeRecommend && brokerGroups.size > 0 && (
           <Card className="p-4">
             <div className="text-sm font-medium mb-3">
               {viewMode === 'broker' ? '券商金股明细' : '全部金股明细'}
@@ -842,9 +1438,7 @@ const BrokerRecommendPage: React.FC = () => {
                 size="small"
                 pagination={false}
                 scroll={{ x: 700 }}
-                onRow={(record) => record.isTopPick ? {
-                  style: { background: 'linear-gradient(90deg, rgba(251,191,36,0.08) 0%, rgba(245,158,11,0.04) 100%)' },
-                } : {}}
+                onRow={(record) => { const style = brokerStockRowStyle(record); return style ? { style } : {}; }}
                 onChange={(_pagination, _filters, sorter) => {
                   if (!Array.isArray(sorter) && sorter.columnKey) {
                     setTableSort({ columnKey: sorter.columnKey as string, order: sorter.order as 'ascend' | 'descend' });
@@ -868,65 +1462,16 @@ const BrokerRecommendPage: React.FC = () => {
                       setTableKey(k => k + 1);
                     }
                   },
-                  expandedRowRender: (record) => {
-                    const stockRet = backtestData?.stock_returns?.find(s => s.ts_code === record.ts_code);
-                    if (!stockRet?.daily_returns?.length) {
-                      // 当月无图表数据时展示基本信息
-                      if (isCurrentMonth) {
-                        return (
-                          <div className="p-3 border border-border/20 rounded-lg bg-muted/10 text-xs text-secondary-text">
-                            {record.name || record.ts_code} — 暂无走势数据
-                          </div>
-                        );
-                      }
-                      return <div />;
-                    }
-                    const hasOHLC = stockRet.daily_returns.some(d => d.open != null);
-                    return (
-                      <div className="p-3 border border-border/20 rounded-lg bg-muted/10">
-                        <div className="text-xs font-medium mb-2 text-secondary-text">
-                          {stockRet.name || record.ts_code} 月度走势
-                        </div>
-                        {hasOHLC ? (
-                          <CandlestickMiniChart
-                            data={stockRet.daily_returns.map((d: any) => ({
-                              date: d.date,
-                              price: d.price,
-                              open: d.open,
-                              high: d.high,
-                              low: d.low,
-                            }))}
-                            height={140}
-                          />
-                        ) : (
-                          <ResponsiveContainer width="100%" height={120}>
-                            <LineChart
-                              margin={{ top: 2, right: 0, bottom: 4, left: -20 }}
-                              data={stockRet.daily_returns.map((d: any) => ({
-                                date: fmtDate(d.date),
-                                cumulative: d.cumulative,
-                              }))}
-                            >
-                              <XAxis dataKey="date" tick={{ fontSize: 8, fill: '#9ca3af' }} stroke="#6b7280" interval={3} />
-                              <YAxis tick={{ fontSize: 8, fill: '#9ca3af' }} stroke="#6b7280" tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`} />
-                              <Tooltip
-                                contentStyle={{ background: '#111827', border: '1px solid #374151', borderRadius: 8, fontSize: 11 }}
-                                formatter={(value: any) => `${(Number(value) * 100).toFixed(2)}%`}
-                                labelFormatter={(label: any) => String(label)}
-                              />
-                              <Line type="monotone" dataKey="cumulative" stroke="#f59e0b" strokeWidth={1.5} dot={false} />
-                            </LineChart>
-                          </ResponsiveContainer>
-                        )}
-                      </div>
-                    );
-                  },
-                  rowExpandable: (record) => {
-                    // 当月只要有数据就允许展开
-                    if (isCurrentMonth) return true;
-                    const stockRet = backtestData?.stock_returns?.find(s => s.ts_code === record.ts_code);
-                    return !!(stockRet?.daily_returns?.length);
-                  },
+                  expandedRowRender: (record) => (
+                    <div className="min-w-0 max-w-full overflow-hidden">
+                      <StockHistoryExpandPanel
+                        tsCode={record.ts_code}
+                        name={record.name}
+                        highlightMonth={monthStr}
+                      />
+                    </div>
+                  ),
+                  rowExpandable: () => true,
                 }}
               />
             )}
@@ -936,20 +1481,20 @@ const BrokerRecommendPage: React.FC = () => {
               <div className="space-y-2">
                 {Array.from(brokerGroups.entries())
                   .sort(([, aItems], [, bItems]) => {
-                    const aBt = backtestData?.brokers.find(b => b.broker === aItems[0]?.broker);
-                    const bBt = backtestData?.brokers.find(b => b.broker === bItems[0]?.broker);
+                    const aBt = activeBacktest?.brokers.find(b => b.broker === aItems[0]?.broker);
+                    const bBt = activeBacktest?.brokers.find(b => b.broker === bItems[0]?.broker);
                     return (bBt?.cumulative_return ?? -Infinity) - (aBt?.cumulative_return ?? -Infinity);
                   })
                   .map(([broker, items], idx) => {
-                  const brokerBt = backtestData?.brokers.find(b => b.broker === broker);
+                  const brokerBt = activeBacktest?.brokers.find(b => b.broker === broker);
                   const brokerRows: StockRow[] = items.map(item => {
-                    const stockRet = backtestData?.stock_returns?.find(
+                    const stockRet = activeBacktest?.stock_returns?.find(
                       s => s.ts_code === item.ts_code
                     );
                     const cumRet = stockRet?.daily_returns?.length
                       ? stockRet.daily_returns[stockRet.daily_returns.length - 1].cumulative
                       : undefined;
-                    return {
+                    const row: StockRow = {
                       ts_code: item.ts_code,
                       name: item.name,
                       broker_count: item.broker_count,
@@ -958,11 +1503,23 @@ const BrokerRecommendPage: React.FC = () => {
                       endPrice: stockRet?.end_price,
                       endDate: stockRet?.end_date,
                       cumRet,
-                      nineturn: enrichmentData?.data[item.ts_code]?.nineturn ?? null,
-                      forecast: enrichmentData?.data[item.ts_code]?.forecast ?? null,
-                      cyq_perf: enrichmentData?.data[item.ts_code]?.cyq_perf ?? null,
-                      sector: enrichmentData?.data[item.ts_code]?.sector ?? null,
+                      nineturn: activeEnrichment?.data[item.ts_code]?.nineturn ?? null,
+                      forecast: activeEnrichment?.data[item.ts_code]?.forecast ?? null,
+                      cyq_perf: activeEnrichment?.data[item.ts_code]?.cyq_perf ?? null,
+                      sector: activeEnrichment?.data[item.ts_code]?.sector ?? null,
                     };
+                    const hist = historicalStats[item.ts_code];
+                    if (hist) {
+                      row.historyMonthCount = hist.month_count;
+                      row.historyPeriodCount = hist.period_count;
+                      row.historyWinRate = hist.win_rate ?? null;
+                      row.historyMaxReturn = hist.max_return ?? null;
+                      row.historyMaxDrawdown = hist.max_drawdown ?? null;
+                    }
+                    if (historyTopCodes.has(item.ts_code)) {
+                      row.isHistoryTop = true;
+                    }
+                    return row;
                   });
 
                   return (
@@ -1005,7 +1562,7 @@ const BrokerRecommendPage: React.FC = () => {
                       {/* Expanded broker detail */}
                       {expandedBrokers.has(broker) && (
                         <div className="px-4 py-2 border-t border-border/10 bg-muted/20">
-                          {backtestData ? (
+                          {activeBacktest ? (
                             <Table
                               key={tableKey}
                               columns={stockColumns}
@@ -1014,9 +1571,7 @@ const BrokerRecommendPage: React.FC = () => {
                               size="small"
                               pagination={false}
                               scroll={{ x: 700 }}
-                              onRow={(record) => record.isTopPick ? {
-                                style: { background: 'linear-gradient(90deg, rgba(251,191,36,0.08) 0%, rgba(245,158,11,0.04) 100%)' },
-                              } : {}}
+                              onRow={(record) => { const style = brokerStockRowStyle(record); return style ? { style } : {}; }}
                               onChange={(_pagination, _filters, sorter) => {
                                 if (!Array.isArray(sorter) && sorter.columnKey) {
                                   setTableSort({ columnKey: sorter.columnKey as string, order: sorter.order as 'ascend' | 'descend' });
@@ -1040,79 +1595,16 @@ const BrokerRecommendPage: React.FC = () => {
                                     setTableKey(k => k + 1);
                                   }
                                 },
-                                expandedRowRender: (record) => {
-                                  const stockRet = backtestData?.stock_returns?.find(s => s.ts_code === record.ts_code);
-                                  if (!stockRet?.daily_returns?.length) {
-                                    if (isCurrentMonth) {
-                                      return (
-                                        <div className="p-3 border border-border/20 rounded-lg bg-muted/10 text-xs text-secondary-text">
-                                          {record.name || record.ts_code} — 暂无走势数据
-                                        </div>
-                                      );
-                                    }
-                                    return <div />;
-                                  }
-                                  const hasOHLC = stockRet.daily_returns.some(d => d.open != null);
-                                  return (
-                                    <div className="p-3 border border-border/20 rounded-lg bg-muted/10">
-                                      <div className="text-xs font-medium mb-2 text-secondary-text">
-                                        {stockRet.name || record.ts_code} 月度走势
-                                      </div>
-                                      {hasOHLC ? (
-                                        <CandlestickMiniChart
-                                          data={stockRet.daily_returns.map((d: any) => ({
-                                            date: d.date,
-                                            price: d.price,
-                                            open: d.open,
-                                            high: d.high,
-                                            low: d.low,
-                                          }))}
-                                          height={140}
-                                        />
-                                      ) : (
-                                        <ResponsiveContainer width="100%" height={120}>
-                                          <LineChart
-                                            margin={{ top: 2, right: 0, bottom: 4, left: -20 }}
-                                            data={stockRet.daily_returns.map((d: any) => ({
-                                              date: fmtDate(d.date),
-                                              cumulative: d.cumulative,
-                                              daily_return: d.return ?? d.daily_return,
-                                              price: d.price,
-                                            }))}
-                                          >
-                                            <XAxis dataKey="date" tick={{ fontSize: 8, fill: '#9ca3af' }} stroke="#6b7280" interval={3} />
-                                            <YAxis tick={{ fontSize: 8, fill: '#9ca3af' }} stroke="#6b7280" tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`} />
-                                            <Tooltip
-                                              content={({ active, payload, label }: any) => {
-                                                if (!active || !payload?.length) return null;
-                                                const data = payload[0]?.payload;
-                                                const dr = data?.daily_return;
-                                                const drColor = dr != null ? (dr >= 0 ? '#ef4444' : '#10b981') : '#9ca3af';
-                                                const cum = data?.cumulative;
-                                                const cumColor = cum != null ? (cum >= 0 ? '#ef4444' : '#10b981') : '#9ca3af';
-                                                return (
-                                                  <div style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '6px', padding: '6px 10px', fontSize: 11 }}>
-                                                    <div style={{ marginBottom: 2, color: '#9ca3af' }}>{label}</div>
-                                                    <div>涨跌幅: <span style={{ color: drColor }}>{dr != null ? `${(dr * 100).toFixed(2)}%` : '--'}</span></div>
-                                                    <div>价格: <span style={{ color: '#e2e8f0' }}>{data?.price != null ? data.price.toFixed(2) : '--'}</span></div>
-                                                    <div>累计: <span style={{ color: cumColor }}>{cum != null ? `${(cum * 100).toFixed(2)}%` : '--'}</span></div>
-                                                  </div>
-                                                );
-                                              }}
-                                            />
-                                            <Line type="monotone" dataKey="cumulative" stroke="#34d399" strokeWidth={1.5} dot={false} connectNulls />
-                                            <ReferenceLine y={0} stroke="#4b5563" strokeWidth={1} strokeDasharray="4 4" />
-                                          </LineChart>
-                                        </ResponsiveContainer>
-                                      )}
-                                    </div>
-                                  );
-                                },
-                                rowExpandable: (record) => {
-                                  if (isCurrentMonth) return true;
-                                  const stockRet = backtestData?.stock_returns?.find(s => s.ts_code === record.ts_code);
-                                  return !!(stockRet?.daily_returns?.length);
-                                },
+                                expandedRowRender: (record) => (
+                                  <div className="min-w-0 max-w-full overflow-hidden">
+                                    <StockHistoryExpandPanel
+                                      tsCode={record.ts_code}
+                                      name={record.name}
+                                      highlightMonth={monthStr}
+                                    />
+                                  </div>
+                                ),
+                                rowExpandable: () => true,
                               }}
                             />
                           ) : (
@@ -1127,7 +1619,7 @@ const BrokerRecommendPage: React.FC = () => {
                             </div>
                           )}
                           {/* Mini chart for this broker */}
-                          {backtestData && brokerBt && brokerBt.daily_returns.length > 0 && (() => {
+                          {activeBacktest && brokerBt && brokerBt.daily_returns.length > 0 && (() => {
                             const finalCum = brokerBt.daily_returns[brokerBt.daily_returns.length - 1]?.cumulative ?? 0;
                             const cumColor = finalCum >= 0 ? '#ef4444' : '#10b981';
                             return (

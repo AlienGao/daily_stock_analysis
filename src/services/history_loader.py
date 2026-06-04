@@ -127,6 +127,7 @@ def load_history_df(
     stock_code: str,
     days: int = 60,
     target_date: Optional[date] = None,
+    start_date: Optional[date] = None,
 ) -> Tuple[Optional[pd.DataFrame], str]:
     """Load K-line history, DB first with DataFetcherManager fallback.
 
@@ -143,31 +144,59 @@ def load_history_df(
         frozen = get_frozen_target_date()
         end = frozen if frozen else date.today()
 
-    # Calendar-day buffer: ~1.8x trading days + margin for long holidays
-    start = end - timedelta(days=int(days * 1.8) + 10)
+    if start_date is not None:
+        start = start_date
+        span_calendar = max((end - start).days + 1, 1)
+        required_records = max(_CACHE_MIN_RECORDS, int(span_calendar * 0.45))
+    else:
+        # Calendar-day buffer: ~1.8x trading days + margin for long holidays
+        start = end - timedelta(days=int(days * 1.8) + 10)
+        required_records = max(_CACHE_MIN_RECORDS, min(days, max(int(days * 0.6), 1)))
 
-    # --- 1. DB lookup (canonical code, then prefix-stripped fallback) ------
-    try:
-        db = get_db()
-        _code, bars = _select_best_bars(db, stock_code, start, end)
-        required_records = max(min(days, _CACHE_MIN_RECORDS), 1)
-        latest_date = max((_bar_date(bar) for bar in bars), default=date.min)
-        if bars and latest_date >= end and len(bars) >= required_records:
-            df = pd.DataFrame([b.to_dict() for b in bars])
-            logger.debug(
-                "load_history_df(%s): %d bars from DB (requested %d)",
-                stock_code, len(df), days,
-            )
-            return df, "db_cache"
-    except Exception as e:
-        logger.debug("load_history_df(%s): DB read failed: %s", stock_code, e)
+    start_slack = timedelta(days=7)
+    range_query = start_date is not None
 
-    # --- 2. Network fallback via singleton DataFetcherManager -------------
+    # 显式区间（如金股近 6 月）不走 DB 快捷路径，避免只命中近月残缺缓存
+    if not range_query:
+        try:
+            db = get_db()
+            _code, bars = _select_best_bars(db, stock_code, start, end)
+            latest_date = max((_bar_date(bar) for bar in bars), default=date.min)
+            earliest_date = min((_bar_date(bar) for bar in bars), default=date.max)
+            if (
+                bars
+                and latest_date >= end
+                and earliest_date <= start + start_slack
+                and len(bars) >= required_records
+            ):
+                df = pd.DataFrame([b.to_dict() for b in bars])
+                logger.debug(
+                    "load_history_df(%s): %d bars from DB [%s..%s], requested %d",
+                    stock_code, len(df), start, end, days,
+                )
+                return df, "db_cache"
+        except Exception as e:
+            logger.debug("load_history_df(%s): DB read failed: %s", stock_code, e)
+
+    fetch_days = days
+    if range_query:
+        fetch_days = max(days, int(span_calendar * 0.65) + 10)
+
     try:
         manager = _get_fetcher_manager()
-        df, source = manager.get_daily_data(stock_code, days=days)
+        df, source = manager.get_daily_data(
+            stock_code,
+            start_date=start.strftime("%Y%m%d"),
+            end_date=end.strftime("%Y%m%d"),
+            days=fetch_days,
+        )
         if df is not None and not df.empty:
-            return df, source
+            if range_query and "date" in df.columns:
+                dt = pd.to_datetime(df["date"], errors="coerce")
+                mask = (dt.dt.date >= start) & (dt.dt.date <= end)
+                df = df.loc[mask].copy()
+            if not df.empty:
+                return df, source
     except Exception as e:
         logger.warning("load_history_df(%s): DataFetcherManager failed: %s", stock_code, e)
 

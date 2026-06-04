@@ -267,3 +267,63 @@ export async function getInstitutionSurveyDates(): Promise<string[]> {
   );
   return resp.data;
 }
+
+export type StockHistoryEntry = {
+  month: string;
+  brokers: string[];
+  broker_count: number;
+  buy_date: string;
+  sell_date: string;
+  cumulative_return?: number | null;
+  daily_returns: BrokerDailyReturn[];
+};
+
+export type StockHistoryResponse = {
+  ts_code: string;
+  name: string;
+  entries: StockHistoryEntry[];
+};
+
+export async function getStockHistory(tsCode: string): Promise<StockHistoryResponse> {
+  const resp = await apiClient.get<StockHistoryResponse>(
+    `/api/v1/broker-recommend/stock/${encodeURIComponent(tsCode)}/history`
+  );
+  return resp.data;
+}
+
+export type HistoricalMonthCountItem = {
+  ts_code: string;
+  month_count: number;
+};
+
+export async function getHistoricalMonthCounts(
+  codes: string[],
+): Promise<HistoricalMonthCountItem[]> {
+  if (!codes.length) return [];
+  const resp = await apiClient.get<HistoricalMonthCountItem[]>(
+    '/api/v1/broker-recommend/historical-month-counts',
+    { params: { codes: codes.join(',') } },
+  );
+  return resp.data;
+}
+
+export type HistoricalRecommendStatsItem = {
+  ts_code: string;
+  month_count: number;
+  period_count: number;
+  win_rate?: number | null;
+  max_return?: number | null;
+  max_drawdown?: number | null;
+};
+
+export async function getHistoricalRecommendStats(
+  codes: string[],
+): Promise<HistoricalRecommendStatsItem[]> {
+  if (!codes.length) return [];
+  const resp = await apiClient.get<HistoricalRecommendStatsItem[]>(
+    '/api/v1/broker-recommend/historical-recommend-stats',
+    { params: { codes: codes.join(',') }, timeout: 120_000 },
+  );
+  return resp.data;
+}
+
