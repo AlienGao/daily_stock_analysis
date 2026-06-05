@@ -127,6 +127,7 @@ class FactorBacktestTrade:
     buy_date: str = ""
     buy_price_raw: float = 0.0
     sell_price_raw: float = 0.0
+    pick_rank: int = 0  # 当日因子综合分 Top 顺位（1..top_n），递补买入为 0
 
 
 @dataclass
@@ -148,6 +149,13 @@ class FactorBacktestResult:
 
 
 class FactorBacktestEngine:
+    @staticmethod
+    def _composite_pick_ranks(composite, top_n: int):
+        """当日因子综合分 Top1..TopN 股票代码 → 顺位（1-based）。"""
+        if composite is None or composite.empty or top_n <= 0:
+            return {}
+        return {str(code): i + 1 for i, code in enumerate(composite.nlargest(top_n).index)}
+
 
     def __init__(self, tushare_fetcher=None):
         self._fetcher = tushare_fetcher
@@ -296,6 +304,7 @@ class FactorBacktestEngine:
                 if composite.empty:
                     continue
 
+                pick_ranks = self._composite_pick_ranks(composite, top_n)
                 if buy_date > today_str:
                     ranked = composite.nlargest(top_n)
                     for code, _sc in ranked.items():
@@ -305,7 +314,7 @@ class FactorBacktestEngine:
                             stock_name=self._stock_names.get(code, code),
                             buy_price=0, sell_date=sell_date, sell_price=0,
                             return_pct=0, pnl=0, allocated=0, status="pending",
-                            buy_price_raw=0, sell_price_raw=0))
+                            buy_price_raw=0, sell_price_raw=0, pick_rank=pick_ranks.get(str(code), 0)))
                     continue
 
                 # 两轮：先试买（涨停跳过顺延），后均分可用资金
@@ -354,7 +363,7 @@ class FactorBacktestEngine:
                         buy_price=round(bp, 2) if bp else 0, sell_date=sd, buy_price_raw=round(bp_raw, 2) if bp_raw else 0, sell_price_raw=round(sp_raw, 2) if sp_raw else 0,
                         sell_price=round(sp, 2) if sp else 0, return_pct=round(ret, 6),
                         pnl=round(pnl, 2), allocated=round(actual_cost, 2),
-                        shares=shares, status=status))
+                        shares=shares, status=status, pick_rank=pick_ranks.get(str(code), 0)))
                 for code in skipped:
                     all_trades[hd].append(FactorBacktestTrade(
                         trade_date=snap_date,
@@ -362,7 +371,7 @@ class FactorBacktestEngine:
                         stock_name=self._stock_names.get(code, code),
                         buy_price=0, sell_date=sell_date, sell_price=0,
                         return_pct=0, pnl=0, allocated=0, shares=0, status="canceled",
-                        buy_price_raw=0, sell_price_raw=0))
+                        buy_price_raw=0, sell_price_raw=0, pick_rank=pick_ranks.get(str(code), 0)))
 
                 if batch_positions:
                     batch_cost = sum(p["cost"] for p in batch_positions)
@@ -424,6 +433,7 @@ class FactorBacktestEngine:
                            "sell_price": t.sell_price_raw if t.sell_price_raw else t.sell_price, "return_pct": t.return_pct,
                            "pnl": t.pnl, "allocated": t.allocated,
                            "shares": t.shares, "status": t.status,
+                           "pick_rank": t.pick_rank,
                            "buy_price_adj": t.buy_price, "sell_price_adj": t.sell_price})
 
         benchmark_curve = self._build_benchmark_curve(trading_days, initial_capital)
@@ -586,6 +596,7 @@ class FactorBacktestEngine:
                 if composite.empty:
                     continue
 
+                pick_ranks = self._composite_pick_ranks(composite, top_n)
                 if buy_date > today_str:
                     ranked = composite.nlargest(top_n)
                     for code, _sc in ranked.items():
@@ -595,7 +606,7 @@ class FactorBacktestEngine:
                             stock_name=self._stock_names.get(code, code),
                             buy_price=0, sell_date=sell_date, sell_price=0,
                             return_pct=0, pnl=0, allocated=0, status="pending",
-                            buy_price_raw=0, sell_price_raw=0))
+                            buy_price_raw=0, sell_price_raw=0, pick_rank=pick_ranks.get(str(code), 0)))
                     continue
 
                 ranked = composite.nlargest(top_n * 5)
@@ -645,7 +656,7 @@ class FactorBacktestEngine:
                         buy_price=round(bp, 2) if bp else 0, sell_date=sd_ext, buy_price_raw=round(bp_raw, 2) if bp_raw else 0, sell_price_raw=round(sp_raw, 2) if sp_raw else 0,
                         sell_price=round(sp, 2) if sp else 0, return_pct=round(ret, 6),
                         pnl=round(pnl, 2), allocated=round(actual_cost, 2),
-                        shares=shares, status=status))
+                        shares=shares, status=status, pick_rank=pick_ranks.get(str(code), 0)))
                 for code in skipped:
                     fixed_trades[hd].append(FactorBacktestTrade(
                         trade_date=snap_date,
@@ -653,7 +664,7 @@ class FactorBacktestEngine:
                         stock_name=self._stock_names.get(code, code),
                         buy_price=0, sell_date=sell_date, sell_price=0,
                         return_pct=0, pnl=0, allocated=0, shares=0, status="canceled",
-                        buy_price_raw=0, sell_price_raw=0))
+                        buy_price_raw=0, sell_price_raw=0, pick_rank=pick_ranks.get(str(code), 0)))
 
                 if batch_positions:
                     batch_cost = sum(p["cost"] for p in batch_positions)
@@ -823,6 +834,7 @@ class FactorBacktestEngine:
                     if composite.empty:
                         continue
 
+                    pick_ranks = self._composite_pick_ranks(composite, top_n)
                     if buy_date > today_str:
                         ranked = composite.nlargest(top_n)
                         for code, _sc in ranked.items():
@@ -832,7 +844,7 @@ class FactorBacktestEngine:
                                 stock_name=self._stock_names.get(code, code),
                                 buy_price=0, sell_date=sell_date, sell_price=0,
                                 return_pct=0, pnl=0, allocated=0, status="pending",
-                                buy_price_raw=0, sell_price_raw=0))
+                                buy_price_raw=0, sell_price_raw=0, pick_rank=pick_ranks.get(str(code), 0)))
                         continue
 
                     ranked = composite.nlargest(top_n * 5)
@@ -883,7 +895,7 @@ class FactorBacktestEngine:
                             sell_date=sd_ext, buy_price_raw=round(bp_raw, 2) if bp_raw else 0, sell_price_raw=round(sp_raw, 2) if sp_raw else 0, sell_price=round(sp, 2) if sp else 0,
                             return_pct=round(ret, 6), pnl=round(pnl, 2),
                             allocated=round(actual_cost, 2), shares=shares,
-                            status=status, reoptimized=True))
+                            status=status, reoptimized=True, pick_rank=pick_ranks.get(str(code), 0)))
                     for code in skipped:
                         dynamic_trades[hd].append(FactorBacktestTrade(
                             trade_date=snap_date,
@@ -892,7 +904,7 @@ class FactorBacktestEngine:
                             buy_price=0, sell_date=sell_date, sell_price=0,
                             return_pct=0, pnl=0, allocated=0, shares=0,
                             status="canceled", reoptimized=True,
-                            buy_price_raw=0, sell_price_raw=0))
+                            buy_price_raw=0, sell_price_raw=0, pick_rank=pick_ranks.get(str(code), 0)))
 
                     if batch_positions:
                         batch_cost = sum(p["cost"] for p in batch_positions)
@@ -978,6 +990,7 @@ class FactorBacktestEngine:
                            "sell_price": t.sell_price_raw if t.sell_price_raw else t.sell_price, "return_pct": t.return_pct,
                            "pnl": t.pnl, "allocated": t.allocated,
                            "shares": t.shares, "status": t.status,
+                           "pick_rank": t.pick_rank,
                            "reoptimized": False,
                            "buy_price_adj": t.buy_price, "sell_price_adj": t.sell_price})
             for t in dynamic_trades[hd]:
@@ -987,6 +1000,7 @@ class FactorBacktestEngine:
                            "sell_price": t.sell_price_raw if t.sell_price_raw else t.sell_price, "return_pct": t.return_pct,
                            "pnl": t.pnl, "allocated": t.allocated,
                            "shares": t.shares, "status": t.status,
+                           "pick_rank": t.pick_rank,
                            "reoptimized": True,
                            "buy_price_adj": t.buy_price, "sell_price_adj": t.sell_price})
 

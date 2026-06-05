@@ -62,6 +62,31 @@ interface BacktestTrade {
   allocated: number;
   status: string;
   shares: number;
+  pick_rank?: number;
+}
+
+function tradesWithEffectivePickRank(trades: BacktestTrade[], topN: number) {
+  const groups = new Map<string, BacktestTrade[]>();
+  for (const t of trades) {
+    const key = t.trade_date;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(t);
+  }
+  const out: Array<BacktestTrade & { effective_pick_rank: number }> = [];
+  for (const group of groups.values()) {
+    let order = 0;
+    for (const t of group) {
+      if (t.status === 'canceled') continue;
+      order += 1;
+      const pr = t.pick_rank && t.pick_rank >= 1 && t.pick_rank <= topN
+        ? t.pick_rank
+        : Math.min(order, topN);
+      if (pr >= 1 && pr <= topN) {
+        out.push({ ...t, effective_pick_rank: pr });
+      }
+    }
+  }
+  return out;
 }
 
 interface BacktestResult {
@@ -751,6 +776,39 @@ const SimpleFactorBacktestPage: React.FC = () => {
       .map((r, i) => ({ ...r, rank: i + 1 }));
   }, [displayTrades]);
 
+  const effectiveTopN = useMemo(
+    () => Number((result?.params as Record<string, unknown>)?.top_n ?? topN),
+    [result, topN],
+  );
+
+  // 多持仓：按选股顺位 Top1..TopN 汇总收益贡献
+  const rankSlotContribution = useMemo(() => {
+    if (effectiveTopN <= 1) return [];
+    const closed = displayTrades.filter((t) => t.status === 'closed' || t.status === 'extended');
+    if (closed.length === 0) return [];
+
+    const ranked = tradesWithEffectivePickRank(closed, effectiveTopN);
+    const totalPnl = ranked.reduce((s, t) => s + t.pnl, 0);
+
+    return Array.from({ length: effectiveTopN }, (_, i) => {
+      const slot = i + 1;
+      const slotTrades = ranked.filter((t) => t.effective_pick_rank === slot);
+      const trade_count = slotTrades.length;
+      const win_count = slotTrades.filter((t) => t.pnl > 0).length;
+      const total_pnl = slotTrades.reduce((s, t) => s + t.pnl, 0);
+      const total_return_pct = slotTrades.reduce((s, t) => s + t.return_pct, 0);
+      return {
+        slot,
+        label: `Top${slot}`,
+        trade_count,
+        total_pnl,
+        contribution_pct: totalPnl !== 0 ? total_pnl / totalPnl : 0,
+        win_rate: trade_count > 0 ? win_count / trade_count : 0,
+        avg_return_pct: trade_count > 0 ? total_return_pct / trade_count : 0,
+      };
+    });
+  }, [displayTrades, effectiveTopN]);
+
   // 大屏：左侧栏高度跟随右侧内容，历史记录在栏内滚动
   useEffect(() => {
     const el = rightPanelRef.current;
@@ -869,6 +927,35 @@ const SimpleFactorBacktestPage: React.FC = () => {
       const m: Record<string, string> = { closed: '已平', extended: '延期', canceled: '取消', open: '持仓', pending: '待执行', locked: '锁仓' };
       return m[r.status] || r.status;
     }},
+  ];
+
+  const rankSlotColumns = [
+    { title: '顺位', dataIndex: 'label', key: 'label', width: 64 },
+    { title: '交易次数', dataIndex: 'trade_count', key: 'trade_count', width: 80 },
+    { title: '累计盈亏', dataIndex: 'total_pnl', key: 'total_pnl', width: 100, render: (_: unknown, r: typeof rankSlotContribution[0]) => (
+      <span className={r.total_pnl >= 0 ? 'text-red-400' : 'text-emerald-400'}>
+        {r.trade_count > 0 ? `${r.total_pnl >= 0 ? '+' : ''}${r.total_pnl.toFixed(0)}` : '--'}
+      </span>
+    )},
+    {
+      title: (
+        <AntTooltip title="该顺位累计盈亏占全部已平仓顺位盈亏之和的比例">
+          <span className="cursor-help border-b border-dotted border-secondary-text/40">贡献占比</span>
+        </AntTooltip>
+      ),
+      dataIndex: 'contribution_pct',
+      key: 'contribution_pct',
+      width: 90,
+      render: (_: unknown, r: typeof rankSlotContribution[0]) => (r.trade_count > 0 ? pct(r.contribution_pct) : '--'),
+    },
+    { title: '胜率', dataIndex: 'win_rate', key: 'win_rate', width: 70, render: (_: unknown, r: typeof rankSlotContribution[0]) => (r.trade_count > 0 ? pct(r.win_rate) : '--') },
+    { title: '均收益', dataIndex: 'avg_return_pct', key: 'avg_return_pct', width: 80, render: (_: unknown, r: typeof rankSlotContribution[0]) => (
+      r.trade_count > 0 ? (
+        <span className={r.avg_return_pct >= 0 ? 'text-red-400' : 'text-emerald-400'}>
+          {fmtSignedPct(r.avg_return_pct)}
+        </span>
+      ) : '--'
+    )},
   ];
 
   const contributionColumns = [
@@ -1438,8 +1525,25 @@ const SimpleFactorBacktestPage: React.FC = () => {
                     scroll={{ x: 1060, y: 640 }}
                     pagination={{ pageSize: 100, showSizeChanger: true, showTotal: (t) => `共 ${t} 条` }}
                   />
-                  {topContributionStocks.length > 0 && (
+                  {rankSlotContribution.length > 0 && (
                     <div className="mt-6 border-t border-divider pt-4">
+                      <h4 className="mb-1 text-sm font-semibold text-foreground">
+                        选股顺位收益贡献（Top1 ~ Top{effectiveTopN}）
+                      </h4>
+                      <p className="mb-3 text-xs text-secondary-text">
+                        按发现日因子综合分顺位汇总已平仓/延期交易；递补买入（非 TopN 内）不计入顺位表
+                      </p>
+                      <Table
+                        dataSource={rankSlotContribution}
+                        columns={rankSlotColumns}
+                        rowKey="slot"
+                        size="small"
+                        pagination={false}
+                      />
+                    </div>
+                  )}
+                  {topContributionStocks.length > 0 && (
+                    <div className={`${rankSlotContribution.length > 0 ? 'mt-4 border-t border-divider pt-4' : 'mt-6 border-t border-divider pt-4'}`}>
                       <h4 className="mb-1 text-sm font-semibold text-foreground">
                         收益贡献 Top5 个股
                       </h4>

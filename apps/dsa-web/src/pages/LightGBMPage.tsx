@@ -823,6 +823,66 @@ const LightGBMPage: React.FC = () => {
     [backtestSim?.capital_curve],
   );
 
+  const lgbRankSlotContribution = useMemo(() => {
+    const topN = backtestSim?.top_n ?? 0;
+    if (!backtestSim || topN <= 1) return [];
+    const active = backtestSim.trades.filter((t) => !t.skipped && t.rank >= 1 && t.rank <= topN);
+    if (active.length === 0) return [];
+
+    const withPnl = active.map((t) => ({
+      ...t,
+      pnl: (t.actual_cost ?? 0) > 0 ? t.actual_cost * t.return_pct : 0,
+    }));
+    const totalPnl = withPnl.reduce((s, t) => s + t.pnl, 0);
+
+    return Array.from({ length: topN }, (_, i) => {
+      const slot = i + 1;
+      const slotTrades = withPnl.filter((t) => t.rank === slot);
+      const trade_count = slotTrades.length;
+      const win_count = slotTrades.filter((t) => t.pnl > 0).length;
+      const total_pnl = slotTrades.reduce((s, t) => s + t.pnl, 0);
+      const total_return_pct = slotTrades.reduce((s, t) => s + t.return_pct, 0);
+      return {
+        slot,
+        label: `Top${slot}`,
+        trade_count,
+        total_pnl,
+        contribution_pct: totalPnl !== 0 ? total_pnl / totalPnl : 0,
+        win_rate: trade_count > 0 ? win_count / trade_count : 0,
+        avg_return_pct: trade_count > 0 ? total_return_pct / trade_count : 0,
+      };
+    });
+  }, [backtestSim]);
+
+  const lgbRankSlotColumns = [
+    { title: '顺位', dataIndex: 'label', key: 'label', width: 64 },
+    { title: '交易次数', dataIndex: 'trade_count', key: 'trade_count', width: 80 },
+    { title: '累计盈亏', dataIndex: 'total_pnl', key: 'total_pnl', width: 100, render: (_: unknown, r: typeof lgbRankSlotContribution[0]) => (
+      <span className={r.total_pnl >= 0 ? 'text-red-400' : 'text-green-400'}>
+        {r.trade_count > 0 ? `${r.total_pnl >= 0 ? '+' : ''}${r.total_pnl.toFixed(0)}` : '--'}
+      </span>
+    )},
+    {
+      title: (
+        <AntTooltip title="该顺位累计盈亏占全部顺位盈亏之和的比例（含持仓中按最新收益估算）">
+          <span className="cursor-help border-b border-dotted border-secondary-text/40">贡献占比</span>
+        </AntTooltip>
+      ),
+      dataIndex: 'contribution_pct',
+      key: 'contribution_pct',
+      width: 90,
+      render: (_: unknown, r: typeof lgbRankSlotContribution[0]) => (r.trade_count > 0 ? pctNum(r.contribution_pct) : '--'),
+    },
+    { title: '胜率', dataIndex: 'win_rate', key: 'win_rate', width: 70, render: (_: unknown, r: typeof lgbRankSlotContribution[0]) => (r.trade_count > 0 ? pctNum(r.win_rate) : '--') },
+    { title: '均收益', dataIndex: 'avg_return_pct', key: 'avg_return_pct', width: 80, render: (_: unknown, r: typeof lgbRankSlotContribution[0]) => (
+      r.trade_count > 0 ? (
+        <span className={r.avg_return_pct >= 0 ? 'text-red-400' : 'text-green-400'}>
+          {r.avg_return_pct >= 0 ? '+' : ''}{pctNum(r.avg_return_pct)}
+        </span>
+      ) : '--'
+    )},
+  ];
+
   const predColumns = [
     { title: '排名', dataIndex: 'rank', key: 'rank', width: 50 },
     { title: '股票', dataIndex: 'ts_code', key: 'stock', width: 100, render: (_: unknown, r: LGBPredictionItem) => (
@@ -2063,6 +2123,23 @@ const LightGBMPage: React.FC = () => {
                         },
                       ]}
                     />
+                    {lgbRankSlotContribution.length > 0 && (
+                      <div className="mt-4 border-t border-divider pt-4">
+                        <h4 className="mb-1 text-sm font-semibold text-foreground">
+                          选股顺位收益贡献（Top1 ~ Top{backtestSim.top_n}）
+                        </h4>
+                        <p className="mb-3 text-xs text-secondary-text">
+                          按预测日 LGB 排名顺位汇总交易盈亏；含已平仓与持仓中（*）记录，涨停跳过不计入
+                        </p>
+                        <Table
+                          dataSource={lgbRankSlotContribution}
+                          columns={lgbRankSlotColumns}
+                          rowKey="slot"
+                          size="small"
+                          pagination={false}
+                        />
+                      </div>
+                    )}
                   </details>
                   );
                 })()}

@@ -68,6 +68,7 @@ class TradeRecord:
     allocated_capital: float  # 分配到该股的初始资金
     shares: int = 0           # 买入股数（100的倍数）
     is_open: bool = False  # 尚未到卖出时间，未平仓
+    pick_rank: int = 0        # 发现日综合分顺位（1..N）
 
 
 @dataclass
@@ -295,6 +296,7 @@ class DiscoveryBacktest:
                         allocated_capital=round(alloc, 2),
                         shares=shares,
                         is_open=is_open,
+                        pick_rank=int(p.get("rank") or 0),
                     ))
 
                     # P&L 贡献 = alloc × (price/buy_price − 1)，量纲为元
@@ -463,6 +465,7 @@ class DiscoveryBacktest:
                         allocated_capital=round(alloc, 2),
                         shares=shares,
                         is_open=is_open,
+                        pick_rank=int(p.get("rank") or 0),
                     ))
 
                     # P&L 贡献 = alloc × (price/buy_price − 1)，买入日 OHLC

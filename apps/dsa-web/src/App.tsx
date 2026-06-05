@@ -12,7 +12,6 @@ import { useAgentChatStore } from './stores/agentChatStore';
 import './App.css';
 
 const HomePage = lazy(() => import('./pages/HomePage'));
-const BacktestPage = lazy(() => import('./pages/BacktestPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
@@ -21,12 +20,10 @@ const DiscoveryPage = lazy(() => import('./pages/DiscoveryPage'));
 const FactorBacktestPage = lazy(() => import('./pages/FactorBacktestPage'));
 const FactorTuningPage = lazy(() => import('./pages/FactorTuningPage'));
 const LightGBMPage = lazy(() => import('./pages/LightGBMPage'));
-const AlertsPage = lazy(() => import('./pages/AlertsPage'));
 const BrokerRecommendPage = lazy(() => import('./pages/BrokerRecommendPage'));
 const InstitutionSurveyPage = lazy(() => import('./pages/InstitutionSurveyPage'));
 const SimpleFactorBacktestPage = lazy(() => import('./pages/SimpleFactorBacktestPage'));
 const StockScreeningPage = lazy(() => import('./pages/StockScreeningPage'));
-const PortfolioPage = lazy(() => import('./pages/PortfolioPage'));
 const AppContent: React.FC = () => {
   const location = useLocation();
   const { authEnabled, loggedIn, isLoading, loadError, refreshStatus } = useAuth();
@@ -88,12 +85,9 @@ const AppContent: React.FC = () => {
         <Route path="/simple-factor-backtest" element={<SimpleFactorBacktestPage />} />
         <Route path="/factor-tuning" element={<FactorTuningPage />} />
         <Route path="/lgb" element={<LightGBMPage />} />
-        <Route path="/portfolio" element={<PortfolioPage />} />
         <Route path="/screening" element={<StockScreeningPage />} />
-        <Route path="/backtest" element={<BacktestPage />} />
         <Route path="/broker-recommend" element={<Suspense fallback={<div className="flex justify-center py-12"><div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan/20 border-t-cyan" /></div>}><BrokerRecommendPage /></Suspense>} />
         <Route path="/institution-survey" element={<Suspense fallback={<div className="flex justify-center py-12"><div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan/20 border-t-cyan" /></div>}><InstitutionSurveyPage /></Suspense>} />
-        <Route path="/alerts" element={<Suspense fallback={<div className="flex justify-center py-12"><div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan/20 border-t-cyan" /></div>}><AlertsPage /></Suspense>} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>

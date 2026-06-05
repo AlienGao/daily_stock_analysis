@@ -58,6 +58,7 @@ export type PostmarketRunResponse = {
 export type RunTaskResponse = {
   task_id: string;
   status: string;
+  pick_rank?: number;
 };
 
 export type RunStatusResponse = {
@@ -79,6 +80,7 @@ export type TradeRecordItem = {
   allocated_capital: number;
   shares?: number;
   is_open?: boolean;
+  pick_rank?: number;
 };
 
 export type BacktestDailyItem = {
@@ -242,6 +244,7 @@ export type FactorBacktestTrade = {
   allocated: number;
   shares: number;
   status: string;
+  pick_rank?: number;
 };
 
 export type FactorBacktestResultResponse = {

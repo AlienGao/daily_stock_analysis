@@ -10,7 +10,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceL
 import { AutoComplete, DatePicker, Table, Segmented } from 'antd';
 import dayjs from 'dayjs';
 import { AppPage, Button, EmptyState } from '../components/common';
-import { discoveryApi, type DiscoveryItem, type BacktestResponse, type ScanModeResponse, type StockScoreResponse, type FactorTopsResponse } from '../api/discovery';
+import { discoveryApi, type DiscoveryItem, type BacktestResponse, type TradeRecordItem, type ScanModeResponse, type StockScoreResponse, type FactorTopsResponse } from '../api/discovery';
 import { stocksApi, type KLineItem } from '../api/stocks';
 import { useStockIndex } from '../hooks/useStockIndex';
 import { searchStocks } from '../utils/searchStocks';
@@ -19,6 +19,7 @@ type TabKey = 'intraday' | 'postmarket';
 
 const MIN_INTRADAY_FETCH_GAP_MS = 60_000;
 const BACKTEST_REFRESH_MS = 300_000;
+const DISCOVERY_RANK_TOP_N = 4;  // 寻股回测固定展示 Top1~Top4 顺位统计
 
 const getDefaultTabByCnMarketTime = (): TabKey => {
   const now = new Date();
@@ -760,6 +761,30 @@ const StockKLineChart: React.FC<{ stockCode: string; height?: number; minHeight?
    7. Backtest Card
    ────────────────────────────────────────────── */
 
+
+function tradesWithEffectivePickRank(trades: TradeRecordItem[], topN: number) {
+  const groups = new Map<string, TradeRecordItem[]>();
+  for (const t of trades) {
+    const key = String(t.buy_date).slice(0, 8);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(t);
+  }
+  const out: Array<(typeof trades)[0] & { effective_pick_rank: number }> = [];
+  for (const group of groups.values()) {
+    let order = 0;
+    for (const t of group) {
+      order += 1;
+      const pr = t.pick_rank && t.pick_rank >= 1 && t.pick_rank <= topN
+        ? t.pick_rank
+        : Math.min(order, topN);
+      if (pr >= 1 && pr <= topN) {
+        out.push({ ...t, effective_pick_rank: pr });
+      }
+    }
+  }
+  return out;
+}
+
 const fmtWan = (v: number) => `${(v / 10000).toFixed(1)}万`;
 const fmtDate = (s: string) => {
   const clean = s.replace(/-/g, '');
@@ -1040,12 +1065,47 @@ const BacktestCard: React.FC<{
   const [collapsed, setCollapsed] = useState(false);
   const tradeRows = data?.trade_records ?? [];
 
+  const rankSlotContribution = useMemo(() => {
+    if (tradeRows.length === 0) return [] as Array<{
+      slot: number; label: string; trade_count: number; total_pnl: number;
+      contribution_pct: number; win_rate: number; avg_return_pct: number;
+    }>;
+    const ranked = tradesWithEffectivePickRank(tradeRows, DISCOVERY_RANK_TOP_N);
+    if (ranked.length === 0) return [];
+    const totalPnl = ranked.reduce((s, t) => s + Number(t.pnl), 0);
+    return Array.from({ length: DISCOVERY_RANK_TOP_N }, (_, i) => {
+      const slot = i + 1;
+      const slotTrades = ranked.filter((t) => t.effective_pick_rank === slot);
+      const trade_count = slotTrades.length;
+      const win_count = slotTrades.filter((t) => Number(t.pnl) > 0).length;
+      const total_pnl = slotTrades.reduce((s, t) => s + Number(t.pnl), 0);
+      const total_return_pct = slotTrades.reduce((s, t) => s + Number(t.return_pct), 0);
+      return {
+        slot,
+        label: `Top${slot}`,
+        trade_count,
+        total_pnl,
+        contribution_pct: totalPnl !== 0 ? total_pnl / totalPnl : 0,
+        win_rate: trade_count > 0 ? win_count / trade_count : 0,
+        avg_return_pct: trade_count > 0 ? total_return_pct / trade_count : 0,
+      };
+    });
+  }, [tradeRows]);
+
+  const hasOpenTrades = tradeRows.some(t => t.is_open);
+
+  useEffect(() => {
+    if (!hasOpenTrades || collapsed || section !== 'trades') return;
+    const id = setInterval(() => onRefresh(), 30_000);
+    return () => clearInterval(id);
+  }, [hasOpenTrades, collapsed, section, onRefresh]);
+
   const exportTrades = useCallback(() => {
     if (!data?.trade_records?.length) return;
     const header = '股票代码,股票名称,买入日,买入价,股数,买入金额,卖出日,卖出价,卖出金额,收益%,盈亏,状态';
     const rows = data.trade_records.map(t => {
       const buyAmount = t.shares ? (t.shares * t.buy_price).toFixed(2) : '--';
-      const sellAmount = t.is_open ? '--' : (t.shares ? (t.shares * t.sell_price).toFixed(2) : '--');
+      const sellAmount = t.shares ? (t.shares * t.sell_price).toFixed(2) : '--';
       return [
         t.stock_code,
         t.stock_name,
@@ -1053,11 +1113,11 @@ const BacktestCard: React.FC<{
         t.buy_price.toFixed(2),
         t.shares ? t.shares.toString() : '--',
         buyAmount,
-        t.is_open ? '--' : fmtDate(t.sell_date),
-        t.is_open ? '--' : t.sell_price.toFixed(2),
+        t.is_open ? '持仓中' : fmtDate(t.sell_date),
+        t.sell_price.toFixed(2),
         sellAmount,
-        t.is_open ? '--' : `${(t.return_pct >= 0 ? '+' : '')}${(t.return_pct * 100).toFixed(2)}%`,
-        t.is_open ? '--' : `${(t.pnl >= 0 ? '+' : '')}${t.pnl.toFixed(0)}`,
+        `${(t.return_pct >= 0 ? '+' : '')}${(t.return_pct * 100).toFixed(2)}%`,
+        `${(t.pnl >= 0 ? '+' : '')}${t.pnl.toFixed(0)}`,
         t.is_open ? '持仓中' : '已平仓',
       ].join(',');
     }).join('\n');
@@ -1262,6 +1322,54 @@ const BacktestCard: React.FC<{
                   暂无交易记录{data.total_trades > 0 ? '（数据加载不完整，请点「查询」重试）' : ''}
                 </div>
               ) : (
+              <>
+              {rankSlotContribution.length > 0 && (
+                <div className="border-b border-border/10 px-3 py-3">
+                  <h4 className="mb-1 text-[12px] font-semibold text-foreground">
+                    选股顺位收益贡献（Top1 ~ Top4）
+                  </h4>
+                  <p className="mb-2 text-[10px] text-tertiary-text">
+                    按发现日综合分顺位汇总交易盈亏；含已平仓与持仓中记录
+                  </p>
+                  <table className="w-full text-[11px]">
+                    <thead className="text-tertiary-text">
+                      <tr>
+                        <th className="py-1.5 text-left font-medium">顺位</th>
+                        <th className="py-1.5 text-right font-medium">交易次数</th>
+                        <th className="py-1.5 text-right font-medium">累计盈亏</th>
+                        <th className="py-1.5 text-right font-medium">贡献占比</th>
+                        <th className="py-1.5 text-right font-medium">胜率</th>
+                        <th className="py-1.5 text-right font-medium">均收益</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rankSlotContribution.map((r) => (
+                        <tr key={r.slot} className="border-t border-border/10">
+                          <td className="py-1.5 text-foreground">{r.label}</td>
+                          <td className="py-1.5 text-right tabular-nums">{r.trade_count > 0 ? r.trade_count : '--'}</td>
+                          <td className={`py-1.5 text-right tabular-nums font-medium ${r.total_pnl >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                            {r.trade_count > 0 ? `${r.total_pnl >= 0 ? '+' : ''}${r.total_pnl.toFixed(0)}` : '--'}
+                          </td>
+                          <td className="py-1.5 text-right tabular-nums">
+                            {r.trade_count > 0 ? `${(r.contribution_pct * 100).toFixed(1)}%` : '--'}
+                          </td>
+                          <td className="py-1.5 text-right tabular-nums">
+                            {r.trade_count > 0 ? `${(r.win_rate * 100).toFixed(0)}%` : '--'}
+                          </td>
+                          <td className={`py-1.5 text-right tabular-nums ${r.avg_return_pct >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                            {r.trade_count > 0 ? `${r.avg_return_pct >= 0 ? '+' : ''}${(r.avg_return_pct * 100).toFixed(2)}%` : '--'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {hasOpenTrades && (
+                <p className="px-3 py-2 text-[10px] text-tertiary-text border-b border-border/10">
+                  持仓中个股的收益%与盈亏按实时价估算；卖出价列为现价，每 30 秒自动刷新
+                </p>
+              )}
               <table className="w-full text-[11px]">
                 <thead className="sticky top-0 bg-card/90 text-tertiary-text">
                   <tr>
@@ -1294,14 +1402,14 @@ const BacktestCard: React.FC<{
                       <td className="px-2 py-1.5 text-right tabular-nums">{Number.isFinite(buyPx) ? buyPx.toFixed(2) : '--'}</td>
                       <td className="px-2 py-1.5 text-right tabular-nums">{t.shares ? t.shares.toLocaleString() : '--'}</td>
                       <td className="px-2 py-1.5 text-right tabular-nums">{t.shares && Number.isFinite(buyPx) ? `${(t.shares * buyPx / 10000).toFixed(2)}万` : '--'}</td>
-                      <td className="px-2 py-1.5 text-right text-tertiary-text">{t.is_open ? '--' : fmtDate(t.sell_date)}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">{t.is_open ? '--' : (Number.isFinite(sellPx) ? sellPx.toFixed(2) : '--')}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">{t.is_open ? '--' : (t.shares && Number.isFinite(sellPx) ? `${(t.shares * sellPx / 10000).toFixed(2)}万` : '--')}</td>
+                      <td className="px-2 py-1.5 text-right text-tertiary-text">{t.is_open ? '持仓中' : fmtDate(t.sell_date)}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">{Number.isFinite(sellPx) ? sellPx.toFixed(2) : '--'}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">{t.shares && Number.isFinite(sellPx) ? `${(t.shares * sellPx / 10000).toFixed(2)}万` : '--'}</td>
                       <td className={`px-2 py-1.5 text-right font-medium tabular-nums ${retPct >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                        {t.is_open ? '--' : (Number.isFinite(retPct) ? `${retPct >= 0 ? '+' : ''}${(retPct * 100).toFixed(2)}%` : '--')}
+                        {Number.isFinite(retPct) ? `${retPct >= 0 ? '+' : ''}${(retPct * 100).toFixed(2)}%` : '--'}
                       </td>
                       <td className={`px-2 py-1.5 text-right font-medium tabular-nums ${pnl >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                        {t.is_open ? '--' : (Number.isFinite(pnl) ? `${pnl >= 0 ? '+' : ''}${pnl.toFixed(0)}` : '--')}
+                        {Number.isFinite(pnl) ? `${pnl >= 0 ? '+' : ''}${pnl.toFixed(0)}` : '--'}
                       </td>
                       <td className="px-2 py-1.5 text-right text-tertiary-text">{t.is_open ? '持仓中' : '已平仓'}</td>
                     </tr>
@@ -1309,6 +1417,7 @@ const BacktestCard: React.FC<{
                   })}
                 </tbody>
               </table>
+              </>
               )}
             </div>
           )}

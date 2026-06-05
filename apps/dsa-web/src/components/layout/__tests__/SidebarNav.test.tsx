@@ -71,7 +71,7 @@ describe('SidebarNav', () => {
 
     await screen.findByRole('link', { name: '选股' });
     const hrefs = screen.getAllByRole('link').map((link) => link.getAttribute('href'));
-    expect(hrefs.slice(0, 4)).toEqual(['/', '/chat', '/screening', '/portfolio']);
+    expect(hrefs.slice(0, 4)).toEqual(['/', '/lgb', '/discovery', '/factor-backtest']);
   });
 
   it('refreshes the screening navigation item after any config save event', async () => {
@@ -127,16 +127,16 @@ describe('SidebarNav', () => {
     expect(screen.getByRole('button', { name: '切换主题(折叠)' })).toBeInTheDocument();
   });
 
-  it('renders the alerts navigation item and marks it active', () => {
+  it('does not render hidden portfolio, backtest, or alerts navigation items', () => {
     render(
-      <MemoryRouter initialEntries={['/alerts']}>
+      <MemoryRouter initialEntries={['/']}>
         <SidebarNav />
       </MemoryRouter>,
     );
 
-    const alertsLink = screen.getByRole('link', { name: '告警' });
-    expect(alertsLink).toHaveAttribute('href', '/alerts');
-    expect(alertsLink).toHaveClass('font-medium');
+    expect(screen.queryByRole('link', { name: '持仓' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '回测' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '告警' })).not.toBeInTheDocument();
   });
 
   it('opens the logout confirmation and confirms logout', async () => {

@@ -1447,6 +1447,7 @@ class TradeRecordItem(BaseModel):
     allocated_capital: float
     shares: int = 0
     is_open: bool = False  # 未到卖出时间，未平仓
+    pick_rank: int = 0  # 发现日综合分顺位
 
 
 class BacktestDailyItem(BaseModel):
@@ -1496,6 +1497,52 @@ def _backtest_cache_key(
     return f"{mode}:{days}:{start_date or ''}:{end_date or ''}"
 
 
+
+
+def _bare_stock_code(code: str) -> str:
+    bare = code.split(".")[0] if "." in code else code
+    return str(bare).strip().zfill(6)
+
+
+def _refresh_backtest_open_trades_live(resp: BacktestResponse) -> BacktestResponse:
+    """持仓中交易记录用实时价刷新收益与盈亏（每次请求生效，不写入回测缓存）。"""
+    if not resp.trade_records:
+        return resp
+    open_idxs = [i for i, t in enumerate(resp.trade_records) if t.is_open]
+    if not open_idxs:
+        return resp
+    codes = [resp.trade_records[i].stock_code for i in open_idxs]
+    prices, _ = _get_live_quotes(codes)
+    if not prices:
+        return resp
+
+    trades = list(resp.trade_records)
+    changed = False
+    for i in open_idxs:
+        t = trades[i]
+        if t.buy_price <= 0:
+            continue
+        bare = _bare_stock_code(t.stock_code)
+        sp = prices.get(bare)
+        if sp is None or sp <= 0:
+            continue
+        shares = int(t.shares or 0)
+        cost = shares * t.buy_price if shares > 0 else float(t.allocated_capital or 0)
+        if cost <= 0:
+            continue
+        ret = (sp - t.buy_price) / t.buy_price
+        pnl = shares * sp - cost if shares > 0 else cost * ret
+        trades[i] = t.model_copy(update={
+            "sell_price": round(sp, 2),
+            "return_pct": round(ret, 6),
+            "pnl": round(pnl, 2),
+        })
+        changed = True
+    if not changed:
+        return resp
+    return resp.model_copy(update={"trade_records": trades})
+
+
 def _empty_backtest_response(mode: str) -> BacktestResponse:
     return BacktestResponse(
         mode=mode,
@@ -1535,7 +1582,7 @@ def get_backtest(
     now = time.time()
     cached = _DISCOVERY_BACKTEST_CACHE.get(cache_key)
     if cached and cached[0] > now:
-        return cached[1]
+        return _refresh_backtest_open_trades_live(cached[1])
 
     try:
         fetcher = TushareFetcher.get_instance()
@@ -1556,6 +1603,7 @@ def get_backtest(
 
     if summary is None:
         resp = _empty_backtest_response(mode)
+        resp = _refresh_backtest_open_trades_live(resp)
         _DISCOVERY_BACKTEST_CACHE[cache_key] = (now + _DISCOVERY_BACKTEST_CACHE_TTL_SEC, resp)
         return resp
 
@@ -1584,6 +1632,7 @@ def get_backtest(
             allocated_capital=t.allocated_capital,
             shares=t.shares,
             is_open=t.is_open,
+            pick_rank=t.pick_rank,
         )
         for t in summary.trade_records
     ]
@@ -1615,7 +1664,7 @@ def get_backtest(
         capital_curve=curve,
     )
     _DISCOVERY_BACKTEST_CACHE[cache_key] = (now + _DISCOVERY_BACKTEST_CACHE_TTL_SEC, resp)
-    return resp
+    return _refresh_backtest_open_trades_live(resp)
 
 
 # ------------------------------------------------------------------
