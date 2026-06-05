@@ -7,3 +7,5 @@ export * from './ReportMatchedSkills';
 export * from './ReportNews';
 export * from './ReportDetails';
 export * from './ReportMarkdown';
+export * from './ReportMarkdownBody';
+export * from './MarketReviewReportView';

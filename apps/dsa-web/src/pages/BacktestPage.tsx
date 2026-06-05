@@ -10,7 +10,9 @@ import type {
   BacktestRunResponse,
   BacktestTaskStatusResponse,
   PerformanceMetrics,
+  BacktestPhaseFilter,
 } from '../types/backtest';
+import { getMarketPhaseSummaryLabel } from '../utils/marketPhase';
 
 type BacktestFilterMode = 'all' | 'signal' | 'score' | 'signal_and_score';
 type BacktestSortBy = 'analysis_date' | 'actual_return_pct' | 'sentiment_score';
@@ -20,11 +22,25 @@ const BACKTEST_INPUT_CLASS =
 const BACKTEST_COMPACT_INPUT_CLASS =
   'input-surface input-focus-glow h-10 rounded-xl border bg-transparent px-3 py-2 text-xs transition-all focus:outline-none disabled:cursor-not-allowed disabled:opacity-60';
 
+const PHASE_FILTER_OPTIONS: Array<{ value: BacktestPhaseFilter; label: string }> = [
+  { value: 'all', label: '全部阶段' },
+  { value: 'premarket', label: '盘前' },
+  { value: 'intraday', label: '盘中' },
+  { value: 'postmarket', label: '盘后' },
+  { value: 'unknown', label: '未知' },
+];
+
 // ============ Helpers ============
 
 function pct(value?: number | null): string {
   if (value == null) return '--';
   return `${value.toFixed(1)}%`;
+}
+
+function phaseLabel(row: BacktestResultItem): string {
+  const label = getMarketPhaseSummaryLabel(row.marketPhaseSummary, 'zh');
+  if (label) return label.replace('市场阶段: ', '').replace('市场阶段：', '');
+  return row.marketPhase || '--';
 }
 
 const OUTCOME_LABELS: Record<string, string> = {
@@ -161,38 +177,61 @@ const MetricRow: React.FC<{ label: string; value: string; accent?: boolean }> = 
   </div>
 );
 
+function phaseBreakdownText(metrics: PerformanceMetrics): string | null {
+  const breakdown = metrics.diagnostics?.phaseBreakdown;
+  if (!breakdown || typeof breakdown !== 'object') return null;
+  const item = breakdown as Record<string, unknown>;
+  const parts = [
+    ['盘前', item.premarket],
+    ['盘中', item.intraday],
+    ['盘后', item.postmarket],
+    ['未知', item.unknown],
+  ]
+    .map(([label, value]) => `${label} ${Number(value || 0)}`)
+    .join(' / ');
+  return parts;
+}
+
 // ============ Performance Card ============
 
-const PerformanceCard: React.FC<{ metrics: PerformanceMetrics; title: string }> = ({ metrics, title }) => (
-  <Card variant="gradient" padding="md" className="animate-fade-in">
-    <div className="mb-3">
-      <span className="label-uppercase">{title}</span>
-    </div>
-    <MetricRow label="方向准确率" value={pct(metrics.directionAccuracyPct)} accent />
-    <MetricRow label="胜率" value={pct(metrics.winRatePct)} accent />
-    <MetricRow label="平均模拟收益" value={pct(metrics.avgSimulatedReturnPct)} />
-    <MetricRow label="平均个股收益" value={pct(metrics.avgStockReturnPct)} />
-    <MetricRow label="止损触发率" value={pct(metrics.stopLossTriggerRate)} />
-    <MetricRow label="止盈触发率" value={pct(metrics.takeProfitTriggerRate)} />
-    <MetricRow label="平均命中天数" value={metrics.avgDaysToFirstHit != null ? metrics.avgDaysToFirstHit.toFixed(1) : '--'} />
-    <div className="backtest-metric-footer">
-      <span className="text-xs text-muted-text">评估数</span>
-      <span className="text-xs text-secondary-text font-mono">
-        {Number(metrics.completedCount)} / {Number(metrics.totalEvaluations)}
-      </span>
-    </div>
-    <div className="flex items-center justify-between">
-      <span className="text-xs text-muted-text">盈 / 亏 / 中</span>
-      <span className="text-xs font-mono">
-        <span className="text-success">{metrics.winCount}</span>
-        {' / '}
-        <span className="text-danger">{metrics.lossCount}</span>
-        {' / '}
-        <span className="text-warning">{metrics.neutralCount}</span>
-      </span>
-    </div>
-  </Card>
-);
+const PerformanceCard: React.FC<{ metrics: PerformanceMetrics; title: string }> = ({ metrics, title }) => {
+  const phaseText = phaseBreakdownText(metrics);
+  return (
+    <Card variant="gradient" padding="md" className="animate-fade-in">
+      <div className="mb-3">
+        <span className="label-uppercase">{title}</span>
+      </div>
+      <MetricRow label="方向准确率" value={pct(metrics.directionAccuracyPct)} accent />
+      <MetricRow label="胜率" value={pct(metrics.winRatePct)} accent />
+      <MetricRow label="平均模拟收益" value={pct(metrics.avgSimulatedReturnPct)} />
+      <MetricRow label="平均个股收益" value={pct(metrics.avgStockReturnPct)} />
+      <MetricRow label="止损触发率" value={pct(metrics.stopLossTriggerRate)} />
+      <MetricRow label="止盈触发率" value={pct(metrics.takeProfitTriggerRate)} />
+      <MetricRow label="平均命中天数" value={metrics.avgDaysToFirstHit != null ? metrics.avgDaysToFirstHit.toFixed(1) : '--'} />
+      <div className="backtest-metric-footer">
+        <span className="text-xs text-muted-text">评估数</span>
+        <span className="text-xs text-secondary-text font-mono">
+          {Number(metrics.completedCount)} / {Number(metrics.totalEvaluations)}
+        </span>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-text">盈 / 亏 / 中</span>
+        <span className="text-xs font-mono">
+          <span className="text-success">{metrics.winCount}</span>
+          {' / '}
+          <span className="text-danger">{metrics.lossCount}</span>
+          {' / '}
+          <span className="text-warning">{metrics.neutralCount}</span>
+        </span>
+      </div>
+      {phaseText ? (
+        <div className="mt-3 border-t border-white/10 pt-2 text-xs text-muted-text">
+          阶段分布：{phaseText}
+        </div>
+      ) : null}
+    </Card>
+  );
+};
 
 // ============ Run Summary ============
 
@@ -239,6 +278,7 @@ const BacktestPage: React.FC = () => {
   const [analysisDateTo, setAnalysisDateTo] = useState('');
   const [sortBy, setSortBy] = useState<BacktestSortBy>('analysis_date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [phaseFilter, setPhaseFilter] = useState<BacktestPhaseFilter>('all');
   const [evalDays, setEvalDays] = useState('');
   const [forceRerun, setForceRerun] = useState(false);
   const [runFilterMode, setRunFilterMode] = useState<BacktestFilterMode>('signal');
@@ -275,6 +315,7 @@ const BacktestPage: React.FC = () => {
     endDate?: string,
     currentSortBy: BacktestSortBy = 'analysis_date',
     currentSortOrder: 'asc' | 'desc' = 'desc',
+    phase: BacktestPhaseFilter = 'all',
   ) => {
     setIsLoadingResults(true);
     try {
@@ -286,6 +327,7 @@ const BacktestPage: React.FC = () => {
         analysisDateTo: endDate || undefined,
         sortBy: currentSortBy,
         sortOrder: currentSortOrder,
+        analysisPhase: phase && phase !== 'all' ? phase : undefined,
         page,
         limit: pageSize,
       });
@@ -308,6 +350,7 @@ const BacktestPage: React.FC = () => {
     windowDays?: number,
     startDate?: string,
     endDate?: string,
+    phase?: BacktestPhaseFilter,
   ) => {
     setIsLoadingPerf(true);
     try {
@@ -316,6 +359,7 @@ const BacktestPage: React.FC = () => {
         evalWindowDays: windowDays,
         analysisDateFrom: startDate || undefined,
         analysisDateTo: endDate || undefined,
+        analysisPhase: phase && phase !== 'all' ? phase : undefined,
       });
       setOverallPerf(overall);
 
@@ -325,6 +369,7 @@ const BacktestPage: React.FC = () => {
           evalWindowDays: windowDays,
           analysisDateFrom: startDate || undefined,
           analysisDateTo: endDate || undefined,
+          analysisPhase: phase && phase !== 'all' ? phase : undefined,
         });
         setStockPerf(stock);
       } else {
@@ -350,7 +395,7 @@ const BacktestPage: React.FC = () => {
       if (windowDays && !evalDays) {
         setEvalDays(String(windowDays));
       }
-      fetchResults(1, undefined, '', windowDays, undefined, undefined, sortBy, sortOrder);
+      fetchResults(1, undefined, '', windowDays, undefined, undefined, sortBy, sortOrder, 'all');
     };
     init();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -393,6 +438,7 @@ const BacktestPage: React.FC = () => {
         analysisDateTo,
         sortBy,
         sortOrder,
+        phaseFilter,
       );
       fetchPerformance(
         codeFilter.trim() || undefined,
@@ -400,6 +446,7 @@ const BacktestPage: React.FC = () => {
         evalWindowDays,
         analysisDateFrom,
         analysisDateTo,
+        phaseFilter,
       );
     } catch (err) {
       setRunError(getParsedApiError(err));
@@ -414,8 +461,8 @@ const BacktestPage: React.FC = () => {
     const code = codeFilter.trim() || undefined;
     const windowDays = evalDays ? parseInt(evalDays, 10) : undefined;
     setCurrentPage(1);
-    fetchResults(1, code, triggerSourceFilter, windowDays, analysisDateFrom, analysisDateTo, sortBy, sortOrder);
-    fetchPerformance(code, triggerSourceFilter, windowDays, analysisDateFrom, analysisDateTo);
+    fetchResults(1, code, triggerSourceFilter, windowDays, analysisDateFrom, analysisDateTo, sortBy, sortOrder, phaseFilter);
+    fetchPerformance(code, triggerSourceFilter, windowDays, analysisDateFrom, analysisDateTo, phaseFilter);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -428,8 +475,8 @@ const BacktestPage: React.FC = () => {
     const code = codeFilter.trim() || undefined;
     setEvalDays('1');
     setCurrentPage(1);
-    fetchResults(1, code, triggerSourceFilter, 1, analysisDateFrom, analysisDateTo, sortBy, sortOrder);
-    fetchPerformance(code, triggerSourceFilter, 1, analysisDateFrom, analysisDateTo);
+    fetchResults(1, code, triggerSourceFilter, 1, analysisDateFrom, analysisDateTo, sortBy, sortOrder, phaseFilter);
+    fetchPerformance(code, triggerSourceFilter, 1, analysisDateFrom, analysisDateTo, phaseFilter);
   };
 
   const applySort = (nextSortBy: BacktestSortBy, nextSortOrder: 'asc' | 'desc') => {
@@ -438,7 +485,7 @@ const BacktestPage: React.FC = () => {
     const code = codeFilter.trim() || undefined;
     const windowDays = evalDays ? parseInt(evalDays, 10) : undefined;
     setCurrentPage(1);
-    fetchResults(1, code, triggerSourceFilter, windowDays, analysisDateFrom, analysisDateTo, nextSortBy, nextSortOrder);
+    fetchResults(1, code, triggerSourceFilter, windowDays, analysisDateFrom, analysisDateTo, nextSortBy, nextSortOrder, phaseFilter);
   };
 
   const handleSortModeChange = (value: string) => {
@@ -485,6 +532,7 @@ const BacktestPage: React.FC = () => {
       analysisDateTo,
       sortBy,
       sortOrder,
+      phaseFilter,
     );
   };
 
@@ -521,6 +569,19 @@ const BacktestPage: React.FC = () => {
                 disabled={isRunning}
                 className={`${BACKTEST_COMPACT_INPUT_CLASS} w-24 text-center tabular-nums`}
               />
+            </div>
+            <div className="flex items-center gap-2 whitespace-nowrap">
+              <span className="text-xs text-muted-text">阶段</span>
+              <select
+                value={phaseFilter}
+                onChange={(e) => setPhaseFilter(e.target.value as BacktestPhaseFilter)}
+                disabled={isRunning || isLoadingResults}
+                className={`${BACKTEST_COMPACT_INPUT_CLASS} w-28`}
+              >
+                {PHASE_FILTER_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
             </div>
             <div className="flex items-center gap-2 whitespace-nowrap">
               <span className="text-xs text-muted-text">来源</span>
@@ -740,6 +801,7 @@ const BacktestPage: React.FC = () => {
                     {codeFilter.trim() ? `筛选 ${codeFilter.trim()}` : '全部股票'}
                     {` · 来源 ${triggerSourceLabel(triggerSourceFilter)}`}
                     {evalDays ? ` · 窗口 ${evalDays} 天` : ''}
+                    {phaseFilter !== 'all' ? ` · ${PHASE_FILTER_OPTIONS.find((item) => item.value === phaseFilter)?.label ?? phaseFilter}` : ''}
                     {analysisDateFrom ? ` · 从 ${analysisDateFrom}` : ''}
                     {analysisDateTo ? ` · 到 ${analysisDateTo}` : ''}
                   </span>
@@ -747,10 +809,11 @@ const BacktestPage: React.FC = () => {
                 <span className="backtest-table-scroll-hint">小屏可左右滚动查看</span>
               </div>
               <div className="backtest-table-wrapper">
-                <table className="backtest-table min-w-[840px] w-full text-sm">
+                <table className="backtest-table min-w-[900px] w-full text-sm">
                   <thead className="backtest-table-head">
                     <tr className="text-left">
                       <th className="backtest-table-head-cell">股票</th>
+                      <th className="backtest-table-head-cell">阶段</th>
                       <th className="backtest-table-head-cell">
                         <button
                           type="button"
@@ -811,6 +874,7 @@ const BacktestPage: React.FC = () => {
                           </div>
                         </td>
                         <td className="backtest-table-cell text-secondary-text">{row.analysisDate || '--'}</td>
+                        <td className="backtest-table-cell text-secondary-text">{phaseLabel(row)}</td>
                         <td className="backtest-table-cell w-[260px] min-w-[260px] max-w-[260px] overflow-hidden text-foreground">
                           {(row.trendPrediction || row.operationAdvice) ? (
                             <Tooltip

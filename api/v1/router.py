@@ -15,7 +15,7 @@ import os
 from api.v1.endpoints import (
     alerts, analysis, auth, discovery, history, stocks, backtest,
     system_config, agent, usage, portfolio, broker_recommend,
-    research, factor_backtest, alphasift,
+    research, factor_backtest, alphasift, health,
 )
 
 # 创建 v1 版本主路由
@@ -34,8 +34,8 @@ router.include_router(discovery.router, prefix="/discovery", tags=["Discovery"])
 if os.getenv("PORTFOLIO_MODULE_ENABLED", "false").strip().lower() == "true":
     router.include_router(portfolio.router, prefix="/portfolio", tags=["Portfolio"])
 
-router.include_router(broker_recommend.router, prefix="/broker-recommend", tags=["BrokerRecommend"])
-router.include_router(alerts.router, prefix="/alerts", tags=["Alerts"])
-router.include_router(research.router, prefix="/research", tags=["Research"])
-router.include_router(factor_backtest.router, prefix="/factor-backtest-simple", tags=["FactorBacktestSimple"])
-router.include_router(alphasift.router, prefix="/alphasift", tags=["AlphaSift"])
+from api.v1.endpoints import (
+    alerts, analysis, auth, discovery, history, stocks, backtest,
+    system_config, agent, usage, portfolio, broker_recommend,
+    research, factor_backtest, alphasift, health,
+)

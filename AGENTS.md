@@ -30,6 +30,15 @@
 - 标题应描述实际变更内容，建议不添加 `[codex]`、`codex`、`autocode`、`copilot` 或其他工具/agent 来源前缀。
 - 该规范仅用于协作可读性与一致性提示，不应单独作为 review process blocker。
 
+## 1.2 贡献质量底线
+
+- 本仓库不接受以堆叠代码量、扩大 diff 面、补丁式响应 review 来替代真实设计收敛的 PR。
+- 贡献质量以是否解决明确问题、是否最小化影响面、是否保持现有契约一致、是否覆盖真实风险路径为准；不以新增行数、文件数量、功能宣传或“看起来完整”为准。
+- 请不要把本仓库当作低成本试验场、简历展示场或 contribution farming 场所。任何 PR 都必须证明作者理解当前系统契约，并完成基本自审、集成和验证。
+- 使用 AI 辅助开发本身不是问题；问题是提交 AI 生成后未经人工语义审查、未验证、未收敛的代码。此类 PR 会按低质量提交处理。
+- review 反馈后，不接受只在被指出的位置追加局部 patch。作者必须重新检查同一业务语义涉及的所有入口、配置、测试、文档、workflow 和用户可见路径。
+- 如果一个 PR 在多轮 review 后仍持续出现同类契约漂移、重复 fallback、测试绕过真实风险层、PR body 与实际 diff 不一致等问题，维护者可以要求关闭重做，而不是继续逐点 review。
+
 ## 2. AI 协作资产治理
 
 - `AGENTS.md` 是仓库内 AI 协作规则的唯一真源。
@@ -236,6 +245,33 @@ gh run view <run_id> --log-failed
   - 阻断型 CI 未通过
   - PR 描述与实际改动内容实质性矛盾
   - 缺少回滚方案
+  - 反复出现未收敛的契约漂移、补丁堆叠或验证证据失真
+
+## 8.1 Review 反馈处理与补丁堆叠禁止
+
+当你处理 review 反馈时，禁止只在 reviewer 点名的位置追加局部 patch 后声称“已全部修复”。你必须先重新理解 reviewer 指出的业务契约，再检查同一语义涉及的所有入口、配置、测试、文档、workflow 和用户可见路径。
+
+收到 review 反馈后，必须按以下顺序处理：
+
+1. 逐条列出 reviewer 指出的原问题。
+2. 说明根因，不能只描述“改了哪几行”。
+3. 找出同一语义影响的所有相关路径，例如 runtime、API/Web、CLI、diagnostics、workflow、docs、tests。
+4. 修复完整契约，而不是只修复当前失败测试或当前评论行。
+5. 补充能覆盖 reviewer 反例的回归测试、最终入口验证，或明确说明无法验证的原因。
+6. 同步更新 PR body，保证 scope、验证结果、兼容性、风险和回滚方案与当前 head 一致。
+
+如果你无法完成上述收敛，不要继续堆叠补丁，不要声称 ready for merge。应主动说明当前 PR 需要拆分、关闭重做，或请求维护者确认新的最小范围。
+
+以下行为会被视为低质量 PR：
+
+- 用 broad fallback、静默降级、`return False/None/[]` 掩盖不清晰的契约。
+- 测试 mock 掉真实风险层，只证明局部实现通过。
+- CI 通过后声称问题已关闭，但没有覆盖 reviewer 指出的反例。
+- PR body 与实际 diff、验证结果或兼容风险不一致。
+- review 后继续追加零散 patch，而不是重新收敛完整语义。
+- 同一业务语义在 runtime、Web/API、docs、workflow、tests 中表现不一致。
+
+CI 通过只能说明自动检查通过，不能替代人工语义收敛，也不能单独证明 reviewer 指出的反例已经关闭。
 
 ## 9. 交付与发布
 
@@ -262,8 +298,8 @@ gh run view <run_id> --log-failed
 - 因子权重优化默认优先提收益：回撤 slack +3pp，目标函数用 `min(两区间 ret5)`。
 - 定时任务（含「立即分析」）默认关闭 LLM 深度思考；手动单股分析开启深度思考。
 - 多因子搜索完成后，前端快捷组合列表应即时更新，无需手动刷新页面。
-- 快测页选中历史记录时，因子卡片默认回填该记录对应的因子组合。
-- 快测页 `top_n>1` 时在「收益贡献 Top5 个股」上方展示「选股顺位收益贡献」表（Top1~TopN）；递补买入不计入顺位表。
+- 多持仓回测展示「选股顺位收益贡献」表（递补不计入）：快测/LGB/因子回测 `top_n>1` 时按 Top1~TopN；寻股固定 Top1~Top4 且表在交易记录上方。快测页选中历史记录时因子卡片默认回填对应组合。
+- 寻股页回测交易记录：持仓中展示实时收益%与盈亏（卖出价列为现价），有持仓时每 30 秒自动刷新。
 - 金股页表格：名称与代码同列（名称在上），标签独立列换行展示，无标签显示 `--`；不以红色背景高亮历史高频推荐；历史统计「最低」正收益也用红色（≥0 红，<0 绿）。展开个股：所选推荐月之前展示最近 6 个自然月 K 线，再展示该月持仓期 K 线；月末价/九转/盈利预测/累计收益与所选月份一致。
 
 ## Learned Workspace Facts
@@ -275,10 +311,10 @@ gh run view <run_id> --log-failed
 - 多 Agent 复核在定时批跑结束后触发，结果写入 `reports_multi_agent/`。
 - 新闻检索 Provider 优先级：Bocha > MiniMax > Anspire > Tavily > Brave > SerpAPI > SearXNG。
 - `AGENT_SKILLS` 采用 4–6 策略精简方案，非全开所有策略。
-- 券商金股 API 前缀 `/api/v1/broker-recommend/`，月度推荐数据表 `broker_recommend_monthly`。
+- 券商金股 API 前缀 `/api/v1/broker-recommend/`，月度推荐数据表 `broker_recommend_monthly`；当前月 enrichment 全 0 九转视为缓存未命中，不持久化空占位。
 - 筹码因子 `chip`：`winner_rate` 以 85% 为峰向两侧递减；`deep` 满分 9 分且需 `dist_low`/成本确认。
 - 因子快照回填脚本默认每 50 个交易日执行 `wal_checkpoint(TRUNCATE)`，避免 WAL 占满磁盘。
-- 快测回测交易记录含 `pick_rank`（1..top_n，递补买入为 0），用于顺位收益贡献统计。
+- 快测/寻股回测交易记录含 `pick_rank`（1..top_n，递补买入为 0），用于顺位收益贡献统计。
 - 金股页历史统计接口 `/api/v1/broker-recommend/historical-recommend-stats` 基于持仓期 `daily_returns` + 批量 `adj_factor` 快速聚合，前端请求超时 120s。
 
 

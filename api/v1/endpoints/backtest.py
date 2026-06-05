@@ -9,7 +9,6 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime
 from typing import Any, Dict, Literal, Optional, Union
-
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 
@@ -111,6 +110,8 @@ def _run_backtest_task(task_id: str, request_data: Dict[str, Any], db_manager: D
             task["message"] = "回测任务失败"
             task["error"] = str(exc)
             _trim_task_history_locked()
+
+BacktestAnalysisPhaseQuery = Literal["premarket", "intraday", "postmarket", "unknown"]
 
 
 def _validate_analysis_date_range(
@@ -221,6 +222,7 @@ def get_backtest_task_status(task_id: str) -> BacktestTaskStatusResponse:
     response_model=BacktestResultsResponse,
     responses={
         200: {"description": "回测结果列表"},
+        400: {"description": "请求参数错误", "model": ErrorResponse},
         500: {"description": "服务器错误", "model": ErrorResponse},
     },
     summary="获取回测结果",
@@ -233,8 +235,7 @@ def get_backtest_results(
     analysis_date_from: Optional[date] = Query(None, description="分析日期起始（含）"),
     analysis_date_to: Optional[date] = Query(None, description="分析日期结束（含）"),
     sort_by: Literal["analysis_date", "actual_return_pct", "sentiment_score"] = Query("analysis_date", description="排序字段"),
-    sort_order: Literal["asc", "desc"] = Query("desc", description="排序方向"),
-    page: int = Query(1, ge=1, description="页码"),
+    sort_order: Literal["asc", "desc"] = Query("desc", description="排序方向"),    page: int = Query(1, ge=1, description="页码"),
     limit: int = Query(20, ge=1, le=200, description="每页数量"),
     db_manager: DatabaseManager = Depends(get_database_manager),
 ) -> BacktestResultsResponse:
@@ -251,6 +252,7 @@ def get_backtest_results(
             page=page,
             analysis_date_from=analysis_date_from,
             analysis_date_to=analysis_date_to,
+            analysis_phase=analysis_phase,
         )
         items = [BacktestResultItem(**item) for item in data.get("items", [])]
         return BacktestResultsResponse(
@@ -258,6 +260,11 @@ def get_backtest_results(
             page=page,
             limit=limit,
             items=items,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={"error": "invalid_params", "message": str(exc)},
         )
     except HTTPException:
         raise
@@ -274,6 +281,7 @@ def get_backtest_results(
     response_model=PerformanceMetrics,
     responses={
         200: {"description": "整体回测表现"},
+        400: {"description": "请求参数错误", "model": ErrorResponse},
         404: {"description": "无回测汇总", "model": ErrorResponse},
         500: {"description": "服务器错误", "model": ErrorResponse},
     },
@@ -284,6 +292,7 @@ def get_overall_performance(
     eval_window_days: Optional[int] = Query(None, ge=1, le=120, description="评估窗口过滤"),
     analysis_date_from: Optional[date] = Query(None, description="分析日期起始（含）"),
     analysis_date_to: Optional[date] = Query(None, description="分析日期结束（含）"),
+    analysis_phase: Optional[BacktestAnalysisPhaseQuery] = Query(None, description="分析阶段过滤：premarket/intraday/postmarket/unknown"),
     db_manager: DatabaseManager = Depends(get_database_manager),
 ) -> PerformanceMetrics:
     try:
@@ -296,6 +305,7 @@ def get_overall_performance(
             eval_window_days=eval_window_days,
             analysis_date_from=analysis_date_from,
             analysis_date_to=analysis_date_to,
+            analysis_phase=analysis_phase,
         )
         if summary is None:
             raise HTTPException(
@@ -323,6 +333,7 @@ def get_overall_performance(
     response_model=PerformanceMetrics,
     responses={
         200: {"description": "单股回测表现"},
+        400: {"description": "请求参数错误", "model": ErrorResponse},
         404: {"description": "无回测汇总", "model": ErrorResponse},
         500: {"description": "服务器错误", "model": ErrorResponse},
     },
@@ -334,6 +345,7 @@ def get_stock_performance(
     eval_window_days: Optional[int] = Query(None, ge=1, le=120, description="评估窗口过滤"),
     analysis_date_from: Optional[date] = Query(None, description="分析日期起始（含）"),
     analysis_date_to: Optional[date] = Query(None, description="分析日期结束（含）"),
+    analysis_phase: Optional[BacktestAnalysisPhaseQuery] = Query(None, description="分析阶段过滤：premarket/intraday/postmarket/unknown"),
     db_manager: DatabaseManager = Depends(get_database_manager),
 ) -> PerformanceMetrics:
     try:
@@ -346,6 +358,7 @@ def get_stock_performance(
             eval_window_days=eval_window_days,
             analysis_date_from=analysis_date_from,
             analysis_date_to=analysis_date_to,
+            analysis_phase=analysis_phase,
         )
         if summary is None:
             raise HTTPException(

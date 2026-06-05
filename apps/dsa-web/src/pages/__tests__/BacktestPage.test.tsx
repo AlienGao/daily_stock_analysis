@@ -94,7 +94,7 @@ describe('BacktestPage', () => {
     expect(screen.getByRole('button', { name: '按分数排序' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '按分析日期排序' })).toBeInTheDocument();
     expect(screen.getByText('分数')).toBeInTheDocument();
-    const filterInput = await screen.findByPlaceholderText('按股票代码筛选（留空表示全部）');
+    const filterInput = await screen.findByPlaceholderText('按股票代码筛选（留空=全部）');
     const windowInput = screen.getByPlaceholderText('10');
 
     expect(filterInput).toHaveClass('input-surface');
@@ -116,16 +116,18 @@ describe('BacktestPage', () => {
     expect(screen.getByText('平均模拟收益')).toBeInTheDocument();
   });
 
-  it('默认查询带上后端排序参数', async () => {
+  it('filters results with stock code, window, phase, and analysis date range when clicking Filter', async () => {
     render(<BacktestPage />);
 
-    const filterInput = await screen.findByPlaceholderText('按股票代码筛选（留空表示全部）');
+    const filterInput = await screen.findByPlaceholderText('按股票代码筛选（留空=全部）');
     const windowInput = screen.getByPlaceholderText('10');
-    const fromInput = screen.getByLabelText('分析开始日期');
-    const toInput = screen.getByLabelText('分析结束日期');
+    const phaseSelect = screen.getByDisplayValue('全部阶段');
+    const fromInput = screen.getByLabelText('Analysis date from');
+    const toInput = screen.getByLabelText('Analysis date to');
 
     fireEvent.change(filterInput, { target: { value: 'aapl' } });
     fireEvent.change(windowInput, { target: { value: '20' } });
+    fireEvent.change(phaseSelect, { target: { value: 'intraday' } });
     fireEvent.change(fromInput, { target: { value: '2026-03-01' } });
     fireEvent.change(toInput, { target: { value: '2026-03-31' } });
     fireEvent.click(screen.getByRole('button', { name: '筛选' }));
@@ -133,16 +135,22 @@ describe('BacktestPage', () => {
     await waitFor(() => {
       expect(mockGetResults).toHaveBeenLastCalledWith({
         code: 'AAPL',
+        triggerSource: undefined,
         evalWindowDays: 20,
         analysisDateFrom: '2026-03-01',
         analysisDateTo: '2026-03-31',
+        sortBy: 'analysis_date',
+        sortOrder: 'desc',
+        analysisPhase: 'intraday',
         page: 1,
         limit: 20,
       });
       expect(mockGetStockPerformance).toHaveBeenLastCalledWith('AAPL', {
+        triggerSource: undefined,
         evalWindowDays: 20,
         analysisDateFrom: '2026-03-01',
         analysisDateTo: '2026-03-31',
+        analysisPhase: 'intraday',
       });
     });
   });
@@ -150,7 +158,7 @@ describe('BacktestPage', () => {
   it('runs a backtest and refreshes results using the shared filter values', async () => {
     render(<BacktestPage />);
 
-    const filterInput = await screen.findByPlaceholderText('按股票代码筛选（留空表示全部）');
+    const filterInput = await screen.findByPlaceholderText('按股票代码筛选（留空=全部）');
     const windowInput = screen.getByPlaceholderText('10');
 
     fireEvent.change(filterInput, { target: { value: 'tsla' } });
@@ -169,16 +177,22 @@ describe('BacktestPage', () => {
     await waitFor(() => {
       expect(mockGetResults).toHaveBeenLastCalledWith({
         code: 'TSLA',
+        triggerSource: undefined,
         evalWindowDays: 15,
         analysisDateFrom: undefined,
         analysisDateTo: undefined,
+        sortBy: 'analysis_date',
+        sortOrder: 'desc',
+        analysisPhase: undefined,
         page: 1,
         limit: 20,
       });
       expect(mockGetStockPerformance).toHaveBeenLastCalledWith('TSLA', {
+        triggerSource: undefined,
         evalWindowDays: 15,
         analysisDateFrom: undefined,
         analysisDateTo: undefined,
+        analysisPhase: undefined,
       });
     });
 
@@ -189,21 +203,40 @@ describe('BacktestPage', () => {
   it('switches to next-day validation with the 1D shortcut', async () => {
     render(<BacktestPage />);
 
-    await screen.findByPlaceholderText('按股票代码筛选（留空表示全部）');
-    fireEvent.click(screen.getByRole('button', { name: '1 日验证' }));
+    await screen.findByPlaceholderText('按股票代码筛选（留空=全部）');
+    fireEvent.click(screen.getByRole('button', { name: '次日验证' }));
 
     await waitFor(() => {
       expect(mockGetResults).toHaveBeenLastCalledWith({
         code: undefined,
         triggerSource: undefined,
-        evalWindowDays: 10,
+        evalWindowDays: 1,
         analysisDateFrom: undefined,
         analysisDateTo: undefined,
         sortBy: 'analysis_date',
         sortOrder: 'desc',
+        analysisPhase: undefined,
         page: 1,
         limit: 20,
       });
+      expect(mockGetOverallPerformance).toHaveBeenLastCalledWith({
+        triggerSource: undefined,
+        evalWindowDays: 1,
+        analysisDateFrom: undefined,
+        analysisDateTo: undefined,
+        analysisPhase: undefined,
+      });
+    });
+  });
+
+  it('默认查询带上后端排序参数', async () => {
+    render(<BacktestPage />);
+
+    await waitFor(() => {
+      expect(mockGetResults).toHaveBeenCalledWith(expect.objectContaining({
+        sortBy: 'analysis_date',
+        sortOrder: 'desc',
+      }));
     });
   });
 
