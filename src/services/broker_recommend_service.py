@@ -198,6 +198,26 @@ class BrokerRecommendService:
         return d.strftime("%Y%m%d")
 
     @staticmethod
+    def _is_empty_nineturn(nt: Optional[Dict[str, Any]]) -> bool:
+        """九转四项计数均为 0（含空对象）。"""
+        if not nt:
+            return True
+        return not any(
+            nt.get(k)
+            for k in ("up_count", "down_count", "nine_up_turn", "nine_down_turn")
+        )
+
+    @staticmethod
+    def _is_current_month(month: str) -> bool:
+        from datetime import datetime
+        return month == datetime.now().strftime("%Y%m")
+
+    @classmethod
+    def _nineturn_cache_miss(cls, nt: Optional[Dict[str, Any]], month: str) -> bool:
+        """当前月份的空九转视为缓存未命中，避免 Tushare 晚间更新前写入的全 0 永久占位。"""
+        return cls._is_current_month(month) and cls._is_empty_nineturn(nt)
+
+    @staticmethod
     def _normalize_cyq_perf(data: Dict[str, Any]) -> Dict[str, Any]:
         """从 L2 原始字段补全 computed 字段（cost_avg、concentration、scr90）。
 
@@ -314,7 +334,7 @@ class BrokerRecommendService:
         for tc in ts_codes:
             entry: Dict[str, Any] = {}
             nt = self._get_cached(tc, query_date, "nineturn")
-            if nt is not None:
+            if nt is not None and not self._nineturn_cache_miss(nt, month):
                 entry["nineturn"] = nt
             else:
                 uncached_nineturn.append(tc)
@@ -348,6 +368,8 @@ class BrokerRecommendService:
             if db_cache:
                 for tc, data in db_cache.items():
                     if "nineturn" in data:
+                        if self._nineturn_cache_miss(data["nineturn"], month):
+                            continue
                         BrokerRecommendService._set_cached(tc, query_date, "nineturn", data["nineturn"])
                         enrichment.setdefault(tc, {})["nineturn"] = data["nineturn"]
                     if "forecast" in data:
@@ -467,9 +489,10 @@ class BrokerRecommendService:
             if tc not in fetched_nineturn and "nineturn" not in enrichment.get(tc, {}):
                 empty = {"trade_date": query_date, "up_count": 0, "down_count": 0,
                          "nine_up_turn": 0, "nine_down_turn": 0}
-                BrokerRecommendService._set_cached(tc, query_date, "nineturn", empty)
                 enrichment.setdefault(tc, {})["nineturn"] = empty
-                fetched_nineturn[tc] = empty
+                if not self._is_current_month(month):
+                    BrokerRecommendService._set_cached(tc, query_date, "nineturn", empty)
+                    fetched_nineturn[tc] = empty
         for tc in still_need_forecast:
             if tc not in fetched_forecast and "forecast" not in enrichment.get(tc, {}):
                 empty = {"trade_date": query_date, "eps": None, "pe": None, "roe": None, "np": None,

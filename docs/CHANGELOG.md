@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 > For user-friendly release highlights, see the [GitHub Releases](https://github.com/ZhuLinsen/daily_stock_analysis/releases) page.
 
 ## [Unreleased]
+- [修复] 金股页当前月九转列全为 `--`：Tushare 晚间更新前写入的全 0 九转不再持久化缓存，当前月空九转视为缓存未命中并重新拉取。
 - [改进] Web 导航隐藏持仓、回测、告警三个页面（路由已移除，直接访问将落入 404）。
 
 - [改进] 寻股页回测交易记录：持仓中个股展示实时收益%与盈亏（卖出价列为现价），API 每次请求刷新 open 仓位 MTM，交易记录页每 30 秒自动刷新。

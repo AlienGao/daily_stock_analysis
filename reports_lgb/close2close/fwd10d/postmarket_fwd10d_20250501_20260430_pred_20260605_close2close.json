@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 10,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260605",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002156",
+      "stock_code": "002156",
+      "stock_name": "通富微电",
+      "lgb_score": 100.0,
+      "raw_score": 0.29
+    },
+    {
+      "rank": 2,
+      "ts_code": "301319",
+      "stock_code": "301319",
+      "stock_name": "唯特偶",
+      "lgb_score": 86.85,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 3,
+      "ts_code": "300499",
+      "stock_code": "300499",
+      "stock_name": "高澜股份",
+      "lgb_score": 81.2,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 4,
+      "ts_code": "688257",
+      "stock_code": "688257",
+      "stock_name": "新锐股份",
+      "lgb_score": 80.56,
+      "raw_score": 0.21
+    },
+    {
+      "rank": 5,
+      "ts_code": "601015",
+      "stock_code": "601015",
+      "stock_name": "陕西黑猫",
+      "lgb_score": 80.54,
+      "raw_score": 0.21
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.12,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.00934,
+    "std": 0.035583,
+    "skew": 0.6574,
+    "kurtosis": 2.9781,
+    "min": -0.123527,
+    "max": 0.291793,
+    "median": 0.010842
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.10555796166006633,
+    "cv_rmse_std": 0.004759488059331734,
+    "cv_scores": [
+      0.101733,
+      0.105965,
+      0.103919,
+      0.101645,
+      0.114528
+    ],
+    "rank_ic_mean": 0.083807,
+    "rank_ic_std": 0.064875,
+    "icir": 1.2918,
+    "oof_corr": 0.071869,
+    "n_samples": 17972,
+    "n_features": 22
+  }
+}

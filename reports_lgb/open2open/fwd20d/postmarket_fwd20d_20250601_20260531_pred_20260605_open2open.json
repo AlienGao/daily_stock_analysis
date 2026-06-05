@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 20,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260605",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300757",
+      "stock_code": "300757",
+      "stock_name": "罗博特科",
+      "lgb_score": 100.0,
+      "raw_score": 0.52
+    },
+    {
+      "rank": 2,
+      "ts_code": "301609",
+      "stock_code": "301609",
+      "stock_name": "山大电力",
+      "lgb_score": 96.59,
+      "raw_score": 0.5
+    },
+    {
+      "rank": 3,
+      "ts_code": "300700",
+      "stock_code": "300700",
+      "stock_name": "岱勒新材",
+      "lgb_score": 89.72,
+      "raw_score": 0.46
+    },
+    {
+      "rank": 4,
+      "ts_code": "301591",
+      "stock_code": "301591",
+      "stock_name": "肯特股份",
+      "lgb_score": 84.88,
+      "raw_score": 0.43
+    },
+    {
+      "rank": 5,
+      "ts_code": "002050",
+      "stock_code": "002050",
+      "stock_name": "三花智控",
+      "lgb_score": 79.01,
+      "raw_score": 0.39
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.79,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.104465,
+    "std": 0.069364,
+    "skew": -0.2926,
+    "kurtosis": -1.0768,
+    "min": -0.096589,
+    "max": 0.523494,
+    "median": 0.162274
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.16314034724567866,
+    "cv_rmse_std": 0.018094067756429827,
+    "cv_scores": [
+      0.16451,
+      0.151589,
+      0.142632,
+      0.161018,
+      0.195952
+    ],
+    "rank_ic_mean": 0.118118,
+    "rank_ic_std": 0.035681,
+    "icir": 3.3104,
+    "oof_corr": 0.125467,
+    "n_samples": 38083,
+    "n_features": 4
+  }
+}
