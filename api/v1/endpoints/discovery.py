@@ -15,7 +15,10 @@ import time
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from queue import Empty as QueueEmpty
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.storage import DatabaseManager
 
 import numpy as np
 import pandas as pd
@@ -1091,8 +1094,6 @@ def _load_postmarket_topn(report_date: Optional[str] = None) -> Tuple[Optional[L
 def postmarket_followup(
     report_date: Optional[str] = Query(None, description="盘后报告日期 YYYYMMDD，默认昨天"),
 ):
-    global _followup_cache, _followup_cache_ts
-
     if not _is_trading_hours():
         # 非交易时段：直接返回最新盘后数据，不进行盘中重评
         items, effective_date = _load_postmarket_topn(report_date)

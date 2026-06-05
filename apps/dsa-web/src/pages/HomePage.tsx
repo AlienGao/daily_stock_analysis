@@ -555,24 +555,26 @@ const HomePage: React.FC = () => {
     () => (
       <div className="flex min-h-0 h-full flex-col gap-3 overflow-hidden">
         <TaskPanel tasks={activeTasks} />
-        <HistoryList
-          items={marketReviewHistoryItems}
-          isLoading={isLoadingMarketReviewHistory}
-          isLoadingMore={isLoadingMoreMarketReviewHistory}
-          hasMore={marketReviewHistoryHasMore}
-          selectedId={selectedReport?.meta.reportType === 'market_review' ? selectedReport.meta.id : undefined}
-          selectedIds={selectedMarketReviewHistoryIds}
-          isDeleting={isDeletingMarketReviewHistory}
-          onItemClick={handleHistoryItemClick}
-          onLoadMore={() => void loadMoreMarketReviewHistory()}
-          onToggleItemSelection={toggleMarketReviewHistorySelection}
-          onToggleSelectAll={toggleSelectAllVisibleMarketReviewHistory}
-          onDeleteSelected={() => void deleteSelectedMarketReviewHistory()}
-          title="大盘复盘历史"
-          emptyTitle="暂无大盘复盘"
-          emptyDescription="运行大盘复盘后，这里会集中展示历史记录。"
-          className="max-h-72 shrink-0"
-        />
+        {marketReviewHistoryItems.length > 0 ? (
+          <HistoryList
+            items={marketReviewHistoryItems}
+            isLoading={isLoadingMarketReviewHistory}
+            isLoadingMore={isLoadingMoreMarketReviewHistory}
+            hasMore={marketReviewHistoryHasMore}
+            selectedId={selectedReport?.meta.reportType === 'market_review' ? selectedReport.meta.id : undefined}
+            selectedIds={selectedMarketReviewHistoryIds}
+            isDeleting={isDeletingMarketReviewHistory}
+            onItemClick={handleHistoryItemClick}
+            onLoadMore={() => void loadMoreMarketReviewHistory()}
+            onToggleItemSelection={toggleMarketReviewHistorySelection}
+            onToggleSelectAll={toggleSelectAllVisibleMarketReviewHistory}
+            onDeleteSelected={() => void deleteSelectedMarketReviewHistory()}
+            title="大盘复盘历史"
+            emptyTitle="暂无大盘复盘"
+            emptyDescription="运行大盘复盘后，这里会集中展示历史记录。"
+            className="max-h-72 shrink-0"
+          />
+        ) : null}
         <StockBar
           items={stockBarItems}
           isLoading={isLoadingStockBar}

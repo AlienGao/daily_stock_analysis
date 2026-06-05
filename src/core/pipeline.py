@@ -848,7 +848,7 @@ class StockAnalysisPipeline:
                         market_phase_summary=market_phase_summary,
                     )
                     result.diagnostic_context_snapshot = context_snapshot
-                    self._save_analysis_history_row(
+                    saved_count = self._save_analysis_history_row(
                         result=result,
                         query_id=query_id,
                         report_type=report_type,
@@ -1132,26 +1132,13 @@ class StockAnalysisPipeline:
                     ) else None
                     if yest_vol is not None:
                         try:
-                            yc = float(yesterday_close)
-                            if yc > 0:
-                                enhanced['price_change_ratio'] = round(
-                                    (price_val - yc) / yc * 100, 2
+                            yv = float(yest_vol)
+                            if yv > 0:
+                                enhanced['volume_change_ratio'] = round(
+                                    float(vol) / yv, 2
                                 )
                         except (TypeError, ValueError):
                             pass
-                    if vol is not None and enhanced.get('yesterday'):
-                        yest_vol = enhanced['yesterday'].get('volume') if isinstance(
-                            enhanced['yesterday'], dict
-                        ) else None
-                        if yest_vol is not None:
-                            try:
-                                yv = float(yest_vol)
-                                if yv > 0:
-                                    enhanced['volume_change_ratio'] = round(
-                                        float(vol) / yv, 2
-                                    )
-                            except (TypeError, ValueError):
-                                pass
 
         # ETF/index flag for analyzer prompt (Fixes #274)
         enhanced['is_index_etf'] = SearchService.is_index_or_etf(
@@ -2556,7 +2543,7 @@ class StockAnalysisPipeline:
         *,
         save_snapshot: bool,
         replace_query_code: bool = False,
-    ) -> None:
+    ) -> int:
         """写入 analysis_history；交互式 api/web 先删同日旧行再插入，并可选落盘 Markdown。"""
         if replace_query_code:
             deleted = self.db.delete_analysis_history_by_query_and_code(query_id, result.code)
@@ -2574,7 +2561,7 @@ class StockAnalysisPipeline:
                     result.code,
                     n,
                 )
-        self.db.save_analysis_history(
+        return self.db.save_analysis_history(
             result=result,
             query_id=query_id,
             report_type=report_type.value,
@@ -2583,7 +2570,7 @@ class StockAnalysisPipeline:
             save_snapshot=save_snapshot,
             query_source=self.query_source,
         )
-    
+
     def process_single_stock(
         self,
         code: str,

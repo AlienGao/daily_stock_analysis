@@ -266,6 +266,35 @@ describe('HomePage', () => {
     expect(await screen.findByText('大盘复盘摘要')).toBeInTheDocument();
   });
 
+  it('hides market review history sidebar when there are no records', async () => {
+    vi.mocked(historyApi.getList).mockImplementation((params: { reportType?: string } = {}) => {
+      if (params.reportType === 'market_review') {
+        return Promise.resolve({
+          total: 0,
+          page: 1,
+          limit: 10,
+          items: [],
+        });
+      }
+      return Promise.resolve({
+        total: 0,
+        page: 1,
+        limit: 20,
+        items: [],
+      });
+    });
+
+    render(
+      <MemoryRouter>
+        <HomePage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('暂无个股记录');
+    expect(screen.queryByText('大盘复盘历史')).not.toBeInTheDocument();
+    expect(screen.queryByText('暂无大盘复盘')).not.toBeInTheDocument();
+  });
+
   it('surfaces duplicate task warnings from dashboard submission', async () => {
     vi.mocked(historyApi.getList).mockResolvedValue({
       total: 0,

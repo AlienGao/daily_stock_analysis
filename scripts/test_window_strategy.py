@@ -128,7 +128,6 @@ def _patch_optimizer(strategy: str):
         best = None
 
         def objective(trial):
-            nonlocal best
             full_weights = dict(current_weights)
             for fn in candidate_names:
                 full_weights[fn] = trial.suggest_int(fn, _WEIGHT_MIN, _WEIGHT_MAX)

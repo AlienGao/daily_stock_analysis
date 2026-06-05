@@ -235,7 +235,9 @@ def get_backtest_results(
     analysis_date_from: Optional[date] = Query(None, description="分析日期起始（含）"),
     analysis_date_to: Optional[date] = Query(None, description="分析日期结束（含）"),
     sort_by: Literal["analysis_date", "actual_return_pct", "sentiment_score"] = Query("analysis_date", description="排序字段"),
-    sort_order: Literal["asc", "desc"] = Query("desc", description="排序方向"),    page: int = Query(1, ge=1, description="页码"),
+    sort_order: Literal["asc", "desc"] = Query("desc", description="排序方向"),
+    analysis_phase: Optional[BacktestAnalysisPhaseQuery] = Query(None, description="分析阶段过滤：premarket/intraday/postmarket/unknown"),
+    page: int = Query(1, ge=1, description="页码"),
     limit: int = Query(20, ge=1, le=200, description="每页数量"),
     db_manager: DatabaseManager = Depends(get_database_manager),
 ) -> BacktestResultsResponse:

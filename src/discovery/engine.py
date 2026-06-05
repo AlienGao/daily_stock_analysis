@@ -10,7 +10,7 @@ import logging
 import random
 import re
 import time
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional
 
@@ -814,6 +814,8 @@ class StockDiscoveryEngine:
 
         spot_df = None
         try:
+            from src.storage import DatabaseManager
+
             spot_df = DatabaseManager().get_realtime_spot()
             if spot_df is not None and not spot_df.empty:
                 ths_map = DatabaseManager().get_ths_industry_map()

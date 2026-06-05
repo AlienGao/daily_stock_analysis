@@ -7,6 +7,8 @@ API v1 Endpoints 模块初始化
 """
 
 from api.v1.endpoints import (
+    discovery,
+    factor_backtest,
     health,
     analysis,
     history,
@@ -23,6 +25,8 @@ from api.v1.endpoints import (
     alphasift,
 )
 __all__ = [
+    "discovery",
+    "factor_backtest",
     "health",
     "analysis",
     "history",

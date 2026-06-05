@@ -3933,19 +3933,6 @@ class SearchService:
                             stats["preferred_count"],
                             len(limited_response.results),
                         )
-                        if self._is_better_preferred_news_response(
-                            limited_response,
-                            candidate_preferred_count=visible_preferred_count,
-                            best_response=best_preferred_response,
-                            best_preferred_count=best_preferred_count,
-                        ):
-                            best_preferred_response = limited_response
-                            best_preferred_count = visible_preferred_count
-
-                        if visible_preferred_count >= max_results:
-                            self._put_cache(cache_key, limited_response)
-                            self._put_intel_cache(intel_key, "latest_news", limited_response)
-                            return limited_response
                     else:
                         logger.info(
                             "%s 搜索成功但未识别直接个股新闻，继续尝试下一引擎",
@@ -3964,14 +3951,9 @@ class SearchService:
                             response.error_message,
                         )
 
-            if prefer_chinese:
-                best_to_return = best_preferred_response or fallback_response
-                if best_to_return is not None:
-                    self._put_cache(cache_key, best_to_return)
-                    self._put_intel_cache(intel_key, "latest_news", best_to_return)
-                    return best_to_return
             if best_ranked_response is not None:
                 self._put_cache(cache_key, best_ranked_response)
+                self._put_intel_cache(intel_key, "latest_news", best_ranked_response)
                 return best_ranked_response
 
             if had_provider_success:

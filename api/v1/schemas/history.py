@@ -339,9 +339,9 @@ class StockBarItem(BaseModel):
     stock_code: str = Field(..., description="股票代码")
     stock_name: Optional[str] = Field(None, description="股票名称")
     report_type: Optional[str] = Field(None, description="报告类型")
-    sentiment_score: Optional[int] = Field(
+    sentiment_score: Optional[float] = Field(
         None,
-        description="最新情绪评分",
+        description="最新情绪评分（历史数据可能为小数，读取时不做约束）",
     )
     operation_advice: Optional[str] = Field(None, description="最新操作建议")
     analysis_count: int = Field(..., description="该股票的历史分析总次数")

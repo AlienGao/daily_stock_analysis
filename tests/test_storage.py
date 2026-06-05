@@ -102,6 +102,37 @@ class TestStorage(unittest.TestCase):
 
     @patch('src.config.load_dotenv')
     def test_file_sqlite_enables_wal_and_busy_timeout(self, _mock_dotenv):
+        temp_dir = tempfile.TemporaryDirectory()
+        db_path = os.path.join(temp_dir.name, "sqlite_pragmas.db")
+        original_env = {
+            "DATABASE_PATH": os.environ.get("DATABASE_PATH"),
+            "SQLITE_BUSY_TIMEOUT_MS": os.environ.get("SQLITE_BUSY_TIMEOUT_MS"),
+            "SQLITE_WAL_ENABLED": os.environ.get("SQLITE_WAL_ENABLED"),
+        }
+
+        try:
+            os.environ["DATABASE_PATH"] = db_path
+            os.environ["SQLITE_BUSY_TIMEOUT_MS"] = "1234"
+            os.environ["SQLITE_WAL_ENABLED"] = "true"
+            Config.reset_instance()
+            DatabaseManager.reset_instance()
+
+            db = DatabaseManager.get_instance()
+            with db.get_session() as session:
+                journal_mode = session.connection().exec_driver_sql("PRAGMA journal_mode").scalar()
+                busy_timeout = session.connection().exec_driver_sql("PRAGMA busy_timeout").scalar()
+
+            self.assertEqual(str(journal_mode).lower(), "wal")
+            self.assertEqual(int(busy_timeout), 1234)
+        finally:
+            DatabaseManager.reset_instance()
+            Config.reset_instance()
+            for key, value in original_env.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
+            temp_dir.cleanup()
 
     def test_conversation_summary_upsert_and_delete_with_session(self):
         DatabaseManager.reset_instance()

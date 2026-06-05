@@ -19,7 +19,10 @@ import time
 import traceback
 from datetime import date, datetime, timezone, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set  # noqa: F811
+from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING  # noqa: F811
+
+if TYPE_CHECKING:
+    from src.storage import DatabaseManager
 
 import pandas as pd
 import requests
@@ -1267,7 +1270,7 @@ def refresh_adj_factor_postmarket(tushare_fetcher) -> int:
         if deleted:
             logger.info("[Scanner] stock_adj_factor 清理超 5 年数据: %d 条 (早于 %s)", deleted, cutoff)
 
-        return saved
+        return total_saved
     except Exception as e:
         logger.warning("[Scanner] adj_factor 刷新失败: %s", e)
         return 0

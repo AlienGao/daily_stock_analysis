@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 > For user-friendly release highlights, see the [GitHub Releases](https://github.com/ZhuLinsen/daily_stock_analysis/releases) page.
 
 ## [Unreleased]
+- [改进] 桌面侧边导航收窄为 80px，图标与文字垂直居中排列，导航项可滚动。
+- [改进] 首页侧边栏「大盘复盘历史」在无历史记录时不展示，避免空状态占位。
 - [修复] 金股页当前月九转列全为 `--`：Tushare 晚间更新前写入的全 0 九转不再持久化缓存，当前月空九转视为缓存未命中并重新拉取。
 - [改进] Web 导航隐藏持仓、回测、告警三个页面（路由已移除，直接访问将落入 404）。
 
