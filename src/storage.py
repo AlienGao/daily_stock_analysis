@@ -6792,20 +6792,23 @@ class DatabaseManager(metaclass=_DatabaseManagerMeta):
             return [r.to_dict() for r in rows]
 
 
-    def get_broker_recommend_month_counts(self, ts_codes: List[str]) -> Dict[str, int]:
+    def get_broker_recommend_month_counts(self, ts_codes: List[str], exclude_after: str | None = None) -> Dict[str, int]:
         """统计各股票历史上被推荐的月份数（去重 month）。"""
         if not ts_codes:
             return {}
         from sqlalchemy import func
         codes = [str(c) for c in ts_codes]
         with self.get_session() as session:
+            query = select(
+                BrokerRecommendMonthly.ts_code,
+                func.count(func.distinct(BrokerRecommendMonthly.month)),
+            ).where(
+                BrokerRecommendMonthly.ts_code.in_(codes)
+            )
+            if exclude_after and str(exclude_after) >= "202003":
+                query = query.where(BrokerRecommendMonthly.month < str(exclude_after))
             rows = session.execute(
-                select(
-                    BrokerRecommendMonthly.ts_code,
-                    func.count(func.distinct(BrokerRecommendMonthly.month)),
-                ).where(
-                    BrokerRecommendMonthly.ts_code.in_(codes)
-                ).group_by(BrokerRecommendMonthly.ts_code)
+                query.group_by(BrokerRecommendMonthly.ts_code)
             ).all()
             return {str(r[0]): int(r[1]) for r in rows}
 

@@ -10,8 +10,8 @@ import random
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, timedelta
-from threading import Lock
-from typing import Any, Dict, List, Optional
+from threading import Lock, Thread
+from typing import Any, Dict, Iterable, List, Optional
 
 import pandas as pd
 
@@ -889,6 +889,55 @@ class BrokerRecommendService:
         if mon == 12:
             return f"{year + 1}01"
         return f"{year}{mon + 1:02d}"
+
+    def _next_trading_day_after(self, after_date: str, horizon_days: int = 15) -> Optional[str]:
+        """返回 after_date 之后的第一个交易日（可跨自然月）。"""
+        days = self._trading_days_after(after_date, max_count=1, horizon_days=horizon_days)
+        return days[0] if days else None
+
+    def _trading_days_after(
+        self,
+        after_date: str,
+        max_count: Optional[int] = None,
+        horizon_days: int = 45,
+    ) -> List[str]:
+        """返回 after_date 之后至多 max_count 个交易日（可跨自然月）。"""
+        from datetime import datetime, timedelta
+
+        if max_count is None:
+            max_count = self._STRATEGY_MONTH_END_DEFER_MAX_DAYS
+        try:
+            end = (
+                datetime.strptime(after_date, "%Y%m%d") + timedelta(days=horizon_days)
+            ).strftime("%Y%m%d")
+        except ValueError:
+            return []
+        days = self._get_trading_days(after_date, end)
+        result: List[str] = []
+        for d in days:
+            if d > after_date:
+                result.append(d)
+                if len(result) >= max_count:
+                    break
+        return result
+
+    @staticmethod
+    def _has_close_on_day(
+        close_map: Dict[str, float],
+        day: str,
+    ) -> bool:
+        return close_map.get(day) is not None
+
+    @staticmethod
+    def _has_open_quote_on_day(
+        open_map: Dict[str, float],
+        close_map: Dict[str, float],
+        day: str,
+    ) -> bool:
+        return (
+            open_map.get(day) is not None
+            or close_map.get(day) is not None
+        )
 
     def _get_trading_days(self, start_date: str, end_date: str) -> List[str]:
         """获取指定日期范围内的交易日列表。"""
@@ -1781,11 +1830,11 @@ class BrokerRecommendService:
         return daily_returns, cum_ret, buy_date, sell_date
 
 
-    def get_historical_recommend_stats(self, ts_codes: List[str]) -> Dict[str, Dict[str, Any]]:
+    def get_historical_recommend_stats(self, ts_codes: List[str], exclude_after: str | None = None) -> Dict[str, Dict[str, Any]]:
         """统计各股票历次推荐持仓期胜率、最高/最低期末收益（与展开历史口径一致）。"""
         if not ts_codes:
             return {}
-        month_counts = self.db.get_broker_recommend_month_counts(ts_codes)
+        month_counts = self.db.get_broker_recommend_month_counts(ts_codes, exclude_after=exclude_after)
         codes_set = set(ts_codes)
         bucket: Dict[str, Dict[str, Any]] = {
             tc: {
@@ -1795,7 +1844,12 @@ class BrokerRecommendService:
             for tc in ts_codes
         }
         adj_all = self._load_all_adj_factors(ts_codes)
-        for bt in self.db.get_all_broker_backtests():
+        # 若指定 exclude_after，仅统计该月之前的推荐记录
+        if exclude_after and str(exclude_after) >= "202003":
+            backtests = [bt for bt in self.db.get_all_broker_backtests() if str(bt.get("month") or "") < str(exclude_after)]
+        else:
+            backtests = self.db.get_all_broker_backtests()
+        for bt in backtests:
             month = str(bt.get("month") or "")
             if not month:
                 continue
@@ -1840,13 +1894,116 @@ class BrokerRecommendService:
         """返回股票历史上被推荐的月份次数。"""
         return self.db.get_broker_recommend_month_counts(ts_codes)
 
-    def get_stock_recommend_history(self, ts_code: str) -> Dict[str, Any]:
+    def get_monthly_up_to_down_daily(self, month: str) -> Dict[str, Any]:
+        """扫描当月金股池各交易日九转反转信号：升 1..8 转降、降 1..8 升（末交易日忽略）。
+
+        月初第 1 个交易日与上月末对比九转，以衔接跨月连续序列。
+        """
+        empty = {
+            "month": month,
+            "buy_date": "",
+            "sell_date": "",
+            "days": [],
+        }
+        df = self.get_monthly_recommendations(month)
+        if df is None or df.empty:
+            return empty
+
+        meta = (
+            df.groupby("ts_code", as_index=False)
+            .agg(name=("name", "first"), broker_count=("broker_count", "max"))
+        )
+        pool = meta["ts_code"].tolist()
+        name_by_code = {
+            str(row.ts_code): str(row.name or "")
+            for row in meta.itertuples(index=False)
+        }
+        broker_count_by_code = {
+            str(row.ts_code): int(row.broker_count or 1)
+            for row in meta.itertuples(index=False)
+        }
+
+        effective_end = self._effective_month_end(month)
+        month_start = f"{month}01"
+        trading_days = self._get_trading_days(month_start, effective_end)
+        if not trading_days:
+            return empty
+
+        prev_month_last_day = self._prev_month_last_trading_day(month)
+        nineturn_cache = self._load_nineturn_by_trade_date_cache()
+        date_pools = {td: pool for td in trading_days}
+        if prev_month_last_day:
+            date_pools[prev_month_last_day] = pool
+        self._prefetch_nineturn_for_dates(date_pools, nineturn_cache)
+
+        month_last_trading_day = self._calendar_month_last_trading_day(month)
+        days_out: List[Dict[str, Any]] = []
+        for i, signal_date in enumerate(trading_days):
+            if month_last_trading_day and signal_date == month_last_trading_day:
+                continue
+            stocks: List[Dict[str, Any]] = []
+            for tc in pool:
+                snap = BrokerRecommendService._nineturn_reversal_snapshot(
+                    trading_days, i, tc, nineturn_cache,
+                    prev_month_last_day=prev_month_last_day,
+                )
+                if BrokerRecommendService._nineturn_up_to_down_on_day(
+                    nineturn_cache, trading_days, i, tc,
+                    prev_month_last_day=prev_month_last_day,
+                ):
+                    prev_up = snap.get("prev_nineturn_up_count")
+                    stocks.append({
+                        "ts_code": tc,
+                        "name": name_by_code.get(tc, ""),
+                        "broker_count": broker_count_by_code.get(tc, 1),
+                        "signal_type": "up_to_down",
+                        "prev_nineturn_up_count": int(prev_up) if prev_up is not None else 0,
+                        "prev_nineturn_down_count": 0,
+                        "nineturn_up_count": snap.get("nineturn_up_count"),
+                        "nineturn_down_count": snap.get("nineturn_down_count"),
+                    })
+                elif BrokerRecommendService._nineturn_down_to_up_on_day(
+                    nineturn_cache, trading_days, i, tc,
+                    prev_month_last_day=prev_month_last_day,
+                ):
+                    prev_down = snap.get("prev_nineturn_down_count")
+                    stocks.append({
+                        "ts_code": tc,
+                        "name": name_by_code.get(tc, ""),
+                        "broker_count": broker_count_by_code.get(tc, 1),
+                        "signal_type": "down_to_up",
+                        "prev_nineturn_up_count": 0,
+                        "prev_nineturn_down_count": int(prev_down) if prev_down is not None else 0,
+                        "nineturn_up_count": snap.get("nineturn_up_count"),
+                        "nineturn_down_count": snap.get("nineturn_down_count"),
+                    })
+            if stocks:
+                stocks.sort(
+                    key=lambda x: (
+                        -x["broker_count"],
+                        x.get("signal_type") or "",
+                        x["ts_code"],
+                    ),
+                )
+                days_out.append({"date": signal_date, "stocks": stocks})
+
+        days_out.sort(key=lambda x: x["date"], reverse=True)
+        return {
+            "month": month,
+            "buy_date": trading_days[0],
+            "sell_date": trading_days[-1],
+            "days": days_out,
+        }
+
+    def get_stock_recommend_history(self, ts_code: str, exclude_after: str | None = None) -> Dict[str, Any]:
         """返回单只股票历次推荐月份及对应持仓期 K 线数据。"""
         rows = self.db.get_broker_recommend_by_stock(ts_code)
         if not rows:
             return {"ts_code": ts_code, "name": "", "entries": []}
 
         months = sorted({r["month"] for r in rows}, reverse=True)
+        if exclude_after and str(exclude_after) >= "202003":
+            months = [m for m in months if m < str(exclude_after)]
         name = str(rows[0].get("name") or "")
         entries: List[Dict[str, Any]] = []
 
@@ -2341,6 +2498,1629 @@ class BrokerRecommendService:
         """获取数据库中所有有机构调研数据的日期列表（降序）。"""
         return self.db.get_institution_survey_dates()
 
+
+    # 等权策略计算结果缓存
+    _strategy_cache: Dict[str, Any] = {}
+    _strategy_cache_ts: float = 0.0
+    _STRATEGY_CACHE_TTL = 300  # 5 分钟
+    _strategy_computing = False  # 防止并发重复计算
+    _strategy_lock = Lock()
+    _STRATEGY_MIN_HIST_WIN_RATE = 0.5
+    _STRATEGY_TOTAL_CAPITAL = 1.0
+    _STRATEGY_UP_TO_DOWN_ALLOWED_UP_COUNTS = tuple(range(1, 9))
+    _STRATEGY_DOWN_TO_UP_ALLOWED_DOWN_COUNTS = tuple(range(1, 9))
+    _STRATEGY_MAX_HOLDINGS = 0
+    _STRATEGY_FORECAST_SPREAD_TOP_N = 0
+    _STRATEGY_PRICE_PATTERN_BUY = ("--+", "+-+")
+    _STRATEGY_PRICE_PATTERN_SELL = ("+--", "-+-")
+    _STRATEGY_MONTH_END_DEFER_MAX_DAYS = 20
+
+    @staticmethod
+    def _forecast_abs_spread(forecast: Optional[Dict[str, Any]]) -> float:
+        """券商目标价 max/min 绝对值之差（金股页展示用，策略买入排序已改用历史推荐统计）。"""
+        if not forecast:
+            return -1.0
+        min_p = forecast.get("min_price")
+        max_p = forecast.get("max_price")
+        if min_p is None or max_p is None:
+            return -1.0
+        return abs(float(max_p)) - abs(float(min_p))
+
+    @staticmethod
+    def _hist_recommend_abs_spread(hist: Optional[Dict[str, Any]]) -> float:
+        """历史推荐统计最高/最低持仓期末收益绝对值之差，用于策略买入候选排序。"""
+        if not hist:
+            return -1.0
+        max_ret = hist.get("max_return")
+        min_ret = hist.get("max_drawdown")
+        if max_ret is None or min_ret is None:
+            return -1.0
+        return abs(float(max_ret)) - abs(float(min_ret))
+
+    @staticmethod
+    def _hist_recommend_positive_equal_extremes(hist: Optional[Dict[str, Any]]) -> bool:
+        """历史最高/最低持仓期末收益相同且均为正（历次推荐期收益一致且盈利）。"""
+        if not hist:
+            return False
+        max_ret = hist.get("max_return")
+        min_ret = hist.get("max_drawdown")
+        if max_ret is None or min_ret is None:
+            return False
+        max_v = float(max_ret)
+        min_v = float(min_ret)
+        return max_v == min_v and min_v > 0
+
+    @staticmethod
+    def _hist_recommend_buy_sort_key(
+        hist: Optional[Dict[str, Any]],
+    ) -> tuple:
+        """买入优先级：max_return==max_drawdown 且均为正置顶，其余按绝对值差降序。"""
+        spread = BrokerRecommendService._hist_recommend_abs_spread(hist)
+        if spread < 0:
+            return (0, 0.0, 0.0)
+        max_v = float(hist["max_return"])
+        if BrokerRecommendService._hist_recommend_positive_equal_extremes(hist):
+            return (2, max_v, spread)
+        return (1, spread, abs(max_v))
+
+    @staticmethod
+    def _top_spread_buy_codes(
+        candidates: Iterable[str],
+        hist_stats: Dict[str, Dict[str, Any]],
+        top_n: int = 3,
+        min_hist_win_rate: float = 0.5,
+    ) -> List[str]:
+        """历史 max==min 且均为正优先，其余按绝对值差降序，再过滤历史胜率；top_n<=0 不截断。"""
+        ranked = sorted(
+            candidates,
+            key=lambda tc: (
+                BrokerRecommendService._hist_recommend_buy_sort_key(
+                    hist_stats.get(tc),
+                ),
+                tc,
+            ),
+            reverse=True,
+        )
+        picked: List[str] = []
+        for tc in ranked:
+            if not BrokerRecommendService._passes_hist_win_rate_filter(
+                hist_stats.get(tc, {}).get("win_rate"), min_hist_win_rate,
+            ):
+                continue
+            picked.append(tc)
+            if top_n > 0 and len(picked) >= top_n:
+                break
+        return picked
+
+    @staticmethod
+    def _passes_hist_win_rate_filter(
+        win_rate: Optional[float],
+        min_rate: float = 0.5,
+    ) -> bool:
+        """无历史胜率记录或不大于阈值均不买入（默认 >50%）。"""
+        if win_rate is None:
+            return False
+        return float(win_rate) > min_rate
+
+    @staticmethod
+    def _strategy_leg_capital_totals(
+        monthly_returns: List[Dict[str, Any]],
+    ) -> tuple[float, float]:
+        """汇总策略各笔买卖额：投入本金=开仓买入额之和，结算资金=平仓卖出额之和。"""
+        invested = 0.0
+        settled = 0.0
+        for month in monthly_returns:
+            for leg in month.get("stocks") or []:
+                buy_amt = leg.get("buy_amount")
+                sell_amt = leg.get("sell_amount")
+                if buy_amt:
+                    invested += float(buy_amt)
+                if sell_amt is not None:
+                    settled += float(sell_amt)
+        return invested, settled
+
+    @staticmethod
+    def _compute_up_to_down_trade_stats(
+        monthly_returns: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """按升转降前日上升计数（升 1..8）统计每笔交易平均收益与胜率。"""
+        buckets: Dict[int, List[float]] = {}
+        for month_row in monthly_returns:
+            for leg in month_row.get("stocks") or []:
+                buy_reason = leg.get("buy_reason") or {}
+                if buy_reason.get("trigger") != "nineturn_up_to_down_buy":
+                    continue
+                prev_up = buy_reason.get("prev_nineturn_up_count")
+                ret = leg.get("month_return")
+                if prev_up is None or ret is None:
+                    continue
+                prev_up = int(prev_up)
+                if prev_up not in BrokerRecommendService._STRATEGY_UP_TO_DOWN_ALLOWED_UP_COUNTS:
+                    continue
+                buckets.setdefault(prev_up, []).append(float(ret))
+
+        stats: List[Dict[str, Any]] = []
+        for up in BrokerRecommendService._STRATEGY_UP_TO_DOWN_ALLOWED_UP_COUNTS:
+            rets = buckets.get(up, [])
+            if not rets:
+                stats.append({
+                    "up_count": up,
+                    "trade_count": 0,
+                    "avg_return": 0.0,
+                    "win_rate": 0.0,
+                })
+                continue
+            wins = sum(1 for r in rets if r > 0)
+            stats.append({
+                "up_count": up,
+                "trade_count": len(rets),
+                "avg_return": round(sum(rets) / len(rets), 4),
+                "win_rate": round(wins / len(rets), 4),
+            })
+        return stats
+
+    def compute_equal_weight_strategy(
+        self,
+        top_n: int = 4,
+        start_month: Optional[str] = None,
+        end_month: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """计算九转选股等权策略收益曲线（带缓存）。
+
+        策略：总资金固定；当日收盘升 1..8 转降 N 股 T+1 开盘均摊买入；
+        T+1 买入后 T+2 开盘亏损则 T+2 开盘卖、盈利则 T+3 起收盘跟踪直至亏损或月末强制清仓；升 9+ 转降忽略；
+        当日无有效升转降则 T+1 开盘清仓后暂停；交易仅限当月（末交易日信号忽略）；
+        总收益 = 结算后总资产 / 固定总资金 - 1；
+        月末有行情收盘清仓，月末无行情则顺延至后续有行情交易日开盘清仓（可跨月）。
+        首次计算在后台线程执行，接口立即返回 computing 供前端轮询。
+        """
+        import json
+        cache_key = json.dumps({
+            "strategy": "nineturn_up_to_down_open_v49",
+            "start_month": start_month or "",
+            "end_month": end_month or "",
+        }, sort_keys=True)
+
+        with BrokerRecommendService._strategy_lock:
+            if (
+                cache_key in BrokerRecommendService._strategy_cache
+                and time.time() - BrokerRecommendService._strategy_cache_ts < self._STRATEGY_CACHE_TTL
+            ):
+                return BrokerRecommendService._strategy_cache[cache_key]
+            if BrokerRecommendService._strategy_computing:
+                return {"status": "computing"}
+            BrokerRecommendService._strategy_computing = True
+
+        def _worker() -> None:
+            try:
+                result = self._compute_equal_weight_strategy_impl(
+                    top_n, start_month=start_month, end_month=end_month,
+                )
+            except Exception as exc:
+                logger.warning("[BrokerRecommend] 策略回测计算失败: %s", exc)
+                result = {"error": str(exc)}
+            with BrokerRecommendService._strategy_lock:
+                BrokerRecommendService._strategy_cache[cache_key] = result
+                BrokerRecommendService._strategy_cache_ts = time.time()
+                BrokerRecommendService._strategy_computing = False
+
+        Thread(target=_worker, daemon=True, name="broker-equal-weight-strategy").start()
+        return {"status": "computing"}
+
+    def _load_nineturn_by_trade_date_cache(self) -> Dict[str, Dict[str, Dict[str, int]]]:
+        """预加载九转缓存：{trade_date: {ts_code: {up_count, down_count, ...}}}。"""
+        cache: Dict[str, Dict[str, Dict[str, int]]] = {}
+        try:
+            from src.storage import BrokerEnrichmentNineturn
+            from sqlalchemy import select as sa_select
+
+            db = DatabaseManager.get_instance()
+            with db.get_session() as session:
+                rows = session.execute(
+                    sa_select(
+                        BrokerEnrichmentNineturn.trade_date,
+                        BrokerEnrichmentNineturn.ts_code,
+                        BrokerEnrichmentNineturn.up_count,
+                        BrokerEnrichmentNineturn.down_count,
+                        BrokerEnrichmentNineturn.nine_up_turn,
+                        BrokerEnrichmentNineturn.nine_down_turn,
+                    )
+                ).all()
+            for r in rows:
+                td = str(r.trade_date)
+                cache.setdefault(td, {})[str(r.ts_code)] = {
+                    "up_count": int(r.up_count or 0),
+                    "down_count": int(r.down_count or 0),
+                    "nine_up_turn": int(r.nine_up_turn or 0),
+                    "nine_down_turn": int(r.nine_down_turn or 0),
+                }
+        except Exception:
+            pass
+        return cache
+
+    @staticmethod
+    def _normalize_nineturn_record(nt: Any) -> Dict[str, int]:
+        if isinstance(nt, dict):
+            return {
+                "up_count": int(nt.get("up_count") or 0),
+                "down_count": int(nt.get("down_count") or 0),
+                "nine_up_turn": int(nt.get("nine_up_turn") or 0),
+                "nine_down_turn": int(nt.get("nine_down_turn") or 0),
+            }
+        if isinstance(nt, int):
+            return {"up_count": nt, "down_count": 0, "nine_up_turn": 0, "nine_down_turn": 0}
+        return {"up_count": 0, "down_count": 0, "nine_up_turn": 0, "nine_down_turn": 0}
+
+    @staticmethod
+    def _nineturn_meets_buy_up_count(
+        nt: Any,
+        up_count: int | None = None,
+    ) -> bool:
+        target = up_count if up_count is not None else 5
+        return BrokerRecommendService._normalize_nineturn_record(nt)["up_count"] == target
+
+    @staticmethod
+    def _nineturn_in_rising_phase(nt: Any) -> bool:
+        """九转处于上升序列（up_count >= 1）。"""
+        return BrokerRecommendService._normalize_nineturn_record(nt)["up_count"] >= 1
+
+    @staticmethod
+    def _nineturn_ok_for_buy(
+        nt: Any,
+        max_up_count: int | None = None,
+    ) -> bool:
+        """买入：九转上升且 up_count 不超过上限（默认 1..10，超过 10 不买）。"""
+        cap = (
+            BrokerRecommendService._STRATEGY_NINETURN_BUY_MAX_UP_COUNT
+            if max_up_count is None
+            else max_up_count
+        )
+        up = BrokerRecommendService._normalize_nineturn_record(nt)["up_count"]
+        return 1 <= up <= cap
+
+    @staticmethod
+    def _nineturn_still_down_on_day(
+        nineturn_cache: Dict[str, Dict[str, Dict[str, int]]],
+        trading_days: List[str],
+        day_idx: int,
+        ts_code: str,
+    ) -> bool:
+        """升转降信号后 T+1 确认：当日仍处于下降（非上升且仍有下降计数）。"""
+        if day_idx < 0 or day_idx >= len(trading_days):
+            return False
+        curr_nt = BrokerRecommendService._normalize_nineturn_record(
+            nineturn_cache.get(trading_days[day_idx], {}).get(ts_code),
+        )
+        if BrokerRecommendService._nineturn_in_rising_phase(curr_nt):
+            return False
+        return (
+            curr_nt["down_count"] >= 1
+            or curr_nt["nine_down_turn"] >= 1
+        )
+
+    @staticmethod
+    def _daily_close_direction(
+        close_map: Dict[str, float],
+        day: str,
+        prev_day: str,
+    ) -> Optional[str]:
+        """相对前一交易日收盘：涨 '+'、跌 '-'；持平返回 None。"""
+        curr = close_map.get(day)
+        prev = close_map.get(prev_day)
+        if curr is None or prev is None or prev <= 0:
+            return None
+        if curr > prev:
+            return "+"
+        if curr < prev:
+            return "-"
+        return None
+
+    @staticmethod
+    def _pattern_start_idx(
+        trading_days: List[str],
+        buy_date: Optional[str],
+    ) -> int:
+        """形态计算起点：买入日（持仓期首个交易日）在 trading_days 中的下标。"""
+        if buy_date and buy_date in trading_days:
+            return trading_days.index(buy_date)
+        return 0
+
+    @staticmethod
+    def _three_day_price_pattern(
+        close_map: Dict[str, float],
+        trading_days: List[str],
+        day_idx: int,
+        pattern_start_idx: int = 0,
+    ) -> Optional[str]:
+        """近三个交易日涨跌形态（day_idx 为形态第三日；不计买入日之前）。"""
+        if day_idx < pattern_start_idx + 3:
+            return None
+        if day_idx - 3 < pattern_start_idx:
+            return None
+        d_m3, d_m2, d_m1, d0 = (
+            trading_days[day_idx - 3],
+            trading_days[day_idx - 2],
+            trading_days[day_idx - 1],
+            trading_days[day_idx],
+        )
+        signs = [
+            BrokerRecommendService._daily_close_direction(close_map, d_m2, d_m3),
+            BrokerRecommendService._daily_close_direction(close_map, d_m1, d_m2),
+            BrokerRecommendService._daily_close_direction(close_map, d0, d_m1),
+        ]
+        if any(s is None for s in signs):
+            return None
+        return "".join(signs)
+
+    @staticmethod
+    def _price_pattern_is_buy(pattern: Optional[str]) -> bool:
+        return pattern in BrokerRecommendService._STRATEGY_PRICE_PATTERN_BUY
+
+    @staticmethod
+    def _price_pattern_is_sell(pattern: Optional[str]) -> bool:
+        return pattern in BrokerRecommendService._STRATEGY_PRICE_PATTERN_SELL
+
+    @staticmethod
+    def _sign_label(sign: Optional[str]) -> str:
+        if sign == "+":
+            return "涨"
+        if sign == "-":
+            return "跌"
+        return "平"
+
+    @staticmethod
+    def _trade_signal_snapshot(
+        trading_days: List[str],
+        day_idx: int,
+        tc: str,
+        close_map: Dict[str, float],
+        nineturn_cache: Dict[str, Dict[str, Dict[str, int]]],
+        pattern_start_idx: int = 0,
+    ) -> Dict[str, Any]:
+        """信号日近三日收盘走势与九转快照（用于买卖理由）。"""
+        if day_idx < 0 or day_idx >= len(trading_days):
+            return {}
+        day = trading_days[day_idx]
+        nt = BrokerRecommendService._normalize_nineturn_record(
+            nineturn_cache.get(day, {}).get(tc),
+        )
+        base = {
+            "signal_date": day,
+            "nineturn_up_count": nt["up_count"],
+            "nineturn_down_count": nt["down_count"],
+        }
+        if (
+            day_idx < pattern_start_idx + 3
+            or day_idx - 3 < pattern_start_idx
+        ):
+            return {
+                **base,
+                "pattern": None,
+                "pattern_days": [],
+                "pattern_closes": [],
+                "pattern_signs": [],
+                "day_moves": [],
+            }
+        d_m3, d_m2, d_m1, d0 = (
+            trading_days[day_idx - 3],
+            trading_days[day_idx - 2],
+            trading_days[day_idx - 1],
+            trading_days[day_idx],
+        )
+        dates = [d_m3, d_m2, d_m1, d0]
+        closes = [close_map.get(d) for d in dates]
+        signs = [
+            BrokerRecommendService._daily_close_direction(close_map, d_m2, d_m3),
+            BrokerRecommendService._daily_close_direction(close_map, d_m1, d_m2),
+            BrokerRecommendService._daily_close_direction(close_map, d0, d_m1),
+        ]
+        pattern = (
+            "".join(signs)
+            if signs and all(s is not None for s in signs)
+            else None
+        )
+        day_moves: List[Dict[str, Any]] = [{
+            "date": dates[0],
+            "close": round(closes[0], 2) if closes[0] is not None else None,
+            "sign": None,
+        }]
+        for j in range(1, 4):
+            day_moves.append({
+                "date": dates[j],
+                "close": round(closes[j], 2) if closes[j] is not None else None,
+                "sign": signs[j - 1],
+            })
+        return {
+            **base,
+            "pattern": pattern,
+            "pattern_days": dates,
+            "pattern_closes": [
+                round(c, 2) if c is not None else None for c in closes
+            ],
+            "pattern_signs": signs,
+            "day_moves": day_moves,
+        }
+
+    @staticmethod
+    def _build_trade_reason(
+        trigger: str,
+        snapshot: Dict[str, Any],
+        *,
+        action: str,
+    ) -> Dict[str, Any]:
+        """组装买卖理由（含可读 summary）。"""
+        pattern = snapshot.get("pattern")
+        up = snapshot.get("nineturn_up_count", 0)
+        down = snapshot.get("nineturn_down_count", 0)
+        signs = snapshot.get("pattern_signs") or []
+        sign_path = "/".join(
+            BrokerRecommendService._sign_label(s) for s in signs if s
+        )
+        nt_parts: List[str] = []
+        if up:
+            nt_parts.append(f"上升↑{up}")
+        if down:
+            nt_parts.append(f"下降↓{down}")
+        nt_text = "、".join(nt_parts) if nt_parts else "无九转计数"
+        if trigger == "month_end":
+            summary = f"月末强制清仓；当日九转 {nt_text}"
+        elif trigger == "month_end_deferred":
+            next_day = snapshot.get("next_sell_date") or ""
+            summary = (
+                f"月末交易日无行情，顺延至有行情交易日"
+                f"{f'（{next_day}）' if next_day else ''}开盘清仓"
+            )
+        elif trigger == "nineturn_buy":
+            summary = f"九转上升（{nt_text}），收盘买入"
+        elif trigger == "pattern_buy":
+            summary = (
+                f"九转上升（{nt_text}）；近3日 {sign_path}（{pattern}）"
+                f"匹配买入规则，收盘买入"
+            )
+        elif trigger == "pattern_sell":
+            summary = (
+                f"九转上升（{nt_text}）；近3日 {sign_path}（{pattern}）"
+                f"匹配卖出规则，收盘卖出"
+            )
+        elif trigger == "nineturn_up_to_down":
+            prev_up = snapshot.get("prev_nineturn_up_count")
+            confirm_day = snapshot.get("confirm_date") or ""
+            summary = (
+                f"九转上升转下降（前日↑{prev_up} → 当日{nt_text}）；"
+                f"T+1仍下降"
+                f"{f'（{confirm_day}）' if confirm_day else ''}，收盘卖出"
+            )
+        elif trigger == "nineturn_up_to_down_buy":
+            prev_up = snapshot.get("prev_nineturn_up_count")
+            summary = (
+                f"九转升转降信号（前日↑{prev_up} → 当日{nt_text}）；"
+                f"T+1 开盘均摊买入"
+            )
+        elif trigger == "nineturn_up_to_down_sell":
+            summary = f"升转降批次 T+2 开盘卖出；信号日九转 {nt_text}"
+        elif trigger == "nineturn_up_to_down_sell_loss":
+            summary = f"升转降批次 T+2 开盘亏损卖出；信号日九转 {nt_text}"
+        elif trigger == "nineturn_up_to_down_sell_profit":
+            summary = f"升转降批次 T+2 盈利持有，T+3 收盘卖出；信号日九转 {nt_text}"
+        elif trigger == "nineturn_up_to_down_sell_profit_t3":
+            summary = (
+                f"升转降批次 T+3 收盘未超买入日收盘价，收盘卖出；信号日九转 {nt_text}"
+            )
+        elif trigger == "nineturn_up_to_down_sell_profit_trail":
+            summary = (
+                f"升转降盈利持仓：T+3 后收盘超买入日收盘价继续持有，"
+                f"当日收盘亏损平仓；信号日九转 {nt_text}"
+            )
+        elif trigger == "no_signal_liquidate":
+            summary = "当日无升转降信号，T+1 开盘清仓后暂停交易"
+        else:
+            summary = f"{action}；九转 {nt_text}"
+        return {
+            "trigger": trigger,
+            "action": action,
+            "summary": summary,
+            **snapshot,
+        }
+
+    @staticmethod
+    def _nineturn_prev_trade_date(
+        trading_days: List[str],
+        day_idx: int,
+        prev_month_last_day: Optional[str] = None,
+    ) -> Optional[str]:
+        """九转对比的前一交易日；月初第 1 天取上月末（若提供）。"""
+        if day_idx < 0 or day_idx >= len(trading_days):
+            return None
+        if day_idx >= 1:
+            return trading_days[day_idx - 1]
+        return prev_month_last_day
+
+    @staticmethod
+    def _nineturn_reversal_snapshot(
+        trading_days: List[str],
+        day_idx: int,
+        tc: str,
+        nineturn_cache: Dict[str, Dict[str, Dict[str, int]]],
+        prev_month_last_day: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """升转降信号日九转快照（用于卖出理由）。"""
+        if day_idx < 0 or day_idx >= len(trading_days):
+            return {}
+        prev_d = BrokerRecommendService._nineturn_prev_trade_date(
+            trading_days, day_idx, prev_month_last_day,
+        )
+        if not prev_d:
+            return {}
+        curr_d = trading_days[day_idx]
+        prev_nt = BrokerRecommendService._normalize_nineturn_record(
+            nineturn_cache.get(prev_d, {}).get(tc),
+        )
+        curr_nt = BrokerRecommendService._normalize_nineturn_record(
+            nineturn_cache.get(curr_d, {}).get(tc),
+        )
+        return {
+            "signal_date": curr_d,
+            "nineturn_up_count": curr_nt["up_count"],
+            "nineturn_down_count": curr_nt["down_count"],
+            "prev_nineturn_up_count": prev_nt["up_count"],
+            "prev_nineturn_down_count": prev_nt["down_count"],
+            "pattern": None,
+            "pattern_days": [],
+            "pattern_closes": [],
+            "pattern_signs": [],
+            "day_moves": [],
+        }
+
+    @staticmethod
+    def _nineturn_up_to_down_on_day(
+        nineturn_cache: Dict[str, Dict[str, Dict[str, int]]],
+        trading_days: List[str],
+        day_idx: int,
+        ts_code: str,
+        prev_month_last_day: Optional[str] = None,
+    ) -> bool:
+        """第 day_idx 个交易日收盘判定：上升序列转下降（↓1 / 下跌九转 / 上升计数归零）。
+
+        仅前一日上升计数在 1..8（含）时视为有效买入信号；升 9+ 转降忽略。
+        day_idx=0 时前一日为上月末交易日（若提供）。
+        """
+        if day_idx < 0 or day_idx >= len(trading_days):
+            return False
+        prev_d = BrokerRecommendService._nineturn_prev_trade_date(
+            trading_days, day_idx, prev_month_last_day,
+        )
+        if not prev_d:
+            return False
+        curr_d = trading_days[day_idx]
+        prev_nt = BrokerRecommendService._normalize_nineturn_record(
+            nineturn_cache.get(prev_d, {}).get(ts_code),
+        )
+        curr_nt = BrokerRecommendService._normalize_nineturn_record(
+            nineturn_cache.get(curr_d, {}).get(ts_code),
+        )
+        prev_up = prev_nt["up_count"]
+        if prev_up not in BrokerRecommendService._STRATEGY_UP_TO_DOWN_ALLOWED_UP_COUNTS:
+            return False
+        return (
+            curr_nt["down_count"] >= 1
+            or curr_nt["nine_down_turn"] >= 1
+            or (curr_nt["up_count"] == 0 and prev_up >= 1)
+        )
+
+    @staticmethod
+    def _nineturn_down_to_up_on_day(
+        nineturn_cache: Dict[str, Dict[str, Dict[str, int]]],
+        trading_days: List[str],
+        day_idx: int,
+        ts_code: str,
+        prev_month_last_day: Optional[str] = None,
+    ) -> bool:
+        """第 day_idx 个交易日收盘判定：下降序列转上升（↑1 / 上涨九转 / 下降计数归零）。
+
+        仅前一日下降计数在 1..8（含）时视为有效；降 9+ 转升忽略。
+        day_idx=0 时前一日为上月末交易日（若提供）。
+        """
+        if day_idx < 0 or day_idx >= len(trading_days):
+            return False
+        prev_d = BrokerRecommendService._nineturn_prev_trade_date(
+            trading_days, day_idx, prev_month_last_day,
+        )
+        if not prev_d:
+            return False
+        curr_d = trading_days[day_idx]
+        prev_nt = BrokerRecommendService._normalize_nineturn_record(
+            nineturn_cache.get(prev_d, {}).get(ts_code),
+        )
+        curr_nt = BrokerRecommendService._normalize_nineturn_record(
+            nineturn_cache.get(curr_d, {}).get(ts_code),
+        )
+        prev_down = prev_nt["down_count"]
+        if prev_down not in BrokerRecommendService._STRATEGY_DOWN_TO_UP_ALLOWED_DOWN_COUNTS:
+            return False
+        return (
+            curr_nt["up_count"] >= 1
+            or curr_nt["nine_up_turn"] >= 1
+        )
+
+    def _build_month_trading_days(
+        self, month_sell_pairs: List[tuple],
+    ) -> Dict[str, List[str]]:
+        """一次拉取交易日历，返回各月持仓期交易日列表。"""
+        if not month_sell_pairs:
+            return {}
+        min_start = min(f"{month}01" for month, _ in month_sell_pairs)
+        max_end = max(sell_date for _, sell_date in month_sell_pairs)
+        all_days = self._get_trading_days(min_start, max_end)
+        days_by_month: Dict[str, List[str]] = {}
+        for td in all_days:
+            days_by_month.setdefault(td[:6], []).append(td)
+
+        month_trading_days: Dict[str, List[str]] = {}
+        for month, sell_date in month_sell_pairs:
+            month_days = [d for d in days_by_month.get(month, []) if d <= sell_date]
+            if month_days:
+                month_trading_days[month] = month_days
+        return month_trading_days
+
+    def _prefetch_nineturn_for_dates(
+        self,
+        date_pools: Dict[str, List[str]],
+        cache: Dict[str, Dict[str, Dict[str, int]]],
+    ) -> None:
+        """按交易日批量预取九转：内存/SQLite 缓存优先，每交易日至多一次全量 API。"""
+        if not date_pools:
+            return
+
+        empty_nt = {"up_count": 0, "down_count": 0, "nine_up_turn": 0, "nine_down_turn": 0}
+        tf = None
+        try:
+            from data_provider.tushare_fetcher import TushareFetcher
+
+            tf = TushareFetcher.get_instance()
+            if not tf.is_available:
+                tf = None
+        except Exception:
+            tf = None
+
+        to_persist: Dict[str, Dict[str, Any]] = {}
+
+        for trade_date in sorted(date_pools.keys()):
+            codes = list(dict.fromkeys(date_pools[trade_date]))
+            by_date = cache.setdefault(trade_date, {})
+            missing = [tc for tc in codes if tc not in by_date]
+            if not missing:
+                continue
+
+            try:
+                db_cache = self.db.get_enrichment_cache(missing, trade_date)
+                for tc, data in (db_cache or {}).items():
+                    nt = data.get("nineturn")
+                    if not nt:
+                        continue
+                    by_date[tc] = {
+                        "up_count": int(nt.get("up_count", 0) or 0),
+                        "down_count": int(nt.get("down_count", 0) or 0),
+                        "nine_up_turn": int(nt.get("nine_up_turn", 0) or 0),
+                        "nine_down_turn": int(nt.get("nine_down_turn", 0) or 0),
+                    }
+            except Exception as exc:
+                logger.debug("[BrokerRecommend] 九转 SQLite 预取失败 %s: %s", trade_date, exc)
+
+            missing = [tc for tc in missing if tc not in by_date]
+            if not missing:
+                continue
+
+            if tf is None:
+                for tc in missing:
+                    by_date.setdefault(tc, dict(empty_nt))
+                continue
+
+            try:
+                bulk = tf.get_bulk_nineturn(
+                    missing, trade_date, fallback_per_stock=False,
+                )
+                for tc, nt in bulk.items():
+                    row = {
+                        "up_count": int(nt.get("up_count", 0) or 0),
+                        "down_count": int(nt.get("down_count", 0) or 0),
+                        "nine_up_turn": int(nt.get("nine_up_turn", 0) or 0),
+                        "nine_down_turn": int(nt.get("nine_down_turn", 0) or 0),
+                    }
+                    by_date[tc] = row
+                    to_persist[tc] = {
+                        "trade_date": trade_date,
+                        **row,
+                    }
+                for tc in missing:
+                    if tc not in by_date:
+                        by_date[tc] = dict(empty_nt)
+            except Exception as exc:
+                logger.debug("[BrokerRecommend] 预取九转失败 %s: %s", trade_date, exc)
+                for tc in missing:
+                    by_date.setdefault(tc, dict(empty_nt))
+
+        if to_persist:
+            try:
+                self.db.save_enrichment_cache(nineturn_data=to_persist)
+            except Exception:
+                pass
+
+    @staticmethod
+    def _daily_open_as_raw(
+        open_val: Any,
+        close_raw: Any,
+        adj_factor: float,
+    ) -> Optional[float]:
+        """将日序列中的开盘价统一为不复权口径（兼容历史已存后复权 open）。"""
+        if open_val is None:
+            return None
+        try:
+            o = float(open_val)
+        except (TypeError, ValueError):
+            return None
+        if close_raw is None or adj_factor <= 1.01:
+            return o
+        try:
+            c = float(close_raw)
+        except (TypeError, ValueError):
+            return o
+        if c <= 0:
+            return o
+        # price 为不复权收盘时，open/price ≈ adj_factor 说明 open 已后复权
+        if abs((o / c) - adj_factor) / adj_factor < 0.12:
+            return o / adj_factor
+        return o
+
+    def _build_stock_adj_ohlc_maps(
+        self, ts_code: str, daily_returns: List[Dict[str, Any]],
+    ) -> tuple:
+        """从回测日序列提取不复权与后复权开盘/收盘价映射。"""
+        code = ts_code.split(".")[0] if "." in ts_code else ts_code
+        adj_map = self._load_all_adj_factors([ts_code]).get(code, {})
+        raw_open: Dict[str, float] = {}
+        raw_close: Dict[str, float] = {}
+        adj_open: Dict[str, float] = {}
+        adj_close: Dict[str, float] = {}
+        for dr in sorted(daily_returns, key=lambda x: str(x.get("date", ""))):
+            d = str(dr.get("date", ""))
+            if not d:
+                continue
+            f = self._lookup_adj_factor(adj_map, d) if adj_map else 1.0
+            close_raw = dr.get("price", dr.get("close"))
+            if close_raw is not None:
+                close_f = float(close_raw)
+                raw_close[d] = round(close_f, 6)
+                adj_close[d] = round(close_f * f, 6)
+            open_field = dr.get("open", close_raw)
+            open_raw = self._daily_open_as_raw(open_field, close_raw, f)
+            if open_raw is not None:
+                raw_open[d] = round(open_raw, 6)
+                adj_open[d] = round(open_raw * f, 6)
+        return adj_open, adj_close, raw_open, raw_close
+
+    @staticmethod
+    def _enrich_daily_returns_for_trading_days(
+        daily_returns: List[Dict[str, Any]],
+        trading_days: List[str],
+        ohlc_by_date: Dict[str, Dict[str, Optional[float]]],
+    ) -> List[Dict[str, Any]]:
+        """为策略交易日补齐缺失 K 线（避免末日开盘/收盘无价）。"""
+        if not trading_days or not ohlc_by_date:
+            return daily_returns
+        existing = {str(d.get("date", "")) for d in daily_returns}
+        enriched = list(daily_returns)
+        for d in trading_days:
+            if d in existing:
+                continue
+            bar = ohlc_by_date.get(d) or {}
+            close = bar.get("close")
+            if close is None:
+                continue
+            enriched.append({
+                "date": d,
+                "price": round(float(close), 4),
+                "open": bar.get("open"),
+                "high": bar.get("high"),
+                "low": bar.get("low"),
+            })
+        return sorted(enriched, key=lambda x: str(x.get("date", "")))
+
+    @staticmethod
+    def _resolve_leg_exit_raw_price(
+        leg: Dict[str, Any],
+        tc: str,
+        sell_day: Optional[str],
+        raw_open_maps: Dict[str, Dict[str, float]],
+        raw_close_maps: Dict[str, Dict[str, float]],
+    ) -> Optional[float]:
+        """卖出展示价：开盘卖优先开盘价，缺失时回退收盘价。"""
+        if not sell_day:
+            return None
+        if leg.get("exit_at_close"):
+            order = (raw_close_maps,)
+        else:
+            order = (raw_open_maps, raw_close_maps)
+        for price_map in order:
+            px = price_map.get(tc, {}).get(sell_day)
+            if px is not None:
+                return px
+        return None
+
+
+    @staticmethod
+    def _simulate_month_nineturn_rotation(
+        trading_days: List[str],
+        stock_books: Dict[str, Dict[str, Any]],
+        nineturn_cache: Dict[str, Dict[str, Dict[str, int]]],
+        nav_start: float,
+        hist_stats: Optional[Dict[str, Dict[str, Any]]] = None,
+        min_hist_win_rate: float = 0.5,
+        max_holdings: int = 3,
+        forecast_spread_top_n: int = 3,
+        invested_principal_so_far: float = 0.0,
+        fixed_trade_amount: Optional[float] = None,
+        buy_patterns: tuple = (),
+        sell_patterns: tuple = (),
+        post_month_trading_days: Optional[List[str]] = None,
+        pattern_start_idx: int = 0,
+        use_price_pattern: Optional[bool] = None,
+        total_capital: Optional[float] = None,
+        prev_month_last_day: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """升转降策略：总资金固定；信号日 N 股 T+1 开盘均摊买；无信号 T+1 清仓后暂停。
+
+        卖出：T+2 开盘亏损则 T+2 开盘卖；盈利则 T+3 起收盘评估，
+        T+3 收盘超买入日收盘价则继续持有，直至收盘亏损卖出；
+        月末最后交易日收盘强制清仓（无行情则顺延开盘清仓，可跨月）。
+        升转降买入接受升 1..8 转降。月初第 1 天与上月末对比九转；
+        交易仅限当月：末交易日升转降忽略；T+1/T+2 须落在当月内才开仓。
+        """
+        capital = (
+            float(total_capital)
+            if total_capital is not None
+            else BrokerRecommendService._STRATEGY_TOTAL_CAPITAL
+        )
+        if len(trading_days) < 3:
+            return None
+
+        pool = list(stock_books.keys())
+        month_last_day = trading_days[-1]
+        post_month_days = [
+            d for d in (post_month_trading_days or [])
+            if d > month_last_day
+        ]
+        sim_days = list(trading_days) + post_month_days
+        last_month_idx = len(trading_days) - 1
+        last_sim_idx = len(sim_days) - 1
+        post_month_day_set = set(post_month_days)
+
+        close_maps = {tc: stock_books[tc]["adj_close"] for tc in pool}
+        open_maps = {tc: stock_books[tc]["adj_open"] for tc in pool}
+        raw_open_maps = {
+            tc: stock_books[tc].get("raw_open") or stock_books[tc]["adj_open"]
+            for tc in pool
+        }
+        raw_close_maps = {
+            tc: stock_books[tc].get("raw_close") or stock_books[tc]["adj_close"]
+            for tc in pool
+        }
+        month_day_set = set(trading_days)
+
+        cash = float(nav_start if nav_start > 0 else capital)
+        shares: Dict[str, float] = {}
+        holdings: set = set()
+        trading_paused = False
+
+        schedule_buy: Dict[int, tuple] = {}
+        schedule_t2_eval: Dict[int, tuple] = {}
+        schedule_liquidate: set = set()
+
+        daily_rows: List[Dict[str, Any]] = []
+        open_legs: Dict[str, Dict[str, Any]] = {}
+        completed_legs: List[Dict[str, Any]] = []
+        first_buy_day: Optional[str] = None
+
+        def _open_px(tc: str, day: str) -> Optional[float]:
+            px = open_maps.get(tc, {}).get(day)
+            if px is None or px <= 0:
+                px = close_maps.get(tc, {}).get(day)
+            return px if px and px > 0 else None
+
+        def _close_px(tc: str, day: str) -> Optional[float]:
+            px = close_maps.get(tc, {}).get(day)
+            if px is None or px <= 0:
+                px = open_maps.get(tc, {}).get(day)
+            return px if px and px > 0 else None
+
+        def _nav_at(day: str) -> float:
+            total = cash
+            for tc, sh in shares.items():
+                px = close_maps.get(tc, {}).get(day)
+                if px and sh:
+                    total += sh * px
+            return total
+
+        def _open_leg(
+            tc: str,
+            buy_date: str,
+            *,
+            buy_reason: Optional[Dict[str, Any]] = None,
+            buy_amount: Optional[float] = None,
+            signal_day_idx: Optional[int] = None,
+        ) -> None:
+            open_legs[tc] = {
+                "ts_code": tc,
+                "name": stock_books[tc]["name"],
+                "buy_date": buy_date,
+                "entry_at_close": False,
+                "buy_reason": buy_reason,
+                "buy_amount": buy_amount,
+                "signal_day_idx": signal_day_idx,
+                "profit_trail": False,
+                "trail_active": False,
+                "entry_close_ref": None,
+            }
+
+        def _close_leg(
+            tc: str,
+            sell_date: str,
+            *,
+            sell_reason: Optional[Dict[str, Any]] = None,
+            sell_amount: Optional[float] = None,
+            exit_at_close: bool = False,
+        ) -> None:
+            leg = open_legs.pop(tc, None)
+            if leg:
+                completed_legs.append({
+                    **leg,
+                    "sell_date": sell_date,
+                    "exit_at_close": exit_at_close,
+                    "sell_reason": sell_reason,
+                    "sell_amount": sell_amount,
+                })
+
+        def _sell_codes_at_open(
+            day: str,
+            day_idx: int,
+            codes: set,
+            *,
+            trigger: str,
+            action: str,
+            signal_day_idx: Optional[int] = None,
+        ) -> None:
+            nonlocal cash
+            for tc in codes:
+                sh = shares.get(tc, 0.0)
+                if not sh:
+                    continue
+                op = _open_px(tc, day)
+                if not op:
+                    continue
+                shares.pop(tc, None)
+                proceeds = sh * op
+                cash += proceeds
+                holdings.discard(tc)
+                if signal_day_idx is not None:
+                    snap = BrokerRecommendService._nineturn_reversal_snapshot(
+                        sim_days, signal_day_idx, tc, nineturn_cache,
+                        prev_month_last_day=prev_month_last_day,
+                    )
+                else:
+                    prev_sig = BrokerRecommendService._nineturn_prev_trade_date(
+                        sim_days, day_idx, prev_month_last_day,
+                    )
+                    snap = {"signal_date": prev_sig or day}
+                sell_reason = BrokerRecommendService._build_trade_reason(
+                    trigger, snap, action=action,
+                )
+                _close_leg(tc, day, sell_reason=sell_reason, sell_amount=proceeds)
+
+        def _sell_codes_at_close(
+            day: str,
+            day_idx: int,
+            codes: set,
+            *,
+            trigger: str,
+            action: str,
+            signal_day_idx: Optional[int] = None,
+        ) -> None:
+            nonlocal cash
+            for tc in codes:
+                sh = shares.get(tc, 0.0)
+                if not sh:
+                    continue
+                cp = _close_px(tc, day)
+                if not cp:
+                    continue
+                shares.pop(tc, None)
+                proceeds = sh * cp
+                cash += proceeds
+                holdings.discard(tc)
+                if signal_day_idx is not None:
+                    snap = BrokerRecommendService._nineturn_reversal_snapshot(
+                        sim_days, signal_day_idx, tc, nineturn_cache,
+                        prev_month_last_day=prev_month_last_day,
+                    )
+                else:
+                    prev_sig = BrokerRecommendService._nineturn_prev_trade_date(
+                        sim_days, day_idx, prev_month_last_day,
+                    )
+                    snap = {"signal_date": prev_sig or day}
+                sell_reason = BrokerRecommendService._build_trade_reason(
+                    trigger, snap, action=action,
+                )
+                _close_leg(
+                    tc, day, sell_reason=sell_reason, sell_amount=proceeds,
+                    exit_at_close=True,
+                )
+
+        def _eval_t2_sell_batch(day: str, day_idx: int, codes: set, sig_idx: int) -> None:
+            """T+2 开盘按盈亏分岔：亏损 T+2 开盘卖，盈利进入 T+3 起收盘跟踪。"""
+            loss_codes: set = set()
+            for tc in codes:
+                if tc not in holdings:
+                    continue
+                leg = open_legs.get(tc)
+                if not leg:
+                    continue
+                entry_day = leg.get("buy_date")
+                if not entry_day:
+                    continue
+                entry_px = _open_px(tc, entry_day)
+                t2_open = _open_px(tc, day)
+                if entry_px is None or t2_open is None:
+                    continue
+                if t2_open > entry_px:
+                    leg["profit_trail"] = True
+                    leg["trail_active"] = False
+                    leg["entry_close_ref"] = _close_px(tc, entry_day)
+                    leg["signal_day_idx"] = sig_idx
+                else:
+                    loss_codes.add(tc)
+            if loss_codes:
+                _sell_codes_at_open(
+                    day,
+                    day_idx,
+                    loss_codes,
+                    trigger="nineturn_up_to_down_sell_loss",
+                    action="T+2开盘亏损卖出",
+                    signal_day_idx=sig_idx,
+                )
+
+        def _eval_profit_trail_at_close(day: str, day_idx: int) -> None:
+            """盈利仓：T+3 收盘超买入日收盘价则继续持有，直至收盘亏损卖出。"""
+            pending: List[tuple] = []
+            for tc in list(holdings):
+                leg = open_legs.get(tc)
+                if not leg or not leg.get("profit_trail"):
+                    continue
+                buy_date = leg.get("buy_date")
+                if not buy_date or buy_date not in sim_days:
+                    continue
+                buy_idx = sim_days.index(buy_date)
+                if day_idx < buy_idx + 2:
+                    continue
+                entry_open = _open_px(tc, buy_date)
+                entry_close = leg.get("entry_close_ref")
+                if entry_close is None:
+                    entry_close = _close_px(tc, buy_date)
+                curr_close = _close_px(tc, day)
+                if entry_open is None or entry_close is None or curr_close is None:
+                    continue
+                sig_idx = leg.get("signal_day_idx")
+                if not leg.get("trail_active"):
+                    if curr_close > entry_close:
+                        leg["trail_active"] = True
+                        continue
+                    pending.append((
+                        tc,
+                        sig_idx,
+                        "nineturn_up_to_down_sell_profit_t3",
+                        "T+3收盘未超买入日收盘价卖出",
+                    ))
+                elif curr_close < entry_open:
+                    pending.append((
+                        tc,
+                        sig_idx,
+                        "nineturn_up_to_down_sell_profit_trail",
+                        "盈利持仓收盘亏损卖出",
+                    ))
+            for tc, sig_idx, trigger, action in pending:
+                _sell_codes_at_close(
+                    day,
+                    day_idx,
+                    {tc},
+                    trigger=trigger,
+                    action=action,
+                    signal_day_idx=sig_idx,
+                )
+
+        def _strict_close_px(tc: str, day: str) -> Optional[float]:
+            px = close_maps.get(tc, {}).get(day)
+            return px if px and px > 0 else None
+
+        def _force_month_end_liquidate_at_close(day: str, day_idx: int) -> None:
+            """月末最后交易日：有收盘价则收盘强制清仓。"""
+            if day_idx != last_month_idx or not holdings:
+                return
+            closable = {
+                tc for tc in holdings
+                if _strict_close_px(tc, day)
+            }
+            if closable:
+                _sell_codes_at_close(
+                    day,
+                    day_idx,
+                    closable,
+                    trigger="month_end",
+                    action="月末强制清仓",
+                )
+
+        def _deferred_month_end_liquidate_at_open(day: str, day_idx: int) -> None:
+            """月末无收盘价时，顺延至下月有开盘价交易日开盘清仓。"""
+            if day_idx <= last_month_idx or not holdings:
+                return
+            sellable = {
+                tc for tc in holdings
+                if _open_px(tc, day)
+            }
+            if sellable:
+                _sell_codes_at_open(
+                    day,
+                    day_idx,
+                    sellable,
+                    trigger="month_end_deferred",
+                    action="月末顺延开盘清仓",
+                )
+
+        def _liquidate_all_at_open(day: str, day_idx: int) -> None:
+            if not holdings:
+                return
+            _sell_codes_at_open(
+                day,
+                day_idx,
+                set(holdings),
+                trigger="no_signal_liquidate",
+                action="无信号清仓",
+                signal_day_idx=None,
+            )
+
+        def _buy_batch_at_open(
+            day: str,
+            day_idx: int,
+            codes: List[str],
+            signal_day_idx: int,
+        ) -> None:
+            nonlocal cash, first_buy_day
+            if not codes or holdings:
+                return
+            n = len(codes)
+            deploy = min(capital, cash)
+            if deploy <= 0:
+                return
+            budget_each = deploy / n
+            for tc in codes:
+                if tc in holdings:
+                    continue
+                op = _open_px(tc, day)
+                if not op:
+                    continue
+                shares[tc] = budget_each / op
+                cash -= budget_each
+                holdings.add(tc)
+                snap = BrokerRecommendService._nineturn_reversal_snapshot(
+                    sim_days, signal_day_idx, tc, nineturn_cache,
+                    prev_month_last_day=prev_month_last_day,
+                )
+                buy_reason = BrokerRecommendService._build_trade_reason(
+                    "nineturn_up_to_down_buy", snap, action="升转降买入",
+                )
+                _open_leg(
+                    tc,
+                    day,
+                    buy_reason=buy_reason,
+                    buy_amount=budget_each,
+                    signal_day_idx=signal_day_idx,
+                )
+                if first_buy_day is None:
+                    first_buy_day = day
+
+        if trading_days:
+            daily_rows.append({
+                "date": trading_days[0],
+                "nav": cash,
+                "stock_count": 0,
+            })
+
+        for i, day in enumerate(sim_days):
+            if i in schedule_t2_eval:
+                codes, sig_idx = schedule_t2_eval.pop(i)
+                _eval_t2_sell_batch(day, i, set(codes) & holdings, sig_idx)
+
+            if i in schedule_liquidate:
+                _liquidate_all_at_open(day, i)
+                trading_paused = True
+                schedule_liquidate.discard(i)
+
+            if i in schedule_buy and not trading_paused:
+                codes, sig_idx = schedule_buy.pop(i)
+                _buy_batch_at_open(day, i, list(codes), sig_idx)
+
+            if 0 <= i < last_month_idx:
+                signal_codes = [
+                    tc for tc in pool
+                    if BrokerRecommendService._nineturn_up_to_down_on_day(
+                        nineturn_cache, sim_days, i, tc,
+                        prev_month_last_day=prev_month_last_day,
+                    )
+                ]
+                if (
+                    signal_codes
+                    and i + 2 <= last_month_idx
+                    and not holdings
+                ):
+                    trading_paused = False
+                    schedule_buy[i + 1] = (signal_codes, i)
+                    schedule_t2_eval[i + 2] = (set(signal_codes), i)
+                elif not signal_codes:
+                    next_i = i + 1
+                    profit_trail_hold = any(
+                        open_legs.get(tc, {}).get("profit_trail")
+                        for tc in holdings
+                    )
+                    if (
+                        next_i <= last_month_idx
+                        and next_i not in schedule_t2_eval
+                        and next_i not in schedule_buy
+                        and not profit_trail_hold
+                    ):
+                        schedule_liquidate.add(next_i)
+
+            if i <= last_month_idx:
+                _eval_profit_trail_at_close(day, i)
+            if i == last_month_idx:
+                _force_month_end_liquidate_at_close(day, i)
+            elif i > last_month_idx:
+                _deferred_month_end_liquidate_at_open(day, i)
+
+            if day in month_day_set:
+                nav_close = _nav_at(day) if holdings else cash
+                daily_rows.append({
+                    "date": day,
+                    "nav": nav_close,
+                    "stock_count": len(holdings),
+                })
+
+        if holdings:
+            last_day = sim_days[last_sim_idx]
+            for tc in list(holdings):
+                sh = shares.get(tc, 0.0)
+                if not sh:
+                    continue
+                op = _open_px(tc, last_day)
+                if not op:
+                    cp = _close_px(tc, last_day)
+                    if not cp:
+                        continue
+                    op = cp
+                shares.pop(tc, None)
+                proceeds = sh * op
+                cash += proceeds
+                holdings.discard(tc)
+                snap = {"signal_date": month_last_day, "next_sell_date": last_day}
+                sell_reason = BrokerRecommendService._build_trade_reason(
+                    "month_end_deferred",
+                    snap,
+                    action="月末顺延开盘清仓",
+                )
+                _close_leg(
+                    tc,
+                    last_day,
+                    sell_reason=sell_reason,
+                    sell_amount=proceeds,
+                    exit_at_close=False,
+                )
+            if daily_rows and daily_rows[-1]["date"] == month_last_day:
+                daily_rows[-1]["nav"] = cash
+                daily_rows[-1]["stock_count"] = 0
+
+        nav_end = cash
+        month_return = (nav_end / nav_start - 1.0) if nav_start > 0 else 0.0
+
+        stocks_detail = []
+        allowed_sell_days = month_day_set | post_month_day_set
+        for leg in sorted(
+            (
+                lg for lg in completed_legs
+                if lg.get("buy_date") in month_day_set
+                and lg.get("sell_date") in allowed_sell_days
+            ),
+            key=lambda x: (x.get("buy_date") or "", x["ts_code"]),
+        ):
+            tc = leg["ts_code"]
+            entry = leg.get("buy_date")
+            sell_day = leg.get("sell_date")
+            entry_px_adj = open_maps[tc].get(entry) if entry else None
+            entry_px_raw = raw_open_maps[tc].get(entry) if entry else None
+            exit_px_raw = BrokerRecommendService._resolve_leg_exit_raw_price(
+                leg, tc, sell_day, raw_open_maps, raw_close_maps,
+            )
+            exit_px_adj = None
+            if sell_day:
+                if leg.get("exit_at_close"):
+                    exit_px_adj = close_maps[tc].get(sell_day) or open_maps[tc].get(sell_day)
+                else:
+                    exit_px_adj = open_maps[tc].get(sell_day) or close_maps[tc].get(sell_day)
+            if (
+                exit_px_adj is None
+                and exit_px_raw is not None
+                and entry_px_adj
+                and entry_px_raw
+            ):
+                exit_px_adj = entry_px_adj * (exit_px_raw / entry_px_raw)
+            buy_amt = leg.get("buy_amount")
+            sell_amt = leg.get("sell_amount")
+            stock_ret = None
+            if sell_amt is not None and buy_amt and buy_amt > 0:
+                stock_ret = round((float(sell_amt) - float(buy_amt)) / float(buy_amt), 4)
+            elif entry_px_adj and exit_px_adj and entry_px_adj > 0:
+                stock_ret = round((exit_px_adj - entry_px_adj) / entry_px_adj, 4)
+            stocks_detail.append({
+                "ts_code": tc,
+                "name": leg["name"],
+                "month_return": stock_ret,
+                "buy_date": entry,
+                "sell_date": sell_day,
+                "buy_price": round(entry_px_raw, 2) if entry_px_raw is not None else None,
+                "buy_amount": buy_amt,
+                "sell_price": round(exit_px_raw, 2) if exit_px_raw is not None else None,
+                "sell_amount": round(sell_amt, 4) if sell_amt is not None else None,
+                "buy_reason": leg.get("buy_reason"),
+                "sell_reason": leg.get("sell_reason"),
+            })
+
+        return {
+            "buy_date": first_buy_day,
+            "month_return": round(month_return, 4),
+            "nav_end": nav_end,
+            "daily_rows": daily_rows,
+            "stocks": stocks_detail,
+            "stock_count": len(stocks_detail),
+        }
+
+
+    def _compute_equal_weight_strategy_impl(
+        self,
+        top_n: int,
+        start_month: Optional[str] = None,
+        end_month: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """策略计算：总资金固定；升转降 T+1 开盘买；T+2 亏损开盘卖/盈利 T+3 收盘卖；无信号 T+1 清仓后暂停。"""
+        from datetime import datetime
+
+        all_backtests = self.db.get_all_broker_backtests()
+
+        current_month = datetime.now().strftime("%Y%m")
+        stored_months = {bt["month"] for bt in all_backtests}
+        if current_month not in stored_months:
+            df = self.get_monthly_recommendations(current_month)
+            if df is not None and not df.empty:
+                try:
+                    current_bt = self.compute_backtest(current_month)
+                except Exception:
+                    current_bt = None
+                if current_bt and "error" not in current_bt:
+                    all_backtests = list(all_backtests)
+                    all_backtests.append(current_bt)
+                    all_backtests.sort(key=lambda x: x["month"])
+        if not all_backtests:
+            return {"error": "No backtest data available"}
+
+        if start_month:
+            all_backtests = [bt for bt in all_backtests if bt["month"] >= start_month]
+        if end_month:
+            all_backtests = [bt for bt in all_backtests if bt["month"] <= end_month]
+        if not all_backtests:
+            return {"error": "No backtest data available for selected period"}
+
+        nineturn_cache = self._load_nineturn_by_trade_date_cache()
+        month_sell_pairs = [
+            (bt["month"], bt.get("sell_date") or self._effective_month_end(bt["month"]))
+            for bt in all_backtests
+        ]
+        month_trading_days = self._build_month_trading_days(month_sell_pairs)
+        date_pools: Dict[str, List[str]] = {}
+        prev_month_last_by_month: Dict[str, Optional[str]] = {}
+        for bt in all_backtests:
+            month = bt["month"]
+            days = month_trading_days.get(month, [])
+            if not days:
+                continue
+            pool = [sr["ts_code"] for sr in bt.get("stock_returns", [])]
+            for td in days:
+                date_pools.setdefault(td, []).extend(pool)
+            prev_last = self._prev_month_last_trading_day(month)
+            prev_month_last_by_month[month] = prev_last
+            if prev_last:
+                date_pools.setdefault(prev_last, []).extend(pool)
+        self._prefetch_nineturn_for_dates(date_pools, nineturn_cache)
+
+        strategy_daily: List[Dict[str, Any]] = []
+        strategy_monthly: List[Dict[str, Any]] = []
+        total_capital = self._STRATEGY_TOTAL_CAPITAL
+        nav_start = float(total_capital)
+
+        for bt in all_backtests:
+            month = bt["month"]
+            trading_days = month_trading_days.get(month, [])
+            if len(trading_days) < 3:
+                continue
+
+            post_month_days = self._trading_days_after(
+                trading_days[-1],
+                max_count=self._STRATEGY_MONTH_END_DEFER_MAX_DAYS,
+            )
+            quote_days = list(trading_days) + post_month_days
+            stock_books: Dict[str, Dict[str, Any]] = {}
+            ohlc_by_code = self._prefetch_ohlc(
+                [sr["ts_code"] for sr in bt.get("stock_returns", [])],
+                trading_days[0],
+                quote_days[-1],
+                use_adj=False,
+            )
+            for sr in bt.get("stock_returns", []):
+                tc = sr["ts_code"]
+                synced_returns = self._sync_daily_returns_from_ohlc(
+                    tc,
+                    sr.get("daily_returns", []),
+                    trading_days[0],
+                    quote_days[-1],
+                )
+                synced_returns = self._enrich_daily_returns_for_trading_days(
+                    synced_returns,
+                    quote_days,
+                    ohlc_by_code.get(tc, {}),
+                )
+                adj_open, adj_close, raw_open, raw_close = self._build_stock_adj_ohlc_maps(
+                    tc, synced_returns,
+                )
+                if not adj_open or not adj_close:
+                    continue
+                stock_books[tc] = {
+                    "name": sr.get("name", ""),
+                    "adj_open": adj_open,
+                    "adj_close": adj_close,
+                    "raw_open": raw_open,
+                    "raw_close": raw_close,
+                    "forecast": sr.get("forecast") or {},
+                }
+            if not stock_books:
+                continue
+
+            month_result = self._simulate_month_nineturn_rotation(
+                trading_days,
+                stock_books,
+                nineturn_cache,
+                nav_start,
+                total_capital=total_capital,
+                post_month_trading_days=post_month_days,
+                prev_month_last_day=prev_month_last_by_month.get(month),
+            )
+            if not month_result:
+                continue
+
+            nav_start = month_result["nav_end"]
+            period_cum = (
+                nav_start / total_capital - 1.0
+                if total_capital > 0
+                else 0.0
+            )
+            strategy_monthly.append({
+                "month": month,
+                "buy_date": month_result["buy_date"],
+                "month_return": round(month_result["month_return"], 4),
+                "cumulative_return": round(period_cum, 4),
+                "stock_count": month_result["stock_count"],
+                "stocks": month_result["stocks"],
+            })
+            for row in month_result["daily_rows"]:
+                row_cum = (
+                    row["nav"] / total_capital - 1.0
+                    if total_capital > 0
+                    else 0.0
+                )
+                point = {
+                    "date": row["date"],
+                    "cumulative": round(row_cum, 4),
+                    "stock_count": row["stock_count"],
+                }
+                if strategy_daily and strategy_daily[-1]["date"] == point["date"]:
+                    strategy_daily[-1] = point
+                else:
+                    strategy_daily.append(point)
+
+        if not strategy_daily:
+            return {"error": "No matching months for strategy"}
+
+        for i, dr in enumerate(strategy_daily):
+            if i == 0:
+                dr["daily_return"] = dr["cumulative"]
+            else:
+                dr["daily_return"] = round(
+                    dr["cumulative"] - strategy_daily[i - 1]["cumulative"], 4,
+                )
+
+        prev_cum = (
+            nav_start / total_capital - 1.0
+            if total_capital > 0
+            else 0.0
+        )
+        if strategy_daily:
+            strategy_daily[-1]["cumulative"] = round(prev_cum, 4)
+        return {
+            "strategy": "nineturn_up_to_down_open",
+            "total_capital": total_capital,
+            "top_n": top_n,
+            "period_start_month": strategy_monthly[0]["month"],
+            "period_end_month": strategy_monthly[-1]["month"],
+            "start_date": strategy_daily[0]["date"],
+            "end_date": strategy_daily[-1]["date"],
+            "total_months": len(strategy_monthly),
+            "cumulative_return": round(prev_cum, 4),
+            "daily_returns": strategy_daily,
+            "monthly_returns": strategy_monthly,
+            "rank_stats": [],
+            "up_to_down_stats": self._compute_up_to_down_trade_stats(strategy_monthly),
+            "multi_curves": {},
+        }
+
+    @staticmethod
+    def _rebase_cum_map_from_date(
+        cum_map: Dict[str, float], anchor_date: str,
+    ) -> Optional[Dict[str, float]]:
+        """将月初累计收益序列重算为自 anchor_date 买入后的累计收益。"""
+        if not cum_map:
+            return None
+        sorted_dates = sorted(cum_map.keys())
+        anchor: Optional[str] = None
+        for d in sorted_dates:
+            if d >= anchor_date:
+                anchor = d
+                break
+        if anchor is None:
+            return None
+        base = cum_map[anchor]
+        denom = 1.0 + base
+        if denom <= 0:
+            return None
+        rebased: Dict[str, float] = {}
+        for d in sorted_dates:
+            if d < anchor:
+                continue
+            rebased[d] = round((1.0 + cum_map[d]) / denom - 1.0, 4)
+        return rebased or None
+
+    @staticmethod
+    def _prev_month_str(month: str) -> str:
+        """返回上一个月，格式 YYYYMM。"""
+        year = int(month[:4])
+        mon = int(month[4:6])
+        if mon == 1:
+            return f"{year - 1}12"
+        return f"{year}{mon - 1:02d}"
+
+    def _prev_month_last_trading_day(self, month: str) -> Optional[str]:
+        """返回上月最后一个交易日，供月初九转与跨月连续序列对比。"""
+        prev_month = self._prev_month_str(month)
+        return self._calendar_month_last_trading_day(prev_month)
+
+    def _calendar_month_last_trading_day(self, month: str) -> Optional[str]:
+        """返回指定自然月最后一个交易日（与数据截止日无关）。"""
+        year = int(month[:4])
+        mon = int(month[4:6])
+        last_cal = calendar.monthrange(year, mon)[1]
+        days = self._get_trading_days(f"{month}01", f"{month}{last_cal:02d}")
+        return days[-1] if days else None
 
     def get_alltime_top_brokers(self, top_n: int = 5) -> List[str]:
         """返回有史以来累计收益前 N 的券商名称列表。

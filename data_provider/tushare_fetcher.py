@@ -1765,10 +1765,17 @@ class TushareFetcher(BaseFetcher):
             logger.warning(f"[Tushare] 获取神奇九转失败 {stock_code}: {e}")
             return None
 
-    def get_bulk_nineturn(self, ts_codes: List[str], trade_date: str) -> Dict[str, Dict[str, Any]]:
+    def get_bulk_nineturn(
+        self,
+        ts_codes: List[str],
+        trade_date: str,
+        *,
+        fallback_per_stock: bool = True,
+    ) -> Dict[str, Dict[str, Any]]:
         """批量获取多只股票的神奇九转数据。
 
-        优先尝试单次全量查询（不传 ts_code），失败时回退逐条查询。
+        优先尝试单次全量查询（不传 ts_code）；``fallback_per_stock=False`` 时不逐条回退，
+        避免策略回测预取触发接口频率超限。
         """
         result: Dict[str, Dict[str, Any]] = {}
         if not self._api:
@@ -1803,6 +1810,9 @@ class TushareFetcher(BaseFetcher):
                 return result
         except Exception as e:
             logger.debug(f"[批量神奇九转] 全量查询失败，回退逐条: {e}")
+
+        if not fallback_per_stock:
+            return result
 
         # 回退逐条查询
         for ts_code in ts_codes:

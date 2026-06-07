@@ -2,10 +2,12 @@ import type React from 'react';
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import dayjs, { type Dayjs } from 'dayjs';
-import { DatePicker, Table, Tabs } from 'antd';
+import { DatePicker, Table, Tabs, Tooltip as AntTooltip } from 'antd';
+
+const { RangePicker } = DatePicker;
 import zhCN from 'antd/locale/zh_CN';
 import type { ColumnsType } from 'antd/es/table';
-import { TrendingUp, RefreshCw, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
+import { TrendingUp, RefreshCw, ChevronDown, ChevronRight, Loader2, CheckSquare, Square } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { AppPage, Button, Card, EmptyState } from '../components/common';
 
@@ -238,7 +240,11 @@ import {
   getTopBrokers,
   getStockHistory,
   getHistoricalRecommendStats,
+  getEqualWeightStrategy,
+  getMonthlyUpToDownDaily,
   type HistoricalRecommendStatsItem,
+  type UpToDownDailyResponse,
+  type UpToDownDailyStockItem,
   type BrokerRecommendResponse,
   type StockHistoryResponse,
   type StockHistoryEntry,
@@ -248,11 +254,161 @@ import {
   type EnrichmentResponse,
   type YtdBacktestResponse,
   type ConsecutiveStockItem,
+  type EqualWeightStrategyResponse,
 } from '../api/brokerRecommend';
 import { stocksApi } from '../api/stocks';
 
 /** 当前月：历史推荐月份数最多的股票行数（红色高亮） */
 const HISTORY_RECOMMEND_TOP_N = 10;
+
+const UP_TO_DOWN_STRUCK_STORAGE_KEY = 'broker_recommend_up_to_down_struck';
+
+function loadUpToDownStruckSet(): Set<string> {
+  try {
+    const raw = localStorage.getItem(UP_TO_DOWN_STRUCK_STORAGE_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw) as string[];
+    return new Set(Array.isArray(parsed) ? parsed : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveUpToDownStruckSet(keys: Set<string>): void {
+  try {
+    localStorage.setItem(UP_TO_DOWN_STRUCK_STORAGE_KEY, JSON.stringify([...keys]));
+  } catch {
+    /* ignore quota errors */
+  }
+}
+
+function upToDownStruckRowKey(
+  month: string,
+  signalDate: string,
+  tsCode: string,
+  signalType: string,
+): string {
+  return `${month}:${signalDate}:${tsCode}:${signalType}`;
+}
+
+function formatReversalSignalLabel(row: UpToDownDailyStockItem): string {
+  if (row.signal_type === 'down_to_up') {
+    return `降${row.prev_nineturn_down_count ?? 0}升`;
+  }
+  return `升${row.prev_nineturn_up_count}转降`;
+}
+
+type ReversalSignalTableProps = {
+  title: string;
+  titleClassName: string;
+  signalType: 'up_to_down' | 'down_to_up';
+  signalDate: string;
+  monthStr: string;
+  stocks: UpToDownDailyStockItem[];
+  struckSet: Set<string>;
+  emptyText: string;
+  onToggleStruck: (signalDate: string, tsCode: string, signalType: string) => void;
+  onFocusStock: (tsCode: string) => void;
+};
+
+const ReversalSignalTable: React.FC<ReversalSignalTableProps> = ({
+  title,
+  titleClassName,
+  signalType,
+  signalDate,
+  monthStr,
+  stocks,
+  struckSet,
+  emptyText,
+  onToggleStruck,
+  onFocusStock,
+}) => (
+  <div className="min-w-0">
+    <div className={`text-xs font-medium mb-2 ${titleClassName}`}>{title}</div>
+    {stocks.length ? (
+      <Table
+        size="small"
+        pagination={false}
+        tableLayout="fixed"
+        rowKey="ts_code"
+        dataSource={stocks}
+        onRow={(record) => {
+          const struck = struckSet.has(
+            upToDownStruckRowKey(monthStr, signalDate, record.ts_code, signalType),
+          );
+          return struck
+            ? { className: '[&_td:not(:first-child)]:line-through [&_td:not(:first-child)]:opacity-50' }
+            : {};
+        }}
+        columns={[
+          {
+            title: '',
+            key: 'struck',
+            width: 36,
+            render: (_: unknown, row: UpToDownDailyStockItem) => {
+              const struck = struckSet.has(
+                upToDownStruckRowKey(monthStr, signalDate, row.ts_code, signalType),
+              );
+              return (
+                <button
+                  type="button"
+                  aria-label={struck ? '取消划线' : '划线标记'}
+                  className="flex items-center justify-center text-tertiary-text hover:text-secondary-text cursor-pointer"
+                  onClick={() => onToggleStruck(signalDate, row.ts_code, signalType)}
+                >
+                  {struck
+                    ? <CheckSquare className="h-4 w-4 text-cyan/80" />
+                    : <Square className="h-4 w-4" />}
+                </button>
+              );
+            },
+          },
+          {
+            title: '股票',
+            dataIndex: 'name',
+            width: '28%',
+            ellipsis: true,
+            render: (name: string, row: UpToDownDailyStockItem) => (
+              <button
+                type="button"
+                className="max-w-full truncate text-left text-xs font-medium text-cyan hover:underline cursor-pointer"
+                onClick={() => onFocusStock(row.ts_code)}
+              >
+                {name || row.ts_code}
+              </button>
+            ),
+          },
+          {
+            title: '代码',
+            dataIndex: 'ts_code',
+            width: '28%',
+            ellipsis: true,
+            render: (code: string) => (
+              <span className="text-xs font-mono text-secondary-text">{code}</span>
+            ),
+          },
+          {
+            title: '信号',
+            key: 'signal',
+            width: '24%',
+            ellipsis: true,
+            render: (_: unknown, row: UpToDownDailyStockItem) => (
+              <span className={titleClassName}>{formatReversalSignalLabel(row)}</span>
+            ),
+          },
+          {
+            title: '券商家数',
+            dataIndex: 'broker_count',
+            width: '20%',
+            align: 'left',
+          },
+        ]}
+      />
+    ) : (
+      <div className="text-xs text-tertiary-text py-2">{emptyText}</div>
+    )}
+  </div>
+);
 
 const BROKER_COLORS = [
   '#34d399', '#60a5fa', '#f472b6', '#fbbf24', '#a78bfa',
@@ -318,6 +474,102 @@ function StockTagsCell({ row }: { row: StockRow }) {
 function fmtPct(v?: number | null): string {
   if (v == null) return '--';
   return `${v >= 0 ? '+' : ''}${(v * 100).toFixed(2)}%`;
+}
+
+type StrategyMonthlyStock = {
+  month_return?: number | null;
+  buy_amount?: number | null;
+  sell_amount?: number | null;
+  buy_reason?: {
+    prev_nineturn_up_count?: number;
+  };
+};
+
+function legPnl(s: StrategyMonthlyStock): number | null {
+  const buyAmt = s.buy_amount;
+  const sellAmt = s.sell_amount;
+  if (buyAmt != null && sellAmt != null) {
+    return sellAmt - buyAmt;
+  }
+  const ret = s.month_return;
+  if (ret != null && buyAmt != null && buyAmt > 0) {
+    return ret * buyAmt;
+  }
+  return ret ?? null;
+}
+
+type BestUpToDownSignal = {
+  label: string;
+  returnPct: number;
+};
+
+function bestUpToDownSignal(stocks?: StrategyMonthlyStock[]): BestUpToDownSignal | null {
+  if (!stocks?.length) return null;
+  const bucketPnl = new Map<number, number>();
+  const bucketInvested = new Map<number, number>();
+  for (const s of stocks) {
+    const up = s.buy_reason?.prev_nineturn_up_count;
+    const pnl = legPnl(s);
+    if (up == null || up < 1 || pnl == null) continue;
+    bucketPnl.set(up, (bucketPnl.get(up) ?? 0) + pnl);
+    const buyAmt = s.buy_amount;
+    if (buyAmt != null && buyAmt > 0) {
+      bucketInvested.set(up, (bucketInvested.get(up) ?? 0) + buyAmt);
+    }
+  }
+  let bestUp: number | null = null;
+  let bestPnl = -Infinity;
+  for (const [up, pnl] of bucketPnl) {
+    if (pnl > bestPnl) {
+      bestPnl = pnl;
+      bestUp = up;
+    }
+  }
+  if (bestUp == null) return null;
+  const invested = bucketInvested.get(bestUp) ?? 0;
+  const returnPct = invested > 0 ? bestPnl / invested : bestPnl;
+  return {
+    label: `升${bestUp}转降`,
+    returnPct,
+  };
+}
+
+type StrategyTradeReason = {
+  summary?: string;
+  nineturn_up_count?: number;
+  nineturn_down_count?: number;
+  prev_nineturn_up_count?: number;
+  trigger?: string;
+};
+
+function StrategyTradeReasonTooltip({
+  label,
+  reason,
+}: {
+  label: string;
+  reason?: StrategyTradeReason | null;
+}) {
+  if (!reason?.summary) {
+    return <span className="text-xs text-tertiary-text">{label}</span>;
+  }
+  const ntParts: string[] = [];
+  if (reason.nineturn_up_count) ntParts.push(`上升↑${reason.nineturn_up_count}`);
+  if (reason.nineturn_down_count) ntParts.push(`下降↓${reason.nineturn_down_count}`);
+  const ntText = ntParts.length ? ntParts.join('、') : '无计数';
+  return (
+    <AntTooltip
+      title={(
+        <div className="text-xs space-y-1.5 max-w-xs">
+          <div className="font-medium">{reason.summary ?? label}</div>
+          <div>九转信号：{ntText}</div>
+        </div>
+      )}
+    >
+      <span className="text-xs text-tertiary-text cursor-pointer border-b border-dotted border-secondary-text/40">
+        {label}
+      </span>
+    </AntTooltip>
+  );
 }
 
 function CustomTooltip({ active, payload, label }: any) {
@@ -618,16 +870,18 @@ function StockHistoryExpandPanel({
 
   const entries = useMemo((): StockHistoryEntry[] => {
     if (!data?.entries?.length) return [];
-    const normalized = data.entries.map(e => {
-      const bars = sanitizeChartBars(e.daily_returns ?? []);
-      return {
-        ...e,
-        daily_returns: bars,
-        cumulative_return: e.cumulative_return ?? pickCumulativeReturn(bars),
-        buy_date: e.buy_date || bars[0]?.date || e.buy_date,
-        sell_date: e.sell_date || bars[bars.length - 1]?.date || e.sell_date,
-      };
-    });
+    const normalized = data.entries
+      .filter(e => e.month <= highlightMonth)
+      .map(e => {
+        const bars = sanitizeChartBars(e.daily_returns ?? []);
+        return {
+          ...e,
+          daily_returns: bars,
+          cumulative_return: e.cumulative_return ?? pickCumulativeReturn(bars),
+          buy_date: e.buy_date || bars[0]?.date || e.buy_date,
+          sell_date: e.sell_date || bars[bars.length - 1]?.date || e.sell_date,
+        };
+      });
     return normalized.sort((a, b) => {
       if (a.month === highlightMonth) return -1;
       if (b.month === highlightMonth) return 1;
@@ -799,7 +1053,7 @@ function StockHistoryExpandPanel({
 const BrokerRecommendPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const monthParam = searchParams.get('month');
-  const selectedMonth: Dayjs = monthParam ? dayjs(monthParam, 'YYYYMM') : dayjs();
+  const selectedMonth: Dayjs = monthParam && dayjs(monthParam, 'YYYYMM').isValid() && !dayjs(monthParam, 'YYYYMM').isBefore(dayjs('2020-03-01'), 'month') ? dayjs(monthParam, 'YYYYMM') : dayjs();
   const [loadingData, setLoadingData] = useState(false);
   const [fetchTrigger, setFetchTrigger] = useState(0);
   const [recommendData, setRecommendData] = useState<BrokerRecommendResponse | null>(null);
@@ -830,13 +1084,49 @@ const BrokerRecommendPage: React.FC = () => {
   const [expandedKey, setExpandedKey] = useState<string>('');
   const [tableKey, setTableKey] = useState(0);
   const expandedKeyRef = useRef<string>('');
+  const pendingScrollToStockRef = useRef<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('monthly');
   const [ytdData, setYtdData] = useState<YtdBacktestResponse | null>(null);
   const [topBrokers, setTopBrokers] = useState<string[]>([]);
   const [ytdLoading, setYtdLoading] = useState(false);
+  const [strategyData, setStrategyData] = useState<EqualWeightStrategyResponse | null>(null);
+  const [strategyLoading, setStrategyLoading] = useState(false);
+  const [strategyStartMonth, setStrategyStartMonth] = useState<Dayjs>(() => dayjs().startOf('year'));
+  const [strategyEndMonth, setStrategyEndMonth] = useState<Dayjs>(() => dayjs());
+  const strategyLoadedKeyRef = useRef<string | null>(null);
+  const [strategyFetchTrigger, setStrategyFetchTrigger] = useState(0);
+  const strategyStartStr = strategyStartMonth.format('YYYYMM');
+  const strategyEndStr = strategyEndMonth.format('YYYYMM');
   const [consecutiveData, setConsecutiveData] = useState<ConsecutiveStockItem[]>([]);
   const consecutiveSet = useMemo(() => new Set(consecutiveData.map(c => c.ts_code)), [consecutiveData]);
   const [historicalStats, setHistoricalStats] = useState<Record<string, HistoricalRecommendStatsItem>>({});
+  const [upToDownDaily, setUpToDownDaily] = useState<UpToDownDailyResponse | null>(null);
+  const [loadingUpToDownDaily, setLoadingUpToDownDaily] = useState(false);
+  const [upToDownAsOfDate, setUpToDownAsOfDate] = useState<Dayjs | null>(null);
+  const [upToDownStruck, setUpToDownStruck] = useState<Set<string>>(loadUpToDownStruckSet);
+
+  const focusStockInDetailList = useCallback((tsCode: string) => {
+    pendingScrollToStockRef.current = tsCode;
+    setViewMode('stock');
+    setExpandedKey(tsCode);
+    expandedKeyRef.current = tsCode;
+    setTableKey((k) => k + 1);
+  }, [setViewMode]);
+
+  const toggleUpToDownStruck = useCallback((
+    signalDate: string,
+    tsCode: string,
+    signalType: string,
+  ) => {
+    const key = upToDownStruckRowKey(monthStr, signalDate, tsCode, signalType);
+    setUpToDownStruck((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      saveUpToDownStruckSet(next);
+      return next;
+    });
+  }, [monthStr]);
 
   /** 仅当 API 返回的 month 与当前选择一致时才用于表格，避免切换月份时旧请求覆盖。 */
   const activeBacktest = useMemo(
@@ -851,6 +1141,68 @@ const BrokerRecommendPage: React.FC = () => {
     () => (enrichmentData?.month === monthStr ? enrichmentData : null),
     [enrichmentData, monthStr],
   );
+  const activeUpToDownDaily = useMemo(
+    () => (upToDownDaily?.month === monthStr ? upToDownDaily : null),
+    [upToDownDaily, monthStr],
+  );
+  const upToDownDateBounds = useMemo(() => {
+    const buy = activeUpToDownDaily?.buy_date || activeBacktest?.buy_date;
+    const sell = activeUpToDownDaily?.sell_date || activeBacktest?.sell_date;
+    if (!buy || !sell) return null;
+    let max = dayjs(sell, 'YYYYMMDD');
+    if (isCurrentMonth && max.isAfter(dayjs(), 'day')) {
+      max = dayjs();
+    }
+    return { min: dayjs(buy, 'YYYYMMDD'), max };
+  }, [activeUpToDownDaily, activeBacktest, isCurrentMonth]);
+
+  const filteredUpToDown = useMemo(() => {
+    const days = activeUpToDownDaily?.days;
+    if (!days?.length || !upToDownAsOfDate) return null;
+    const selected = upToDownAsOfDate.format('YYYYMMDD');
+    const hit = days.find((d) => d.date === selected);
+    if (!hit) return null;
+    return { date: hit.date, stocks: hit.stocks ?? [] };
+  }, [activeUpToDownDaily, upToDownAsOfDate]);
+
+  const reversalSplitStocks = useMemo(() => {
+    if (!filteredUpToDown) {
+      return { date: '', upToDown: [] as UpToDownDailyStockItem[], downToUp: [] as UpToDownDailyStockItem[] };
+    }
+    const stocks = filteredUpToDown.stocks;
+    return {
+      date: filteredUpToDown.date,
+      upToDown: stocks.filter((s) => (s.signal_type ?? 'up_to_down') === 'up_to_down'),
+      downToUp: stocks.filter((s) => s.signal_type === 'down_to_up'),
+    };
+  }, [filteredUpToDown]);
+
+  useEffect(() => {
+    setUpToDownAsOfDate(null);
+  }, [monthStr]);
+
+  useEffect(() => {
+    const tsCode = pendingScrollToStockRef.current;
+    if (!tsCode || expandedKey !== tsCode || viewMode !== 'stock') return;
+    pendingScrollToStockRef.current = null;
+    const timer = window.setTimeout(() => {
+      document.getElementById(`broker-stock-row-${tsCode}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }, 150);
+    return () => window.clearTimeout(timer);
+  }, [expandedKey, tableKey, viewMode]);
+
+  useEffect(() => {
+    if (!upToDownDateBounds || upToDownAsOfDate) return;
+    const latest = activeUpToDownDaily?.days?.[0]?.date;
+    if (latest) {
+      setUpToDownAsOfDate(dayjs(latest, 'YYYYMMDD'));
+    } else {
+      setUpToDownAsOfDate(upToDownDateBounds.max);
+    }
+  }, [activeUpToDownDaily, upToDownDateBounds, monthStr, upToDownAsOfDate]);
   const enrichAsOfLabel = useMemo(() => {
     const qd = activeEnrichment?.query_date;
     if (!qd || qd.length < 8) return '';
@@ -869,7 +1221,7 @@ const BrokerRecommendPage: React.FC = () => {
     }
     const codes = [...new Set(activeRecommend.items.map((i) => i.ts_code))];
     let cancelled = false;
-    getHistoricalRecommendStats(codes)
+    getHistoricalRecommendStats(codes, monthStr)
       .then((items) => {
         if (cancelled) return;
         const map: Record<string, HistoricalRecommendStatsItem> = {};
@@ -914,21 +1266,25 @@ const BrokerRecommendPage: React.FC = () => {
         setRecommendData(null);
         setBacktestData(null);
         setEnrichmentData(null);
+        setUpToDownDaily(null);
         setExpandedKey('');
         setTableKey(k => k + 1);
       }
+      setLoadingUpToDownDaily(true);
       try {
-        const [data, bt, enrich, cons, top] = await Promise.all([
+        const [data, bt, enrich, cons, top, upDaily] = await Promise.all([
           getMonthlyRecommendations(loadMonth),
           getBacktest(loadMonth),
           getMonthlyEnrichment(loadMonth),
           getConsecutiveStocks(loadMonth),
           getTopBrokers(5).catch(() => [] as string[]),
+          getMonthlyUpToDownDaily(loadMonth).catch(() => null),
         ]);
         if (cancelled || loadMonth !== monthStr) return;
         setRecommendData(data.month === loadMonth ? data : null);
         setBacktestData(bt.month === loadMonth ? bt : null);
         setEnrichmentData(enrich.month === loadMonth ? enrich : null);
+        setUpToDownDaily(upDaily?.month === loadMonth ? upDaily : null);
         setConsecutiveData(cons);
         setTopBrokers(top);
       } catch (e) {
@@ -937,6 +1293,7 @@ const BrokerRecommendPage: React.FC = () => {
         if (!cancelled) {
           setLoadingData(false);
           setLoadingEnrichment(false);
+          setLoadingUpToDownDaily(false);
         }
       }
     }
@@ -978,6 +1335,60 @@ const BrokerRecommendPage: React.FC = () => {
       .catch((e) => console.error('Failed to load YTD:', e))
       .finally(() => setYtdLoading(false));
   }, [activeTab, ytdData]);
+
+  const strategyPeriodLabel = useMemo(() => {
+    if (!strategyData?.period_start_month) return null;
+    const start = fmtMonthLabel(strategyData.period_start_month);
+    const end = strategyData.period_end_month
+      ? fmtMonthLabel(strategyData.period_end_month)
+      : start;
+    return start === end ? start : `${start} – ${end}`;
+  }, [strategyData]);
+
+  const reloadStrategyData = useCallback(() => {
+    strategyLoadedKeyRef.current = null;
+    setStrategyData(null);
+    setStrategyFetchTrigger((t) => t + 1);
+  }, []);
+
+  // Load equal-weight strategy when tab active or range changes (with polling)
+  useEffect(() => {
+    if (activeTab !== 'strategy') return;
+    const fetchKey = `${strategyStartStr}|${strategyEndStr}`;
+    if (strategyLoadedKeyRef.current === fetchKey) return;
+
+    setStrategyLoading(true);
+    setStrategyData(null);
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const poll = () => {
+      if (cancelled) return;
+      getEqualWeightStrategy(4, strategyStartStr, strategyEndStr)
+        .then((data) => {
+          if (cancelled) return;
+          if (data.status === 'computing') {
+            timer = setTimeout(poll, 2000);
+          } else {
+            strategyLoadedKeyRef.current = fetchKey;
+            setStrategyData(data);
+            setStrategyLoading(false);
+          }
+        })
+        .catch((e) => {
+          if (!cancelled) {
+            console.error('Failed to load strategy:', e);
+            setStrategyLoading(false);
+          }
+        });
+    };
+    poll();
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [activeTab, strategyStartStr, strategyEndStr, strategyFetchTrigger]);
 
   const toggleBroker = (broker: string) => {
     setExpandedBrokers(prev => {
@@ -1032,6 +1443,50 @@ const BrokerRecommendPage: React.FC = () => {
       return entry;
     });
   }, [ytdData]);
+
+  // 九转选股等权策略图表数据
+  const strategyChartData = useMemo(() => {
+    if (!strategyData?.daily_returns?.length) return [];
+    return strategyData.daily_returns.map(dr => ({
+      date: fmtDate(dr.date),
+      cumulative: dr.cumulative,
+      daily_return: dr.daily_return,
+      stock_count: dr.stock_count,
+    }));
+  }, [strategyData]);
+
+  // rank2 单独 + rank2&4 等权对比曲线
+  const multiCurveColors: Record<string, string> = { rank2: '#60a5fa', rank24: '#34d399' };
+  const multiCurveLabels: Record<string, string> = { rank2: '第2顺位单独', rank24: '第2+4顺位等权' };
+  const multiCurveData = useMemo(() => {
+    if (!strategyData?.multi_curves) return [];
+    const keys = Object.keys(strategyData.multi_curves).sort();
+    if (!keys.length) return [];
+    const dateSet = new Set<string>();
+    keys.forEach(k => {
+      (strategyData.multi_curves![k] || []).forEach(d => dateSet.add(d.date));
+    });
+    const dates = Array.from(dateSet).sort();
+    return dates.map(date => {
+      const entry: Record<string, string | number | undefined> = { date: fmtDate(date) };
+      keys.forEach(k => {
+        const dr = (strategyData.multi_curves![k] || []).find(d => d.date === date);
+        entry[k] = dr?.cumulative ?? undefined;
+      });
+      return entry;
+    });
+  }, [strategyData]);
+
+  const strategyMonthlyWinRate = useMemo(() => {
+    if (!strategyData?.monthly_returns?.length) return null;
+    const wins = strategyData.monthly_returns.filter(m => m.month_return > 0).length;
+    return wins / strategyData.monthly_returns.length;
+  }, [strategyData]);
+
+  const strategyAvgMonthlyReturn = useMemo(() => {
+    if (!strategyData?.monthly_returns?.length) return null;
+    return strategyData.monthly_returns.reduce((s, m) => s + m.month_return, 0) / strategyData.monthly_returns.length;
+  }, [strategyData]);
 
   // Build deduped stock rows with enrichment
   const stockRows = useMemo((): StockRow[] => {
@@ -1297,7 +1752,7 @@ const BrokerRecommendPage: React.FC = () => {
                 value={selectedMonth}
                 onChange={(d) => { if (d) setSearchParams({ month: d.format('YYYYMM') }); }}
                 allowClear={false}
-                disabledDate={(d) => d.isAfter(dayjs(), 'month')}
+                disabledDate={(d) => d.isAfter(dayjs(), 'month') || d.isBefore(dayjs('2020-03-01'), 'month')}
                 className="h-9"
               />
             </div>
@@ -1421,6 +1876,77 @@ const BrokerRecommendPage: React.FC = () => {
           </Card>
         )}
 
+        {activeBacktest && (
+          <Card className="p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+              <div className="text-sm font-medium flex items-center gap-2">
+                九转反转个股
+                {loadingUpToDownDaily && <Loader2 className="h-3.5 w-3.5 animate-spin text-tertiary-text" />}
+              </div>
+              {upToDownDateBounds && (
+                <DatePicker
+                  size="small"
+                  locale={zhCN.DatePicker}
+                  value={upToDownAsOfDate}
+                  onChange={(d) => setUpToDownAsOfDate(d)}
+                  allowClear={false}
+                  disabledDate={(d) => (
+                    d.isBefore(upToDownDateBounds.min, 'day')
+                    || d.isAfter(upToDownDateBounds.max, 'day')
+                  )}
+                />
+              )}
+            </div>
+            <div className="text-xs text-tertiary-text mb-3">
+              {upToDownAsOfDate
+                ? filteredUpToDown
+                  ? `信号日 ${fmtDate(filteredUpToDown.date)}；升 1..8 转降 / 降 1..8 升；点击方框划线标记`
+                  : `${upToDownAsOfDate.format('YYYY-MM-DD')} 当日无升转降或降转升信号`
+                : '当月金股池收盘升 1..8 转降、降 1..8 升；末交易日忽略'}
+            </div>
+            {upToDownAsOfDate && !loadingUpToDownDaily ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <ReversalSignalTable
+                  title="升转降"
+                  titleClassName="text-cyan"
+                  signalType="up_to_down"
+                  signalDate={reversalSplitStocks.date || upToDownAsOfDate.format('YYYYMMDD')}
+                  monthStr={monthStr}
+                  stocks={reversalSplitStocks.upToDown}
+                  struckSet={upToDownStruck}
+                  emptyText={
+                    filteredUpToDown
+                      ? '当日无升转降信号'
+                      : `${upToDownAsOfDate.format('YYYY-MM-DD')} 当日无升转降信号`
+                  }
+                  onToggleStruck={toggleUpToDownStruck}
+                  onFocusStock={focusStockInDetailList}
+                />
+                <ReversalSignalTable
+                  title="降转升"
+                  titleClassName="text-amber-400"
+                  signalType="down_to_up"
+                  signalDate={reversalSplitStocks.date || upToDownAsOfDate.format('YYYYMMDD')}
+                  monthStr={monthStr}
+                  stocks={reversalSplitStocks.downToUp}
+                  struckSet={upToDownStruck}
+                  emptyText={
+                    filteredUpToDown
+                      ? '当日无降转升信号'
+                      : `${upToDownAsOfDate.format('YYYY-MM-DD')} 当日无降转升信号`
+                  }
+                  onToggleStruck={toggleUpToDownStruck}
+                  onFocusStock={focusStockInDetailList}
+                />
+              </div>
+            ) : (
+              !loadingUpToDownDaily && (
+                <div className="text-xs text-tertiary-text py-2">本月暂无升转降或降转升信号</div>
+              )
+            )}
+          </Card>
+        )}
+
         {/* Tables - keep visible during refresh to preserve sort state */}
         {activeRecommend && brokerGroups.size > 0 && (
           <Card className="p-4">
@@ -1438,7 +1964,13 @@ const BrokerRecommendPage: React.FC = () => {
                 size="small"
                 pagination={false}
                 scroll={{ x: 700 }}
-                onRow={(record) => { const style = brokerStockRowStyle(record); return style ? { style } : {}; }}
+                onRow={(record) => {
+                  const style = brokerStockRowStyle(record);
+                  return {
+                    id: `broker-stock-row-${record.ts_code}`,
+                    ...(style ? { style } : {}),
+                  };
+                }}
                 onChange={(_pagination, _filters, sorter) => {
                   if (!Array.isArray(sorter) && sorter.columnKey) {
                     setTableSort({ columnKey: sorter.columnKey as string, order: sorter.order as 'ascend' | 'descend' });
@@ -1827,6 +2359,350 @@ const BrokerRecommendPage: React.FC = () => {
             title="暂无年初至今数据"
             description="请先确保当前年份有月度金股数据"
           />
+        )}
+              </div>
+            ),
+          },
+          {
+            key: 'strategy',
+            label: '策略回测',
+            children: (
+              <div className="space-y-4 pt-2">
+        <Card className="p-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-secondary-text">回测区间</label>
+              <RangePicker
+                picker="month"
+                locale={zhCN.DatePicker}
+                value={[strategyStartMonth, strategyEndMonth]}
+                onChange={(vals) => {
+                  if (!vals?.[0] || !vals[1]) return;
+                  const [start, end] = vals;
+                  const nextEnd = end.isBefore(start, 'month') ? start : end;
+                  strategyLoadedKeyRef.current = null;
+                  setStrategyData(null);
+                  setStrategyStartMonth(start);
+                  setStrategyEndMonth(nextEnd);
+                  setStrategyFetchTrigger((t) => t + 1);
+                }}
+                allowClear={false}
+                disabledDate={(d) => (
+                  d.isAfter(dayjs(), 'month') || d.isBefore(dayjs('2020-03-01'), 'month')
+                )}
+                className="h-9"
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={reloadStrategyData}
+              disabled={strategyLoading}
+            >
+              {strategyLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-1" />
+              )}
+              重新计算
+            </Button>
+            {strategyPeriodLabel ? (
+              <span className="text-xs text-tertiary-text">当前：{strategyPeriodLabel}</span>
+            ) : null}
+          </div>
+        </Card>
+
+        {/* Strategy Loading */}
+        {strategyLoading && (
+          <Card className="p-4 text-center text-sm text-tertiary-text">
+            <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
+            策略计算中...
+          </Card>
+        )}
+
+        {/* Strategy Overview */}
+        {strategyData && !strategyLoading && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Card className="p-3 text-center">
+              <div className={`text-lg font-bold ${(strategyData.cumulative_return ?? 0) >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                {fmtPct(strategyData.cumulative_return)}
+              </div>
+              <div className="text-xs text-secondary-text">策略累计收益</div>
+            </Card>
+            <Card className="p-3 text-center">
+              <div className="text-lg font-bold">{strategyData.total_months}</div>
+              <div className="text-xs text-secondary-text">活跃月份数</div>
+            </Card>
+            <Card className="p-3 text-center">
+              <div className={`text-lg font-bold ${(strategyAvgMonthlyReturn ?? 0) >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                {strategyAvgMonthlyReturn != null ? `${strategyAvgMonthlyReturn >= 0 ? '+' : ''}${(strategyAvgMonthlyReturn * 100).toFixed(2)}%` : '--'}
+              </div>
+              <div className="text-xs text-secondary-text">月均收益</div>
+            </Card>
+            <Card className="p-3 text-center">
+              <div className={`text-lg font-bold ${(strategyMonthlyWinRate ?? 0) >= 0.5 ? 'text-red-400' : 'text-emerald-400'}`}>
+                {strategyMonthlyWinRate != null ? `${(strategyMonthlyWinRate * 100).toFixed(0)}%` : '--'}
+              </div>
+              <div className="text-xs text-secondary-text">月度胜率</div>
+            </Card>
+          </div>
+        )}
+
+        {/* Strategy Chart */}
+        {strategyData && strategyChartData.length > 0 && !strategyLoading && (
+          <Card className="p-4">
+            <div className="text-sm font-medium mb-2">
+              九转选股等权策略累计收益
+              {strategyPeriodLabel ? (
+                <span className="text-tertiary-text font-normal ml-2">{strategyPeriodLabel}</span>
+              ) : null}
+            </div>
+            <div className="text-xs text-tertiary-text mb-1">
+              总资金固定：当日收盘升 1..8 转降 N 股 T+1 开盘均摊买入（均须落在当月）；T+1 买入后 T+2 开盘亏损则 T+2 开盘卖、盈利则自 T+3 起每日收盘评估：T+3 收盘超买入日收盘价则继续持有，直至某日收盘低于买入开盘价再收盘卖出；月末最后交易日收盘强制清仓（无行情则顺延开盘清仓，可跨月）；升 9+ 转降忽略；末交易日升转降忽略；当日无有效升转降则 T+1 开盘清仓后暂停；总收益按结算资产相对固定总资金计算
+            </div>
+            <ResponsiveContainer width="100%" height={280}>
+              <LineChart data={strategyChartData} margin={{ top: 4, right: 0, bottom: 6, left: -20 }}>
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9ca3af' }} stroke="#6b7280" />
+                <YAxis
+                  tick={{ fontSize: 10, fill: '#9ca3af' }}
+                  stroke="#6b7280"
+                  tickFormatter={v => `${(v * 100).toFixed(0)}%`}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <ReferenceLine y={0} stroke="#4b5563" strokeWidth={1} strokeDasharray="4 4" />
+                <Line
+                  type="monotone"
+                  dataKey="cumulative"
+                  stroke="#f59e0b"
+                  strokeWidth={2}
+                  dot={false}
+                  connectNulls
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </Card>
+        )}
+
+        {/* Multi-Curve Comparison: rank2 vs rank24 */}
+        {strategyData && multiCurveData.length > 0 && !strategyLoading && (
+          <Card className="p-4">
+            <div className="text-sm font-medium mb-2">第2顺位单独 / 第2+4顺位等权 收益对比</div>
+            <div className="text-xs text-tertiary-text mb-1">
+              同一评分体系下，每月单独买入第2顺位 vs 等权买入第2+4顺位，按月复合
+            </div>
+            <div className="flex flex-wrap gap-x-3 gap-y-1 mb-1">
+              {Object.keys(multiCurveColors).map(k => (
+                <span key={k} className="inline-flex items-center gap-1 text-xs text-secondary-text">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: multiCurveColors[k] }} />
+                  {multiCurveLabels[k] || k}
+                </span>
+              ))}
+            </div>
+            <ResponsiveContainer width="100%" height={280}>
+              <LineChart data={multiCurveData} margin={{ top: 4, right: 0, bottom: 6, left: -20 }}>
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9ca3af' }} stroke="#6b7280" />
+                <YAxis
+                  tick={{ fontSize: 10, fill: '#9ca3af' }}
+                  stroke="#6b7280"
+                  tickFormatter={v => `${(v * 100).toFixed(0)}%`}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <ReferenceLine y={0} stroke="#4b5563" strokeWidth={1} strokeDasharray="4 4" />
+                {Object.keys(multiCurveColors).map(k => (
+                  <Line
+                    key={k}
+                    type="monotone"
+                    dataKey={k}
+                    stroke={multiCurveColors[k]}
+                    strokeWidth={1.5}
+                    dot={false}
+                    connectNulls
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </Card>
+        )}
+
+        {/* Up-to-down trade stats by prev up_count */}
+        {strategyData && (strategyData.up_to_down_stats?.length ?? 0) > 0 && !strategyLoading && (
+          <Card className="p-4">
+            <div className="text-sm font-medium mb-3">升转降分档统计</div>
+            <div className="text-xs text-tertiary-text mb-2">
+              按信号日前日上升计数（升 1..8 转降）汇总每笔 T+1 买 / T+2 卖交易的平均收益与胜率
+            </div>
+            <Table
+              dataSource={(strategyData.up_to_down_stats ?? []).map((r) => ({
+                key: r.up_count,
+                up_count: r.up_count,
+                trade_count: r.trade_count,
+                avg_return: r.avg_return,
+                win_rate: r.win_rate,
+              }))}
+              columns={[
+                { title: '信号', dataIndex: 'up_count', key: 'up_count', width: 90, render: (v: number) => (
+                  <span className="text-xs font-medium">升{v}转降</span>
+                )},
+                { title: '交易次数', dataIndex: 'trade_count', key: 'trade_count', render: (v: number) => (
+                  <span className="text-xs text-tertiary-text">{v}</span>
+                )},
+                { title: '平均收益', dataIndex: 'avg_return', key: 'avg_return', render: (v: number, row: { trade_count: number }) => (
+                  <span className={`text-xs font-medium ${row.trade_count === 0 ? 'text-tertiary-text' : v >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                    {row.trade_count === 0 ? '--' : fmtPct(v)}
+                  </span>
+                )},
+                { title: '胜率', dataIndex: 'win_rate', key: 'win_rate', render: (v: number, row: { trade_count: number }) => (
+                  <span className={`text-xs font-medium ${row.trade_count === 0 ? 'text-tertiary-text' : (v ?? 0) >= 0.5 ? 'text-red-400' : 'text-emerald-400'}`}>
+                    {row.trade_count === 0 ? '--' : `${(v * 100).toFixed(0)}%`}
+                  </span>
+                )},
+              ]}
+              size="small"
+              pagination={false}
+            />
+          </Card>
+        )}
+
+        {/* Strategy Rank Stats */}
+        {strategyData && (strategyData.rank_stats?.length ?? 0) > 0 && !strategyLoading && (
+          <Card className="p-4">
+            <div className="text-sm font-medium mb-3">各顺位历史收益贡献</div>
+            <div className="text-xs text-tertiary-text mb-2">
+              每月按评分选股 Top {strategyData.top_n ?? 4}，统计每个顺位在所有月份的平均收益与活跃月份数
+            </div>
+            <Table
+              dataSource={(strategyData.rank_stats ?? []).map(r => ({
+                key: r.rank,
+                rank: r.rank,
+                avg_return: r.avg_return,
+                month_count: r.month_count,
+                win_rate: r.win_rate,
+              }))}
+              columns={[
+                { title: '顺位', dataIndex: 'rank', key: 'rank', width: 60, render: (v: number) => <span className="text-xs font-medium">#{v}</span> },
+                { title: '平均收益', dataIndex: 'avg_return', key: 'avg_return', render: (v: number) => (
+                  <span className={`text-xs font-medium ${v >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>{fmtPct(v)}</span>
+                )},
+                { title: '胜率', dataIndex: 'win_rate', key: 'win_rate', render: (v: number) => (
+                  <span className={`text-xs font-medium ${(v ?? 0) >= 0.5 ? 'text-red-400' : 'text-emerald-400'}`}>{v != null ? `${(v * 100).toFixed(0)}%` : '--'}</span>
+                )},
+                { title: '活跃月份数', dataIndex: 'month_count', key: 'month_count', render: (v: number) => <span className="text-xs text-tertiary-text">{v}</span> },
+              ]}
+              size="small"
+              pagination={false}
+            />
+          </Card>
+        )}
+
+        {/* Strategy Monthly Table */}
+        {strategyData && !strategyLoading && (
+          <Card className="p-4">
+            <div className="text-sm font-medium mb-3">策略月度表现</div>
+            <Table
+              dataSource={[...(strategyData.monthly_returns ?? [])]
+                .reverse()
+                .map((m, i) => ({
+                  key: m.month,
+                  rank: i + 1,
+                  month: m.month,
+                  month_return: m.month_return,
+                  cumulative_return: m.cumulative_return,
+                  stock_count: m.stock_count,
+                  best_up_to_down: bestUpToDownSignal(m.stocks),
+                  stocks: m.stocks,
+                }))}
+              columns={[
+                { title: '#', dataIndex: 'rank', key: 'rank', width: 40, render: (v: number) => <span className="text-xs text-tertiary-text">{v}</span> },
+                { title: '月份', dataIndex: 'month', key: 'month', render: (v: string) => <span className="text-xs">{fmtDate(v).slice(0, 7)}</span> },
+                { title: '月收益', dataIndex: 'month_return', key: 'month_return', render: (v: number) => (
+                  <span className={`text-xs font-medium ${v >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>{fmtPct(v)}</span>
+                )},
+                { title: '月最佳信号', dataIndex: 'best_up_to_down', key: 'best_up_to_down', render: (v: BestUpToDownSignal | null) => (
+                  v ? (
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs font-medium text-secondary-text">{v.label}</span>
+                      <span className={`text-xs font-medium ${v.returnPct >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                        {fmtPct(v.returnPct)}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-tertiary-text">--</span>
+                  )
+                )},
+                { title: '累计收益', dataIndex: 'cumulative_return', key: 'cumulative_return', render: (v: number) => (
+                  <span className={`text-xs font-medium ${v >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>{fmtPct(v)}</span>
+                )},
+                { title: '选股数', dataIndex: 'stock_count', key: 'stock_count', render: (v: number) => <span className="text-xs text-tertiary-text">{v}</span> },
+              ]}
+              size="small"
+              pagination={false}
+              expandable={{
+                rowExpandable: (r: any) => (r.stocks?.length ?? 0) > 0,
+                expandedRowRender: (record: any) => {
+                  const stocks = [...(record.stocks || [])].sort(
+                    (a, b) => String(a.buy_date ?? '').localeCompare(String(b.buy_date ?? '')),
+                  );
+                  if (!stocks.length) return null;
+                  return (
+                    <Table
+                      dataSource={stocks.map((s: any) => ({
+                        key: `${s.ts_code}-${s.buy_date ?? ''}`,
+                        ts_code: s.ts_code,
+                        name: s.name,
+                        month_return: s.month_return,
+                        buy_date: s.buy_date,
+                        sell_date: s.sell_date,
+                        buy_price: s.buy_price,
+                        buy_amount: s.buy_amount,
+                        sell_price: s.sell_price,
+                        sell_amount: s.sell_amount,
+                        buy_reason: s.buy_reason,
+                        sell_reason: s.sell_reason,
+                      }))}
+                      columns={[
+                        { title: '代码', dataIndex: 'ts_code', key: 'ts_code', width: 100, render: (v: string) => <span className="text-xs font-mono text-secondary-text">{v}</span> },
+                        { title: '名称', dataIndex: 'name', key: 'name', render: (v: string) => <span className="text-xs">{v}</span> },
+                        { title: '买入日', dataIndex: 'buy_date', key: 'buy_date', render: (v: string | null, row: any) => (
+                          v
+                            ? <StrategyTradeReasonTooltip label={fmtDate(v)} reason={row.buy_reason} />
+                            : <span className="text-xs text-tertiary-text">--</span>
+                        )},
+                        { title: '买入价', dataIndex: 'buy_price', key: 'buy_price', render: (v: number | null) => (
+                          <span className="text-xs font-mono text-secondary-text">{v != null ? v.toFixed(2) : '--'}</span>
+                        )},
+                        { title: '买入额', dataIndex: 'buy_amount', key: 'buy_amount', render: (v: number | null) => (
+                          <span className="text-xs font-mono text-secondary-text">{v != null ? v.toFixed(2) : '--'}</span>
+                        )},
+                        { title: '卖出日', dataIndex: 'sell_date', key: 'sell_date', render: (v: string | null, row: any) => (
+                          v
+                            ? <StrategyTradeReasonTooltip label={fmtDate(v)} reason={row.sell_reason} />
+                            : <span className="text-xs text-tertiary-text">--</span>
+                        )},
+                        { title: '卖出价', dataIndex: 'sell_price', key: 'sell_price', render: (v: number | null) => (
+                          <span className="text-xs font-mono text-secondary-text">{v != null ? v.toFixed(2) : '--'}</span>
+                        )},
+                        { title: '卖出额', dataIndex: 'sell_amount', key: 'sell_amount', render: (v: number | null) => (
+                          <span className="text-xs font-mono text-secondary-text">{v != null ? v.toFixed(2) : '--'}</span>
+                        )},
+                        { title: '持仓收益', dataIndex: 'month_return', key: 'month_return', render: (v: number | null) => (
+                          <span className={`text-xs font-medium ${(v ?? 0) >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>{v != null ? fmtPct(v) : '--'}</span>
+                        )},
+                      ]}
+                      size="small"
+                      pagination={false}
+                    />
+                  );
+                },
+              }}
+            />
+          </Card>
+        )}
+
+        {/* Strategy Empty */}
+        {!strategyData && !strategyLoading && (
+          <Card className="p-4 text-center text-sm text-tertiary-text">
+            暂无策略回测数据
+          </Card>
         )}
               </div>
             ),

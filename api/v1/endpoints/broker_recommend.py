@@ -38,6 +38,29 @@ class EnrichmentResponse(BaseModel):
     data: Dict[str, StockEnrichment]
 
 
+class UpToDownDailyStockItem(BaseModel):
+    ts_code: str
+    name: str
+    broker_count: int = 1
+    signal_type: str = "up_to_down"
+    prev_nineturn_up_count: int = 0
+    prev_nineturn_down_count: int = 0
+    nineturn_up_count: Optional[int] = None
+    nineturn_down_count: Optional[int] = None
+
+
+class UpToDownDailyDayItem(BaseModel):
+    date: str
+    stocks: List[UpToDownDailyStockItem]
+
+
+class UpToDownDailyResponse(BaseModel):
+    month: str
+    buy_date: str
+    sell_date: str
+    days: List[UpToDownDailyDayItem]
+
+
 class BrokerRecommendResponse(BaseModel):
     month: str
     total_recommendations: int
@@ -179,6 +202,56 @@ class YtdBacktestResponse(BaseModel):
     end_date: str
     total_brokers: int
     brokers: List[YtdBrokerItem]
+
+
+class EqualWeightStrategyDailyReturn(BaseModel):
+    """策略日收益。"""
+    date: str
+    daily_return: Optional[float] = None
+    cumulative: Optional[float] = None
+    stock_count: int
+
+
+class EqualWeightStrategyMonthlyReturn(BaseModel):
+    """策略月度收益汇总。"""
+    month: str
+    month_return: float
+    cumulative_return: float
+    stock_count: int
+    stocks: List[Dict[str, Any]] = []
+
+
+class RankStatItem(BaseModel):
+    """顺位收益统计。"""
+    rank: int
+    avg_return: float
+    month_count: int
+    win_rate: float
+
+
+class UpToDownStatItem(BaseModel):
+    """升转降分档交易统计。"""
+    up_count: int
+    trade_count: int
+    avg_return: float
+    win_rate: float
+
+
+class EqualWeightStrategyResponse(BaseModel):
+    """九转选股等权策略响应。"""
+    strategy: str
+    top_n: int
+    period_start_month: Optional[str] = None
+    period_end_month: Optional[str] = None
+    start_date: str
+    end_date: str
+    total_months: int
+    cumulative_return: float
+    daily_returns: List[EqualWeightStrategyDailyReturn]
+    monthly_returns: List[EqualWeightStrategyMonthlyReturn]
+    rank_stats: List[RankStatItem] = []
+    up_to_down_stats: List[UpToDownStatItem] = []
+    multi_curves: Dict[str, List[EqualWeightStrategyDailyReturn]] = {}
 
 
 @router.get("/top-brokers", response_model=List[str])
@@ -337,11 +410,12 @@ def get_historical_month_counts(
 @router.get("/historical-recommend-stats", response_model=List[HistoricalRecommendStatsItem])
 def get_historical_recommend_stats(
     codes: str = Query(..., description="逗号分隔的股票代码列表"),
+    exclude_after: str | None = Query(None, description="仅统计该月份之前的推荐记录，格式 YYYYMM"),
 ) -> List[HistoricalRecommendStatsItem]:
     """批量查询股票历史推荐胜率、最高/最低期末收益（与展开历史一致）。"""
     ts_codes = [c.strip() for c in codes.split(",") if c.strip()]
     service = BrokerRecommendService()
-    stats = service.get_historical_recommend_stats(ts_codes)
+    stats = service.get_historical_recommend_stats(ts_codes, exclude_after=exclude_after)
     return [
         HistoricalRecommendStatsItem(
             ts_code=tc,
@@ -356,10 +430,13 @@ def get_historical_recommend_stats(
 
 
 @router.get("/stock/{ts_code}/history", response_model=StockHistoryResponse)
-def get_stock_recommend_history(ts_code: str) -> StockHistoryResponse:
+def get_stock_recommend_history(
+    ts_code: str,
+    exclude_after: str | None = Query(None, description="仅返回该月份之前的推荐记录，格式 YYYYMM"),
+) -> StockHistoryResponse:
     """获取单只股票历次推荐月份及对应持仓期 K 线数据。"""
     service = BrokerRecommendService()
-    result = service.get_stock_recommend_history(ts_code)
+    result = service.get_stock_recommend_history(ts_code, exclude_after=exclude_after)
     entries = [
         StockHistoryEntry(
             month=e["month"],
@@ -387,6 +464,79 @@ def get_stock_recommend_history(ts_code: str) -> StockHistoryResponse:
         ts_code=result.get("ts_code", ts_code),
         name=result.get("name", ""),
         entries=entries,
+    )
+
+
+@router.get("/equal-weight-strategy", response_model=EqualWeightStrategyResponse)
+def get_equal_weight_strategy(
+    top_n: int = Query(default=4, ge=1, le=20, description="兼容参数，不再参与选股"),
+    start_month: Optional[str] = Query(
+        default=None, pattern=r"^\d{6}$", description="统计起始月 YYYYMM（含）",
+    ),
+    end_month: Optional[str] = Query(
+        default=None, pattern=r"^\d{6}$", description="统计截止月 YYYYMM（含）",
+    ),
+) -> EqualWeightStrategyResponse:
+    """九转上升 + 近3日形态收盘买卖；每笔固定金额买入；总收益=平仓后总资产/初始本金-1；升转降 T+1 仍下降收盘卖。"""
+    from fastapi.responses import JSONResponse
+
+    service = BrokerRecommendService()
+    result = service.compute_equal_weight_strategy(
+        top_n=top_n, start_month=start_month, end_month=end_month,
+    )
+
+    if result is None or result.get("status") == "computing":
+        return JSONResponse(
+            status_code=202, content={"status": "computing"},
+        )
+
+    if result.get("error"):
+        raise HTTPException(status_code=404, detail=result["error"])
+
+    daily_returns = [
+        EqualWeightStrategyDailyReturn(
+            date=dr["date"],
+            daily_return=dr.get("daily_return"),
+            cumulative=dr.get("cumulative"),
+            stock_count=dr.get("stock_count", 0),
+        )
+        for dr in result.get("daily_returns", [])
+    ]
+
+    monthly_returns = [
+        EqualWeightStrategyMonthlyReturn(
+            month=mr["month"],
+            month_return=mr["month_return"],
+            cumulative_return=mr["cumulative_return"],
+            stock_count=mr.get("stock_count", 0),
+            stocks=mr.get("stocks", []),
+        )
+        for mr in result.get("monthly_returns", [])
+    ]
+
+    return EqualWeightStrategyResponse(
+        strategy=result["strategy"],
+        top_n=result["top_n"],
+        period_start_month=result.get("period_start_month"),
+        period_end_month=result.get("period_end_month"),
+        start_date=result["start_date"],
+        end_date=result["end_date"],
+        total_months=result["total_months"],
+        cumulative_return=result["cumulative_return"],
+        daily_returns=daily_returns,
+        monthly_returns=monthly_returns,
+        rank_stats=result.get("rank_stats", []),
+        up_to_down_stats=[
+            UpToDownStatItem(**item)
+            for item in result.get("up_to_down_stats", [])
+        ],
+        multi_curves={
+            k: [EqualWeightStrategyDailyReturn(
+                date=d["date"], daily_return=d.get("return"),
+                cumulative=d.get("cumulative"), stock_count=0,
+            ) for d in v]
+            for k, v in result.get("multi_curves", {}).items()
+        },
     )
 
 
@@ -424,6 +574,25 @@ def get_monthly_recommendations(month: str) -> BrokerRecommendResponse:
         unique_stocks=df['ts_code'].nunique(),
         unique_brokers=df['broker'].nunique(),
         items=items,
+    )
+
+
+@router.get("/{month}/up-to-down-daily", response_model=UpToDownDailyResponse)
+def get_monthly_up_to_down_daily(month: str) -> UpToDownDailyResponse:
+    """当月金股池每日九转反转个股（升 1..8 转降、降 1..8 升，末交易日忽略）。"""
+    service = BrokerRecommendService()
+    result = service.get_monthly_up_to_down_daily(month)
+    return UpToDownDailyResponse(
+        month=result.get("month", month),
+        buy_date=result.get("buy_date", ""),
+        sell_date=result.get("sell_date", ""),
+        days=[
+            UpToDownDailyDayItem(
+                date=day["date"],
+                stocks=[UpToDownDailyStockItem(**s) for s in day.get("stocks", [])],
+            )
+            for day in result.get("days", [])
+        ],
     )
 
 

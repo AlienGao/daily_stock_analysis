@@ -39,6 +39,39 @@ export type EnrichmentResponse = {
   data: Record<string, StockEnrichment>;
 };
 
+export type NineturnReversalSignalType = 'up_to_down' | 'down_to_up';
+
+export type UpToDownDailyStockItem = {
+  ts_code: string;
+  name: string;
+  broker_count: number;
+  signal_type?: NineturnReversalSignalType;
+  prev_nineturn_up_count: number;
+  prev_nineturn_down_count?: number;
+  nineturn_up_count?: number | null;
+  nineturn_down_count?: number | null;
+};
+
+export type UpToDownDailyDayItem = {
+  date: string;
+  stocks: UpToDownDailyStockItem[];
+};
+
+export type UpToDownDailyResponse = {
+  month: string;
+  buy_date: string;
+  sell_date: string;
+  days: UpToDownDailyDayItem[];
+};
+
+export async function getMonthlyUpToDownDaily(month: string): Promise<UpToDownDailyResponse> {
+  const resp = await apiClient.get<UpToDownDailyResponse>(
+    `/api/v1/broker-recommend/${month}/up-to-down-daily`,
+    { timeout: 120_000 },
+  );
+  return resp.data;
+}
+
 export type BrokerRecommendResponse = {
   month: string;
   total_recommendations: number;
@@ -284,9 +317,12 @@ export type StockHistoryResponse = {
   entries: StockHistoryEntry[];
 };
 
-export async function getStockHistory(tsCode: string): Promise<StockHistoryResponse> {
+export async function getStockHistory(tsCode: string, excludeAfter?: string): Promise<StockHistoryResponse> {
+  const params: Record<string, string> = {};
+  if (excludeAfter) params.exclude_after = excludeAfter;
   const resp = await apiClient.get<StockHistoryResponse>(
-    `/api/v1/broker-recommend/stock/${encodeURIComponent(tsCode)}/history`
+    `/api/v1/broker-recommend/stock/${encodeURIComponent(tsCode)}/history`,
+    { params }
   );
   return resp.data;
 }
@@ -318,11 +354,119 @@ export type HistoricalRecommendStatsItem = {
 
 export async function getHistoricalRecommendStats(
   codes: string[],
+  excludeAfter?: string,
 ): Promise<HistoricalRecommendStatsItem[]> {
   if (!codes.length) return [];
+  const params: Record<string, string> = { codes: codes.join(',') };
+  if (excludeAfter) params.exclude_after = excludeAfter;
   const resp = await apiClient.get<HistoricalRecommendStatsItem[]>(
     '/api/v1/broker-recommend/historical-recommend-stats',
-    { params: { codes: codes.join(',') }, timeout: 120_000 },
+    { params, timeout: 120_000 },
+  );
+  return resp.data;
+}
+
+export type EqualWeightStrategyDailyReturn = {
+  date: string;
+  daily_return?: number | null;
+  cumulative?: number | null;
+  stock_count: number;
+};
+
+export type EqualWeightStrategyMonthlyReturn = {
+  month: string;
+  month_return: number;
+  cumulative_return: number;
+  stock_count: number;
+  stocks: Array<{
+    ts_code: string;
+    name: string;
+    month_return: number;
+    buy_date?: string;
+    sell_date?: string | null;
+    buy_price?: number | null;
+    sell_price?: number | null;
+    hist_win_rate?: number | null;
+    price_pattern_buy?: string[];
+    price_pattern_sell?: string[];
+    buy_reason?: {
+      summary?: string;
+      pattern?: string | null;
+      pattern_signs?: Array<string | null>;
+      nineturn_up_count?: number;
+      nineturn_down_count?: number;
+      prev_nineturn_up_count?: number;
+      day_moves?: Array<{ date?: string; close?: number | null; sign?: string | null }>;
+      trigger?: string;
+    };
+    sell_reason?: {
+      summary?: string;
+      pattern?: string | null;
+      pattern_signs?: Array<string | null>;
+      nineturn_up_count?: number;
+      nineturn_down_count?: number;
+      day_moves?: Array<{ date?: string; close?: number | null; sign?: string | null }>;
+      trigger?: string;
+    };
+    nineturn_buy_up_count?: number;
+    nineturn_sell_up_count?: number;
+    nineturn_up_count?: number;
+    score?: number;
+    hist_max_return?: number | null;
+    hist_max_drawdown?: number | null;
+  }>;
+  buy_date?: string;
+};
+
+export type RankStatItem = {
+  rank: number;
+  avg_return: number;
+  month_count: number;
+  win_rate: number;
+};
+
+export type UpToDownStatItem = {
+  up_count: number;
+  trade_count: number;
+  avg_return: number;
+  win_rate: number;
+};
+
+export type EqualWeightStrategyResponse = {
+  /** 首次计算中返回 "computing"，完成时包含完整数据 */
+  status?: string;
+  strategy?: string;
+  buy_trading_day_index?: number;
+  price_pattern_buy?: string[];
+  price_pattern_sell?: string[];
+  nineturn_buy_up_count?: number;
+  nineturn_sell_up_count?: number;
+  min_hist_win_rate?: number;
+  top_n?: number;
+  period_start_month?: string;
+  period_end_month?: string;
+  start_date?: string;
+  end_date?: string;
+  total_months?: number;
+  cumulative_return?: number;
+  daily_returns?: EqualWeightStrategyDailyReturn[];
+  monthly_returns?: EqualWeightStrategyMonthlyReturn[];
+  rank_stats?: RankStatItem[];
+  up_to_down_stats?: UpToDownStatItem[];
+  multi_curves?: Record<string, EqualWeightStrategyDailyReturn[]>;
+};
+
+export async function getEqualWeightStrategy(
+  topN: number = 4,
+  startMonth?: string,
+  endMonth?: string,
+): Promise<EqualWeightStrategyResponse> {
+  const params: Record<string, string | number> = { top_n: topN };
+  if (startMonth) params.start_month = startMonth;
+  if (endMonth) params.end_month = endMonth;
+  const resp = await apiClient.get<EqualWeightStrategyResponse>(
+    '/api/v1/broker-recommend/equal-weight-strategy',
+    { params, timeout: 120_000 },
   );
   return resp.data;
 }
