@@ -58,9 +58,12 @@ function tradesWithEffectivePickRank(trades: FactorBacktestTrade[], topN: number
     for (const t of group) {
       if (t.status === 'canceled') continue;
       order += 1;
-      const pr = t.pick_rank && t.pick_rank >= 1 && t.pick_rank <= topN
-        ? t.pick_rank
-        : Math.min(order, topN);
+      let pr = 0;
+      if (t.pick_rank && t.pick_rank >= 1 && t.pick_rank <= topN) {
+        pr = t.pick_rank;
+      } else if (!t.pick_rank) {
+        pr = Math.min(order, topN);
+      }
       if (pr >= 1 && pr <= topN) {
         out.push({ ...t, effective_pick_rank: pr });
       }

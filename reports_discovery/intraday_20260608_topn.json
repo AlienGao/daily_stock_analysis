@@ -1,0 +1,183 @@
+[
+  {
+    "rank": 1,
+    "stock_code": "920414",
+    "stock_name": "欧普泰",
+    "score": 51.4,
+    "sector": "光伏设备",
+    "factor_scores": {
+      "ma_entry": 37.224992403393706,
+      "sector": 56.77280221392249,
+      "momentum": 34.580595424178654,
+      "ranking_momentum": 96.06327612899955,
+      "rebound": 0.0,
+      "popularity": 67.67766952966369
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "排名连续上升(2天)",
+      "趋势加速↑(9.6%/天)",
+      "今日强于96%个股",
+      "所属板块: 光伏设备"
+    ],
+    "buy_price_low": 9.9,
+    "buy_price_high": 10.9,
+    "stop_loss": 10.71,
+    "take_profit_1": 11.63,
+    "take_profit_2": 14.24,
+    "discovered_at": "15:00:48",
+    "price_at_discovery": 10.79,
+    "pct_chg": 4.96,
+    "tech_score": 68.5,
+    "rr_score": 74.80916030534361,
+    "market_score": 35.34360149460737,
+    "sector_score": 100.0,
+    "volume_score": 89.91651798629852,
+    "position_score": 85,
+    "formation_score": 20.0,
+    "composite_score": 63.36999999999999
+  },
+  {
+    "rank": 2,
+    "stock_code": "300205",
+    "stock_name": "*ST天喻",
+    "score": 41.8,
+    "sector": "通信设备",
+    "factor_scores": {
+      "ma_entry": 100.0,
+      "sector": 0.0,
+      "momentum": 30.909367310119762,
+      "ranking_momentum": 96.78003749708138,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线",
+      "缩量回踩",
+      "排名连续上升(2天)",
+      "趋势加速↑(4.3%/天)",
+      "今日强于80%个股"
+    ],
+    "buy_price_low": 5.4,
+    "buy_price_high": 5.9,
+    "stop_loss": 5.8,
+    "take_profit_1": 6.17,
+    "take_profit_2": 6.6,
+    "discovered_at": "15:00:48",
+    "price_at_discovery": 5.85,
+    "pct_chg": -0.68,
+    "tech_score": 66.84,
+    "rr_score": 68.08510638297884,
+    "market_score": 35.34360149460737,
+    "sector_score": 85.7783957666964,
+    "volume_score": 77.52751195014744,
+    "position_score": 75,
+    "formation_score": 50.0,
+    "composite_score": 59.327999999999996
+  },
+  {
+    "rank": 3,
+    "stock_code": "300143",
+    "stock_name": "盈康生命",
+    "score": 52.8,
+    "sector": "医疗服务",
+    "factor_scores": {
+      "ma_entry": 41.713739534868274,
+      "sector": 42.7831216351297,
+      "momentum": 38.68995779725872,
+      "ranking_momentum": 100.0,
+      "rebound": 0.0,
+      "popularity": 67.67766952966369
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "排名连续上升(2天)",
+      "趋势加速↑(11.6%/天)",
+      "今日强于67%个股",
+      "所属板块: 医疗服务"
+    ],
+    "buy_price_low": 7.2,
+    "buy_price_high": 7.5,
+    "stop_loss": 7.29,
+    "take_profit_1": 8.06,
+    "take_profit_2": 12.81,
+    "discovered_at": "15:00:48",
+    "price_at_discovery": 7.36,
+    "pct_chg": -2.0,
+    "tech_score": 61.19,
+    "rr_score": 71.63742690058481,
+    "market_score": 35.34360149460737,
+    "sector_score": 21.77432340746327,
+    "volume_score": 82.9746284028345,
+    "position_score": 85,
+    "formation_score": 20.0,
+    "composite_score": 58.672999999999995
+  },
+  {
+    "rank": 4,
+    "stock_code": "301327",
+    "stock_name": "华宝新能",
+    "score": 56.9,
+    "sector": "电池",
+    "factor_scores": {
+      "ma_entry": 39.797815493136845,
+      "sector": 0.0,
+      "momentum": 34.05833304316626,
+      "ranking_momentum": 100.0,
+      "rebound": 0.0,
+      "popularity": 90.23575554076876
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "趋势加速↑(15.2%/天)",
+      "今日强于73%个股",
+      "人气核心圈(排名1312)"
+    ],
+    "buy_price_low": 50.5,
+    "buy_price_high": 53.7,
+    "stop_loss": 52.07,
+    "take_profit_1": 55.85,
+    "take_profit_2": 68.08,
+    "discovered_at": "15:00:48",
+    "price_at_discovery": 52.6,
+    "pct_chg": -1.46,
+    "tech_score": 54.82,
+    "rr_score": 71.45100502512561,
+    "market_score": 35.34360149460737,
+    "sector_score": 24.3998373305527,
+    "volume_score": 40.01974473673339,
+    "position_score": 85,
+    "formation_score": 20.0,
+    "composite_score": 55.443999999999996
+  }
+]

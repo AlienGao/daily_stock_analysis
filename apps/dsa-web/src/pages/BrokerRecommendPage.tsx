@@ -1301,6 +1301,25 @@ const BrokerRecommendPage: React.FC = () => {
     return () => { cancelled = true; };
   }, [monthStr, fetchTrigger]);
 
+  // 盘中轮询：当前月交易日 09:30-15:00 每 30 秒拉最新回测数据（含最新价）
+  useEffect(() => {
+    if (!isCurrentMonth || activeTab !== 'monthly') return;
+    const isTradingHour = (h: number) => h >= 9 && (h < 15 || (h === 15 && new Date().getMinutes() < 0));
+    if (!isTradingHour(new Date().getHours())) return;
+
+    const interval = setInterval(async () => {
+      const hour = new Date().getHours();
+      if (!isTradingHour(hour)) { clearInterval(interval); return; }
+      try {
+        const bt = await getBacktest(monthStr);
+        if (bt?.month === monthStr) setBacktestData(bt);
+      } catch {
+        // 静默失败，下次重试
+      }
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, [isCurrentMonth, activeTab, monthStr]);
+
   const handleFetch = useCallback(async () => {
     if (!monthStr) return;
     setLoadingData(true);
@@ -1876,7 +1895,8 @@ const BrokerRecommendPage: React.FC = () => {
           </Card>
         )}
 
-        {activeBacktest && (
+        {/* Tables - keep visible during refresh to preserve sort state */}
+        {activeRecommend && brokerGroups.size > 0 && viewMode === 'stock' && activeBacktest && (
           <Card className="p-4">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
               <div className="text-sm font-medium flex items-center gap-2">
@@ -1947,7 +1967,6 @@ const BrokerRecommendPage: React.FC = () => {
           </Card>
         )}
 
-        {/* Tables - keep visible during refresh to preserve sort state */}
         {activeRecommend && brokerGroups.size > 0 && (
           <Card className="p-4">
             <div className="text-sm font-medium mb-3">
