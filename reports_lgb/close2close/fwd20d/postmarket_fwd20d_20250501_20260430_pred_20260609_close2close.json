@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 20,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260609",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300685",
+      "stock_code": "300685",
+      "stock_name": "艾德生物",
+      "lgb_score": 100.0,
+      "raw_score": 0.35
+    },
+    {
+      "rank": 2,
+      "ts_code": "688668",
+      "stock_code": "688668",
+      "stock_name": "鼎通科技",
+      "lgb_score": 62.98,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 3,
+      "ts_code": "600323",
+      "stock_code": "600323",
+      "stock_name": "瀚蓝环境",
+      "lgb_score": 62.51,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 4,
+      "ts_code": "688169",
+      "stock_code": "688169",
+      "stock_name": "石头科技",
+      "lgb_score": 60.51,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 5,
+      "ts_code": "002437",
+      "stock_code": "002437",
+      "stock_name": "誉衡药业",
+      "lgb_score": 59.58,
+      "raw_score": 0.13
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.49,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.093778,
+    "std": 0.054702,
+    "skew": 0.6579,
+    "kurtosis": -0.5615,
+    "min": -0.197745,
+    "max": 0.353131,
+    "median": -0.140855
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.14923084789533686,
+    "cv_rmse_std": 0.012018799506010995,
+    "cv_scores": [
+      0.160246,
+      0.16325,
+      0.136074,
+      0.134327,
+      0.152258
+    ],
+    "rank_ic_mean": 0.166802,
+    "rank_ic_std": 0.041574,
+    "icir": 4.0121,
+    "oof_corr": 0.134501,
+    "n_samples": 17257,
+    "n_features": 22
+  }
+}

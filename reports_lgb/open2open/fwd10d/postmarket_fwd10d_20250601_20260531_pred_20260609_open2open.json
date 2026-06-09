@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 10,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260609",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "603393",
+      "stock_code": "603393",
+      "stock_name": "新天然气",
+      "lgb_score": 100.0,
+      "raw_score": 0.33
+    },
+    {
+      "rank": 2,
+      "ts_code": "300303",
+      "stock_code": "300303",
+      "stock_name": "聚飞光电",
+      "lgb_score": 95.52,
+      "raw_score": 0.32
+    },
+    {
+      "rank": 3,
+      "ts_code": "920593",
+      "stock_code": "920593",
+      "stock_name": "鼎智科技",
+      "lgb_score": 85.16,
+      "raw_score": 0.28
+    },
+    {
+      "rank": 4,
+      "ts_code": "601015",
+      "stock_code": "601015",
+      "stock_name": "陕西黑猫",
+      "lgb_score": 80.13,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 5,
+      "ts_code": "603619",
+      "stock_code": "603619",
+      "stock_name": "中曼石油",
+      "lgb_score": 80.08,
+      "raw_score": 0.26
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.72,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.033943,
+    "std": 0.021665,
+    "skew": 1.6771,
+    "kurtosis": 16.1408,
+    "min": -0.05205,
+    "max": 0.332864,
+    "median": 0.045605
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.10937376075492311,
+    "cv_rmse_std": 0.006244601234265029,
+    "cv_scores": [
+      0.108945,
+      0.111244,
+      0.097923,
+      0.112135,
+      0.116622
+    ],
+    "rank_ic_mean": 0.046119,
+    "rank_ic_std": 0.024408,
+    "icir": 1.8895,
+    "oof_corr": 0.060092,
+    "n_samples": 38974,
+    "n_features": 4
+  }
+}
