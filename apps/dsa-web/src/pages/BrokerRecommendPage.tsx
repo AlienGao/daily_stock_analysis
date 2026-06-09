@@ -7,7 +7,7 @@ import { DatePicker, Table, Tabs, Tooltip as AntTooltip } from 'antd';
 const { RangePicker } = DatePicker;
 import zhCN from 'antd/locale/zh_CN';
 import type { ColumnsType } from 'antd/es/table';
-import { TrendingUp, RefreshCw, ChevronDown, ChevronRight, Loader2, CheckSquare, Square } from 'lucide-react';
+import { TrendingUp, RefreshCw, ChevronDown, ChevronRight, Loader2, CheckSquare, Square, ChevronUp } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { AppPage, Button, Card, EmptyState } from '../components/common';
 
@@ -397,10 +397,13 @@ const ReversalSignalTable: React.FC<ReversalSignalTableProps> = ({
             ),
           },
           {
-            title: '券商家数',
-            dataIndex: 'broker_count',
+            title: '所属行业',
+            dataIndex: 'sector',
             width: '20%',
-            align: 'left',
+            ellipsis: true,
+            render: (sector: string | null | undefined) => (
+              <span className="text-xs text-secondary-text">{sector || '--'}</span>
+            ),
           },
         ]}
       />
@@ -1104,6 +1107,17 @@ const BrokerRecommendPage: React.FC = () => {
   const [loadingUpToDownDaily, setLoadingUpToDownDaily] = useState(false);
   const [upToDownAsOfDate, setUpToDownAsOfDate] = useState<Dayjs | null>(null);
   const [upToDownStruck, setUpToDownStruck] = useState<Set<string>>(loadUpToDownStruckSet);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setShowScrollTop(window.scrollY > 600);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  const scrollToTop = useCallback(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
   const focusStockInDetailList = useCallback((tsCode: string) => {
     pendingScrollToStockRef.current = tsCode;
@@ -1170,12 +1184,20 @@ const BrokerRecommendPage: React.FC = () => {
       return { date: '', upToDown: [] as UpToDownDailyStockItem[], downToUp: [] as UpToDownDailyStockItem[] };
     }
     const stocks = filteredUpToDown.stocks;
+    const enrichSector = (s: UpToDownDailyStockItem) => ({
+      ...s,
+      sector: activeEnrichment?.data?.[s.ts_code]?.sector ?? null,
+    });
     return {
       date: filteredUpToDown.date,
-      upToDown: stocks.filter((s) => (s.signal_type ?? 'up_to_down') === 'up_to_down'),
-      downToUp: stocks.filter((s) => s.signal_type === 'down_to_up'),
+      upToDown: stocks
+        .filter((s) => (s.signal_type ?? 'up_to_down') === 'up_to_down')
+        .map(enrichSector),
+      downToUp: stocks
+        .filter((s) => s.signal_type === 'down_to_up')
+        .map(enrichSector),
     };
-  }, [filteredUpToDown]);
+  }, [filteredUpToDown, activeEnrichment]);
 
   useEffect(() => {
     setUpToDownAsOfDate(null);
@@ -2728,6 +2750,16 @@ const BrokerRecommendPage: React.FC = () => {
           },
         ]}
       />
+      {showScrollTop && (
+        <button
+          type="button"
+          onClick={scrollToTop}
+          className="fixed bottom-6 right-6 z-50 flex h-10 w-10 items-center justify-center rounded-full border border-border/30 bg-card/90 shadow-lg backdrop-blur-sm transition-all hover:bg-card hover:border-border/50 translate-x-[calc(50%_+_3px)] cursor-pointer"
+          aria-label="返回顶部"
+        >
+          <ChevronUp className="h-5 w-5 text-secondary-text" />
+        </button>
+      )}
     </AppPage>
   );
 };

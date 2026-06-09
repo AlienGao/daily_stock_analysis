@@ -1,0 +1,183 @@
+[
+  {
+    "rank": 1,
+    "stock_code": "603167",
+    "stock_name": "渤海轮渡",
+    "score": 43.1,
+    "sector": "港口航运",
+    "factor_scores": {
+      "ma_entry": 100.0,
+      "sector": 0.0,
+      "momentum": 50.0,
+      "ranking_momentum": 94.15063362343963,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线",
+      "缩量回踩",
+      "趋势加速↑(8.0%/天)"
+    ],
+    "buy_price_low": 8.7,
+    "buy_price_high": 9.2,
+    "stop_loss": 9.01,
+    "take_profit_1": 9.31,
+    "take_profit_2": 9.67,
+    "discovered_at": "15:00:47",
+    "price_at_discovery": 9.04,
+    "pct_chg": 0.11,
+    "tech_score": 71.03,
+    "rr_score": 100.0,
+    "market_score": 37.29057253643276,
+    "sector_score": 35.2284561040804,
+    "volume_score": 74.64843449237036,
+    "position_score": 75,
+    "formation_score": 50.0,
+    "composite_score": 62.650999999999996
+  },
+  {
+    "rank": 2,
+    "stock_code": "301070",
+    "stock_name": "开勒股份",
+    "score": 58.6,
+    "sector": "通用设备",
+    "factor_scores": {
+      "ma_entry": 100.0,
+      "sector": 0.0,
+      "momentum": 48.42201399225549,
+      "ranking_momentum": 92.77617438461483,
+      "rebound": 0.0,
+      "popularity": 49.81715685742162
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线",
+      "BOLL中轨支撑",
+      "排名连续上升(2天)",
+      "趋势加速↑(25.6%/天)",
+      "今日强于80%个股"
+    ],
+    "buy_price_low": 89.6,
+    "buy_price_high": 98.1,
+    "stop_loss": 96.14,
+    "take_profit_1": 106.81,
+    "take_profit_2": 129.71,
+    "discovered_at": "15:00:47",
+    "price_at_discovery": 97.25,
+    "pct_chg": 3.1,
+    "tech_score": 60.94,
+    "rr_score": 74.47139995548636,
+    "market_score": 37.29057253643276,
+    "sector_score": 50.365522240566904,
+    "volume_score": 63.91019429621081,
+    "position_score": 75,
+    "formation_score": 65.0,
+    "composite_score": 60.23799999999999
+  },
+  {
+    "rank": 3,
+    "stock_code": "002323",
+    "stock_name": "*ST雅博",
+    "score": 42.9,
+    "sector": "建筑装饰",
+    "factor_scores": {
+      "ma_entry": 100.0,
+      "sector": 0.0,
+      "momentum": 50.0,
+      "ranking_momentum": 92.5786676435044,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线多头排列",
+      "回踩MA5均线",
+      "缩量回踩",
+      "趋势加速↑(10.2%/天)",
+      "今日强于88%个股"
+    ],
+    "buy_price_low": 1.37,
+    "buy_price_high": 1.4,
+    "stop_loss": 1.46,
+    "take_profit_1": 1.62,
+    "take_profit_2": 1.78,
+    "discovered_at": "15:00:47",
+    "price_at_discovery": 1.5,
+    "pct_chg": 4.9,
+    "tech_score": 62.24,
+    "rr_score": 74.33628318584073,
+    "market_score": 37.29057253643276,
+    "sector_score": 48.03356164383561,
+    "volume_score": 65.0,
+    "position_score": 75,
+    "formation_score": 70.0,
+    "composite_score": 56.437999999999995
+  },
+  {
+    "rank": 4,
+    "stock_code": "300338",
+    "stock_name": "*ST开元",
+    "score": 33.8,
+    "sector": "教育",
+    "factor_scores": {
+      "ma_entry": 100.0,
+      "sector": 0.0,
+      "momentum": 50.0,
+      "ranking_momentum": 35.36527547554573,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "回踩MA5均线",
+      "缩量回踩"
+    ],
+    "buy_price_low": 3.0,
+    "buy_price_high": 3.3,
+    "stop_loss": 3.25,
+    "take_profit_1": 3.47,
+    "take_profit_2": 3.96,
+    "discovered_at": "15:00:47",
+    "price_at_discovery": 3.26,
+    "pct_chg": 0.62,
+    "tech_score": 61.74,
+    "rr_score": 69.66824644549774,
+    "market_score": 37.29057253643276,
+    "sector_score": 16.836137387387335,
+    "volume_score": 73.84913613087092,
+    "position_score": 85,
+    "formation_score": 40.0,
+    "composite_score": 53.358
+  }
+]

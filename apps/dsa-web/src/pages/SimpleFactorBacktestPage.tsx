@@ -223,6 +223,7 @@ function renderTradePrice(raw: number, adj?: number, label = '后复权') {
 }
 
 const TASK_KEY = 'simple_factor_bt_task';
+const BATCH_COMBOS_TASK_KEY = 'simple_factor_bt_batch_combos_task';
 
 const SimpleFactorBacktestPage: React.FC = () => {
   const abortRef = useRef(false);
@@ -377,6 +378,49 @@ const SimpleFactorBacktestPage: React.FC = () => {
           }
         })
         .catch(() => { localStorage.removeItem(TASK_KEY); });
+    }
+
+    const savedBatchComboId = localStorage.getItem(BATCH_COMBOS_TASK_KEY);
+    if (savedBatchComboId) {
+      apiClient.get('/api/v1/factor-backtest-simple/status', { params: { task_id: savedBatchComboId } })
+        .then((statusResp) => {
+          const data = statusResp.data;
+          if (data.status === 'running' || data.status === 'queued') {
+            setBatchCombosLoading(true);
+            if (data.status_message) setBatchCombosMsg(data.status_message);
+            const poll = async () => {
+              while (true) {
+                await new Promise((r) => setTimeout(r, 2000));
+                try {
+                  const resp = await apiClient.get('/api/v1/factor-backtest-simple/status', { params: { task_id: savedBatchComboId } });
+                  const d = resp.data;
+                  if (d.status_message) setBatchCombosMsg(d.status_message);
+                  if (d.status === 'completed') {
+                    const cached = d.result?.cached_count ?? d.result?.cached ?? 0;
+                    const total = d.result?.total ?? d.result?.factors_tested ?? 0;
+                    const errs = d.result?.errors || 0;
+                    setBatchCombosLoading(false);
+                    setBatchCombosMsg(`组合测试完成 (${cached}/${total} 命中缓存${errs ? `，${errs} 个失败` : ''})`);
+                    localStorage.removeItem(BATCH_COMBOS_TASK_KEY);
+                    loadCacheHistory();
+                    loadPresets();
+                    return;
+                  }
+                  if (d.status === 'failed') {
+                    setBatchCombosLoading(false);
+                    setError({ title: '批量回测组合失败', message: d.error || '组合测试失败', rawMessage: d.error || '组合测试失败' } as ParsedApiError);
+                    localStorage.removeItem(BATCH_COMBOS_TASK_KEY);
+                    return;
+                  }
+                } catch { /* retry */ }
+              }
+            };
+            poll();
+          } else {
+            localStorage.removeItem(BATCH_COMBOS_TASK_KEY);
+          }
+        })
+        .catch(() => { localStorage.removeItem(BATCH_COMBOS_TASK_KEY); });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -637,6 +681,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
         },
       );
       const taskId = resp.data.task_id;
+      localStorage.setItem(BATCH_COMBOS_TASK_KEY, taskId);
       const poll = async () => {
         await new Promise((r) => setTimeout(r, 2000));
         try {
@@ -648,11 +693,13 @@ const SimpleFactorBacktestPage: React.FC = () => {
             const errs = s.data.result?.errors || 0;
             setBatchCombosLoading(false);
             setBatchCombosMsg(`组合测试完成 (${cached}/${total} 命中缓存${errs ? `，${errs} 个失败` : ''})`);
+            localStorage.removeItem(BATCH_COMBOS_TASK_KEY);
             loadCacheHistory();
             loadPresets();
           } else if (s.data.status === 'failed') {
             setBatchCombosLoading(false);
             setError({ title: '批量回测组合失败', message: s.data.error || '批量测试多因子组合失败', rawMessage: s.data.error || '批量测试多因子组合失败' } as ParsedApiError);
+            localStorage.removeItem(BATCH_COMBOS_TASK_KEY);
           } else {
             poll();
           }

@@ -50,6 +50,7 @@ export type UpToDownDailyStockItem = {
   prev_nineturn_down_count?: number;
   nineturn_up_count?: number | null;
   nineturn_down_count?: number | null;
+  sector?: string | null;
 };
 
 export type UpToDownDailyDayItem = {

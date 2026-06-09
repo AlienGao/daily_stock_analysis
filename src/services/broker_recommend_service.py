@@ -1950,6 +1950,7 @@ class BrokerRecommendService:
                 if BrokerRecommendService._nineturn_up_to_down_on_day(
                     nineturn_cache, trading_days, i, tc,
                     prev_month_last_day=prev_month_last_day,
+                    allow_any_up_count=True,
                 ):
                     prev_up = snap.get("prev_nineturn_up_count")
                     stocks.append({
@@ -1965,6 +1966,7 @@ class BrokerRecommendService:
                 elif BrokerRecommendService._nineturn_down_to_up_on_day(
                     nineturn_cache, trading_days, i, tc,
                     prev_month_last_day=prev_month_last_day,
+                    allow_any_down_count=True,
                 ):
                     prev_down = snap.get("prev_nineturn_down_count")
                     stocks.append({
@@ -3078,10 +3080,12 @@ class BrokerRecommendService:
         day_idx: int,
         ts_code: str,
         prev_month_last_day: Optional[str] = None,
+        allow_any_up_count: bool = False,
     ) -> bool:
         """第 day_idx 个交易日收盘判定：上升序列转下降（↓1 / 下跌九转 / 上升计数归零）。
 
-        仅前一日上升计数在 1..8（含）时视为有效买入信号；升 9+ 转降忽略。
+        allow_any_up_count=True 时不限制前一日上升计数范围（展示用）；
+        allow_any_up_count=False（默认）仅前一日上升计数在 1..8（含）时视为有效（策略用）。
         day_idx=0 时前一日为上月末交易日（若提供）。
         """
         if day_idx < 0 or day_idx >= len(trading_days):
@@ -3099,7 +3103,9 @@ class BrokerRecommendService:
             nineturn_cache.get(curr_d, {}).get(ts_code),
         )
         prev_up = prev_nt["up_count"]
-        if prev_up not in BrokerRecommendService._STRATEGY_UP_TO_DOWN_ALLOWED_UP_COUNTS:
+        if prev_up < 1:
+            return False
+        if not allow_any_up_count and prev_up not in BrokerRecommendService._STRATEGY_UP_TO_DOWN_ALLOWED_UP_COUNTS:
             return False
         return (
             curr_nt["down_count"] >= 1
@@ -3114,10 +3120,12 @@ class BrokerRecommendService:
         day_idx: int,
         ts_code: str,
         prev_month_last_day: Optional[str] = None,
+        allow_any_down_count: bool = False,
     ) -> bool:
         """第 day_idx 个交易日收盘判定：下降序列转上升（↑1 / 上涨九转 / 下降计数归零）。
 
-        仅前一日下降计数在 1..8（含）时视为有效；降 9+ 转升忽略。
+        allow_any_down_count=True 时不限制前一日下降计数范围（展示用）；
+        allow_any_down_count=False（默认）仅前一日下降计数在 1..8（含）时视为有效（策略用）。
         day_idx=0 时前一日为上月末交易日（若提供）。
         """
         if day_idx < 0 or day_idx >= len(trading_days):
@@ -3135,7 +3143,9 @@ class BrokerRecommendService:
             nineturn_cache.get(curr_d, {}).get(ts_code),
         )
         prev_down = prev_nt["down_count"]
-        if prev_down not in BrokerRecommendService._STRATEGY_DOWN_TO_UP_ALLOWED_DOWN_COUNTS:
+        if prev_down < 1:
+            return False
+        if not allow_any_down_count and prev_down not in BrokerRecommendService._STRATEGY_DOWN_TO_UP_ALLOWED_DOWN_COUNTS:
             return False
         return (
             curr_nt["up_count"] >= 1
