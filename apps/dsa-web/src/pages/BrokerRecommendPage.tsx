@@ -1108,6 +1108,9 @@ const BrokerRecommendPage: React.FC = () => {
   const [upToDownAsOfDate, setUpToDownAsOfDate] = useState<Dayjs | null>(null);
   const [upToDownStruck, setUpToDownStruck] = useState<Set<string>>(loadUpToDownStruckSet);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const sectorStatsRef = useRef<HTMLDivElement>(null);
+  const nineturnCardRef = useRef<HTMLDivElement>(null);
+  const stockNavSourceRef = useRef<'sector' | 'nineturn'>('nineturn');
 
   useEffect(() => {
     const onScroll = () => setShowScrollTop(window.scrollY > 600);
@@ -1116,7 +1119,8 @@ const BrokerRecommendPage: React.FC = () => {
   }, []);
 
   const scrollToTop = useCallback(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const ref = stockNavSourceRef.current === 'sector' ? sectorStatsRef : nineturnCardRef;
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
 
   const focusStockInDetailList = useCallback((tsCode: string) => {
@@ -1594,6 +1598,33 @@ const BrokerRecommendPage: React.FC = () => {
     return rows;
   }, [activeRecommend, activeBacktest, activeEnrichment, isCurrentMonth, consecutiveSet, historicalStats, historyTopCodes]);
 
+  // 行业统计（按累计收益均值排序，Top3 高亮）
+  const sectorStats = useMemo(() => {
+    if (!stockRows.length) return [];
+    type SectorStat = { sector: string; count: number; brokerCount: number; avgCumRet: number; stocks: StockRow[] };
+    const map = new Map<string, SectorStat>();
+    for (const row of stockRows) {
+      const sector = row.sector || '未分类';
+      const existing = map.get(sector);
+      if (existing) {
+        existing.count += 1;
+        existing.brokerCount += row.broker_count;
+        if (row.cumRet != null) {
+          existing.avgCumRet = ((existing.avgCumRet * (existing.count - 1)) + row.cumRet) / existing.count;
+        }
+        existing.stocks.push(row);
+      } else {
+        map.set(sector, {
+          sector, count: 1, brokerCount: row.broker_count,
+          avgCumRet: row.cumRet ?? 0, stocks: [row],
+        });
+      }
+    }
+    const sorted = Array.from(map.values()).sort((a, b) => b.avgCumRet - a.avgCumRet);
+    const topSet = new Set(sorted.slice(0, 3).map((s) => s.sector));
+    return sorted.map((s) => ({ ...s, isTop: topSet.has(s.sector) }));
+  }, [stockRows]);
+
   // --- Table column definitions ---
   const stockColumns: ColumnsType<StockRow> = useMemo(() => [
     {
@@ -1867,7 +1898,7 @@ const BrokerRecommendPage: React.FC = () => {
         )}
 
         {/* Chart */}
-        {activeBacktest && chartData.length > 0 && activeBacktest.brokers.length > 0 && (
+        {viewMode === 'broker' && activeBacktest && chartData.length > 0 && activeBacktest.brokers.length > 0 && (
           <Card className="p-4">
             <div className="text-sm font-medium mb-2">券商组合收益曲线</div>
             {/* Legend: click to toggle, greyed out when hidden */}
@@ -1918,8 +1949,41 @@ const BrokerRecommendPage: React.FC = () => {
         )}
 
         {/* Tables - keep visible during refresh to preserve sort state */}
+        {viewMode === 'stock' && sectorStats.length > 0 && (
+          <div ref={sectorStatsRef}>
+          <Card className="p-2.5">
+            <div className="text-[11px] font-medium mb-1 text-secondary-text">当月金股行业统计（按累计收益均值，Top3 高亮）</div>
+            <div className="grid grid-cols-4 gap-1.5">
+              {sectorStats.map((stat) => (
+                <details key={stat.sector} className={`group rounded py-0.5 px-1.5 cursor-pointer open:border-cyan/50 ${stat.isTop ? 'border border-amber-500/40 bg-amber-500/5 open:border-amber-500/70' : 'border border-border/10 hover:border-border/30'}`}>
+                  <summary className="flex items-center gap-1 text-[11px] marker:text-tertiary-text marker:text-[10px]">
+                    {stat.isTop && <span className="text-[9px] text-amber-400 shrink-0">★</span>}
+                    <span className="truncate" title={stat.sector}>{stat.sector}</span>
+                    <span className={`text-[10px] tabular-nums shrink-0 ml-auto ${stat.avgCumRet >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>{fmtPct(stat.avgCumRet)}</span>
+                  </summary>
+                  <div className="mt-0.5 border-t border-border/10 pt-0.5 grid grid-cols-2 gap-x-1">
+                    {stat.stocks.map((s) => (
+                      <button
+                        key={s.ts_code}
+                        type="button"
+                        className="flex items-center gap-1 w-full text-left hover:bg-foreground/[0.03] rounded px-0.5"
+                        onClick={() => { stockNavSourceRef.current = 'sector'; focusStockInDetailList(s.ts_code); }}
+                      >
+                        <span className="text-[10px] text-secondary-text truncate">{s.name}</span>
+                        <span className="font-mono text-[9px] text-tertiary-text">{s.ts_code}</span>
+                      </button>
+                    ))}
+                  </div>
+                </details>
+              ))}
+            </div>
+          </Card>
+          </div>
+        )}
+
         {activeRecommend && brokerGroups.size > 0 && viewMode === 'stock' && activeBacktest && (
-          <Card className="p-4">
+          <div ref={nineturnCardRef}>
+            <Card className="p-4">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
               <div className="text-sm font-medium flex items-center gap-2">
                 九转反转个股
@@ -1962,7 +2026,7 @@ const BrokerRecommendPage: React.FC = () => {
                       : `${upToDownAsOfDate.format('YYYY-MM-DD')} 当日无升转降信号`
                   }
                   onToggleStruck={toggleUpToDownStruck}
-                  onFocusStock={focusStockInDetailList}
+                  onFocusStock={(tc) => { stockNavSourceRef.current = 'nineturn'; focusStockInDetailList(tc); }}
                 />
                 <ReversalSignalTable
                   title="降转升"
@@ -1978,7 +2042,7 @@ const BrokerRecommendPage: React.FC = () => {
                       : `${upToDownAsOfDate.format('YYYY-MM-DD')} 当日无降转升信号`
                   }
                   onToggleStruck={toggleUpToDownStruck}
-                  onFocusStock={focusStockInDetailList}
+                  onFocusStock={(tc) => { stockNavSourceRef.current = 'nineturn'; focusStockInDetailList(tc); }}
                 />
               </div>
             ) : (
@@ -1987,6 +2051,7 @@ const BrokerRecommendPage: React.FC = () => {
               )
             )}
           </Card>
+          </div>
         )}
 
         {activeRecommend && brokerGroups.size > 0 && (
@@ -2384,7 +2449,6 @@ const BrokerRecommendPage: React.FC = () => {
                       ]}
                       size="small"
                       pagination={false}
-                      showHeader={false}
                     />
                   );
                 },
