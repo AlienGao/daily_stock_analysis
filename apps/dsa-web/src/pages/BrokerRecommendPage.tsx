@@ -1697,8 +1697,10 @@ const BrokerRecommendPage: React.FC = () => {
       render: (_, row) => {
         const nt = row.nineturn;
         if (!nt) return <span className="text-xs text-tertiary-text">--</span>;
-        if (nt.nine_up_turn) return <span className="text-xs text-emerald-400 font-medium">上涨9转</span>;
-        if (nt.nine_down_turn) return <span className="text-xs text-red-400 font-medium">下跌9转</span>;
+        const showNineUp = nt.nine_up_turn && (!nt.up_count || nt.up_count <= 9);
+        const showNineDown = nt.nine_down_turn && (!nt.down_count || nt.down_count <= 9);
+        if (showNineUp) return <span className="text-xs text-emerald-400 font-medium">上涨9转</span>;
+        if (showNineDown) return <span className="text-xs text-red-400 font-medium">下跌9转</span>;
         if (nt.up_count || nt.down_count) return (
           <span className="text-xs">
             {nt.up_count ? <span className="text-red-400">↑{nt.up_count}</span> : null}
