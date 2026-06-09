@@ -2681,6 +2681,8 @@ class SearchService:
     NEWS_OVERSAMPLE_FACTOR = 2
     NEWS_OVERSAMPLE_MAX = 10
     FUTURE_TOLERANCE_DAYS = 1
+    ANALYTICAL_INTEL_LOOKBACK_DAYS = 180
+    ANALYTICAL_INTEL_DIMENSIONS = {"market_analysis", "earnings"}
     _CHINESE_TEXT_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]")
     _US_STOCK_RE = re.compile(r"^[A-Za-z]{1,5}(\.[A-Za-z])?$")
     _DIRECT_NEWS_CATEGORY = "direct_company_news"
@@ -3622,6 +3624,7 @@ class SearchService:
         search_days: int,
         max_results: int,
         log_scope: str,
+        keep_unknown: bool = False,
     ) -> SearchResponse:
         """Hard-filter results by published_date recency and normalize date strings."""
         if not response.success or not response.results:
@@ -3639,6 +3642,22 @@ class SearchService:
         for item in response.results:
             published = self._normalize_news_publish_date(item.published_date)
             if published is None:
+                if keep_unknown:
+                    filtered.append(
+                        SearchResult(
+                            title=item.title,
+                            snippet=item.snippet,
+                            url=item.url,
+                            source=item.source,
+                            published_date=item.published_date,
+                            relevance_score=item.relevance_score,
+                            relevance_category=item.relevance_category,
+                            relevance_reasons=item.relevance_reasons,
+                        )
+                    )
+                    if len(filtered) >= max_results:
+                        break
+                    continue
                 dropped_unknown += 1
                 continue
             if published < earliest:

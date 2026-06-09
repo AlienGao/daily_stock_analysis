@@ -200,7 +200,10 @@ class PortfolioApiTestCase(unittest.TestCase):
         queue = MagicMock()
         queue.submit_tasks_batch.return_value = ([accepted_task], [])
 
-        with patch("api.v1.endpoints.portfolio.get_task_queue", return_value=queue):
+        with patch(
+            "src.services.portfolio_service.PortfolioService._fetch_realtime_position_price",
+            return_value=(None, None),
+        ), patch("api.v1.endpoints.portfolio.get_task_queue", return_value=queue):
             resp = self.client.post(
                 "/api/v1/portfolio/positions/600519/analysis",
                 json={"account_id": account_id, "analysis_phase": "intraday", "force": True},
@@ -233,7 +236,10 @@ class PortfolioApiTestCase(unittest.TestCase):
         queue = MagicMock()
         queue.submit_tasks_batch.return_value = ([accepted_task], [])
 
-        with patch("api.v1.endpoints.portfolio.get_task_queue", return_value=queue):
+        with patch(
+            "src.services.portfolio_service.PortfolioService._fetch_realtime_position_price",
+            return_value=(None, None),
+        ), patch("api.v1.endpoints.portfolio.get_task_queue", return_value=queue):
             resp = self.client.post(
                 "/api/v1/portfolio/positions/600519.SH/analysis",
                 json={"account_id": account_id},
@@ -260,7 +266,10 @@ class PortfolioApiTestCase(unittest.TestCase):
         queue = MagicMock()
         queue.submit_tasks_batch.return_value = ([accepted_task], [])
 
-        with patch("api.v1.endpoints.portfolio.get_task_queue", return_value=queue):
+        with patch(
+            "src.services.portfolio_service.PortfolioService._fetch_realtime_position_price",
+            return_value=(None, None),
+        ), patch("api.v1.endpoints.portfolio.get_task_queue", return_value=queue):
             resp = self.client.post(
                 "/api/v1/portfolio/positions/1810.HK/analysis",
                 json={"account_id": account_id},
@@ -294,7 +303,10 @@ class PortfolioApiTestCase(unittest.TestCase):
         queue = MagicMock()
         queue.submit_tasks_batch.return_value = ([], [duplicate])
 
-        with patch("api.v1.endpoints.portfolio.get_task_queue", return_value=queue):
+        with patch(
+            "src.services.portfolio_service.PortfolioService._fetch_realtime_position_price",
+            return_value=(None, None),
+        ), patch("api.v1.endpoints.portfolio.get_task_queue", return_value=queue):
             resp = self.client.post(
                 "/api/v1/portfolio/positions/600519/analysis",
                 json={"account_id": account_id, "force": True},

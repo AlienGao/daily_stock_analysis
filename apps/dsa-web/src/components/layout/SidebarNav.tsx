@@ -4,9 +4,11 @@ import { NavLink } from 'react-router-dom';
 import { ALPHASIFT_CONFIG_CHANGED_EVENT, SYSTEM_CONFIG_CHANGED_EVENT, alphasiftApi } from '../../api/alphasift';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAgentChatStore } from '../../stores/agentChatStore';
+import { useUiLanguage } from '../../contexts/UiLanguageContext';
 import { cn } from '../../utils/cn';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { StatusDot } from '../common/StatusDot';
+import { UiLanguageToggle } from '../i18n/UiLanguageToggle';
 import { ThemeToggle } from '../theme/ThemeToggle';
 
 type SidebarNavProps = {
@@ -40,6 +42,7 @@ const NAV_ITEMS: NavItem[] = [
 
 export const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed = false, onNavigate, variant = 'default' }) => {
   const { authEnabled, logout } = useAuth();
+  const { t } = useUiLanguage();
   const completionBadge = useAgentChatStore((state) => state.completionBadge);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showAlphaSiftNav, setShowAlphaSiftNav] = useState(false);
@@ -123,7 +126,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed = false, onNav
           'flex min-h-0 flex-col gap-1',
           isRail ? 'flex-1 overflow-y-auto overscroll-contain' : 'flex-1 gap-1.5',
         )}
-        aria-label="主导航"
+        aria-label={t('layout.mainNav')}
       >
         {navItems.map(({ key, label, to, icon: Icon, exact, badge }) => (
           <NavLink
@@ -151,7 +154,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed = false, onNav
                       'absolute border-2 border-background shadow-[0_0_10px_var(--nav-indicator-shadow)]',
                       isRail ? 'right-1 top-1' : collapsed ? 'right-2 top-2' : 'right-3',
                     )}
-                    aria-label="问股有新消息"
+                    aria-label={t('layout.newChatMessage')}
                   />
                 ) : null}
               </>
@@ -170,6 +173,15 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed = false, onNav
           iconClassName={itemIconClass}
           labelClassName={itemLabelClass}
         />
+        <UiLanguageToggle
+          variant={isRail ? 'rail' : 'nav'}
+          collapsed={collapsed}
+          wrapperClassName="w-full"
+          triggerClassName={itemInteractiveClass}
+          triggerActiveClassName={itemActiveClass}
+          iconClassName={itemIconClass}
+          labelClassName={itemLabelClass}
+        />
         {authEnabled ? (
           <button
             type="button"
@@ -177,17 +189,17 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed = false, onNav
             className={itemInteractiveClass}
           >
             <LogOut className={itemIconClass} />
-            {!collapsed ? <span className={itemLabelClass}>退出</span> : null}
+            {!collapsed ? <span className={itemLabelClass}>{t('layout.logout')}</span> : null}
           </button>
         ) : null}
       </div>
 
       <ConfirmDialog
         isOpen={showLogoutConfirm}
-        title="退出登录"
-        message="确认退出当前登录状态吗？退出后需要重新输入密码。"
-        confirmText="确认退出"
-        cancelText="取消"
+        title={t('layout.logoutTitle')}
+        message={t('layout.logoutMessage')}
+        confirmText={t('layout.logoutConfirm')}
+        cancelText={t('common.cancel')}
         isDanger
         onConfirm={() => {
           setShowLogoutConfirm(false);

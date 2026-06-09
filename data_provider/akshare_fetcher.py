@@ -1756,7 +1756,71 @@ class AkshareFetcher(BaseFetcher):
                 spot_df = spot_df.reset_index()  # code index → column
                 return self._calc_market_stats(spot_df)
         except Exception as e:
-            logger.error(f"[Akshare] 从 DB 获取市场统计失败: {e}")
+            logger.warning(
+                "[MarketStats] component=market_stats provider=AkshareFetcher "
+                "source=db action=failed error=%s fallback=ak.stock_zh_a_spot_em",
+                e,
+            )
+
+        try:
+            self._set_random_user_agent()
+            self._enforce_rate_limit()
+
+            started_at = time.monotonic()
+            logger.info(
+                "[MarketStats] component=market_stats provider=AkshareFetcher "
+                "api=ak.stock_zh_a_spot_em action=request_start"
+            )
+            df = ak.stock_zh_a_spot_em()
+            elapsed = time.monotonic() - started_at
+            logger.info(
+                "[MarketStats] component=market_stats provider=AkshareFetcher "
+                "api=ak.stock_zh_a_spot_em action=request_complete elapsed=%.2fs",
+                elapsed,
+            )
+            if df is not None and not df.empty:
+                return self._calc_market_stats(df)
+            logger.warning(
+                "[MarketStats] component=market_stats provider=AkshareFetcher "
+                "api=ak.stock_zh_a_spot_em action=parse status=empty"
+            )
+        except Exception as e:
+            logger.warning(
+                "[MarketStats] component=market_stats provider=AkshareFetcher "
+                "api=ak.stock_zh_a_spot_em action=failed error=%s fallback=ak.stock_zh_a_spot",
+                e,
+            )
+
+        # 东财失败后，尝试新浪接口
+        try:
+            self._set_random_user_agent()
+            self._enforce_rate_limit()
+
+            started_at = time.monotonic()
+            logger.info(
+                "[MarketStats] component=market_stats provider=AkshareFetcher "
+                "api=ak.stock_zh_a_spot action=request_start"
+            )
+            df = ak.stock_zh_a_spot()
+            elapsed = time.monotonic() - started_at
+            logger.info(
+                "[MarketStats] component=market_stats provider=AkshareFetcher "
+                "api=ak.stock_zh_a_spot action=request_complete elapsed=%.2fs",
+                elapsed,
+            )
+            if df is not None and not df.empty:
+                return self._calc_market_stats(df)
+            logger.warning(
+                "[MarketStats] component=market_stats provider=AkshareFetcher "
+                "api=ak.stock_zh_a_spot action=parse status=empty"
+            )
+        except Exception as e:
+            logger.error(
+                "[MarketStats] component=market_stats provider=AkshareFetcher "
+                "api=ak.stock_zh_a_spot action=failed error=%s",
+                e,
+            )
+
         return None
 
     def _calc_market_stats(

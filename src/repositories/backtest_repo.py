@@ -18,6 +18,16 @@ from src.storage import BacktestResult, BacktestSummary, DatabaseManager, Analys
 logger = logging.getLogger(__name__)
 
 MARKET_REVIEW_REPORT_TYPE = "market_review"
+BacktestResultContextRow = Tuple[
+    BacktestResult,
+    Optional[str],
+    Optional[str],
+    Optional[int],
+    Optional[datetime],
+    Optional[str],
+    Optional[str],
+    Optional[str],
+]
 
 
 class BacktestRepository:
@@ -131,7 +141,7 @@ class BacktestRepository:
         days: Optional[int],
         offset: int,
         limit: int,
-    ) -> Tuple[List[Tuple[BacktestResult, Optional[str], Optional[str], Optional[int], Optional[datetime], Optional[str]]], int]:
+    ) -> Tuple[List[BacktestResultContextRow], int]:
         with self.db.get_session() as session:
             conditions = self._build_result_conditions(
                 code=code,
@@ -159,6 +169,8 @@ class BacktestRepository:
                     AnalysisHistory.sentiment_score,
                     AnalysisHistory.created_at,
                     AnalysisHistory.context_snapshot,
+                    AnalysisHistory.raw_result,
+                    AnalysisHistory.report_type,
                 )
                 .join(AnalysisHistory, AnalysisHistory.id == BacktestResult.analysis_history_id)
                 .where(where_clause)
@@ -179,13 +191,14 @@ class BacktestRepository:
         days: Optional[int],
         offset: int,
         limit: int,
-    ) -> List[Tuple[BacktestResult, Optional[str], Optional[str], Optional[datetime], Optional[str]]]:
+    ) -> List[BacktestResultContextRow]:
         """Return result rows plus AnalysisHistory.context_snapshot for dynamic filtering."""
         with self.db.get_session() as session:
             conditions = self._build_result_conditions(
                 code=code,
                 eval_window_days=eval_window_days,
                 engine_version=engine_version,
+                trigger_source=None,
                 analysis_date_from=analysis_date_from,
                 analysis_date_to=analysis_date_to,
                 days=days,
@@ -196,8 +209,11 @@ class BacktestRepository:
                     BacktestResult,
                     AnalysisHistory.name,
                     AnalysisHistory.trend_prediction,
+                    AnalysisHistory.sentiment_score,
                     AnalysisHistory.created_at,
                     AnalysisHistory.context_snapshot,
+                    AnalysisHistory.raw_result,
+                    AnalysisHistory.report_type,
                 )
                 .join(AnalysisHistory, AnalysisHistory.id == BacktestResult.analysis_history_id)
                 .where(where_clause)
@@ -223,6 +239,7 @@ class BacktestRepository:
                 code=code,
                 eval_window_days=eval_window_days,
                 engine_version=engine_version,
+                trigger_source=None,
                 analysis_date_from=analysis_date_from,
                 analysis_date_to=analysis_date_to,
                 days=days,

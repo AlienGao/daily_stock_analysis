@@ -6,6 +6,8 @@ import { Drawer } from '../common/Drawer';
 import { SidebarNav } from './SidebarNav';
 import { cn } from '../../utils/cn';
 import { ThemeToggle } from '../theme/ThemeToggle';
+import { UiLanguageToggle } from '../i18n/UiLanguageToggle';
+import { useUiLanguage } from '../../contexts/UiLanguageContext';
 
 type ShellProps = {
   children?: React.ReactNode;
@@ -14,6 +16,7 @@ type ShellProps = {
 export const Shell: React.FC<ShellProps> = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const collapsed = false;
+  const { t } = useUiLanguage();
 
   useEffect(() => {
     if (!mobileOpen) {
@@ -39,11 +42,12 @@ export const Shell: React.FC<ShellProps> = ({ children }) => {
           type="button"
           onClick={() => setMobileOpen(true)}
           className="pointer-events-auto inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/70 bg-card/85 text-secondary-text shadow-soft-card backdrop-blur-md transition-colors hover:bg-hover hover:text-foreground"
-          aria-label="打开导航菜单"
+          aria-label={t('layout.openNav')}
         >
           <Menu className="h-5 w-5" />
         </button>
-        <div className="pointer-events-auto">
+        <div className="pointer-events-auto flex items-center gap-2">
+          <UiLanguageToggle />
           <ThemeToggle />
         </div>
       </div>
@@ -54,7 +58,7 @@ export const Shell: React.FC<ShellProps> = ({ children }) => {
             'sticky top-3 z-40 hidden w-[5rem] shrink-0 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card/80 px-1.5 py-2 shadow-soft-card backdrop-blur-sm lg:flex',
             'max-h-[calc(100vh-1.5rem)] self-start sm:top-4 sm:max-h-[calc(100vh-2rem)]'
           )}
-          aria-label="桌面侧边导航"
+          aria-label={t('layout.desktopSidebar')}
         >
           <SidebarNav collapsed={collapsed} variant="rail" onNavigate={() => setMobileOpen(false)} />
         </aside>
@@ -67,7 +71,7 @@ export const Shell: React.FC<ShellProps> = ({ children }) => {
       <Drawer
         isOpen={mobileOpen}
         onClose={() => setMobileOpen(false)}
-        title="导航菜单"
+        title={t('layout.navMenu')}
         width="max-w-xs"
         zIndex={90}
         side="left"

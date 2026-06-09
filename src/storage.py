@@ -64,6 +64,7 @@ from src.config import get_config
 
 logger = logging.getLogger(__name__)
 T = TypeVar("T")
+CURRENT_SCHEMA_VERSION = "2026-06-05-create-all-baseline"
 
 # 与 StockAnalysisPipeline：首页/接口异步单股在保存 analysis_history 时使用；同日同股仅保留最新一条
 INTERACTIVE_ANALYSIS_QUERY_SOURCES = frozenset({"api", "web"})
@@ -88,6 +89,16 @@ if TYPE_CHECKING:
 
 
 # === 数据模型定义 ===
+
+class DatabaseSchemaMigration(Base):
+    """Applied database schema version marker."""
+
+    __tablename__ = 'schema_migrations'
+
+    version = Column(String(64), primary_key=True)
+    description = Column(String(255), nullable=False)
+    applied_at = Column(DateTime, default=datetime.now, nullable=False, index=True)
+
 
 class StockDaily(Base):
     """
@@ -1866,6 +1877,7 @@ class DatabaseManager(metaclass=_DatabaseManagerMeta):
 
             # 创建所有表
             Base.metadata.create_all(self._engine)
+            self._ensure_schema_migration_record()
 
             self._initialized = True
             logger.info(f"数据库初始化完成: {db_url}")
@@ -1883,9 +1895,6 @@ class DatabaseManager(metaclass=_DatabaseManagerMeta):
             self._SessionLocal = None
             self.__class__._instance = None
             raise
-
-        # 注册退出钩子，确保程序退出时关闭数据库连接
-        atexit.register(DatabaseManager._cleanup_engine, self._engine)
 
     def _ensure_analysis_history_query_source_column(self) -> None:
         """SQLite: add analysis_history.query_source if missing (no Alembic in this project)."""
@@ -2457,6 +2466,31 @@ class DatabaseManager(metaclass=_DatabaseManagerMeta):
             "ma5", "ma10", "ma20",
         ]
         return df[[c for c in keep if c in df.columns]]
+    def _ensure_schema_migration_record(self) -> None:
+        session = self._SessionLocal()
+        values = {
+            "version": CURRENT_SCHEMA_VERSION,
+            "description": "Baseline schema created through SQLAlchemy metadata.create_all",
+        }
+        try:
+            if self._is_sqlite_engine:
+                statement = sqlite_insert(DatabaseSchemaMigration).values(**values)
+                statement = statement.on_conflict_do_nothing(index_elements=["version"])
+                session.execute(statement)
+            else:
+                session.execute(DatabaseSchemaMigration.__table__.insert().values(**values))
+            session.commit()
+        except IntegrityError:
+            session.rollback()
+            with self._SessionLocal() as verify_session:
+                existing = verify_session.get(DatabaseSchemaMigration, CURRENT_SCHEMA_VERSION)
+            if existing is None:
+                raise
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
 
     @classmethod
     def get_instance(cls) -> 'DatabaseManager':

@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 from api.v1.schemas.market_phase import MarketPhaseSummary
+from src.schemas.decision_action import DecisionAction
 
 
 class BacktestRunRequest(BaseModel):
@@ -62,6 +63,8 @@ class BacktestResultItem(BaseModel):
     evaluated_at: Optional[str] = None
     operation_advice: Optional[str] = None
     trigger_source: Optional[str] = None
+    action: Optional[DecisionAction] = None
+    action_label: Optional[str] = None
     trend_prediction: Optional[str] = None
     sentiment_score: Optional[int] = None
     market_phase: Optional[str] = None

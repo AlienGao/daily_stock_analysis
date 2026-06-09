@@ -2,7 +2,7 @@
  * Backtest API type definitions
  * Mirrors api/v1/schemas/backtest.py
  */
-import type { MarketPhaseSummary } from './analysis';
+import type { DecisionAction, MarketPhaseSummary } from './analysis';
 
 // ============ Request / Response ============
 
@@ -60,6 +60,8 @@ export interface BacktestResultItem {
   evaluatedAt?: string;
   operationAdvice?: string;
   triggerSource?: string;
+  action?: DecisionAction | null;
+  actionLabel?: string | null;
   trendPrediction?: string;
   sentimentScore?: number;
   marketPhase?: string | null;

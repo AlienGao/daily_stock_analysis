@@ -2,19 +2,22 @@ import { useState } from 'react';
 import type React from 'react';
 import { Badge, Button, Select, Input } from '../common';
 import type { ConfigValidationIssue, SystemConfigFieldSchema, SystemConfigItem } from '../../types/systemConfig';
-import { getFieldDescriptionZh, getFieldOptionLabelZh, getFieldTitleZh } from '../../utils/systemConfigI18n';
+import { useUiLanguage } from '../../contexts/UiLanguageContext';
+import { getSettingsHelpContent } from '../../locales/settingsHelp';
+import { getFieldDescriptionZh, getFieldOptionLabel, getFieldTitleZh } from '../../utils/systemConfigI18n';
+import type { UiLanguage, UiTextKey } from '../../i18n/uiText';
 import { cn } from '../../utils/cn';
 import { SettingsHelpButton } from './SettingsHelpButton';
 
-function normalizeSelectOptions(key: string, options: SystemConfigFieldSchema['options'] = []) {
+function normalizeSelectOptions(key: string, options: SystemConfigFieldSchema['options'] = [], locale: UiLanguage) {
   return options.map((option) => {
     if (typeof option === 'string') {
-      return { value: option, label: getFieldOptionLabelZh(key, option) };
+      return { value: option, label: getFieldOptionLabel(key, option, undefined, locale) };
     }
 
     return {
       ...option,
-      label: getFieldOptionLabelZh(key, option.value, option.label),
+      label: getFieldOptionLabel(key, option.value, option.label, locale),
     };
   });
 }
@@ -62,6 +65,8 @@ function renderFieldControl(
   isPasswordEditable: boolean,
   onPasswordFocus: () => void,
   controlId: string,
+  language: UiLanguage,
+  t: (key: UiTextKey) => string,
   stockCategoryTemp?: string[],
   setStockCategoryTemp?: (value: string[] | ((prev: string[]) => string[])) => void,
   handleStockCategoryConfirm?: () => void,
@@ -90,7 +95,7 @@ function renderFieldControl(
       return (
         <div className="space-y-4">
           <div className="flex flex-wrap gap-2">
-            {normalizeSelectOptions(item.key, schema.options).map((option) => (
+            {normalizeSelectOptions(item.key, schema.options, language).map((option) => (
               <label key={option.value} className="inline-flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
@@ -136,9 +141,9 @@ function renderFieldControl(
           id={controlId}
           value={value}
           onChange={onChange}
-          options={normalizeSelectOptions(item.key, schema.options)}
+          options={normalizeSelectOptions(item.key, schema.options, language)}
           disabled={disabled || !schema.isEditable}
-          placeholder="请选择"
+          placeholder={t('common.selectPlaceholder')}
         />
       );
   }
@@ -154,7 +159,7 @@ function renderFieldControl(
           disabled={disabled || !schema?.isEditable}
           onChange={(event) => onChange(event.target.checked ? 'true' : 'false')}
         />
-        <span className="text-sm text-secondary-text">{checked ? '已启用' : '未启用'}</span>
+        <span className="text-sm text-secondary-text">{checked ? t('common.enabled') : t('common.disabled')}</span>
       </label>
     );
   }
@@ -197,7 +202,7 @@ function renderFieldControl(
                   onChange(serializeMultiValues(nextValues.length ? nextValues : ['']));
                 }}
               >
-                删除
+                {t('settings.fieldDelete')}
               </Button>
             </div>
           ))}
@@ -211,7 +216,7 @@ function renderFieldControl(
               disabled={disabled || !schema?.isEditable}
               onClick={() => onChange(serializeMultiValues([...values, '']))}
             >
-              添加 Key
+              {t('settings.fieldAddKey')}
             </Button>
           </div>
         </div>
@@ -276,10 +281,15 @@ export const SettingsField: React.FC<SettingsFieldProps> = ({
   issues = [],
   extraHeaderAction,
 }) => {
+  const { language, t } = useUiLanguage();
   const schema = item.schema;
   const isMultiValue = isMultiValueField(item);
-  const title = getFieldTitleZh(item.key, item.key);
-  const description = getFieldDescriptionZh(item.key, schema?.description);
+  const helpContent = getSettingsHelpContent(schema?.helpKey, schema?.description, language);
+  const fallbackTitle = schema?.title ?? item.key;
+  const title = language === 'zh' ? getFieldTitleZh(item.key, fallbackTitle) : fallbackTitle;
+  const description = language === 'en'
+    ? helpContent?.summary ?? schema?.description ?? ''
+    : getFieldDescriptionZh(item.key, schema?.description);
   const hasError = issues.some((issue) => issue.severity === 'error');
   const [isPasswordEditable, setIsPasswordEditable] = useState(false);
   const [stockCategoryTemp, setStockCategoryTemp] = useState<string[]>(
@@ -317,12 +327,12 @@ export const SettingsField: React.FC<SettingsFieldProps> = ({
         />
         {schema?.isSensitive ? (
           <Badge variant="history" size="sm">
-            敏感
+            {t('common.sensitive')}
           </Badge>
         ) : null}
         {!schema?.isEditable ? (
           <Badge variant="default" size="sm">
-            只读
+            {t('common.readOnly')}
           </Badge>
         ) : null}
         {extraHeaderAction ? (
@@ -347,6 +357,8 @@ export const SettingsField: React.FC<SettingsFieldProps> = ({
           isPasswordEditable,
           () => setIsPasswordEditable(true),
           controlId,
+          language,
+          t,
           stockCategoryTemp,
           setStockCategoryTemp,
           handleStockCategoryConfirm,
@@ -355,8 +367,8 @@ export const SettingsField: React.FC<SettingsFieldProps> = ({
 
       {schema?.isSensitive ? (
         <p className="mt-3 text-[11px] leading-5 text-secondary-text">
-          敏感内容默认隐藏，可点击眼睛图标查看明文。
-          {isMultiValue ? ' 支持添加多个输入框进行增删。' : ''}
+          {t('settings.fieldSensitiveHint')}
+          {isMultiValue ? t('settings.fieldSensitiveMultiHint') : ''}
         </p>
       ) : null}
 

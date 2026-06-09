@@ -5,17 +5,20 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import date, datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import date, datetime, time, timedelta
+from typing import Any, Dict, List, Optional, Set, Tuple
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 
 from src.config import get_config
 from src.core.backtest_engine import OVERALL_SENTINEL_CODE, BacktestEngine, EvaluationConfig
 from src.market_phase_summary import extract_market_phase_summary, normalize_analysis_phase_bucket
 from src.repositories.backtest_repo import BacktestRepository
 from src.repositories.stock_repo import StockRepository
-from src.storage import BacktestResult, BacktestSummary, DatabaseManager
+from src.schemas.decision_action import build_action_fields
+from src.storage import AnalysisHistory, BacktestResult, BacktestSummary, DatabaseManager, StockDaily
+from src.utils.data_processing import parse_json_field
+from src.utils.rating_category import OPERATION_ADVICE_BY_CATEGORY
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +41,12 @@ class BacktestService:
         eval_window_days: Optional[int] = None,
         min_age_days: Optional[int] = None,
         limit: int = 200,
+        analysis_date_from: Optional[date] = None,
+        analysis_date_to: Optional[date] = None,
+        allowed_categories: Optional[List[str]] = None,
+        sentiment_score_min: Optional[int] = None,
+        sentiment_score_max: Optional[int] = None,
+        trigger_source: str = "manual",
     ) -> Dict[str, Any]:
         config = get_config()
 
@@ -45,6 +54,9 @@ class BacktestService:
             eval_window_days = getattr(config, "backtest_eval_window_days", 10)
         if min_age_days is None:
             min_age_days = getattr(config, "backtest_min_age_days", 14)
+        if sentiment_score_min is not None and sentiment_score_max is not None:
+            if int(sentiment_score_min) > int(sentiment_score_max):
+                raise ValueError("sentiment_score_min cannot be greater than sentiment_score_max")
 
         engine_version = getattr(config, "backtest_engine_version", "v1")
         neutral_band_pct = float(getattr(config, "backtest_neutral_band_pct", 2.0))
@@ -55,6 +67,7 @@ class BacktestService:
             engine_version=str(engine_version),
         )
 
+        allowed_operation_advices = self._resolve_allowed_operation_advices(allowed_categories)
         candidates = self.repo.get_candidates(
             code=code,
             min_age_days=int(min_age_days),
@@ -62,6 +75,11 @@ class BacktestService:
             eval_window_days=int(eval_window_days),
             engine_version=str(engine_version),
             force=force,
+            analysis_date_from=analysis_date_from,
+            analysis_date_to=analysis_date_to,
+            allowed_operation_advices=allowed_operation_advices,
+            sentiment_score_min=sentiment_score_min,
+            sentiment_score_max=sentiment_score_max,
         )
 
         processed = 0
@@ -89,6 +107,7 @@ class BacktestService:
                             eval_status="error",
                             evaluated_at=datetime.now(),
                             operation_advice=analysis.operation_advice,
+                            trigger_source=trigger_source,
                         )
                     )
                     continue
@@ -110,6 +129,7 @@ class BacktestService:
                             eval_status="insufficient_data",
                             evaluated_at=datetime.now(),
                             operation_advice=analysis.operation_advice,
+                            trigger_source=trigger_source,
                         )
                     )
                     continue
@@ -120,6 +140,24 @@ class BacktestService:
                     eval_window_days=int(eval_window_days),
                 )
 
+                # For next-day validation, refresh once when the first forward bar
+                # is already on/behind the latest settled trading date. This avoids
+                # using stale intraday snapshots as a "final" close.
+                if int(eval_window_days) == 1 and self._should_refresh_next_day_bar(
+                    code=analysis.code,
+                    forward_bars=forward_bars,
+                ):
+                    self._try_fill_daily_data(
+                        code=analysis.code,
+                        analysis_date=start_daily.date,
+                        eval_window_days=eval_window_days,
+                    )
+                    forward_bars = self.stock_repo.get_forward_bars(
+                        code=analysis.code,
+                        analysis_date=start_daily.date,
+                        eval_window_days=int(eval_window_days),
+                    )
+
                 if len(forward_bars) < int(eval_window_days):
                     self._try_fill_daily_data(code=analysis.code, analysis_date=start_daily.date, eval_window_days=eval_window_days)
                     forward_bars = self.stock_repo.get_forward_bars(
@@ -127,6 +165,27 @@ class BacktestService:
                         analysis_date=start_daily.date,
                         eval_window_days=int(eval_window_days),
                     )
+                if not self._is_forward_window_settled(
+                    code=analysis.code,
+                    analysis_date=start_daily.date,
+                    eval_window_days=int(eval_window_days),
+                    forward_bars=forward_bars,
+                ):
+                    insufficient += 1
+                    results_to_save.append(
+                        BacktestResult(
+                            analysis_history_id=analysis.id,
+                            code=analysis.code,
+                            analysis_date=start_daily.date,
+                            eval_window_days=int(eval_window_days),
+                            engine_version=str(engine_version),
+                            eval_status="insufficient_data",
+                            evaluated_at=datetime.now(),
+                            operation_advice=analysis.operation_advice,
+                            trigger_source=trigger_source,
+                        )
+                    )
+                    continue
 
                 evaluation = BacktestEngine.evaluate_single(
                     operation_advice=analysis.operation_advice,
@@ -156,6 +215,7 @@ class BacktestService:
                         eval_status=str(evaluation.get("eval_status") or "error"),
                         evaluated_at=datetime.now(),
                         operation_advice=evaluation.get("operation_advice"),
+                        trigger_source=trigger_source,
                         position_recommendation=evaluation.get("position_recommendation"),
                         start_price=evaluation.get("start_price"),
                         end_close=evaluation.get("end_close"),
@@ -192,6 +252,7 @@ class BacktestService:
                         eval_status="error",
                         evaluated_at=datetime.now(),
                         operation_advice=analysis.operation_advice,
+                            trigger_source=trigger_source,
                     )
                 )
 
@@ -213,6 +274,7 @@ class BacktestService:
             "insufficient": insufficient,
             "errors": errors,
         }
+
 
     def get_recent_evaluations(
         self,
@@ -266,7 +328,7 @@ class BacktestService:
             limit=limit,
         )
         items = []
-        for result, stock_name, trend_prediction, sentiment_score, _created_at, context_snapshot in rows:
+        for result, stock_name, trend_prediction, sentiment_score, _created_at, context_snapshot, raw_result, report_type in rows:
             summary = extract_market_phase_summary(context_snapshot)
             items.append(
                 self._result_to_dict(
@@ -276,6 +338,8 @@ class BacktestService:
                     sentiment_score=sentiment_score,
                     market_phase_summary=summary,
                     market_phase=self._phase_bucket_from_summary(summary),
+                    raw_result=raw_result,
+                    report_type=report_type,
                 )
             )
         return {"total": total, "page": page, "limit": limit, "items": items}
@@ -448,7 +512,17 @@ class BacktestService:
         sql_offset = 0
         scanned = 0
         matched_total = 0
-        page_rows: List[Tuple[BacktestResult, Optional[str], Optional[str], Optional[Dict[str, Any]], str]] = []
+        page_rows: List[
+            Tuple[
+                BacktestResult,
+                Optional[str],
+                Optional[str],
+                Optional[Dict[str, Any]],
+                str,
+                Optional[str],
+                Optional[str],
+            ]
+        ] = []
 
         while True:
             remaining_probe_rows = self.MAX_DYNAMIC_SUMMARY_ROWS + 1 - scanned
@@ -471,20 +545,37 @@ class BacktestService:
             if scanned > self.MAX_DYNAMIC_SUMMARY_ROWS:
                 raise ValueError("Phase-filtered results match too many rows; narrow the analysis date range or stock code.")
             sql_offset += len(batch)
-            for result, stock_name, trend_prediction, _created_at, context_snapshot in batch:
+            for (
+                result,
+                stock_name,
+                trend_prediction,
+                _sentiment_score,
+                _created_at,
+                context_snapshot,
+                raw_result,
+                report_type,
+            ) in batch:
                 summary = extract_market_phase_summary(context_snapshot)
                 bucket = self._phase_bucket_from_summary(summary)
                 if bucket != phase_bucket:
                     continue
                 if matched_total >= page_offset and len(page_rows) < limit:
-                    page_rows.append((result, stock_name, trend_prediction, summary, bucket))
+                    page_rows.append((result, stock_name, trend_prediction, summary, bucket, raw_result, report_type))
                 matched_total += 1
             if len(batch) < batch_limit:
                 break
 
         items = [
-            self._result_to_dict(result, stock_name, trend_prediction, market_phase_summary=summary, market_phase=bucket)
-            for result, stock_name, trend_prediction, summary, bucket in page_rows
+            self._result_to_dict(
+                result,
+                stock_name,
+                trend_prediction,
+                market_phase_summary=summary,
+                market_phase=bucket,
+                raw_result=raw_result,
+                report_type=report_type,
+            )
+            for result, stock_name, trend_prediction, summary, bucket, raw_result, report_type in page_rows
         ]
         return {"total": matched_total, "page": page, "limit": limit, "items": items}
 
@@ -522,14 +613,161 @@ class BacktestService:
             phase_breakdown[bucket] = phase_breakdown.get(bucket, 0) + 1
         return {"phase_breakdown": phase_breakdown, "raw_phase_counts": raw_phase_counts}
 
-    def _resolve_analysis_date(self, analysis) -> Optional[date]:
-        parsed = self.repo.parse_analysis_date_from_snapshot(analysis.context_snapshot)
-        if parsed:
-            return parsed
-        if getattr(analysis, "created_at", None):
-            return analysis.created_at.date()
-        logger.warning(f"无法确定分析日期，跳过记录: {analysis.code}#{getattr(analysis, 'id', '?')}")
-        return None
+    def precheck_auto_backtest_data(
+        self,
+        *,
+        analysis_date_from: Optional[date] = None,
+        analysis_date_to: Optional[date] = None,
+        max_symbols: int = 800,
+        end_date: Optional[date] = None,
+    ) -> Dict[str, Any]:
+        """Best-effort precheck before auto backtest.
+
+        Goals:
+        1) Detect code-format alias collisions (e.g. 000294 vs 000294.SZ)
+        2) Backfill stale daily bars for candidate analysis symbols
+        """
+        target_end_date = end_date or date.today()
+        codes = self._collect_analysis_codes(
+            analysis_date_from=analysis_date_from,
+            analysis_date_to=analysis_date_to,
+            limit=max_symbols,
+        )
+        if not codes:
+            return {
+                "candidate_codes": 0,
+                "alias_conflicts": 0,
+                "refreshed_codes": 0,
+                "failed_codes": 0,
+            }
+
+        global_latest = self._get_global_latest_daily_date()
+        if global_latest is None:
+            return {
+                "candidate_codes": len(codes),
+                "alias_conflicts": 0,
+                "refreshed_codes": 0,
+                "failed_codes": 0,
+                "warning": "stock_daily is empty",
+            }
+
+        alias_conflicts = 0
+        refreshed_codes = 0
+        failed_codes = 0
+        touched = 0
+
+        for code in codes:
+            variants = self.stock_repo._candidate_codes(code)  # noqa: SLF001
+            latest = self._get_latest_daily_date_for_codes(variants)
+            if len(variants) >= 2:
+                existing_variants = self._count_existing_variants(variants)
+                if existing_variants >= 2:
+                    alias_conflicts += 1
+
+            if latest is not None and latest >= global_latest:
+                continue
+
+            try:
+                backfill_start = latest or (analysis_date_from or (target_end_date - timedelta(days=45)))
+                self._try_fill_daily_data(code=code, analysis_date=backfill_start, eval_window_days=1)
+                normalized_code = self._canonical_code_for_storage(code)
+                self._normalize_stock_daily_code_aliases(normalized_code)
+                refreshed_codes += 1
+                touched += 1
+            except Exception as exc:  # pragma: no cover - defensive branch
+                logger.warning("自动回测前置补数失败(%s): %s", code, exc)
+                failed_codes += 1
+
+        logger.info(
+            "自动回测前置检查完成: candidate=%s conflicts=%s refreshed=%s failed=%s global_latest=%s touched=%s",
+            len(codes),
+            alias_conflicts,
+            refreshed_codes,
+            failed_codes,
+            global_latest,
+            touched,
+        )
+        return {
+            "candidate_codes": len(codes),
+            "alias_conflicts": alias_conflicts,
+            "refreshed_codes": refreshed_codes,
+            "failed_codes": failed_codes,
+            "global_latest": global_latest.isoformat(),
+        }
+
+    @staticmethod
+    def _resolve_allowed_operation_advices(allowed_categories: Optional[List[str]]) -> Optional[List[str]]:
+        if not allowed_categories:
+            return None
+        normalized_categories: Set[str] = {
+            str(category or "").strip().upper() for category in allowed_categories if str(category or "").strip()
+        }
+        if not normalized_categories:
+            return None
+        allowed: List[str] = []
+        for category, advices in OPERATION_ADVICE_BY_CATEGORY.items():
+            if category in normalized_categories:
+                allowed.extend(advices)
+        return sorted(set(allowed)) if allowed else None
+
+    @staticmethod
+    def _is_forward_window_settled(
+        *,
+        code: str,
+        analysis_date: date,
+        eval_window_days: int,
+        forward_bars: List[Any],
+    ) -> bool:
+        """Ensure forward bars are fully settled before evaluation.
+
+        For next-day validation (`eval_window_days=1`), the first forward bar must
+        be no later than the latest completed trading session of the stock's market.
+        This prevents intraday/partial bars from being treated as final outcomes.
+        """
+        if int(eval_window_days) != 1:
+            return True
+        if not forward_bars:
+            return False
+        first_bar = forward_bars[0]
+        first_bar_date = getattr(first_bar, "date", None)
+        if not isinstance(first_bar_date, date):
+            return False
+        try:
+            from src.core.trading_calendar import get_effective_trading_date, get_market_for_stock
+
+            market = get_market_for_stock(code)
+            settled_date = get_effective_trading_date(market)
+            if first_bar_date > settled_date:
+                logger.info(
+                    "回测前向窗口未收盘，暂记数据不足: code=%s analysis_date=%s first_forward_date=%s settled_date=%s",
+                    code,
+                    analysis_date,
+                    first_bar_date,
+                    settled_date,
+                )
+                return False
+        except Exception as exc:
+            logger.warning("校验回测窗口收盘状态失败（按可用数据继续）: %s", exc)
+        return True
+
+    @staticmethod
+    def _should_refresh_next_day_bar(*, code: str, forward_bars: List[Any]) -> bool:
+        """Whether next-day validation should refresh latest daily bars once."""
+        if not forward_bars:
+            return False
+        first_bar = forward_bars[0]
+        first_bar_date = getattr(first_bar, "date", None)
+        if not isinstance(first_bar_date, date):
+            return False
+        try:
+            from src.core.trading_calendar import get_effective_trading_date, get_market_for_stock
+
+            market = get_market_for_stock(code)
+            settled_date = get_effective_trading_date(market)
+            return first_bar_date <= settled_date
+        except Exception as exc:
+            logger.warning("判定是否刷新次日验证日线失败（跳过刷新）: %s", exc)
+            return False
 
     def _try_fill_daily_data(self, *, code: str, analysis_date: date, eval_window_days: int) -> None:
         try:
@@ -546,9 +784,109 @@ class BacktestService:
             )
             if df is None or df.empty:
                 return
-            self.db.save_daily_data(df, code=code, data_source=source)
+            normalized_code = self._canonical_code_for_storage(code)
+            self.db.save_daily_data(df, code=normalized_code, data_source=source)
         except Exception as exc:
             logger.warning(f"补全日线数据失败({code}): {exc}")
+
+    def _collect_analysis_codes(
+        self,
+        *,
+        analysis_date_from: Optional[date],
+        analysis_date_to: Optional[date],
+        limit: int,
+    ) -> List[str]:
+        with self.db.get_session() as session:
+            stmt = select(AnalysisHistory.code).distinct()
+            if analysis_date_from is not None:
+                stmt = stmt.where(AnalysisHistory.created_at >= datetime.combine(analysis_date_from, time.min))
+            if analysis_date_to is not None:
+                stmt = stmt.where(AnalysisHistory.created_at < datetime.combine(analysis_date_to + timedelta(days=1), time.min))
+            stmt = stmt.order_by(AnalysisHistory.code).limit(max(int(limit), 1))
+            return [str(v) for v in session.execute(stmt).scalars().all() if v]
+
+    def _get_global_latest_daily_date(self) -> Optional[date]:
+        with self.db.get_session() as session:
+            return session.execute(select(func.max(StockDaily.date))).scalar_one_or_none()
+
+    def _get_latest_daily_date_for_codes(self, codes: List[str]) -> Optional[date]:
+        if not codes:
+            return None
+        with self.db.get_session() as session:
+            return session.execute(
+                select(func.max(StockDaily.date)).where(StockDaily.code.in_(codes))
+            ).scalar_one_or_none()
+
+    def _count_existing_variants(self, codes: List[str]) -> int:
+        if not codes:
+            return 0
+        with self.db.get_session() as session:
+            rows = session.execute(
+                select(StockDaily.code).where(StockDaily.code.in_(codes)).distinct()
+            ).scalars().all()
+            return len(rows)
+
+    @staticmethod
+    def _canonical_code_for_storage(code: str) -> str:
+        raw = str(code or "").strip().upper()
+        if raw.endswith(".HK"):
+            base = raw[:-3]
+            if base.isdigit():
+                return f"HK{base.zfill(5)}"
+        if raw.startswith("HK") and raw[2:].isdigit():
+            return f"HK{raw[2:].zfill(5)}"
+        if raw.endswith((".SZ", ".SH", ".SS", ".BJ")):
+            base = raw.rsplit(".", 1)[0]
+            if base.isdigit():
+                return base
+        if raw.startswith(("SZ", "SH", "BJ")) and raw[2:].isdigit():
+            return raw[2:]
+        return raw
+
+    def _normalize_stock_daily_code_aliases(self, canonical_code: str) -> None:
+        candidates = self.stock_repo._candidate_codes(canonical_code)  # noqa: SLF001
+        alias_codes = [code for code in candidates if code != canonical_code]
+        if not alias_codes:
+            return
+        with self.db.get_session() as session:
+            rows = session.execute(
+                select(StockDaily.id, StockDaily.date)
+                .where(StockDaily.code.in_(alias_codes))
+            ).all()
+            if not rows:
+                return
+            # Skip rows that would violate uix_code_date after canonical rewrite.
+            dates = [r[1] for r in rows if r[1] is not None]
+            existing_dates = set()
+            if dates:
+                existing_dates = set(
+                    session.execute(
+                        select(StockDaily.date).where(
+                            and_(
+                                StockDaily.code == canonical_code,
+                                StockDaily.date.in_(dates),
+                            )
+                        )
+                    ).scalars().all()
+                )
+            update_ids = [r[0] for r in rows if r[1] not in existing_dates]
+            if not update_ids:
+                return
+            session.execute(
+                StockDaily.__table__.update()
+                .where(StockDaily.id.in_(update_ids))
+                .values(code=canonical_code)
+            )
+            session.commit()
+
+    def _resolve_analysis_date(self, analysis) -> Optional[date]:
+        parsed = self.repo.parse_analysis_date_from_snapshot(analysis.context_snapshot)
+        if parsed:
+            return parsed
+        if getattr(analysis, "created_at", None):
+            return analysis.created_at.date()
+        logger.warning(f"无法确定分析日期，跳过记录: {analysis.code}#{getattr(analysis, 'id', '?')}")
+        return None
 
     def _recompute_summaries(self, *, touched_codes: List[str], eval_window_days: int, engine_version: str) -> None:
         with self.db.get_session() as session:
@@ -628,7 +966,17 @@ class BacktestService:
         sentiment_score: Optional[int] = None,
         market_phase_summary: Optional[Dict[str, Any]] = None,
         market_phase: Optional[str] = None,
+        raw_result: Optional[Any] = None,
+        report_type: Optional[str] = None,
     ) -> Dict[str, Any]:
+        parsed_raw_result = parse_json_field(raw_result)
+        raw = parsed_raw_result if isinstance(parsed_raw_result, dict) else {}
+        action_fields = build_action_fields(
+            operation_advice=raw.get("operation_advice") or row.operation_advice,
+            explicit_action=raw.get("action"),
+            report_type=report_type or ("market_review" if row.code == "market_review" else None),
+            report_language=raw.get("report_language"),
+        )
         return {
             "analysis_history_id": row.analysis_history_id,
             "code": row.code,
@@ -640,6 +988,8 @@ class BacktestService:
             "evaluated_at": row.evaluated_at.isoformat() if row.evaluated_at else None,
             "operation_advice": row.operation_advice,
             "trigger_source": row.trigger_source,
+            "action": action_fields["action"],
+            "action_label": action_fields["action_label"],
             "trend_prediction": trend_prediction,
             "sentiment_score": sentiment_score,
             "market_phase": market_phase,
