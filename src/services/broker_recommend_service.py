@@ -3096,12 +3096,13 @@ class BrokerRecommendService:
         if not prev_d:
             return False
         curr_d = trading_days[day_idx]
-        prev_nt = BrokerRecommendService._normalize_nineturn_record(
-            nineturn_cache.get(prev_d, {}).get(ts_code),
-        )
-        curr_nt = BrokerRecommendService._normalize_nineturn_record(
-            nineturn_cache.get(curr_d, {}).get(ts_code),
-        )
+        prev_raw = nineturn_cache.get(prev_d, {}).get(ts_code)
+        curr_raw = nineturn_cache.get(curr_d, {}).get(ts_code)
+        # 无真实九转数据时不判定翻转，避免无数据时的全零填充误报
+        if prev_raw is None or curr_raw is None:
+            return False
+        prev_nt = BrokerRecommendService._normalize_nineturn_record(prev_raw)
+        curr_nt = BrokerRecommendService._normalize_nineturn_record(curr_raw)
         prev_up = prev_nt["up_count"]
         if prev_up < 1:
             return False
@@ -3136,12 +3137,12 @@ class BrokerRecommendService:
         if not prev_d:
             return False
         curr_d = trading_days[day_idx]
-        prev_nt = BrokerRecommendService._normalize_nineturn_record(
-            nineturn_cache.get(prev_d, {}).get(ts_code),
-        )
-        curr_nt = BrokerRecommendService._normalize_nineturn_record(
-            nineturn_cache.get(curr_d, {}).get(ts_code),
-        )
+        prev_raw = nineturn_cache.get(prev_d, {}).get(ts_code)
+        curr_raw = nineturn_cache.get(curr_d, {}).get(ts_code)
+        if prev_raw is None or curr_raw is None:
+            return False
+        prev_nt = BrokerRecommendService._normalize_nineturn_record(prev_raw)
+        curr_nt = BrokerRecommendService._normalize_nineturn_record(curr_raw)
         prev_down = prev_nt["down_count"]
         if prev_down < 1:
             return False
@@ -3181,7 +3182,6 @@ class BrokerRecommendService:
         if not date_pools:
             return
 
-        empty_nt = {"up_count": 0, "down_count": 0, "nine_up_turn": 0, "nine_down_turn": 0}
         tf = None
         try:
             from data_provider.tushare_fetcher import TushareFetcher
@@ -3221,8 +3221,6 @@ class BrokerRecommendService:
                 continue
 
             if tf is None:
-                for tc in missing:
-                    by_date.setdefault(tc, dict(empty_nt))
                 continue
 
             try:
@@ -3242,12 +3240,11 @@ class BrokerRecommendService:
                         **row,
                     }
                 for tc in missing:
-                    if tc not in by_date:
-                        by_date[tc] = dict(empty_nt)
+                    pass  # 不留 filler 条目，无真实数据的股票不会出现在 cache 中
             except Exception as exc:
                 logger.debug("[BrokerRecommend] 预取九转失败 %s: %s", trade_date, exc)
                 for tc in missing:
-                    by_date.setdefault(tc, dict(empty_nt))
+                    pass  # 同上一并；不填充空记录
 
         if to_persist:
             try:
