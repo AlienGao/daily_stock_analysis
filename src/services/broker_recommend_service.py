@@ -1928,6 +1928,12 @@ class BrokerRecommendService:
         trading_days = self._get_trading_days(month_start, effective_end)
         if not trading_days:
             return empty
+        # 当前月份扩展交易日到今日（实时估算需包含当天）
+        today_str = date.today().strftime("%Y%m%d")
+        if today_str[:6] == month and today_str not in trading_days:
+            # 检查今天是否交易日（用 weekday 简单判断）
+            if date.today().weekday() < 5:
+                trading_days.append(today_str)
 
         prev_month_last_day = self._prev_month_last_trading_day(month)
         nineturn_cache = self._load_nineturn_by_trade_date_cache()
@@ -1938,47 +1944,111 @@ class BrokerRecommendService:
 
         month_last_trading_day = self._calendar_month_last_trading_day(month)
         days_out: List[Dict[str, Any]] = []
+        realtime_prefetched_ohlc: Optional[Dict[str, Dict[str, Dict[str, Optional[float]]]]] = None
         for i, signal_date in enumerate(trading_days):
             if month_last_trading_day and signal_date == month_last_trading_day:
                 continue
             stocks: List[Dict[str, Any]] = []
-            for tc in pool:
-                snap = BrokerRecommendService._nineturn_reversal_snapshot(
-                    trading_days, i, tc, nineturn_cache,
-                    prev_month_last_day=prev_month_last_day,
+            date_has_cache_data = bool(nineturn_cache.get(signal_date))
+
+            if date_has_cache_data:
+                for tc in pool:
+                    snap = BrokerRecommendService._nineturn_reversal_snapshot(
+                        trading_days, i, tc, nineturn_cache,
+                        prev_month_last_day=prev_month_last_day,
+                    )
+                    if BrokerRecommendService._nineturn_up_to_down_on_day(
+                        nineturn_cache, trading_days, i, tc,
+                        prev_month_last_day=prev_month_last_day,
+                        allow_any_up_count=True,
+                    ):
+                        prev_up = snap.get("prev_nineturn_up_count")
+                        stocks.append({
+                            "ts_code": tc,
+                            "name": name_by_code.get(tc, ""),
+                            "broker_count": broker_count_by_code.get(tc, 1),
+                            "signal_type": "up_to_down",
+                            "prev_nineturn_up_count": int(prev_up) if prev_up is not None else 0,
+                            "prev_nineturn_down_count": 0,
+                            "nineturn_up_count": snap.get("nineturn_up_count"),
+                            "nineturn_down_count": snap.get("nineturn_down_count"),
+                            "is_realtime": False,
+                        })
+                    elif BrokerRecommendService._nineturn_down_to_up_on_day(
+                        nineturn_cache, trading_days, i, tc,
+                        prev_month_last_day=prev_month_last_day,
+                        allow_any_down_count=True,
+                    ):
+                        prev_down = snap.get("prev_nineturn_down_count")
+                        stocks.append({
+                            "ts_code": tc,
+                            "name": name_by_code.get(tc, ""),
+                            "broker_count": broker_count_by_code.get(tc, 1),
+                            "signal_type": "down_to_up",
+                            "prev_nineturn_up_count": 0,
+                            "prev_nineturn_down_count": int(prev_down) if prev_down is not None else 0,
+                            "nineturn_up_count": snap.get("nineturn_up_count"),
+                            "nineturn_down_count": snap.get("nineturn_down_count"),
+                            "is_realtime": False,
+                        })
+            else:
+                # 无九转缓存数据：用实时价格估算 TD Sequential 翻转
+                if i < 4:
+                    continue
+                if realtime_prefetched_ohlc is None:
+                    realtime_prefetched_ohlc = self._prefetch_ohlc(
+                        pool, trading_days[i - 4], signal_date, use_adj=False,
+                    )
+                date_4_ago = trading_days[i - 4]
+                # 取今日实时行情作为 OHLC 补充
+                _, _, rt_today_ohlc = self._get_realtime_prices_batch(pool)
+                prev_day = BrokerRecommendService._nineturn_prev_trade_date(
+                    trading_days, i, prev_month_last_day,
                 )
-                if BrokerRecommendService._nineturn_up_to_down_on_day(
-                    nineturn_cache, trading_days, i, tc,
-                    prev_month_last_day=prev_month_last_day,
-                    allow_any_up_count=True,
-                ):
-                    prev_up = snap.get("prev_nineturn_up_count")
-                    stocks.append({
-                        "ts_code": tc,
-                        "name": name_by_code.get(tc, ""),
-                        "broker_count": broker_count_by_code.get(tc, 1),
-                        "signal_type": "up_to_down",
-                        "prev_nineturn_up_count": int(prev_up) if prev_up is not None else 0,
-                        "prev_nineturn_down_count": 0,
-                        "nineturn_up_count": snap.get("nineturn_up_count"),
-                        "nineturn_down_count": snap.get("nineturn_down_count"),
-                    })
-                elif BrokerRecommendService._nineturn_down_to_up_on_day(
-                    nineturn_cache, trading_days, i, tc,
-                    prev_month_last_day=prev_month_last_day,
-                    allow_any_down_count=True,
-                ):
-                    prev_down = snap.get("prev_nineturn_down_count")
-                    stocks.append({
-                        "ts_code": tc,
-                        "name": name_by_code.get(tc, ""),
-                        "broker_count": broker_count_by_code.get(tc, 1),
-                        "signal_type": "down_to_up",
-                        "prev_nineturn_up_count": 0,
-                        "prev_nineturn_down_count": int(prev_down) if prev_down is not None else 0,
-                        "nineturn_up_count": snap.get("nineturn_up_count"),
-                        "nineturn_down_count": snap.get("nineturn_down_count"),
-                    })
+                if prev_day:
+                    for tc in pool:
+                        stock_ohlc = realtime_prefetched_ohlc.get(tc, {})
+                        close_4_ago = stock_ohlc.get(date_4_ago, {}).get("close")
+                        if close_4_ago is None:
+                            continue
+                        today_close = stock_ohlc.get(signal_date, {}).get("close")
+                        if today_close is None:
+                            today_close = rt_today_ohlc.get(tc, {}).get("close")
+                        if today_close is None:
+                            continue
+                        prev_nt = BrokerRecommendService._normalize_nineturn_record(
+                            nineturn_cache.get(prev_day, {}).get(tc),
+                        )
+                        prev_up = prev_nt["up_count"]
+                        prev_down = prev_nt["down_count"]
+                        # TD Sequential 简化：close > close[-4] → 上涨延续；< → 下跌延续
+                        is_up_today = today_close > close_4_ago
+                        is_down_today = today_close < close_4_ago
+                        if prev_up >= 1 and not is_up_today:
+                            stocks.append({
+                                "ts_code": tc,
+                                "name": name_by_code.get(tc, ""),
+                                "broker_count": broker_count_by_code.get(tc, 1),
+                                "signal_type": "up_to_down",
+                                "prev_nineturn_up_count": prev_up,
+                                "prev_nineturn_down_count": 0,
+                                "nineturn_up_count": 0,
+                                "nineturn_down_count": 0,
+                                "is_realtime": True,
+                            })
+                        elif prev_down >= 1 and not is_down_today:
+                                stocks.append({
+                                    "ts_code": tc,
+                                    "name": name_by_code.get(tc, ""),
+                                    "broker_count": broker_count_by_code.get(tc, 1),
+                                    "signal_type": "down_to_up",
+                                    "prev_nineturn_up_count": 0,
+                                    "prev_nineturn_down_count": prev_down,
+                                    "nineturn_up_count": 0,
+                                    "nineturn_down_count": 0,
+                                    "is_realtime": True,
+                                })
+
             if stocks:
                 stocks.sort(
                     key=lambda x: (

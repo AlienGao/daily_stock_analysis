@@ -292,10 +292,11 @@ function upToDownStruckRowKey(
 }
 
 function formatReversalSignalLabel(row: UpToDownDailyStockItem): string {
+  const tag = row.is_realtime ? '实时' : '';
   if (row.signal_type === 'down_to_up') {
-    return `降${row.prev_nineturn_down_count ?? 0}升`;
+    return `降${row.prev_nineturn_down_count ?? 0}升${tag ? ` ${tag}` : ''}`;
   }
-  return `升${row.prev_nineturn_up_count}转降`;
+  return `升${row.prev_nineturn_up_count}转降${tag ? ` ${tag}` : ''}`;
 }
 
 type ReversalSignalTableProps = {
@@ -1167,9 +1168,12 @@ const BrokerRecommendPage: React.FC = () => {
     const buy = activeUpToDownDaily?.buy_date || activeBacktest?.buy_date;
     const sell = activeUpToDownDaily?.sell_date || activeBacktest?.sell_date;
     if (!buy || !sell) return null;
-    let max = dayjs(sell, 'YYYYMMDD');
-    if (isCurrentMonth && max.isAfter(dayjs(), 'day')) {
-      max = dayjs();
+    if (isCurrentMonth) {
+      return { min: dayjs(buy, 'YYYYMMDD'), max: dayjs() };
+    }
+    const max = dayjs(sell, 'YYYYMMDD');
+    if (max.isAfter(dayjs(), 'day')) {
+      return { min: dayjs(buy, 'YYYYMMDD'), max: dayjs() };
     }
     return { min: dayjs(buy, 'YYYYMMDD'), max };
   }, [activeUpToDownDaily, activeBacktest, isCurrentMonth]);
@@ -2008,7 +2012,7 @@ const BrokerRecommendPage: React.FC = () => {
             <div className="text-xs text-tertiary-text mb-3">
               {upToDownAsOfDate
                 ? filteredUpToDown
-                  ? `信号日 ${fmtDate(filteredUpToDown.date)}；升 1..8 转降 / 降 1..8 升；点击方框划线标记`
+                  ? `信号日 ${fmtDate(filteredUpToDown.date)}${filteredUpToDown.stocks.some(s => s.is_realtime) ? '（实时估算）' : ''}；升 1..8 转降 / 降 1..8 升；点击方框划线标记`
                   : `${upToDownAsOfDate.format('YYYY-MM-DD')} 当日无升转降或降转升信号`
                 : '当月金股池收盘升 1..8 转降、降 1..8 升；末交易日忽略'}
             </div>

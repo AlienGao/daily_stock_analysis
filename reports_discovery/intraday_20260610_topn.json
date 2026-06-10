@@ -1,0 +1,182 @@
+[
+  {
+    "rank": 1,
+    "stock_code": "605398",
+    "stock_name": "新炬网络",
+    "score": 56.0,
+    "sector": "IT服务",
+    "factor_scores": {
+      "ma_entry": 89.15570591992133,
+      "sector": 0.0,
+      "momentum": 51.806504820092854,
+      "ranking_momentum": 90.29198122148416,
+      "rebound": 0.0,
+      "popularity": 50.214142135480536
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "回踩MA5均线",
+      "BOLL中轨支撑",
+      "趋势加速↑(46.8%/天)",
+      "今日强于93%个股",
+      "人气核心圈(排名1244)"
+    ],
+    "buy_price_low": 23.2,
+    "buy_price_high": 25.2,
+    "stop_loss": 24.73,
+    "take_profit_1": 27.2,
+    "take_profit_2": 30.72,
+    "discovered_at": "15:06:12",
+    "price_at_discovery": 25.14,
+    "pct_chg": 2.95,
+    "tech_score": 67.35,
+    "rr_score": 70.92966060009833,
+    "market_score": 39.994231166983454,
+    "sector_score": 82.32670460734539,
+    "volume_score": 78.16953421935095,
+    "position_score": 85,
+    "formation_score": 55.0,
+    "composite_score": 63.94499999999999
+  },
+  {
+    "rank": 2,
+    "stock_code": "603402",
+    "stock_name": "陕西旅游",
+    "score": 38.9,
+    "sector": "旅游及酒店",
+    "factor_scores": {
+      "ma_entry": 98.18852778422573,
+      "sector": 0.0,
+      "momentum": 58.01207951911238,
+      "ranking_momentum": 65.71909299173822,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "回踩MA5均线",
+      "趋势加速↑(8.1%/天)",
+      "今日强于92%个股"
+    ],
+    "buy_price_low": 88.0,
+    "buy_price_high": 96.9,
+    "stop_loss": 94.98,
+    "take_profit_1": 100.04,
+    "take_profit_2": 110.96,
+    "discovered_at": "15:06:12",
+    "price_at_discovery": 95.46,
+    "pct_chg": 2.77,
+    "tech_score": 71.37,
+    "rr_score": 72.59963768115962,
+    "market_score": 39.994231166983454,
+    "sector_score": 75.159355055733,
+    "volume_score": 89.61810267164593,
+    "position_score": 85,
+    "formation_score": 40.0,
+    "composite_score": 61.629000000000005
+  },
+  {
+    "rank": 3,
+    "stock_code": "603167",
+    "stock_name": "渤海轮渡",
+    "score": 28.799999999999997,
+    "sector": "港口航运",
+    "factor_scores": {
+      "ma_entry": 89.91528648360588,
+      "sector": 0.0,
+      "momentum": 41.63357146703212,
+      "ranking_momentum": 86.44451398966278,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线",
+      "趋势加速↑(7.8%/天)",
+      "今日强于71%个股",
+      "拥挤惩罚(近5日选中3天-10分)"
+    ],
+    "buy_price_low": 8.7,
+    "buy_price_high": 9.2,
+    "stop_loss": 9.0,
+    "take_profit_1": 9.31,
+    "take_profit_2": 9.67,
+    "discovered_at": "15:06:12",
+    "price_at_discovery": 9.04,
+    "pct_chg": 0.0,
+    "tech_score": 71.55,
+    "rr_score": 100.0,
+    "market_score": 39.994231166983454,
+    "sector_score": 61.90747458728422,
+    "volume_score": 64.73422928176528,
+    "position_score": 75,
+    "formation_score": 50.0,
+    "composite_score": 58.724999999999994
+  },
+  {
+    "rank": 4,
+    "stock_code": "002064",
+    "stock_name": "华峰化学",
+    "score": 41.3,
+    "sector": "化学纤维",
+    "factor_scores": {
+      "ma_entry": 100.0,
+      "sector": 0.0,
+      "momentum": 31.559973029976984,
+      "ranking_momentum": 93.05402589393243,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "回踩MA5均线",
+      "趋势加速↑(27.6%/天)",
+      "今日强于94%个股"
+    ],
+    "buy_price_low": 9.5,
+    "buy_price_high": 10.5,
+    "stop_loss": 10.34,
+    "take_profit_1": 11.04,
+    "take_profit_2": 13.07,
+    "discovered_at": "15:06:12",
+    "price_at_discovery": 10.35,
+    "pct_chg": 3.6,
+    "tech_score": 60.83,
+    "rr_score": 70.30567685589514,
+    "market_score": 39.994231166983454,
+    "sector_score": 71.39837013605096,
+    "volume_score": 63.545334342560004,
+    "position_score": 75,
+    "formation_score": 40.0,
+    "composite_score": 54.971
+  }
+]

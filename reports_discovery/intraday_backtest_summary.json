@@ -148,5 +148,15 @@
     "total_days": 24,
     "final_capital": 4417400.0,
     "initial_capital": 5000000.0
+  },
+  {
+    "date": "20260610",
+    "mode": "intraday",
+    "cumulative_return": -0.1229674,
+    "win_rate": 0.3360655737704918,
+    "total_trades": 122,
+    "total_days": 26,
+    "final_capital": 4385163.0,
+    "initial_capital": 5000000.0
   }
 ]

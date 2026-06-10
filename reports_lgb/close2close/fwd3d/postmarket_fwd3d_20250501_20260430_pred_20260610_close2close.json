@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 3,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260610",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300303",
+      "stock_code": "300303",
+      "stock_name": "聚飞光电",
+      "lgb_score": 100.0,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 2,
+      "ts_code": "301418",
+      "stock_code": "301418",
+      "stock_name": "协昌科技",
+      "lgb_score": 98.84,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 3,
+      "ts_code": "603056",
+      "stock_code": "603056",
+      "stock_name": "德邦股份",
+      "lgb_score": 98.66,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 4,
+      "ts_code": "301236",
+      "stock_code": "301236",
+      "stock_name": "软通动力",
+      "lgb_score": 97.66,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 5,
+      "ts_code": "300502",
+      "stock_code": "300502",
+      "stock_name": "新易盛",
+      "lgb_score": 97.48,
+      "raw_score": 0.07
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.54,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.007891,
+    "std": 0.018413,
+    "skew": -0.5982,
+    "kurtosis": -0.946,
+    "min": -0.083488,
+    "max": 0.072039,
+    "median": 0.022745
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.055494644535355,
+    "cv_rmse_std": 0.0026822351052827186,
+    "cv_scores": [
+      0.051145,
+      0.054109,
+      0.056014,
+      0.05731,
+      0.058896
+    ],
+    "rank_ic_mean": 0.028485,
+    "rank_ic_std": 0.028917,
+    "icir": 0.9851,
+    "oof_corr": 0.024021,
+    "n_samples": 18469,
+    "n_features": 22
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 10,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260610",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300935",
+      "stock_code": "300935",
+      "stock_name": "盈建科",
+      "lgb_score": 100.0,
+      "raw_score": 0.39
+    },
+    {
+      "rank": 2,
+      "ts_code": "300303",
+      "stock_code": "300303",
+      "stock_name": "聚飞光电",
+      "lgb_score": 89.66,
+      "raw_score": 0.35
+    },
+    {
+      "rank": 3,
+      "ts_code": "920156",
+      "stock_code": "920156",
+      "stock_name": "海昌智能",
+      "lgb_score": 71.87,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 4,
+      "ts_code": "600163",
+      "stock_code": "600163",
+      "stock_name": "中闽能源",
+      "lgb_score": 71.87,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 5,
+      "ts_code": "603032",
+      "stock_code": "603032",
+      "stock_name": "德新科技",
+      "lgb_score": 67.54,
+      "raw_score": 0.25
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.72,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.033994,
+    "std": 0.021905,
+    "skew": 1.8525,
+    "kurtosis": 19.0363,
+    "min": -0.061472,
+    "max": 0.392511,
+    "median": 0.045605
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.10937376075492311,
+    "cv_rmse_std": 0.006244601234265029,
+    "cv_scores": [
+      0.108945,
+      0.111244,
+      0.097923,
+      0.112135,
+      0.116622
+    ],
+    "rank_ic_mean": 0.046119,
+    "rank_ic_std": 0.024408,
+    "icir": 1.8895,
+    "oof_corr": 0.060092,
+    "n_samples": 38974,
+    "n_features": 4
+  }
+}
