@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260611",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301313",
+      "stock_code": "301313",
+      "stock_name": "凡拓数创",
+      "lgb_score": 100.0,
+      "raw_score": 0.38,
+      "predicted_days": 16
+    },
+    {
+      "rank": 2,
+      "ts_code": "300638",
+      "stock_code": "300638",
+      "stock_name": "广和通",
+      "lgb_score": 97.43,
+      "raw_score": 0.37,
+      "predicted_days": 15
+    },
+    {
+      "rank": 3,
+      "ts_code": "300612",
+      "stock_code": "300612",
+      "stock_name": "宣亚国际",
+      "lgb_score": 81.45,
+      "raw_score": 0.3,
+      "predicted_days": 14
+    },
+    {
+      "rank": 4,
+      "ts_code": "000065",
+      "stock_code": "000065",
+      "stock_name": "北方国际",
+      "lgb_score": 79.33,
+      "raw_score": 0.29,
+      "predicted_days": 14
+    },
+    {
+      "rank": 5,
+      "ts_code": "603501",
+      "stock_code": "603501",
+      "stock_name": "豪威集团",
+      "lgb_score": 78.94,
+      "raw_score": 0.29,
+      "predicted_days": 14
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.89,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.109844,
+    "std": 0.06169,
+    "skew": -0.4285,
+    "kurtosis": -1.3994,
+    "min": -0.04517,
+    "max": 0.382447,
+    "median": 0.159467
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.12711034844028576,
+    "cv_rmse_std": 0.013013420438796615,
+    "cv_scores": [
+      0.136423,
+      0.115199,
+      0.123244,
+      0.11328,
+      0.147406
+    ],
+    "rank_ic_mean": 0.173686,
+    "rank_ic_std": 0.034844,
+    "icir": 4.9847,
+    "oof_corr": 0.178931,
+    "n_samples": 39397,
+    "n_features": 4
+  },
+  "window_days": 20
+}

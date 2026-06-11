@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 20,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260611",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301079",
+      "stock_code": "301079",
+      "stock_name": "邵阳液压",
+      "lgb_score": 100.0,
+      "raw_score": 0.4
+    },
+    {
+      "rank": 2,
+      "ts_code": "920971",
+      "stock_code": "920971",
+      "stock_name": "天马新材",
+      "lgb_score": 95.56,
+      "raw_score": 0.38
+    },
+    {
+      "rank": 3,
+      "ts_code": "300520",
+      "stock_code": "300520",
+      "stock_name": "科大国创",
+      "lgb_score": 92.79,
+      "raw_score": 0.37
+    },
+    {
+      "rank": 4,
+      "ts_code": "920247",
+      "stock_code": "920247",
+      "stock_name": "华密新材",
+      "lgb_score": 90.42,
+      "raw_score": 0.36
+    },
+    {
+      "rank": 5,
+      "ts_code": "002206",
+      "stock_code": "002206",
+      "stock_name": "海 利 得",
+      "lgb_score": 89.57,
+      "raw_score": 0.35
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.79,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.102873,
+    "std": 0.069298,
+    "skew": -0.3402,
+    "kurtosis": -1.4802,
+    "min": -0.096589,
+    "max": 0.403148,
+    "median": 0.162274
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.16314034724567866,
+    "cv_rmse_std": 0.018094067756429827,
+    "cv_scores": [
+      0.16451,
+      0.151589,
+      0.142632,
+      0.161018,
+      0.195952
+    ],
+    "rank_ic_mean": 0.118118,
+    "rank_ic_std": 0.035681,
+    "icir": 3.3104,
+    "oof_corr": 0.125467,
+    "n_samples": 38083,
+    "n_features": 4
+  }
+}

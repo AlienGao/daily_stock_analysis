@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 10,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260611",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301042",
+      "stock_code": "301042",
+      "stock_name": "安联锐视",
+      "lgb_score": 100.0,
+      "raw_score": 0.29
+    },
+    {
+      "rank": 2,
+      "ts_code": "920510",
+      "stock_code": "920510",
+      "stock_name": "丰光精密",
+      "lgb_score": 94.25,
+      "raw_score": 0.27
+    },
+    {
+      "rank": 3,
+      "ts_code": "301313",
+      "stock_code": "301313",
+      "stock_name": "凡拓数创",
+      "lgb_score": 84.14,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 4,
+      "ts_code": "920230",
+      "stock_code": "920230",
+      "stock_name": "欧康医药",
+      "lgb_score": 82.11,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 5,
+      "ts_code": "002843",
+      "stock_code": "002843",
+      "stock_name": "泰嘉股份",
+      "lgb_score": 80.71,
+      "raw_score": 0.22
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.72,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.033258,
+    "std": 0.02087,
+    "skew": 1.1784,
+    "kurtosis": 10.7387,
+    "min": -0.061472,
+    "max": 0.293122,
+    "median": 0.045605
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.10937376075492311,
+    "cv_rmse_std": 0.006244601234265029,
+    "cv_scores": [
+      0.108945,
+      0.111244,
+      0.097923,
+      0.112135,
+      0.116622
+    ],
+    "rank_ic_mean": 0.046119,
+    "rank_ic_std": 0.024408,
+    "icir": 1.8895,
+    "oof_corr": 0.060092,
+    "n_samples": 38974,
+    "n_features": 4
+  }
+}

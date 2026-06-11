@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 5,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260611",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688419",
+      "stock_code": "688419",
+      "stock_name": "耐科装备",
+      "lgb_score": 100.0,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 2,
+      "ts_code": "688092",
+      "stock_code": "688092",
+      "stock_name": "爱科科技",
+      "lgb_score": 95.83,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
+      "ts_code": "600589",
+      "stock_code": "600589",
+      "stock_name": "大位科技",
+      "lgb_score": 86.02,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "002119",
+      "stock_code": "002119",
+      "stock_name": "康强电子",
+      "lgb_score": 84.67,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "300894",
+      "stock_code": "300894",
+      "stock_name": "火星人",
+      "lgb_score": 84.42,
+      "raw_score": 0.1
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.21,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.000586,
+    "std": 0.017552,
+    "skew": -0.559,
+    "kurtosis": 1.4127,
+    "min": -0.088927,
+    "max": 0.129245,
+    "median": 0.011327
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.07293047112790249,
+    "cv_rmse_std": 0.003796719450767962,
+    "cv_scores": [
+      0.0674,
+      0.070493,
+      0.074004,
+      0.074071,
+      0.078684
+    ],
+    "rank_ic_mean": 0.047685,
+    "rank_ic_std": 0.047815,
+    "icir": 0.9973,
+    "oof_corr": 0.033957,
+    "n_samples": 18327,
+    "n_features": 22
+  }
+}
