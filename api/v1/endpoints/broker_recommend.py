@@ -127,6 +127,7 @@ class StockReturnItem(BaseModel):
     end_price: Optional[float] = None
     end_date: Optional[str] = None
     daily_change: Optional[float] = None
+    month_cumulative_return: Optional[float] = None
     daily_returns: List[BrokerDailyReturn]
     nineturn: Optional[NineTurnSignal] = None
     forecast: Optional[ForecastSummary] = None
@@ -176,6 +177,35 @@ class HistoricalRecommendStatsItem(BaseModel):
     max_return: Optional[float] = None
     max_drawdown: Optional[float] = None
 
+
+class CurrentMonthReturnItem(BaseModel):
+    ts_code: str
+    cumulative_return: Optional[float] = None
+    end_date: Optional[str] = None
+
+
+class CurrentMonthReturnsResponse(BaseModel):
+    month: str
+    buy_date: str
+    sell_date: str
+    items: List[CurrentMonthReturnItem]
+
+
+class PrevMonthCurrentTopItem(BaseModel):
+    ts_code: str
+    name: str = ""
+    broker_count: int = 1
+    cumulative_return: Optional[float] = None
+    end_date: Optional[str] = None
+    is_current_month_recommend: bool = False
+
+
+class PrevMonthCurrentTopResponse(BaseModel):
+    prev_month: str
+    current_month: str
+    buy_date: str
+    sell_date: str
+    items: List[PrevMonthCurrentTopItem]
 
 
 class YtdMonthlyReturn(BaseModel):
@@ -405,6 +435,56 @@ def get_historical_month_counts(
     ]
 
 
+
+
+
+
+@router.get("/current-month-returns", response_model=CurrentMonthReturnsResponse)
+def get_current_month_returns(
+    codes: str = Query(..., description="逗号分隔的股票代码列表"),
+) -> CurrentMonthReturnsResponse:
+    """批量查询股票在当前自然月的累计收益（后复权，供历史月份金股明细对照）。"""
+    ts_codes = [c.strip() for c in codes.split(",") if c.strip()]
+    service = BrokerRecommendService()
+    result = service.get_current_month_stock_returns(ts_codes)
+    return CurrentMonthReturnsResponse(
+        month=result.get("month", ""),
+        buy_date=result.get("buy_date", ""),
+        sell_date=result.get("sell_date", ""),
+        items=[
+            CurrentMonthReturnItem(
+                ts_code=item["ts_code"],
+                cumulative_return=item.get("cumulative_return"),
+                end_date=item.get("end_date"),
+            )
+            for item in result.get("items", [])
+        ],
+    )
+
+@router.get("/prev-month-current-top", response_model=PrevMonthCurrentTopResponse)
+def get_prev_month_current_top(
+    top_n: int = Query(5, ge=1, le=20, description="返回条数，默认 Top5"),
+) -> PrevMonthCurrentTopResponse:
+    """上月推荐金股在当前自然月的累计收益 Top N（后复权，每日更新）。"""
+    service = BrokerRecommendService()
+    result = service.get_prev_month_current_returns_top(top_n=top_n)
+    return PrevMonthCurrentTopResponse(
+        prev_month=result.get("prev_month", ""),
+        current_month=result.get("current_month", ""),
+        buy_date=result.get("buy_date", ""),
+        sell_date=result.get("sell_date", ""),
+        items=[
+            PrevMonthCurrentTopItem(
+                ts_code=item["ts_code"],
+                name=item.get("name", ""),
+                broker_count=int(item.get("broker_count") or 1),
+                cumulative_return=item.get("cumulative_return"),
+                end_date=item.get("end_date"),
+                is_current_month_recommend=bool(item.get("is_current_month_recommend")),
+            )
+            for item in result.get("items", [])
+        ],
+    )
 
 
 @router.get("/historical-recommend-stats", response_model=List[HistoricalRecommendStatsItem])
@@ -697,6 +777,7 @@ def get_backtest(
             end_price=sr.get("end_price"),
             end_date=sr.get("end_date"),
             daily_change=sr.get("daily_change"),
+            month_cumulative_return=sr.get("month_cumulative_return"),
             daily_returns=[
                 BrokerDailyReturn(
                     date=dr["date"],

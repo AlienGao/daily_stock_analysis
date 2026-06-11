@@ -115,6 +115,7 @@ export type StockReturnItem = {
   end_price?: number;
   end_date?: string;
   daily_change?: number | null;
+  month_cumulative_return?: number | null;
   daily_returns: BrokerDailyReturn[];
   nineturn?: {
     up_count?: number | null;
@@ -353,6 +354,56 @@ export type HistoricalRecommendStatsItem = {
   max_return?: number | null;
   max_drawdown?: number | null;
 };
+
+
+export type CurrentMonthReturnItem = {
+  ts_code: string;
+  cumulative_return?: number | null;
+  end_date?: string | null;
+};
+
+export type CurrentMonthReturnsResponse = {
+  month: string;
+  buy_date: string;
+  sell_date: string;
+  items: CurrentMonthReturnItem[];
+};
+
+export type PrevMonthCurrentTopItem = {
+  ts_code: string;
+  name?: string;
+  broker_count?: number;
+  cumulative_return?: number | null;
+  end_date?: string | null;
+  is_current_month_recommend?: boolean;
+};
+
+export type PrevMonthCurrentTopResponse = {
+  prev_month: string;
+  current_month: string;
+  buy_date: string;
+  sell_date: string;
+  items: PrevMonthCurrentTopItem[];
+};
+
+export async function getPrevMonthCurrentTop(topN = 5): Promise<PrevMonthCurrentTopResponse> {
+  const resp = await apiClient.get<PrevMonthCurrentTopResponse>(
+    '/api/v1/broker-recommend/prev-month-current-top',
+    { params: { top_n: topN }, timeout: 120_000 },
+  );
+  return resp.data;
+}
+
+export async function getCurrentMonthReturns(codes: string[]): Promise<CurrentMonthReturnsResponse> {
+  if (!codes.length) {
+    return { month: '', buy_date: '', sell_date: '', items: [] };
+  }
+  const resp = await apiClient.get<CurrentMonthReturnsResponse>(
+    '/api/v1/broker-recommend/current-month-returns',
+    { params: { codes: codes.join(',') }, timeout: 120_000 },
+  );
+  return resp.data;
+}
 
 export async function getHistoricalRecommendStats(
   codes: string[],

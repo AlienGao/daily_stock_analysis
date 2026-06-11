@@ -1021,6 +1021,36 @@ class BrokerRecommendService:
             return adj_map[prev_dates[-1]]
         return 1.0
 
+
+    @staticmethod
+    def _has_exact_adj_factor(adj_map: Dict[str, float], date_str: str) -> bool:
+        """当日是否有精确复权因子记录（非向前查找）。"""
+        if not adj_map or not date_str:
+            return False
+        f = adj_map.get(date_str)
+        return f is not None and f > 0
+
+    def _resolve_sell_date_with_adj(
+        self,
+        ts_code: str,
+        trading_days: List[str],
+        sell_date: str,
+        adj_map: Optional[Dict[str, float]] = None,
+    ) -> str:
+        """截止日无当日复权因子时，回退至上一交易日。"""
+        if not trading_days:
+            return sell_date
+        if adj_map is None:
+            code = ts_code.split(".")[0] if "." in ts_code else ts_code
+            adj_map = self._load_all_adj_factors([ts_code]).get(code, {}) or {}
+        candidates = [d for d in trading_days if d <= sell_date]
+        if not candidates:
+            return sell_date
+        for d in reversed(candidates):
+            if self._has_exact_adj_factor(adj_map, d):
+                return d
+        return candidates[0]
+
     @staticmethod
     def _norm_trade_date(date_str: str) -> str:
         """统一为 YYYYMMDD。"""
@@ -1378,6 +1408,9 @@ class BrokerRecommendService:
                     f"(覆盖 {len(stored_stocks)} 只股票)"
                 )
 
+            # 为存储数据补充当月累计收益（与 daily_returns 后复权累计一致）
+            for sr in stored["stock_returns"]:
+                sr["month_cumulative_return"] = self._month_cumulative_return_from_stock(sr)
             stored["next_month"] = self._next_month_str(month)
             logger.info(f"[BrokerRecommend] 回测 {month} 命中存储")
             return stored
@@ -1415,18 +1448,20 @@ class BrokerRecommendService:
                 if rt_prices:
                     # 后复权：实时价也需要 × adj_factor 才能和 price_cache 对齐
                     adj_all = self._load_all_adj_factors(all_ts)
+                    today_str = date.today().strftime("%Y%m%d")
+                    rt_merged = 0
                     for ts, p in rt_prices.items():
                         code = ts.split(".")[0] if "." in ts else ts
-                        adj_map = adj_all.get(code, {})
-                        today_str = list(p.keys())[0]
-                        f = self._lookup_adj_factor(adj_map, today_str)
-                        if f > 0:
-                            p = {d: round(v * f, 4) for d, v in p.items()}
+                        adj_map = adj_all.get(code, {}) or {}
+                        if not self._has_exact_adj_factor(adj_map, today_str):
+                            continue
+                        f = adj_map[today_str]
+                        p = {d: round(v * f, 4) for d, v in p.items()}
                         price_cache.setdefault(ts, {}).update(p)
-                    logger.info(f"[BrokerRecommend] 回测 {month} 实时价补充 {len(rt_prices)} 只")
-                    # 有实时数据时，把今天加入交易日列表
-                    today_str = date.today().strftime("%Y%m%d")
-                    if today_str not in trading_days:
+                        rt_merged += 1
+                    logger.info(f"[BrokerRecommend] 回测 {month} 实时价补充 {rt_merged} 只")
+                    # 有实时数据且当日复权因子已入库时，把今天加入交易日列表
+                    if rt_merged and today_str not in trading_days:
                         trading_days.append(today_str)
                         trading_days.sort()
                         sell_date = trading_days[-1]
@@ -1611,6 +1646,7 @@ class BrokerRecommendService:
                 sr["daily_returns"] = self._sync_daily_returns_from_ohlc(
                     sr["ts_code"], sr["daily_returns"], buy_date, sell_date,
                 )
+                sr["month_cumulative_return"] = self._month_cumulative_return_from_stock(sr)
 
         # 持久化存储（仅历史月份；当月不存，避免 sell_date 不完整）
         if not is_current:
@@ -1628,6 +1664,7 @@ class BrokerRecommendService:
                     "broker": sr["broker"],
                     "end_price": sr.get("end_price"),
                     "end_date": sr.get("end_date"),
+                    "month_cumulative_return": sr.get("month_cumulative_return"),
                     "daily_returns": sr["daily_returns"],
                 } for sr in stock_returns_list],
                 broker_returns=brokers_result,
@@ -1647,6 +1684,232 @@ class BrokerRecommendService:
 
 
 
+
+    def _month_cumulative_return_from_stock(self, sr: Dict[str, Any]) -> Optional[float]:
+        """当月累计收益：与 daily_returns 累计口径一致（后复权收盘价）。"""
+        drs = sr.get("daily_returns") or []
+        if not drs:
+            return None
+        cum_vals = [d.get("cumulative") for d in drs if d.get("cumulative") is not None]
+        if cum_vals:
+            return round(float(cum_vals[-1]), 4)
+        return self._period_return_from_daily_returns(str(sr.get("ts_code", "")), drs)
+
+
+    def _cumulative_return_from_price_window(
+        self,
+        ts_code: str,
+        price_cache: Dict[str, Dict[str, float]],
+        trading_days: List[str],
+        buy_date: str,
+        sell_date: str,
+    ) -> tuple[Optional[float], str]:
+        """从预取价格缓存计算持仓窗口累计收益（后复权，经 OHLC 同步）。
+
+        Returns:
+            (cumulative_return, effective_sell_date)
+        """
+        effective_sell = self._resolve_sell_date_with_adj(ts_code, trading_days, sell_date)
+        window_days = [d for d in trading_days if d <= effective_sell]
+        prices = price_cache.get(ts_code, {})
+        if not prices or not window_days:
+            return None, effective_sell
+        available = sorted(prices.keys())
+        buy_dates = [d for d in available if d >= buy_date]
+        sell_dates = [d for d in available if d <= effective_sell]
+        if not buy_dates or not sell_dates:
+            return None, effective_sell
+        buy_price = prices[buy_dates[0]]
+        if not buy_price or buy_price <= 0:
+            return None, effective_sell
+        if buy_dates[0] == sell_dates[-1] and len(window_days) < 2:
+            return 0.0, effective_sell
+
+        daily_rets: List[Dict[str, Any]] = []
+        prev_p: Optional[float] = None
+        for td in window_days:
+            p = prices.get(td)
+            if p and buy_price > 0:
+                cumulative = (p - buy_price) / buy_price
+                d_ret = (p - prev_p) / prev_p if prev_p and prev_p > 0 else 0.0
+                daily_rets.append({
+                    "date": td,
+                    "price": round(p, 2),
+                    "return": round(d_ret, 4),
+                    "cumulative": round(cumulative, 4),
+                })
+                prev_p = p
+        if not daily_rets:
+            return None, effective_sell
+        daily_rets = self._sync_daily_returns_from_ohlc(
+            ts_code, daily_rets, buy_date, effective_sell,
+        )
+        cum = self._month_cumulative_return_from_stock({"ts_code": ts_code, "daily_returns": daily_rets})
+        return cum, effective_sell
+
+    def get_current_month_stock_returns(self, ts_codes: List[str]) -> Dict[str, Any]:
+        """批量计算股票在当前自然月的累计收益（后复权，月初首日至有效截止日）。"""
+        month = date.today().strftime("%Y%m")
+        effective_end = self._effective_month_end(month)
+        month_start = f"{month}01"
+        trading_days = self._get_trading_days(month_start, effective_end)
+        empty: Dict[str, Any] = {"month": month, "buy_date": "", "sell_date": "", "items": []}
+        if not ts_codes:
+            return empty
+        if not trading_days:
+            return empty
+
+        buy_date = trading_days[0]
+        sell_date = trading_days[-1]
+        price_cache = self._prefetch_prices(
+            ts_codes, month_start, effective_end, skip_tushare=False, use_adj=True,
+        )
+        try:
+            rt_prices, _, _ = self._get_realtime_prices_batch(ts_codes)
+            if rt_prices:
+                adj_all = self._load_all_adj_factors(ts_codes)
+                today_str = date.today().strftime("%Y%m%d")
+                for ts, p in rt_prices.items():
+                    code = ts.split(".")[0] if "." in ts else ts
+                    adj_map = adj_all.get(code, {}) or {}
+                    if not self._has_exact_adj_factor(adj_map, today_str):
+                        continue
+                    f = adj_map[today_str]
+                    p = {d: round(v * f, 4) for d, v in p.items()}
+                    price_cache.setdefault(ts, {}).update(p)
+                if any(
+                    self._has_exact_adj_factor(
+                        adj_all.get(ts.split(".")[0] if "." in ts else ts, {}) or {},
+                        today_str,
+                    )
+                    for ts in rt_prices
+                ) and today_str not in trading_days:
+                    trading_days = sorted(trading_days + [today_str])
+                    sell_date = trading_days[-1]
+        except Exception:
+            logger.warning("[BrokerRecommend] 当前月收益实时价补充失败", exc_info=True)
+
+        items: List[Dict[str, Any]] = []
+        response_sell = buy_date
+        for ts in ts_codes:
+            cum, effective_sell = self._cumulative_return_from_price_window(
+                ts, price_cache, trading_days, buy_date, sell_date,
+            )
+            items.append({
+                "ts_code": ts,
+                "cumulative_return": cum,
+                "end_date": effective_sell,
+            })
+            if effective_sell and effective_sell > response_sell:
+                response_sell = effective_sell
+
+        return {
+            "month": month,
+            "buy_date": buy_date,
+            "sell_date": response_sell if items else sell_date,
+            "items": items,
+        }
+
+
+
+    def _resolve_broker_stock_names(
+        self,
+        ts_codes: List[str],
+        hints: Optional[Dict[str, str]] = None,
+    ) -> Dict[str, str]:
+        """补全金股展示名称：DB 快照 → 当月推荐 → 股票索引。"""
+        names: Dict[str, str] = {}
+        for ts in ts_codes:
+            hint = (hints or {}).get(ts, "")
+            names[ts] = str(hint or "").strip()
+        missing = [ts for ts in ts_codes if not names.get(ts)]
+        if missing:
+            try:
+                from src.data.stock_index_loader import get_index_stock_name
+                for ts in missing:
+                    n = get_index_stock_name(ts)
+                    if n:
+                        names[ts] = n
+            except Exception:
+                pass
+        return names
+
+    def get_prev_month_current_returns_top(self, top_n: int = 5) -> Dict[str, Any]:
+        """上月推荐金股在当前自然月的累计收益 Top N（后复权，每日截止有效交易日）。"""
+        current_month = date.today().strftime("%Y%m")
+        prev_month = self._prev_month_str(current_month)
+        empty: Dict[str, Any] = {
+            "prev_month": prev_month,
+            "current_month": current_month,
+            "buy_date": "",
+            "sell_date": "",
+            "items": [],
+        }
+        df = self.get_monthly_recommendations(prev_month)
+        if df is None or df.empty:
+            return empty
+
+        name_by_code: Dict[str, str] = {}
+        broker_count_by_code: Dict[str, int] = {}
+        for _, row in df.iterrows():
+            ts = str(row.get("ts_code", "")).strip()
+            if not ts:
+                continue
+            bc = int(row.get("broker_count") or 1)
+            if ts not in broker_count_by_code or bc > broker_count_by_code[ts]:
+                broker_count_by_code[ts] = bc
+                name_by_code[ts] = str(row.get("name") or "").strip()
+
+        ts_codes = list(name_by_code.keys())
+        if not ts_codes:
+            return empty
+
+        current_codes: set = set()
+        current_name_hints: Dict[str, str] = {}
+        current_df = self.get_monthly_recommendations(current_month)
+        if current_df is not None and not current_df.empty:
+            for _, row in current_df.iterrows():
+                ts = str(row.get("ts_code", "")).strip()
+                if not ts:
+                    continue
+                current_codes.add(ts)
+                nm = str(row.get("name") or "").strip()
+                if nm and ts not in current_name_hints:
+                    current_name_hints[ts] = nm
+
+        name_hints = dict(name_by_code)
+        name_hints.update(current_name_hints)
+        resolved_names = self._resolve_broker_stock_names(ts_codes, name_hints)
+
+        result = self.get_current_month_stock_returns(ts_codes)
+        items: List[Dict[str, Any]] = []
+        for item in result.get("items", []):
+            ts = str(item.get("ts_code", ""))
+            if not ts:
+                continue
+            items.append({
+                "ts_code": ts,
+                "name": resolved_names.get(ts, ""),
+                "broker_count": broker_count_by_code.get(ts, 1),
+                "cumulative_return": item.get("cumulative_return"),
+                "end_date": item.get("end_date"),
+                "is_current_month_recommend": ts in current_codes,
+            })
+
+        items.sort(
+            key=lambda x: (
+                x.get("cumulative_return") is None,
+                -(float(x["cumulative_return"]) if x.get("cumulative_return") is not None else 0.0),
+            ),
+        )
+        return {
+            "prev_month": prev_month,
+            "current_month": result.get("month", current_month),
+            "buy_date": result.get("buy_date", ""),
+            "sell_date": result.get("sell_date", ""),
+            "items": items[: max(1, int(top_n))],
+        }
+
     def _sync_daily_returns_from_ohlc(
         self,
         ts_code: str,
@@ -1662,13 +1925,20 @@ class BrokerRecommendService:
             return daily_returns
 
         code = ts_code.split(".")[0] if "." in ts_code else ts_code
-        adj_map = self._load_all_adj_factors([ts_code]).get(code, {})
+        adj_map = self._load_all_adj_factors([ts_code]).get(code, {}) or {}
+        dr_dates = sorted(
+            str(d.get("date", ""))[:8]
+            for d in daily_returns
+            if d.get("date")
+        )
+        if dr_dates:
+            end_date = self._resolve_sell_date_with_adj(ts_code, dr_dates, end_date, adj_map)
 
         bars: List[Dict[str, Any]] = []
         adj_closes: List[float] = []
         for dr in sorted(daily_returns, key=lambda x: str(x.get("date", ""))):
-            d = str(dr.get("date", ""))
-            if not d or d not in ohlc:
+            d = str(dr.get("date", ""))[:8]
+            if not d or d > end_date or d not in ohlc:
                 continue
             bar = ohlc[d]
             close = bar.get("close")

@@ -122,3 +122,95 @@ class TestSyncDailyReturnsFromOhlc:
         assert out[1]["price"] == pytest.approx(10.0)
         assert out[-1]["cumulative"] == pytest.approx(0.05)
         assert out[1]["cumulative"] > -0.05
+
+class TestMonthCumulativeReturn:
+    def test_month_cumulative_matches_adj_cumulative_with_unadj_display_prices(self):
+        """end_price 为不复权时，当月累计收益仍应与 daily_returns 后复权累计一致。"""
+        svc = BrokerRecommendService()
+        sr = {
+            "ts_code": "000651.SZ",
+            "end_price": 46.42,
+            "daily_returns": [
+                {"date": "20250506", "price": 45.47, "cumulative": 0.0},
+                {"date": "20250530", "price": 46.42, "cumulative": 0.0431},
+            ],
+        }
+        assert svc._month_cumulative_return_from_stock(sr) == 0.0431
+
+class TestCurrentMonthStockReturns:
+    def test_get_current_month_stock_returns_structure(self):
+        svc = BrokerRecommendService()
+        with patch.object(svc, "_get_trading_days", return_value=["20260602", "20260611"]), \
+             patch.object(svc, "_effective_month_end", return_value="20260611"), \
+             patch.object(svc, "_prefetch_prices", return_value={
+                 "000651.SZ": {"20260602": 40.0, "20260611": 42.0},
+             }), \
+             patch.object(svc, "_load_all_adj_factors", return_value={
+                 "000651": {"20260602": 1.0, "20260611": 1.0},
+             }), \
+             patch.object(svc, "_get_realtime_prices_batch", return_value=({}, {}, {})), \
+             patch.object(svc, "_sync_daily_returns_from_ohlc", side_effect=lambda _ts, drs, *_a: drs), \
+             patch("src.services.broker_recommend_service.date") as mock_date:
+            mock_date.today.return_value.strftime.return_value = "202606"
+            out = svc.get_current_month_stock_returns(["000651.SZ"])
+        assert out["month"] == "202606"
+        assert out["buy_date"] == "20260602"
+        assert out["sell_date"] == "20260611"
+        assert out["items"][0]["end_date"] == "20260611"
+        assert out["items"][0]["cumulative_return"] == pytest.approx(0.05)
+
+class TestResolveSellDateWithAdj:
+    def test_resolve_sell_date_without_exact_adj(self):
+        """截止日无当日复权因子时回退至上一交易日。"""
+        svc = BrokerRecommendService()
+        trading_days = ["20260602", "20260610", "20260611"]
+        adj_map = {"20260602": 2.0, "20260610": 2.0}
+        assert svc._resolve_sell_date_with_adj(
+            "300502.SZ", trading_days, "20260611", adj_map,
+        ) == "20260610"
+
+    def test_get_current_month_falls_back_when_no_today_adj(self):
+        svc = BrokerRecommendService()
+        with patch.object(svc, "_get_trading_days", return_value=["20260602", "20260610", "20260611"]),              patch.object(svc, "_effective_month_end", return_value="20260611"),              patch.object(svc, "_prefetch_prices", return_value={
+                 "300502.SZ": {"20260602": 100.0, "20260610": 110.0, "20260611": 80.0},
+             }),              patch.object(svc, "_load_all_adj_factors", return_value={
+                 "300502": {"20260602": 1.0, "20260610": 1.0},
+             }),              patch.object(svc, "_get_realtime_prices_batch", return_value=({}, {}, {})),              patch.object(svc, "_sync_daily_returns_from_ohlc", side_effect=lambda _ts, drs, *_a: drs),              patch("src.services.broker_recommend_service.date") as mock_date:
+            mock_date.today.return_value.strftime.return_value = "202606"
+            out = svc.get_current_month_stock_returns(["300502.SZ"])
+        assert out["items"][0]["end_date"] == "20260610"
+        assert out["items"][0]["cumulative_return"] == pytest.approx(0.1)
+
+
+
+class TestPrevMonthCurrentTop:
+    def test_get_prev_month_current_returns_top_sorts_and_limits(self):
+        import pandas as pd
+        svc = BrokerRecommendService()
+        with patch.object(svc, "get_monthly_recommendations", return_value=pd.DataFrame([
+            {"ts_code": "000001.SZ", "name": "平安", "broker_count": 2, "broker": "A"},
+            {"ts_code": "000002.SZ", "name": "万科", "broker_count": 1, "broker": "B"},
+            {"ts_code": "000003.SZ", "name": "缺收益", "broker_count": 1, "broker": "C"},
+        ])), patch.object(svc, "get_current_month_stock_returns", return_value={
+            "month": "202606",
+            "buy_date": "20260601",
+            "sell_date": "20260611",
+            "items": [
+                {"ts_code": "000001.SZ", "cumulative_return": 0.1, "end_date": "20260611"},
+                {"ts_code": "000002.SZ", "cumulative_return": 0.25, "end_date": "20260611"},
+                {"ts_code": "000003.SZ", "cumulative_return": None, "end_date": "20260610"},
+            ],
+        }):
+            out = svc.get_prev_month_current_returns_top(top_n=2)
+        assert out["prev_month"] == "202605"
+        assert out["current_month"] == "202606"
+        assert len(out["items"]) == 2
+        assert out["items"][0]["ts_code"] == "000002.SZ"
+        assert out["items"][0]["cumulative_return"] == 0.25
+        assert out["items"][1]["ts_code"] == "000001.SZ"
+        assert out["items"][0].get("name") == "万科"
+    def test_resolve_broker_stock_names_falls_back_to_index(self):
+        svc = BrokerRecommendService()
+        with patch("src.data.stock_index_loader.get_index_stock_name", return_value="贵州茅台"):
+            names = svc._resolve_broker_stock_names(["600519.SH"], {"600519.SH": ""})
+        assert names["600519.SH"] == "贵州茅台"

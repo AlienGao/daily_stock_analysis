@@ -7,6 +7,7 @@ import { DatePicker, Table, Tabs, Tooltip as AntTooltip } from 'antd';
 const { RangePicker } = DatePicker;
 import zhCN from 'antd/locale/zh_CN';
 import type { ColumnsType } from 'antd/es/table';
+import type { SorterResult } from 'antd/es/table/interface';
 import { TrendingUp, RefreshCw, ChevronDown, ChevronRight, Loader2, CheckSquare, Square, ChevronUp } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { AppPage, Button, Card, EmptyState } from '../components/common';
@@ -239,9 +240,13 @@ import {
   getConsecutiveStocks,
   getTopBrokers,
   getStockHistory,
+  getCurrentMonthReturns,
+  getPrevMonthCurrentTop,
   getHistoricalRecommendStats,
   getEqualWeightStrategy,
   getMonthlyUpToDownDaily,
+  type CurrentMonthReturnsResponse,
+  type PrevMonthCurrentTopResponse,
   type HistoricalRecommendStatsItem,
   type UpToDownDailyResponse,
   type UpToDownDailyStockItem,
@@ -297,6 +302,74 @@ function formatReversalSignalLabel(row: UpToDownDailyStockItem): string {
     return `降${row.prev_nineturn_down_count ?? 0}升${tag ? ` ${tag}` : ''}`;
   }
   return `升${row.prev_nineturn_up_count}转降${tag ? ` ${tag}` : ''}`;
+}
+
+
+type TableSortState = { columnKey?: string; order?: 'ascend' | 'descend' };
+type TableSortOrder = 'ascend' | 'descend' | null;
+
+/** 表格排序：默认 → 升序 → 降序 → 默认 */
+function cycleTableSort(prev: TableSortState, columnKey: string): TableSortState {
+  if (prev.columnKey !== columnKey || !prev.order) {
+    return { columnKey, order: 'ascend' };
+  }
+  if (prev.order === 'ascend') {
+    return { columnKey, order: 'descend' };
+  }
+  return {};
+}
+
+function resolveSorterColumnKey(
+  sorter: SorterResult<StockRow> | SorterResult<StockRow>[],
+): string | undefined {
+  const s = Array.isArray(sorter) ? sorter[0] : sorter;
+  if (!s) return undefined;
+  const key = s.columnKey ?? s.field;
+  return key != null && key !== '' ? String(key) : undefined;
+}
+
+function compareStockRows(a: StockRow, b: StockRow, columnKey: string): number {
+  switch (columnKey) {
+    case 'stock': {
+      const pri = (r: StockRow) => (r.isConsecutive ? 0 : 1);
+      const d = pri(a) - pri(b);
+      if (d !== 0) return d;
+      return (a.name || '').localeCompare(b.name || '', 'zh-CN');
+    }
+    case 'historyStats':
+      return (a.historyWinRate ?? -1) - (b.historyWinRate ?? -1);
+    case 'dailyChange':
+      return (a.dailyChange ?? -Infinity) - (b.dailyChange ?? -Infinity);
+    case 'concentration': {
+      const valA = a.cyq_perf?.scr90 ?? a.cyq_perf?.concentration;
+      const valB = b.cyq_perf?.scr90 ?? b.cyq_perf?.concentration;
+      if (valA == null && valB == null) return 0;
+      if (valA == null) return 1;
+      if (valB == null) return -1;
+      return valA - valB;
+    }
+    case 'cyq_perf':
+      return (a.cyq_perf?.winner_rate ?? -Infinity) - (b.cyq_perf?.winner_rate ?? -Infinity);
+    case 'cumRet':
+      return (a.cumRet ?? -Infinity) - (b.cumRet ?? -Infinity);
+    case 'currentMonthRet':
+      return (a.currentMonthRet ?? -Infinity) - (b.currentMonthRet ?? -Infinity);
+    case 'sector':
+      return (a.sector || '').localeCompare(b.sector || '');
+    default:
+      return 0;
+  }
+}
+
+function sortStockRows(rows: StockRow[], sort: TableSortState): StockRow[] {
+  if (!sort.columnKey || !sort.order) return rows;
+  const key = sort.columnKey;
+  const dir = sort.order === 'descend' ? -1 : 1;
+  return [...rows].sort((a, b) => dir * compareStockRows(a, b, key));
+}
+
+function columnSortOrder(columnKey: string, sort: TableSortState): TableSortOrder {
+  return sort.columnKey === columnKey ? (sort.order ?? null) : null;
 }
 
 type ReversalSignalTableProps = {
@@ -475,6 +548,50 @@ function StockTagsCell({ row }: { row: StockRow }) {
   return <div className="flex flex-col gap-0.5 items-start">{tags}</div>;
 }
 
+
+function PrevMonthTop3Item({
+  item,
+  rank,
+  displayName,
+  isCurrentMonthPick,
+  onFocus,
+}: {
+  item: { ts_code: string; cumulative_return?: number | null };
+  rank: number;
+  displayName: string;
+  isCurrentMonthPick: boolean;
+  onFocus: (tsCode: string) => void;
+}) {
+  const ret = item.cumulative_return;
+  return (
+    <div
+      className={`inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-[11px] ${
+        isCurrentMonthPick
+          ? 'border-cyan-400/50 bg-cyan-400/10'
+          : 'border-border/20 bg-muted/30'
+      }`}
+    >
+      <span className="text-[10px] text-amber-400 font-medium tabular-nums shrink-0">{rank}</span>
+      <button
+        type="button"
+        className={`font-medium truncate max-w-[6.5rem] text-left hover:underline underline-offset-2 ${
+          isCurrentMonthPick ? 'text-cyan-300' : 'text-secondary-text hover:text-foreground'
+        }`}
+        title={`${displayName} ${item.ts_code}${isCurrentMonthPick ? ' · 本月亦有推荐' : ''}`}
+        onClick={() => onFocus(item.ts_code)}
+      >
+        {displayName}
+      </button>
+      {isCurrentMonthPick ? (
+        <span className="text-[9px] text-cyan-400/90 shrink-0">本月</span>
+      ) : null}
+      <span className={`tabular-nums font-medium shrink-0 ${ret != null ? (ret >= 0 ? 'text-red-400' : 'text-emerald-400') : 'text-tertiary-text'}`}>
+        {ret != null ? fmtPct(ret) : '--'}
+      </span>
+    </div>
+  );
+}
+
 function fmtPct(v?: number | null): string {
   if (v == null) return '--';
   return `${v >= 0 ? '+' : ''}${(v * 100).toFixed(2)}%`;
@@ -631,6 +748,8 @@ type StockRow = {
   endPrice?: number;
   endDate?: string;
   cumRet?: number;
+  month_cumulative_return?: number | null;
+  currentMonthRet?: number | null;
   nineturn?: {
     up_count?: number | null;
     down_count?: number | null;
@@ -1078,6 +1197,7 @@ const BrokerRecommendPage: React.FC = () => {
 
   const monthStr = selectedMonth.format('YYYYMM');
   const isCurrentMonth = monthStr === dayjs().format('YYYYMM');
+  const currentMonthStr = dayjs().format('YYYYMM');
 
   useEffect(() => {
     stockHistoryCache.clear();
@@ -1104,6 +1224,10 @@ const BrokerRecommendPage: React.FC = () => {
   const [consecutiveData, setConsecutiveData] = useState<ConsecutiveStockItem[]>([]);
   const consecutiveSet = useMemo(() => new Set(consecutiveData.map(c => c.ts_code)), [consecutiveData]);
   const [historicalStats, setHistoricalStats] = useState<Record<string, HistoricalRecommendStatsItem>>({});
+  const [currentMonthReturns, setCurrentMonthReturns] = useState<Record<string, number | null>>({});
+  const [currentMonthMeta, setCurrentMonthMeta] = useState<Pick<CurrentMonthReturnsResponse, 'month' | 'buy_date' | 'sell_date'> | null>(null);
+  const [prevMonthTopData, setPrevMonthTopData] = useState<PrevMonthCurrentTopResponse | null>(null);
+  const [loadingPrevMonthTop, setLoadingPrevMonthTop] = useState(false);
   const [upToDownDaily, setUpToDownDaily] = useState<UpToDownDailyResponse | null>(null);
   const [loadingUpToDownDaily, setLoadingUpToDownDaily] = useState(false);
   const [upToDownAsOfDate, setUpToDownAsOfDate] = useState<Dayjs | null>(null);
@@ -1244,6 +1368,22 @@ const BrokerRecommendPage: React.FC = () => {
   }, [activeBacktest]);
 
 
+  const prevMonthTopLabel = useMemo(() => {
+    if (!prevMonthTopData?.prev_month || !prevMonthTopData?.current_month) return '';
+    const period = prevMonthTopData.buy_date && prevMonthTopData.sell_date
+      ? `${fmtDate(prevMonthTopData.buy_date).slice(5)}~${fmtDate(prevMonthTopData.sell_date).slice(5)}`
+      : '';
+    const base = `${fmtMonthLabel(prevMonthTopData.prev_month)}推荐 · ${fmtMonthLabel(prevMonthTopData.current_month)}收益`;
+    return period ? `${base}（${period}）` : base;
+  }, [prevMonthTopData]);
+
+  const currentMonthRetLabel = useMemo(() => {
+    if (!currentMonthMeta?.buy_date || !currentMonthMeta?.sell_date || !currentMonthMeta?.month) return '';
+    const period = `${fmtDate(currentMonthMeta.buy_date).slice(5)}~${fmtDate(currentMonthMeta.sell_date).slice(5)}`;
+    return `${fmtMonthLabel(currentMonthMeta.month)} · ${period}`;
+  }, [currentMonthMeta]);
+
+
   useEffect(() => {
     if (!activeRecommend?.items?.length) {
       setHistoricalStats({});
@@ -1263,6 +1403,59 @@ const BrokerRecommendPage: React.FC = () => {
       });
     return () => { cancelled = true; };
   }, [activeRecommend]);
+
+  useEffect(() => {
+    if (isCurrentMonth || !activeRecommend?.items?.length) {
+      setCurrentMonthReturns({});
+      setCurrentMonthMeta(null);
+      return;
+    }
+    const codes = [...new Set(activeRecommend.items.map((i) => i.ts_code))];
+    let cancelled = false;
+    getCurrentMonthReturns(codes)
+      .then((resp) => {
+        if (cancelled) return;
+        const map: Record<string, number | null> = {};
+        for (const it of resp.items) {
+          map[it.ts_code] = it.cumulative_return ?? null;
+        }
+        setCurrentMonthReturns(map);
+        setCurrentMonthMeta({
+          month: resp.month,
+          buy_date: resp.buy_date,
+          sell_date: resp.sell_date,
+        });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCurrentMonthReturns({});
+          setCurrentMonthMeta(null);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [activeRecommend, isCurrentMonth, currentMonthStr]);
+
+  useEffect(() => {
+    if (!isCurrentMonth) {
+      setPrevMonthTopData(null);
+      return;
+    }
+    let cancelled = false;
+    setLoadingPrevMonthTop(true);
+    getPrevMonthCurrentTop(5)
+      .then((resp) => {
+        if (!cancelled) setPrevMonthTopData(resp);
+      })
+      .catch(() => {
+        if (!cancelled) setPrevMonthTopData(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingPrevMonthTop(false);
+      });
+    return () => { cancelled = true; };
+  }, [isCurrentMonth, currentMonthStr, fetchTrigger]);
+
+
   const historyTopCodes = useMemo(() => {
     if (!isCurrentMonth || !activeRecommend?.items?.length) return new Set<string>();
     if (!Object.keys(historicalStats).length) return new Set<string>();
@@ -1277,9 +1470,21 @@ const BrokerRecommendPage: React.FC = () => {
 
 
   // Controlled sort state to preserve across data refreshes
-  const [tableSort, setTableSort] = useState<{ columnKey?: string; order?: 'ascend' | 'descend' }>({
-    columnKey: 'cumRet', order: 'descend',
-  });
+  const [tableSort, setTableSort] = useState<TableSortState>({});
+
+  const handleTableSortChange = useCallback((
+    _pagination: unknown,
+    _filters: unknown,
+    sorter: SorterResult<StockRow> | SorterResult<StockRow>[],
+  ) => {
+    const key = resolveSorterColumnKey(sorter);
+    if (!key) {
+      setTableSort({});
+      return;
+    }
+    setTableSort((prev) => cycleTableSort(prev, key));
+  }, []);
+
 
   // Auto-load recommendations when selectedMonth changes or refresh triggered
   useEffect(() => {
@@ -1556,6 +1761,8 @@ const BrokerRecommendPage: React.FC = () => {
         endPrice: stockRet?.end_price,
         endDate: stockRet?.end_date,
         cumRet,
+        month_cumulative_return: stockRet?.month_cumulative_return,
+        currentMonthRet: currentMonthReturns[item.ts_code] ?? null,
         nineturn: activeEnrichment?.data[item.ts_code]?.nineturn ?? null,
         forecast: activeEnrichment?.data[item.ts_code]?.forecast ?? null,
         cyq_perf: activeEnrichment?.data[item.ts_code]?.cyq_perf ?? null,
@@ -1600,7 +1807,32 @@ const BrokerRecommendPage: React.FC = () => {
     }
 
     return rows;
-  }, [activeRecommend, activeBacktest, activeEnrichment, isCurrentMonth, consecutiveSet, historicalStats, historyTopCodes]);
+  }, [activeRecommend, activeBacktest, activeEnrichment, isCurrentMonth, consecutiveSet, historicalStats, historyTopCodes, currentMonthReturns]);
+
+  const sortedStockRows = useMemo(
+    () => sortStockRows(stockRows, tableSort),
+    [stockRows, tableSort],
+  );
+
+  const currentMonthRecommendCodes = useMemo(() => {
+    if (!isCurrentMonth || !activeRecommend?.items?.length) return new Set<string>();
+    return new Set(activeRecommend.items.map((i) => i.ts_code));
+  }, [isCurrentMonth, activeRecommend]);
+
+  const stockNameByCode = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const item of activeRecommend?.items ?? []) {
+      if (item.name?.trim()) map[item.ts_code] = item.name.trim();
+    }
+    for (const row of stockRows) {
+      if (row.name?.trim() && !map[row.ts_code]) map[row.ts_code] = row.name.trim();
+    }
+    for (const item of prevMonthTopData?.items ?? []) {
+      if (item.name?.trim() && !map[item.ts_code]) map[item.ts_code] = item.name.trim();
+    }
+    return map;
+  }, [activeRecommend, stockRows, prevMonthTopData]);
+
 
   // 行业统计（按累计收益均值排序，Top3 高亮）
   const sectorStats = useMemo(() => {
@@ -1639,7 +1871,7 @@ const BrokerRecommendPage: React.FC = () => {
         if (d !== 0) return d;
         return (a.name || '').localeCompare(b.name || '', 'zh-CN');
       },
-      sortOrder: tableSort.columnKey === 'stock' ? tableSort.order : undefined,
+      sortOrder: columnSortOrder('stock', tableSort),
       render: (_: unknown, row: StockRow) => (
         <div className="leading-tight min-w-[4.5rem]">
           <div className="text-xs text-secondary-text">{row.name}</div>
@@ -1654,14 +1886,14 @@ const BrokerRecommendPage: React.FC = () => {
     {
       title: '历史统计', key: 'historyStats', width: 108,
       sorter: (a: StockRow, b: StockRow) => (a.historyWinRate ?? -1) - (b.historyWinRate ?? -1),
-      sortOrder: tableSort.columnKey === 'historyStats' ? tableSort.order : undefined,
+      sortOrder: columnSortOrder('historyStats', tableSort),
       render: (_: unknown, row: StockRow) => <HistoryStatsCell row={row} />,
     },
 
     ...(isCurrentMonth ? [{
       title: '当天涨幅', dataIndex: 'dailyChange', key: 'dailyChange',
       sorter: (a: StockRow, b: StockRow) => (a.dailyChange ?? -Infinity) - (b.dailyChange ?? -Infinity),
-      sortOrder: tableSort.columnKey === 'dailyChange' ? tableSort.order : undefined,
+      sortOrder: columnSortOrder('dailyChange', tableSort),
       render: (_: any, row: StockRow) => (
         <span className={`text-xs font-medium ${row.dailyChange != null ? (row.dailyChange >= 0 ? 'text-red-400' : 'text-emerald-400') : 'text-tertiary-text'}`}>
           {row.dailyChange != null ? `${row.dailyChange >= 0 ? '+' : ''}${(row.dailyChange * 100).toFixed(2)}%` : '--'}
@@ -1688,7 +1920,7 @@ const BrokerRecommendPage: React.FC = () => {
         if (valB == null) return -1;
         return valA - valB;
       },
-      sortOrder: tableSort.columnKey === 'concentration' ? tableSort.order : undefined,
+      sortOrder: columnSortOrder('concentration', tableSort),
       render: (_: any, row: StockRow) => {
         const val = row.cyq_perf?.scr90 ?? row.cyq_perf?.concentration;
         if (val == null) return <span className="text-xs text-tertiary-text">--</span>;
@@ -1742,7 +1974,7 @@ const BrokerRecommendPage: React.FC = () => {
       title: <span>筹码胜率{loadingEnrichment ? <Loader2 className="h-3 w-3 animate-spin inline ml-1" /> : null}</span>,
       key: 'cyq_perf',
       sorter: (a, b) => (a.cyq_perf?.winner_rate ?? -Infinity) - (b.cyq_perf?.winner_rate ?? -Infinity),
-      sortOrder: tableSort.columnKey === 'cyq_perf' ? tableSort.order : undefined,
+      sortOrder: columnSortOrder('cyq_perf', tableSort),
       render: (_, row) => {
         const cyq = row.cyq_perf;
         if (!cyq) return <span className="text-xs text-tertiary-text">--</span>;
@@ -1768,7 +2000,7 @@ const BrokerRecommendPage: React.FC = () => {
     {
       title: '累计收益', key: 'cumRet',
       sorter: (a, b) => (a.cumRet ?? -Infinity) - (b.cumRet ?? -Infinity),
-      sortOrder: tableSort.columnKey === 'cumRet' ? (tableSort.order ?? 'descend') : undefined,
+      sortOrder: columnSortOrder('cumRet', tableSort),
       render: (_, row) => (
         <div className="text-xs leading-snug tabular-nums">
           <span className={`font-medium ${row.cumRet != null ? (row.cumRet >= 0 ? 'text-red-400' : 'text-emerald-400') : 'text-tertiary-text'}`}>
@@ -1780,21 +2012,33 @@ const BrokerRecommendPage: React.FC = () => {
         </div>
       ),
     },
+    ...(!isCurrentMonth ? [{
+      title: <span>{fmtMonthLabel(currentMonthStr)}累计收益</span>, key: 'currentMonthRet',
+      sorter: (a: StockRow, b: StockRow) => (a.currentMonthRet ?? -Infinity) - (b.currentMonthRet ?? -Infinity),
+      sortOrder: columnSortOrder('currentMonthRet', tableSort),
+      render: (_: unknown, row: StockRow) => {
+        const mc = row.currentMonthRet;
+        return (
+          <div className="text-xs leading-snug tabular-nums">
+            <span className={`font-medium ${mc != null ? (mc >= 0 ? 'text-red-400' : 'text-emerald-400') : 'text-tertiary-text'}`}>
+              {mc != null ? fmtPct(mc) : '--'}
+            </span>
+            {mc != null && currentMonthRetLabel ? (
+              <div className="text-[10px] text-tertiary-text font-normal mt-0.5">{currentMonthRetLabel}</div>
+            ) : null}
+          </div>
+        );
+      },
+    }] : []),
     {
       title: '所属行业', key: 'sector',
       sorter: (a, b) => (a.sector || '').localeCompare(b.sector || ''),
-      sortOrder: tableSort.columnKey === 'sector' ? tableSort.order : undefined,
+      sortOrder: columnSortOrder('sector', tableSort),
       render: (_: any, row: StockRow) => (
         <span className="text-xs text-secondary-text whitespace-nowrap">{row.sector || '--'}</span>
       ),
     },
-    {
-      title: <span style={{ whiteSpace: 'nowrap' }}>推荐数</span>, dataIndex: 'broker_count', key: 'broker_count',
-      sorter: (a, b) => a.broker_count - b.broker_count,
-      sortOrder: tableSort.columnKey === 'broker_count' ? tableSort.order : undefined,
-      render: (v: number) => <span className="text-xs text-tertiary-text whitespace-nowrap">{v}</span>,
-    },
-  ], [loadingEnrichment, monthStr, tableSort, isCurrentMonth, enrichAsOfLabel, holdPeriodLabel, activeEnrichment]);
+  ], [loadingEnrichment, monthStr, tableSort, isCurrentMonth, enrichAsOfLabel, holdPeriodLabel, currentMonthRetLabel, currentMonthStr, activeEnrichment]);
 
   // Broker groups
   const brokerGroups = useMemo((): Map<string, BrokerRecommendItem[]> => {
@@ -2062,8 +2306,40 @@ const BrokerRecommendPage: React.FC = () => {
 
         {activeRecommend && brokerGroups.size > 0 && (
           <Card className="p-4">
-            <div className="text-sm font-medium mb-3">
-              {viewMode === 'broker' ? '券商金股明细' : '全部金股明细'}
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mb-3">
+              <div className="text-sm font-medium shrink-0">
+                {viewMode === 'broker' ? '券商金股明细' : '全部金股明细'}
+              </div>
+              {viewMode === 'stock' && isCurrentMonth && (
+                <div className="flex flex-wrap items-center gap-2 min-w-0 ml-auto">
+                  <span className="text-[11px] text-tertiary-text shrink-0">
+                    {loadingPrevMonthTop ? '上月推荐当月 Top5…' : (prevMonthTopLabel || '上月推荐当月 Top5')}
+                  </span>
+                  {!loadingPrevMonthTop && prevMonthTopData?.items?.length ? (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {prevMonthTopData.items.map((item, idx) => {
+                        const displayName = (item.name?.trim() || stockNameByCode[item.ts_code] || item.ts_code.split('.')[0]);
+                        const isCurrentMonthPick = Boolean(
+                          item.is_current_month_recommend || currentMonthRecommendCodes.has(item.ts_code),
+                        );
+                        return (
+                          <PrevMonthTop3Item
+                            key={item.ts_code}
+                            item={item}
+                            rank={idx + 1}
+                            displayName={displayName}
+                            isCurrentMonthPick={isCurrentMonthPick}
+                            onFocus={focusStockInDetailList}
+                          />
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                  {!loadingPrevMonthTop && prevMonthTopData && !prevMonthTopData.items.length ? (
+                    <span className="text-[11px] text-tertiary-text">暂无数据</span>
+                  ) : null}
+                </div>
+              )}
             </div>
 
             {/* Stock view: flat table with inline expandable rows */}
@@ -2071,7 +2347,7 @@ const BrokerRecommendPage: React.FC = () => {
               <Table
                 key={tableKey}
                 columns={stockColumns}
-                dataSource={stockRows}
+                dataSource={sortedStockRows}
                 rowKey="ts_code"
                 size="small"
                 pagination={false}
@@ -2083,11 +2359,7 @@ const BrokerRecommendPage: React.FC = () => {
                     ...(style ? { style } : {}),
                   };
                 }}
-                onChange={(_pagination, _filters, sorter) => {
-                  if (!Array.isArray(sorter) && sorter.columnKey) {
-                    setTableSort({ columnKey: sorter.columnKey as string, order: sorter.order as 'ascend' | 'descend' });
-                  }
-                }}
+                onChange={handleTableSortChange}
                 expandable={{
                   defaultExpandedRowKeys: expandedKey ? [expandedKey] : [],
                   onExpand: (expanded: boolean, record: any) => {
@@ -2210,17 +2482,13 @@ const BrokerRecommendPage: React.FC = () => {
                             <Table
                               key={tableKey}
                               columns={stockColumns}
-                              dataSource={brokerRows}
+                              dataSource={sortStockRows(brokerRows, tableSort)}
                               rowKey="ts_code"
                               size="small"
                               pagination={false}
                               scroll={{ x: 700 }}
                               onRow={(record) => { const style = brokerStockRowStyle(record); return style ? { style } : {}; }}
-                              onChange={(_pagination, _filters, sorter) => {
-                                if (!Array.isArray(sorter) && sorter.columnKey) {
-                                  setTableSort({ columnKey: sorter.columnKey as string, order: sorter.order as 'ascend' | 'descend' });
-                                }
-                              }}
+                              onChange={handleTableSortChange}
                               expandable={{
                                 defaultExpandedRowKeys: expandedKey ? [expandedKey] : [],
                                 onExpand: (expanded: boolean, record: any) => {
