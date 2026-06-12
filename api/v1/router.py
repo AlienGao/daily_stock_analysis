@@ -13,9 +13,23 @@ from fastapi import APIRouter
 import os
 
 from api.v1.endpoints import (
-    alerts, analysis, auth, discovery, history, stocks, backtest,
-    system_config, agent, usage, portfolio, broker_recommend,
-    research, factor_backtest, alphasift, health,
+    agent,
+    alerts,
+    alphasift,
+    analysis,
+    auth,
+    backtest,
+    broker_recommend,
+    decision_signals,
+    discovery,
+    factor_backtest,
+    health,
+    history,
+    portfolio,
+    research,
+    stocks,
+    system_config,
+    usage,
 )
 
 # 创建 v1 版本主路由
@@ -37,6 +51,7 @@ if os.getenv("PORTFOLIO_MODULE_ENABLED", "false").strip().lower() == "true":
 router.include_router(broker_recommend.router, prefix="/broker-recommend", tags=["BrokerRecommend"])
 router.include_router(alerts.router, prefix="/alerts", tags=["Alerts"])
 router.include_router(research.router, prefix="/research", tags=["Research"])
+router.include_router(decision_signals.router, prefix="/decision-signals", tags=["DecisionSignals"])
 router.include_router(factor_backtest.router, prefix="/factor-backtest-simple", tags=["FactorBacktestSimple"])
 router.include_router(alphasift.router, prefix="/alphasift", tags=["AlphaSift"])
 router.include_router(health.router, tags=["Health"])

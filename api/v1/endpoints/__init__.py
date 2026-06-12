@@ -22,6 +22,7 @@ from api.v1.endpoints import (
     broker_recommend,
     alerts,
     research,
+    decision_signals,
     alphasift,
 )
 __all__ = [
@@ -40,5 +41,6 @@ __all__ = [
     "broker_recommend",
     "alerts",
     "research",
+    "decision_signals",
     "alphasift",
 ]

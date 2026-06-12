@@ -126,6 +126,13 @@ from api.v1.schemas.research import (
     LGBPredictionStats,
     LGBDiagnosticsResponse,
 )
+from api.v1.schemas.decision_signals import (
+    DecisionSignalCreateRequest,
+    DecisionSignalItem,
+    DecisionSignalListResponse,
+    DecisionSignalMutationResponse,
+    DecisionSignalStatusUpdateRequest,
+)
 
 __all__ = [
     # common
@@ -238,4 +245,10 @@ __all__ = [
     "LGBTreeDiagnostics",
     "LGBPredictionStats",
     "LGBDiagnosticsResponse",
+    # decision signals
+    "DecisionSignalCreateRequest",
+    "DecisionSignalItem",
+    "DecisionSignalListResponse",
+    "DecisionSignalMutationResponse",
+    "DecisionSignalStatusUpdateRequest",
 ]

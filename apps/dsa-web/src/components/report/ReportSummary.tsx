@@ -20,6 +20,7 @@ interface ReportSummaryProps {
     isActioning: boolean;
     actionMessage: string | null;
   };
+  onOpenRunFlow?: (recordId: number) => void;
 }
 
 /**
@@ -30,6 +31,7 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({
   data,
   isHistory = false,
   watchlist,
+  onOpenRunFlow,
 }) => {
   // 兼容 AnalysisResult 和 AnalysisReport 两种数据格式
   const report: AnalysisReport = 'report' in data ? data.report : data;
@@ -51,6 +53,7 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({
         report={report}
         recordId={recordId}
         reportLanguage={reportLanguage}
+        onOpenRunFlow={onOpenRunFlow}
       />
     );
   }
@@ -71,6 +74,7 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({
         recordId={recordId}
         summary={diagnosticSummary}
         language={reportLanguage}
+        onOpenRunFlow={onOpenRunFlow}
       />
 
       {/* 输入数据块低敏摘要 */}
