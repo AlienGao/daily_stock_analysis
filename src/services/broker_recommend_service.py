@@ -2165,9 +2165,9 @@ class BrokerRecommendService:
         return self.db.get_broker_recommend_month_counts(ts_codes)
 
     def get_monthly_up_to_down_daily(self, month: str) -> Dict[str, Any]:
-        """扫描当月金股池各交易日九转反转信号：升 1..8 转降、降 1..8 升（末交易日忽略）。
+        """扫描推荐月金股池各交易日九转反转信号：升 1..8 转降、降 1..8 升（推荐月末交易日忽略）。
 
-        月初第 1 个交易日与上月末对比九转，以衔接跨月连续序列。
+        历史月份扫描区间延至今日，便于查看推荐月之后的反转；月初第 1 个交易日与上月末对比九转。
         """
         empty = {
             "month": month,
@@ -2195,15 +2195,12 @@ class BrokerRecommendService:
 
         effective_end = self._effective_month_end(month)
         month_start = f"{month}01"
-        trading_days = self._get_trading_days(month_start, effective_end)
+        today_str = date.today().strftime("%Y%m%d")
+        # 历史推荐月：信号扫描延至今日，便于查看持仓期外的后续反转（如 5 月金股看 6/11）
+        scan_end = max(effective_end, today_str)
+        trading_days = self._get_trading_days(month_start, scan_end)
         if not trading_days:
             return empty
-        # 当前月份扩展交易日到今日（实时估算需包含当天）
-        today_str = date.today().strftime("%Y%m%d")
-        if today_str[:6] == month and today_str not in trading_days:
-            # 检查今天是否交易日（用 weekday 简单判断）
-            if date.today().weekday() < 5:
-                trading_days.append(today_str)
 
         prev_month_last_day = self._prev_month_last_trading_day(month)
         nineturn_cache = self._load_nineturn_by_trade_date_cache()

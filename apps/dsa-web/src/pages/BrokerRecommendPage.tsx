@@ -1290,17 +1290,13 @@ const BrokerRecommendPage: React.FC = () => {
   );
   const upToDownDateBounds = useMemo(() => {
     const buy = activeUpToDownDaily?.buy_date || activeBacktest?.buy_date;
+    if (!buy) return null;
     const sell = activeUpToDownDaily?.sell_date || activeBacktest?.sell_date;
-    if (!buy || !sell) return null;
-    if (isCurrentMonth) {
-      return { min: dayjs(buy, 'YYYYMMDD'), max: dayjs() };
-    }
-    const max = dayjs(sell, 'YYYYMMDD');
-    if (max.isAfter(dayjs(), 'day')) {
-      return { min: dayjs(buy, 'YYYYMMDD'), max: dayjs() };
-    }
+    const apiMax = sell ? dayjs(sell, 'YYYYMMDD') : dayjs();
+    const today = dayjs();
+    const max = apiMax.isAfter(today, 'day') ? today : (today.isAfter(apiMax, 'day') ? today : apiMax);
     return { min: dayjs(buy, 'YYYYMMDD'), max };
-  }, [activeUpToDownDaily, activeBacktest, isCurrentMonth]);
+  }, [activeUpToDownDaily, activeBacktest]);
 
   const filteredUpToDown = useMemo(() => {
     const days = activeUpToDownDaily?.days;
@@ -2258,7 +2254,7 @@ const BrokerRecommendPage: React.FC = () => {
                 ? filteredUpToDown
                   ? `信号日 ${fmtDate(filteredUpToDown.date)}${filteredUpToDown.stocks.some(s => s.is_realtime) ? '（实时估算）' : ''}；升 1..8 转降 / 降 1..8 升；点击方框划线标记`
                   : `${upToDownAsOfDate.format('YYYY-MM-DD')} 当日无升转降或降转升信号`
-                : '当月金股池收盘升 1..8 转降、降 1..8 升；末交易日忽略'}
+                : '推荐月金股池升 1..8 转降、降 1..8 升；可选至今日；推荐月末交易日忽略'}
             </div>
             {upToDownAsOfDate && !loadingUpToDownDaily ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

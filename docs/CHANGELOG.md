@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- [改进] 金股历史月份九转反转：信号日可选推荐月首日至今日（如 5 月金股可查看 6/11 反转结果）。
 - [修复] 券商 YTD 表现纳入当月实时回测（当月不落库导致华泰等券商缺 6 月数据）；展开明细月份倒序展示。
 - [改进] 金股页上月推荐当月收益展示由 Top3 调整为 Top5。
 - [修复] 金股页「全部金股明细」表格排序第三次点击恢复默认：sortOrder 改用 null、手动排序 dataSource，兼容 Ant Design 6 受控模式。

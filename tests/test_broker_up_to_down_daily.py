@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """金股每日升转降扫描单元测试。"""
 
+from datetime import date
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
@@ -153,3 +154,31 @@ class TestMonthlyUpToDownDaily:
         assert stock["ts_code"] == "300593.SZ"
         assert stock["signal_type"] == "up_to_down"
         assert stock["prev_nineturn_up_count"] == 1
+
+    def test_historical_month_extends_scan_to_today(self):
+        """历史推荐月扫描区间应延至今日。"""
+        svc = BrokerRecommendService.__new__(BrokerRecommendService)
+        svc.db = MagicMock()
+        today = date.today().strftime("%Y%m%d")
+        df = pd.DataFrame([
+            {"ts_code": "600519.SH", "name": "茅台", "broker": "中信", "broker_count": 2},
+        ])
+        calls = []
+
+        def fake_get_trading_days(start, end):
+            calls.append((start, end))
+            return ["20250506", "20250507", today]
+
+        with patch.object(svc, "get_monthly_recommendations", return_value=df), patch.object(
+            svc, "_effective_month_end", return_value="20250531",
+        ), patch.object(svc, "_get_trading_days", side_effect=fake_get_trading_days), patch.object(
+            svc, "_calendar_month_last_trading_day", return_value="20250530",
+        ), patch.object(svc, "_prev_month_last_trading_day", return_value="20250505"), patch.object(
+            svc, "_load_nineturn_by_trade_date_cache", return_value={},
+        ), patch.object(svc, "_prefetch_nineturn_for_dates"):
+            result = svc.get_monthly_up_to_down_daily("202505")
+
+        assert calls, "expected _get_trading_days call"
+        assert calls[0][1] >= today
+        assert result["sell_date"] == today
+
