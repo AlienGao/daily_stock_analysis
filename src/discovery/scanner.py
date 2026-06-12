@@ -2070,6 +2070,9 @@ def ensure_postmarket_scan(
         try:
             count = fn()
             refresher_counts[name] = count
+        except SystemExit:
+            logger.warning("[Scanner] %s 刷新触发 SystemExit（AkShare 空数据），继续", name)
+            refresher_counts[name] = -1
         except Exception:
             logger.warning("[Scanner] %s 刷新失败，继续", name, exc_info=True)
             refresher_counts[name] = -1

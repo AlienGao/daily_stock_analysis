@@ -2195,6 +2195,9 @@ class AkshareFetcher(BaseFetcher):
                 df.index.name = "ts_code"
 
             return df
+        except SystemExit:
+            logger.warning("[Akshare] 获取险资举牌失败: 数据源返回空(SystemExit)")
+            return None
         except Exception as e:
             logger.warning(f"[Akshare] 获取险资举牌失败: {e}")
             return None

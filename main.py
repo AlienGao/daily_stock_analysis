@@ -1492,7 +1492,7 @@ def main() -> int:
                 print(report)
                 _save_discovery_report(
                     report, results,
-                    date_str=tushare_fetcher.get_trade_time(early_time="00:00", late_time="18:00"),
+                    date_str=tushare_fetcher.get_trade_time(early_time="18:01", late_time="04:59"),
                 )
                 _sync_discovery_to_stock_list(results)
             else:
