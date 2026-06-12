@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """金股历史推荐统计单元测试。"""
 
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -214,3 +215,36 @@ class TestPrevMonthCurrentTop:
         with patch("src.data.stock_index_loader.get_index_stock_name", return_value="贵州茅台"):
             names = svc._resolve_broker_stock_names(["600519.SH"], {"600519.SH": ""})
         assert names["600519.SH"] == "贵州茅台"
+
+class TestYtdBacktestCurrentMonth:
+    def test_ytd_includes_live_current_month_when_not_persisted(self):
+        svc = BrokerRecommendService()
+        cm = datetime.now().strftime("%Y%m")
+        stored = [{
+            "month": f"{cm[:4]}05",
+            "brokers": [{
+                "broker": "华泰证券",
+                "cumulative_return": 0.05,
+                "stock_count": 3,
+                "win_rate": 0.6,
+                "daily_returns": [{"date": f"{cm[:4]}0530", "cumulative": 0.05}],
+            }],
+        }]
+        live = {
+            "month": cm,
+            "brokers": [{
+                "broker": "华泰证券",
+                "cumulative_return": 0.1019,
+                "stock_count": 9,
+                "win_rate": 0.5556,
+                "daily_returns": [{"date": f"{cm}11", "cumulative": 0.1019}],
+            }],
+        }
+        with patch.object(svc.db, "get_all_broker_backtests", return_value=stored):
+            with patch.object(svc, "_append_live_current_month_backtest", side_effect=lambda x: x + [live]):
+                result = svc.compute_ytd_backtest(year=cm[:4], top_n=5)
+        huatai = next(b for b in result["brokers"] if b["broker"] == "华泰证券")
+        months = [mr["month"] for mr in huatai["monthly_returns"]]
+        assert cm in months
+        assert months == sorted(months, reverse=True)
+

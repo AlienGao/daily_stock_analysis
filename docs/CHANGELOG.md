@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- [修复] 券商 YTD 表现纳入当月实时回测（当月不落库导致华泰等券商缺 6 月数据）；展开明细月份倒序展示。
 - [改进] 金股页上月推荐当月收益展示由 Top3 调整为 Top5。
 - [修复] 金股页「全部金股明细」表格排序第三次点击恢复默认：sortOrder 改用 null、手动排序 dataSource，兼容 Ant Design 6 受控模式。
 - [改进] 金股页上月推荐当月 Top3：补全个股名称展示，本月亦有推荐的高亮「本月」标签，点击名称定位至明细行。

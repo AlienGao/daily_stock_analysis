@@ -2700,7 +2700,9 @@ const BrokerRecommendPage: React.FC = () => {
               pagination={false}
               expandable={{
                 expandedRowRender: (record: any) => {
-                  const monthly = record.monthly_returns || [];
+                  const monthly = [...(record.monthly_returns || [])].sort(
+                    (a: { month: string }, b: { month: string }) => b.month.localeCompare(a.month),
+                  );
                   if (!monthly.length) return <span className="text-xs text-tertiary-text">暂无月度明细</span>;
                   return (
                     <Table

@@ -9,7 +9,7 @@ import logging
 import random
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from threading import Lock, Thread
 from typing import Any, Dict, Iterable, List, Optional
 
@@ -2380,14 +2380,39 @@ class BrokerRecommendService:
 
         return {"ts_code": ts_code, "name": name, "entries": entries}
 
+    def _append_live_current_month_backtest(
+        self, all_backtests: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """当月回测不落库，YTD/策略等跨月计算需按需实时补算。"""
+        current_month = datetime.now().strftime("%Y%m")
+        stored_months = {bt["month"] for bt in all_backtests}
+        if current_month in stored_months:
+            return all_backtests
+        df = self.get_monthly_recommendations(current_month)
+        if df is None or df.empty:
+            return all_backtests
+        try:
+            current_bt = self.compute_backtest(current_month)
+        except Exception:
+            logger.exception("[BrokerRecommend] YTD 当月回测补算失败")
+            return all_backtests
+        if not current_bt or "error" in current_bt:
+            return all_backtests
+        merged = list(all_backtests)
+        merged.append(current_bt)
+        merged.sort(key=lambda x: x["month"])
+        return merged
+
     def compute_ytd_backtest(self, year: Optional[str] = None, top_n: int = 5) -> Dict[str, Any]:
         """跨月复合回测：遍历指定月份（或全部月份），将月度回测结果乘法复合。
 
         year=None 时使用全部可用月份（有记录以来），
         指定 year 时仅使用该年份内的月份（年初至今）。
-        直接从 broker_backtest_result 表读取预计算结果，无 Tushare 调用。
+        历史月份读 broker_backtest_result；当月按需实时回测补入。
         """
-        all_backtests = self.db.get_all_broker_backtests()
+        all_backtests = self._append_live_current_month_backtest(
+            self.db.get_all_broker_backtests()
+        )
         if year is not None:
             month_data = [bt for bt in all_backtests if bt["month"].startswith(str(year))]
         else:
@@ -2444,6 +2469,7 @@ class BrokerRecommendService:
         all_dates: set = set()
         for b in sorted_brokers:
             del b["_prev_cum"]
+            b["monthly_returns"].sort(key=lambda mr: mr["month"], reverse=True)
             prev_cum = 0.0
             for dr in b["daily_returns"]:
                 cum = dr["cumulative"]
@@ -4245,21 +4271,9 @@ class BrokerRecommendService:
         """策略计算：总资金固定；升转降 T+1 开盘买；T+2 亏损开盘卖/盈利 T+3 收盘卖；无信号 T+1 清仓后暂停。"""
         from datetime import datetime
 
-        all_backtests = self.db.get_all_broker_backtests()
-
-        current_month = datetime.now().strftime("%Y%m")
-        stored_months = {bt["month"] for bt in all_backtests}
-        if current_month not in stored_months:
-            df = self.get_monthly_recommendations(current_month)
-            if df is not None and not df.empty:
-                try:
-                    current_bt = self.compute_backtest(current_month)
-                except Exception:
-                    current_bt = None
-                if current_bt and "error" not in current_bt:
-                    all_backtests = list(all_backtests)
-                    all_backtests.append(current_bt)
-                    all_backtests.sort(key=lambda x: x["month"])
+        all_backtests = self._append_live_current_month_backtest(
+            self.db.get_all_broker_backtests()
+        )
         if not all_backtests:
             return {"error": "No backtest data available"}
 
