@@ -10,12 +10,33 @@
 """
 
 import logging
+import math
 from datetime import date, datetime, timedelta
 from typing import Optional, Dict, Any, List
 
 from src.repositories.stock_repo import StockRepository
 
 logger = logging.getLogger(__name__)
+
+
+def _safe_float(value: Any, default: float = 0.0) -> float:
+    """Coerce to float; NaN/inf become *default* so JSON serialization stays valid."""
+    try:
+        out = float(value)
+    except (TypeError, ValueError):
+        return default
+    return default if not math.isfinite(out) else out
+
+
+def _safe_optional_float(value: Any) -> Optional[float]:
+    """Coerce to float or None; NaN/inf/empty become None."""
+    if value is None:
+        return None
+    try:
+        out = float(value)
+    except (TypeError, ValueError):
+        return None
+    return None if not math.isfinite(out) else out
 
 
 def _append_today_kl(data: list, stock_code: str) -> None:
@@ -48,12 +69,12 @@ def _append_today_kl(data: list, stock_code: str) -> None:
             pct = round((float(spot.price) - prev_close) / prev_close * 100, 2)
         data.append({
             "date": today_str,
-            "open": float(spot.open_price),
-            "high": float(spot.high),
-            "low": float(spot.low),
-            "close": float(spot.price),
-            "volume": float(spot.volume) if spot.volume else None,
-            "amount": float(spot.amount) if spot.amount else None,
+            "open": _safe_float(spot.open_price),
+            "high": _safe_float(spot.high),
+            "low": _safe_float(spot.low),
+            "close": _safe_float(spot.price),
+            "volume": _safe_optional_float(spot.volume),
+            "amount": _safe_optional_float(spot.amount),
             "change_percent": pct,
         })
     except Exception:
@@ -102,13 +123,13 @@ def _dataframe_to_history_rows(df) -> List[Dict[str, Any]]:
             date_str = str(date_val)
         rows.append({
             "date": date_str,
-            "open": float(row.get("open", 0) or 0),
-            "high": float(row.get("high", 0) or 0),
-            "low": float(row.get("low", 0) or 0),
-            "close": float(row.get("close", 0) or 0),
-            "volume": float(row.get("volume", 0)) if row.get("volume") else None,
-            "amount": float(row.get("amount", 0)) if row.get("amount") else None,
-            "change_percent": float(row.get("pct_chg", 0)) if row.get("pct_chg") else None,
+            "open": _safe_float(row.get("open", 0)),
+            "high": _safe_float(row.get("high", 0)),
+            "low": _safe_float(row.get("low", 0)),
+            "close": _safe_float(row.get("close", 0)),
+            "volume": _safe_optional_float(row.get("volume")),
+            "amount": _safe_optional_float(row.get("amount")),
+            "change_percent": _safe_optional_float(row.get("pct_chg")),
         })
     return rows
 

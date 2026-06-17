@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- [修复] 股票历史 K 线接口在当日 realtime_spot 成交量为 NaN 时返回 500，导致寻股页详情 K 线图无法展示
 - [改进] 金股历史月份九转反转：信号日可选推荐月首日至今日（如 5 月金股可查看 6/11 反转结果）。
 - [修复] 券商 YTD 表现纳入当月实时回测（当月不落库导致华泰等券商缺 6 月数据）；展开明细月份倒序展示。
 - [改进] 金股页上月推荐当月收益展示由 Top3 调整为 Top5。
