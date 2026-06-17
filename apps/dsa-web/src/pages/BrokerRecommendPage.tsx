@@ -13,14 +13,32 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceL
 import { AppPage, Button, Card, EmptyState } from '../components/common';
 
 /** SVG candlestick chart for monthly stock trend.
- *  Shows OHLC candles with 5-day moving average overlay. */
+ *  Shows OHLC candles with MA5 or BOLL overlay. */
+const computeMA = (closes: number[], period: number): (number | null)[] =>
+  closes.map((_, i) => {
+    if (i < period - 1) return null;
+    const slice = closes.slice(i - period + 1, i + 1);
+    return slice.reduce((a, b) => a + b, 0) / period;
+  });
+
+const computeStd = (closes: number[], period: number): (number | null)[] =>
+  closes.map((_, i) => {
+    if (i < period - 1) return null;
+    const slice = closes.slice(i - period + 1, i + 1);
+    const mean = slice.reduce((a, b) => a + b, 0) / period;
+    const variance = slice.reduce((a, b) => a + (b - mean) ** 2, 0) / period;
+    return Math.sqrt(variance);
+  });
+
 const CandlestickMiniChart: React.FC<{
   data: Array<{ date: string; price?: number | null; open?: number | null; high?: number | null; low?: number | null }>;
   height?: number;
   /** 长区间（如近 6 个月）：K 线横向撑满容器宽度 */
   longSeriesScroll?: boolean;
   barPitch?: number;
-}> = ({ data, height = 160, longSeriesScroll = false, barPitch }) => {
+  /** K 线叠加指标：默认 MA5；近 6 个月行情使用 BOLL */
+  overlay?: 'ma5' | 'boll';
+}> = ({ data, height = 160, longSeriesScroll = false, barPitch, overlay = 'ma5' }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerW, setContainerW] = useState(0);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
@@ -53,6 +71,16 @@ const CandlestickMiniChart: React.FC<{
   const chartH = height - pads.t - pads.b;
   const xStep = (chartW - pads.l - pads.r) / Math.max(count - 1, 1);
 
+  const closes = validData.map(d => d.price!);
+  const ma20Preview = overlay === 'boll' ? computeMA(closes, 20) : [];
+  const std20Preview = overlay === 'boll' ? computeStd(closes, 20) : [];
+  const bollUpperPreview = overlay === 'boll'
+    ? ma20Preview.map((v, i) => (v != null && std20Preview[i] != null ? v + 2 * std20Preview[i]! : null))
+    : [];
+  const bollLowerPreview = overlay === 'boll'
+    ? ma20Preview.map((v, i) => (v != null && std20Preview[i] != null ? v - 2 * std20Preview[i]! : null))
+    : [];
+
   const allPrices: number[] = [];
   validData.forEach(d => {
     if (d.high != null) allPrices.push(d.high);
@@ -60,6 +88,11 @@ const CandlestickMiniChart: React.FC<{
     allPrices.push(d.price!);
     if (d.open != null) allPrices.push(d.open);
   });
+  if (overlay === 'boll') {
+    for (const v of [...bollUpperPreview, ...bollLowerPreview, ...ma20Preview]) {
+      if (v != null) allPrices.push(v);
+    }
+  }
   const priceMin = Math.min(...allPrices);
   const priceMax = Math.max(...allPrices);
   const margin = (priceMax - priceMin) * 0.08 || priceMin * 0.02 || 0.1;
@@ -79,6 +112,24 @@ const CandlestickMiniChart: React.FC<{
     const x = pads.l + i * xStep;
     sma5.push({ x, y: scaleY(avg) });
   }
+
+  const makeOverlayPolyline = (vals: (number | null)[], color: string, dashed?: boolean) => {
+    const pts = vals
+      .map((v, i) => (v != null ? `${pads.l + i * xStep},${scaleY(v)}` : null))
+      .filter(Boolean)
+      .join(' ');
+    if (!pts) return null;
+    return (
+      <polyline
+        points={pts}
+        fill="none"
+        stroke={color}
+        strokeWidth={1.2}
+        strokeDasharray={dashed ? '3 2' : undefined}
+        opacity={0.85}
+      />
+    );
+  };
 
   const gridLines = 4;
   const yTicks: number[] = [];
@@ -122,14 +173,20 @@ const CandlestickMiniChart: React.FC<{
         <text x={pads.l - 3} y={pads.t + chartH + 3.5} textAnchor="end" fill="#6b7280"
           fontSize={9} fontFamily="monospace">{yMin.toFixed(2)}</text>
 
-        {/* MA5 line */}
-        {sma5.length > 1 && (
+        {/* MA5 / BOLL overlay */}
+        {overlay === 'boll' ? (
+          <>
+            {makeOverlayPolyline(ma20Preview, '#a78bfa', true)}
+            {makeOverlayPolyline(bollUpperPreview, '#ec4899', true)}
+            {makeOverlayPolyline(bollLowerPreview, '#ec4899', true)}
+          </>
+        ) : sma5.length > 1 ? (
           <polyline
             points={sma5.map(p => `${p.x},${p.y}`).join(' ')}
             fill="none" stroke="#f59e0b" strokeWidth={1.2}
             strokeDasharray="3 2" opacity={0.8}
           />
-        )}
+        ) : null}
 
         {/* Candles */}
         {validData.map((d, i) => {
@@ -1063,6 +1120,7 @@ function StockHistoryExpandPanel({
       <div className="rounded-lg border border-border/10 p-2">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs mb-2">
           <span className="font-medium text-secondary-text">近 6 个月行情</span>
+          <span className="rounded px-1.5 py-0.5 text-[10px] font-medium text-pink-400/90 ring-1 ring-pink-400/30">BOLL</span>
           <span className="text-tertiary-text font-mono">{preWindow.label}</span>
           <span className="text-tertiary-text">（连续日 K，非持仓片段）</span>
         </div>
@@ -1073,7 +1131,7 @@ function StockHistoryExpandPanel({
           </div>
         ) : preKlineBars.length >= preKlineMinBars ? (
           <div className="min-w-0 max-w-full overflow-hidden">
-            <CandlestickMiniChart data={preKlineBars} height={160} longSeriesScroll />
+            <CandlestickMiniChart data={preKlineBars} height={160} longSeriesScroll overlay="boll" />
             {preKlineError ? (
               <div className="text-[10px] text-amber-400/90 mt-1">{preKlineError}</div>
             ) : null}
