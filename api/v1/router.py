@@ -30,6 +30,7 @@ from api.v1.endpoints import (
     stocks,
     system_config,
     usage,
+    market,
 )
 
 # 创建 v1 版本主路由
@@ -54,4 +55,5 @@ router.include_router(research.router, prefix="/research", tags=["Research"])
 router.include_router(decision_signals.router, prefix="/decision-signals", tags=["DecisionSignals"])
 router.include_router(factor_backtest.router, prefix="/factor-backtest-simple", tags=["FactorBacktestSimple"])
 router.include_router(alphasift.router, prefix="/alphasift", tags=["AlphaSift"])
+router.include_router(market.router, prefix="/market", tags=["Market"])
 router.include_router(health.router, tags=["Health"])

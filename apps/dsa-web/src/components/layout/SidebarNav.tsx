@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Activity, BarChart3, Brain, Compass, Home, LogOut, MessageSquareQuote, Search, Settings2, Sliders, TrendingUp, Users } from 'lucide-react';
+import { Activity, ArrowUpRight, BarChart3, Brain, Compass, Home, LogOut, MessageSquareQuote, Search, Settings2, Sliders, TrendingUp, Users } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { ALPHASIFT_CONFIG_CHANGED_EVENT, SYSTEM_CONFIG_CHANGED_EVENT, alphasiftApi } from '../../api/alphasift';
 import { useAuth } from '../../contexts/AuthContext';
@@ -32,6 +32,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'factor-backtest', label: '因子', to: '/factor-backtest', icon: Activity },
   { key: 'factor-tuning', label: '调优', to: '/factor-tuning', icon: Sliders },
   { key: 'broker-recommend', label: '金股', to: '/broker-recommend', icon: TrendingUp },
+  { key: 'new-highs', label: '新高', to: '/new-highs', icon: ArrowUpRight },
   { key: 'simple-factor-backtest', label: '快测', to: '/simple-factor-backtest', icon: BarChart3 },
   { key: 'lgb', label: 'LGB', to: '/lgb', icon: Brain },
   { key: 'institution-survey', label: '调研', to: '/institution-survey', icon: Users },
@@ -173,7 +174,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed = false, onNav
           iconClassName={itemIconClass}
           labelClassName={itemLabelClass}
         />
-        <UiLanguageToggle
+        {/* <UiLanguageToggle
           variant={isRail ? 'rail' : 'nav'}
           collapsed={collapsed}
           wrapperClassName="w-full"
@@ -181,7 +182,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed = false, onNav
           triggerActiveClassName={itemActiveClass}
           iconClassName={itemIconClass}
           labelClassName={itemLabelClass}
-        />
+        /> */}
         {authEnabled ? (
           <button
             type="button"

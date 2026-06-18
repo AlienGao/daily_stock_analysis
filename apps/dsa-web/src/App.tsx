@@ -23,6 +23,7 @@ const FactorTuningPage = lazy(() => import('./pages/FactorTuningPage'));
 const LightGBMPage = lazy(() => import('./pages/LightGBMPage'));
 const BrokerRecommendPage = lazy(() => import('./pages/BrokerRecommendPage'));
 const InstitutionSurveyPage = lazy(() => import('./pages/InstitutionSurveyPage'));
+const HfqNewHighPage = lazy(() => import('./pages/HfqNewHighPage'));
 const SimpleFactorBacktestPage = lazy(() => import('./pages/SimpleFactorBacktestPage'));
 const StockScreeningPage = lazy(() => import('./pages/StockScreeningPage'));
 const AppContent: React.FC = () => {
@@ -90,6 +91,7 @@ const AppContent: React.FC = () => {
         <Route path="/screening" element={<StockScreeningPage />} />
         <Route path="/broker-recommend" element={<Suspense fallback={<div className="flex justify-center py-12"><div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan/20 border-t-cyan" /></div>}><BrokerRecommendPage /></Suspense>} />
         <Route path="/institution-survey" element={<Suspense fallback={<div className="flex justify-center py-12"><div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan/20 border-t-cyan" /></div>}><InstitutionSurveyPage /></Suspense>} />
+        <Route path="/new-highs" element={<Suspense fallback={<div className="flex justify-center py-12"><div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan/20 border-t-cyan" /></div>}><HfqNewHighPage /></Suspense>} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>

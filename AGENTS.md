@@ -306,8 +306,8 @@ CI 通过只能说明自动检查通过，不能替代人工语义收敛，也�
 
 ## Learned Workspace Facts
 
-- 多因子组合 YAML 存放在 `combos/`；六基准因子加业绩因子，支持 3/4/5 因子组合搜索与权重微调优化。
-- 因子组合搜索与权重优化报告分别输出到 `reports_simple_backtest/` 与 `reports_discovery/factor_optimization/`。
+- 多因子组合 YAML 在 `combos/`（六基准+业绩因子，3/4/5 因子搜索与权重微调）；搜索报告 `reports_simple_backtest/`，权重优化 `reports_discovery/factor_optimization/`。
+- 新高页 `/new-highs`：`hfq_new_high_service` 扫描全 A 股 2026 至今后复权收盘价创新高（`close×adj_factor`）；API `/api/v1/market/hfq-new-highs` 与 `/{code}/klines`；主表按最近新高日降序、同日按次数降序；展开含创新高日期倒序列表 + 2026 至今后复权日 K（BOLL，懒加载）；日级缓存 `reports_market/`。
 - 快测历史记录按累计收益降序排列；交叉验证每个组合保留 Top 3。
 - 首页批量/临时分析报告目录为 `reports_temp/`（`HOME_ANALYSIS_REPORTS_DIR`）。
 - 多 Agent 复核在定时批跑结束后触发，结果写入 `reports_multi_agent/`。

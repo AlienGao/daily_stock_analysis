@@ -24,6 +24,7 @@ from api.v1.endpoints import (
     research,
     decision_signals,
     alphasift,
+    market,
 )
 __all__ = [
     "discovery",
@@ -43,4 +44,5 @@ __all__ = [
     "research",
     "decision_signals",
     "alphasift",
+    "market",
 ]
