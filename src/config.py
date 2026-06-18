@@ -40,7 +40,7 @@ from src.llm import generation_params as llm_generation_params
 logger = logging.getLogger(__name__)
 
 DEFAULT_ALPHASIFT_INSTALL_SPEC = (
-    "git+https://github.com/ZhuLinsen/alphasift.git@1a0ed8c99b3615c0cb1076e6029827ffc6de2344"
+    "git+https://github.com/ZhuLinsen/alphasift.git@14e74fc0819267f7c04c3117a0dd0fe3f9b19404"
 )
 
 
@@ -718,6 +718,9 @@ class Config:
     # === 新闻与分析筛选配置 ===
     news_max_age_days: int = 3   # 新闻最大时效（天）
     news_strategy_profile: str = "short"  # 新闻窗口策略档位：ultra_short/short/medium/long
+    news_intel_retention_days: int = 30  # 本地资讯池保留天数
+    news_intel_fetch_timeout_sec: float = 8.0  # 单个资讯源拉取超时
+    news_intel_max_items_per_source: int = 50  # 单次每个资讯源最多采集条数
     bias_threshold: float = 5.0  # 乖离率阈值（%），超过此值提示不追高
 
     # === Agent 模式配置 ===
@@ -900,6 +903,7 @@ class Config:
     schedule_run_immediately: bool = True     # 启动时是否立即执行一次
     run_immediately: bool = True              # 启动时是否立即执行一次（非定时模式）
     market_review_enabled: bool = True        # 是否启用大盘复盘
+    daily_market_context_enabled: bool = True   # 是否将大盘环境摘要用于个股分析 Prompt 与保守护栏
     # 大盘复盘市场区域：cn(A股)、hk(港股)、us(美股)、both(三市场)，us 适合仅关注美股的用户
     market_review_region: str = "cn"
     market_review_color_scheme: str = "green_up"
@@ -1515,6 +1519,27 @@ class Config:
             news_strategy_profile=cls._parse_news_strategy_profile(
                 os.getenv('NEWS_STRATEGY_PROFILE', 'short')
             ),
+            news_intel_retention_days=parse_env_int(
+                os.getenv('NEWS_INTEL_RETENTION_DAYS'),
+                30,
+                field_name='NEWS_INTEL_RETENTION_DAYS',
+                minimum=1,
+                maximum=365,
+            ),
+            news_intel_fetch_timeout_sec=parse_env_float(
+                os.getenv('NEWS_INTEL_FETCH_TIMEOUT_SEC'),
+                8.0,
+                field_name='NEWS_INTEL_FETCH_TIMEOUT_SEC',
+                minimum=1.0,
+                maximum=30.0,
+            ),
+            news_intel_max_items_per_source=parse_env_int(
+                os.getenv('NEWS_INTEL_MAX_ITEMS_PER_SOURCE'),
+                50,
+                field_name='NEWS_INTEL_MAX_ITEMS_PER_SOURCE',
+                minimum=1,
+                maximum=200,
+            ),
             bias_threshold=parse_env_float(os.getenv('BIAS_THRESHOLD'), 5.0, field_name='BIAS_THRESHOLD', minimum=1.0),
             agent_litellm_model=agent_litellm_model,
             agent_mode=os.getenv('AGENT_MODE', 'false').lower() == 'true',
@@ -1718,6 +1743,7 @@ class Config:
             schedule_run_immediately=schedule_run_immediately,
             run_immediately=legacy_run_immediately,
             market_review_enabled=os.getenv('MARKET_REVIEW_ENABLED', 'true').lower() == 'true',
+            daily_market_context_enabled=os.getenv('DAILY_MARKET_CONTEXT_ENABLED', 'true').lower() == 'true',
             market_review_region=cls._parse_market_review_region(
                 os.getenv('MARKET_REVIEW_REGION', 'cn')
             ),

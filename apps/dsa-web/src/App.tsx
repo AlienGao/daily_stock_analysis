@@ -25,6 +25,11 @@ const BrokerRecommendPage = lazy(() => import('./pages/BrokerRecommendPage'));
 const InstitutionSurveyPage = lazy(() => import('./pages/InstitutionSurveyPage'));
 const HfqNewHighPage = lazy(() => import('./pages/HfqNewHighPage'));
 const SimpleFactorBacktestPage = lazy(() => import('./pages/SimpleFactorBacktestPage'));
+const PortfolioPage = lazy(() => import('./pages/PortfolioPage'));
+const DecisionSignalsPage = lazy(() => import('./pages/DecisionSignalsPage'));
+const AlertsPage = lazy(() => import('./pages/AlertsPage'));
+const TokenUsagePage = lazy(() => import('./pages/TokenUsagePage'));
+const BacktestPage = lazy(() => import('./pages/BacktestPage'));
 const StockScreeningPage = lazy(() => import('./pages/StockScreeningPage'));
 const AppContent: React.FC = () => {
   const location = useLocation();
@@ -92,6 +97,11 @@ const AppContent: React.FC = () => {
         <Route path="/broker-recommend" element={<Suspense fallback={<div className="flex justify-center py-12"><div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan/20 border-t-cyan" /></div>}><BrokerRecommendPage /></Suspense>} />
         <Route path="/institution-survey" element={<Suspense fallback={<div className="flex justify-center py-12"><div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan/20 border-t-cyan" /></div>}><InstitutionSurveyPage /></Suspense>} />
         <Route path="/new-highs" element={<Suspense fallback={<div className="flex justify-center py-12"><div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan/20 border-t-cyan" /></div>}><HfqNewHighPage /></Suspense>} />
+        <Route path="/portfolio" element={<PortfolioPage />} />
+        <Route path="/decision-signals" element={<DecisionSignalsPage />} />
+        <Route path="/backtest" element={<BacktestPage />} />
+        <Route path="/alerts" element={<AlertsPage />} />
+        <Route path="/usage" element={<TokenUsagePage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>

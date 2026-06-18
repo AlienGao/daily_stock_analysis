@@ -128,9 +128,17 @@ from api.v1.schemas.research import (
 )
 from api.v1.schemas.decision_signals import (
     DecisionSignalCreateRequest,
+    DecisionSignalFeedbackItem,
+    DecisionSignalFeedbackRequest,
     DecisionSignalItem,
     DecisionSignalListResponse,
     DecisionSignalMutationResponse,
+    DecisionSignalOutcomeItem,
+    DecisionSignalOutcomeListResponse,
+    DecisionSignalOutcomeRunRequest,
+    DecisionSignalOutcomeRunResponse,
+    DecisionSignalOutcomeStatsBucket,
+    DecisionSignalOutcomeStatsResponse,
     DecisionSignalStatusUpdateRequest,
 )
 
@@ -247,8 +255,16 @@ __all__ = [
     "LGBDiagnosticsResponse",
     # decision signals
     "DecisionSignalCreateRequest",
+    "DecisionSignalFeedbackItem",
+    "DecisionSignalFeedbackRequest",
     "DecisionSignalItem",
     "DecisionSignalListResponse",
     "DecisionSignalMutationResponse",
+    "DecisionSignalOutcomeItem",
+    "DecisionSignalOutcomeListResponse",
+    "DecisionSignalOutcomeRunRequest",
+    "DecisionSignalOutcomeRunResponse",
+    "DecisionSignalOutcomeStatsBucket",
+    "DecisionSignalOutcomeStatsResponse",
     "DecisionSignalStatusUpdateRequest",
 ]

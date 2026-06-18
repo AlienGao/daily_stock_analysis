@@ -20,6 +20,30 @@ for _mod in ("litellm", "google.generativeai", "google.genai", "anthropic"):
 import pytest
 from unittest.mock import PropertyMock
 
+
+@pytest.fixture(autouse=True)
+def _llm_usage_hmac_env(monkeypatch):
+    monkeypatch.setenv("LLM_USAGE_HMAC_SECRET", "test-usage-hmac-secret")
+    monkeypatch.setenv("LLM_USAGE_HMAC_KEY_VERSION", "test-v1")
+
+
+def _assert_usage_contains(usage, expected):
+    for key, value in expected.items():
+        assert usage[key] == value
+    assert usage["normalized_prompt_tokens"] == expected.get("prompt_tokens")
+    assert usage["normalized_completion_tokens"] == expected.get("completion_tokens")
+    assert usage["normalized_total_tokens"] == expected.get("total_tokens")
+    assert usage["provider_usage_json"]
+    assert usage["messages_hmac"] and len(usage["messages_hmac"]) == 64
+    assert usage["hmac_key_version"] == "test-v1"
+
+
+def _assert_no_provider_usage_hmac_only(usage):
+    assert "prompt_tokens" not in usage
+    assert usage["messages_hmac"] and len(usage["messages_hmac"]) == 64
+    assert usage["hmac_key_version"] == "test-v1"
+
+
 _OPENAI_COMPATIBILITY_PAYLOAD_FIXTURES = [
     # Repro case 1 (Issue #1279): OpenAI-compatible provider message.content is None while text is in content_blocks.
     (
@@ -139,8 +163,40 @@ class TestAnalyzerGenerateText:
 
         assert text == "abcdef"
         assert model == "gemini/gemini-2.0-flash"
-        assert usage == {"prompt_tokens": 1, "completion_tokens": 2, "total_tokens": 3}
+        _assert_usage_contains(usage, {"prompt_tokens": 1, "completion_tokens": 2, "total_tokens": 3})
         assert progress_updates == [3, 6]
+
+    def test_call_litellm_stream_reads_private_hidden_usage_best_effort(self):
+        analyzer = self._make_analyzer()
+        analyzer._config_override = SimpleNamespace(
+            litellm_model="openai/gpt-4o-mini",
+            litellm_fallback_models=[],
+            llm_model_list=[],
+        )
+
+        def stream_response():
+            yield SimpleNamespace(
+                choices=[SimpleNamespace(delta=SimpleNamespace(content="abc"))],
+                usage=None,
+            )
+            yield SimpleNamespace(
+                choices=[SimpleNamespace(delta=SimpleNamespace(content=""))],
+                usage=None,
+                _hidden_params={
+                    "usage": SimpleNamespace(prompt_tokens=11, completion_tokens=2, total_tokens=13)
+                },
+            )
+
+        with patch.object(analyzer, "_dispatch_litellm_completion", return_value=stream_response()):
+            text, model, usage = analyzer._call_litellm(
+                "prompt",
+                {"max_tokens": 128, "temperature": 0.2},
+                stream=True,
+            )
+
+        assert text == "abc"
+        assert model == "openai/gpt-4o-mini"
+        _assert_usage_contains(usage, {"prompt_tokens": 11, "completion_tokens": 2, "total_tokens": 13})
 
     def test_call_litellm_legacy_path_uses_legacy_model_list_for_param_recovery(self):
         with patch("src.analyzer.get_config") as mock_cfg:
@@ -319,7 +375,7 @@ class TestAnalyzerGenerateText:
 
         assert text == "full response"
         assert model == "gemini/gemini-2.0-flash"
-        assert usage == {"prompt_tokens": 4, "completion_tokens": 5, "total_tokens": 9}
+        _assert_usage_contains(usage, {"prompt_tokens": 4, "completion_tokens": 5, "total_tokens": 9})
         assert len(dispatch_calls) == 2
         assert dispatch_calls[0]["stream"] is True
         assert "stream" not in dispatch_calls[1]
@@ -344,7 +400,7 @@ class TestAnalyzerGenerateText:
 
         assert text == expected_text
         assert model_used == provider_model
-        assert usage == response_payload["usage"]
+        _assert_usage_contains(usage, response_payload["usage"])
 
     def test_call_litellm_falls_back_to_message_content_when_blocks_empty(self):
         analyzer = self._make_analyzer()
@@ -371,7 +427,7 @@ class TestAnalyzerGenerateText:
 
         assert text == "message response"
         assert model_used == "openai/deepseek-chat"
-        assert usage == {}
+        _assert_no_provider_usage_hmac_only(usage)
 
     def test_call_litellm_normalizes_kimi_k26_temperature(self):
         analyzer = self._make_analyzer()
@@ -393,7 +449,7 @@ class TestAnalyzerGenerateText:
 
         assert text == "ok"
         assert model_used == "openai/kimi-k2.6"
-        assert usage == {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}
+        _assert_usage_contains(usage, {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2})
         call_kwargs = mock_dispatch.call_args.args[1]
         assert call_kwargs["temperature"] == 1.0
 
@@ -422,7 +478,7 @@ class TestAnalyzerGenerateText:
 
         assert text == "ok"
         assert model_used == "kimi_router"
-        assert usage == {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}
+        _assert_usage_contains(usage, {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2})
         call_kwargs = mock_dispatch.call_args.args[1]
         assert call_kwargs["temperature"] == 1.0
 
@@ -454,9 +510,201 @@ class TestAnalyzerGenerateText:
 
         assert text == "ok"
         assert model_used == "kimi_router"
-        assert usage == {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}
+        _assert_usage_contains(usage, {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2})
         call_kwargs = mock_dispatch.call_args.args[1]
         assert call_kwargs["temperature"] == 0.6
+
+    def test_call_litellm_resolves_anthropic_alias_for_usage_normalization(self):
+        analyzer = self._make_analyzer()
+        analyzer._config_override = SimpleNamespace(
+            litellm_model="claude-router",
+            litellm_fallback_models=[],
+            llm_model_list=[
+                {
+                    "model_name": "claude-router",
+                    "litellm_params": {"model": "anthropic/claude-sonnet-test"},
+                }
+            ],
+        )
+        response = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content="ok"))],
+            usage=SimpleNamespace(
+                input_tokens=100,
+                output_tokens=30,
+                cache_read_input_tokens=10,
+                cache_creation_input_tokens=20,
+            ),
+        )
+
+        with patch.object(analyzer, "_dispatch_litellm_completion", return_value=response):
+            text, model_used, usage = analyzer._call_litellm(
+                "prompt",
+                {"max_tokens": 128, "temperature": 0.2},
+            )
+
+        assert text == "ok"
+        assert model_used == "claude-router"
+        assert usage["prompt_tokens"] == 130
+        assert usage["completion_tokens"] == 30
+        assert usage["total_tokens"] == 160
+        assert usage["normalized_cache_read_tokens"] == 10
+        assert usage["normalized_cache_write_tokens"] == 20
+        assert usage["cache_observation"] == "read_and_write"
+
+    def test_call_litellm_uses_openai_wire_model_for_alias_usage_threshold(self):
+        analyzer = self._make_analyzer()
+        analyzer._config_override = SimpleNamespace(
+            litellm_model="fast",
+            litellm_fallback_models=[],
+            llm_model_list=[
+                {
+                    "model_name": "fast",
+                    "litellm_params": {"model": "openai/gpt-4o"},
+                }
+            ],
+        )
+        response = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content="ok"))],
+            usage=SimpleNamespace(
+                prompt_tokens=500,
+                completion_tokens=20,
+                total_tokens=520,
+                prompt_tokens_details={"cached_tokens": 0},
+            ),
+        )
+
+        with patch.object(analyzer, "_dispatch_litellm_completion", return_value=response):
+            text, model_used, usage = analyzer._call_litellm(
+                "prompt",
+                {"max_tokens": 128, "temperature": 0.2},
+            )
+
+        assert text == "ok"
+        assert model_used == "fast"
+        assert usage["provider_min_cache_tokens"] == 1024
+        assert usage["cache_capability"] == "supported"
+        assert usage["cache_eligibility"] == "below_threshold"
+        assert usage["cache_observation"] == "unknown"
+        assert usage["normalized_cache_read_tokens"] == 0
+        assert usage["normalized_cache_eligible_input_tokens"] is None
+        assert usage["normalized_cache_hit_ratio"] is None
+
+    def test_call_litellm_preserves_anthropic_litellm_prompt_tokens_without_input_tokens(self):
+        analyzer = self._make_analyzer()
+        analyzer._config_override = SimpleNamespace(
+            litellm_model="claude-router",
+            litellm_fallback_models=[],
+            llm_model_list=[
+                {
+                    "model_name": "claude-router",
+                    "litellm_params": {"model": "anthropic/claude-sonnet-test"},
+                }
+            ],
+        )
+        response = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content="ok"))],
+            usage=SimpleNamespace(
+                prompt_tokens=100,
+                completion_tokens=20,
+                total_tokens=120,
+                cache_read_input_tokens=0,
+                cache_creation_input_tokens=0,
+            ),
+        )
+
+        with patch.object(analyzer, "_dispatch_litellm_completion", return_value=response):
+            text, model_used, usage = analyzer._call_litellm(
+                "prompt",
+                {"max_tokens": 128, "temperature": 0.2},
+            )
+
+        assert text == "ok"
+        assert model_used == "claude-router"
+        assert usage["prompt_tokens"] == 100
+        assert usage["completion_tokens"] == 20
+        assert usage["total_tokens"] == 120
+        assert usage["normalized_prompt_tokens"] == 100
+        assert usage["normalized_uncached_input_tokens"] == 100
+        assert usage["cache_observation"] == "zero_hit"
+        assert usage["messages_hmac"] and len(usage["messages_hmac"]) == 64
+
+    def test_call_litellm_stream_resolves_glm_alias_for_usage_normalization(self):
+        analyzer = self._make_analyzer()
+        analyzer._config_override = SimpleNamespace(
+            litellm_model="glm-router",
+            litellm_fallback_models=[],
+            llm_model_list=[
+                {
+                    "model_name": "glm-router",
+                    "litellm_params": {"model": "zhipu/glm-4.5"},
+                }
+            ],
+        )
+
+        def stream_response():
+            yield SimpleNamespace(
+                choices=[SimpleNamespace(delta=SimpleNamespace(content="ok"))],
+                usage=SimpleNamespace(
+                    prompt_tokens=1200,
+                    completion_tokens=80,
+                    total_tokens=1280,
+                    prompt_tokens_details={"cached_tokens": 1200},
+                ),
+            )
+
+        with patch.object(analyzer, "_dispatch_litellm_completion", return_value=stream_response()):
+            text, model_used, usage = analyzer._call_litellm(
+                "prompt",
+                {"max_tokens": 128, "temperature": 0.2},
+                stream=True,
+            )
+
+        assert text == "ok"
+        assert model_used == "glm-router"
+        assert usage["normalized_cache_read_tokens"] == 1200
+        assert usage["cache_capability"] == "supported"
+        assert usage["cache_observation"] == "full_hit"
+
+    def test_call_litellm_stream_uses_openai_wire_model_for_alias_usage_threshold(self):
+        analyzer = self._make_analyzer()
+        analyzer._config_override = SimpleNamespace(
+            litellm_model="fast",
+            litellm_fallback_models=[],
+            llm_model_list=[
+                {
+                    "model_name": "fast",
+                    "litellm_params": {"model": "openai/gpt-4o"},
+                }
+            ],
+        )
+
+        def stream_response():
+            yield SimpleNamespace(
+                choices=[SimpleNamespace(delta=SimpleNamespace(content="ok"))],
+                usage=SimpleNamespace(
+                    prompt_tokens=500,
+                    completion_tokens=20,
+                    total_tokens=520,
+                    prompt_tokens_details={"cached_tokens": 0},
+                ),
+            )
+
+        with patch.object(analyzer, "_dispatch_litellm_completion", return_value=stream_response()):
+            text, model_used, usage = analyzer._call_litellm(
+                "prompt",
+                {"max_tokens": 128, "temperature": 0.2},
+                stream=True,
+            )
+
+        assert text == "ok"
+        assert model_used == "fast"
+        assert usage["provider_min_cache_tokens"] == 1024
+        assert usage["cache_capability"] == "supported"
+        assert usage["cache_eligibility"] == "below_threshold"
+        assert usage["cache_observation"] == "unknown"
+        assert usage["normalized_cache_read_tokens"] == 0
+        assert usage["normalized_cache_eligible_input_tokens"] is None
+        assert usage["normalized_cache_hit_ratio"] is None
 
     def test_call_litellm_omits_temperature_for_gpt5_family(self):
         analyzer = self._make_analyzer()
@@ -478,7 +726,7 @@ class TestAnalyzerGenerateText:
 
         assert text == "ok"
         assert model_used == "openai/gpt5.5-ferr"
-        assert usage == {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}
+        _assert_usage_contains(usage, {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2})
         call_kwargs = mock_dispatch.call_args.args[1]
         assert "temperature" not in call_kwargs
 
@@ -514,7 +762,7 @@ class TestAnalyzerGenerateText:
 
         assert text == "ok"
         assert model_used == "openai/custom-default-temp"
-        assert usage == {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}
+        _assert_usage_contains(usage, {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2})
         assert calls[0]["temperature"] == 0.2
         assert calls[1]["temperature"] == 1.0
 
@@ -545,7 +793,7 @@ class TestAnalyzerGenerateText:
 
         assert text == "fallback ok"
         assert model_used == "openai/gpt-4o-mini"
-        assert usage == {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}
+        _assert_usage_contains(usage, {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2})
         assert temperatures == [
             ("openai/kimi-k2.6", 1.0),
             ("openai/gpt-4o-mini", 0.2),
@@ -598,7 +846,7 @@ class TestAnalyzerGenerateText:
 
         assert text == "fallback"
         assert model_used == "provider/good-model"
-        assert usage == {"prompt_tokens": 4, "completion_tokens": 5, "total_tokens": 9}
+        _assert_usage_contains(usage, {"prompt_tokens": 4, "completion_tokens": 5, "total_tokens": 9})
         assert dispatch_calls == [
             ("provider/bad-model", True),
             ("provider/bad-model", False),
@@ -665,6 +913,60 @@ class TestAnalyzerGenerateText:
         assert [progress for progress, _ in progress_updates] == [68, 93, 94, 95]
         assert "补全重试" in progress_updates[2][1]
         assert "解析 JSON" in progress_updates[3][1]
+
+    def test_analyze_persists_provider_usage_from_private_stream_hidden_usage_best_effort(self):
+        analyzer = self._make_analyzer()
+        analyzer._config_override = SimpleNamespace(
+            gemini_request_delay=0,
+            report_language="zh",
+            litellm_model="openai/gpt-4o-mini",
+            litellm_fallback_models=[],
+            llm_model_list=[],
+            llm_temperature=0.2,
+            report_integrity_enabled=False,
+            report_integrity_retry=0,
+        )
+
+        from src.analyzer import AnalysisResult
+
+        parsed_result = AnalysisResult(
+            code="600519",
+            name="贵州茅台",
+            sentiment_score=80,
+            trend_prediction="看多",
+            operation_advice="持有",
+            analysis_summary="分析结果",
+        )
+
+        def stream_response():
+            yield SimpleNamespace(
+                choices=[SimpleNamespace(delta=SimpleNamespace(content='{"sentiment_score":80}'))],
+                usage=None,
+            )
+            yield SimpleNamespace(
+                choices=[SimpleNamespace(delta=SimpleNamespace(content=""))],
+                usage=None,
+                _hidden_params={
+                    "usage": SimpleNamespace(prompt_tokens=11, completion_tokens=2, total_tokens=13)
+                },
+            )
+
+        with patch.object(analyzer, "is_available", return_value=True), \
+             patch.object(analyzer, "_get_analysis_system_prompt", return_value="system"), \
+             patch.object(analyzer, "_format_prompt", return_value="prompt"), \
+             patch.object(analyzer, "_validate_json_response"), \
+             patch.object(analyzer, "_dispatch_litellm_completion", return_value=stream_response()), \
+             patch.object(analyzer, "_parse_response", return_value=parsed_result), \
+             patch.object(analyzer, "_build_market_snapshot", return_value={}), \
+             patch("src.analyzer.persist_llm_usage") as mock_usage:
+            result = analyzer.analyze({"code": "600519", "stock_name": "贵州茅台"})
+
+        assert result.analysis_summary == "分析结果"
+        mock_usage.assert_called_once()
+        usage_arg, model_arg = mock_usage.call_args[0]
+        assert model_arg == "openai/gpt-4o-mini"
+        _assert_usage_contains(usage_arg, {"prompt_tokens": 11, "completion_tokens": 2, "total_tokens": 13})
+        assert mock_usage.call_args.kwargs == {"call_type": "analysis", "stock_code": "600519"}
 
     def test_parse_response_non_json_returns_failure(self):
         """_parse_response must return success=False when LLM output is not valid JSON."""

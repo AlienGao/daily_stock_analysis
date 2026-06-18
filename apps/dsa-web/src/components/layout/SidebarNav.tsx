@@ -5,10 +5,10 @@ import { ALPHASIFT_CONFIG_CHANGED_EVENT, SYSTEM_CONFIG_CHANGED_EVENT, alphasiftA
 import { useAuth } from '../../contexts/AuthContext';
 import { useAgentChatStore } from '../../stores/agentChatStore';
 import { useUiLanguage } from '../../contexts/UiLanguageContext';
+import type { UiTextKey } from '../../i18n/uiText';
 import { cn } from '../../utils/cn';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { StatusDot } from '../common/StatusDot';
-import { UiLanguageToggle } from '../i18n/UiLanguageToggle';
 import { ThemeToggle } from '../theme/ThemeToggle';
 
 type SidebarNavProps = {
@@ -19,7 +19,8 @@ type SidebarNavProps = {
 
 type NavItem = {
   key: string;
-  label: string;
+  label?: string;
+  labelKey?: UiTextKey;
   to: string;
   icon: React.ComponentType<{ className?: string }>;
   exact?: boolean;
@@ -27,7 +28,7 @@ type NavItem = {
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { key: 'home', label: '首页', to: '/', icon: Home, exact: true },
+  { key: 'home', labelKey: 'layout.nav.home', to: '/', icon: Home, exact: true },
   { key: 'discovery', label: '寻股', to: '/discovery', icon: Compass, exact: true },
   { key: 'factor-backtest', label: '因子', to: '/factor-backtest', icon: Activity },
   { key: 'factor-tuning', label: '调优', to: '/factor-tuning', icon: Sliders },
@@ -36,9 +37,10 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'simple-factor-backtest', label: '快测', to: '/simple-factor-backtest', icon: BarChart3 },
   { key: 'lgb', label: 'LGB', to: '/lgb', icon: Brain },
   { key: 'institution-survey', label: '调研', to: '/institution-survey', icon: Users },
-  { key: 'chat', label: '问股', to: '/chat', icon: MessageSquareQuote, badge: 'completion' },
-  { key: 'screening', label: '选股', to: '/screening', icon: Search },
-  { key: 'settings', label: '设置', to: '/settings', icon: Settings2 },
+  { key: 'chat', labelKey: 'layout.nav.chat', to: '/chat', icon: MessageSquareQuote, badge: 'completion' },
+  { key: 'screening', labelKey: 'layout.nav.screening', to: '/screening', icon: Search },
+  { key: 'decision-signals', labelKey: 'layout.nav.decisionSignals', to: '/decision-signals', icon: Activity },
+  { key: 'settings', labelKey: 'layout.nav.settings', to: '/settings', icon: Settings2 },
 ];
 
 export const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed = false, onNavigate, variant = 'default' }) => {
@@ -129,13 +131,15 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed = false, onNav
         )}
         aria-label={t('layout.mainNav')}
       >
-        {navItems.map(({ key, label, to, icon: Icon, exact, badge }) => (
+        {navItems.map(({ key, label, labelKey, to, icon: Icon, exact, badge }) => {
+          const itemLabel = labelKey ? t(labelKey) : (label ?? key);
+          return (
           <NavLink
             key={key}
             to={to}
             end={exact}
             onClick={onNavigate}
-            aria-label={label}
+            aria-label={itemLabel}
             className={({ isActive }) =>
               cn(
                 itemInteractiveClass,
@@ -146,7 +150,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed = false, onNav
             {({ isActive }) => (
               <>
                 <Icon className={cn(itemIconClass, isActive ? 'text-[var(--nav-icon-active)]' : 'text-current')} />
-                {!collapsed ? <span className={itemLabelClass}>{label}</span> : null}
+                {!collapsed ? <span className={itemLabelClass}>{itemLabel}</span> : null}
                 {badge === 'completion' && completionBadge ? (
                   <StatusDot
                     tone="info"
@@ -161,7 +165,8 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed = false, onNav
               </>
             )}
           </NavLink>
-        ))}
+          );
+        })}
       </nav>
 
       <div className={cn('shrink-0 space-y-1', isRail ? 'mt-2 border-t border-border/40 pt-2' : 'mt-3')}>

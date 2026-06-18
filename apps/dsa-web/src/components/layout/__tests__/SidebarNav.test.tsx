@@ -71,7 +71,7 @@ describe('SidebarNav', () => {
 
     await screen.findByRole('link', { name: '选股' });
     const hrefs = screen.getAllByRole('link').map((link) => link.getAttribute('href'));
-    expect(hrefs.slice(0, 4)).toEqual(['/', '/lgb', '/discovery', '/factor-backtest']);
+    expect(hrefs.slice(0, 4)).toEqual(['/', '/discovery', '/factor-backtest', '/factor-tuning']);
   });
 
   it('refreshes the screening navigation item after any config save event', async () => {
@@ -137,6 +137,18 @@ describe('SidebarNav', () => {
     expect(screen.queryByRole('link', { name: '持仓' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: '回测' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: '告警' })).not.toBeInTheDocument();
+  });
+
+  it('renders the AI signals navigation item and marks it active', () => {
+    render(
+      <MemoryRouter initialEntries={['/decision-signals']}>
+        <SidebarNav />
+      </MemoryRouter>,
+    );
+
+    const signalsLink = screen.getByRole('link', { name: 'AI 建议' });
+    expect(signalsLink).toHaveAttribute('href', '/decision-signals');
+    expect(signalsLink).toHaveClass('font-medium');
   });
 
   it('opens the logout confirmation and confirms logout', async () => {

@@ -99,7 +99,7 @@ class AnalysisRepository:
             query_source: 请求来源，与 pipeline 一致（可选）
             
         Returns:
-            保存的记录数
+            新保存的 AnalysisHistory.id；保存失败返回 0。
         """
         try:
             return self.db.save_analysis_history(

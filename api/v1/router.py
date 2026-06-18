@@ -25,6 +25,7 @@ from api.v1.endpoints import (
     factor_backtest,
     health,
     history,
+    intelligence,
     portfolio,
     research,
     stocks,
@@ -33,8 +34,9 @@ from api.v1.endpoints import (
     market,
 )
 
-# 创建 v1 版本主路由
-router = APIRouter(prefix="/api/v1")
+# 创建 v1 版本主路由。
+# /api/v1 前缀在 api.app 挂载，避免新版 FastAPI 误判子路由 "" 为 empty path。
+router = APIRouter()
 
 router.include_router(auth.router, prefix="/auth", tags=["Auth"])
 router.include_router(agent.router, prefix="/agent", tags=["Agent"])
@@ -56,4 +58,5 @@ router.include_router(decision_signals.router, prefix="/decision-signals", tags=
 router.include_router(factor_backtest.router, prefix="/factor-backtest-simple", tags=["FactorBacktestSimple"])
 router.include_router(alphasift.router, prefix="/alphasift", tags=["AlphaSift"])
 router.include_router(market.router, prefix="/market", tags=["Market"])
+router.include_router(intelligence.router, prefix="/intelligence", tags=["Intelligence"])
 router.include_router(health.router, tags=["Health"])
