@@ -97,7 +97,7 @@ vi.mock('recharts', () => ({
 type AccountItem = {
   id: number;
   name: string;
-  market?: 'cn' | 'hk' | 'us';
+  market?: 'cn' | 'hk' | 'us' | 'jp' | 'kr';
   baseCurrency?: string;
 };
 
@@ -182,7 +182,7 @@ function makePosition(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function makeRisk() {
+function makeRisk(overrides: Record<string, unknown> = {}) {
   return {
     asOf: '2026-03-19',
     accountId: null,
@@ -216,6 +216,13 @@ function makeRisk() {
       nearCount: 0,
       items: [],
     },
+    decisionSignalRisk: {
+      available: true,
+      total: 0,
+      actions: { sell: 0, reduce: 0, alert: 0 },
+      items: [],
+    },
+    ...overrides,
   };
 }
 
@@ -354,7 +361,89 @@ describe('PortfolioPage FX refresh', () => {
     expect(screen.getByText(/Current drawdown:/)).toBeInTheDocument();
     expect(screen.getByText('Stop-loss proximity warning')).toBeInTheDocument();
     expect(screen.getByText('Scope')).toBeInTheDocument();
+    expect(screen.getByText('AI risk signals')).toBeInTheDocument();
+    expect(screen.getByText('No defensive signals')).toBeInTheDocument();
     expect(screen.queryByText('回撤监控')).not.toBeInTheDocument();
+  });
+
+  it('renders portfolio decision signal risk summary', async () => {
+    getRisk.mockResolvedValueOnce(makeRisk({
+      decisionSignalRisk: {
+        available: true,
+        total: 2,
+        actions: { sell: 1, reduce: 0, alert: 1 },
+        items: [
+          {
+            accountId: 1,
+            symbol: '600519',
+            market: 'cn',
+            signal: makeDecisionSignal({ id: 201, action: 'sell', actionLabel: null }),
+          },
+          {
+            accountId: 1,
+            symbol: '300750',
+            market: 'cn',
+            signal: makeDecisionSignal({ id: 202, stockCode: '300750', action: 'alert', actionLabel: null }),
+          },
+        ],
+      },
+    }));
+
+    render(<PortfolioPage />);
+
+    await waitForInitialLoad();
+
+    expect(screen.getByText('AI 风险信号')).toBeInTheDocument();
+    expect(screen.getByText(/风险信号: 2/)).toBeInTheDocument();
+    expect(screen.getByText(/卖出: 1 · 减仓: 0 · 预警: 1/)).toBeInTheDocument();
+    expect(screen.getByText('600519 · 卖出')).toBeInTheDocument();
+    expect(screen.getByText('300750 · 预警')).toBeInTheDocument();
+    expect(screen.queryByText('600519 · sell')).not.toBeInTheDocument();
+    expect(screen.queryByText('300750 · alert')).not.toBeInTheDocument();
+  });
+
+  it('uses the current UI language for portfolio decision signal risk action labels', async () => {
+    getRisk.mockResolvedValueOnce(makeRisk({
+      decisionSignalRisk: {
+        available: true,
+        total: 1,
+        actions: { sell: 1, reduce: 0, alert: 0 },
+        items: [
+          {
+            accountId: 1,
+            symbol: '600519',
+            market: 'cn',
+            signal: makeDecisionSignal({ id: 203, action: 'sell', actionLabel: '卖出' }),
+          },
+        ],
+      },
+    }));
+
+    renderEnglishPage();
+
+    await waitForInitialLoad();
+
+    expect(screen.getByText('AI risk signals')).toBeInTheDocument();
+    expect(screen.getByText('600519 · Sell')).toBeInTheDocument();
+    expect(screen.queryByText('600519 · 卖出')).not.toBeInTheDocument();
+    expect(screen.queryByText('600519 · sell')).not.toBeInTheDocument();
+  });
+
+  it('renders portfolio decision signal risk fail-open state', async () => {
+    getRisk.mockResolvedValueOnce(makeRisk({
+      decisionSignalRisk: {
+        available: false,
+        total: 0,
+        actions: { sell: 0, reduce: 0, alert: 0 },
+        items: [],
+      },
+    }));
+
+    render(<PortfolioPage />);
+
+    await waitForInitialLoad();
+
+    expect(screen.getByText('信号风险暂不可用')).toBeInTheDocument();
   });
 
   it('refreshes FX for a single selected account and only reloads snapshot/risk', async () => {

@@ -12,9 +12,9 @@
 {% set matched = e.result.matched_skills or [] %}
 {% set primary = (matched[0].name or matched[0].id) if matched else '' %}
 **{{ e.stock_name }}({{ e.result.code }})** {{ e.signal_emoji }} {{ e.localized_operation_advice }} | {{ labels.score_label }} {{ e.result.sentiment_score }}{% if primary %} | 🎯 {{ primary }}{% endif %} | {{ one }}
-{% set phase_excerpt = phase_pack_excerpt(e.result) %}
-{% if phase_excerpt %}
-{{ phase_excerpt }}
+{% set signal_excerpt = decision_signal_excerpt(e.result) %}
+{% if signal_excerpt %}
+{{ signal_excerpt }}
 {% endif %}
 {% endfor %}
 

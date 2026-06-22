@@ -12,6 +12,9 @@ const requiredLocalizedKeys = [
   'PYTDX_PORT',
   'PYTDX_SERVERS',
   'BIAS_THRESHOLD',
+  'LLM_PROMPT_CACHE_TELEMETRY_ENABLED',
+  'LLM_PROMPT_CACHE_HINTS_ENABLED',
+  'LLM_PROMPT_CACHE_DIAGNOSTICS_LEVEL',
   'LLM_USAGE_HMAC_SECRET',
   'LLM_USAGE_HMAC_KEY_VERSION',
   'TELEGRAM_BOT_TOKEN',
@@ -126,6 +129,9 @@ describe('systemConfigI18n option label localization', () => {
     ['LOG_LEVEL', 'WARNING', undefined, '警告'],
     ['LOG_LEVEL', 'ERROR', undefined, '错误'],
     ['LOG_LEVEL', 'CRITICAL', undefined, '严重'],
+    ['LLM_PROMPT_CACHE_DIAGNOSTICS_LEVEL', 'off', undefined, '关闭'],
+    ['LLM_PROMPT_CACHE_DIAGNOSTICS_LEVEL', 'basic', undefined, '基础'],
+    ['LLM_PROMPT_CACHE_DIAGNOSTICS_LEVEL', 'debug', undefined, '调试'],
     ['MARKET_REVIEW_REGION', 'cn', undefined, 'A 股'],
     ['MARKET_REVIEW_REGION', 'hk', undefined, '港股'],
     ['MARKET_REVIEW_REGION', 'us', undefined, '美股'],
@@ -170,5 +176,21 @@ describe('SAVE_CONTEXT_SNAPSHOT settings help contract', () => {
     expect(text).toContain('不关闭当次 AnalysisContextPack 构建');
     expect(text).toContain('不关闭 LLM Prompt');
     expect(text).not.toContain('旧记录');
+  });
+});
+
+describe('decision signal settings guard', () => {
+  it('does not add placeholder DecisionSignal setting translations without a real schema field', () => {
+    const placeholderKeys = [
+      'DECISION_SIGNAL_ENABLED',
+      'DECISION_SIGNALS_ENABLED',
+      'DECISION_SIGNAL_WRITE_ENABLED',
+      'DECISION_SIGNAL_EXTRACT_ENABLED',
+    ];
+
+    placeholderKeys.forEach((key) => {
+      expect(getFieldTitleZh(key, key)).toBe(key);
+      expect(getFieldDescriptionZh(key, 'schema fallback description')).toBe('schema fallback description');
+    });
   });
 });

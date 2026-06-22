@@ -10,14 +10,19 @@ from fastapi import APIRouter, HTTPException, Query
 
 from api.v1.schemas.common import ErrorResponse
 from api.v1.schemas.intelligence import (
+    IntelligenceDefaultSourceCreateResponse,
+    IntelligenceDefaultSourcesCreateRequest,
     IntelligenceFetchResponse,
     IntelligenceItemListResponse,
     IntelligenceSourceCreateRequest,
     IntelligenceSourceItem,
     IntelligenceSourceListResponse,
+    IntelligenceSourceTemplateCreateRequest,
+    IntelligenceSourceTemplateListResponse,
     IntelligenceSourceTestResponse,
 )
 from src.services.intelligence_service import IntelligenceService, IntelligenceServiceError
+from src.services.run_diagnostics import sanitize_diagnostic_text
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -32,10 +37,12 @@ def _not_found(message: str) -> HTTPException:
 
 
 def _internal_error(message: str, exc: Exception) -> HTTPException:
-    sanitized = IntelligenceService._sanitize_error(exc)
-    log_detail = sanitized if sanitized != str(exc) else exc.__class__.__name__
-    logger.error("%s: %s", message, log_detail)
-    return HTTPException(status_code=500, detail={"error": "internal_error", "message": message})
+    sanitized_error = sanitize_diagnostic_text(str(exc), max_length=300) or "internal intelligence error"
+    logger.error("%s: %s", message, sanitized_error)
+    return HTTPException(
+        status_code=500,
+        detail={"error": "internal_error", "message": f"{message}: internal intelligence service error"},
+    )
 
 
 @router.post("/sources", response_model=IntelligenceSourceItem, responses={400: {"model": ErrorResponse}, 500: {"model": ErrorResponse}}, summary="Create intelligence source")
@@ -64,6 +71,53 @@ def list_sources(
         ))
     except Exception as exc:
         raise _internal_error("List intelligence sources failed", exc)
+
+
+@router.get("/sources/templates", response_model=IntelligenceSourceTemplateListResponse, responses={500: {"model": ErrorResponse}}, summary="List built-in intelligence source templates")
+def list_source_templates(
+    source_type: Optional[str] = Query(None),
+    market: Optional[str] = Query(None),
+) -> IntelligenceSourceTemplateListResponse:
+    try:
+        return IntelligenceSourceTemplateListResponse(**IntelligenceService().list_source_templates(
+            source_type=source_type,
+            market=market,
+        ))
+    except Exception as exc:
+        raise _internal_error("List intelligence source templates failed", exc)
+
+
+@router.post("/sources/templates/{template_id}", response_model=IntelligenceSourceItem, responses={400: {"model": ErrorResponse}, 404: {"model": ErrorResponse}, 500: {"model": ErrorResponse}}, summary="Create intelligence source from a built-in template")
+def create_source_from_template(
+    template_id: str,
+    request: IntelligenceSourceTemplateCreateRequest = IntelligenceSourceTemplateCreateRequest(),
+) -> IntelligenceSourceItem:
+    try:
+        return IntelligenceSourceItem(**IntelligenceService().create_source_from_template(
+            template_id,
+            request.model_dump(exclude_none=True),
+        ))
+    except IntelligenceServiceError as exc:
+        message = str(exc)
+        if "template not found" in message.lower():
+            raise _not_found(message)
+        raise _bad_request(exc)
+    except Exception as exc:
+        raise _internal_error("Create intelligence source from template failed", exc)
+
+
+@router.post("/sources/defaults", response_model=IntelligenceDefaultSourceCreateResponse, responses={400: {"model": ErrorResponse}, 500: {"model": ErrorResponse}}, summary="Create built-in default intelligence sources")
+def create_default_sources(
+    request: IntelligenceDefaultSourcesCreateRequest = IntelligenceDefaultSourcesCreateRequest(),
+) -> IntelligenceDefaultSourceCreateResponse:
+    try:
+        return IntelligenceDefaultSourceCreateResponse(**IntelligenceService().create_default_sources(
+            request.model_dump(exclude_none=True),
+        ))
+    except IntelligenceServiceError as exc:
+        raise _bad_request(exc)
+    except Exception as exc:
+        raise _internal_error("Create default intelligence sources failed", exc)
 
 
 @router.post("/sources/test", response_model=IntelligenceSourceTestResponse, responses={400: {"model": ErrorResponse}, 500: {"model": ErrorResponse}}, summary="Dry-run an intelligence source payload")

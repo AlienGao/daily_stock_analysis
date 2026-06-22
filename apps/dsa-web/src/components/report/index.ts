@@ -4,7 +4,6 @@ export * from './AnalysisContextSummary';
 export * from './ReportOverview';
 export * from './ReportStrategy';
 export * from './ReportMatchedSkills';
-export * from './ReportDecisionSignals';
 export * from './ReportNews';
 export * from './ReportDetails';
 export * from './ReportMarkdown';

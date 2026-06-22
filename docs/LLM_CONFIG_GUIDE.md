@@ -284,6 +284,37 @@ LLM_USAGE_HMAC_KEY_VERSION=local-v1
 - 轮换密钥时同步更新 `LLM_USAGE_HMAC_KEY_VERSION`，避免不同密钥生成的 HMAC 被误比较。
 - 不要复用登录 session secret，也不要把真实密钥提交到版本控制或暴露在 issue、日志、截图中。
 
+### Provider prompt cache 配置（P1 / P1.5）
+
+Prompt cache 配置只控制本项目是否记录 cache usage / diagnostics，以及主分析路径是否主动发送已验证的 provider-specific hint；它不控制 OpenAI、Gemini、DeepSeek 等 provider 的 implicit / provider-managed cache。
+
+```env
+LLM_PROMPT_CACHE_TELEMETRY_ENABLED=true
+LLM_PROMPT_CACHE_HINTS_ENABLED=false
+LLM_PROMPT_CACHE_DIAGNOSTICS_LEVEL=off
+```
+
+- `LLM_PROMPT_CACHE_TELEMETRY_ENABLED=false` 时，不持久化 provider raw usage JSON、normalized cache fields 和 cache decision diagnostics；基础 token usage 记录保持兼容。
+- `LLM_PROMPT_CACHE_HINTS_ENABLED=true` 只允许主分析 / analyzer LiteLLM 路径向 registry 中已验证或 smoke-tested 的 provider / route 发送 `prompt_cache_key`、`cache_control`、`user_id` 等 hint。问股 Agent 路径当前只记录 capability / usage diagnostics，不主动发送 provider-specific hints。未知 OpenAI-compatible gateway 默认 telemetry only。
+- `LLM_PROMPT_CACHE_DIAGNOSTICS_LEVEL=basic` 只在 debug 日志和测试可观察对象中提供 provider、api surface、verification status、hint applied / disabled reason 等非敏感枚举。`debug` 在同一范围内额外提供 HMAC-derived route/cache diagnostics 和 matched caps id，但仍禁止 raw prompt、request body、message content、股票/用户原文、webhook 或 API key；这些诊断不是公开 Usage API 或普通设置页输出。
+- Provider Cache Capability Registry 是 `src/llm/provider_cache.py` 中的 code-level 手工能力表。条目带 `doc_sources`、`last_verified_at` 和 `verification_status`；新增 provider 或升级 LiteLLM 后应同步更新条目与测试。
+- Prompt cache key、route key 和 DeepSeek session isolation 复用 `LLM_USAGE_HMAC_SECRET` / `.llm_usage_hmac_secret` 做 domain-separated HMAC，不新增 prompt-cache 专用 secret。
+
+### Legacy message stability audit（P0.5a）
+
+P0.5a 在普通个股分析路径为 legacy `[system, user]` message 追加内部稳定性审计字段，继续写入本地 `llm_usage`。它复用上面的 message HMAC，不修改 prompt 内容、message 顺序、provider 请求参数、cache hint、模型输出、fallback 顺序，也不扩展公开 Usage API 或 Web 页面。
+
+新增字段只用于维护者诊断：
+
+- `language`、`market_group`、`analysis_mode`、`legacy_prompt_mode`、`provider`、`transport`、`message_count` 描述本次普通个股分析调用的低敏路由上下文。
+- `skill_config_hmac` 是基于已解析 skill prompt 片段、默认 skill 策略和 legacy prompt 模式生成的 HMAC-SHA256，用于判断 system message 是否随 skill configuration 变化；不会保存 skill 原文。
+- `known_dynamic_marker_positions` 是 JSON string，只记录 `marker_name`、`message_role`、`char_offset`；不会保存股票代码、股票名称、日期、新闻正文、行情值、headers、response text 或 prompt 片段。
+- `estimated_total_prompt_tokens`、`approx_common_prefix_chars`、`approx_common_prefix_tokens` 基于项目内稳定 canonical render 估算：按 message 顺序拼接 `role + "\n" + content`，并用固定分隔符连接。该口径不声称等同 provider 真实 wire bytes。
+- `char_offset` 是 marker 在对应 message `content` 内的位置；`approx_common_prefix_chars` 是 canonical render 起点到第一个已知动态 marker 之前的字符数。没有 marker 时 common-prefix 字段为 `NULL`。
+- token 估算使用 `ceil(chars / 3)`，只作 diagnostics，不替代 provider usage，也不参与 cache threshold 判定；中文场景可能偏低。
+
+P0.5a 不引入 PromptBlock IR、`block_id`、`stability_class`、`static_prefix_hash` 或 `dynamic_context_hash`。Agent、research 与 market review 路径暂不接入该审计。
+
 ---
 
 ## 方式三：YAML 高级配置（适合老手自定义）
@@ -333,7 +364,7 @@ model_list:
 
 渠道模式无需上传 YAML 文件。仓库自带 `00-daily-analysis.yml` 已显式透传以下常用字段：
 
-- 运行时选择：`LLM_CHANNELS`、`LITELLM_MODEL`、`LITELLM_FALLBACK_MODELS`、`AGENT_LITELLM_MODEL`、`VISION_MODEL`、`VISION_PROVIDER_PRIORITY`、`LLM_TEMPERATURE`、`LLM_USAGE_HMAC_SECRET`、`LLM_USAGE_HMAC_KEY_VERSION`
+- 运行时选择：`LLM_CHANNELS`、`LITELLM_MODEL`、`LITELLM_FALLBACK_MODELS`、`AGENT_LITELLM_MODEL`、`VISION_MODEL`、`VISION_PROVIDER_PRIORITY`、`LLM_TEMPERATURE`、`LLM_USAGE_HMAC_SECRET`、`LLM_USAGE_HMAC_KEY_VERSION`、`LLM_PROMPT_CACHE_TELEMETRY_ENABLED`、`LLM_PROMPT_CACHE_HINTS_ENABLED`、`LLM_PROMPT_CACHE_DIAGNOSTICS_LEVEL`
 - 多 Key：`GEMINI_API_KEYS`、`ANTHROPIC_API_KEYS`、`OPENAI_API_KEYS`、`DEEPSEEK_API_KEYS`（当前 workflow 仅从 repository secrets 导入，不会读取同名 Variables）
 - 常用渠道名：`primary`、`secondary`、`aihubmix`、`deepseek`、`dashscope`、`zhipu`、`moonshot`、`minimax`、`volcengine`、`siliconflow`、`openrouter`、`gemini`、`anthropic`、`openai`、`ollama`
 

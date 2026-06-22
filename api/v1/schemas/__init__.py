@@ -93,6 +93,8 @@ from api.v1.schemas.portfolio import (
     PortfolioImportBrokerItem,
     PortfolioImportBrokerListResponse,
     PortfolioFxRefreshResponse,
+    PortfolioDecisionSignalRiskBlock,
+    PortfolioDecisionSignalRiskItem,
     PortfolioRiskResponse,
 )
 from api.v1.schemas.alerts import (
@@ -223,6 +225,8 @@ __all__ = [
     "PortfolioImportBrokerItem",
     "PortfolioImportBrokerListResponse",
     "PortfolioFxRefreshResponse",
+    "PortfolioDecisionSignalRiskBlock",
+    "PortfolioDecisionSignalRiskItem",
     "PortfolioRiskResponse",
     # alerts
     "AlertDeleteResponse",

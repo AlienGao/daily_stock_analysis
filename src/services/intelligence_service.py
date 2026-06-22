@@ -14,25 +14,94 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from typing import Any, Dict, List, Optional
-from urllib.parse import urljoin, urlparse
+from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
 from xml.etree import ElementTree as ET
 
 import requests
+from sqlalchemy.exc import IntegrityError
 
 from src.config import get_config
 from src.repositories.intelligence_repo import IntelligenceRepository
 from src.storage import IntelligenceSource, INTELLIGENCE_ITEM_NULL_SCOPE_VALUE
+from src.services.run_diagnostics import sanitize_diagnostic_text
 
 logger = logging.getLogger(__name__)
-_ALLOWED_SOURCE_TYPES = {"rss", "atom"}
+_ALLOWED_SOURCE_TYPES = {"rss", "atom", "newsnow"}
 _ALLOWED_SCOPE_TYPES = {"symbol", "market", "sector"}
-_ALLOWED_MARKETS = {"cn", "hk", "us", "global"}
+_ALLOWED_MARKETS = {"cn", "hk", "us", "jp", "kr", "global"}
 _PRIVATE_HOSTNAMES = {"localhost", "localhost.localdomain"}
 _MAX_FEED_BYTES = 2 * 1024 * 1024
-_MAX_REDIRECTS = 5
+_MAX_FEED_REDIRECTS = 5
+_UPSTREAM_FETCH_FAILURE_MESSAGE = "fetch failed: upstream request failed"
 _REDIRECT_STATUS_CODES = {301, 302, 303, 307, 308}
-_DNS_GUARD_LOCK = threading.RLock()
 _DISABLE_REQUEST_PROXIES = {"http": None, "https": None}
+_DNS_GUARD_LOCK = threading.Lock()
+_BUILTIN_SOURCE_TEMPLATES = [
+    {
+        "template_id": "sec-company-news",
+        "name": "SEC Latest Filings",
+        "source_type": "rss",
+        "url": "https://www.sec.gov/news/pressreleases.rss",
+        "scope_type": "market",
+        "market": "us",
+        "description": "SEC official press release RSS feed for US market evidence.",
+    },
+    {
+        "template_id": "hkex-news",
+        "name": "HKEX Market News",
+        "source_type": "rss",
+        "url": "https://www.hkex.com.hk/Services/RSS-Feeds/News-Releases?sc_lang=en",
+        "scope_type": "market",
+        "market": "hk",
+        "description": "HKEX public news entry for Hong Kong market evidence. Test before enabling.",
+    },
+    {
+        "template_id": "global-marketwatch",
+        "name": "MarketWatch Top Stories",
+        "source_type": "rss",
+        "url": "https://feeds.content.dowjones.io/public/rss/mw_topstories",
+        "scope_type": "market",
+        "market": "global",
+        "description": "Public market news RSS for global market context. Test before enabling.",
+    },
+]
+_NEWSNOW_DEFAULT_SOURCE_DEFS = [
+    {
+        "template_id": "newsnow-cls-hot",
+        "name": "NewsNow 财联社热门",
+        "source_id": "cls-hot",
+        "market": "cn",
+        "description": "NewsNow 财联社热门财经资讯，适合 A 股大盘和题材热点。",
+    },
+    {
+        "template_id": "newsnow-xueqiu-hotstock",
+        "name": "NewsNow 雪球热门股票",
+        "source_id": "xueqiu-hotstock",
+        "market": "cn",
+        "description": "NewsNow 雪球热门股票，适合捕捉 A 股和港美股散户关注度。",
+    },
+    {
+        "template_id": "newsnow-wallstreetcn-quick",
+        "name": "NewsNow 华尔街见闻快讯",
+        "source_id": "wallstreetcn-quick",
+        "market": "cn",
+        "description": "NewsNow 华尔街见闻快讯，适合宏观、商品和市场事件上下文。",
+    },
+    {
+        "template_id": "newsnow-jin10",
+        "name": "NewsNow 金十数据",
+        "source_id": "jin10",
+        "market": "global",
+        "description": "NewsNow 金十数据实时财经消息，适合全球宏观和外盘事件。",
+    },
+    {
+        "template_id": "newsnow-gelonghui",
+        "name": "NewsNow 格隆汇事件",
+        "source_id": "gelonghui",
+        "market": "hk",
+        "description": "NewsNow 格隆汇事件资讯，适合港股和中概股市场上下文。",
+    },
+]
 
 
 class IntelligenceServiceError(ValueError):
@@ -59,7 +128,10 @@ class IntelligenceService:
     def create_source(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         fields = self._normalize_source_fields(payload)
         self._validate_url(fields["url"])
-        return self._source_to_dict(self.repo.create_source(fields))
+        try:
+            return self._source_to_dict(self.repo.create_source(fields))
+        except IntegrityError as exc:
+            raise IntelligenceServiceError(f"intelligence source name already exists: {fields['name']}") from exc
 
     def list_sources(self, **filters: Any) -> Dict[str, Any]:
         rows, total = self.repo.list_sources(**filters)
@@ -69,6 +141,46 @@ class IntelligenceService:
             "page": max(1, int(filters.get("page") or 1)),
             "page_size": max(1, min(int(filters.get("page_size") or 50), 100)),
         }
+
+    def list_source_templates(self, **filters: Any) -> Dict[str, Any]:
+        market = str(filters.get("market") or "").strip().lower()
+        source_type = str(filters.get("source_type") or "").strip().lower()
+        templates = []
+        for template in self._builtin_source_templates():
+            if market and template["market"] != market:
+                continue
+            if source_type and template["source_type"] != source_type:
+                continue
+            templates.append(dict(template))
+        return {"items": templates, "total": len(templates)}
+
+    def create_source_from_template(self, template_id: str, overrides: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        selected = next(
+            (dict(template) for template in self._builtin_source_templates() if template["template_id"] == template_id),
+            None,
+        )
+        if selected is None:
+            raise IntelligenceServiceError(f"Intelligence source template not found: {template_id}")
+        payload = {key: value for key, value in selected.items() if key != "template_id"}
+        payload.update({key: value for key, value in (overrides or {}).items() if value is not None})
+        return self.create_source(payload)
+
+    def create_default_sources(self, overrides: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        request_fields = dict(overrides or {})
+        request_fields.setdefault("enabled", False)
+        created_count = 0
+        items = []
+        for template in self._builtin_source_templates():
+            payload = {key: value for key, value in template.items() if key != "template_id"}
+            payload.update({key: value for key, value in request_fields.items() if value is not None})
+            existing = self.repo.get_source_by_name(str(payload["name"]))
+            if existing is not None:
+                items.append({"created": False, "source": self._source_to_dict(existing)})
+                continue
+            source = self.create_source(payload)
+            created_count += 1
+            items.append({"created": True, "source": source})
+        return {"items": items, "created_count": created_count, "total": len(items)}
 
     def list_items(self, **filters: Any) -> Dict[str, Any]:
         rows, total = self.repo.list_items(**filters)
@@ -120,24 +232,26 @@ class IntelligenceService:
             raise
 
     def fetch_enabled_sources(self) -> Dict[str, Any]:
-        source_ids: List[int] = []
+        rows, total = self.repo.list_sources(enabled=True, page=1, page_size=100)
+        results = []
         page = 1
+        source_count = 0
         while True:
-            rows, total = self.repo.list_sources(enabled=True, page=page, page_size=100)
-            source_ids.extend(row.id for row in rows)
-            if not rows or len(source_ids) >= total:
+            for row in rows:
+                source_count += 1
+                try:
+                    results.append(self.fetch_source(row.id))
+                except Exception as exc:
+                    results.append({"ok": False, "source_id": row.id, "error": self._sanitize_error(exc)})
+            if source_count >= total:
                 break
             page += 1
-
-        results = []
-        for source_id in source_ids:
-            try:
-                results.append(self.fetch_source(source_id))
-            except Exception as exc:
-                results.append({"ok": False, "source_id": source_id, "error": self._sanitize_error(exc)})
+            rows, _ = self.repo.list_sources(enabled=True, page=page, page_size=100)
+            if not rows:
+                break
         return {
             "ok": True,
-            "source_count": len(source_ids),
+            "source_count": source_count,
             "results": results,
             "saved_count": sum(int(item.get("saved_count") or 0) for item in results),
         }
@@ -174,7 +288,9 @@ class IntelligenceService:
             "description": description,
         }
 
-    def _validate_url(self, raw_url: str) -> None:
+    def _validate_url(self, raw_url: str, *, allow_no_url: bool = False) -> None:
+        if allow_no_url and raw_url.startswith("no-url:intel:"):
+            return
         parsed = urlparse(raw_url)
         if parsed.scheme.lower() not in {"http", "https"} or not parsed.netloc:
             raise IntelligenceServiceError("source url must be an absolute http(s) URL")
@@ -185,55 +301,156 @@ class IntelligenceService:
             raise IntelligenceServiceError("source url host is required")
         if hostname in _PRIVATE_HOSTNAMES or hostname.endswith(".local"):
             raise IntelligenceServiceError("source url host is not allowed")
+        has_public_address = False
         try:
             ip = ipaddress.ip_address(hostname)
         except ValueError:
-            self._validate_resolved_hostname(hostname)
+            ip = None
+        if ip is not None:
+            if self._is_blocked_ip(ip):
+                raise IntelligenceServiceError("source url must not target private or local network addresses")
             return
-        if self._is_blocked_ip(ip):
-            raise IntelligenceServiceError("source url must not target private or local network addresses")
+        try:
+            addr_infos = socket.getaddrinfo(hostname, None)
+        except OSError as exc:
+            raise IntelligenceServiceError(f"source url host DNS resolution failed: {hostname}") from exc
+        if not addr_infos:
+            raise IntelligenceServiceError(f"source url host DNS resolution failed: {hostname}")
+        for info in addr_infos:
+            try:
+                ip = ipaddress.ip_address(info[4][0])
+            except (IndexError, ValueError):
+                continue
+            if self._is_blocked_ip(ip):
+                raise IntelligenceServiceError("source url must not target private or local network addresses")
+            has_public_address = True
+        if not has_public_address:
+            raise IntelligenceServiceError(f"source url host DNS resolution failed: {hostname}")
+
+    @staticmethod
+    def _is_blocked_ip(ip: ipaddress._BaseAddress) -> bool:
+        return (
+            not ip.is_global
+            or ip.is_private
+            or ip.is_loopback
+            or ip.is_link_local
+            or ip.is_reserved
+            or ip.is_multicast
+        )
 
     def _fetch_feed_entries(self, fields: Dict[str, Any], *, limit: int) -> List[FeedEntry]:
-        self._validate_url(fields["url"])
-        response = self._get_feed_response(fields["url"])
-        try:
-            response.raise_for_status()
-            content = self._read_limited_response(response)
-        finally:
-            self._close_response(response)
-        return self._parse_feed(content, source_name=fields["name"], limit=limit)
+        if fields["source_type"] == "newsnow":
+            return self._fetch_newsnow_entries(fields, limit=limit)
 
-    def _get_feed_response(self, raw_url: str) -> requests.Response:
-        current_url = raw_url
         timeout = max(1, min(float(self.config.news_intel_fetch_timeout_sec), 30.0))
         headers = {"User-Agent": "daily-stock-analysis-intel/1.0"}
-        for redirect_index in range(_MAX_REDIRECTS + 1):
-            self._validate_url(current_url)
+        self._validate_url(fields["url"])
+        request_url = fields["url"]
+        response = None
+        try:
+            for _ in range(_MAX_FEED_REDIRECTS + 1):
+                response = self._get_with_validated_dns(
+                    request_url,
+                    timeout=timeout,
+                    headers=headers,
+                    allow_redirects=False,
+                    stream=True,
+                )
+                status_code = int(getattr(response, "status_code", 200))
+                if status_code in _REDIRECT_STATUS_CODES:
+                    location = getattr(response, "headers", {}).get("Location")
+                    if not location:
+                        raise IntelligenceServiceError("feed redirect missing Location header")
+                    response.close()
+                    request_url = urljoin(request_url, location)
+                    self._validate_url(request_url)
+                    continue
+                response.raise_for_status()
+                break
+            else:
+                raise IntelligenceServiceError(f"feed redirect chain exceeds {_MAX_FEED_REDIRECTS}")
+
+            self._validate_url(response.url or request_url)
+
+            if hasattr(response, "iter_content") and callable(response.iter_content):
+                chunks = []
+                total = 0
+                for chunk in response.iter_content(chunk_size=8192):
+                    if not chunk:
+                        continue
+                    total += len(chunk)
+                    if total > _MAX_FEED_BYTES:
+                        raise IntelligenceServiceError("feed response is too large")
+                    chunks.append(chunk)
+                content = b"".join(chunks)
+            else:
+                content = response.content[: _MAX_FEED_BYTES + 1]
+                if len(content) > _MAX_FEED_BYTES:
+                    raise IntelligenceServiceError("feed response is too large")
+            return self._parse_feed(content, source_name=fields["name"], limit=limit)
+        except IntelligenceServiceError:
+            raise
+        except Exception as exc:
+            raise IntelligenceServiceError(_UPSTREAM_FETCH_FAILURE_MESSAGE) from exc
+        finally:
+            if response is not None:
+                response.close()
+
+    def _fetch_newsnow_entries(self, fields: Dict[str, Any], *, limit: int) -> List[FeedEntry]:
+        timeout = max(1, min(float(self.config.news_intel_fetch_timeout_sec), 30.0))
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 daily-stock-analysis-intel/1.0"
+            ),
+            "Accept": "application/json",
+        }
+        self._validate_url(fields["url"])
+        response = None
+        try:
             response = self._get_with_validated_dns(
-                current_url,
+                fields["url"],
                 timeout=timeout,
                 headers=headers,
                 allow_redirects=False,
                 stream=True,
             )
-            status_code = self._response_status_code(response)
-            if status_code not in _REDIRECT_STATUS_CODES:
-                try:
-                    self._validate_url(response.url or current_url)
-                except Exception:
-                    self._close_response(response)
-                    raise
-                return response
-            if redirect_index >= _MAX_REDIRECTS:
-                self._close_response(response)
-                raise IntelligenceServiceError("too many redirects while fetching source url")
-            location = response.headers.get("Location") if response.headers else None
-            self._close_response(response)
-            if not location:
-                raise IntelligenceServiceError("redirect response is missing Location header")
-            current_url = urljoin(current_url, location.strip())
-            self._validate_url(current_url)
-        raise IntelligenceServiceError("too many redirects while fetching source url")
+            status_code = int(getattr(response, "status_code", 200))
+            if status_code in _REDIRECT_STATUS_CODES:
+                raise IntelligenceServiceError("NewsNow API redirects are not followed")
+            response.raise_for_status()
+            self._validate_url(response.url or fields["url"])
+
+            content = self._read_limited_response(response)
+            try:
+                payload = json.loads(content.decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                raise IntelligenceServiceError(f"invalid NewsNow JSON response: {exc}") from exc
+            return self._parse_newsnow_payload(payload, source_name=fields["name"], limit=limit)
+        except IntelligenceServiceError:
+            raise
+        except Exception as exc:
+            raise IntelligenceServiceError(_UPSTREAM_FETCH_FAILURE_MESSAGE) from exc
+        finally:
+            if response is not None:
+                response.close()
+
+    def _read_limited_response(self, response: requests.Response) -> bytes:
+        if hasattr(response, "iter_content") and callable(response.iter_content):
+            chunks = []
+            total = 0
+            for chunk in response.iter_content(chunk_size=8192):
+                if not chunk:
+                    continue
+                total += len(chunk)
+                if total > _MAX_FEED_BYTES:
+                    raise IntelligenceServiceError("feed response is too large")
+                chunks.append(chunk)
+            return b"".join(chunks)
+        content = response.content[: _MAX_FEED_BYTES + 1]
+        if len(content) > _MAX_FEED_BYTES:
+            raise IntelligenceServiceError("feed response is too large")
+        return content
 
     def _get_with_validated_dns(self, raw_url: str, **kwargs: Any) -> requests.Response:
         parsed = urlparse(raw_url)
@@ -256,27 +473,6 @@ class IntelligenceService:
                 socket.getaddrinfo = original_getaddrinfo
 
     @staticmethod
-    def _read_limited_response(response: requests.Response) -> bytes:
-        chunks: List[bytes] = []
-        total = 0
-        for chunk in response.iter_content(chunk_size=65536):
-            if not chunk:
-                continue
-            if isinstance(chunk, str):
-                chunk = chunk.encode("utf-8")
-            total += len(chunk)
-            if total > _MAX_FEED_BYTES:
-                raise IntelligenceServiceError("feed response is too large")
-            chunks.append(chunk)
-        return b"".join(chunks)
-
-    @staticmethod
-    def _close_response(response: requests.Response) -> None:
-        close = getattr(response, "close", None)
-        if callable(close):
-            close()
-
-    @staticmethod
     def _normalize_hostname(hostname: Any) -> str:
         if isinstance(hostname, bytes):
             hostname = hostname.decode("ascii", errors="ignore")
@@ -287,36 +483,14 @@ class IntelligenceService:
             return normalized
 
     @staticmethod
-    def _response_status_code(response: requests.Response) -> int:
-        try:
-            return int(getattr(response, "status_code", 0) or 0)
-        except (TypeError, ValueError):
-            return 0
-
-    @staticmethod
-    def _validate_resolved_hostname(hostname: str) -> None:
-        try:
-            addrinfos = socket.getaddrinfo(hostname, None, type=socket.SOCK_STREAM)
-        except socket.gaierror as exc:
-            raise IntelligenceServiceError("source url host could not be resolved") from exc
-        if not addrinfos:
-            raise IntelligenceServiceError("source url host could not be resolved")
-        IntelligenceService._validate_addrinfos(addrinfos)
-
-    @staticmethod
-    def _validate_addrinfos(addrinfos: Any) -> None:
-        for addrinfo in addrinfos:
-            address = addrinfo[4][0]
+    def _validate_addrinfos(addr_infos: Any) -> None:
+        for info in addr_infos or []:
             try:
-                ip = ipaddress.ip_address(address)
-            except ValueError as exc:
-                raise IntelligenceServiceError("source url resolved to an invalid address") from exc
+                ip = ipaddress.ip_address(info[4][0])
+            except (IndexError, TypeError, ValueError):
+                continue
             if IntelligenceService._is_blocked_ip(ip):
-                raise IntelligenceServiceError("source url must resolve to a public internet address")
-
-    @staticmethod
-    def _is_blocked_ip(ip: ipaddress._BaseAddress) -> bool:
-        return not ip.is_global
+                raise IntelligenceServiceError("source url must not target private or local network addresses")
 
     def _parse_feed(self, content: bytes, *, source_name: str, limit: int) -> List[FeedEntry]:
         try:
@@ -331,6 +505,27 @@ class IntelligenceService:
             nodes = root.findall("./{*}entry") or root.findall("./entry")
             return [entry for entry in (self._parse_atom_entry(node, source_name) for node in nodes[:limit]) if entry]
         raise IntelligenceServiceError("unsupported feed format; expected RSS or Atom")
+
+    def _parse_newsnow_payload(self, payload: Any, *, source_name: str, limit: int) -> List[FeedEntry]:
+        if not isinstance(payload, dict):
+            raise IntelligenceServiceError("invalid NewsNow response: expected object")
+        items = payload.get("items")
+        if not isinstance(items, list):
+            raise IntelligenceServiceError("invalid NewsNow response: missing items")
+        entries = []
+        for item in items[:limit]:
+            if not isinstance(item, dict):
+                continue
+            extra = item.get("extra") if isinstance(item.get("extra"), dict) else {}
+            published_raw = item.get("pubDate") or extra.get("date")
+            entries.append(self._build_entry(
+                str(item.get("title") or ""),
+                str(extra.get("info") or extra.get("hover") or ""),
+                str(item.get("url") or item.get("mobileUrl") or ""),
+                source_name,
+                self._parse_datetime_or_timestamp(published_raw),
+            ))
+        return [entry for entry in entries if entry]
 
     def _parse_rss_item(self, node: ET.Element, source_name: str) -> Optional[FeedEntry]:
         return self._build_entry(
@@ -362,7 +557,10 @@ class IntelligenceService:
         if not title and not url:
             return None
         if url:
-            self._validate_url(url)
+            try:
+                self._validate_url(url, allow_no_url=True)
+            except IntelligenceServiceError:
+                return None
             url_key = url
         else:
             digest = hashlib.sha256(f"{source_name}|{title}|{published_at}".encode("utf-8")).hexdigest()[:24]
@@ -454,12 +652,7 @@ class IntelligenceService:
 
     @staticmethod
     def _sanitize_error(exc: Exception) -> str:
-        return re.sub(
-            r"((?:^|[?&#\s])(?:access[_-]?token|auth[_-]?token|api[_-]?key|apikey|api_key|token|key|secret)=)[^&\s#]+",
-            r"\1***",
-            str(exc),
-            flags=re.I,
-        )[:500]
+        return sanitize_diagnostic_text(str(exc), max_length=500) or "internal intelligence service error"
 
     @staticmethod
     def _strip_ns(tag: str) -> str:
@@ -491,6 +684,43 @@ class IntelligenceService:
         if parsed.tzinfo is not None and parsed.utcoffset() is not None:
             parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
         return parsed
+
+    @classmethod
+    def _parse_datetime_or_timestamp(cls, value: Any) -> Optional[datetime]:
+        if isinstance(value, (int, float)):
+            timestamp = float(value)
+            if timestamp > 10_000_000_000:
+                timestamp = timestamp / 1000
+            try:
+                return datetime.fromtimestamp(timestamp, tz=timezone.utc).replace(tzinfo=None)
+            except (OSError, OverflowError, ValueError):
+                return None
+        raw = str(value or "").strip()
+        if raw.isdigit():
+            return cls._parse_datetime_or_timestamp(float(raw))
+        return cls._parse_datetime(raw)
+
+    def _builtin_source_templates(self) -> List[Dict[str, Any]]:
+        templates = [dict(template) for template in _BUILTIN_SOURCE_TEMPLATES]
+        for item in _NEWSNOW_DEFAULT_SOURCE_DEFS:
+            templates.append({
+                "template_id": item["template_id"],
+                "name": item["name"],
+                "source_type": "newsnow",
+                "url": self._build_newsnow_url(item["source_id"]),
+                "scope_type": "market",
+                "market": item["market"],
+                "description": item["description"],
+            })
+        return templates
+
+    def _build_newsnow_url(self, source_id: str) -> str:
+        base_url = (self.config.newsnow_base_url or "https://newsnow.busiyi.world").strip().rstrip("/")
+        parsed = urlparse(f"{base_url}/api/s")
+        query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+        query["id"] = source_id
+        return urlunparse(parsed._replace(query=urlencode(query)))
+
 
     @staticmethod
     def _iso(value: Optional[datetime]) -> Optional[str]:

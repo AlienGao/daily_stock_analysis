@@ -3,10 +3,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable as IterableABC
 import hashlib
 import hmac
 import json
 import logging
+import math
 import os
 import re
 import secrets
@@ -23,6 +25,20 @@ PROVIDER_USAGE_MAX_SIZE_BYTES = 4096
 DEFAULT_HMAC_DOMAIN = "prompt_message"
 DEFAULT_HASH_SCOPE = "deployment"
 DEFAULT_HMAC_KEY_VERSION = "local-v1"
+LEGACY_AUDIT_MESSAGE_SEPARATOR = "\n\n---legacy-message---\n\n"
+
+_LEGACY_AUDIT_MARKER_NAMES = frozenset(
+    {
+        "stock_code",
+        "stock_name",
+        "analysis_date",
+        "market_phase",
+        "daily_market_context",
+        "analysis_context_pack",
+        "quote",
+        "news_context",
+    }
+)
 
 _HMAC_SECRET_CACHE: Optional[bytes] = None
 _DROP_RAW_USAGE_VALUE = object()
@@ -42,6 +58,7 @@ _ALLOWED_RAW_USAGE_SCALAR_KEYS = {
     "cached_tokens",
     "cached_content_token_count",
     "cache_read_tokens",
+    "cache_write_tokens",
     "cache_read_input_tokens",
     "cache_creation_input_tokens",
     "prompt_cache_hit_tokens",
@@ -101,6 +118,7 @@ _PROVIDER_USAGE_JSON_SIGNAL_KEYS = (
     "cached_tokens",
     "cached_content_token_count",
     "cache_read_tokens",
+    "cache_write_tokens",
     "cache_read_input_tokens",
     "cache_creation_input_tokens",
     "prompt_cache_hit_tokens",
@@ -343,7 +361,7 @@ def normalize_litellm_usage(
             cache_field_observed = True
             capability = "supported"
         provider_min_cache_tokens = 1024
-    elif provider_name in {"glm", _OPENAI_COMPATIBLE_PROVIDER}:
+    elif provider_name in {"glm", "qwen", "dashscope", _OPENAI_COMPATIBLE_PROVIDER}:
         cached = _nested_int(usage, ("prompt_tokens_details", "cached_tokens"))
         if cached is not None:
             cache_read = cached
@@ -375,10 +393,18 @@ def normalize_litellm_usage(
             cache_read = cached
             cache_field_observed = True
             capability = "supported"
-    elif provider_name == "stepfun":
+    elif provider_name in {"kimi", "moonshot", "minimax", "stepfun"}:
         cached = _first_int(usage, "cached_tokens")
         if cached is not None:
             cache_read = cached
+            cache_field_observed = True
+            capability = "supported"
+    elif provider_name == "openrouter":
+        read_tokens = _first_int(usage, "cache_read_tokens")
+        write_tokens = _first_int(usage, "cache_write_tokens")
+        if read_tokens is not None or write_tokens is not None:
+            cache_read = read_tokens or 0
+            cache_write = write_tokens or 0
             cache_field_observed = True
             capability = "supported"
 
@@ -456,6 +482,68 @@ def attach_message_hmacs(
     return result
 
 
+def attach_legacy_message_stability_audit(
+    usage: Dict[str, Any],
+    messages: Optional[Sequence[Mapping[str, Any]]],
+    audit_context: Optional[Mapping[str, Any]] = None,
+    *,
+    hash_scope: str = DEFAULT_HASH_SCOPE,
+) -> Dict[str, Any]:
+    """Attach P0.5a legacy message stability diagnostics to usage telemetry.
+
+    The audit reuses message HMACs and records only stable metadata plus marker
+    offsets. Marker search values are never persisted.
+    """
+    result = attach_message_hmacs(usage, messages, hash_scope=hash_scope)
+    context = audit_context or {}
+    message_list = list(messages or [])
+    marker_specs = context.get("known_dynamic_markers")
+    if marker_specs is None:
+        marker_specs = context.get("dynamic_markers")
+    if marker_specs is None:
+        marker_specs = context.get("markers")
+
+    canonical_render, content_starts = _render_legacy_audit_messages(message_list)
+    marker_positions, first_marker_render_offset = _legacy_marker_positions(
+        message_list,
+        content_starts,
+        marker_specs,
+    )
+
+    approx_common_prefix_chars: Optional[int] = first_marker_render_offset
+    approx_common_prefix_tokens = (
+        _estimate_chars_as_tokens(approx_common_prefix_chars)
+        if approx_common_prefix_chars is not None
+        else None
+    )
+    estimated_total_prompt_tokens = _estimate_chars_as_tokens(len(canonical_render))
+
+    result.update(
+        {
+            "language": _audit_scalar(context.get("language"), max_len=16),
+            "market_group": _audit_scalar(context.get("market_group"), max_len=16),
+            "analysis_mode": _audit_scalar(context.get("analysis_mode"), max_len=64),
+            "legacy_prompt_mode": _audit_scalar(context.get("legacy_prompt_mode"), max_len=32),
+            "skill_config_hmac": _legacy_skill_config_hmac(context),
+            "provider": _audit_scalar(context.get("provider"), max_len=64),
+            "transport": _audit_scalar(context.get("transport"), max_len=64),
+            "message_count": len(message_list),
+            "estimated_total_prompt_tokens": estimated_total_prompt_tokens,
+            "approx_common_prefix_chars": approx_common_prefix_chars,
+            "approx_common_prefix_tokens": approx_common_prefix_tokens,
+            "known_dynamic_marker_positions": json.dumps(
+                marker_positions,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ),
+        }
+    )
+
+    if result.get("eligibility_confidence") in (None, "", "unknown"):
+        result["eligibility_confidence"] = "estimated"
+    return result
+
+
 def build_message_hmacs(
     messages: Optional[Sequence[Mapping[str, Any]]],
     *,
@@ -484,6 +572,35 @@ def build_message_hmacs(
     return base
 
 
+def build_domain_hmac(
+    value: Any,
+    *,
+    domain: str,
+    hash_scope: str = DEFAULT_HASH_SCOPE,
+) -> Dict[str, Any]:
+    """Return a domain-separated HMAC without exposing the raw input value."""
+    normalized_domain = (domain or "").strip() or DEFAULT_HMAC_DOMAIN
+    base: Dict[str, Any] = {
+        "hmac": None,
+        "hmac_key_version": None,
+        "hmac_domain": normalized_domain,
+        "hash_scope": hash_scope,
+    }
+    secret = _load_usage_hmac_secret()
+    if secret is None:
+        return base
+    key_version = os.getenv("LLM_USAGE_HMAC_KEY_VERSION", DEFAULT_HMAC_KEY_VERSION).strip() or DEFAULT_HMAC_KEY_VERSION
+    base["hmac"] = _hmac_json(
+        secret,
+        {
+            "domain": normalized_domain,
+            "value": value,
+        },
+    )
+    base["hmac_key_version"] = key_version
+    return base
+
+
 def _role_hmac(secret: bytes, messages: Sequence[Mapping[str, Any]], role: str) -> Optional[str]:
     role_messages = [message for message in messages if message.get("role") == role]
     if not role_messages:
@@ -505,6 +622,142 @@ def _message_for_hmac(message: Mapping[str, Any]) -> Dict[str, Any]:
         normalized[key_text] = str(value or "") if key_text == "role" else _plain_value(value)
     normalized.setdefault("role", "")
     return normalized
+
+
+def _render_legacy_audit_messages(
+    messages: Sequence[Mapping[str, Any]],
+) -> tuple[str, Dict[int, int]]:
+    parts = []
+    content_starts: Dict[int, int] = {}
+    cursor = 0
+    for index, message in enumerate(messages):
+        if index:
+            parts.append(LEGACY_AUDIT_MESSAGE_SEPARATOR)
+            cursor += len(LEGACY_AUDIT_MESSAGE_SEPARATOR)
+        role = str(message.get("role") or "")
+        content = _legacy_audit_text(message.get("content"))
+        prefix = f"{role}\n"
+        parts.append(prefix)
+        cursor += len(prefix)
+        content_starts[index] = cursor
+        parts.append(content)
+        cursor += len(content)
+    return "".join(parts), content_starts
+
+
+def _legacy_marker_positions(
+    messages: Sequence[Mapping[str, Any]],
+    content_starts: Mapping[int, int],
+    marker_specs: Any,
+) -> tuple[list[Dict[str, Any]], Optional[int]]:
+    positions_with_render_offset: list[tuple[int, Dict[str, Any]]] = []
+
+    for spec in _iter_marker_specs(marker_specs):
+        marker_name = _audit_scalar(
+            spec.get("marker_name") or spec.get("name"),
+            max_len=96,
+        )
+        if marker_name not in _LEGACY_AUDIT_MARKER_NAMES:
+            continue
+        requested_role = _audit_scalar(
+            spec.get("message_role") or spec.get("role") or "user",
+            max_len=32,
+        )
+        for candidate_text in _iter_marker_texts(spec):
+            found = _find_marker_in_messages(messages, requested_role, candidate_text)
+            if found is None:
+                continue
+            message_index, message_role, char_offset = found
+            render_offset = content_starts.get(message_index, 0) + char_offset
+            positions_with_render_offset.append(
+                (
+                    render_offset,
+                    {
+                        "marker_name": marker_name,
+                        "message_role": message_role,
+                        "char_offset": char_offset,
+                    },
+                )
+            )
+            break
+
+    positions_with_render_offset.sort(key=lambda item: item[0])
+    marker_positions = [position for _, position in positions_with_render_offset]
+    first_render_offset = positions_with_render_offset[0][0] if positions_with_render_offset else None
+    return marker_positions, first_render_offset
+
+
+def _legacy_skill_config_hmac(context: Mapping[str, Any]) -> Optional[str]:
+    skill_config = context.get("skill_config")
+    if not isinstance(skill_config, Mapping):
+        return None
+    secret = _load_usage_hmac_secret()
+    if not secret:
+        return None
+    payload = {
+        "domain": "legacy_skill_config",
+        "skill_instructions": _legacy_audit_text(skill_config.get("skill_instructions")),
+        "default_skill_policy": _legacy_audit_text(skill_config.get("default_skill_policy")),
+        "use_legacy_default_prompt": bool(skill_config.get("use_legacy_default_prompt")),
+    }
+    return _hmac_json(secret, payload)
+
+
+def _iter_marker_specs(marker_specs: Any) -> Iterable[Mapping[str, Any]]:
+    if not isinstance(marker_specs, IterableABC) or isinstance(marker_specs, (str, bytes, Mapping)):
+        return
+    for spec in marker_specs:
+        if isinstance(spec, Mapping):
+            yield spec
+
+
+def _iter_marker_texts(spec: Mapping[str, Any]) -> Iterable[str]:
+    text = _legacy_audit_text(spec.get("text"))
+    if text:
+        yield text
+
+
+def _find_marker_in_messages(
+    messages: Sequence[Mapping[str, Any]],
+    requested_role: Optional[str],
+    candidate_text: str,
+) -> Optional[tuple[int, str, int]]:
+    for index, message in enumerate(messages):
+        role = str(message.get("role") or "")
+        if requested_role and role != requested_role:
+            continue
+        content = _legacy_audit_text(message.get("content"))
+        offset = content.find(candidate_text)
+        if offset >= 0:
+            return index, role, offset
+    return None
+
+
+def _legacy_audit_text(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    plain = _plain_value(value)
+    if isinstance(plain, str):
+        return plain
+    try:
+        return json.dumps(plain, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    except (TypeError, ValueError):
+        return str(plain)
+
+
+def _estimate_chars_as_tokens(chars: int) -> int:
+    return int(math.ceil(max(chars, 0) / 3))
+
+
+def _audit_scalar(value: Any, *, max_len: int) -> Optional[str]:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    return text[:max_len]
 
 
 def _load_usage_hmac_secret() -> Optional[bytes]:
@@ -681,6 +934,14 @@ def _has_deepseek_hit_miss_shape(usage: Mapping[str, Any]) -> bool:
 def _infer_provider(model: str, provider: Optional[str]) -> str:
     normalized_model = (model or "").strip().lower()
     normalized_provider = (provider or "").strip().lower()
+    try:
+        from src.llm.provider_cache import infer_provider_family
+
+        inferred = infer_provider_family(model=normalized_model, provider=normalized_provider)
+        if inferred:
+            return inferred
+    except Exception:
+        pass
     route_text = f"{normalized_provider} {normalized_model}"
 
     if normalized_model.startswith("openai/~") or "openrouter" in route_text:

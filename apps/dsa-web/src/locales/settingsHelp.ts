@@ -108,6 +108,33 @@ const settingsHelpZhCN: SettingsHelpMap = {
     impact: ['影响分析文本、报告语气和结构化输出稳定性。'],
     notes: ['不同 provider 对 temperature 的实际支持范围可能不同。'],
   },
+  'settings.ai_model.LLM_PROMPT_CACHE_TELEMETRY_ENABLED': {
+    title: 'Prompt Cache 遥测',
+    summary: '记录 provider 返回的 prompt cache usage 与归一化诊断。',
+    usage: '默认开启。关闭后不持久化 provider raw usage JSON、normalized cache fields 和 cache decision diagnostics，基础 token usage 仍保持兼容。',
+    valueNotes: ['该开关不控制 provider implicit cache，也不会改变请求参数。'],
+    impact: ['影响 llm_usage 中 provider/cache telemetry 的完整性。'],
+    notes: ['如果需要排查 cache hit/miss 或 provider usage shape，保持开启。'],
+  },
+  'settings.ai_model.LLM_PROMPT_CACHE_HINTS_ENABLED': {
+    title: 'Prompt Cache Hints',
+    summary: '允许主分析路径主动发送已验证 provider-specific cache hint。',
+    usage: '默认关闭。开启后仍只会对 registry 中 verified 或 smoke-tested 的 provider/route 发送 prompt_cache_key、cache_control 或 user_id 等 hint。',
+    valueNotes: ['未知 OpenAI-compatible gateway 默认 telemetry only，不会自动发送 cache 参数。'],
+    impact: ['可能改变主分析路径的 provider 请求 shape；Agent 路径当前只记录 diagnostics，不主动发送 hints。'],
+    notes: ['开启前应确认当前 LiteLLM 版本和 provider route 已通过 request-shape 测试。'],
+  },
+  'settings.ai_model.LLM_PROMPT_CACHE_DIAGNOSTICS_LEVEL': {
+    title: 'Prompt Cache 诊断级别',
+    summary: '控制 prompt cache capability 与 hint 决策诊断细节。',
+    usage: '可选 off、basic 或 debug。非法值会回退为 off。',
+    valueNotes: [
+      'basic 只包含 provider、api surface、verification status、hint applied 和 disabled reason 等枚举。',
+      'debug 可增加 HMAC-derived route/cache diagnostics 和 matched caps id，但仍不包含 raw prompt、request body、message content、webhook 或 API key。',
+    ],
+    impact: ['影响维护者排查 cache 能力匹配和 hint lowering 的可见度。'],
+    notes: ['debug 诊断只用于脱敏日志和测试可观察对象，不写入 provider_usage_json。'],
+  },
   'settings.ai_model.LLM_USAGE_HMAC_SECRET': {
     title: 'LLM 用量 HMAC 密钥',
     summary: '用于 LLM usage telemetry 的 message-level HMAC 指纹。',
@@ -387,6 +414,8 @@ const settingsHelpZhCN: SettingsHelpMap = {
     valueNotes: [
       '模板必须渲染为 JSON object。',
       '推荐使用 $content_json、$title_json 避免换行和引号破坏 JSON。',
+      'Docker 部署中保存到 .env 时会自动写成 $$content_json、$$title_json；运行时仍会还原为单个 $ 占位符。',
+      '本字段仅影响自定义 Webhook 的 payload 行为，不会改写 LLM provider、模型名、Base URL 或迁移优先级。',
     ],
     impact: ['影响 AstrBot、NapCat、自建服务等自定义推送。'],
     notes: ['先用一个 Webhook 验证成功，再扩展到多个目标。'],
@@ -530,16 +559,16 @@ const settingsHelpZhCN: SettingsHelpMap = {
   'settings.system.schedule': {
     title: '定时任务',
     summary: '控制是否启用每日定时分析以及启动时是否立即执行一次。',
-    usage: 'SCHEDULE_TIME 使用 HH:MM 24 小时格式；SCHEDULE_ENABLED 和 SCHEDULE_RUN_IMMEDIATELY 控制定时模式启动行为。',
+    usage: 'SCHEDULE_TIME 使用 HH:MM 24 小时格式；SCHEDULE_TIMES 可配置逗号分隔的多个 HH:MM 时间点；SCHEDULE_ENABLED 控制 runtime scheduler 是否启用。',
     valueNotes: [
-      '已运行的 schedule 模式会在下一轮调度检查中读取新的 SCHEDULE_TIME 并重建 daily job。',
-      'SCHEDULE_ENABLED 和 SCHEDULE_RUN_IMMEDIATELY 属于启动期行为，保存后不会启动、停止或重建当前 scheduler。',
+      '已运行的 schedule 模式会在下一轮调度检查中读取新的 SCHEDULE_TIME / SCHEDULE_TIMES 并重建 daily jobs。',
+      'WebUI/API/Desktop 长运行进程保存 SCHEDULE_ENABLED、SCHEDULE_TIME 或 SCHEDULE_TIMES 后会按新配置启停或重建 runtime scheduler。',
       '定时任务触发时会读取当前保存的 STOCK_LIST。',
     ],
     impact: ['影响 schedule 模式下自动分析频率、启动行为和通知推送时间。'],
     notes: [
       '注意运行环境时区，容器和服务器时区可能与本地不同。',
-      '若当前进程未以 schedule 模式启动，保存这些字段不会自动创建调度器。',
+      'SCHEDULE_RUN_IMMEDIATELY 仍是启动期行为；保存后不会立即触发一次分析。',
     ],
   },
   'settings.system.RUN_IMMEDIATELY': {
@@ -1121,6 +1150,33 @@ const settingsHelpEnUS: SettingsHelpMap = {
     impact: ['Affects report wording and structured-output stability.'],
     notes: ['Provider-specific limits can differ.'],
   },
+  'settings.ai_model.LLM_PROMPT_CACHE_TELEMETRY_ENABLED': {
+    title: 'Prompt Cache Telemetry',
+    summary: 'Records provider prompt-cache usage and normalized diagnostics.',
+    usage: 'Enabled by default. When disabled, provider raw usage JSON, normalized cache fields, and cache-decision diagnostics are not persisted; basic token usage remains compatible.',
+    valueNotes: ['This does not control provider implicit cache and does not change request parameters.'],
+    impact: ['Affects completeness of provider/cache telemetry in llm_usage.'],
+    notes: ['Keep it enabled when investigating cache hit/miss or provider usage shapes.'],
+  },
+  'settings.ai_model.LLM_PROMPT_CACHE_HINTS_ENABLED': {
+    title: 'Prompt Cache Hints',
+    summary: 'Allows the main analysis path to send verified provider-specific cache hints.',
+    usage: 'Disabled by default. When enabled, hints such as prompt_cache_key, cache_control, or user_id are sent only for verified or smoke-tested provider/route entries in the registry.',
+    valueNotes: ['Unknown OpenAI-compatible gateways remain telemetry-only and do not receive cache parameters automatically.'],
+    impact: ['May change provider request shape for the main analysis path only. The Agent path currently records diagnostics but does not actively send hints.'],
+    notes: ['Enable only after the current LiteLLM version and provider route pass request-shape tests.'],
+  },
+  'settings.ai_model.LLM_PROMPT_CACHE_DIAGNOSTICS_LEVEL': {
+    title: 'Prompt Cache Diagnostics',
+    summary: 'Controls prompt-cache capability and hint decision diagnostics.',
+    usage: 'Allowed values are off, basic, and debug. Invalid values fall back to off.',
+    valueNotes: [
+      'basic includes only enums such as provider, API surface, verification status, hint applied, and disabled reason.',
+      'debug may include HMAC-derived route/cache diagnostics and matched caps id, but still excludes raw prompts, request bodies, message content, webhooks, and API keys.',
+    ],
+    impact: ['Affects maintainer visibility into cache capability matching and hint lowering.'],
+    notes: ['Debug diagnostics are for redacted logs and test-observable objects only; they are not written to provider_usage_json.'],
+  },
   'settings.ai_model.LLM_USAGE_HMAC_SECRET': {
     title: 'LLM Usage HMAC Secret',
     summary: 'Signs message-level HMAC fingerprints for LLM usage telemetry.',
@@ -1383,7 +1439,12 @@ const settingsHelpEnUS: SettingsHelpMap = {
     title: 'Custom Webhooks',
     summary: 'Pushes reports to any service that accepts POST JSON.',
     usage: 'Use comma-separated URLs. CUSTOM_WEBHOOK_BODY_TEMPLATE can customize the JSON body.',
-    valueNotes: ['The template must render to a JSON object.', 'Prefer $content_json and $title_json to avoid invalid JSON.'],
+    valueNotes: [
+      'The template must render to a JSON object.',
+      'Prefer $content_json and $title_json to avoid invalid JSON.',
+      'Docker saves these placeholders as $$content_json / $$title_json in .env, and runtime restores the single-$ form.',
+      'This setting only affects custom webhook payload behavior and does not alter LLM provider/model/Base URL or runtime routing priority.',
+    ],
     impact: ['Affects AstrBot, NapCat, or self-hosted push integrations.'],
     notes: ['Validate one webhook before adding multiple targets.'],
   },
@@ -1515,16 +1576,16 @@ const settingsHelpEnUS: SettingsHelpMap = {
   'settings.system.schedule': {
     title: 'Schedule',
     summary: 'Controls daily scheduled analysis and whether startup runs immediately.',
-    usage: 'SCHEDULE_TIME uses HH:MM 24-hour format. SCHEDULE_ENABLED and SCHEDULE_RUN_IMMEDIATELY control schedule-mode startup behavior.',
+    usage: 'SCHEDULE_TIME uses HH:MM 24-hour format. SCHEDULE_TIMES accepts comma-separated HH:MM values. SCHEDULE_ENABLED controls whether the runtime scheduler is enabled.',
     valueNotes: [
-      'An already-running schedule mode reads a new SCHEDULE_TIME on the next scheduler check and rebuilds the daily job.',
-      'SCHEDULE_ENABLED and SCHEDULE_RUN_IMMEDIATELY are startup-time settings; saving them does not start, stop, or rebuild the current scheduler.',
+      'An already-running schedule mode reads new SCHEDULE_TIME / SCHEDULE_TIMES values on the next scheduler check and rebuilds the daily jobs.',
+      'Long-running WebUI/API/Desktop processes start, stop, or rebuild the runtime scheduler after saving SCHEDULE_ENABLED, SCHEDULE_TIME, or SCHEDULE_TIMES.',
       'Scheduled runs read the currently saved STOCK_LIST.',
     ],
     impact: ['Affects automatic analysis frequency, startup behavior, and notification timing in schedule mode.'],
     notes: [
       'Check the runtime timezone, especially in containers and servers.',
-      'If the current process was not started in schedule mode, saving these fields will not create a scheduler.',
+      'SCHEDULE_RUN_IMMEDIATELY remains a startup-time setting; saving it does not trigger an immediate analysis run.',
     ],
   },
   'settings.system.RUN_IMMEDIATELY': {

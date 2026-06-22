@@ -3,7 +3,6 @@ import type { AnalysisResult, AnalysisReport } from '../../types/analysis';
 import { ReportOverview } from './ReportOverview';
 import { ReportStrategy } from './ReportStrategy';
 import { ReportMatchedSkills } from './ReportMatchedSkills';
-import { ReportDecisionSignals } from './ReportDecisionSignals';
 import { ReportNews } from './ReportNews';
 import { ReportDetails } from './ReportDetails';
 import { ReportDiagnostics } from './ReportDiagnostics';
@@ -86,9 +85,6 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({
 
       {/* 策略点位区 */}
       <ReportStrategy strategy={strategy} language={reportLanguage} />
-
-      {/* 从当前历史报告提取的结构化信号 */}
-      <ReportDecisionSignals recordId={recordId} reportType={meta.reportType} />
 
       {/* 命中交易技能区 */}
       <ReportMatchedSkills matchedSkills={matchedSkills} language={reportLanguage} />

@@ -115,12 +115,15 @@ def create_signal(request: DecisionSignalCreateRequest) -> DecisionSignalMutatio
     summary="查询决策信号列表",
     description=(
         "分页查询 DecisionSignal；读取前会懒过期已到 expires_at 的 active 信号。"
+        "当 source_type=analysis 且只传 source_report_id 查询时，若无命中信号会尝试基于该历史报告一次性懒回填 "
+        "（仅首次命中列表场景，且该精确查询会触发历史决策信号回填写入，属于 read-with-write 行为；"
+        "不影响其他分页列表筛选参数场景）。"
         "holding_only=true 只读取 active 账户的 portfolio_positions 缓存持仓，不触发 portfolio snapshot replay。"
     ),
     operation_id="listDecisionSignals",
 )
 def list_signals(
-    market: Optional[str] = Query(None, description="Optional market filter: cn/hk/us"),
+    market: Optional[str] = Query(None, description="Optional market filter: cn/hk/us/jp/kr"),
     stock_code: Optional[str] = Query(None, description="Optional stock code filter"),
     action: Optional[str] = Query(None, description="Optional decision action filter"),
     market_phase: Optional[str] = Query(None, description="Optional market phase filter"),
@@ -303,7 +306,7 @@ def get_outcome_stats(
 )
 def get_latest_active(
     stock_code: str,
-    market: Optional[str] = Query(None, description="Optional market filter: cn/hk/us"),
+    market: Optional[str] = Query(None, description="Optional market filter: cn/hk/us/jp/kr"),
     limit: int = Query(1, ge=1, le=100),
 ) -> DecisionSignalListResponse:
     service = DecisionSignalService()

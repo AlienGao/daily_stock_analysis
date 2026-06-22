@@ -283,11 +283,42 @@ LLM_USAGE_HMAC_KEY_VERSION=local-v1
 - When rotating the secret, update `LLM_USAGE_HMAC_KEY_VERSION` so old and new fingerprints are not compared as if they used the same key.
 - Do not reuse the login session secret and do not commit or expose the real secret in version control, issues, logs, or screenshots.
 
+### Provider prompt cache configuration (P1 / P1.5)
+
+Prompt-cache settings only control whether this project records cache usage / diagnostics and whether the main analysis path actively sends verified provider-specific hints. They do not control implicit or provider-managed cache behavior in OpenAI, Gemini, DeepSeek, or other providers.
+
+```env
+LLM_PROMPT_CACHE_TELEMETRY_ENABLED=true
+LLM_PROMPT_CACHE_HINTS_ENABLED=false
+LLM_PROMPT_CACHE_DIAGNOSTICS_LEVEL=off
+```
+
+- When `LLM_PROMPT_CACHE_TELEMETRY_ENABLED=false`, provider raw usage JSON, normalized cache fields, and cache-decision diagnostics are not persisted. Basic token usage remains compatible.
+- `LLM_PROMPT_CACHE_HINTS_ENABLED=true` only allows the main analysis / analyzer LiteLLM path to send `prompt_cache_key`, `cache_control`, `user_id`, and similar hints for provider / route entries that are verified or smoke-tested in the registry. The ask-stock Agent path currently records capability / usage diagnostics only and does not actively send provider-specific hints. Unknown OpenAI-compatible gateways stay telemetry-only.
+- `LLM_PROMPT_CACHE_DIAGNOSTICS_LEVEL=basic` provides non-sensitive enum decisions such as provider, API surface, verification status, hint applied, and disabled reason only through debug logs and test-observable objects. `debug` adds HMAC-derived route/cache diagnostics and matched caps id on the same surfaces, but still must not include raw prompts, request bodies, message content, raw stock/user values, webhooks, or API keys. These diagnostics are not public Usage API or ordinary settings-page output.
+- The Provider Cache Capability Registry is a code-level manual registry in `src/llm/provider_cache.py`. Entries include `doc_sources`, `last_verified_at`, and `verification_status`; update them with tests when adding providers or upgrading LiteLLM.
+- Prompt cache keys, route keys, and DeepSeek session isolation reuse `LLM_USAGE_HMAC_SECRET` / `.llm_usage_hmac_secret` with domain-separated HMACs. No prompt-cache-specific secret is introduced.
+
+### Legacy message stability audit (P0.5a)
+
+P0.5a adds internal stability-audit fields for the ordinary stock-analysis legacy `[system, user]` message path. The fields are written only to local `llm_usage` records. They reuse the message HMAC pipeline above and do not change prompt text, message order, provider request parameters, cache hints, model output, fallback order, the public Usage API, or Web pages.
+
+The added fields are for maintainer diagnostics only:
+
+- `language`, `market_group`, `analysis_mode`, `legacy_prompt_mode`, `provider`, `transport`, and `message_count` describe low-sensitivity routing context for the stock-analysis call.
+- `skill_config_hmac` is an HMAC-SHA256 over the resolved skill prompt fragments, default skill policy, and legacy prompt mode. It lets maintainers tell whether the system message changes with skill configuration without storing raw skill text.
+- `known_dynamic_marker_positions` is a JSON string. Each entry stores only `marker_name`, `message_role`, and `char_offset`; it does not store stock codes, stock names, dates, news body text, quote values, headers, response text, or prompt snippets.
+- `estimated_total_prompt_tokens`, `approx_common_prefix_chars`, and `approx_common_prefix_tokens` use the repository's stable canonical render: messages are concatenated in order as `role + "\n" + content` with a fixed separator. This is not claimed to match provider wire bytes.
+- `char_offset` is measured inside the matching message `content`. `approx_common_prefix_chars` is the character count from canonical-render start to the first known dynamic marker. When no marker is found, common-prefix fields stay `NULL`.
+- Token estimates use `ceil(chars / 3)`. They are diagnostics only, do not replace provider usage, and are not used for cache-threshold decisions; Chinese text can be underestimated.
+
+P0.5a does not introduce PromptBlock IR, `block_id`, `stability_class`, `static_prefix_hash`, or `dynamic_context_hash`. Agent, research, and market-review paths are not wired into this audit yet.
+
 ### GitHub Actions Notes
 
 The bundled `00-daily-analysis.yml` explicitly passes the common LLM runtime fields to the job environment:
 
-- Runtime selection: `LLM_CHANNELS`, `LITELLM_MODEL`, `LITELLM_FALLBACK_MODELS`, `AGENT_LITELLM_MODEL`, `VISION_MODEL`, `VISION_PROVIDER_PRIORITY`, `LLM_TEMPERATURE`, `LLM_USAGE_HMAC_SECRET`, `LLM_USAGE_HMAC_KEY_VERSION`
+- Runtime selection: `LLM_CHANNELS`, `LITELLM_MODEL`, `LITELLM_FALLBACK_MODELS`, `AGENT_LITELLM_MODEL`, `VISION_MODEL`, `VISION_PROVIDER_PRIORITY`, `LLM_TEMPERATURE`, `LLM_USAGE_HMAC_SECRET`, `LLM_USAGE_HMAC_KEY_VERSION`, `LLM_PROMPT_CACHE_TELEMETRY_ENABLED`, `LLM_PROMPT_CACHE_HINTS_ENABLED`, `LLM_PROMPT_CACHE_DIAGNOSTICS_LEVEL`
 - Multiple keys: `GEMINI_API_KEYS`, `ANTHROPIC_API_KEYS`, `OPENAI_API_KEYS`, `DEEPSEEK_API_KEYS` (the current workflow imports these from repository Secrets only, not from same-named Variables)
 - Common channel names: `primary`, `secondary`, `aihubmix`, `deepseek`, `dashscope`, `zhipu`, `moonshot`, `minimax`, `volcengine`, `siliconflow`, `openrouter`, `gemini`, `anthropic`, `openai`, `ollama`
 

@@ -29,6 +29,7 @@ except ModuleNotFoundError:
     from litellm.types.utils import Usage
 
 from src.llm.usage import (
+    attach_legacy_message_stability_audit,
     attach_message_hmacs,
     build_message_hmacs,
     extract_usage_payload,
@@ -37,6 +38,7 @@ from src.llm.usage import (
     should_persist_usage_telemetry,
     _reset_usage_hmac_secret_cache_for_tests,
 )
+from src.llm.provider_cache import filter_prompt_cache_telemetry
 from src.storage import (
     DatabaseManager,
     LLMUsage,
@@ -438,6 +440,51 @@ class TestLLMUsageNormalizer(unittest.TestCase):
         self.assertEqual(usage["cache_capability"], "supported")
         self.assertEqual(usage["cache_observation"], "full_hit")
         self.assertIsNone(usage["provider_min_cache_tokens"])
+
+    def test_qwen_wrapped_openai_model_uses_openai_compatible_cache_shape(self):
+        usage = normalize_litellm_usage(
+            {
+                "prompt_tokens": 1500,
+                "completion_tokens": 200,
+                "total_tokens": 1700,
+                "prompt_tokens_details": {"cached_tokens": 1200},
+            },
+            model="openai/qwen-max",
+        )
+
+        self.assertEqual(usage["normalized_cache_read_tokens"], 1200)
+        self.assertEqual(usage["cache_capability"], "supported")
+        self.assertEqual(usage["cache_observation"], "partial_hit")
+
+    def test_kimi_wrapped_openai_model_uses_top_level_cached_tokens(self):
+        usage = normalize_litellm_usage(
+            {
+                "prompt_tokens": 1500,
+                "completion_tokens": 200,
+                "total_tokens": 1700,
+                "cached_tokens": 300,
+            },
+            model="openai/kimi-k2",
+        )
+
+        self.assertEqual(usage["normalized_cache_read_tokens"], 300)
+        self.assertEqual(usage["cache_capability"], "supported")
+
+    def test_openrouter_cache_read_write_tokens(self):
+        usage = normalize_litellm_usage(
+            {
+                "prompt_tokens": 1500,
+                "completion_tokens": 200,
+                "total_tokens": 1700,
+                "cache_read_tokens": 300,
+                "cache_write_tokens": 100,
+            },
+            model="openai/~anthropic/claude-sonnet",
+        )
+
+        self.assertEqual(usage["normalized_cache_read_tokens"], 300)
+        self.assertEqual(usage["normalized_cache_write_tokens"], 100)
+        self.assertEqual(usage["cache_capability"], "supported")
 
     def test_anthropic_official_cache_breakdown_sums_total_input(self):
         usage = normalize_litellm_usage(
@@ -1176,6 +1223,228 @@ class TestLLMUsageHMAC(unittest.TestCase):
         )
 
 
+class TestLegacyMessageStabilityAudit(unittest.TestCase):
+    def setUp(self):
+        self._hmac_secret_patch = patch.dict(
+            os.environ,
+            {"LLM_USAGE_HMAC_SECRET": "audit-secret"},
+            clear=False,
+        )
+        self._hmac_secret_patch.start()
+        _reset_usage_hmac_secret_cache_for_tests()
+
+    def tearDown(self):
+        self._hmac_secret_patch.stop()
+        _reset_usage_hmac_secret_cache_for_tests()
+        DatabaseManager.reset_instance()
+
+    def _messages(self):
+        return [
+            {"role": "system", "content": "system policy for zh stock analysis"},
+            {
+                "role": "user",
+                "content": (
+                    "# 决策仪表盘分析请求\n\n"
+                    "## 📊 股票基础信息\n"
+                    "| 股票代码 | **600519** |\n"
+                    "| 股票名称 | **贵州茅台** |\n"
+                    "| 分析日期 | 2026-06-19 |\n\n"
+                    "## 📈 技术面数据\n"
+                    "收盘价 1500 元\n\n"
+                    "## 📰 舆情情报\n"
+                    "IMPORTANT_NEWS_TEXT\n"
+                ),
+            },
+        ]
+
+    def _audit_context(self):
+        return {
+            "language": "zh",
+            "market_group": "cn",
+            "analysis_mode": "stock_analysis",
+            "legacy_prompt_mode": "skill_aware",
+            "skill_config": {
+                "skill_instructions": "RSI breakout skill raw instructions",
+                "default_skill_policy": "Default skill policy raw text",
+                "use_legacy_default_prompt": False,
+            },
+            "provider": "gemini",
+            "transport": "litellm",
+            "dynamic_markers": [
+                {"marker_name": "stock_code", "message_role": "user", "text": "600519"},
+                {"marker_name": "stock_name", "message_role": "user", "text": "贵州茅台"},
+                {"marker_name": "analysis_date", "message_role": "user", "text": "2026-06-19"},
+                {"marker_name": "quote", "message_role": "user", "text": "## 📈 技术面数据"},
+                {"marker_name": "news_context", "message_role": "user", "text": "IMPORTANT_NEWS_TEXT"},
+                {"marker_name": "raw-header", "message_role": "user", "text": "Authorization: Bearer token"},
+            ],
+        }
+
+    def test_attaches_hmac_and_internal_audit_fields_without_raw_marker_values(self):
+        usage = attach_legacy_message_stability_audit(
+            {},
+            self._messages(),
+            self._audit_context(),
+        )
+
+        self.assertEqual(usage["language"], "zh")
+        self.assertEqual(usage["market_group"], "cn")
+        self.assertEqual(usage["analysis_mode"], "stock_analysis")
+        self.assertEqual(usage["legacy_prompt_mode"], "skill_aware")
+        self.assertEqual(len(usage["skill_config_hmac"]), 64)
+        self.assertEqual(usage["provider"], "gemini")
+        self.assertEqual(usage["transport"], "litellm")
+        self.assertEqual(usage["message_count"], 2)
+        self.assertGreater(usage["estimated_total_prompt_tokens"], 0)
+        self.assertIsNotNone(usage["approx_common_prefix_chars"])
+        self.assertIsNotNone(usage["approx_common_prefix_tokens"])
+        self.assertEqual(usage["eligibility_confidence"], "estimated")
+        self.assertEqual(len(usage["messages_hmac"]), 64)
+        self.assertEqual(len(usage["system_message_hmac"]), 64)
+        self.assertEqual(len(usage["user_message_hmac"]), 64)
+
+        marker_json = usage["known_dynamic_marker_positions"]
+        self.assertIsInstance(marker_json, str)
+        markers = json.loads(marker_json)
+        self.assertEqual(
+            {tuple(marker.keys()) for marker in markers},
+            {("marker_name", "message_role", "char_offset")},
+        )
+        self.assertEqual(markers[0]["marker_name"], "stock_code")
+        self.assertEqual(markers[0]["message_role"], "user")
+        self.assertIsInstance(markers[0]["char_offset"], int)
+
+        serialized = json.dumps(usage, ensure_ascii=False, sort_keys=True)
+        self.assertNotIn("600519", marker_json)
+        self.assertNotIn("贵州茅台", marker_json)
+        self.assertNotIn("2026-06-19", marker_json)
+        self.assertNotIn("IMPORTANT_NEWS_TEXT", marker_json)
+        self.assertNotIn("RSI breakout skill raw instructions", serialized)
+        self.assertNotIn("Default skill policy raw text", serialized)
+        self.assertNotIn("Authorization", serialized)
+        self.assertNotIn("Bearer", serialized)
+
+    def test_skill_config_hmac_changes_when_resolved_skill_config_changes(self):
+        base_context = self._audit_context()
+        changed_context = dict(base_context)
+        changed_context["skill_config"] = dict(base_context["skill_config"])
+        changed_context["skill_config"]["skill_instructions"] = "Different resolved skill instructions"
+
+        first = attach_legacy_message_stability_audit(
+            {},
+            self._messages(),
+            base_context,
+        )
+        second = attach_legacy_message_stability_audit(
+            {},
+            self._messages(),
+            changed_context,
+        )
+
+        self.assertEqual(first["messages_hmac"], second["messages_hmac"])
+        self.assertNotEqual(first["skill_config_hmac"], second["skill_config_hmac"])
+
+    def test_common_prefix_estimate_uses_canonical_render_before_first_marker(self):
+        messages = self._messages()
+        usage = attach_legacy_message_stability_audit(
+            {},
+            messages,
+            self._audit_context(),
+        )
+        user_content = messages[1]["content"]
+        first_marker_offset = user_content.index("600519")
+
+        self.assertGreater(usage["approx_common_prefix_chars"], first_marker_offset)
+        self.assertEqual(
+            usage["approx_common_prefix_tokens"],
+            (usage["approx_common_prefix_chars"] + 2) // 3,
+        )
+
+    def test_empty_preferred_marker_list_does_not_fall_back_to_other_marker_keys(self):
+        context = dict(self._audit_context())
+        context["known_dynamic_markers"] = []
+        context["markers"] = [
+            {"marker_name": "stock_code", "message_role": "user", "text": "600519"},
+        ]
+
+        usage = attach_legacy_message_stability_audit(
+            {},
+            self._messages(),
+            context,
+        )
+
+        self.assertEqual(json.loads(usage["known_dynamic_marker_positions"]), [])
+        self.assertIsNone(usage["approx_common_prefix_chars"])
+        self.assertIsNone(usage["approx_common_prefix_tokens"])
+
+    def test_preserves_exact_and_invalid_provider_usage_confidence(self):
+        messages = self._messages()
+        exact = attach_legacy_message_stability_audit(
+            normalize_litellm_usage({"prompt_tokens": 9}, model="openai/gpt-4o"),
+            messages,
+            self._audit_context(),
+        )
+        invalid = attach_legacy_message_stability_audit(
+            normalize_litellm_usage({"prompt_tokens": -1}, model="openai/gpt-4o"),
+            messages,
+            self._audit_context(),
+        )
+
+        self.assertEqual(exact["eligibility_confidence"], "exact")
+        self.assertEqual(invalid["eligibility_confidence"], "invalid")
+
+    def test_persisted_marker_positions_remain_json_string(self):
+        usage = attach_legacy_message_stability_audit(
+            {},
+            self._messages(),
+            self._audit_context(),
+        )
+        db = _fresh_db()
+        persist_llm_usage(usage, "gemini/gemini-test", call_type="analysis", stock_code="600519")
+
+        with db.session_scope() as session:
+            row = session.query(LLMUsage).one()
+            persisted = {
+                "language": row.language,
+                "market_group": row.market_group,
+                "analysis_mode": row.analysis_mode,
+                "legacy_prompt_mode": row.legacy_prompt_mode,
+                "skill_config_hmac": row.skill_config_hmac,
+                "provider": row.provider,
+                "transport": row.transport,
+                "message_count": row.message_count,
+                "known_dynamic_marker_positions": row.known_dynamic_marker_positions,
+            }
+
+        self.assertEqual(persisted["language"], "zh")
+        self.assertEqual(persisted["market_group"], "cn")
+        self.assertEqual(persisted["analysis_mode"], "stock_analysis")
+        self.assertEqual(persisted["legacy_prompt_mode"], "skill_aware")
+        self.assertEqual(len(persisted["skill_config_hmac"]), 64)
+        self.assertEqual(persisted["provider"], "gemini")
+        self.assertEqual(persisted["transport"], "litellm")
+        self.assertEqual(persisted["message_count"], 2)
+        self.assertIsInstance(persisted["known_dynamic_marker_positions"], str)
+        parsed = json.loads(persisted["known_dynamic_marker_positions"])
+        self.assertEqual(parsed[0]["marker_name"], "stock_code")
+        self.assertNotIn("600519", persisted["known_dynamic_marker_positions"])
+
+    def test_does_not_emit_block_level_p05b_fields(self):
+        usage = attach_legacy_message_stability_audit(
+            {},
+            self._messages(),
+            self._audit_context(),
+        )
+
+        for field in (
+            "block_id",
+            "stability_class",
+            "static_prefix_hash",
+            "dynamic_context_hash",
+        ):
+            self.assertNotIn(field, usage)
+
+
 class TestGetLLMUsageSummary(unittest.TestCase):
     def setUp(self):
         self.db = _fresh_db()
@@ -1383,6 +1652,61 @@ class TestPersistUsageHelper(unittest.TestCase):
             self.assertEqual(len(row.messages_hmac), 64)
             self.assertNotIn("system prompt", row.provider_usage_json)
             self.assertNotIn("user prompt", row.provider_usage_json)
+
+    def test_prompt_cache_telemetry_disabled_does_not_synthesize_cache_columns(self):
+        usage = normalize_litellm_usage(
+            {
+                "prompt_tokens": 2000,
+                "completion_tokens": 100,
+                "total_tokens": 2100,
+                "prompt_tokens_details": {"cached_tokens": 500},
+            },
+            model="openai/gpt-4o",
+        )
+        filtered = filter_prompt_cache_telemetry(
+            usage,
+            SimpleNamespace(llm_prompt_cache_telemetry_enabled=False),
+        )
+
+        persist_llm_usage(
+            filtered,
+            "openai/gpt-4o",
+            call_type="analysis",
+            stock_code="000001",
+        )
+
+        with self.db.session_scope() as session:
+            row = session.query(LLMUsage).one()
+            self.assertEqual(row.prompt_tokens, 2000)
+            self.assertEqual(row.normalized_prompt_tokens, 2000)
+            self.assertIsNone(row.provider_usage_json)
+            self.assertIsNone(row.normalized_cache_read_tokens)
+            self.assertIsNone(row.cache_capability)
+            self.assertIsNone(row.cache_eligibility)
+            self.assertIsNone(row.cache_observation)
+
+    def test_prompt_cache_telemetry_disabled_no_usage_does_not_synthesize_cache_columns(self):
+        filtered = filter_prompt_cache_telemetry(
+            {},
+            SimpleNamespace(llm_prompt_cache_telemetry_enabled=False),
+        )
+
+        persist_llm_usage(
+            filtered,
+            "openai/gpt-4o",
+            call_type="analysis",
+            stock_code="000001",
+        )
+
+        with self.db.session_scope() as session:
+            row = session.query(LLMUsage).one()
+            self.assertEqual(row.prompt_tokens, 0)
+            self.assertEqual(row.normalized_prompt_tokens, 0)
+            self.assertIsNone(row.provider_usage_json)
+            self.assertIsNone(row.normalized_cache_read_tokens)
+            self.assertIsNone(row.cache_capability)
+            self.assertIsNone(row.cache_eligibility)
+            self.assertIsNone(row.cache_observation)
 
     def test_persist_usage_does_not_store_unmodeled_prompt_payload_fields(self):
         usage = normalize_litellm_usage(

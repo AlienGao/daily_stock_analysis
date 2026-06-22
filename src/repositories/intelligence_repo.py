@@ -32,6 +32,12 @@ class IntelligenceRepository:
                 select(IntelligenceSource).where(IntelligenceSource.id == source_id).limit(1)
             ).scalar_one_or_none()
 
+    def get_source_by_name(self, name: str) -> Optional[IntelligenceSource]:
+        with self.db.get_session() as session:
+            return session.execute(
+                select(IntelligenceSource).where(IntelligenceSource.name == name).limit(1)
+            ).scalar_one_or_none()
+
     def list_sources(
         self,
         *,
@@ -99,7 +105,7 @@ class IntelligenceRepository:
                 item_fields = dict(fields)
                 scope_value = self._normalize_scope_value(item_fields.get("scope_value"))
                 item_fields["scope_value"] = scope_value
-                source_id = fields.get("source_id")
+                source_id = item_fields.get("source_id")
                 conditions = [
                     IntelligenceItem.url == url,
                     IntelligenceItem.source_type == (item_fields.get("source_type") or "rss"),
@@ -140,6 +146,7 @@ class IntelligenceRepository:
         market: Optional[str] = None,
         query: Optional[str] = None,
         days: Optional[int] = None,
+        published_days: Optional[int] = None,
         page: int = 1,
         page_size: int = 50,
     ) -> Tuple[List[IntelligenceItem], int]:
@@ -155,6 +162,9 @@ class IntelligenceRepository:
             conditions.append(or_(IntelligenceItem.title.like(pattern), IntelligenceItem.summary.like(pattern)))
         if days is not None:
             conditions.append(IntelligenceItem.fetched_at >= datetime.now() - timedelta(days=max(1, int(days))))
+        if published_days is not None:
+            published_cutoff = datetime.now() - timedelta(days=max(1, int(published_days)))
+            conditions.append(IntelligenceItem.published_at >= published_cutoff)
         where_clause = and_(*conditions) if conditions else True
         safe_page = max(1, int(page))
         safe_size = max(1, min(int(page_size), 100))

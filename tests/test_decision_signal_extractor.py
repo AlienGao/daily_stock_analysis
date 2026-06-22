@@ -173,6 +173,13 @@ def test_build_payload_records_empty_holding_state_from_explicit_portfolio_conte
     assert payload["metadata"]["holding_state"] == "empty"
 
 
+def test_runtime_decision_signal_summary_is_not_serialized_by_analysis_result_to_dict() -> None:
+    result = _result()
+    setattr(result, "decision_signal_summary", {"action": "sell", "reason": "risk"})
+
+    assert "decision_signal_summary" not in result.to_dict()
+
+
 def test_build_payload_maps_secondary_only_entry_to_entry_high() -> None:
     result = _result()
     result.dashboard = {

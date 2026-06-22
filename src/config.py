@@ -20,6 +20,7 @@ from urllib.parse import unquote, urlparse
 from dotenv import load_dotenv, dotenv_values
 from dataclasses import dataclass, field
 
+from src.core.config_manager import unescape_compose_sensitive_env_value
 from src.report_language import (
     is_supported_report_language_value,
     normalize_report_language,
@@ -36,11 +37,12 @@ from src.notification_contracts import (
     is_feishu_static_configured,
 )
 from src.llm import generation_params as llm_generation_params
+from src.scheduler import normalize_schedule_times
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_ALPHASIFT_INSTALL_SPEC = (
-    "git+https://github.com/ZhuLinsen/alphasift.git@14e74fc0819267f7c04c3117a0dd0fe3f9b19404"
+    "git+https://github.com/ZhuLinsen/alphasift.git@377049857cc04175dc3cca62121ee41adec6cdb8"
 )
 
 
@@ -66,6 +68,7 @@ class ConfigIssue:
 _MANAGED_LITELLM_KEY_PROVIDERS = {"gemini", "vertex_ai", "anthropic", "openai", "deepseek"}
 SUPPORTED_LLM_CHANNEL_PROTOCOLS = ("openai", "anthropic", "gemini", "vertex_ai", "deepseek", "ollama")
 _FALSEY_ENV_VALUES = {"0", "false", "no", "off"}
+PROMPT_CACHE_DIAGNOSTICS_LEVELS = {"off", "basic", "debug"}
 # Fallback defaults used when ANSPIRE_API_KEYS is reused as legacy OpenAI-compatible source.
 # These are compatibility examples; actual availability should be validated by Anspire console/model entitlement.
 ANSPIRE_LLM_BASE_URL_DEFAULT = "https://open-gateway.anspire.cn/v6"
@@ -95,6 +98,18 @@ def _has_gotify_base_url(value: Optional[str]) -> bool:
         return False
     path_segments = [segment for segment in parsed.path.split("/") if segment]
     return not (path_segments and path_segments[-1].lower() == "message")
+
+
+def parse_prompt_cache_diagnostics_level(value: Optional[str]) -> str:
+    """Parse prompt-cache diagnostics level with a conservative fallback."""
+    normalized = (value or "off").strip().lower()
+    if normalized in PROMPT_CACHE_DIAGNOSTICS_LEVELS:
+        return normalized
+    logger.warning(
+        "Invalid LLM_PROMPT_CACHE_DIAGNOSTICS_LEVEL=%r; falling back to off",
+        value,
+    )
+    return "off"
 
 
 AGENT_MAX_STEPS_DEFAULT = 10
@@ -603,7 +618,26 @@ def setup_env(override: bool = False):
         env_path = Path(env_file)
     else:
         env_path = Path(__file__).parent.parent / '.env'
+    compose_sensitive_keys = ("CUSTOM_WEBHOOK_BODY_TEMPLATE",)
+    preexisting_compose_sensitive_keys = {
+        key for key in compose_sensitive_keys if key in os.environ
+    }
     load_dotenv(dotenv_path=env_path, override=override)
+    try:
+        raw_env_values = dotenv_values(env_path, interpolate=False)
+    except Exception as exc:  # pragma: no cover - defensive branch
+        logger.warning("Failed to read raw .env values from %s: %s", env_path, exc)
+        return
+
+    key = "CUSTOM_WEBHOOK_BODY_TEMPLATE"
+    if key in raw_env_values and (
+        override or key not in preexisting_compose_sensitive_keys
+    ):
+        raw_value = raw_env_values.get(key)
+        os.environ[key] = unescape_compose_sensitive_env_value(
+            key,
+            "" if raw_value is None else str(raw_value),
+        )
 
 
 @dataclass
@@ -647,6 +681,11 @@ class Config:
 
     # Unified temperature for all LLM calls (LLM_TEMPERATURE); legacy per-provider temps are fallback only
     llm_temperature: float = 0.7
+
+    # Provider prompt-cache controls. These do not control provider implicit cache.
+    llm_prompt_cache_telemetry_enabled: bool = True
+    llm_prompt_cache_hints_enabled: bool = False
+    llm_prompt_cache_diagnostics_level: str = "off"
 
     # --- Multi-channel LLM config (new) ---
     # LITELLM_CONFIG: path to a standard litellm_config.yaml file (most powerful)
@@ -721,6 +760,7 @@ class Config:
     news_intel_retention_days: int = 30  # 本地资讯池保留天数
     news_intel_fetch_timeout_sec: float = 8.0  # 单个资讯源拉取超时
     news_intel_max_items_per_source: int = 50  # 单次每个资讯源最多采集条数
+    newsnow_base_url: str = "https://newsnow.busiyi.world"  # NewsNow HTTP API base URL (数据源侧，不影响 LLM/provider base URL)
     bias_threshold: float = 5.0  # 乖离率阈值（%），超过此值提示不追高
 
     # === Agent 模式配置 ===
@@ -900,6 +940,7 @@ class Config:
     # === 定时任务配置 ===
     schedule_enabled: bool = False            # 是否启用定时任务
     schedule_time: str = "18:00"              # 每日推送时间（HH:MM 格式）
+    schedule_times: List[str] = field(default_factory=lambda: ["18:00"])
     schedule_run_immediately: bool = True     # 启动时是否立即执行一次
     run_immediately: bool = True              # 启动时是否立即执行一次（非定时模式）
     market_review_enabled: bool = True        # 是否启用大盘复盘
@@ -1019,6 +1060,7 @@ class Config:
             "RUN_IMMEDIATELY",
             "SCHEDULE_ENABLED",
             "SCHEDULE_TIME",
+            "SCHEDULE_TIMES",
             "SCHEDULE_RUN_IMMEDIATELY",
         }
     )
@@ -1435,6 +1477,11 @@ class Config:
             default='18:00',
             prefer_env_file=True,
         )
+        schedule_times_value = cls._resolve_env_value(
+            'SCHEDULE_TIMES',
+            default='',
+            prefer_env_file=True,
+        )
 
         report_language_raw = cls._resolve_report_language_env_value(
             preexisting_report_language
@@ -1469,6 +1516,17 @@ class Config:
             llm_channels=llm_channels,
             llm_channel_names=llm_channel_names,
             llm_model_list=llm_model_list,
+            llm_prompt_cache_telemetry_enabled=parse_env_bool(
+                os.getenv("LLM_PROMPT_CACHE_TELEMETRY_ENABLED"),
+                default=True,
+            ),
+            llm_prompt_cache_hints_enabled=parse_env_bool(
+                os.getenv("LLM_PROMPT_CACHE_HINTS_ENABLED"),
+                default=False,
+            ),
+            llm_prompt_cache_diagnostics_level=parse_prompt_cache_diagnostics_level(
+                os.getenv("LLM_PROMPT_CACHE_DIAGNOSTICS_LEVEL")
+            ),
             gemini_api_keys=gemini_api_keys,
             anthropic_api_keys=anthropic_api_keys,
             openai_api_keys=openai_api_keys,
@@ -1540,6 +1598,7 @@ class Config:
                 minimum=1,
                 maximum=200,
             ),
+            newsnow_base_url=((os.getenv('NEWSNOW_BASE_URL') or '').strip().rstrip('/') or 'https://newsnow.busiyi.world'),
             bias_threshold=parse_env_float(os.getenv('BIAS_THRESHOLD'), 5.0, field_name='BIAS_THRESHOLD', minimum=1.0),
             agent_litellm_model=agent_litellm_model,
             agent_mode=os.getenv('AGENT_MODE', 'false').lower() == 'true',
@@ -1625,7 +1684,10 @@ class Config:
             serverchan3_sendkey=os.getenv('SERVERCHAN3_SENDKEY'),
             custom_webhook_urls=[u.strip() for u in os.getenv('CUSTOM_WEBHOOK_URLS', '').split(',') if u.strip()],
             custom_webhook_bearer_token=os.getenv('CUSTOM_WEBHOOK_BEARER_TOKEN'),
-            custom_webhook_body_template=os.getenv('CUSTOM_WEBHOOK_BODY_TEMPLATE'),
+            custom_webhook_body_template=unescape_compose_sensitive_env_value(
+                'CUSTOM_WEBHOOK_BODY_TEMPLATE',
+                os.getenv('CUSTOM_WEBHOOK_BODY_TEMPLATE') or '',
+            ) or None,
             webhook_verify_ssl=os.getenv('WEBHOOK_VERIFY_SSL', 'true').lower() == 'true',
             discord_bot_token=os.getenv('DISCORD_BOT_TOKEN'),
             discord_main_channel_id=(
@@ -1740,6 +1802,10 @@ class Config:
                 prefer_env_file=True,
             ).lower() == 'true',
             schedule_time=(schedule_time_value or '18:00').strip() or '18:00',
+            schedule_times=normalize_schedule_times(
+                schedule_times_value,
+                fallback_time=(schedule_time_value or '18:00').strip() or '18:00',
+            ),
             schedule_run_immediately=schedule_run_immediately,
             run_immediately=legacy_run_immediately,
             market_review_enabled=os.getenv('MARKET_REVIEW_ENABLED', 'true').lower() == 'true',
@@ -2174,7 +2240,7 @@ class Config:
         value = env_values.get(key)
         if value is None:
             return None
-        return str(value)
+        return unescape_compose_sensitive_env_value(key, str(value))
 
     @classmethod
     def _resolve_env_value(

@@ -37,6 +37,7 @@ from sqlalchemy import (
     Index,
     UniqueConstraint,
     Text,
+    text,
     select,
     insert,
     and_,
@@ -49,6 +50,8 @@ from sqlalchemy import (
     text,
     case,
     inspect,
+    MetaData,
+    Table,
 )
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import (
@@ -1147,6 +1150,7 @@ class LLMUsage(Base):
     call_type = Column(String(32), nullable=False, index=True)
     model = Column(String(128), nullable=False)
     stock_code = Column(String(16), nullable=True)
+    provider = Column(String(64), nullable=True)
     prompt_tokens = Column(Integer, nullable=False, default=0)
     completion_tokens = Column(Integer, nullable=False, default=0)
     total_tokens = Column(Integer, nullable=False, default=0)
@@ -1192,6 +1196,20 @@ class LLMUsage(Base):
     hmac_key_version = Column(String(64), nullable=True)
     hmac_domain = Column(String(32), nullable=True)
     hash_scope = Column(String(32), nullable=True)
+
+    # P0.5a internal legacy message stability audit. These diagnostics are
+    # stored locally only and are not returned by public usage APIs.
+    language = Column(String(16), nullable=True)
+    market_group = Column(String(16), nullable=True)
+    analysis_mode = Column(String(64), nullable=True)
+    legacy_prompt_mode = Column(String(32), nullable=True)
+    skill_config_hmac = Column(String(64), nullable=True)
+    transport = Column(String(64), nullable=True)
+    message_count = Column(Integer, nullable=True)
+    estimated_total_prompt_tokens = Column(Integer, nullable=True)
+    approx_common_prefix_chars = Column(Integer, nullable=True)
+    approx_common_prefix_tokens = Column(Integer, nullable=True)
+    known_dynamic_marker_positions = Column(Text, nullable=True)
     called_at = Column(DateTime, default=datetime.now, index=True)
 
 
@@ -1816,6 +1834,7 @@ class SectorDaily(Base):
 
 _LLM_USAGE_TELEMETRY_COLUMN_SQL: Dict[str, str] = {
     "provider_usage_json": "TEXT",
+    "provider": "VARCHAR(64)",
     "provider_usage_schema_name": "VARCHAR(64)",
     "provider_usage_schema_version": "VARCHAR(32)",
     "provider_usage_observed_at": "VARCHAR(32)",
@@ -1845,6 +1864,17 @@ _LLM_USAGE_TELEMETRY_COLUMN_SQL: Dict[str, str] = {
     "hmac_key_version": "VARCHAR(64)",
     "hmac_domain": "VARCHAR(32)",
     "hash_scope": "VARCHAR(32)",
+    "language": "VARCHAR(16)",
+    "market_group": "VARCHAR(16)",
+    "analysis_mode": "VARCHAR(64)",
+    "legacy_prompt_mode": "VARCHAR(32)",
+    "skill_config_hmac": "VARCHAR(64)",
+    "transport": "VARCHAR(64)",
+    "message_count": "INTEGER",
+    "estimated_total_prompt_tokens": "INTEGER",
+    "approx_common_prefix_chars": "INTEGER",
+    "approx_common_prefix_tokens": "INTEGER",
+    "known_dynamic_marker_positions": "TEXT",
 }
 _LLM_USAGE_INTEGER_TELEMETRY_COLUMNS = {
     column
@@ -1852,6 +1882,27 @@ _LLM_USAGE_INTEGER_TELEMETRY_COLUMNS = {
     if column_type == "INTEGER"
 }
 _LLM_USAGE_DROPPED_FREE_TEXT_COLUMNS = {"tokenizer_name", "tokenizer_version"}
+_LLM_PROMPT_CACHE_TELEMETRY_DISABLED_ATTR = "prompt_cache_telemetry_disabled"
+_LLM_PROMPT_CACHE_TELEMETRY_COLUMNS = {
+    "provider_usage_json",
+    "provider_usage_schema_name",
+    "provider_usage_schema_version",
+    "provider_usage_observed_at",
+    "normalized_cache_read_tokens",
+    "normalized_cache_write_tokens",
+    "normalized_cache_miss_tokens",
+    "normalized_uncached_input_tokens",
+    "normalized_cache_eligible_input_tokens",
+    "normalized_cache_hit_ratio",
+    "normalized_cache_write_ratio",
+    "cache_capability",
+    "cache_eligibility",
+    "cache_observation",
+    "estimated_prefix_tokens",
+    "provider_reported_cached_tokens",
+    "provider_min_cache_tokens",
+    "eligibility_confidence",
+}
 
 
 class AlertRuleRecord(Base):
@@ -2154,6 +2205,7 @@ class DatabaseManager(metaclass=_DatabaseManagerMeta):
             self._ensure_llm_usage_telemetry_columns()
             self._ensure_intelligence_item_scope_values()
             self._ensure_schema_migration_record()
+            self._ensure_intelligence_items_unique_index()
 
             self._initialized = True
             logger.info(f"数据库初始化完成: {db_url}")
@@ -2767,6 +2819,111 @@ class DatabaseManager(metaclass=_DatabaseManagerMeta):
             raise
         finally:
             session.close()
+
+    def _ensure_intelligence_items_unique_index(self) -> None:
+        if not self._is_sqlite_engine:
+            return
+
+        if not inspect(self._engine).has_table("intelligence_items"):
+            return
+
+        try:
+            unique_indexes = self._list_sqlite_unique_indexes("intelligence_items")
+        except Exception as exc:
+            logger.warning(
+                "[Intelligence items] failed to inspect unique indexes; "
+                "skip migration/repair: %s",
+                exc,
+            )
+            return
+
+        target_columns = ("source_id", "url", "scope_type", "scope_value", "market")
+        has_target_index = any(tuple(cols) == target_columns for cols in unique_indexes)
+        has_legacy_url_unique = any(tuple(cols) == ("url",) for cols in unique_indexes)
+
+        if has_target_index:
+            return
+        if unique_indexes and not has_legacy_url_unique:
+            # Table has other unique index shapes; avoid aggressive changes and add
+            # the expected scoped uniqueness directly.
+            self._ensure_intelligence_items_scoped_unique_index_once()
+            return
+
+        self._rebuild_intelligence_items_table()
+
+    def _rebuild_intelligence_items_table(self) -> None:
+        temporary_table = f"intelligence_items_recreate_tmp_{int(time.time() * 1_000_000_000)}"
+        columns = [column.name for column in IntelligenceItem.__table__.columns]
+        select_clause = ", ".join(f'"{column}"' for column in columns)
+        scoped_index_columns = ", ".join(["source_id", "url", "scope_type", "scope_value", "market"])
+        scoped_index_name = "uix_intel_item_scope"
+
+        tmp_metadata = MetaData()
+        tmp_table = Table(
+            temporary_table,
+            tmp_metadata,
+            *(column.copy() for column in IntelligenceItem.__table__.columns),
+        )
+        logger.info("Rebuilding intelligence_items table to align composite uniqueness constraints.")
+        with self._engine.begin() as connection:
+            connection.execute(text(f'DROP TABLE IF EXISTS "{temporary_table}"'))
+            tmp_table.create(connection)
+            connection.execute(
+                text(
+                    f"INSERT INTO \"{temporary_table}\" ({select_clause}) "
+                    f"SELECT {select_clause} FROM intelligence_items"
+                )
+            )
+            connection.execute(text('DROP TABLE "intelligence_items"'))
+            connection.execute(
+                text(f'ALTER TABLE "{temporary_table}" RENAME TO intelligence_items')
+            )
+            connection.execute(
+                text(
+                    f"CREATE UNIQUE INDEX IF NOT EXISTS {scoped_index_name} ON "
+                    f"intelligence_items ({scoped_index_columns})"
+                )
+            )
+
+    def _ensure_intelligence_items_scoped_unique_index_once(self) -> None:
+        target_index_name = "uix_intel_item_scope"
+        with self._engine.begin() as connection:
+            rows = connection.execute(
+                text("PRAGMA index_list(intelligence_items)")
+            ).fetchall()
+            for row in rows:
+                if row[1] == target_index_name:
+                    return
+            index_columns = ", ".join(["source_id", "url", "scope_type", "scope_value", "market"])
+            connection.execute(
+                text(
+                    f"CREATE UNIQUE INDEX IF NOT EXISTS {target_index_name} ON "
+                    f"intelligence_items ({index_columns})"
+                )
+            )
+
+    def _list_sqlite_unique_indexes(self, table_name: str):
+        with self._engine.connect() as connection:
+            rows = connection.execute(
+                text(f"PRAGMA index_list({table_name})")
+            ).fetchall()
+            unique_indexes = []
+            for row in rows:
+                # row: (seq, name, unique, origin, partial)
+                if int(row[2]) != 1:
+                    continue
+                index_name = row[1]
+                index_columns = []
+                for index_info in connection.execute(
+                    text(f"PRAGMA index_xinfo({index_name})")
+                ).fetchall():
+                    # index_xinfo: (seqno, cid, name, desc, coll, key, ... )
+                    column_name = index_info[2]
+                    if column_name is None:
+                        continue
+                    index_columns.append(column_name)
+                unique_indexes.append(index_columns)
+            return unique_indexes
 
     def _ensure_llm_usage_telemetry_columns(self) -> None:
         """Add nullable P0a usage telemetry columns to existing SQLite DBs."""
@@ -8600,7 +8757,11 @@ def persist_llm_usage(
 ) -> None:
     """Fire-and-forget: write one LLM call record to llm_usage. Never raises."""
     try:
-        usage = usage or {}
+        if usage is None:
+            usage = {}
+        prompt_cache_telemetry_disabled = bool(
+            getattr(usage, _LLM_PROMPT_CACHE_TELEMETRY_DISABLED_ATTR, False)
+        )
         prompt_tokens = _coerce_llm_usage_non_negative_int(usage.get("prompt_tokens")) or 0
         completion_tokens = _coerce_llm_usage_non_negative_int(usage.get("completion_tokens")) or 0
         total_tokens = _coerce_llm_usage_non_negative_int(usage.get("total_tokens")) or 0
@@ -8608,6 +8769,9 @@ def persist_llm_usage(
             column: usage.get(column)
             for column in _LLM_USAGE_TELEMETRY_COLUMN_SQL
         }
+        if prompt_cache_telemetry_disabled:
+            for column in _LLM_PROMPT_CACHE_TELEMETRY_COLUMNS:
+                telemetry[column] = None
         for column in _LLM_USAGE_INTEGER_TELEMETRY_COLUMNS:
             telemetry[column] = _coerce_llm_usage_non_negative_int(telemetry.get(column))
         telemetry["normalized_prompt_tokens"] = (
@@ -8636,11 +8800,12 @@ def persist_llm_usage(
                 "normalized_total_tokens",
             )
         )
-        telemetry["cache_capability"] = usage.get("cache_capability") or "unknown"
-        telemetry["cache_eligibility"] = usage.get("cache_eligibility") or "unknown"
-        telemetry["cache_observation"] = usage.get("cache_observation") or (
-            "no_usage" if not has_usage_payload else "unknown"
-        )
+        if not prompt_cache_telemetry_disabled:
+            telemetry["cache_capability"] = usage.get("cache_capability") or "unknown"
+            telemetry["cache_eligibility"] = usage.get("cache_eligibility") or "unknown"
+            telemetry["cache_observation"] = usage.get("cache_observation") or (
+                "no_usage" if not has_usage_payload else "unknown"
+            )
         db = DatabaseManager.get_instance()
         db.record_llm_usage(
             call_type=call_type,
