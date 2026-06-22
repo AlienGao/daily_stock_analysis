@@ -1287,21 +1287,46 @@ const BrokerRecommendPage: React.FC = () => {
       }
       setLoadingUpToDownDaily(true);
       try {
-        const [data, bt, enrich, cons, top, upDaily] = await Promise.all([
-          getMonthlyRecommendations(loadMonth),
-          getBacktest(loadMonth),
-          getMonthlyEnrichment(loadMonth),
-          getConsecutiveStocks(loadMonth),
-          getTopBrokers(5).catch(() => [] as string[]),
-          getMonthlyUpToDownDaily(loadMonth).catch(() => null),
-        ]);
+        const [recResult, btResult, enrichResult, consResult, topResult, upDailyResult] =
+          await Promise.allSettled([
+            getMonthlyRecommendations(loadMonth),
+            getBacktest(loadMonth),
+            getMonthlyEnrichment(loadMonth),
+            getConsecutiveStocks(loadMonth),
+            getTopBrokers(5),
+            getMonthlyUpToDownDaily(loadMonth),
+          ]);
         if (cancelled || loadMonth !== monthStr) return;
-        setRecommendData(data.month === loadMonth ? data : null);
-        setBacktestData(bt.month === loadMonth ? bt : null);
-        setEnrichmentData(enrich.month === loadMonth ? enrich : null);
-        setUpToDownDaily(upDaily?.month === loadMonth ? upDaily : null);
-        setConsecutiveData(cons);
-        setTopBrokers(top);
+
+        if (recResult.status === 'fulfilled' && recResult.value.month === loadMonth) {
+          setRecommendData(recResult.value);
+        } else if (recResult.status === 'rejected') {
+          console.error('Failed to load recommendations:', recResult.reason);
+        }
+
+        if (btResult.status === 'fulfilled' && btResult.value.month === loadMonth) {
+          setBacktestData(btResult.value);
+        } else if (btResult.status === 'rejected') {
+          console.error('Failed to load backtest:', btResult.reason);
+        }
+
+        if (enrichResult.status === 'fulfilled' && enrichResult.value.month === loadMonth) {
+          setEnrichmentData(enrichResult.value);
+        } else if (enrichResult.status === 'rejected') {
+          console.error('Failed to load enrichment:', enrichResult.reason);
+        }
+
+        if (upDailyResult.status === 'fulfilled' && upDailyResult.value?.month === loadMonth) {
+          setUpToDownDaily(upDailyResult.value);
+        }
+
+        if (consResult.status === 'fulfilled') {
+          setConsecutiveData(consResult.value);
+        }
+
+        if (topResult.status === 'fulfilled') {
+          setTopBrokers(topResult.value);
+        }
       } catch (e) {
         if (!cancelled) console.error('Failed to load:', e);
       } finally {

@@ -214,7 +214,7 @@ export async function getBacktest(
 ): Promise<BrokerBacktestResponse> {
   const resp = await apiClient.get<BrokerBacktestResponse>(
     `/api/v1/broker-recommend/${month}/backtest`,
-    { params: { top_n: topN } }
+    { params: { top_n: topN }, timeout: 120_000 },
   );
   return resp.data;
 }

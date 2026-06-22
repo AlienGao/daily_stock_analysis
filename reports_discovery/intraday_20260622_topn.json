@@ -1,0 +1,178 @@
+[
+  {
+    "rank": 1,
+    "stock_code": "301315",
+    "stock_name": "威士顿",
+    "score": 47.4,
+    "sector": "软件开发",
+    "factor_scores": {
+      "ma_entry": 39.15811504759842,
+      "sector": 27.224497952874344,
+      "ranking_momentum": 48.11237964563021,
+      "rebound": 0.0,
+      "popularity": 78.54487078543573
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "BOLL中轨支撑",
+      "今日强于88%个股",
+      "人气飙升(+1953位)",
+      "人气核心圈(排名1587)",
+      "所属板块: 软件开发"
+    ],
+    "buy_price_low": 39.4,
+    "buy_price_high": 43.0,
+    "stop_loss": 42.19,
+    "take_profit_1": 45.43,
+    "take_profit_2": 55.0,
+    "discovered_at": "15:01:02",
+    "price_at_discovery": 42.73,
+    "pct_chg": 4.86,
+    "tech_score": 72.38,
+    "rr_score": 72.3029839326703,
+    "market_score": 52.83984301718111,
+    "sector_score": 100.0,
+    "volume_score": 87.50680104307901,
+    "position_score": 85,
+    "formation_score": 35.0,
+    "composite_score": 64.886
+  },
+  {
+    "rank": 2,
+    "stock_code": "600639",
+    "stock_name": "浦东金桥",
+    "score": 52.1,
+    "sector": "房地产",
+    "factor_scores": {
+      "ma_entry": 100.0,
+      "sector": 0.0,
+      "ranking_momentum": 88.16920414377492,
+      "rebound": 0.0,
+      "popularity": 30.75437402036168
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线",
+      "排名连续上升(2天)",
+      "趋势加速↑(7.8%/天)",
+      "今日强于73%个股"
+    ],
+    "buy_price_low": 9.1,
+    "buy_price_high": 9.8,
+    "stop_loss": 9.62,
+    "take_profit_1": 9.93,
+    "take_profit_2": 10.43,
+    "discovered_at": "15:01:02",
+    "price_at_discovery": 9.64,
+    "pct_chg": 1.9,
+    "tech_score": 67.9,
+    "rr_score": 75.18518518518484,
+    "market_score": 52.83984301718111,
+    "sector_score": 56.699282563622056,
+    "volume_score": 68.59242620154062,
+    "position_score": 85,
+    "formation_score": 50.0,
+    "composite_score": 63.16
+  },
+  {
+    "rank": 3,
+    "stock_code": "000655",
+    "stock_name": "金岭矿业",
+    "score": 42.2,
+    "sector": "钢铁",
+    "factor_scores": {
+      "ma_entry": 99.16320174041168,
+      "sector": 0.0,
+      "ranking_momentum": 94.07875214933281,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线",
+      "BOLL中轨支撑",
+      "排名连续上升(4天)",
+      "趋势加速↑(5.8%/天)",
+      "今日强于88%个股"
+    ],
+    "buy_price_low": 6.7,
+    "buy_price_high": 7.3,
+    "stop_loss": 7.24,
+    "take_profit_1": 7.61,
+    "take_profit_2": 8.18,
+    "discovered_at": "15:01:02",
+    "price_at_discovery": 7.26,
+    "pct_chg": 4.76,
+    "tech_score": 67.71,
+    "rr_score": 75.38461538461553,
+    "market_score": 52.83984301718111,
+    "sector_score": 96.66980519480518,
+    "volume_score": 40.18674623314145,
+    "position_score": 75,
+    "formation_score": 65.0,
+    "composite_score": 60.05699999999999
+  },
+  {
+    "rank": 4,
+    "stock_code": "002152",
+    "stock_name": "广电运通",
+    "score": 34.3,
+    "sector": "计算机设备",
+    "factor_scores": {
+      "ma_entry": 76.6907779206844,
+      "sector": 0.0,
+      "ranking_momentum": 82.2705254520904,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "回踩MA5均线",
+      "排名连续上升(2天)",
+      "趋势加速↑(5.9%/天)",
+      "今日强于79%个股"
+    ],
+    "buy_price_low": 9.5,
+    "buy_price_high": 10.3,
+    "stop_loss": 10.17,
+    "take_profit_1": 10.6,
+    "take_profit_2": 11.93,
+    "discovered_at": "15:01:02",
+    "price_at_discovery": 10.18,
+    "pct_chg": 2.62,
+    "tech_score": 68.07,
+    "rr_score": 74.61928934010152,
+    "market_score": 52.83984301718111,
+    "sector_score": 64.23460239432485,
+    "volume_score": 57.33401726536169,
+    "position_score": 85,
+    "formation_score": 40.0,
+    "composite_score": 57.93899999999999
+  }
+]
