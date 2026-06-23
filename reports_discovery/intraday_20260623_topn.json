@@ -1,0 +1,182 @@
+[
+  {
+    "rank": 1,
+    "stock_code": "600867",
+    "stock_name": "通化东宝",
+    "score": 44.1,
+    "sector": "生物制品",
+    "factor_scores": {
+      "ma_entry": 30.617249967825373,
+      "sector": 0.0,
+      "momentum": 44.5462835487403,
+      "ranking_momentum": 72.1463014843842,
+      "rebound": 0.0,
+      "popularity": 67.67766952966369
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "趋势加速↑(7.4%/天)",
+      "今日强于96%个股",
+      "人气核心圈(排名899)"
+    ],
+    "buy_price_low": 7.3,
+    "buy_price_high": 8.0,
+    "stop_loss": 7.8,
+    "take_profit_1": 8.24,
+    "take_profit_2": 9.18,
+    "discovered_at": "15:00:48",
+    "price_at_discovery": 7.87,
+    "pct_chg": 6.06,
+    "tech_score": 74.98,
+    "rr_score": 80.93750000000009,
+    "market_score": 58.48266318833322,
+    "sector_score": 100.0,
+    "volume_score": 89.99999999999694,
+    "position_score": 85,
+    "formation_score": 20.0,
+    "composite_score": 65.716
+  },
+  {
+    "rank": 2,
+    "stock_code": "601169",
+    "stock_name": "北京银行",
+    "score": 26.9,
+    "sector": "银行",
+    "factor_scores": {
+      "ma_entry": 74.68131325176621,
+      "sector": 0.0,
+      "momentum": 44.850440056431964,
+      "ranking_momentum": 32.66736832235469,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线",
+      "趋势加速↑(14.9%/天)"
+    ],
+    "buy_price_low": 4.9,
+    "buy_price_high": 5.1,
+    "stop_loss": 5.08,
+    "take_profit_1": 5.25,
+    "take_profit_2": 5.46,
+    "discovered_at": "15:00:48",
+    "price_at_discovery": 5.1,
+    "pct_chg": 0.59,
+    "tech_score": 80.92,
+    "rr_score": 96.33027522935795,
+    "market_score": 58.48266318833322,
+    "sector_score": 81.27272882805815,
+    "volume_score": 88.46021715000485,
+    "position_score": 85,
+    "formation_score": 50.0,
+    "composite_score": 64.714
+  },
+  {
+    "rank": 3,
+    "stock_code": "920640",
+    "stock_name": "富士达",
+    "score": 53.0,
+    "sector": "通信设备",
+    "factor_scores": {
+      "ma_entry": 100.0,
+      "sector": 0.0,
+      "momentum": 37.76433836472777,
+      "ranking_momentum": 90.3405755475478,
+      "rebound": 0.0,
+      "popularity": 36.388973661135516
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线多头排列",
+      "均线粘合",
+      "回踩MA5均线",
+      "BOLL中轨支撑",
+      "趋势加速↑(16.6%/天)",
+      "今日强于67%个股"
+    ],
+    "buy_price_low": 31.0,
+    "buy_price_high": 33.9,
+    "stop_loss": 32.94,
+    "take_profit_1": 36.63,
+    "take_profit_2": 40.82,
+    "discovered_at": "15:00:48",
+    "price_at_discovery": 33.67,
+    "pct_chg": 1.11,
+    "tech_score": 63.84,
+    "rr_score": 71.15384615384616,
+    "market_score": 58.48266318833322,
+    "sector_score": 36.3008239976798,
+    "volume_score": 45.24908167478466,
+    "position_score": 75,
+    "formation_score": 95.0,
+    "composite_score": 60.588
+  },
+  {
+    "rank": 4,
+    "stock_code": "688108",
+    "stock_name": "赛诺医疗",
+    "score": 55.4,
+    "sector": "医疗器械",
+    "factor_scores": {
+      "ma_entry": 90.98887246444409,
+      "sector": 0.0,
+      "momentum": 41.16255789221019,
+      "ranking_momentum": 54.936517777495084,
+      "rebound": 0.0,
+      "popularity": 67.67766952966369
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线",
+      "趋势加速↑(5.7%/天)",
+      "今日强于74%个股"
+    ],
+    "buy_price_low": 18.2,
+    "buy_price_high": 20.1,
+    "stop_loss": 19.72,
+    "take_profit_1": 21.13,
+    "take_profit_2": 24.68,
+    "discovered_at": "15:00:48",
+    "price_at_discovery": 19.77,
+    "pct_chg": 1.59,
+    "tech_score": 61.16,
+    "rr_score": 71.2041884816754,
+    "market_score": 58.48266318833322,
+    "sector_score": 19.983504624871514,
+    "volume_score": 77.3562133635335,
+    "position_score": 85,
+    "formation_score": 50.0,
+    "composite_score": 59.431999999999995
+  }
+]

@@ -281,7 +281,7 @@ export type InstitutionSurveyResponse = {
 export async function getTopBrokers(topN: number = 5): Promise<string[]> {
   const resp = await apiClient.get<string[]>(
     '/api/v1/broker-recommend/top-brokers',
-    { params: { top_n: topN } }
+    { params: { top_n: topN }, timeout: 120_000 }
   );
   return resp.data;
 }
