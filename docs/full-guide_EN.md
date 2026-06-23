@@ -195,6 +195,9 @@ Default schedule: Every weekday at **18:00 (Beijing Time)** automatic execution.
 
 | Variable | Description | Default | Required |
 |--------|------|--------|:----:|
+| `GENERATION_BACKEND` | Generation backend for regular analysis. Phase 1 only supports `litellm`; unknown values are treated as configuration errors and are not silently downgraded | `litellm` | No |
+| `GENERATION_FALLBACK_BACKEND` | Backend-level fallback. The current `litellm -> litellm` setting resolves to no-op; model fallback remains owned by LiteLLM config | `litellm` | No |
+| `AGENT_GENERATION_BACKEND` | Agent Chat generation backend. In Phase 1, `auto` is equivalent to the existing LiteLLM tool-calling backend | `auto` | No |
 | `LITELLM_MODEL` | Primary model, format `provider/model` (e.g. `gemini/gemini-3.1-pro-preview`), recommended | - | No |
 | `AGENT_LITELLM_MODEL` | Optional Agent-only primary model; when empty it inherits the primary model, and bare names are normalized to `openai/<model>` | - | No |
 | `LITELLM_FALLBACK_MODELS` | Fallback models, comma-separated | - | No |

@@ -1930,7 +1930,12 @@ class TestLLMUsageMigration(unittest.TestCase):
                 DatabaseManager(db_url=f"sqlite:///{db_path}")
 
             self.assertTrue(lock_fired["value"])
-            sleep_mock.assert_called_once()
+            storage_retry_sleeps = [
+                call_args
+                for call_args in sleep_mock.call_args_list
+                if call_args.args == (0.1,)
+            ]
+            self.assertEqual(len(storage_retry_sleeps), 1)
             self._assert_all_telemetry_columns(db_path)
 
 

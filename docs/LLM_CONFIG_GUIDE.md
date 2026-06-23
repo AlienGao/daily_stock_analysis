@@ -25,6 +25,21 @@
 
 ---
 
+## Generation Backend（Phase 1）
+
+当前 generation backend 抽象只用于把普通分析、大盘复盘、`generate_text()` 和 Agent Chat 的后端选择契约先收口起来。Phase 1 唯一可执行 backend 是 `litellm`，因此默认行为与历史 LiteLLM 路径保持一致。
+
+```env
+GENERATION_BACKEND=litellm
+GENERATION_FALLBACK_BACKEND=litellm
+AGENT_GENERATION_BACKEND=auto
+```
+
+- `GENERATION_BACKEND` 只支持 `litellm`。配置 `codex`、`claude_code`、`opencode`、`hermes` 等值会得到明确配置错误，不会静默回退到 LiteLLM。
+- `GENERATION_FALLBACK_BACKEND=litellm` 在 primary 也是 `litellm` 时是 backend 级 no-op；模型级 fallback 仍由 `LITELLM_FALLBACK_MODELS`、Router 或 Channels 负责。
+- `AGENT_GENERATION_BACKEND=auto` 的完整语义是：当前 generation backend 支持 tool calling 时自动复用，否则继续使用 LiteLLM tool backend；Phase 1 只有 LiteLLM 可执行，所以运行结果等价于现有 Agent LiteLLM 行为。
+- 本地 CLI / Hermes HTTP / Agent text-only backend 是后续 phase 的增量，不在当前版本中启用。
+
 ## 方式一：极简单模型配置（适合新手）
 
 **目标：** 只要记得填入 API Key 和对应的模型名就能立刻用。不需要折腾复杂概念。

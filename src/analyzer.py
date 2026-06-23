@@ -41,6 +41,13 @@ from src.config import (
 )
 from src.llm.generation_params import apply_litellm_generation_params
 from src.llm.errors import call_litellm_with_param_recovery
+from src.llm.backend_registry import (
+    LITELLM_BACKEND_ID,
+    resolve_generation_backend_id,
+    resolve_generation_fallback_backend_id,
+)
+from src.llm.generation_backend import GenerationError, GenerationErrorCode
+from src.llm.litellm_backend import LiteLLMGenerationBackend
 from src.llm.usage import (
     attach_legacy_message_stability_audit,
     attach_message_hmacs,
@@ -2446,8 +2453,33 @@ class GeminiAnalyzer:
             )
 
     def is_available(self) -> bool:
-        """Check if LiteLLM is properly configured with at least one API key."""
+        """Check whether the configured generation backend is available."""
+        if self.get_generation_backend_config_error() is not None:
+            return False
         return self._router is not None or self._litellm_available
+
+    def _resolve_generation_backend_config(self) -> Tuple[str, Optional[str]]:
+        """Resolve and validate Phase 1 generation backend settings."""
+        config = self._get_runtime_config()
+        backend_id = resolve_generation_backend_id(config)
+        fallback_backend_id = resolve_generation_fallback_backend_id(config)
+        if backend_id != LITELLM_BACKEND_ID:
+            raise GenerationError(
+                error_code=GenerationErrorCode.CAPABILITY_UNSUPPORTED,
+                stage="generation",
+                retryable=False,
+                fallbackable=False,
+                backend=backend_id,
+            )
+        return backend_id, fallback_backend_id
+
+    def get_generation_backend_config_error(self) -> Optional[GenerationError]:
+        """Return a structured backend config error, if Phase 1 cannot run it."""
+        try:
+            self._resolve_generation_backend_config()
+        except GenerationError as exc:
+            return exc
+        return None
 
     def _dispatch_litellm_completion(
         self,
@@ -2641,7 +2673,35 @@ class GeminiAnalyzer:
 
         return response_text, usage
 
+    def _get_generation_backend(self) -> LiteLLMGenerationBackend:
+        """Return the configured Phase 1 generation backend."""
+        self._resolve_generation_backend_config()
+        return LiteLLMGenerationBackend(self._call_litellm_impl)
+
     def _call_litellm(
+        self,
+        prompt: str,
+        generation_config: dict,
+        *,
+        system_prompt: Optional[str] = None,
+        stream: bool = False,
+        stream_progress_callback: Optional[Callable[[int], None]] = None,
+        response_validator: Optional[Callable[[str], None]] = None,
+        audit_context: Optional[Dict[str, Any]] = None,
+    ) -> Tuple[str, str, Dict[str, Any]]:
+        """Compatibility wrapper around the configured generation backend."""
+        result = self._get_generation_backend().generate(
+            prompt,
+            generation_config,
+            system_prompt=system_prompt,
+            stream=stream,
+            stream_progress_callback=stream_progress_callback,
+            response_validator=response_validator,
+            audit_context=audit_context,
+        )
+        return result.text, result.model, result.usage
+
+    def _call_litellm_impl(
         self,
         prompt: str,
         generation_config: dict,
@@ -2898,6 +2958,8 @@ class GeminiAnalyzer:
                 persist_llm_usage(usage, model_used, call_type="market_review")
                 return text
             return result
+        except GenerationError:
+            raise
         except Exception as exc:
             logger.error("[generate_text] LLM call failed: %s", exc)
             return None
@@ -2956,7 +3018,46 @@ class GeminiAnalyzer:
             else:
                 # 最后从映射表获取
                 name = STOCK_NAME_MAP.get(code, f'股票{code}')
-        
+
+        backend_error = self.get_generation_backend_config_error()
+        if backend_error is not None:
+            details = backend_error.details or {}
+            field = str(details.get("field") or "GENERATION_BACKEND")
+            requested_backend = str(details.get("requested_backend") or backend_error.backend)
+            if report_language == "en":
+                summary = (
+                    "AI analysis is unavailable because the generation backend "
+                    f"configuration is invalid: {field}={requested_backend}."
+                )
+                risk_warning = (
+                    f"Phase 1 only supports litellm for {field}; set it back to "
+                    "litellm and retry."
+                )
+            else:
+                summary = (
+                    "AI 分析功能不可用：生成后端配置错误，"
+                    f"{field}={requested_backend}。"
+                )
+                risk_warning = (
+                    f"Phase 1 中 {field} 仅支持 litellm；请设回 litellm 后重试。"
+                )
+            return AnalysisResult(
+                code=code,
+                name=name,
+                sentiment_score=50,
+                trend_prediction='Sideways' if report_language == "en" else '震荡',
+                operation_advice='Hold' if report_language == "en" else '持有',
+                confidence_level='Low' if report_language == "en" else '低',
+                analysis_summary=summary,
+                risk_warning=risk_warning,
+                success=False,
+                error_message=(
+                    f"{backend_error.error_code.value}: {field}={requested_backend}"
+                ),
+                model_used=None,
+                report_language=report_language,
+            )
+
         # 如果模型不可用，返回默认结果
         if not self.is_available():
             return AnalysisResult(

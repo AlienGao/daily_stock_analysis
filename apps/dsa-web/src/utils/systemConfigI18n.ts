@@ -70,6 +70,8 @@ const fieldTitleMap: Record<string, string> = {
   PYTDX_PORT: 'Pytdx 端口',
   PYTDX_SERVERS: 'Pytdx 服务器列表',
   BIAS_THRESHOLD: 'BIAS 阈值',
+  GENERATION_BACKEND: '分析生成方式',
+  GENERATION_FALLBACK_BACKEND: '备用生成方式（预留）',
   LITELLM_MODEL: '主模型',
   AGENT_LITELLM_MODEL: 'Agent 主模型',
   LITELLM_FALLBACK_MODELS: '备选模型',
@@ -174,6 +176,7 @@ const fieldTitleMap: Record<string, string> = {
   WEBUI_AUTO_BUILD: '启动前自动构建前端',
   WEBUI_PORT: 'WebUI 端口',
   AGENT_MODE: '启用 Agent 策略问股',
+  AGENT_GENERATION_BACKEND: '问股生成方式',
   AGENT_MAX_STEPS: 'Agent 最大步数',
   AGENT_SKILLS: 'Agent 激活策略',
   AGENT_SKILL_DIR: 'Agent 策略目录',
@@ -224,6 +227,8 @@ const fieldDescriptionMap: Record<string, string> = {
   PYTDX_PORT: 'Pytdx 单节点端口，需与主机配置配套。',
   PYTDX_SERVERS: 'Pytdx 自定义节点列表，支持 host:port 逗号分隔。',
   BIAS_THRESHOLD: 'BIAS 偏离阈值，超过后用于增强超买超卖提示。',
+  GENERATION_BACKEND: '用于个股分析、大盘复盘和普通文本生成。通常保持“默认模型配置”，即可沿用当前模型渠道、备用模型、用量记录和审计设置。',
+  GENERATION_FALLBACK_BACKEND: '为未来多个生成方式之间的备用切换预留。当前保持“默认模型配置”即可；主模型失败后的备用模型仍在“备选模型”或渠道配置里设置。',
   LITELLM_MODEL: '主模型，格式 provider/model（如 gemini/gemini-2.5-flash）。配置渠道后自动推断。',
   AGENT_LITELLM_MODEL: 'Agent 专用主模型。留空时继承主模型；无 provider 前缀时会按 openai/<model> 解析。',
   LITELLM_FALLBACK_MODELS: '备选模型，逗号分隔，主模型失败时按序尝试。',
@@ -328,6 +333,7 @@ const fieldDescriptionMap: Record<string, string> = {
   WEBUI_AUTO_BUILD: '后端启动 WebUI 前是否自动检查并构建前端静态产物；关闭前需确认产物已预构建，保存后需重启生效。',
   WEBUI_PORT: 'Web 页面服务监听端口。',
   AGENT_MODE: '是否启用 ReAct Agent 策略问股。对外文案仍叫“策略”，内部配置字段统一使用 skill。',
+  AGENT_GENERATION_BACKEND: '用于问股助手生成回复并调用行情、新闻和历史数据工具。通常保持“自动”，系统会选择当前可用的模型工具调用方式。',
   AGENT_MAX_STEPS: 'Agent 最大推理步数上限。保持默认 10 时，各子 Agent 按自身预设步数运行；调高到高于默认值时，所有子 Agent 统一采用该值；调低到低于某子 Agent 默认值时，该 Agent 会被封顶。',
   AGENT_SKILLS: '逗号分隔的交易策略列表。留空时使用 metadata 里声明的主默认策略 skill（内置默认是 bull_trend）；也可填写 all 启用全部策略。',
   AGENT_SKILL_DIR: '存放 Agent 策略定义文件的目录路径，支持 YAML 与 SKILL.md bundle。',
@@ -386,6 +392,16 @@ const fieldOptionLabelMap: Record<string, Record<string, string>> = {
     red_up: '红涨绿跌',
     'green up / red down': '绿涨红跌',
     'red up / green down': '红涨绿跌',
+  },
+  GENERATION_BACKEND: {
+    litellm: '默认模型配置',
+  },
+  GENERATION_FALLBACK_BACKEND: {
+    litellm: '默认模型配置',
+  },
+  AGENT_GENERATION_BACKEND: {
+    auto: '自动',
+    litellm: '默认模型工具调用',
   },
   LOG_LEVEL: {
     debug: '调试',
@@ -456,6 +472,16 @@ const fieldOptionLabelMapEn: Record<string, Record<string, string>> = {
     red_up: 'Red up / green down',
     'green up / red down': 'Green up / red down',
     'red up / green down': 'Red up / green down',
+  },
+  GENERATION_BACKEND: {
+    litellm: 'Default model settings',
+  },
+  GENERATION_FALLBACK_BACKEND: {
+    litellm: 'Default model settings',
+  },
+  AGENT_GENERATION_BACKEND: {
+    auto: 'Auto',
+    litellm: 'Default model tool calling',
   },
   LOG_LEVEL: {
     debug: 'Debug',

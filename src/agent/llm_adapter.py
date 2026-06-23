@@ -35,6 +35,8 @@ from src.agent.provider_trace import (
     trace_model_matches,
 )
 from src.llm.errors import call_litellm_with_param_recovery
+from src.llm.backend_registry import LITELLM_BACKEND_ID, resolve_agent_generation_backend_id
+from src.llm.generation_backend import GenerationError, GenerationErrorCode
 from src.llm.generation_params import apply_litellm_generation_params, resolve_litellm_wire_model
 from src.llm.usage import attach_message_hmacs, extract_usage_payload, normalize_litellm_usage
 from src.llm.provider_cache import (
@@ -396,6 +398,8 @@ class LLMToolAdapter:
         self._router = None          # litellm Router (multi-key primary model)
         self._legacy_router_model_list: List[Dict[str, Any]] = []
         self._litellm_available = False
+        self._backend_error: Optional[GenerationError] = None
+        self._generation_backend_id = ""
         self._register_custom_model_pricing()
         self._init_litellm()
 
@@ -425,6 +429,31 @@ class LLMToolAdapter:
         """Initialize litellm Router from channels / YAML / legacy keys."""
         config = self._config
         self._legacy_router_model_list = []
+        try:
+            self._generation_backend_id = resolve_agent_generation_backend_id(config)
+        except GenerationError as exc:
+            self._backend_error = exc
+            logger.error("Agent LLM backend configuration error: %s", exc.message)
+            return
+        if self._generation_backend_id != LITELLM_BACKEND_ID:
+            self._backend_error = GenerationError(
+                error_code=GenerationErrorCode.UNSUPPORTED_TOOL_CALLING,
+                stage="generation",
+                retryable=False,
+                fallbackable=False,
+                backend=self._generation_backend_id,
+                details={
+                    "field": "AGENT_GENERATION_BACKEND",
+                    "requested_backend": self._generation_backend_id,
+                    "supported_tool_backend": LITELLM_BACKEND_ID,
+                },
+            )
+            logger.error(
+                "Agent LLM backend %s does not support Phase 1 tool calling",
+                self._generation_backend_id,
+            )
+            return
+
         litellm_model = get_effective_agent_primary_model(config)
         if not litellm_model:
             logger.warning("Agent LLM: no effective primary model configured")
@@ -487,6 +516,8 @@ class LLMToolAdapter:
     @property
     def is_available(self) -> bool:
         """True if litellm is configured and at least one API key is present."""
+        if self._backend_error is not None:
+            return False
         return self._router is not None or self._litellm_available
 
     @property
@@ -552,6 +583,13 @@ class LLMToolAdapter:
     ) -> LLMResponse:
         """Shared completion path for both tool and text-only calls."""
         config = self._config
+        if self._backend_error is not None:
+            error_msg = (
+                "Agent generation backend configuration error: "
+                f"{self._backend_error.message}"
+            )
+            logger.error(error_msg)
+            return LLMResponse(content=error_msg, provider="error")
         models_to_try = get_effective_agent_models_to_try(config)
         if not models_to_try:
             error_msg = (

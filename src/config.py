@@ -36,6 +36,12 @@ from src.notification_contracts import (
     is_feishu_app_bot_configured,
     is_feishu_static_configured,
 )
+from src.llm.backend_registry import (
+    AUTO_AGENT_BACKEND_ID,
+    LITELLM_BACKEND_ID,
+    SUPPORTED_AGENT_GENERATION_BACKENDS,
+    SUPPORTED_GENERATION_BACKENDS,
+)
 from src.llm import generation_params as llm_generation_params
 from src.scheduler import normalize_schedule_times
 
@@ -675,6 +681,8 @@ class Config:
     alphasift_install_spec: str = DEFAULT_ALPHASIFT_INSTALL_SPEC
 
     # === AI 分析配置 ===
+    generation_backend: str = LITELLM_BACKEND_ID
+    generation_fallback_backend: str = LITELLM_BACKEND_ID
     # LiteLLM unified model config (provider/model format, e.g. gemini/gemini-3.1-pro-preview)
     litellm_model: str = ""  # Primary model; must include provider prefix when set explicitly
     litellm_fallback_models: List[str] = field(default_factory=list)  # Cross-model fallback list
@@ -764,6 +772,7 @@ class Config:
     bias_threshold: float = 5.0  # 乖离率阈值（%），超过此值提示不追高
 
     # === Agent 模式配置 ===
+    agent_generation_backend: str = AUTO_AGENT_BACKEND_ID
     agent_litellm_model: str = ""  # Optional Agent-only primary model; empty inherits LITELLM_MODEL
     agent_mode: bool = False
     _agent_mode_explicit: bool = False  # True when AGENT_MODE was explicitly set in env
@@ -1358,6 +1367,19 @@ class Config:
                 if m not in _seen and not _seen.add(m)  # type: ignore[func-returns-value]
             ]
 
+        generation_backend = (
+            os.getenv('GENERATION_BACKEND', LITELLM_BACKEND_ID).strip().lower()
+            or LITELLM_BACKEND_ID
+        )
+        generation_fallback_backend = (
+            os.getenv('GENERATION_FALLBACK_BACKEND', LITELLM_BACKEND_ID).strip().lower()
+            or LITELLM_BACKEND_ID
+        )
+        agent_generation_backend = (
+            os.getenv('AGENT_GENERATION_BACKEND', AUTO_AGENT_BACKEND_ID).strip().lower()
+            or AUTO_AGENT_BACKEND_ID
+        )
+
         agent_litellm_model = normalize_agent_litellm_model(
             os.getenv('AGENT_LITELLM_MODEL', ''),
             configured_models=set(get_configured_llm_models(llm_model_list)),
@@ -1508,6 +1530,8 @@ class Config:
                 os.getenv('STOCK_INDEX_REMOTE_UPDATE_ENABLED'),
                 default=True,
             ),
+            generation_backend=generation_backend,
+            generation_fallback_backend=generation_fallback_backend,
             litellm_model=litellm_model,
             litellm_fallback_models=litellm_fallback_models,
             llm_temperature=resolve_unified_llm_temperature(litellm_model),
@@ -1600,6 +1624,7 @@ class Config:
             ),
             newsnow_base_url=((os.getenv('NEWSNOW_BASE_URL') or '').strip().rstrip('/') or 'https://newsnow.busiyi.world'),
             bias_threshold=parse_env_float(os.getenv('BIAS_THRESHOLD'), 5.0, field_name='BIAS_THRESHOLD', minimum=1.0),
+            agent_generation_backend=agent_generation_backend,
             agent_litellm_model=agent_litellm_model,
             agent_mode=os.getenv('AGENT_MODE', 'false').lower() == 'true',
             _agent_mode_explicit=os.getenv('AGENT_MODE') is not None,
@@ -2580,6 +2605,42 @@ class Config:
                 severity="info",
                 message="未配置 Tushare Token，将使用其他数据源",
                 field="TUSHARE_TOKEN",
+            ))
+
+        # --- Generation backend selection ---
+        generation_backend = (self.generation_backend or LITELLM_BACKEND_ID).strip().lower()
+        generation_fallback_backend = (
+            self.generation_fallback_backend or LITELLM_BACKEND_ID
+        ).strip().lower()
+        agent_generation_backend = (
+            self.agent_generation_backend or AUTO_AGENT_BACKEND_ID
+        ).strip().lower()
+        if generation_backend not in SUPPORTED_GENERATION_BACKENDS:
+            issues.append(ConfigIssue(
+                severity="error",
+                message=(
+                    "GENERATION_BACKEND 当前仅支持 litellm。"
+                    f"已配置的值为：{generation_backend}。"
+                ),
+                field="GENERATION_BACKEND",
+            ))
+        if generation_fallback_backend not in SUPPORTED_GENERATION_BACKENDS:
+            issues.append(ConfigIssue(
+                severity="error",
+                message=(
+                    "GENERATION_FALLBACK_BACKEND 当前仅支持 litellm。"
+                    f"已配置的值为：{generation_fallback_backend}。"
+                ),
+                field="GENERATION_FALLBACK_BACKEND",
+            ))
+        if agent_generation_backend not in SUPPORTED_AGENT_GENERATION_BACKENDS:
+            issues.append(ConfigIssue(
+                severity="error",
+                message=(
+                    "AGENT_GENERATION_BACKEND 当前仅支持 auto 或 litellm。"
+                    f"已配置的值为：{agent_generation_backend}。"
+                ),
+                field="AGENT_GENERATION_BACKEND",
             ))
 
         # --- LLM availability ---

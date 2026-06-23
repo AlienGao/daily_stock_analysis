@@ -338,6 +338,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - [修复] 避免 runtime scheduler 重建定时任务时重复立即运行事件监控，减少重复告警和后台任务状态丢失。
 - [修复] Web/API runtime scheduler 接管 `--serve --schedule` 后保留 `--dry-run`、`--no-notify` 等启动参数语义。
 - [改进] Web 历史报告详情不再内嵌展示 AI 建议卡片，结构化决策信号集中在 AI 建议页查询，并保留按来源报告 ID 筛选或 URL 参数精确定位入口。
+- [改进] 新增 GenerationBackend Phase 1 抽象与 LiteLLM backend 配置，默认保持普通分析、`generate_text()` 和 Agent Chat 的 LiteLLM 行为不变。
+- [修复] unsupported `GENERATION_BACKEND` 在 `generate_text()` 与大盘复盘路径中显式报配置错误，避免被当成空响应或模板报告 fallback。
+- [改进] Web 设置页明确 `AGENT_GENERATION_BACKEND=auto` 当前使用 LiteLLM 工具调用路径，避免暗示已有动态 backend 选择。
 - [改进] Web 首页“任务已存在”重复分析提示新增手动关闭按钮与 5 秒后自动消失。
 - [修复] `main.py --serve-only` 在低配主机上因 uvicorn 在 3.0s 启动自检窗口内才惰性 import 应用（litellm + 整个 app 树）导致超时退出、容器反复重启；改为在计时前于调用线程预先 import app 对象再交给 uvicorn，启动自检不再误杀慢启动。
 - [修复] Docker 镜像预置 efinance 缓存目录（efinance/data）属主给非 root 运行用户 dsa，修复 A 股 efinance 数据源因写 search-cache.json 触发 PermissionError 而每次抓取失败降级的问题。

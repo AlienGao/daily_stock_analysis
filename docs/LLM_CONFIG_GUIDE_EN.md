@@ -18,6 +18,21 @@ If you are choosing a concrete provider, setting up GitHub Actions Secrets / Var
 
 ---
 
+## Generation Backend (Phase 1)
+
+The generation backend abstraction currently only centralizes the backend-selection contract for regular analysis, market review, `generate_text()`, and Agent Chat. In Phase 1, the only executable backend is `litellm`, so default behavior remains the historical LiteLLM path.
+
+```env
+GENERATION_BACKEND=litellm
+GENERATION_FALLBACK_BACKEND=litellm
+AGENT_GENERATION_BACKEND=auto
+```
+
+- `GENERATION_BACKEND` only supports `litellm`. Values such as `codex`, `claude_code`, `opencode`, or `hermes` produce an explicit configuration error and are not silently downgraded to LiteLLM.
+- `GENERATION_FALLBACK_BACKEND=litellm` is a backend-level no-op when the primary backend is also `litellm`; model-level fallback still belongs to `LITELLM_FALLBACK_MODELS`, Router, or Channels.
+- `AGENT_GENERATION_BACKEND=auto` means: reuse the current generation backend only if it supports tool calling; otherwise continue to use the LiteLLM tool backend. Because Phase 1 only executes LiteLLM, runtime behavior is equivalent to the existing Agent LiteLLM path.
+- Local CLI, Hermes HTTP, and Agent text-only backends are later-phase additions and are not enabled in this version.
+
 ## Method 1: Simple Model Config (For Beginners)
 
 **Goal:** Just paste your API Key and the model name to start using it immediately. No need to mess with complex concepts.

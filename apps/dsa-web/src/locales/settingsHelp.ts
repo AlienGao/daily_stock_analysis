@@ -7,6 +7,8 @@ export interface SettingsHelpContent {
   valueNotes?: string[];
   impact?: string[];
   notes?: string[];
+  examples?: string[];
+  showFieldKey?: boolean;
   docs?: SystemConfigDocLink[];
 }
 
@@ -29,6 +31,38 @@ const settingsHelpZhCN: SettingsHelpMap = {
       '股票代码之间不要使用中文逗号。',
       '修改后保存配置即可供后续任务读取。',
     ],
+  },
+  'settings.ai_model.GENERATION_BACKEND': {
+    title: '分析生成方式',
+    showFieldKey: false,
+    summary: '决定系统用哪种方式生成个股分析、大盘复盘和普通文本回复。',
+    usage: '通常保持“默认模型配置”。系统会继续使用你在本页配置的主模型、备选模型、渠道和用量记录。',
+    valueNotes: [
+      '当前页面只开放“默认模型配置”作为可选方式，看到更多选项前无需调整。',
+      '如果通过环境变量手动填写了其他值，系统会提示配置错误，避免误以为已经切换成功。',
+    ],
+    impact: ['影响普通分析、大盘复盘和文本生成入口，不改变问股助手的工具执行规则。'],
+    notes: [
+      '想恢复默认行为，选择“默认模型配置”并保存配置。',
+      '高级说明：当前默认模型配置内部由 LiteLLM 兼容层执行；普通使用无需了解或修改该内部值。',
+    ],
+    examples: [],
+  },
+  'settings.ai_model.GENERATION_FALLBACK_BACKEND': {
+    title: '备用生成方式（预留）',
+    showFieldKey: false,
+    summary: '为以后多个生成方式之间的备用切换预留；当前主要用于明确保持默认行为。',
+    usage: '通常保持“默认模型配置”。主生成方式也是默认模型配置时，不会额外重复调用一次。',
+    valueNotes: [
+      '如果只是想设置主模型失败后的备用模型，请使用“备选模型”，不是这个字段。',
+      '当前页面只开放“默认模型配置”，保存默认值即可。',
+    ],
+    impact: ['不改变现有模型备用顺序，也不会影响渠道编辑器里的模型配置。'],
+    notes: [
+      '想恢复默认行为，选择“默认模型配置”并保存配置。',
+      '高级说明：当前默认模型配置内部由 LiteLLM 兼容层执行；普通使用无需了解或修改该内部值。',
+    ],
+    examples: [],
   },
   'settings.ai_model.LITELLM_MODEL': {
     title: '主模型',
@@ -700,6 +734,22 @@ const settingsHelpZhCN: SettingsHelpMap = {
     impact: ['影响个股分析流程、报告生成质量和 LLM 调用次数。'],
     notes: ['Agent 模式会消耗更多 token 和时间，适合需要深度推理的场景。'],
   },
+  'settings.agent.AGENT_GENERATION_BACKEND': {
+    title: '问股生成方式',
+    showFieldKey: false,
+    summary: '决定问股助手用哪种方式生成回复，并配合工具查询行情、新闻和历史数据。',
+    usage: '通常保持“自动”。系统会选择当前可用的模型工具调用方式；如果没有明确要固定方式，无需调整。',
+    valueNotes: [
+      '如果不确定，选择“自动”即可。',
+      '只有当你明确要固定使用当前默认模型工具调用时，才改为“默认模型工具调用”。',
+    ],
+    impact: ['影响问股助手的回复生成和工具调用入口，不改变它能使用哪些工具。'],
+    notes: [
+      '想恢复默认行为，选择“自动”并保存配置。',
+      '高级说明：当前默认模型工具调用内部由 LiteLLM 兼容层执行；普通使用无需了解或修改该内部值。',
+    ],
+    examples: [],
+  },
   'settings.agent.AGENT_MAX_STEPS': {
     title: 'Agent 最大推理步数',
     summary: '控制 Agent 推理链路的最大步数上限。',
@@ -1087,6 +1137,38 @@ const settingsHelpEnUS: SettingsHelpMap = {
     ],
     impact: ['Affects analysis scope, notification content, and saved history reports.'],
     notes: ['Use English commas between symbols.', 'Save the setting before later tasks can read it.'],
+  },
+  'settings.ai_model.GENERATION_BACKEND': {
+    title: 'Analysis Generation Method',
+    showFieldKey: false,
+    summary: 'Chooses how the system generates stock analysis, market reviews, and regular text responses.',
+    usage: 'Usually keep “Default model settings”. The system will continue to use the primary model, fallback models, channels, and usage tracking configured on this page.',
+    valueNotes: [
+      'The settings page currently exposes “Default model settings” as the available method, so most users do not need to change this.',
+      'If another value is set manually through environment variables, the system reports a configuration error instead of pretending the switch worked.',
+    ],
+    impact: ['Affects regular analysis, market review, and text generation entry points. It does not change how the ask-stock assistant runs tools.'],
+    notes: [
+      'To restore the default behavior, choose “Default model settings” and save.',
+      'Advanced note: the default model settings are currently executed through the LiteLLM compatibility layer; regular users do not need to understand or change that internal value.',
+    ],
+    examples: [],
+  },
+  'settings.ai_model.GENERATION_FALLBACK_BACKEND': {
+    title: 'Fallback Generation Method (reserved)',
+    showFieldKey: false,
+    summary: 'Reserved for switching between multiple generation methods later; today it mainly records the default behavior explicitly.',
+    usage: 'Usually keep “Default model settings”. When the main method is already the default model settings, the system does not make an extra duplicate call.',
+    valueNotes: [
+      'If you want a backup model after the primary model fails, use “Fallback models” instead of this field.',
+      'The settings page currently exposes “Default model settings” only, so saving the default is enough.',
+    ],
+    impact: ['Does not change the current fallback model order or the model-channel editor configuration.'],
+    notes: [
+      'To restore the default behavior, choose “Default model settings” and save.',
+      'Advanced note: the default model settings are currently executed through the LiteLLM compatibility layer; regular users do not need to understand or change that internal value.',
+    ],
+    examples: [],
   },
   'settings.ai_model.LITELLM_MODEL': {
     title: 'Primary Model',
@@ -1716,6 +1798,22 @@ const settingsHelpEnUS: SettingsHelpMap = {
     ],
     impact: ['Affects stock analysis flow, report quality, and LLM call count.'],
     notes: ['Agent mode consumes more tokens and time; best for scenarios requiring deep reasoning.'],
+  },
+  'settings.agent.AGENT_GENERATION_BACKEND': {
+    title: 'Ask-Stock Generation Method',
+    showFieldKey: false,
+    summary: 'Chooses how the ask-stock assistant generates replies and queries market, news, and history tools.',
+    usage: 'Usually keep Auto. The system chooses the currently available model tool-calling method; change it only when you need to pin the assistant method.',
+    valueNotes: [
+      'If you are unsure, choose Auto.',
+      'Choose “Default model tool calling” only when you explicitly want to pin the assistant to the current default model tool-calling method.',
+    ],
+    impact: ['Affects the assistant reply path and tool entry point. It does not change which tools the assistant can use.'],
+    notes: [
+      'To restore the default behavior, choose Auto and save.',
+      'Advanced note: the current default model tool-calling method is executed through the LiteLLM compatibility layer; regular users do not need to understand or change that internal value.',
+    ],
+    examples: [],
   },
   'settings.agent.AGENT_MAX_STEPS': {
     title: 'Agent Max Steps',
