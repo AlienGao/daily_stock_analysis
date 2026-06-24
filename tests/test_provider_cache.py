@@ -359,7 +359,11 @@ def test_litellm_openai_prompt_cache_key_is_not_passed_through_without_verified_
             def log_message(self, *args):
                 return
 
-        server = HTTPServer(("127.0.0.1", 0), CaptureHandler)
+        try:
+            server = HTTPServer(("127.0.0.1", 0), CaptureHandler)
+        except PermissionError as exc:
+            print(f"LOCAL_SOCKET_UNAVAILABLE={exc}")
+            raise SystemExit(78)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         try:
@@ -392,6 +396,8 @@ def test_litellm_openai_prompt_cache_key_is_not_passed_through_without_verified_
     )
     if completed.returncode == 77:
         pytest.skip("litellm is not installed")
+    if completed.returncode == 78:
+        pytest.skip("local socket creation is not permitted in this environment")
     assert completed.returncode == 0, completed.stdout + completed.stderr
     captured_line = next(
         (line for line in completed.stdout.splitlines() if line.startswith("CAPTURED_BODY=")),
