@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- [新功能] 港股通监控：成份快照（AkShare）、盘中 rt_hk_k 轮询落库、历史分钟回填脚本、Web `/hk-monitor` 页（30s 刷新）
 - [修复] 金股页当月数据空白：当月回测接口耗时接近默认 30s 超时导致整页加载失败，回测超时延长至 120s 且各接口独立加载
 - [改进] 新高页 BOLL 推荐排除距最近新高回撤超过 20% 的个股
 - [改进] 新高页 BOLL 推荐默认筛选距中轨/下轨 2% 以内（原 5%）

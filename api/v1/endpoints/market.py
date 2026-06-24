@@ -15,7 +15,14 @@ from api.v1.schemas.market import (
     HfqKLineItem,
     HfqKLineResponse,
     HfqNewHighListResponse,
+    HkGgtComponentListResponse,
+    HkGgtPollResponse,
+    HkBollPickListResponse,
+    HkStockListResponse,
+    HkStockKLineResponse,
 )
+from src.services.hk_ggt_monitor_service import HkGgtMonitorService
+from src.services.hk_stock_service import HkStockService
 from src.services.hfq_new_high_service import (
     DEFAULT_LOOKBACK_DAYS,
     DEFAULT_MAX_DRAWDOWN_FROM_HIGH_PCT,
@@ -123,3 +130,88 @@ def get_hfq_new_high_klines(
             status_code=500,
             detail={"error": "internal_error", "message": f"获取 K 线失败: {exc}"},
         ) from exc
+
+
+@router.get(
+    "/hk-ggt/components",
+    response_model=HkGgtComponentListResponse,
+    responses={500: {"model": ErrorResponse}},
+    summary="港股通成份股快照",
+)
+def list_hk_ggt_components(
+    trade_date: Optional[str] = Query(None, description="交易日 YYYYMMDD，默认最新"),
+    refresh: bool = Query(False, description="强制刷新 AkShare 成份"),
+) -> HkGgtComponentListResponse:
+    try:
+        result = HkGgtMonitorService().list_components(trade_date, refresh=refresh)
+        return HkGgtComponentListResponse(**result)
+    except Exception as exc:
+        logger.error("hk-ggt/components failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail={"error": "internal_error", "message": str(exc)}) from exc
+
+
+
+@router.get(
+    "/hk-stocks",
+    response_model=HkStockListResponse,
+    responses={500: {"model": ErrorResponse}},
+    summary="港股通成份股列表（含最新价）",
+)
+def list_hk_stocks() -> HkStockListResponse:
+    try:
+        result = HkStockService().list_components()
+        return HkStockListResponse(**result)
+    except Exception as exc:
+        logger.error("hk-stocks failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail={"error": "internal_error", "message": str(exc)}) from exc
+
+
+@router.get(
+    "/hk-stocks/{hk_code}/klines",
+    response_model=HkStockKLineResponse,
+    responses={500: {"model": ErrorResponse}},
+    summary="港股通个股日 K 线（BOLL 叠加）",
+)
+def get_hk_stock_klines(
+    hk_code: str,
+    start_date: Optional[str] = Query(None, description="起始日 YYYYMMDD"),
+    end_date: Optional[str] = Query(None, description="截止日 YYYYMMDD"),
+) -> HkStockKLineResponse:
+    try:
+        result = HkStockService().get_klines(hk_code, start_date=start_date, end_date=end_date)
+        return HkStockKLineResponse(**result)
+    except Exception as exc:
+        logger.error("hk-stocks klines failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail={"error": "internal_error", "message": str(exc)}) from exc
+
+
+@router.get(
+    "/hk-stocks/boll-picks",
+    response_model=HkBollPickListResponse,
+    responses={500: {"model": ErrorResponse}},
+    summary="港股通 BOLL 推荐（上轨/中轨/下轨附近 ±1.5%）",
+)
+def list_hk_boll_picks(
+    near_pct: float = Query(1.5, description="距轨道阈值（%）"),
+) -> HkBollPickListResponse:
+    try:
+        result = HkStockService().scan_boll_picks(near_pct=near_pct)
+        return HkBollPickListResponse(**result)
+    except Exception as exc:
+        logger.error("hk-stocks boll-picks failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail={"error": "internal_error", "message": str(exc)}) from exc
+
+
+@router.post(
+    "/hk-ggt/poll",
+    response_model=HkGgtPollResponse,
+    responses={500: {"model": ErrorResponse}},
+    summary="手动触发一轮 rt_hk_k 轮询落库",
+)
+def poll_hk_ggt_rt() -> HkGgtPollResponse:
+    try:
+        result = HkGgtMonitorService().poll_rt_once()
+        return HkGgtPollResponse(**result)
+    except Exception as exc:
+        logger.error("hk-ggt poll failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail={"error": "internal_error", "message": str(exc)}) from exc

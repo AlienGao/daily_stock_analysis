@@ -1382,6 +1382,82 @@ class InstitutionSurvey(Base):
         }
 
 
+class HkGgtComponent(Base):
+    """港股通成份股每日快照 (AkShare stock_hk_ggt_components_em)。"""
+
+    __tablename__ = 'hk_ggt_component'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    trade_date = Column(String(8), nullable=False, index=True)
+    hk_code = Column(String(5), nullable=False, index=True)
+    name = Column(String(100))
+    latest_price = Column(Float)
+    pct_change = Column(Float)
+    change_amount = Column(Float)
+    open_price = Column(Float)
+    high = Column(Float)
+    low = Column(Float)
+    prev_close = Column(Float)
+    volume = Column(Float)
+    amount = Column(Float)
+    created_at = Column(DateTime, default=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('trade_date', 'hk_code', name='uix_hk_ggt_comp_date_code'),
+        Index('ix_hk_ggt_comp_date', 'trade_date'),
+    )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'trade_date': self.trade_date,
+            'hk_code': self.hk_code,
+            'name': self.name,
+            'latest_price': self.latest_price,
+            'pct_change': self.pct_change,
+            'change_amount': self.change_amount,
+            'open': self.open_price,
+            'high': self.high,
+            'low': self.low,
+            'prev_close': self.prev_close,
+            'volume': self.volume,
+            'amount': self.amount,
+        }
+
+
+class HkStockDaily(Base):
+    """港股通个股日线数据。"""
+
+    __tablename__ = 'hk_stock_daily'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    hk_code = Column(String(10), nullable=False, index=True)
+    trade_date = Column(String(8), nullable=False, index=True)
+    open = Column(Float)
+    high = Column(Float)
+    low = Column(Float)
+    close = Column(Float)
+    volume = Column(Float)
+    pct_chg = Column(Float)
+
+    __table_args__ = (
+        UniqueConstraint('hk_code', 'trade_date', name='uix_hk_stock_daily_code_date'),
+    )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "hk_code": self.hk_code,
+            "trade_date": self.trade_date,
+            "open": self.open,
+            "high": self.high,
+            "low": self.low,
+            "close": self.close,
+            "volume": self.volume,
+            "pct_chg": self.pct_chg,
+        }
+
+
+
+
 class InstitutionHold(Base):
     """机构持仓季度汇总 (akshare stock_institute_hold 落库)。
 
@@ -7592,6 +7668,132 @@ class DatabaseManager(metaclass=_DatabaseManagerMeta):
                     "stock_returns": json.loads(row.stock_returns_json or "[]"),
                 })
             return results
+
+    # ------------------------------------------------------------------
+    # 港股通监控
+    # ------------------------------------------------------------------
+
+    def replace_hk_ggt_components(self, trade_date: str, rows: List[Dict[str, Any]]) -> int:
+        """替换指定交易日的港股通成份快照。"""
+        if not trade_date:
+            return 0
+
+        def _write(session: Session) -> int:
+            session.query(HkGgtComponent).filter(
+                HkGgtComponent.trade_date == trade_date
+            ).delete(synchronize_session=False)
+            if not rows:
+                return 0
+            records = []
+            for row in rows:
+                hk_code = str(row.get('hk_code', '')).strip()
+                if not hk_code:
+                    continue
+                records.append(HkGgtComponent(
+                    trade_date=trade_date,
+                    hk_code=hk_code,
+                    name=str(row.get('name', '') or '')[:100],
+                    latest_price=self._normalize_sql_value(row.get('latest_price')),
+                    pct_change=self._normalize_sql_value(row.get('pct_change')),
+                    change_amount=self._normalize_sql_value(row.get('change_amount')),
+                    open_price=self._normalize_sql_value(row.get('open')),
+                    high=self._normalize_sql_value(row.get('high')),
+                    low=self._normalize_sql_value(row.get('low')),
+                    prev_close=self._normalize_sql_value(row.get('prev_close')),
+                    volume=self._normalize_sql_value(row.get('volume')),
+                    amount=self._normalize_sql_value(row.get('amount')),
+                ))
+            session.add_all(records)
+            return len(records)
+
+        saved = self._run_write_transaction("replace_hk_ggt_components", _write)
+        logger.info("[HkGgt] 保存成份 %d 条 trade_date=%s", saved, trade_date)
+        return saved
+
+    def list_hk_ggt_components(self, trade_date: str) -> List[HkGgtComponent]:
+        with self.get_session() as session:
+            stmt = (
+                select(HkGgtComponent)
+                .where(HkGgtComponent.trade_date == trade_date)
+                .order_by(desc(HkGgtComponent.pct_change))
+            )
+            return list(session.execute(stmt).scalars().all())
+
+    def get_latest_hk_ggt_trade_date(self) -> Optional[str]:
+        with self.get_session() as session:
+            row = session.execute(
+                select(HkGgtComponent.trade_date)
+                .order_by(desc(HkGgtComponent.trade_date))
+                .limit(1)
+            ).scalar_one_or_none()
+            return str(row) if row else None
+
+    def list_hk_ggt_component_dates(self) -> List[str]:
+        from sqlalchemy import distinct
+
+        with self.get_session() as session:
+            stmt = (
+                select(distinct(HkGgtComponent.trade_date))
+                .order_by(desc(HkGgtComponent.trade_date))
+            )
+            return [str(row[0]) for row in session.execute(stmt).all() if row[0]]
+
+    def list_hk_ggt_codes_for_date(self, trade_date: str) -> List[str]:
+        with self.get_session() as session:
+            stmt = select(HkGgtComponent.hk_code).where(
+                HkGgtComponent.trade_date == trade_date
+            )
+            return [str(row[0]) for row in session.execute(stmt).all() if row[0]]
+
+    def upsert_hk_stock_daily_bars(self, rows: List[Dict[str, Any]]) -> int:
+        """批量插入或更新港股通日线数据。"""
+        if not rows:
+            return 0
+        saved = 0
+        with self.get_session() as session:
+            for row in rows:
+                stmt = select(HkStockDaily).where(
+                    HkStockDaily.hk_code == row["hk_code"],
+                    HkStockDaily.trade_date == row["trade_date"],
+                )
+                existing = session.execute(stmt).scalar_one_or_none()
+                if existing:
+                    for key, val in row.items():
+                        if hasattr(existing, key):
+                            setattr(existing, key, val)
+                else:
+                    session.add(HkStockDaily(**row))
+                saved += 1
+            session.commit()
+        logger.info("[Storage] upsert_hk_stock_daily_bars: %d rows", saved)
+        return saved
+
+    def list_hk_stock_daily_bars(
+        self,
+        hk_code: str,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+    ) -> List[HkStockDaily]:
+        code = str(hk_code).zfill(5)
+        with self.get_session() as session:
+            stmt = select(HkStockDaily).where(HkStockDaily.hk_code == code)
+            if start_date:
+                stmt = stmt.where(HkStockDaily.trade_date >= start_date)
+            if end_date:
+                stmt = stmt.where(HkStockDaily.trade_date <= end_date)
+            stmt = stmt.order_by(HkStockDaily.trade_date)
+            return list(session.execute(stmt).scalars().all())
+
+    def get_latest_hk_stock_daily_trade_date(self, hk_code: str) -> Optional[str]:
+        code = str(hk_code).zfill(5)
+        with self.get_session() as session:
+            row = session.execute(
+                select(HkStockDaily.trade_date)
+                .where(HkStockDaily.hk_code == code)
+                .order_by(desc(HkStockDaily.trade_date))
+                .limit(1)
+            ).scalar_one_or_none()
+            return str(row) if row else None
 
     # ------------------------------------------------------------------
     # 机构调研

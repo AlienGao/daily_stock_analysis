@@ -310,11 +310,11 @@ CI 通过只能说明自动检查通过，不能替代人工语义收敛，也�
 - 多因子组合 YAML 在 `combos/`（六基准+业绩因子，3/4/5 因子搜索与权重微调）；搜索报告 `reports_simple_backtest/`，权重优化 `reports_discovery/factor_optimization/`。
 - 新高页 `/new-highs`：`hfq_new_high_service` 扫描全 A 股 2026 至今后复权收盘价创新高（`close×adj_factor`）；API `/api/v1/market/hfq-new-highs` 与 `/{code}/klines`；主表按最近新高日降序、同日按次数降序；展开含创新高日期倒序列表 + 2026 至今后复权日 K（BOLL，懒加载）；日级缓存 `reports_market/`。
 - 快测历史记录按累计收益降序排列；交叉验证每个组合保留 Top 3。
-- 首页批量/临时分析报告目录为 `reports_temp/`（`HOME_ANALYSIS_REPORTS_DIR`）。
-- 多 Agent 复核在定时批跑结束后触发，结果写入 `reports_multi_agent/`。
+- 首页批量/临时分析报告目录为 `reports_temp/`（`HOME_ANALYSIS_REPORTS_DIR`）；多 Agent 复核在定时批跑结束后触发，结果写入 `reports_multi_agent/`。
+- 港股通监控页 `/hk-monitor`（导航「港股」）：`hk_ggt_monitor_service` + API `/api/v1/market/hk-ggt/*`；成份 `hk_ggt_component`、分钟 `hk_ggt_minute_bar`（AkShare 回填 + Tushare `rt_hk_k` 轮询，默认 60s）；前端成份表 + 展开 recharts 曲线，30 秒只读库刷新；盘中为轮询快照非交易所原生 1 分钟 K。
 - 新闻检索 Provider 优先级：Bocha > MiniMax > Anspire > Tavily > Brave > SerpAPI > SearXNG。
 - `AGENT_SKILLS` 采用 4–6 策略精简方案，非全开所有策略。
-- 券商金股 API 前缀 `/api/v1/broker-recommend/`；月度表 `broker_recommend_monthly`；当前月 enrichment 全 0 九转视为缓存未命中。九转反转列表 `/{month}/up-to-down-daily`：升 1..8 转降/降 1..8 转升，月初第 1 日与上月最后交易日对比九转，历史推荐月信号扫描延至今日（推荐月末交易日仍忽略）；前端左右分列表、信号日可选推荐月首日至今日。策略回测 `nineturn_up_to_down_open`（缓存 v49）：总资金固定；升 1..8 转降有效（升 9+ 忽略），当日 N 股均摊、T+1 开盘买；T+2 开盘亏损卖/盈利则 T+3 起收盘跟踪（T+3 收盘超买入日收盘价继续持有，直至收盘低于买入开盘价卖出），月末最后交易日收盘强制清仓（无行情顺延开盘清仓，最多 20 日、可跨月），末交易日信号忽略；无信号日 T+1 开盘清仓后暂停（盈利跟踪持仓除外）；策略与反转判定均跨月连续；交易记录仅限当月；总收益=结算资产/固定总资金-1；交易记录含买卖额；策略 Tab 含 `up_to_down_stats` 升转降分档统计与策略月度表「月最佳信号」；展开行不复权成交价；可选月份范围并「重新计算」；买卖日 tooltip 展示交易理由；前端 timeout 120s。
+- 券商金股 API 前缀 `/api/v1/broker-recommend/`；月度表 `broker_recommend_monthly`；当前月 enrichment 全 0 九转视为缓存未命中；当月 `/{month}/backtest` 实时计算约 17–27s 且无缓存，历史月有缓存；前端 `getBacktest` 超时 120s，页面加载用 `Promise.allSettled` 避免回测失败整页空白。九转反转列表 `/{month}/up-to-down-daily`：升 1..8 转降/降 1..8 转升，月初第 1 日与上月最后交易日对比九转，历史推荐月信号扫描延至今日（推荐月末交易日仍忽略）；前端左右分列表、信号日可选推荐月首日至今日。策略回测 `nineturn_up_to_down_open`（缓存 v49）：总资金固定；升 1..8 转降有效（升 9+ 忽略），当日 N 股均摊、T+1 开盘买；T+2 开盘亏损卖/盈利则 T+3 起收盘跟踪（T+3 收盘超买入日收盘价继续持有，直至收盘低于买入开盘价卖出），月末最后交易日收盘强制清仓（无行情顺延开盘清仓，最多 20 日、可跨月），末交易日信号忽略；无信号日 T+1 开盘清仓后暂停（盈利跟踪持仓除外）；策略与反转判定均跨月连续；交易记录仅限当月；总收益=结算资产/固定总资金-1；交易记录含买卖额；策略 Tab 含 `up_to_down_stats` 升转降分档统计与策略月度表「月最佳信号」；展开行不复权成交价；可选月份范围并「重新计算」；买卖日 tooltip 展示交易理由；前端 timeout 120s。
 - 筹码因子 `chip`：`winner_rate` 以 85% 为峰向两侧递减；`deep` 满分 9 分且需 `dist_low`/成本确认。
 - 因子快照回填脚本默认每 50 个交易日执行 `wal_checkpoint(TRUNCATE)`，避免 WAL 占满磁盘。
 - 快测/寻股回测交易记录含 `pick_rank`（1..top_n，递补买入为 0），用于顺位收益贡献统计。

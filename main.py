@@ -1325,7 +1325,24 @@ def start_api_server(host: str, port: int, config: Config) -> None:
     try:
         probe.bind((host, port))
     except OSError as exc:
-        raise RuntimeError(f"FastAPI port is not available: {host}:{port}") from exc
+        holder = ""
+        try:
+            import subprocess
+            out = subprocess.check_output(
+                ["lsof", "-nP", f"-iTCP:{port}", "-sTCP:LISTEN"],
+                stderr=subprocess.DEVNULL,
+                text=True,
+            ).strip()
+            if out:
+                holder = f" 占用进程:\n{out}"
+        except Exception:
+            pass
+        raise RuntimeError(
+            f"FastAPI port is not available: {host}:{port} ({exc})."
+            f"{holder}\n"
+            f"可先执行 lsof -nP -iTCP:{port} -sTCP:LISTEN 查看占用，"
+            f"或换端口: python main.py --serve-only --port {port + 1}"
+        ) from exc
     finally:
         probe.close()
 

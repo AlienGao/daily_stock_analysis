@@ -797,6 +797,8 @@ class Config:
     agent_event_monitor_interval_minutes: int = 5  # Polling interval for event monitor background checks
     agent_event_alert_rules_json: str = ""  # JSON array of serialized EventMonitor rules
 
+    # === 港股通监控 ===
+
     # === 通知配置（可同时配置多个，全部推送）===
     
     # 企业微信 Webhook

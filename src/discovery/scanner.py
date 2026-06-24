@@ -2003,6 +2003,23 @@ def refresh_sector_daily_postmarket() -> int:
         return 0
 
 
+
+def refresh_hk_ggt_components_postmarket(akshare_fetcher=None) -> int:
+    """盘后用 AkShare 刷新港股通成份快照（不含分钟回填）。"""
+    try:
+        from src.core.trading_calendar import get_market_now
+        from src.services.hk_ggt_monitor_service import HkGgtMonitorService
+
+        trade_date = get_market_now("hk").strftime("%Y%m%d")
+        service = HkGgtMonitorService()
+        result = service.refresh_components(trade_date, force=True)
+        saved = int(result.get("saved") or 0)
+        logger.info("[Scanner] 盘后 hk_ggt components trade_date=%s saved=%d", trade_date, saved)
+        return saved
+    except Exception as e:
+        logger.warning("[Scanner] 盘后 hk_ggt components 刷新失败: %s", e)
+        return 0
+
 def ensure_postmarket_scan(
     tushare_fetcher, akshare_fetcher=None, force: bool = False
 ) -> Dict[str, Dict[str, Any]]:
@@ -2063,6 +2080,7 @@ def ensure_postmarket_scan(
         ("tech_indicator", lambda: refresh_tech_indicator_postmarket(tushare_fetcher)),
         ("adj_factor", lambda: refresh_adj_factor_postmarket(tushare_fetcher)),
         ("institution_survey", lambda: refresh_institution_survey_postmarket()),
+        ("hk_ggt_components", lambda: refresh_hk_ggt_components_postmarket(akshare_fetcher)),
     ]
     refresher_counts: Dict[str, int] = {}
     integrity_warnings: List[str] = []

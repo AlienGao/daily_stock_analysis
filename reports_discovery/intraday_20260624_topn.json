@@ -1,0 +1,150 @@
+[
+  {
+    "rank": 1,
+    "stock_code": "605277",
+    "stock_name": "新亚电子",
+    "score": 89.1,
+    "sector": "消费电子",
+    "factor_scores": {
+      "sector": 41.54081632653061,
+      "popularity": 96.56347891004106
+    },
+    "factor_weights": {
+      "sector": 5.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "人气飙升(+2324位)",
+      "人气核心圈(排名349)",
+      "人气股上涨(+10.0%)",
+      "所属板块: 消费电子"
+    ],
+    "buy_price_low": null,
+    "buy_price_high": null,
+    "stop_loss": null,
+    "take_profit_1": null,
+    "take_profit_2": null,
+    "discovered_at": "15:00:38",
+    "price_at_discovery": 19.5,
+    "pct_chg": 9.98,
+    "tech_score": 50.0,
+    "rr_score": 0.0,
+    "market_score": 0.0,
+    "sector_score": 0.0,
+    "volume_score": 0.0,
+    "position_score": 0.0,
+    "formation_score": 0.0,
+    "composite_score": 61.73
+  },
+  {
+    "rank": 2,
+    "stock_code": "002550",
+    "stock_name": "千红制药",
+    "score": 88.9,
+    "sector": "化学制药",
+    "factor_scores": {
+      "sector": 36.22831632653061,
+      "popularity": 97.18704367301231
+    },
+    "factor_weights": {
+      "sector": 5.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "人气飙升(+1641位)",
+      "人气核心圈(排名284)",
+      "人气股上涨(+10.0%)",
+      "所属板块: 化学制药"
+    ],
+    "buy_price_low": null,
+    "buy_price_high": null,
+    "stop_loss": null,
+    "take_profit_1": null,
+    "take_profit_2": null,
+    "discovered_at": "15:00:38",
+    "price_at_discovery": 6.51,
+    "pct_chg": 9.97,
+    "tech_score": 50.0,
+    "rr_score": 0.0,
+    "market_score": 0.0,
+    "sector_score": 0.0,
+    "volume_score": 0.0,
+    "position_score": 0.0,
+    "formation_score": 0.0,
+    "composite_score": 61.67
+  },
+  {
+    "rank": 3,
+    "stock_code": "603948",
+    "stock_name": "建业股份",
+    "score": 88.1,
+    "sector": "化学制品",
+    "factor_scores": {
+      "sector": 40.8125,
+      "popularity": 95.51231802911535
+    },
+    "factor_weights": {
+      "sector": 5.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "人气飙升(+3423位)",
+      "人气核心圈(排名459)",
+      "人气股上涨(+10.0%)",
+      "所属板块: 化学制品"
+    ],
+    "buy_price_low": null,
+    "buy_price_high": null,
+    "stop_loss": null,
+    "take_profit_1": null,
+    "take_profit_2": null,
+    "discovered_at": "15:00:38",
+    "price_at_discovery": 26.92,
+    "pct_chg": 10.01,
+    "tech_score": 50.0,
+    "rr_score": 0.0,
+    "market_score": 0.0,
+    "sector_score": 0.0,
+    "volume_score": 0.0,
+    "position_score": 0.0,
+    "formation_score": 0.0,
+    "composite_score": 61.42999999999999
+  },
+  {
+    "rank": 4,
+    "stock_code": "002452",
+    "stock_name": "长高电气",
+    "score": 87.4,
+    "sector": "电网设备",
+    "factor_scores": {
+      "sector": 29.057397959183675,
+      "popularity": 96.53408361328853
+    },
+    "factor_weights": {
+      "sector": 5.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "人气飙升(+2545位)",
+      "人气核心圈(排名352)",
+      "人气股上涨(+10.0%)",
+      "所属板块: 电网设备"
+    ],
+    "buy_price_low": null,
+    "buy_price_high": null,
+    "stop_loss": null,
+    "take_profit_1": null,
+    "take_profit_2": null,
+    "discovered_at": "15:00:38",
+    "price_at_discovery": 12.12,
+    "pct_chg": 9.98,
+    "tech_score": 50.0,
+    "rr_score": 0.0,
+    "market_score": 0.0,
+    "sector_score": 0.0,
+    "volume_score": 0.0,
+    "position_score": 0.0,
+    "formation_score": 0.0,
+    "composite_score": 61.22
+  }
+]

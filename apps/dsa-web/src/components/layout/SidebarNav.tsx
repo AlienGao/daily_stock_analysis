@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Activity, ArrowUpRight, BarChart3, Brain, Compass, Home, LogOut, MessageSquareQuote, Search, Settings2, Sliders, TrendingUp, Users } from 'lucide-react';
+import { Activity, ArrowUpRight, BarChart3, Brain, Compass, Globe2, Home, LogOut, Search, Settings2, Sliders, TrendingUp, Users } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { ALPHASIFT_CONFIG_CHANGED_EVENT, SYSTEM_CONFIG_CHANGED_EVENT, alphasiftApi } from '../../api/alphasift';
 import { useAuth } from '../../contexts/AuthContext';
@@ -30,6 +30,7 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { key: 'home', labelKey: 'layout.nav.home', to: '/', icon: Home, exact: true },
   { key: 'discovery', label: '寻股', to: '/discovery', icon: Compass, exact: true },
+  { key: 'hk-monitor', label: '港股', to: '/hk-monitor', icon: Globe2 },
   { key: 'factor-backtest', label: '因子', to: '/factor-backtest', icon: Activity },
   { key: 'factor-tuning', label: '调优', to: '/factor-tuning', icon: Sliders },
   { key: 'broker-recommend', label: '金股', to: '/broker-recommend', icon: TrendingUp },
@@ -37,7 +38,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'simple-factor-backtest', label: '快测', to: '/simple-factor-backtest', icon: BarChart3 },
   { key: 'lgb', label: 'LGB', to: '/lgb', icon: Brain },
   { key: 'institution-survey', label: '调研', to: '/institution-survey', icon: Users },
-  { key: 'chat', labelKey: 'layout.nav.chat', to: '/chat', icon: MessageSquareQuote, badge: 'completion' },
+  // { key: 'chat', labelKey: 'layout.nav.chat', to: '/chat', icon: MessageSquareQuote, badge: 'completion' },
   { key: 'screening', labelKey: 'layout.nav.screening', to: '/screening', icon: Search },
   // { key: 'decision-signals', labelKey: 'layout.nav.decisionSignals', to: '/decision-signals', icon: Activity },
   { key: 'settings', labelKey: 'layout.nav.settings', to: '/settings', icon: Settings2 },

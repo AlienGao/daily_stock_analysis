@@ -556,6 +556,49 @@ class TushareFetcher(BaseFetcher):
             
             raise DataFetchError(f"Tushare 获取数据失败: {e}") from e
     
+    def fetch_rt_hk_k(self, ts_code: Optional[str] = None) -> List[Dict[str, Any]]:
+        """获取港股实时日 K 快照 (Tushare rt_hk_k)。"""
+        if self._api is None:
+            logger.warning("[Tushare] rt_hk_k 跳过: API 未初始化")
+            return []
+
+        self._check_rate_limit()
+        params: Dict[str, Any] = {}
+        if ts_code:
+            params["ts_code"] = self._convert_hk_stock_code_for_tushare(ts_code)
+
+        try:
+            df = self._api.rt_hk_k(**params)
+        except Exception as exc:
+            logger.warning("[Tushare] rt_hk_k 调用失败: %s", exc)
+            return []
+
+        if df is None or df.empty:
+            return []
+
+        rows: List[Dict[str, Any]] = []
+        for _, row in df.iterrows():
+            raw_code = str(row.get("ts_code", "")).strip()
+            if not raw_code:
+                continue
+            digits = raw_code.split(".")[0]
+            hk_code = digits[-5:].rjust(5, "0")
+            rows.append({
+                "hk_code": hk_code,
+                "ts_code": raw_code,
+                "name": row.get("name"),
+                "open": row.get("open"),
+                "high": row.get("high"),
+                "low": row.get("low"),
+                "close": row.get("close"),
+                "pre_close": row.get("pre_close"),
+                "volume": row.get("vol") if "vol" in df.columns else row.get("volume"),
+                "amount": row.get("amount"),
+                "pct_change": row.get("pct_chg") if "pct_chg" in df.columns else row.get("pct_change"),
+            })
+        logger.info("[Tushare] rt_hk_k 返回 %d 条", len(rows))
+        return rows
+
     def _normalize_data(self, df: pd.DataFrame, stock_code: str) -> pd.DataFrame:
         """
         标准化 Tushare 数据

@@ -76,3 +76,87 @@ class HfqKLineResponse(BaseModel):
     start_date: str
     end_date: str
     data: List[HfqKLineItem] = Field(default_factory=list)
+
+
+class HkGgtComponentItem(BaseModel):
+    trade_date: str
+    hk_code: str
+    name: Optional[str] = None
+    latest_price: Optional[float] = None
+    pct_change: Optional[float] = None
+    change_amount: Optional[float] = None
+    open: Optional[float] = Field(None, alias="open")
+    high: Optional[float] = None
+    low: Optional[float] = None
+    prev_close: Optional[float] = None
+    volume: Optional[float] = None
+    amount: Optional[float] = None
+
+    class Config:
+        populate_by_name = True
+
+
+class HkGgtComponentListResponse(BaseModel):
+    trade_date: str
+    total: int
+    items: List[HkGgtComponentItem] = Field(default_factory=list)
+    available_dates: List[str] = Field(default_factory=list)
+
+
+class HkStockListItem(BaseModel):
+    hk_code: str
+    name: Optional[str] = None
+    latest_price: Optional[float] = None
+    pct_change: Optional[float] = None
+
+
+class HkStockListResponse(BaseModel):
+    trade_date: str
+    total: int
+    items: List[HkStockListItem] = Field(default_factory=list)
+
+
+class HkStockKLineItem(BaseModel):
+    date: str
+    open: Optional[float] = None
+    high: Optional[float] = None
+    low: Optional[float] = None
+    close: float
+    volume: Optional[float] = None
+    boll_mid: Optional[float] = None
+    boll_upper: Optional[float] = None
+    boll_lower: Optional[float] = None
+
+
+class HkStockKLineResponse(BaseModel):
+    hk_code: str
+    start_date: str
+    end_date: str
+    data: List[HkStockKLineItem] = Field(default_factory=list)
+
+
+class HkBollPickItem(BaseModel):
+    hk_code: str
+    name: str
+    close: float
+    band: str
+    boll_mid: float
+    boll_upper: float
+    boll_lower: float
+    dist_pct: Optional[float] = None
+
+
+class HkBollPickListResponse(BaseModel):
+    near_pct: float
+    upper: List[HkBollPickItem] = Field(default_factory=list)
+    mid: List[HkBollPickItem] = Field(default_factory=list)
+    lower: List[HkBollPickItem] = Field(default_factory=list)
+
+
+class HkGgtPollResponse(BaseModel):
+    polled: bool
+    reason: Optional[str] = None
+    trade_date: Optional[str] = None
+    bar_time: Optional[str] = None
+    saved: int = 0
+    matched: Optional[int] = None

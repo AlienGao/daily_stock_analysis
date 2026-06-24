@@ -180,6 +180,23 @@ def _drawdown_from_high(close: float, high_close: Optional[float]) -> Optional[f
     return round((close / high_close - 1) * 100, 2)
 
 
+def _mid_slope(closes: List[float], period: int = BOLL_PERIOD, lookback: int = 3) -> Optional[float]:
+    """计算 BOLL 中轨在最近 lookback 个有效值上的平均斜率（正值=上移）。"""
+    valid = [float(c) for c in closes if c is not None and math.isfinite(c)]
+    if len(valid) < period + lookback - 1:
+        return None
+    mids = []
+    for i in range(len(valid) - lookback + 1, len(valid) + 1):
+        if i < period:
+            return None
+        window = valid[i - period:i]
+        mids.append(sum(window) / period)
+    if len(mids) < 2:
+        return None
+    slope = (mids[-1] - mids[0]) / (len(mids) - 1)
+    return round(slope, 4)
+
+
 class HfqNewHighService:
     """全 A 股后复权收盘创新高统计。"""
 
@@ -373,6 +390,7 @@ class HfqNewHighService:
                 band_zone = "mid"
             else:
                 band_zone = "lower"
+            _slope = _mid_slope(closes)
             picks.append({
                 "ts_code": base["ts_code"],
                 "stock_code": bare,
@@ -386,12 +404,13 @@ class HfqNewHighService:
                 "dist_mid_pct": dist_mid,
                 "dist_lower_pct": dist_lower,
                 "band_zone": band_zone,
+                "mid_slope": _slope,
             })
 
         picks.sort(
             key=lambda x: (
-                x.get("drawdown_from_high_pct") is None,
-                -(x.get("drawdown_from_high_pct") if x.get("drawdown_from_high_pct") is not None else -9999),
+                0 if (x.get("mid_slope") or 0) > 0 else 1,
+                -(x.get("mid_slope") or 0),
             ),
         )
         payload = {

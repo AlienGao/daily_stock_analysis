@@ -2003,6 +2003,119 @@ class AkshareFetcher(BaseFetcher):
             logger.warning(f"[Akshare] 获取北向持股失败: {e}")
             return None
 
+
+    @staticmethod
+    def _norm_hk_code(code: str) -> str:
+        return str(code or "").lower().replace("hk", "").zfill(5)
+
+    @staticmethod
+    def _pick_col(df, candidates):
+        for name in candidates:
+            if name in df.columns:
+                return name
+        return None
+
+    def fetch_hk_ggt_components(self) -> list:
+        """获取港股通成份股快照 (ak.stock_hk_ggt_components_em)。"""
+        import akshare as ak
+
+        try:
+            self._set_random_user_agent()
+            self._enforce_rate_limit()
+            df = ak.stock_hk_ggt_components_em()
+            if df is None or df.empty:
+                return []
+
+            code_col = self._pick_col(df, ["代码", "symbol", "code"])
+            name_col = self._pick_col(df, ["名称", "name"])
+            if not code_col:
+                logger.warning("[Akshare] stock_hk_ggt_components_em 缺少代码列: %s", list(df.columns))
+                return []
+
+            rows = []
+            for _, row in df.iterrows():
+                hk_code = self._norm_hk_code(row.get(code_col))
+                if not hk_code.strip("0"):
+                    continue
+                rows.append({
+                    "hk_code": hk_code,
+                    "name": str(row.get(name_col, "") if name_col else "")[:100],
+                    "latest_price": row.get(self._pick_col(df, ["最新价", "现价", "close"])),
+                    "pct_change": row.get(self._pick_col(df, ["涨跌幅", "pct_chg"])),
+                    "change_amount": row.get(self._pick_col(df, ["涨跌额", "change"])),
+                    "open": row.get(self._pick_col(df, ["今开", "开盘", "open"])),
+                    "high": row.get(self._pick_col(df, ["最高", "high"])),
+                    "low": row.get(self._pick_col(df, ["最低", "low"])),
+                    "prev_close": row.get(self._pick_col(df, ["昨收", "pre_close"])),
+                    "volume": row.get(self._pick_col(df, ["成交量", "vol", "volume"])),
+                    "amount": row.get(self._pick_col(df, ["成交额", "amount"])),
+                })
+            logger.info("[Akshare] stock_hk_ggt_components_em 返回 %d 条", len(rows))
+            return rows
+        except Exception as e:
+            logger.warning("[Akshare] 获取港股通成份失败: %s", e)
+            return []
+
+    def fetch_hk_ggt_minute_bars(self, hk_code: str, start_date: str = "20260622") -> list:
+        """获取港股 1 分钟历史 (ak.stock_hk_hist_min_em, period=1)。"""
+        import akshare as ak
+
+        code = self._norm_hk_code(hk_code)
+        try:
+            self._set_random_user_agent()
+            self._enforce_rate_limit()
+            df = ak.stock_hk_hist_min_em(symbol=code, period="1", adjust="")
+            if df is None or df.empty:
+                return []
+
+            time_col = self._pick_col(df, ["时间", "datetime", "date"])
+            if not time_col:
+                logger.warning("[Akshare] stock_hk_hist_min_em 缺少时间列: %s", list(df.columns))
+                return []
+
+            rows = []
+            for _, row in df.iterrows():
+                raw_time = str(row.get(time_col, "")).strip()
+                if not raw_time:
+                    continue
+                if len(raw_time) >= 19:
+                    bar_time = raw_time[:19]
+                    trade_date = bar_time[:10].replace("-", "")
+                elif len(raw_time) >= 16:
+                    bar_time = raw_time[:16] + ":00"
+                    trade_date = bar_time[:10].replace("-", "")
+                else:
+                    continue
+                if trade_date < start_date.replace("-", ""):
+                    continue
+                rows.append({
+                    "hk_code": code,
+                    "trade_date": trade_date,
+                    "bar_time": bar_time,
+                    "open": row.get(self._pick_col(df, ["开盘", "open"])),
+                    "high": row.get(self._pick_col(df, ["最高", "high"])),
+                    "low": row.get(self._pick_col(df, ["最低", "low"])),
+                    "close": row.get(self._pick_col(df, ["收盘", "close"])),
+                    "volume": row.get(self._pick_col(df, ["成交量", "vol", "volume"])),
+                    "amount": row.get(self._pick_col(df, ["成交额", "amount"])),
+                    "avg_price": row.get(self._pick_col(df, ["均价", "avg_price"])),
+                    "period": "1",
+                    "source": "akshare",
+                })
+            # stock_hk_hist_min_em returns open=0.0 for HK stocks (source limitation),
+            # fill missing open using previous bar's close
+            prev_close = None
+            for row in rows:
+                open_val = row.get("open")
+                if open_val is None or (isinstance(open_val, (int, float)) and open_val == 0.0):
+                    if prev_close is not None:
+                        row["open"] = prev_close
+                prev_close = row.get("close") or prev_close
+            return rows
+        except Exception as e:
+            logger.warning("[Akshare] 获取港股分钟线失败 %s: %s", code, e)
+            return []
+
     def get_institution_holds(self) -> Optional[pd.DataFrame]:
         """机构持仓数据（季度更新）"""
         import akshare as ak

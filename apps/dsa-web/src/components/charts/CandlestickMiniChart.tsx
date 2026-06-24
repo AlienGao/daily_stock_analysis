@@ -1,6 +1,40 @@
 import type React from 'react';
 import { useLayoutEffect, useRef, useState } from 'react';
 
+type OhlcPoint = {
+  date: string;
+  price?: number | null;
+  open?: number | null;
+  high?: number | null;
+  low?: number | null;
+};
+
+/** 分钟 K 用 YYYYMMDDHHmm；日 K 用 YYYYMMDD。兼容旧格式 MM-DD HH:mm。 */
+const formatChartDateLabel = (date: string): string => {
+  const digits = date.replace(/\D/g, '');
+  if (digits.length >= 12) {
+    return `${digits.slice(8, 10)}:${digits.slice(10, 12)}`;
+  }
+  if (digits.length >= 8) {
+    return `${Number(digits.slice(4, 6))}/${Number(digits.slice(6, 8))}`;
+  }
+  return date.length > 11 ? date.slice(6, 11) : date;
+};
+
+const formatChartDateTooltip = (date: string): string => {
+  const digits = date.replace(/\D/g, '');
+  if (digits.length >= 12) {
+    return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)} ${digits.slice(8, 10)}:${digits.slice(10, 12)}`;
+  }
+  if (digits.length >= 8) {
+    return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
+  }
+  return date;
+};
+
+const hasValidOhlc = (d: OhlcPoint): boolean =>
+  d.open != null && d.open > 0 && d.high != null && d.low != null && d.high >= d.low && d.high > 0;
+
 /** SVG candlestick chart for monthly stock trend.
  *  Shows OHLC candles with MA5 or BOLL overlay. */
 const computeMA = (closes: number[], period: number): (number | null)[] =>
@@ -27,21 +61,27 @@ const CandlestickMiniChart: React.FC<{
   barPitch?: number;
   /** K 线叠加指标：默认 MA5；近 6 个月行情使用 BOLL */
   overlay?: 'ma5' | 'boll';
-}> = ({ data, height = 160, longSeriesScroll = false, barPitch, overlay = 'ma5' }) => {
+  /** 可视窗口根数：图内横向滚动，默认滚动到最右（展示最近 N 根） */
+  windowBars?: number;
+}> = ({ data, height = 160, longSeriesScroll = false, barPitch, overlay = 'ma5', windowBars }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [containerW, setContainerW] = useState(0);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const validData = data.filter(d => d.price != null);
   const pads = { t: 14, r: 6, b: 20, l: 42 };
   const count = validData.length;
-  const pitch = barPitch ?? 14;
+  const measureWidth = longSeriesScroll || windowBars != null;
+  const plotW = Math.max(containerW - pads.l - pads.r, 0);
+  const autoPitch = windowBars != null && plotW > 0 ? plotW / Math.max(windowBars - 1, 1) : undefined;
+  const pitch = autoPitch ?? barPitch ?? 14;
   const fallbackW = count > 0
     ? Math.max(count * pitch + pads.l + pads.r, pads.l + pads.r + 40)
     : pads.l + pads.r + 40;
 
   useLayoutEffect(() => {
-    if (!longSeriesScroll) return;
-    const el = containerRef.current;
+    if (!measureWidth) return;
+    const el = windowBars != null ? scrollRef.current : containerRef.current;
     if (!el) return;
     const apply = () => {
       const w = Math.floor(el.clientWidth);
@@ -51,11 +91,21 @@ const CandlestickMiniChart: React.FC<{
     const ro = new ResizeObserver(() => apply());
     ro.observe(el);
     return () => ro.disconnect();
-  }, [longSeriesScroll, count]);
+  }, [measureWidth, windowBars, count]);
+
+  useLayoutEffect(() => {
+    if (windowBars == null) return;
+    const el = scrollRef.current;
+    if (el) el.scrollLeft = el.scrollWidth;
+  }, [windowBars, count, containerW]);
 
   if (count < 1) return null;
 
-  const chartW = longSeriesScroll && containerW > 0 ? containerW : fallbackW;
+  const chartW = longSeriesScroll && containerW > 0
+    ? containerW
+    : windowBars != null && containerW > 0
+      ? Math.max(fallbackW, containerW)
+      : fallbackW;
 
   const chartH = height - pads.t - pads.b;
   const xStep = (chartW - pads.l - pads.r) / Math.max(count - 1, 1);
@@ -72,10 +122,11 @@ const CandlestickMiniChart: React.FC<{
 
   const allPrices: number[] = [];
   validData.forEach(d => {
-    if (d.high != null) allPrices.push(d.high);
-    if (d.low != null) allPrices.push(d.low);
-    allPrices.push(d.price!);
-    if (d.open != null) allPrices.push(d.open);
+    if (hasValidOhlc(d)) {
+      allPrices.push(d.high!, d.low!, d.open!, d.price!);
+    } else {
+      allPrices.push(d.price!);
+    }
   });
   if (overlay === 'boll') {
     for (const v of [...bollUpperPreview, ...bollLowerPreview, ...ma20Preview]) {
@@ -181,7 +232,7 @@ const CandlestickMiniChart: React.FC<{
         {validData.map((d, i) => {
           const x = pads.l + i * xStep;
           const closeP = d.price!;
-          const hasOhlc = d.open != null && d.high != null && d.low != null;
+          const hasOhlc = hasValidOhlc(d);
           const isUp = hasOhlc ? closeP >= d.open! : true;
           const color = isUp ? '#ef4444' : '#10b981';
           const bodyTop = hasOhlc ? scaleY(Math.max(d.open!, closeP)) : scaleY(closeP) - 1.5;
@@ -212,7 +263,7 @@ const CandlestickMiniChart: React.FC<{
         {validData.map((d, i) => {
           if (i % xTickInterval !== 0 && i !== count - 1) return null;
           const x = pads.l + i * xStep;
-          const label = d.date.length >= 8 ? `${d.date.slice(4,6)}/${d.date.slice(6,8)}` : d.date;
+          const label = formatChartDateLabel(d.date);
           return (
             <text key={`xl-${i}`} x={x} y={height - 3} textAnchor="middle" fill="#6b7280"
               fontSize={9} fontFamily="monospace">{label}</text>
@@ -221,7 +272,7 @@ const CandlestickMiniChart: React.FC<{
         {/* Tooltip — SVG-native, perfectly aligned */}
         {hoverIdx != null && validData[hoverIdx] && (() => {
           const d = validData[hoverIdx];
-          const hasOhlc = d.open != null && d.high != null && d.low != null;
+          const hasOhlc = hasValidOhlc(d);
           const isUp = hasOhlc ? d.price! >= d.open! : true;
           const chgColor = isUp ? '#ef4444' : '#10b981';
           const chg = hasOhlc && d.open! > 0 ? ((d.price! - d.open!) / d.open! * 100) : null;
@@ -229,7 +280,7 @@ const CandlestickMiniChart: React.FC<{
           const tipW = 105, tipH = hasOhlc ? 52 : 30;
           const tipX = cx + tipW + 6 > chartW - pads.r ? cx - tipW - 6 : cx + 6;
           const tipY = pads.t;
-          const dateStr = d.date.length >= 8 ? `${d.date.slice(0,4)}-${d.date.slice(4,6)}-${d.date.slice(6,8)}` : d.date;
+          const dateStr = formatChartDateTooltip(d.date);
           return (
             <g pointerEvents="none">
               <rect x={tipX} y={tipY} width={tipW} height={tipH} rx={4}
@@ -267,6 +318,14 @@ const CandlestickMiniChart: React.FC<{
     return (
       <div ref={containerRef} className="w-full max-w-full min-w-0" style={{ height }}>
         {containerW > 0 ? svgEl : null}
+      </div>
+    );
+  }
+
+  if (windowBars != null) {
+    return (
+      <div ref={scrollRef} className="w-full max-w-full min-w-0 overflow-x-auto">
+        {svgEl}
       </div>
     );
   }
