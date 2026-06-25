@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import logging
 import math
+import time as _time
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -113,6 +114,29 @@ def _compute_boll(
     return result
 
 
+
+def _fetch_hk_daily_from_sina(ak_module, fetcher, norm_code: str) -> Optional["pd.DataFrame"]:
+    """从新浪 stock_hk_daily 获取港股日 K 线（主数据源）。"""
+    import pandas as _pd
+    for attempt in range(3):
+        try:
+            fetcher._set_random_user_agent()
+            fetcher._enforce_rate_limit()
+            df = ak_module.stock_hk_daily(symbol=norm_code, adjust="")
+            if df is not None and not df.empty:
+                return df
+        except Exception as exc:
+            if attempt < 2:
+                import time as _time
+                _time.sleep(1.0)
+            else:
+                import logging as _logging
+                _logging.getLogger(__name__).debug(
+                    "[HkStock] sina fetch %s failed after 3 attempts: %s", norm_code, exc
+                )
+    return None
+
+
 class HkStockService:
     """港股通成份股服务：成份列表 + 日 K 线 + BOLL。"""
     # 记录已成功回填到的目标交易日（新浪最新日）。同一目标日仅触发一次回填，
@@ -121,11 +145,19 @@ class HkStockService:
 
     def __init__(self, db: Optional[DatabaseManager] = None) -> None:
         self._db = db or DatabaseManager()
+        self._boll_picks_cache: Optional[Dict[str, Any]] = None
+        self._boll_picks_cache_ts: float = 0.0
 
     # ── 成份股列表 ──────────────────────────────────────────────
 
     def list_components(self) -> Dict[str, Any]:
-        """返回所有港股通成份股快照（从 hk_ggt_component 表读取最新交易日），按 BOLL 中轨斜率降序排列。"""
+        """返回所有港股通成份股快照（从 hk_ggt_component 表读取最新交易日）。
+
+        仅查 DB，不触发网络回填或 BOLL 计算，确保接口快速返回。
+        """
+        now = _time.time()
+        if hasattr(self, '_list_cache') and self._list_cache is not None and now - getattr(self, '_list_cache_ts', 0) < CACHE_TTL_SEC:
+            return self._list_cache
         trade_date = self._db.get_latest_hk_ggt_trade_date()
         if not trade_date:
             return {"trade_date": "", "total": 0, "items": []}
@@ -134,30 +166,35 @@ class HkStockService:
         items = []
         for r in rows:
             d = r.to_dict()
-            # 补充最新价/涨跌幅（从日线表获取最新收盘）
             code = _norm_hk_code(d["hk_code"])
-            latest = self._get_latest_price(code)
+            # 从日线表快速取最新收盘价（单条SQL，不触发回填）
+            latest = self._db.get_latest_hk_stock_daily_trade_date(code)
             if latest:
-                d.update(latest)
-            # 计算 BOLL 中轨斜率
-            try:
-                klines = self.get_klines(code)
-                data = klines.get("data", [])
-                closes = [x["close"] for x in data if x.get("close") is not None]
-                slope = _mid_slope(closes)
-                d["mid_slope"] = slope
-            except Exception:
-                d["mid_slope"] = None
+                bars = self._db.list_hk_stock_daily_bars(code, start_date=latest, end_date=latest)
+                if bars:
+                    d["latest_price"] = bars[-1].close
+                    # 计算涨跌幅（对比前一个交易日）
+                    prev = self._db.list_hk_stock_daily_bars(
+                        code, 
+                        start_date=_fmt_date(_parse_yyyymmdd(latest) - timedelta(days=7)),
+                        end_date=latest,
+                    )
+                    prev_close = None
+                    for pb in reversed(prev):
+                        if pb.trade_date < latest and pb.close is not None:
+                            prev_close = pb.close
+                            break
+                    if prev_close and prev_close > 0 and bars[-1].close:
+                        d["pct_change"] = (bars[-1].close - prev_close) / prev_close * 100
             items.append(d)
 
-        # 按中轨斜率降序排列（slope=None 排最后）
-        items.sort(key=lambda x: (0 if (x.get("mid_slope") or 0) > 0 else 1, -(x.get("mid_slope") or 0)))
-
-        return {
+        self._list_cache = {
             "trade_date": trade_date,
             "total": len(items),
             "items": items,
         }
+        self._list_cache_ts = _time.time()
+        return self._list_cache
 
     def _get_latest_price(self, hk_code: str) -> Optional[Dict[str, Any]]:
         """从日线表获取最新收盘价和涨跌幅。"""
@@ -196,6 +233,7 @@ class HkStockService:
         end_date: Optional[str] = None,
     ) -> Dict[str, Any]:
         """获取港股通个股日 K 线（复权价），叠加 BOLL。"""
+        self._trigger_backfill_async()
         code = _norm_hk_code(hk_code)
         today = get_market_now("hk").date()
         end = _parse_yyyymmdd(end_date) if end_date else today
@@ -240,12 +278,35 @@ class HkStockService:
 
     # ── BOLL 推荐 ──────────────────────────────────────────────
 
-    def _auto_backfill_if_needed(self) -> None:
-        """检查新浪最新日 K，若成份股集合未同步到新浪最新交易日则全量回填。
+    def _trigger_backfill_async(self) -> None:
+        """异步触发盘后回填（不阻塞当前请求），同一交易日仅触发一次。"""
+        # 用腾讯00700快速获取最新交易日
+        df = self._fetch_tencent_hk_kline("00700", days=5)
+        if df is None or df.empty:
+            return
+        raw = df["date"].iloc[-1]
+        latest_td = str(raw.strftime("%Y%m%d")) if hasattr(raw, "strftime") else str(raw).replace("-", "")[:8]
+        if not latest_td:
+            return
+        # 幂等锁（持久化到 DB，进程重启不丢失）
+        if self._db.get_hk_backfill_marker() >= latest_td:
+            return
+        # 只回填最新缺失的天数（2 个自然日），不做全量回填
+        import threading as _th
+        def _do():
+            try:
+                self.backfill_daily(end_date=latest_td)
+                self._db.set_hk_backfill_marker(latest_td)
+            except Exception:
+                logger.debug("[HkStock] async backfill failed", exc_info=True)
+        _th.Thread(target=_do, daemon=True).start()
+        logger.info("[HkStock] async backfill triggered for %s", latest_td)
 
-        判定依据：以成份股集合在 DB 中的「最小最新交易日」与新浪最新交易日对比。
-        只要有任意一只成份股落后于新浪最新日，就对该交易日执行全量成份股回填。
-        同一目标交易日（新浪最新日）仅触发一次回填，进程重启后自动重新检查。
+    def _auto_backfill_if_needed(self) -> None:
+        """检查最新日 K，若成份股集合未同步到最新交易日则全量回填（同步阻塞）。
+        
+        仅用于需要同步等待回填完成的场景（如 _auto_backfill_if_needed 原调用方）。
+        同一目标交易日仅触发一次回填，进程重启后自动重新检查。
         """
         try:
             import akshare as ak
@@ -260,48 +321,57 @@ class HkStockService:
                 logger.debug("[HkStock] auto-backfill skipped: empty ggt code list for %s", trade_date)
                 return
 
-            # 新浪最新交易日（用 00700 作为风向标，覆盖率最稳定）
-            fetcher = AkshareFetcher()
-            fetcher._set_random_user_agent()
-            fetcher._enforce_rate_limit()
-            df = ak.stock_hk_daily(symbol='00700', adjust='')
-            if df is None or df.empty:
-                return
-            raw_last = df['date'].iloc[-1]
-            if hasattr(raw_last, 'strftime'):
-                latest_sina = str(raw_last.strftime("%Y%m%d"))
+            # 取最新交易日（优先用腾讯接口，实时性更好；失败则回退新浪）
+            latest_source = self._fetch_tencent_hk_kline("00700", days=5)
+            latest_td: Optional[str] = None
+            if latest_source is not None and not latest_source.empty:
+                raw = latest_source["date"].iloc[-1]
+                if hasattr(raw, "strftime"):
+                    latest_td = str(raw.strftime("%Y%m%d"))
+                else:
+                    latest_td = str(raw).replace("-", "")[:8]
             else:
-                latest_sina = str(raw_last).replace('-', '')[:8]
-            if not latest_sina:
+                # 腾讯失败，回退新浪
+                fetcher = AkshareFetcher()
+                fetcher._set_random_user_agent()
+                fetcher._enforce_rate_limit()
+                df = ak.stock_hk_daily(symbol='00700', adjust='')
+                if df is None or df.empty:
+                    return
+                raw_last = df['date'].iloc[-1]
+                if hasattr(raw_last, 'strftime'):
+                    latest_td = str(raw_last.strftime("%Y%m%d"))
+                else:
+                    latest_td = str(raw_last).replace('-', '')[:8]
+
+            if not latest_td:
                 return
 
             # 同一目标日仅回填一次（幂等锁）
-            if HkStockService._backfill_completed_for == latest_sina:
+            if HkStockService._backfill_completed_for == latest_td:
                 return
 
-            # 取成份股集合在 DB 中的最小「最新交易日」：只要有一只落后于新浪最新日，
-            # 就说明集合整体需要补数据，触发一次全量回填。
+            # 取成份股集合在 DB 中的最小「最新交易日」
             db_min_latest: Optional[str] = None
             for code in codes:
                 norm = _norm_hk_code(code)
                 latest = self._db.get_latest_hk_stock_daily_trade_date(norm)
                 if not latest:
-                    db_min_latest = ""  # 存在完全无数据的成份股，必须回填
+                    db_min_latest = ""
                     break
                 if db_min_latest is None or latest < db_min_latest:
                     db_min_latest = latest
 
-            if db_min_latest and db_min_latest >= latest_sina:
-                # 全员已同步到新浪最新日，记录幂等标记后返回
-                HkStockService._backfill_completed_for = latest_sina
+            if db_min_latest and db_min_latest >= latest_td:
+                HkStockService._backfill_completed_for = latest_td
                 return
 
             logger.info(
-                "[HkStock] auto-backfill: sina latest=%s, db min latest=%s, codes=%d",
-                latest_sina, db_min_latest or "<empty>", len(codes),
+                "[HkStock] auto-backfill: latest=%s, db min latest=%s, codes=%d",
+                latest_td, db_min_latest or "<empty>", len(codes),
             )
-            self.backfill_daily(start_date=db_min_latest or None, end_date=latest_sina)
-            HkStockService._backfill_completed_for = latest_sina
+            self.backfill_daily(start_date=db_min_latest or None, end_date=latest_td)
+            HkStockService._backfill_completed_for = latest_td
         except Exception as exc:
             logger.debug("[HkStock] auto-backfill check failed: %s", exc)
 
@@ -309,24 +379,44 @@ class HkStockService:
         self,
         near_pct: float = BOLL_NEAR_PCT,
     ) -> Dict[str, Any]:
-        """扫描港股通成份股，找出收盘价靠近 BOLL 上轨/中轨/下轨 ±near_pct% 的个股。"""
-        self._auto_backfill_if_needed()
-        comps = self.list_components()
+        """扫描港股通成份股，找出收盘价靠近 BOLL 上轨/中轨/下轨 ±near_pct% 的个股。
+
+        优化：一次批量拉取所有日 K 线 + 成份快照，内存内计算，避免 ~800 次独立 DB 查询。
+        """
+        # 30 秒内存缓存，避免高频请求穿透
+        now = _time.time()
+        if self._boll_picks_cache is not None and now - self._boll_picks_cache_ts < CACHE_TTL_SEC:
+            return self._boll_picks_cache
+        self._trigger_backfill_async()
+        trade_date = self._db.get_latest_hk_ggt_trade_date()
+        if not trade_date:
+            return {"near_pct": near_pct, "upper": [], "mid": [], "lower": []}
+
+        comp_rows = self._db.list_hk_ggt_components(trade_date)
+        if not comp_rows:
+            return {"near_pct": near_pct, "upper": [], "mid": [], "lower": []}
+
         codes: List[str] = []
         code_names: Dict[str, str] = {}
-        for it in comps.get("items", []):
-            c = _norm_hk_code(it["hk_code"])
+        for r in comp_rows:
+            d = r.to_dict()
+            c = _norm_hk_code(d["hk_code"])
             codes.append(c)
-            code_names[c] = it.get("name") or c
+            code_names[c] = d.get("name") or c
+
+        # 一次批量拉取所有成份股的日 K 线（最新 180 天）
+        today = date.today()
+        start = _fmt_date(today - timedelta(days=DEFAULT_LOOKBACK_DAYS))
+        end = _fmt_date(today)
+        batch = self._db.list_hk_stock_daily_bars_batch(codes, start_date=start, end_date=end)
 
         upper_picks: List[Dict[str, Any]] = []
         mid_picks: List[Dict[str, Any]] = []
         lower_picks: List[Dict[str, Any]] = []
 
         for code in codes:
-            klines = self.get_klines(code)
-            data = klines.get("data", [])
-            closes = [d["close"] for d in data if d.get("close") is not None]
+            bars = batch.get(code, [])
+            closes = [b.close for b in bars if b.close is not None]
             if len(closes) < BOLL_PERIOD:
                 continue
             boll = _compute_boll_realtime(closes)
@@ -334,61 +424,82 @@ class HkStockService:
                 continue
             close, mid, upper, lower = boll
             name = code_names.get(code, code)
-
             _slope = _mid_slope(closes)
 
+            pick = {
+                "hk_code": code,
+                "name": name,
+                "close": close,
+                "boll_mid": mid,
+                "boll_upper": upper,
+                "boll_lower": lower,
+            }
+
             if close >= upper or _is_near_band(close, upper, near_pct):
-                upper_picks.append({
-                    "hk_code": code,
-                    "name": name,
-                    "close": close,
-                    "band": "upper",
-                    "boll_mid": mid,
-                    "boll_upper": upper,
-                    "boll_lower": lower,
-                    "dist_pct": _band_distance_pct(close, upper),
-                    "mid_slope": _slope,
-                })
+                p = dict(pick, band="upper", dist_pct=_band_distance_pct(close, upper), mid_slope=_slope)
+                upper_picks.append(p)
             if _is_near_band(close, mid, near_pct):
-                mid_picks.append({
-                    "hk_code": code,
-                    "name": name,
-                    "close": close,
-                    "band": "mid",
-                    "boll_mid": mid,
-                    "boll_upper": upper,
-                    "boll_lower": lower,
-                    "dist_pct": _band_distance_pct(close, mid),
-                    "mid_slope": _slope,
-                })
+                p = dict(pick, band="mid", dist_pct=_band_distance_pct(close, mid), mid_slope=_slope)
+                mid_picks.append(p)
             if _is_near_band(close, lower, near_pct):
-                lower_picks.append({
-                    "hk_code": code,
-                    "name": name,
-                    "close": close,
-                    "band": "lower",
-                    "boll_mid": mid,
-                    "boll_upper": upper,
-                    "boll_lower": lower,
-                    "dist_pct": _band_distance_pct(close, lower),
-                    "mid_slope": _slope,
-                })
+                p = dict(pick, band="lower", dist_pct=_band_distance_pct(close, lower), mid_slope=_slope)
+                lower_picks.append(p)
 
         def _sort_key(item: Dict[str, Any]) -> tuple:
-            """各轨道内按中轨斜率降序（斜率越大越靠前），slope=None 排最后。"""
             slope = item.get("mid_slope")
             if slope is None:
                 return (1, 0.0)
             return (0, -slope)
 
-        return {
+        result = {
             "near_pct": near_pct,
             "upper": sorted(upper_picks, key=_sort_key),
             "mid": sorted(mid_picks, key=_sort_key),
             "lower": sorted(lower_picks, key=_sort_key),
         }
+        self._boll_picks_cache = result
+        self._boll_picks_cache_ts = now
+        return result
 
     # ── 数据回填 ──────────────────────────────────────────────────
+
+    def _fetch_tencent_hk_kline(self, hk_code: str, days: int = 180) -> Optional["pd.DataFrame"]:
+        """用腾讯接口获取港股日 K 线作为 fallback 数据源。"""
+        import pandas as _pd
+        import requests as _requests
+
+        norm = _norm_hk_code(hk_code)
+        url = f"http://web.ifzq.gtimg.cn/appstock/app/kline/kline?param=hk{norm},day,,,{days}"
+        try:
+            r = _requests.get(url, timeout=10,
+                              headers={"User-Agent": "Mozilla/5.0"},
+                              proxies={"http": None, "https": None})
+            if r.status_code != 200:
+                return None
+            data = r.json()
+            if data.get("code") != 0:
+                return None
+            day_data = (data.get("data") or {}).get(f"hk{norm}", {}).get("day", [])
+            if not day_data:
+                return None
+            rows = []
+            for row in day_data:
+                dt = row[0].replace("-", "")[:8] if len(row) > 0 else None
+                if not dt:
+                    continue
+                rows.append({
+                    "date": row[0],
+                    "open": float(row[1]) if len(row) > 1 else None,
+                    "close": float(row[2]) if len(row) > 2 else None,
+                    "high": float(row[3]) if len(row) > 3 else None,
+                    "low": float(row[4]) if len(row) > 4 else None,
+                    "vol": float(row[5]) if len(row) > 5 else None,
+                    "volume": float(row[5]) if len(row) > 5 else None,
+                })
+            return _pd.DataFrame(rows)
+        except Exception as exc:
+            logger.debug("[HkStock] tencent fallback %s failed: %s", norm, exc)
+            return None
 
     def backfill_daily(
         self,
@@ -396,8 +507,13 @@ class HkStockService:
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
     ) -> int:
-        """用新浪 stock_hk_daily 回填港股通成份股日线数据。"""
+        """回填港股通成份股日线数据。
+
+        数据源优先级：腾讯 kline 接口 → 新浪 stock_hk_daily。
+        腾讯响应快（~0.2s/只）、实时性好（收盘后即有今日数据），新浪兜底。
+        """
         import akshare as ak
+        import pandas as pd
 
         today = get_market_now("hk").date()
         end = _parse_yyyymmdd(end_date) if end_date else today
@@ -411,21 +527,19 @@ class HkStockService:
                 return 0
             codes = self._db.list_hk_ggt_codes_for_date(trade_date)
 
+        from concurrent.futures import ThreadPoolExecutor, as_completed
         from data_provider.akshare_fetcher import AkshareFetcher
         fetcher = AkshareFetcher()
 
-        total = 0
-        for code in codes:
-            norm = _norm_hk_code(code)
-            try:
-                fetcher._set_random_user_agent()
-                fetcher._enforce_rate_limit()
-                df = ak.stock_hk_daily(symbol=norm, adjust="")
-            except Exception as exc:
-                logger.warning("[HkStock] backfill %s failed: %s", norm, exc)
-                continue
+        # 并发拉取：优先腾讯（~20并发），失败单只回退新浪
+        def _fetch_single(norm_code: str) -> Tuple[Optional[str], List[Dict[str, Any]]]:
+            df = self._fetch_tencent_hk_kline(norm_code, days=180)
+            source = "tencent"
             if df is None or df.empty:
-                continue
+                df = _fetch_hk_daily_from_sina(ak, fetcher, norm_code)
+                source = "sina"
+            if df is None or df.empty:
+                return (None, [])
             rows = []
             for _, row in df.iterrows():
                 raw_date = row.get("date")
@@ -439,9 +553,9 @@ class HkStockService:
                 if close_val is None:
                     continue
                 open_val = _safe_float(row.get("open"))
-                volume_val = _safe_float(row.get("vol", row.get("volume")))
+                volume_val = _safe_float(row.get("volume") if pd.notna(row.get("volume")) else row.get("vol"))
                 rows.append({
-                    "hk_code": norm,
+                    "hk_code": norm_code,
                     "trade_date": trade_date,
                     "open": open_val,
                     "high": _safe_float(row.get("high")),
@@ -449,9 +563,22 @@ class HkStockService:
                     "close": close_val,
                     "volume": volume_val,
                 })
-            if rows:
-                saved = self._db.upsert_hk_stock_daily_bars(rows)
-                total += saved
-                logger.info("[HkStock] backfill %s: %d bars", norm, saved)
-        logger.info("[HkStock] backfill done: %d codes, %d bars", len(codes), total)
+            return (source, rows)
+
+        total = 0
+        normed_codes = [_norm_hk_code(c) for c in codes]
+        # 腾讯一次 HTTP ~0.2s，20 并发 ≈ 800 只在 8 秒完成
+        with ThreadPoolExecutor(max_workers=20) as pool:
+            futures = {pool.submit(_fetch_single, code): code for code in normed_codes}
+            for fut in as_completed(futures):
+                code = futures[fut]
+                try:
+                    source, rows = fut.result()
+                    if rows:
+                        saved = self._db.upsert_hk_stock_daily_bars(rows)
+                        total += saved
+                        logger.debug("[HkStock] backfill %s (%s): %d bars", code, source, saved)
+                except Exception as exc:
+                    logger.debug("[HkStock] backfill %s failed: %s", code, exc)
+        logger.info("[HkStock] backfill done: %d codes, %d bars (concurrent)", len(codes), total)
         return total

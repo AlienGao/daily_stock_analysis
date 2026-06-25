@@ -7784,6 +7784,35 @@ class DatabaseManager(metaclass=_DatabaseManagerMeta):
             stmt = stmt.order_by(HkStockDaily.trade_date)
             return list(session.execute(stmt).scalars().all())
 
+    def list_hk_stock_daily_bars_batch(
+        self,
+        codes: List[str],
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+    ) -> Dict[str, List[HkStockDaily]]:
+        """批量查询多只港股通个股的日 K 线数据。
+
+        Returns:
+            {code: [HkStockDaily, ...]} 按 hk_code 分组，组内按 trade_date 升序。
+        """
+        if not codes:
+            return {}
+        from sqlalchemy import or_
+        normed = [str(c).zfill(5) for c in codes]
+        with self.get_session() as session:
+            stmt = select(HkStockDaily).where(HkStockDaily.hk_code.in_(normed))
+            if start_date:
+                stmt = stmt.where(HkStockDaily.trade_date >= start_date)
+            if end_date:
+                stmt = stmt.where(HkStockDaily.trade_date <= end_date)
+            stmt = stmt.order_by(HkStockDaily.hk_code, HkStockDaily.trade_date)
+            rows = list(session.execute(stmt).scalars().all())
+
+        result: Dict[str, List[HkStockDaily]] = {}
+        for r in rows:
+            result.setdefault(r.hk_code, []).append(r)
+        return result
+
     def get_latest_hk_stock_daily_trade_date(self, hk_code: str) -> Optional[str]:
         code = str(hk_code).zfill(5)
         with self.get_session() as session:
@@ -7794,6 +7823,62 @@ class DatabaseManager(metaclass=_DatabaseManagerMeta):
                 .limit(1)
             ).scalar_one_or_none()
             return str(row) if row else None
+
+    def get_min_hk_stock_daily_trade_date(self) -> Optional[str]:
+        """取所有港股通日K线中最小的最新交易日（即数据最落后的那只）。"""
+        import sqlalchemy as sa
+        with self.get_session() as session:
+            # 子查询：每只股票的最新交易日
+            subq = (
+                select(
+                    HkStockDaily.hk_code,
+                    sa.func.max(HkStockDaily.trade_date).label('max_td')
+                )
+                .group_by(HkStockDaily.hk_code)
+                .subquery()
+            )
+            row = session.execute(
+                select(sa.func.min(subq.c.max_td))
+            ).scalar_one_or_none()
+            return str(row) if row else None
+
+    def get_hk_backfill_marker(self) -> str:
+        """获取港股回填标记（最新已回填到哪一天）。"""
+        self._ensure_kv_store()
+        from sqlalchemy import text
+        with self.get_session() as session:
+            row = session.execute(
+                text("SELECT val FROM kv_store WHERE key = 'hk_backfill_marker'")
+            ).scalar_one_or_none()
+            return str(row) if row else ""
+
+    def set_hk_backfill_marker(self, trade_date: str) -> None:
+        """设置港股回填标记。"""
+        self._ensure_kv_store()
+        from sqlalchemy import text
+        with self.get_session() as session:
+            session.execute(
+                text("""
+                    INSERT INTO kv_store (key, val, updated_at)
+                    VALUES ('hk_backfill_marker', :val, datetime('now'))
+                    ON CONFLICT(key) DO UPDATE SET val = :val2, updated_at = datetime('now')
+                """),
+                {"val": trade_date, "val2": trade_date},
+            )
+            session.commit()
+
+    def _ensure_kv_store(self) -> None:
+        """确保 kv_store 表存在。"""
+        from sqlalchemy import text
+        with self.get_session() as session:
+            session.execute(text("""
+                CREATE TABLE IF NOT EXISTS kv_store (
+                    key TEXT PRIMARY KEY,
+                    val TEXT NOT NULL,
+                    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+                )
+            """))
+            session.commit()
 
     # ------------------------------------------------------------------
     # 机构调研
