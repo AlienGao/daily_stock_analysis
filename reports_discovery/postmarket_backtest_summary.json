@@ -372,11 +372,21 @@
   {
     "date": "20260624",
     "mode": "postmarket",
-    "cumulative_return": 0.081955,
+    "cumulative_return": 0.0775694,
     "win_rate": 0.4727272727272727,
     "total_trades": 165,
     "total_days": 35,
-    "final_capital": 5409775.0,
+    "final_capital": 5387847.0,
+    "initial_capital": 5000000.0
+  },
+  {
+    "date": "20260625",
+    "mode": "postmarket",
+    "cumulative_return": 0.0728174,
+    "win_rate": 0.47337278106508873,
+    "total_trades": 169,
+    "total_days": 36,
+    "final_capital": 5364087.0,
     "initial_capital": 5000000.0
   }
 ]

@@ -284,18 +284,18 @@ const CandlestickMiniChart: React.FC<{
           return (
             <g pointerEvents="none">
               <rect x={tipX} y={tipY} width={tipW} height={tipH} rx={4}
-                fill="#111827" stroke="#374151" strokeWidth={0.8}
+                fill="var(--chart-tooltip-bg, #1e293b)" stroke="var(--chart-tooltip-border, #334155)" strokeWidth={0.8}
                 filter="url(#tipShadow)" />
-              <text x={tipX + 4} y={tipY + 12} fill="#9ca3af" fontSize={9} fontFamily="monospace">{dateStr}</text>
+              <text x={tipX + 4} y={tipY + 12} fill="var(--chart-tooltip-label, #94a3b8)" fontSize={9} fontFamily="monospace">{dateStr}</text>
               {hasOhlc ? (
                 <>
-                  <text x={tipX + 4} y={tipY + 25} fill="#9ca3af" fontSize={9} fontFamily="monospace">
+                  <text x={tipX + 4} y={tipY + 25} fill="var(--chart-tooltip-label, #94a3b8)" fontSize={9} fontFamily="monospace">
                     O {d.open!.toFixed(2)}  </text>
                   <text x={tipX + 60} y={tipY + 25} fill={chgColor} fontSize={9} fontFamily="monospace">
                     C {d.price!.toFixed(2)}</text>
-                  <text x={tipX + 4} y={tipY + 38} fill="#9ca3af" fontSize={9} fontFamily="monospace">
+                  <text x={tipX + 4} y={tipY + 38} fill="var(--chart-tooltip-label, #94a3b8)" fontSize={9} fontFamily="monospace">
                     H {d.high!.toFixed(2)}  </text>
-                  <text x={tipX + 60} y={tipY + 38} fill="#9ca3af" fontSize={9} fontFamily="monospace">
+                  <text x={tipX + 60} y={tipY + 38} fill="var(--chart-tooltip-label, #94a3b8)" fontSize={9} fontFamily="monospace">
                     L {d.low!.toFixed(2)}</text>
                   {chg != null && (
                     <text x={tipX + 4} y={tipY + 50} fill={chgColor} fontSize={9} fontFamily="monospace"
@@ -305,7 +305,7 @@ const CandlestickMiniChart: React.FC<{
                   )}
                 </>
               ) : (
-                <text x={tipX + 4} y={tipY + 22} fill="#e2e8f0" fontSize={9} fontFamily="monospace">
+                <text x={tipX + 4} y={tipY + 22} fill="var(--chart-tooltip-value, #e2e8f0)" fontSize={9} fontFamily="monospace">
                   收盘: {d.price!.toFixed(2)}</text>
               )}
             </g>

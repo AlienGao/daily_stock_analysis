@@ -115,7 +115,9 @@ def _compute_boll(
 
 class HkStockService:
     """港股通成份股服务：成份列表 + 日 K 线 + BOLL。"""
-    _backfill_checked_today: bool = False
+    # 记录已成功回填到的目标交易日（新浪最新日）。同一目标日仅触发一次回填，
+    # 进程重启后重置，因此长跑跨天时会自动对新交易日重新回填。
+    _backfill_completed_for: Optional[str] = None
 
     def __init__(self, db: Optional[DatabaseManager] = None) -> None:
         self._db = db or DatabaseManager()
@@ -239,29 +241,67 @@ class HkStockService:
     # ── BOLL 推荐 ──────────────────────────────────────────────
 
     def _auto_backfill_if_needed(self) -> None:
-        """检查新浪最新日 K，如有新日期自动回填（每天仅检查一次）。"""
-        if HkStockService._backfill_checked_today:
-            return
-        HkStockService._backfill_checked_today = True
+        """检查新浪最新日 K，若成份股集合未同步到新浪最新交易日则全量回填。
+
+        判定依据：以成份股集合在 DB 中的「最小最新交易日」与新浪最新交易日对比。
+        只要有任意一只成份股落后于新浪最新日，就对该交易日执行全量成份股回填。
+        同一目标交易日（新浪最新日）仅触发一次回填，进程重启后自动重新检查。
+        """
         try:
             import akshare as ak
             from data_provider.akshare_fetcher import AkshareFetcher
+
+            trade_date = self._db.get_latest_hk_ggt_trade_date()
+            if not trade_date:
+                logger.debug("[HkStock] auto-backfill skipped: no ggt component snapshot")
+                return
+            codes = self._db.list_hk_ggt_codes_for_date(trade_date)
+            if not codes:
+                logger.debug("[HkStock] auto-backfill skipped: empty ggt code list for %s", trade_date)
+                return
+
+            # 新浪最新交易日（用 00700 作为风向标，覆盖率最稳定）
             fetcher = AkshareFetcher()
             fetcher._set_random_user_agent()
             fetcher._enforce_rate_limit()
             df = ak.stock_hk_daily(symbol='00700', adjust='')
             if df is None or df.empty:
                 return
-            raw_dates = df['date']
-            latest_sina = str(raw_dates.iloc[-1])
-            if hasattr(raw_dates.iloc[-1], 'strftime'):
-                latest_sina = latest_sina[:10].replace('-', '')
+            raw_last = df['date'].iloc[-1]
+            if hasattr(raw_last, 'strftime'):
+                latest_sina = str(raw_last.strftime("%Y%m%d"))
             else:
-                latest_sina = latest_sina.replace('-', '')[:8]
-            db_latest = self._db.get_latest_hk_stock_daily_trade_date('00700')
-            if db_latest and latest_sina > db_latest:
-                logger.info("[HkStock] auto-backfill: DB latest=%s, Sina latest=%s", db_latest, latest_sina)
-                self.backfill_daily(start_date=db_latest, end_date=latest_sina)
+                latest_sina = str(raw_last).replace('-', '')[:8]
+            if not latest_sina:
+                return
+
+            # 同一目标日仅回填一次（幂等锁）
+            if HkStockService._backfill_completed_for == latest_sina:
+                return
+
+            # 取成份股集合在 DB 中的最小「最新交易日」：只要有一只落后于新浪最新日，
+            # 就说明集合整体需要补数据，触发一次全量回填。
+            db_min_latest: Optional[str] = None
+            for code in codes:
+                norm = _norm_hk_code(code)
+                latest = self._db.get_latest_hk_stock_daily_trade_date(norm)
+                if not latest:
+                    db_min_latest = ""  # 存在完全无数据的成份股，必须回填
+                    break
+                if db_min_latest is None or latest < db_min_latest:
+                    db_min_latest = latest
+
+            if db_min_latest and db_min_latest >= latest_sina:
+                # 全员已同步到新浪最新日，记录幂等标记后返回
+                HkStockService._backfill_completed_for = latest_sina
+                return
+
+            logger.info(
+                "[HkStock] auto-backfill: sina latest=%s, db min latest=%s, codes=%d",
+                latest_sina, db_min_latest or "<empty>", len(codes),
+            )
+            self.backfill_daily(start_date=db_min_latest or None, end_date=latest_sina)
+            HkStockService._backfill_completed_for = latest_sina
         except Exception as exc:
             logger.debug("[HkStock] auto-backfill check failed: %s", exc)
 

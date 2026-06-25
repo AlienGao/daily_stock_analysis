@@ -199,6 +199,12 @@
   --home-history-glow: hsl(193 100% 43% / 0.14);
   --autocomplete-hover-bg: #04d1f6;
 
+  /* SVG chart tooltip */
+  --chart-tooltip-bg: #f8fafc;
+  --chart-tooltip-border: #cbd5e1;
+  --chart-tooltip-label: #64748b;
+  --chart-tooltip-value: #1e293b;
+
   /* Shadows (using HSL format) */
   --shadow-soft-card: 0 12px 24px hsl(220 20% 34% / 0.09), 0 3px 8px hsl(220 16% 28% / 0.05);
   --shadow-soft-card-strong: 0 18px 34px hsl(220 20% 32% / 0.12), 0 6px 16px hsl(220 16% 28% / 0.07);
@@ -461,6 +467,12 @@
   --home-prose-border-strong: hsl(var(--foreground) / 0.18);
   --home-prose-blockquote-border: hsl(247 84% 72% / 0.3);
   --home-prose-blockquote-bg: hsl(247 84% 72% / 0.1);
+
+  /* SVG chart tooltip */
+  --chart-tooltip-bg: #1e293b;
+  --chart-tooltip-border: #334155;
+  --chart-tooltip-label: #94a3b8;
+  --chart-tooltip-value: #e2e8f0;
 
   /* Shadows (Dark theme) */
   --shadow-soft-card: 0 18px 48px hsl(215 25% 10% / 0.4);
