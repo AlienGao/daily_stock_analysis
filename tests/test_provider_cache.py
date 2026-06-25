@@ -395,6 +395,8 @@ def test_litellm_openai_prompt_cache_key_is_not_passed_through_without_verified_
         timeout=15,
     )
     if completed.returncode == 77:
+        if "LOCAL_SOCKET_UNAVAILABLE" in completed.stdout + completed.stderr:
+            pytest.skip("local loopback sockets are unavailable")
         pytest.skip("litellm is not installed")
     if completed.returncode == 78:
         pytest.skip("local socket creation is not permitted in this environment")

@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 from sqlalchemy import and_, func, select
 
+from data_provider.base import canonical_stock_code, normalize_stock_code
 from src.config import get_config
 from src.core.backtest_engine import OVERALL_SENTINEL_CODE, BacktestEngine, EvaluationConfig
 from src.market_phase_summary import extract_market_phase_summary, normalize_analysis_phase_bucket
@@ -40,15 +41,21 @@ class BacktestService:
         force: bool = False,
         eval_window_days: Optional[int] = None,
         min_age_days: Optional[int] = None,
-        limit: int = 200,
         analysis_date_from: Optional[date] = None,
         analysis_date_to: Optional[date] = None,
+        limit: int = 200,
         allowed_categories: Optional[List[str]] = None,
         sentiment_score_min: Optional[int] = None,
         sentiment_score_max: Optional[int] = None,
         trigger_source: str = "manual",
     ) -> Dict[str, Any]:
         config = get_config()
+
+        if analysis_date_from and analysis_date_to and analysis_date_from > analysis_date_to:
+            raise ValueError("analysis_date_from cannot be after analysis_date_to")
+
+        query_code = self._normalize_code(code)
+        diagnostic_code = self._normalize_code_for_display(code)
 
         if eval_window_days is None:
             eval_window_days = getattr(config, "backtest_eval_window_days", 10)
@@ -71,7 +78,7 @@ class BacktestService:
         candidates = self.repo.get_candidates(
             code=code,
             min_age_days=int(min_age_days),
-            limit=int(limit),
+            limit=limit_int,
             eval_window_days=int(eval_window_days),
             engine_version=str(engine_version),
             force=force,
@@ -92,7 +99,9 @@ class BacktestService:
 
         for analysis in candidates:
             processed += 1
-            touched_codes.add(analysis.code)
+            normalized_code = self._normalize_summary_code(analysis.code)
+            if normalized_code:
+                touched_codes.add(normalized_code)
 
             try:
                 analysis_date = self._resolve_analysis_date(analysis)
@@ -111,11 +120,23 @@ class BacktestService:
                         )
                     )
                     continue
-                start_daily = self.stock_repo.get_start_daily(code=analysis.code, analysis_date=analysis_date)
+                daily_code_candidates = self._build_daily_code_candidates(analysis.code)
+                start_daily = self._get_start_daily_for_candidates(
+                    code_candidates=daily_code_candidates,
+                    analysis_date=analysis_date,
+                )
 
                 if start_daily is None or start_daily.close is None:
-                    self._try_fill_daily_data(code=analysis.code, analysis_date=analysis_date, eval_window_days=eval_window_days)
-                    start_daily = self.stock_repo.get_start_daily(code=analysis.code, analysis_date=analysis_date)
+                    refill_code = daily_code_candidates[0] if daily_code_candidates else analysis.code
+                    self._try_fill_daily_data(
+                        code=refill_code,
+                        analysis_date=analysis_date,
+                        eval_window_days=eval_window_days,
+                    )
+                    start_daily = self._get_start_daily_for_candidates(
+                        code_candidates=daily_code_candidates,
+                        analysis_date=analysis_date,
+                    )
 
                 if start_daily is None or start_daily.close is None:
                     insufficient += 1
@@ -134,10 +155,14 @@ class BacktestService:
                     )
                     continue
 
-                forward_bars = self.stock_repo.get_forward_bars(
-                    code=analysis.code,
+                matched_daily_code = start_daily.code or (
+                    daily_code_candidates[0] if daily_code_candidates else analysis.code
+                )
+                forward_bars = self._get_forward_bars_by_candidates(
+                    code_candidates=daily_code_candidates,
                     analysis_date=start_daily.date,
                     eval_window_days=int(eval_window_days),
+                    preferred_code=matched_daily_code,
                 )
 
                 # For next-day validation, refresh once when the first forward bar
@@ -209,7 +234,7 @@ class BacktestService:
                     BacktestResult(
                         analysis_history_id=analysis.id,
                         code=analysis.code,
-                        analysis_date=evaluation.get("analysis_date"),
+                        analysis_date=analysis_date,
                         eval_window_days=int(evaluation.get("eval_window_days") or eval_window_days),
                         engine_version=str(evaluation.get("engine_version") or engine_version),
                         eval_status=str(evaluation.get("eval_status") or "error"),
@@ -267,13 +292,55 @@ class BacktestService:
                 engine_version=str(engine_version),
             )
 
+        has_matching_analysis = False
+        aligned_existing_result_dates = 0
+        has_analysis_date_filter = analysis_date_from is not None or analysis_date_to is not None
+        if not force and has_analysis_date_filter:
+            aligned_existing_result_dates = self.repo.align_existing_result_dates(
+                code=query_code,
+                min_age_days=int(min_age_days),
+                eval_window_days=int(eval_window_days),
+                engine_version=str(engine_version),
+                analysis_date_from=analysis_date_from,
+                analysis_date_to=analysis_date_to,
+            )
+        if not force and processed == 0:
+            has_matching_analysis = self._has_matching_analysis_for_run(
+                code=query_code,
+                min_age_days=int(min_age_days),
+                eval_window_days=int(eval_window_days),
+                engine_version=str(engine_version),
+                analysis_date_from=analysis_date_from,
+                analysis_date_to=analysis_date_to,
+            )
+
+        diagnostics = self._build_run_diagnostics(
+            code=diagnostic_code,
+            eval_window_days=int(eval_window_days),
+            min_age_days=int(min_age_days),
+            limit=limit_int,
+            analysis_date_from=analysis_date_from,
+            analysis_date_to=analysis_date_to,
+            processed=processed,
+            saved=saved,
+            completed=completed,
+            insufficient=insufficient,
+            errors=errors,
+            has_matching_analysis=has_matching_analysis,
+            aligned_existing_result_dates=aligned_existing_result_dates,
+        )
+
         return {
             "processed": processed,
             "saved": saved,
             "completed": completed,
             "insufficient": insufficient,
             "errors": errors,
+            "applied_eval_window_days": int(eval_window_days),
+            "message": diagnostics.get("message"),
+            "diagnostics": diagnostics,
         }
+
 
 
     def get_recent_evaluations(
@@ -292,6 +359,7 @@ class BacktestService:
     ) -> Dict[str, Any]:
         config = get_config()
         engine_version = str(getattr(config, "backtest_engine_version", "v1"))
+        code = self._normalize_code(code)
 
         phase_bucket = self._normalize_phase_filter(analysis_phase)
         if eval_window_days is None and (analysis_date_from is not None or analysis_date_to is not None or phase_bucket is not None):
@@ -357,6 +425,7 @@ class BacktestService:
     ) -> Optional[Dict[str, Any]]:
         config = get_config()
         engine_version = str(getattr(config, "backtest_engine_version", "v1"))
+        code = self._normalize_code(code)
         lookup_code = OVERALL_SENTINEL_CODE if scope == "overall" else code
 
         phase_bucket = self._normalize_phase_filter(analysis_phase)
@@ -910,10 +979,15 @@ class BacktestService:
             self.repo.upsert_summary(overall_summary)
 
             for code in touched_codes:
+                normalized_code = self._normalize_summary_code(code)
+                if not normalized_code:
+                    continue
+
+                code_conditions = BacktestRepository._build_code_conditions(BacktestResult.code, normalized_code)
                 rows = session.execute(
                     select(BacktestResult).where(
                         and_(
-                            BacktestResult.code == code,
+                            *code_conditions,
                             BacktestResult.eval_window_days == eval_window_days,
                             BacktestResult.engine_version == engine_version,
                         )
@@ -922,7 +996,7 @@ class BacktestService:
                 data = BacktestEngine.compute_summary(
                     results=rows,
                     scope="stock",
-                    code=code,
+                    code=normalized_code,
                     eval_window_days=eval_window_days,
                     engine_version=engine_version,
                 )

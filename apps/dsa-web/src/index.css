@@ -2661,6 +2661,7 @@ textarea {
 .backtest-summary {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 1rem;
   padding: 0.5rem 0.75rem;
   border-radius: 0.5rem;
@@ -2671,6 +2672,11 @@ textarea {
 }
 .backtest-summary .label {
   color: var(--text-secondary-text);
+}
+.backtest-summary .label.message {
+  flex-basis: 100%;
+  line-height: 1.4;
+  white-space: normal;
 }
 .backtest-summary .value {
   color: hsl(var(--foreground));

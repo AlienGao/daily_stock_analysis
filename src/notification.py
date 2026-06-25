@@ -851,9 +851,6 @@ class NotificationService(
                     f"{labels['score_label']} {r.sentiment_score} | "
                     f"{localize_trend_prediction(r.trend_prediction, report_language)}"
                 )
-                signal_excerpt = self._decision_signal_excerpt(r, report_language)
-                if signal_excerpt:
-                    report_lines.append(signal_excerpt)
         else:
             report_lines.extend([f"## 📈 {labels['report_title']}", ""])
             # 逐个股票的详细分析
@@ -1156,9 +1153,6 @@ class NotificationService(
                     f"{labels['score_label']} {r.sentiment_score} | "
                     f"{localize_trend_prediction(r.trend_prediction, report_language)}"
                 )
-                excerpt = self._public_phase_pack_excerpt(r, report_language)
-                if excerpt:
-                    report_lines.append(excerpt)
                 signal_excerpt = self._decision_signal_excerpt(r, report_language)
                 if signal_excerpt:
                     report_lines.append(signal_excerpt)
@@ -1184,6 +1178,9 @@ class NotificationService(
                     f"## {signal_emoji} {stock_name} ({result.code})",
                     "",
                 ])
+                signal_excerpt = self._decision_signal_excerpt(result, report_language)
+                if signal_excerpt:
+                    report_lines.extend([signal_excerpt, ""])
                 
                 # ========== 舆情与基本面概览（放在最前面）==========
                 intel = dashboard.get('intelligence', {}) if dashboard else {}
@@ -1660,9 +1657,6 @@ class NotificationService(
                 f"{labels['score_label']}:{result.sentiment_score} | "
                 f"{localize_trend_prediction(result.trend_prediction, report_language)}"
             )
-            signal_excerpt = self._decision_signal_excerpt(result, report_language)
-            if signal_excerpt:
-                lines.append(signal_excerpt)
             
             # 操作理由（截断）
             if hasattr(result, 'buy_reason') and result.buy_reason:
@@ -1750,9 +1744,6 @@ class NotificationService(
                 f"{localize_operation_advice(r.operation_advice, report_language)} | "
                 f"{labels['score_label']} {r.sentiment_score} | {one}"
             )
-            signal_excerpt = self._decision_signal_excerpt(r, report_language)
-            if signal_excerpt:
-                lines.append(signal_excerpt)
         lines.append("")
         lines.append(f"*{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*")
         models = self._collect_models_used(results)

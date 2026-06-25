@@ -54,6 +54,7 @@ function phaseLabel(row: BacktestResultItem, language: UiLanguage): string {
 }
 
 
+
 function labelFromMap(value: string | null | undefined, labels: Record<string, string>): string {
   if (!value) return '--';
   return labels[value] ?? value;
@@ -284,7 +285,7 @@ const BacktestPage: React.FC = () => {
   const [overallPerf, setOverallPerf] = useState<PerformanceMetrics | null>(null);
   const [stockPerf, setStockPerf] = useState<PerformanceMetrics | null>(null);
   const [isLoadingPerf, setIsLoadingPerf] = useState(false);
-  const effectiveWindowDays = evalDays ? parseInt(evalDays, 10) : overallPerf?.evalWindowDays;
+  const effectiveWindowDays = parseEvalWindowDays(evalDays) ?? overallPerf?.evalWindowDays;
   const isNextDayValidation = effectiveWindowDays === 1;
   const showNextDayActualColumns = isNextDayValidation;
 
@@ -437,8 +438,8 @@ const BacktestPage: React.FC = () => {
 
   // Filter by code
   const handleFilter = () => {
-    const code = codeFilter.trim() || undefined;
-    const windowDays = evalDays ? parseInt(evalDays, 10) : undefined;
+    const code = normalizeBacktestCode(codeFilter);
+    const windowDays = parseEvalWindowDays(evalDays);
     setCurrentPage(1);
     fetchResults(1, code, triggerSourceFilter, windowDays, analysisDateFrom, analysisDateTo, sortBy, sortOrder, phaseFilter);
     fetchPerformance(code, triggerSourceFilter, windowDays, analysisDateFrom, analysisDateTo, phaseFilter);
@@ -451,7 +452,7 @@ const BacktestPage: React.FC = () => {
   };
 
   const handleShowNextDay = () => {
-    const code = codeFilter.trim() || undefined;
+    const code = normalizeBacktestCode(codeFilter);
     setEvalDays('1');
     setCurrentPage(1);
     fetchResults(1, code, triggerSourceFilter, 1, analysisDateFrom, analysisDateTo, sortBy, sortOrder, phaseFilter);
