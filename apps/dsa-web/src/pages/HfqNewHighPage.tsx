@@ -59,7 +59,7 @@ const BollPickCard: React.FC<{
   item: HfqBollPickItem;
   active: boolean;
   distLabel: string;
-  distValue: number;
+  distValue: number | undefined;
   goldHighlight: GoldHighlight;
   onSelect: (tsCode: string) => void;
 }> = ({ item, active, distLabel, distValue, goldHighlight, onSelect }) => {
@@ -106,7 +106,7 @@ const BollPickColumn: React.FC<{
   loading: boolean;
   emptyText: string;
   items: HfqBollPickItem[];
-  distKey: 'dist_mid_pct' | 'dist_lower_pct';
+  distKey: 'dist_mid_pct' | 'dist_lower_pct' | 'dist_upper_pct';
   distLabel: string;
   titleClass: string;
   activeTsCode: string;
@@ -173,13 +173,19 @@ const BollPickPanel: React.FC<{
 
   const midPicks = useMemo(
     () => picks
-      .filter(p => p.band_zone === 'mid' || p.band_zone === 'both')
+      .filter(p => p.band_zone.includes('mid'))
       .sort(sortByNearHigh),
     [picks],
   );
   const lowerPicks = useMemo(
     () => picks
-      .filter(p => p.band_zone === 'lower' || p.band_zone === 'both')
+      .filter(p => p.band_zone.includes('lower'))
+      .sort(sortByNearHigh),
+    [picks],
+  );
+  const upperPicks = useMemo(
+    () => picks
+      .filter(p => p.band_zone.includes('upper'))
       .sort(sortByNearHigh),
     [picks],
   );
@@ -192,7 +198,20 @@ const BollPickPanel: React.FC<{
           近 {lookbackDays} 日创新高 · 距轨道 ≤ {nearPct}% · 距新高 ≤ {maxDrawdownFromHighPct}% · 后复权 BOLL(20,2)
         </div>
       </div>
-      <div className="grid h-full min-h-0 flex-1 grid-cols-2 grid-rows-1 gap-2 overflow-hidden p-2">
+      <div className="grid h-full min-h-0 flex-1 grid-cols-3 grid-rows-1 gap-2 overflow-hidden p-2">
+        <BollPickColumn
+          title="上轨附近"
+          count={upperPicks.length}
+          loading={loading}
+          emptyText="暂无"
+          items={upperPicks}
+          distKey="dist_upper_pct"
+          distLabel="距上轨"
+          titleClass="text-amber-400"
+          activeTsCode={activeTsCode}
+          goldHighlight={goldHighlight}
+          onSelect={onSelect}
+        />
         <BollPickColumn
           title="中轨附近"
           count={midPicks.length}

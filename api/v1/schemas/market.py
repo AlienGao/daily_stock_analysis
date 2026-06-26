@@ -43,9 +43,11 @@ class HfqBollPickItem(BaseModel):
     drawdown_from_high_pct: Optional[float] = Field(None, description="现价相对最近新高偏离（%），越接近 0 越近新高")
     boll_mid: float
     boll_lower: float
+    boll_upper: Optional[float] = None
     dist_mid_pct: float = Field(..., description="现价相对 BOLL 中轨偏离（%）")
     dist_lower_pct: float = Field(..., description="现价相对 BOLL 下轨偏离（%）")
-    band_zone: str = Field(..., description="mid / lower / both")
+    dist_upper_pct: Optional[float] = Field(None, description="现价相对 BOLL 上轨偏离（%）")
+    band_zone: str = Field(..., description="mid / lower / upper / 组合如 mid_lower / upper_mid")
 
 
 class HfqBollPickListResponse(BaseModel):

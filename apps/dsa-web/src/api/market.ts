@@ -35,9 +35,11 @@ export type HfqBollPickItem = {
   drawdown_from_high_pct?: number | null;
   boll_mid: number;
   boll_lower: number;
+  boll_upper?: number;
   dist_mid_pct: number;
   dist_lower_pct: number;
-  band_zone: 'mid' | 'lower' | 'both';
+  dist_upper_pct?: number;
+  band_zone: string;
 };
 
 export type HfqBollPickListResponse = {

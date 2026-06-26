@@ -320,7 +320,7 @@ class HfqNewHighService:
         lookback_days: int = DEFAULT_LOOKBACK_DAYS,
         max_drawdown_from_high_pct: float = DEFAULT_MAX_DRAWDOWN_FROM_HIGH_PCT,
     ) -> Dict[str, Any]:
-        """近 lookback_days 日创新高且现价靠近 BOLL 中轨/下轨的后复权个股。"""
+        """近 lookback_days 日创新高且现价靠近 BOLL 中轨/下轨/上轨的后复权个股。"""
         as_of = _parse_yyyymmdd(as_of_date) if as_of_date else date.today()
         as_of_str = _fmt_date(as_of)
         max_dd = round(float(max_drawdown_from_high_pct), 2)
@@ -374,9 +374,11 @@ class HfqNewHighService:
             dist_lower = _band_distance_pct(close, lower)
             if dist_mid is None or dist_lower is None:
                 continue
+            dist_upper = _band_distance_pct(close, upper)
             near_mid = _is_near_band(close, mid, near_pct)
             near_lower = _is_near_band(close, lower, near_pct)
-            if not near_mid and not near_lower:
+            near_upper = dist_upper is not None and dist_upper >= -near_pct
+            if not near_mid and not near_lower and not near_upper:
                 continue
             latest_high = base.get("latest_new_high_close")
             drawdown = _drawdown_from_high(close, latest_high)
@@ -384,12 +386,14 @@ class HfqNewHighService:
                 drawdown = base.get("drawdown_from_high_pct")
             if not _within_drawdown_from_high_limit(drawdown, max_dd):
                 continue
-            if near_mid and near_lower:
-                band_zone = "both"
-            elif near_mid:
-                band_zone = "mid"
-            else:
-                band_zone = "lower"
+            zones = []
+            if near_upper:
+                zones.append("upper")
+            if near_mid:
+                zones.append("mid")
+            if near_lower:
+                zones.append("lower")
+            band_zone = "_".join(zones)
             _slope = _mid_slope(closes)
             picks.append({
                 "ts_code": base["ts_code"],
@@ -401,8 +405,10 @@ class HfqNewHighService:
                 "drawdown_from_high_pct": drawdown,
                 "boll_mid": round(mid, 4),
                 "boll_lower": round(lower, 4),
+                "boll_upper": round(upper, 4),
                 "dist_mid_pct": dist_mid,
                 "dist_lower_pct": dist_lower,
+                "dist_upper_pct": dist_upper,
                 "band_zone": band_zone,
                 "mid_slope": _slope,
             })

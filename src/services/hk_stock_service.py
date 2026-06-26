@@ -241,6 +241,9 @@ class HkStockService:
         start_str = _fmt_date(start)
         end_str = _fmt_date(end)
 
+        # 实时从接口拉取最近 2 个交易日数据覆盖 DB，确保盘后最终价格准确
+        self._sync_latest_realtime(code)
+
         bars = self._db.list_hk_stock_daily_bars(code, start_date=start_str, end_date=end_str)
         raw: List[Dict[str, Any]] = [b.to_dict() for b in bars]
 
@@ -277,6 +280,40 @@ class HkStockService:
         }
 
     # ── BOLL 推荐 ──────────────────────────────────────────────
+
+    def _sync_latest_realtime(self, code: str) -> None:
+        """实时拉取最近 2 个交易日数据覆盖 DB，确保盘后最终价格准确。"""
+        import akshare as ak
+        from data_provider.akshare_fetcher import AkshareFetcher
+        fetcher = AkshareFetcher()
+        df = self._fetch_tencent_hk_kline(code, days=5)
+        if df is None or df.empty:
+            df = _fetch_hk_daily_from_sina(ak, fetcher, code)
+        if df is None or df.empty:
+            return
+        import pandas as _pd
+        rows = []
+        for _, row in df.iterrows():
+            raw_date = row.get("date")
+            if hasattr(raw_date, "strftime"):
+                trade_date = raw_date.strftime("%Y%m%d")
+            else:
+                trade_date = str(raw_date).replace("-", "")[:8]
+            close_val = _safe_float(row.get("close"))
+            if close_val is None:
+                continue
+            rows.append({
+                "hk_code": code,
+                "trade_date": trade_date,
+                "open": _safe_float(row.get("open")),
+                "high": _safe_float(row.get("high")),
+                "low": _safe_float(row.get("low")),
+                "close": close_val,
+                "volume": _safe_float(row.get("volume") if _pd.notna(row.get("volume")) else row.get("vol")),
+            })
+        if rows:
+            saved = self._db.upsert_hk_stock_daily_bars(rows)
+            logger.debug("[HkStock] sync_latest_realtime %s: %d bars", code, saved)
 
     def _trigger_backfill_async(self) -> None:
         """异步触发盘后回填（不阻塞当前请求），同一交易日仅触发一次。"""

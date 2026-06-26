@@ -48,6 +48,14 @@ const mapBandLabel: Record<string, string> = {
   lower: '下轨',
 };
 
+// 左侧列表行背景色，与右侧 BOLL 推荐（mapBandClass）字体颜色一一对应：
+// 上轨橙 / 中轨天蓝 / 下轨粉，便于左右联动定位。
+const mapBandBg: Record<string, string> = {
+  upper: 'bg-orange-500/10',
+  mid: 'bg-sky-500/10',
+  lower: 'bg-pink-500/10',
+};
+
 const BollPickCard: React.FC<{
   item: HkBollPickItem;
   active: boolean;
@@ -276,10 +284,16 @@ const HkMonitorPage: React.FC = () => {
     setExpandedKey(hkCode);
   }, [expandedKey]);
 
-  const rowClassName = useCallback((record: HkStockListItem) => {
-    const inBoll = bollPicks.some(p => p.hk_code === record.hk_code);
-    return inBoll ? 'bg-cyan-500/5' : '';
+  const bandByCode = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of bollPicks) m.set(p.hk_code, p.band);
+    return m;
   }, [bollPicks]);
+
+  const rowClassName = useCallback((record: HkStockListItem) => {
+    const band = bandByCode.get(record.hk_code);
+    return band ? (mapBandBg[band] ?? '') : '';
+  }, [bandByCode]);
 
   return (
     <AppPage className="max-w-none px-2 md:px-3">
