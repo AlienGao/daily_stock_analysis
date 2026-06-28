@@ -118,6 +118,7 @@ const HomePage: React.FC = () => {
     clearError,
     loadInitialHistory,
     refreshHistory,
+    refreshHistoryForCompletedTask,
     loadMarketReviewHistory,
     refreshMarketReviewHistory,
     loadMoreMarketReviewHistory,
@@ -368,6 +369,7 @@ const HomePage: React.FC = () => {
   useDashboardLifecycle({
     loadInitialHistory,
     refreshHistory,
+    refreshHistoryForCompletedTask,
     loadMarketReviewHistory,
     refreshMarketReviewHistory,
     loadStockBar,

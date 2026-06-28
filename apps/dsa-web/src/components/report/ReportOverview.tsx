@@ -29,8 +29,33 @@ type BoardSignal = {
   changePct?: number;
 };
 
+type BoardSignalMaps = {
+  sectors: Map<string, BoardSignal>;
+  concepts: Map<string, BoardSignal>;
+};
+
+type PreparedBoard = {
+  key: string;
+  name: string;
+  signal?: BoardSignal;
+};
+
 const normalizeBoardName = (value?: string): string =>
   (value || '').trim().replace(/\s+/g, ' ');
+
+const normalizeBoardType = (value?: string): 'sector' | 'concept' | null => {
+  const normalized = (value || '').trim().toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+  if (['行业', '行业板块', 'industry', 'sector'].includes(normalized)) {
+    return 'sector';
+  }
+  if (['概念', '概念板块', '题材', 'concept', 'theme'].includes(normalized)) {
+    return 'concept';
+  }
+  return null;
+};
 
 const coerceFiniteNumber = (value: unknown): number | undefined => {
   if (typeof value === 'number') {
@@ -47,10 +72,10 @@ const coerceFiniteNumber = (value: unknown): number | undefined => {
   return undefined;
 };
 
-const buildBoardSignalMap = (details?: ReportDetailsType): Map<string, BoardSignal> => {
+const buildRankingSignalMap = (rankings?: ReportDetailsType['sectorRankings']): Map<string, BoardSignal> => {
   const signalMap = new Map<string, BoardSignal>();
-  const topBoards = Array.isArray(details?.sectorRankings?.top) ? details.sectorRankings.top : [];
-  const bottomBoards = Array.isArray(details?.sectorRankings?.bottom) ? details.sectorRankings.bottom : [];
+  const topBoards = Array.isArray(rankings?.top) ? rankings.top : [];
+  const bottomBoards = Array.isArray(rankings?.bottom) ? rankings.bottom : [];
 
   topBoards.forEach((item) => {
     const normalizedName = normalizeBoardName(item?.name);
@@ -77,6 +102,59 @@ const buildBoardSignalMap = (details?: ReportDetailsType): Map<string, BoardSign
   return signalMap;
 };
 
+const buildBoardSignalMaps = (details?: ReportDetailsType): BoardSignalMaps => ({
+  sectors: buildRankingSignalMap(details?.sectorRankings),
+  concepts: buildRankingSignalMap(details?.conceptRankings),
+});
+
+const resolveBoardSignal = (
+  board: { name?: string; type?: string },
+  signalMaps: BoardSignalMaps,
+): BoardSignal | undefined => {
+  const boardName = normalizeBoardName(board.name);
+  if (!boardName) {
+    return undefined;
+  }
+  const boardType = normalizeBoardType(board.type);
+  if (boardType === 'sector') {
+    return signalMaps.sectors.get(boardName);
+  }
+  if (boardType === 'concept') {
+    return signalMaps.concepts.get(boardName);
+  }
+  const sectorSignal = signalMaps.sectors.get(boardName);
+  const conceptSignal = signalMaps.concepts.get(boardName);
+  if (sectorSignal && !conceptSignal) {
+    return sectorSignal;
+  }
+  if (conceptSignal && !sectorSignal) {
+    return conceptSignal;
+  }
+  return undefined;
+};
+
+const buildPreparedRelatedBoards = (
+  boards: ReportDetailsType['belongBoards'],
+  signalMaps: BoardSignalMaps,
+): PreparedBoard[] => {
+  if (!Array.isArray(boards)) {
+    return [];
+  }
+
+  return boards.reduce<PreparedBoard[]>((preparedBoards, board, index) => {
+    const boardName = normalizeBoardName(board?.name);
+    if (!boardName) {
+      return preparedBoards;
+    }
+    preparedBoards.push({
+      key: `${boardName}-${board?.code || index}`,
+      name: boardName,
+      signal: resolveBoardSignal(board, signalMaps),
+    });
+    return preparedBoards;
+  }, []);
+};
+
 /**
  * 报告概览区组件 - 终端风格
  */
@@ -94,7 +172,8 @@ export const ReportOverview: React.FC<ReportOverviewProps> = ({
     : null;
   const relatedBoards = (Array.isArray(details?.belongBoards) ? details.belongBoards : [])
     .filter((board) => normalizeBoardName(board?.name).length > 0);
-  const boardSignals = buildBoardSignalMap(details);
+  const boardSignals = buildBoardSignalMaps(details);
+  const preparedRelatedBoards = buildPreparedRelatedBoards(relatedBoards, boardSignals);
 
   const getPriceChangeStyle = (changePct: number | undefined): React.CSSProperties | undefined => {
     if (changePct === undefined || changePct === null) {
@@ -131,6 +210,33 @@ export const ReportOverview: React.FC<ReportOverviewProps> = ({
     }
     return 'danger';
   };
+
+  const renderBoardChip = (board: PreparedBoard) => (
+    <div
+      key={board.key}
+      className="inline-flex shrink-0 items-center gap-2 text-sm"
+    >
+      <span className="home-accent-chip px-2 py-0.5 text-xs font-medium">
+        {board.name}
+      </span>
+      {board.signal && (
+        <Badge
+          variant={getBoardStatusVariant(board.signal.status)}
+          className="home-board-status-badge shadow-none"
+        >
+          {getBoardStatusLabel(board.signal.status)}
+        </Badge>
+      )}
+      {board.signal && board.signal.changePct !== undefined && board.signal.changePct !== null && (
+        <span
+          className="text-xs font-mono"
+          style={getPriceChangeStyle(board.signal.changePct)}
+        >
+          {formatChangePct(board.signal.changePct)}
+        </span>
+      )}
+    </div>
+  );
 
   return (
     <div className="space-y-5">
@@ -192,15 +298,6 @@ export const ReportOverview: React.FC<ReportOverviewProps> = ({
           </Card>
         </div>
 
-        {/* 右侧：情绪指标 / 关联详情 */}
-        <div className="flex flex-col">
-          <Card variant="bordered" padding="md" className="home-panel-card home-rail-card !overflow-visible h-full flex flex-col justify-center">
-            <div className="text-center">
-              <h3 className="mb-5 text-sm font-medium tracking-wide text-foreground">{text.marketSentiment}</h3>
-              <ScoreGauge score={summary.sentimentScore} size="lg" language={reportLanguage} />
-            </div>
-          </Card>
-        </div>
 
         {/* 操作建议 / 趋势预测 / 板块联动 — 跨列全宽 */}
         <div className="lg:col-span-3">
@@ -234,6 +331,7 @@ export const ReportOverview: React.FC<ReportOverviewProps> = ({
                   </p>
                 </div>
               </div>
+
             </div>
             {relatedBoards.length > 0 && (
               <div className="rounded-xl border border-border bg-card p-4">
