@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-"""港股通成份监控：成份快照刷新、分钟序列查询、盘中 rt_hk_k 轮询落库。"""
+"""港股通成份监控：成份快照刷新、分钟序列查询、盘中 rt_hk_k 轮询落库。
+
+自动过期刷新：list_components 读取最新快照时，如果距今超过 MAX_STALE_TRADING_DAYS 个交易日，自动触发 refresh_components。"""
 
 from __future__ import annotations
 
@@ -15,6 +17,7 @@ from src.storage import DatabaseManager
 logger = logging.getLogger(__name__)
 
 DEFAULT_MINUTE_START_DATE = "20260622"
+MAX_STALE_TRADING_DAYS = 5
 
 
 def _norm_hk_code(code: str) -> str:
@@ -88,7 +91,8 @@ class HkGgtMonitorService:
         *,
         refresh: bool = False,
     ) -> Dict[str, Any]:
-        trade_date = trade_date or self._db.get_latest_hk_ggt_trade_date()
+        latest_db_date = self._db.get_latest_hk_ggt_trade_date()
+        trade_date = trade_date or latest_db_date
         if refresh and trade_date:
             self.refresh_components(trade_date, force=True)
         elif not trade_date:
@@ -96,6 +100,10 @@ class HkGgtMonitorService:
             trade_date = refreshed.get("trade_date")
         elif not self._db.list_hk_ggt_components(trade_date):
             self.refresh_components(trade_date, force=True)
+        elif trade_date == latest_db_date and self._is_stale(trade_date):
+            logger.info("[HkGgt] 成份数据过期(%s)，触发自动刷新", trade_date)
+            self.refresh_components(force=True)
+            trade_date = self._db.get_latest_hk_ggt_trade_date() or trade_date
 
         if not trade_date:
             return {"trade_date": "", "total": 0, "items": [], "available_dates": []}
@@ -107,5 +115,14 @@ class HkGgtMonitorService:
             "items": items,
             "available_dates": self._db.list_hk_ggt_component_dates(),
         }
+
+    def _is_stale(self, trade_date: str) -> bool:
+        """检查最新快照距今是否超过 MAX_STALE_TRADING_DAYS 个自然日。"""
+        try:
+            dt = datetime.strptime(trade_date, "%Y%m%d").date()
+            return (get_market_now("hk").date() - dt).days >= MAX_STALE_TRADING_DAYS
+        except Exception as exc:
+            logger.warning("[HkGgt] _is_stale 自然日判断失败: %s", exc)
+            return False
 
 
