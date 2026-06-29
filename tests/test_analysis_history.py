@@ -125,14 +125,33 @@ class AnalysisHistoryTestCase(unittest.TestCase):
         auth._auth_enabled = False
         self._temp_dir = tempfile.TemporaryDirectory()
         self._db_path = os.path.join(self._temp_dir.name, "test_analysis_history.db")
+        self._original_env = {
+            key: os.environ.get(key)
+            for key in (
+                "ENV_FILE",
+                "DATABASE_PATH",
+            )
+        }
+        self._env_path = os.path.join(self._temp_dir.name, ".env")
+        with open(self._env_path, "w", encoding="utf-8") as env_file:
+            env_file.write("STOCK_LIST=600519,000001\n")
+
+        os.environ["ENV_FILE"] = self._env_path
+        os.environ["DATABASE_PATH"] = self._db_path
 
         DatabaseManager.reset_instance()
         self.db = DatabaseManager(db_url=f"sqlite:///{self._db_path}")
 
     def tearDown(self) -> None:
         """清理资源"""
+        Config._instance = None
         DatabaseManager.reset_instance()
         Config.reset_instance()
+        for key, value in self._original_env.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
         self._temp_dir.cleanup()
 
     def _build_result(self) -> AnalysisResult:

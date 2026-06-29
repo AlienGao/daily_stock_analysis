@@ -18,7 +18,7 @@ from tests.litellm_stub import ensure_litellm_stub
 
 ensure_litellm_stub()
 
-from src.config import ANSPIRE_LLM_MODEL_DEFAULT, Config
+from src.config import ANSPIRE_LLM_MODEL_DEFAULT, DEFAULT_ALPHASIFT_INSTALL_SPEC, Config
 from src.core.config_manager import ConfigManager
 from src.services.system_config_service import ConfigConflictError, ConfigImportError, SystemConfigService
 
@@ -1359,7 +1359,7 @@ class SystemConfigServiceTestCase(unittest.TestCase):
             "LLM_OPENAI_MODELS=openai/gpt-4o-mini,openai/gpt-4o",
             "LITELLM_FALLBACK_MODELS=openai/gpt-4o-mini,openai/gpt-4o",
             "ALPHASIFT_ENABLED=false",
-            "ALPHASIFT_INSTALL_SPEC=git+https://github.com/ZhuLinsen/alphasift.git@377049857cc04175dc3cca62121ee41adec6cdb8",
+            f"ALPHASIFT_INSTALL_SPEC={DEFAULT_ALPHASIFT_INSTALL_SPEC}",
             "LLM_USAGE_HMAC_SECRET=telemetry-secret",
             "LLM_USAGE_HMAC_KEY_VERSION=test-v1",
             "GEMINI_API_KEY=legacy-secret",
@@ -1386,7 +1386,7 @@ class SystemConfigServiceTestCase(unittest.TestCase):
         self.assertEqual(current_map["ALPHASIFT_ENABLED"], "true")
         self.assertEqual(
             current_map["ALPHASIFT_INSTALL_SPEC"],
-            "git+https://github.com/ZhuLinsen/alphasift.git@377049857cc04175dc3cca62121ee41adec6cdb8",
+            DEFAULT_ALPHASIFT_INSTALL_SPEC,
         )
         self.assertEqual(current_map["LLM_USAGE_HMAC_SECRET"], "telemetry-secret")
         self.assertEqual(current_map["LLM_USAGE_HMAC_KEY_VERSION"], "test-v1")

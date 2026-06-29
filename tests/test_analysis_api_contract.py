@@ -5,11 +5,18 @@ import asyncio
 from concurrent.futures import Future
 from datetime import datetime
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, patch
+
+_ORIGINAL_ENVIRON = dict(os.environ)
+_MODULE_TEMP_DIR = tempfile.TemporaryDirectory()
+_MODULE_ENV_FILE = Path(_MODULE_TEMP_DIR.name) / ".env"
+_MODULE_ENV_FILE.write_text("STOCK_LIST=600519,000001\n", encoding="utf-8")
+os.environ["ENV_FILE"] = str(_MODULE_ENV_FILE)
 
 from tests.litellm_stub import ensure_litellm_stub
 
@@ -42,6 +49,19 @@ from src.enums import ReportType
 from src.services.analysis_service import AnalysisService
 from src.services.image_stock_extractor import _call_litellm_vision
 from src.services.task_queue import AnalysisTaskQueue, TaskStatus
+
+
+def tearDownModule() -> None:
+    current_test = os.environ.get("PYTEST_CURRENT_TEST")
+    for key in list(os.environ):
+        if key == "PYTEST_CURRENT_TEST":
+            continue
+        if key not in _ORIGINAL_ENVIRON:
+            os.environ.pop(key, None)
+    os.environ.update(_ORIGINAL_ENVIRON)
+    if current_test is not None:
+        os.environ["PYTEST_CURRENT_TEST"] = current_test
+    _MODULE_TEMP_DIR.cleanup()
 
 
 def _analysis_context_pack_overview() -> dict:
