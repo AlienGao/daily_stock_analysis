@@ -136,6 +136,64 @@ test('buildMainPageUrl includes desktop version and cache buster', (t) => {
   );
 });
 
+test('buildBackendEnvironment extends macOS GUI PATH with Homebrew CLI directories', (t) => {
+  const mainModule = loadMainModule(t, { platform: 'darwin' });
+
+  const env = mainModule.buildBackendEnvironment({
+    envFile: '/tmp/dsa/.env',
+    dbPath: '/tmp/dsa/data.db',
+    logDir: '/tmp/dsa/logs',
+    sourceEnv: {
+      PATH: '/usr/bin:/bin:/usr/sbin:/sbin',
+      CUSTOM_FLAG: 'kept',
+    },
+  });
+
+  const entries = env.PATH.split(path.delimiter);
+  assert.deepEqual(entries.slice(0, 4), ['/usr/bin', '/bin', '/usr/sbin', '/sbin']);
+  assert.ok(entries.includes('/opt/homebrew/bin'));
+  assert.ok(entries.includes('/usr/local/bin'));
+  assert.ok(entries.includes('/opt/homebrew/sbin'));
+  assert.ok(entries.includes('/usr/local/sbin'));
+  assert.equal(env.CUSTOM_FLAG, 'kept');
+  assert.equal(env.DSA_DESKTOP_MODE, 'true');
+  assert.equal(env.ENV_FILE, '/tmp/dsa/.env');
+  assert.equal(env.DATABASE_PATH, '/tmp/dsa/data.db');
+  assert.equal(env.LOG_DIR, '/tmp/dsa/logs');
+});
+
+test('buildBackendEnvironment keeps non-macOS PATH unchanged', (t) => {
+  const mainModule = loadMainModule(t, { platform: 'linux' });
+
+  const env = mainModule.buildBackendEnvironment({
+    envFile: '/tmp/dsa/.env',
+    dbPath: '/tmp/dsa/data.db',
+    logDir: '/tmp/dsa/logs',
+    sourceEnv: {
+      PATH: '/custom/bin:/usr/bin',
+    },
+  });
+
+  assert.equal(env.PATH, '/custom/bin:/usr/bin');
+});
+
+test('extendMacDesktopBackendPath preserves existing order and avoids duplicates', (t) => {
+  const mainModule = loadMainModule(t, { platform: 'darwin' });
+
+  const extended = mainModule.extendMacDesktopBackendPath(
+    '/opt/homebrew/bin:/custom/bin:/usr/bin:/custom/bin'
+  );
+  const entries = extended.split(path.delimiter);
+
+  assert.deepEqual(entries.slice(0, 3), ['/opt/homebrew/bin', '/custom/bin', '/usr/bin']);
+  assert.equal(entries.filter((entry) => entry === '/opt/homebrew/bin').length, 1);
+  assert.equal(entries.filter((entry) => entry === '/custom/bin').length, 1);
+  assert.ok(entries.includes('/usr/local/bin'));
+  assert.ok(entries.includes('/bin'));
+  assert.ok(entries.includes('/usr/sbin'));
+  assert.ok(entries.includes('/sbin'));
+});
+
 test('extractReleaseMetadata ignores releases without semver tags', (t) => {
   const mainModule = loadMainModule(t);
 

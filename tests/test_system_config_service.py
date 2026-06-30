@@ -961,6 +961,88 @@ class SystemConfigServiceTestCase(unittest.TestCase):
         self.assertIn("Codex CLI", checks["llm_primary"]["message"])
         self.assertNotIn("llm_primary", status["required_missing_keys"])
 
+    def test_get_setup_status_codex_cli_missing_reports_backend_path(self) -> None:
+        self._rewrite_env(
+            "GENERATION_BACKEND=codex_cli",
+            "GENERATION_FALLBACK_BACKEND=",
+            "STOCK_LIST=600519",
+        )
+
+        with patch.dict(os.environ, {}, clear=True), \
+             patch("src.services.system_config_service.shutil.which", return_value=None):
+            status = self.service.get_setup_status()
+
+        checks = {check["key"]: check for check in status["checks"]}
+        self.assertEqual(checks["llm_primary"]["status"], "needs_action")
+        self.assertIn("后端进程当前 PATH", checks["llm_primary"]["message"])
+        self.assertIn("Codex CLI 交互窗口", checks["llm_primary"]["next_step"])
+        self.assertNotIn("请先安装并登录", checks["llm_primary"]["next_step"])
+
+    def test_get_setup_status_codex_primary_agent_model_explains_litellm_split(self) -> None:
+        self._rewrite_env(
+            "GENERATION_BACKEND=codex_cli",
+            "GENERATION_FALLBACK_BACKEND=",
+            "AGENT_LITELLM_MODEL=openai/gpt-5.5",
+            "OPENAI_API_KEY=secret-key-value",
+            "STOCK_LIST=600519",
+        )
+
+        with patch.dict(os.environ, {}, clear=True), \
+             patch("src.services.system_config_service.shutil.which", return_value="/usr/bin/codex"):
+            status = self.service.get_setup_status()
+
+        checks = {check["key"]: check for check in status["checks"]}
+        self.assertEqual(checks["llm_agent"]["status"], "configured")
+        self.assertIn("普通分析使用 Codex CLI", checks["llm_agent"]["message"])
+        self.assertIn("Agent 工具调用仍使用 LiteLLM 主模型", checks["llm_agent"]["message"])
+
+    def test_get_setup_status_codex_primary_agent_inherited_model_explains_litellm_split(self) -> None:
+        self._rewrite_env(
+            "GENERATION_BACKEND=codex_cli",
+            "GENERATION_FALLBACK_BACKEND=",
+            "LITELLM_MODEL=openai/gpt-5.5",
+            "OPENAI_API_KEY=secret-key-value",
+            "STOCK_LIST=600519",
+        )
+
+        with patch.dict(os.environ, {}, clear=True), \
+             patch("src.services.system_config_service.shutil.which", return_value="/usr/bin/codex"):
+            status = self.service.get_setup_status()
+
+        checks = {check["key"]: check for check in status["checks"]}
+        self.assertEqual(checks["llm_agent"]["status"], "configured")
+        self.assertIn(
+            "普通分析使用 Codex CLI；Agent 工具调用仍使用 LiteLLM 主模型: openai/gpt-5.5",
+            checks["llm_agent"]["message"],
+        )
+
+    def test_get_setup_status_codex_primary_hermes_only_agent_inheritance_needs_action(self) -> None:
+        self._rewrite_env(
+            "GENERATION_BACKEND=codex_cli",
+            "GENERATION_FALLBACK_BACKEND=",
+            "LLM_CHANNELS=hermes",
+            "LLM_HERMES_PROTOCOL=openai",
+            "LLM_HERMES_BASE_URL=http://127.0.0.1:8765/v1",
+            "LLM_HERMES_API_KEY=test-key",
+            "LLM_HERMES_MODELS=hermes-agent",
+            "LITELLM_MODEL=openai/hermes-agent",
+            "STOCK_LIST=600519",
+        )
+
+        with patch.dict(os.environ, {}, clear=True), \
+             patch("src.services.system_config_service.shutil.which", return_value="/usr/bin/codex"):
+            status = self.service.get_setup_status()
+
+        checks = {check["key"]: check for check in status["checks"]}
+        self.assertEqual(checks["llm_primary"]["status"], "configured")
+        self.assertEqual(checks["llm_agent"]["status"], "needs_action")
+        self.assertIn("Hermes", checks["llm_agent"]["message"])
+        self.assertIn("llm_agent", status["required_missing_keys"])
+        self.assertNotIn(
+            "Agent 工具调用仍使用 LiteLLM 主模型",
+            checks["llm_agent"]["message"],
+        )
+
     def test_get_setup_status_rejects_agent_codex_cli_tool_backend(self) -> None:
         self._rewrite_env(
             "GENERATION_BACKEND=codex_cli",
@@ -1908,8 +1990,9 @@ class SystemConfigServiceTestCase(unittest.TestCase):
         self.assertEqual(agent_arch_schema["validation"]["enum"], ["single", "multi"])
 
         report_language_schema = items["REPORT_LANGUAGE"]["schema"]
-        self.assertEqual(report_language_schema["validation"]["enum"], ["zh", "en"])
+        self.assertEqual(report_language_schema["validation"]["enum"], ["zh", "en", "ko"])
         self.assertEqual(report_language_schema["options"][1]["value"], "en")
+        self.assertEqual(report_language_schema["options"][2]["value"], "ko")
 
         self.assertEqual(items["AGENT_ORCHESTRATOR_TIMEOUT_S"]["schema"]["default_value"], "600")
         self.assertTrue(items["AGENT_DEEP_RESEARCH_BUDGET"]["schema"]["is_editable"])
@@ -1964,6 +2047,12 @@ class SystemConfigServiceTestCase(unittest.TestCase):
 
     def test_validate_accepts_report_language_english(self) -> None:
         validation = self.service.validate(items=[{"key": "REPORT_LANGUAGE", "value": "en"}])
+
+        self.assertTrue(validation["valid"])
+        self.assertEqual(validation["issues"], [])
+
+    def test_validate_accepts_report_language_korean(self) -> None:
+        validation = self.service.validate(items=[{"key": "REPORT_LANGUAGE", "value": "ko"}])
 
         self.assertTrue(validation["valid"])
         self.assertEqual(validation["issues"], [])

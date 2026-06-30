@@ -55,6 +55,7 @@ AGENT_GENERATION_BACKEND=auto
 - Docker、云服务器、CI 不天然拥有你本机的 CLI 登录态。
 - GitHub Actions 只负责透传配置值，不安装或登录 Codex CLI；如果在 Actions 中 opt-in `GENERATION_BACKEND=codex_cli`，runner 上缺少可执行文件或登录态时应看到结构化失败。
 - DSA 不读取 Codex credential 文件，但子进程可能读取 CLI 自身登录态。
+- macOS 从 Finder/Dock 启动桌面端时不继承 shell PATH；打包桌面端会在启动后端时补入常见 Homebrew 路径（如 `/opt/homebrew/bin`、`/usr/local/bin`）。如果设置检查仍提示找不到 `codex`，请完全退出并重开 DSA；打开 `codex` 交互窗口不会改变已运行后端的 PATH。
 - Web 设置页只暴露安全 preset，不允许提交任意 command / argv / shell string。
 - `codex_cli` 仍标记为 experimental/limited；如果你的 CLI 版本不支持稳定的 `--output-last-message` 非交互输出，请保持 `GENERATION_BACKEND=litellm`。
 

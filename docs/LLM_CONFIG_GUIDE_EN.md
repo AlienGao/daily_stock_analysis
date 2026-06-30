@@ -48,6 +48,7 @@ AGENT_GENERATION_BACKEND=auto
 - Docker, cloud servers, and CI do not automatically have your local CLI login state.
 - GitHub Actions only passes configuration values through; it does not install or log in Codex CLI. If you opt into `GENERATION_BACKEND=codex_cli` in Actions, a runner without the executable or login state should return a structured failure.
 - DSA does not read Codex credential files, but the subprocess may use the CLI's own login state.
+- On macOS, desktop apps launched from Finder/Dock do not inherit the shell PATH. The packaged desktop app adds common Homebrew directories such as `/opt/homebrew/bin` and `/usr/local/bin` when starting the backend. If setup checks still cannot find `codex`, fully quit and reopen DSA; opening an interactive `codex` window does not change the already-running backend PATH.
 - The Web settings page only exposes safe presets; it does not accept arbitrary command, argv, or shell strings.
 - `codex_cli` remains experimental/limited. If your CLI version does not support stable non-interactive `--output-last-message` output, keep `GENERATION_BACKEND=litellm`.
 
