@@ -13,7 +13,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
-from urllib.parse import urljoin, urlparse, urlunparse
+from urllib.parse import urlparse, urlunparse
 
 import requests
 
@@ -60,10 +60,13 @@ from src.llm.errors import call_litellm_with_param_recovery
 from src.llm.backend_registry import (
     AUTO_AGENT_BACKEND_ID,
     CODEX_CLI_BACKEND_ID,
+    GENERATION_ONLY_BACKEND_IDS,
+    LOCAL_CLI_GENERATION_BACKEND_IDS,
     LITELLM_BACKEND_ID,
     normalize_backend_id,
 )
 from src.llm.generation_params import apply_litellm_generation_params
+from src.llm.local_cli_backend import resolve_local_cli_preset
 from src.notification_contracts import (
     FEISHU_APP_BOT_ENV_GROUP,
     FEISHU_WEBHOOK_ENV_GROUP,
@@ -540,9 +543,15 @@ class SystemConfigService:
             for check in checks
             if check["required"] and check["status"] == "needs_action"
         ]
+        smoke_blocking_missing = [
+            check["key"]
+            for check in checks
+            if check["key"] in {"llm_primary", "stock_list"}
+            and check["status"] == "needs_action"
+        ]
         return {
             "is_complete": not required_missing,
-            "ready_for_smoke": not required_missing,
+            "ready_for_smoke": not smoke_blocking_missing,
             "required_missing_keys": required_missing,
             "next_step_key": required_missing[0] if required_missing else None,
             "checks": checks,
@@ -3208,15 +3217,16 @@ class SystemConfigService:
             effective_map.get("GENERATION_BACKEND"),
             default=LITELLM_BACKEND_ID,
         )
-        if generation_backend == CODEX_CLI_BACKEND_ID:
-            if shutil.which("codex"):
+        if generation_backend in LOCAL_CLI_GENERATION_BACKEND_IDS:
+            preset = resolve_local_cli_preset(generation_backend)
+            if shutil.which(preset.executable):
                 return self._setup_check(
                     "llm_primary",
                     "LLM 主渠道",
                     "ai_model",
                     True,
                     "configured",
-                    "已启用 Codex CLI 本地生成 Backend（experimental/limited）。",
+                    f"已启用 {preset.display_name} 本地生成 Backend（experimental/limited）。",
                 )
             return self._setup_check(
                 "llm_primary",
@@ -3224,10 +3234,18 @@ class SystemConfigService:
                 "ai_model",
                 True,
                 "needs_action",
-                "已选择 codex_cli，但 DSA 后端进程当前 PATH 中找不到 codex 可执行文件。",
-                "请确认 Codex CLI 已安装到后端 PATH 可见目录；桌面端请完全退出并重开。"
-                "打开 Codex CLI 交互窗口不会改变已运行后端的 PATH；若找到后仍失败，再检查 Codex CLI 登录态，"
-                "或将 GENERATION_BACKEND 设回 litellm。",
+                (
+                    "已选择 codex_cli，但 DSA 后端进程当前 PATH 中找不到 codex 可执行文件。"
+                    if generation_backend == CODEX_CLI_BACKEND_ID
+                    else f"已选择 {generation_backend}，但未找到 {preset.executable} 可执行文件。"
+                ),
+                (
+                    "请确认 Codex CLI 已安装到后端 PATH 可见目录；桌面端请完全退出并重开。"
+                    "打开 Codex CLI 交互窗口不会改变已运行后端的 PATH；若找到后仍失败，再检查 Codex CLI 登录态，"
+                    "或将 GENERATION_BACKEND 设回 litellm。"
+                    if generation_backend == CODEX_CLI_BACKEND_ID
+                    else "请先安装并登录对应 CLI，或将 GENERATION_BACKEND 设回 litellm。"
+                ),
             )
 
         model, source = self._resolve_setup_primary_model(effective_map)
@@ -3269,14 +3287,14 @@ class SystemConfigService:
             effective_map.get("AGENT_GENERATION_BACKEND"),
             default=AUTO_AGENT_BACKEND_ID,
         )
-        if agent_backend == CODEX_CLI_BACKEND_ID:
+        if agent_backend in GENERATION_ONLY_BACKEND_IDS:
             return self._setup_check(
                 "llm_agent",
                 "Agent 渠道",
                 "agent",
                 True,
                 "needs_action",
-                "Agent 工具调用暂不支持 codex_cli text-only backend。",
+                f"Agent 工具调用暂不支持 {agent_backend} text-only backend。",
                 "请将 AGENT_GENERATION_BACKEND 设为 auto 或 litellm，并配置 LiteLLM 工具调用渠道。",
             )
 
@@ -3284,7 +3302,7 @@ class SystemConfigService:
         hermes_routes = set(self._collect_hermes_channel_models_from_map(effective_map))
         non_hermes_routes = set(self._collect_non_hermes_channel_models_from_map(effective_map))
         if not agent_model_raw:
-            if generation_backend == CODEX_CLI_BACKEND_ID:
+            if generation_backend in LOCAL_CLI_GENERATION_BACKEND_IDS:
                 litellm_model, _source = self._resolve_setup_primary_model(effective_map)
                 if litellm_model:
                     if litellm_model in hermes_routes and litellm_model not in non_hermes_routes:
@@ -3323,7 +3341,7 @@ class SystemConfigService:
                     "agent",
                     True,
                     "needs_action",
-                    "Agent 工具调用需要 LiteLLM 模型配置；codex_cli 主生成方式不会被自动继承。",
+                    "Agent 工具调用需要 LiteLLM 模型配置；local CLI 主生成方式不会被自动继承。",
                     "如需使用 Ask-Stock Agent，请配置 LiteLLM 模型，或将 AGENT_GENERATION_BACKEND 固定为 litellm 后补齐模型配置。",
                 )
             if primary_check["status"] == "configured":

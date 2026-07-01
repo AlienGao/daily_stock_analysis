@@ -20,6 +20,7 @@ ensure_litellm_stub()
 
 from src.config import ANSPIRE_LLM_MODEL_DEFAULT, DEFAULT_ALPHASIFT_INSTALL_SPEC, Config
 from src.core.config_manager import ConfigManager
+from src.llm.backend_registry import GENERATION_ONLY_BACKEND_IDS
 from src.services.system_config_service import ConfigConflictError, ConfigImportError, SystemConfigService
 
 
@@ -632,20 +633,22 @@ class SystemConfigServiceTestCase(unittest.TestCase):
         self.assertTrue(items["REPORT_SHOW_LLM_MODEL"]["raw_value_exists"])
 
     def test_get_config_preserves_manual_agent_codex_cli_value_without_schema_option(self) -> None:
-        self._rewrite_env(
-            "STOCK_LIST=600519,000001",
-            "AGENT_GENERATION_BACKEND=codex_cli",
-        )
+        for backend in sorted(GENERATION_ONLY_BACKEND_IDS):
+            with self.subTest(backend=backend):
+                self._rewrite_env(
+                    "STOCK_LIST=600519,000001",
+                    f"AGENT_GENERATION_BACKEND={backend}",
+                )
 
-        payload = self.service.get_config(include_schema=True)
-        items = {item["key"]: item for item in payload["items"]}
-        agent_item = items["AGENT_GENERATION_BACKEND"]
+                payload = self.service.get_config(include_schema=True)
+                items = {item["key"]: item for item in payload["items"]}
+                agent_item = items["AGENT_GENERATION_BACKEND"]
 
-        self.assertEqual(agent_item["value"], "codex_cli")
-        self.assertNotIn(
-            "codex_cli",
-            {option["value"] for option in agent_item["schema"]["options"]},
-        )
+                self.assertEqual(agent_item["value"], backend)
+                self.assertNotIn(
+                    backend,
+                    {option["value"] for option in agent_item["schema"]["options"]},
+                )
 
     def test_get_config_preserves_explicit_empty_switch_value(self) -> None:
         self._rewrite_env(
@@ -957,9 +960,33 @@ class SystemConfigServiceTestCase(unittest.TestCase):
             status = self.service.get_setup_status()
 
         checks = {check["key"]: check for check in status["checks"]}
+        self.assertFalse(status["is_complete"])
+        self.assertTrue(status["ready_for_smoke"])
         self.assertEqual(checks["llm_primary"]["status"], "configured")
+        self.assertEqual(checks["llm_agent"]["status"], "needs_action")
         self.assertIn("Codex CLI", checks["llm_primary"]["message"])
         self.assertNotIn("llm_primary", status["required_missing_keys"])
+        self.assertIn("llm_agent", status["required_missing_keys"])
+
+    def test_get_setup_status_allows_local_cli_primary_smoke_without_agent_model(self) -> None:
+        self._rewrite_env(
+            "GENERATION_BACKEND=claude_code_cli",
+            "GENERATION_FALLBACK_BACKEND=",
+            "STOCK_LIST=AAPL",
+        )
+
+        with patch.dict(os.environ, {}, clear=True), \
+             patch("src.services.system_config_service.shutil.which", return_value="/usr/bin/claude"):
+            status = self.service.get_setup_status()
+
+        checks = {check["key"]: check for check in status["checks"]}
+        self.assertFalse(status["is_complete"])
+        self.assertTrue(status["ready_for_smoke"])
+        self.assertEqual(checks["llm_primary"]["status"], "configured")
+        self.assertEqual(checks["stock_list"]["status"], "configured")
+        self.assertEqual(checks["llm_agent"]["status"], "needs_action")
+        self.assertIn("local CLI 主生成方式不会被自动继承", checks["llm_agent"]["message"])
+        self.assertEqual(status["required_missing_keys"], ["llm_agent"])
 
     def test_get_setup_status_codex_cli_missing_reports_backend_path(self) -> None:
         self._rewrite_env(
@@ -1057,6 +1084,37 @@ class SystemConfigServiceTestCase(unittest.TestCase):
         checks = {check["key"]: check for check in status["checks"]}
         self.assertEqual(checks["llm_agent"]["status"], "needs_action")
         self.assertIn("暂不支持 codex_cli", checks["llm_agent"]["message"])
+
+    def test_get_setup_status_rejects_agent_claude_and_opencode_tool_backends(self) -> None:
+        for backend in ("claude_code_cli", "opencode_cli"):
+            with self.subTest(backend=backend):
+                self._rewrite_env(
+                    "GENERATION_BACKEND=litellm",
+                    f"AGENT_GENERATION_BACKEND={backend}",
+                    "STOCK_LIST=600519",
+                )
+
+                with patch.dict(os.environ, {}, clear=True):
+                    status = self.service.get_setup_status()
+
+                checks = {check["key"]: check for check in status["checks"]}
+                self.assertEqual(checks["llm_agent"]["status"], "needs_action")
+                self.assertIn(f"暂不支持 {backend}", checks["llm_agent"]["message"])
+
+    def test_get_setup_status_accepts_opencode_without_model_override(self) -> None:
+        self._rewrite_env(
+            "GENERATION_BACKEND=opencode_cli",
+            "GENERATION_FALLBACK_BACKEND=",
+            "STOCK_LIST=600519",
+        )
+
+        with patch.dict(os.environ, {}, clear=True), \
+             patch("src.services.system_config_service.shutil.which", return_value="/usr/bin/opencode"):
+            status = self.service.get_setup_status()
+
+        checks = {check["key"]: check for check in status["checks"]}
+        self.assertEqual(checks["llm_primary"]["status"], "configured")
+        self.assertIn("OpenCode CLI", checks["llm_primary"]["message"])
 
     def test_get_setup_status_agent_litellm_without_model_reports_missing_model(self) -> None:
         self._rewrite_env(

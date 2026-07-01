@@ -35,8 +35,6 @@ from src.config import (
     get_api_keys_for_model,
     get_config,
     get_configured_llm_models,
-    normalize_litellm_temperature,
-    resolve_litellm_wire_model,
     resolve_news_window_days,
 )
 from src.llm.hermes import (
@@ -54,7 +52,7 @@ from src.llm.hermes import (
 from src.llm.generation_params import apply_litellm_generation_params
 from src.llm.errors import call_litellm_with_param_recovery
 from src.llm.backend_registry import (
-    CODEX_CLI_BACKEND_ID,
+    LOCAL_CLI_GENERATION_BACKEND_IDS,
     LITELLM_BACKEND_ID,
     resolve_generation_backend_id,
     resolve_generation_fallback_backend_id,
@@ -2321,10 +2319,11 @@ class GeminiAnalyzer:
                 backend_id, _fallback_backend_id = self._resolve_generation_backend_config()
             except GenerationError:
                 backend_id = ""
-            if backend_id == CODEX_CLI_BACKEND_ID:
+            if backend_id in LOCAL_CLI_GENERATION_BACKEND_IDS:
                 logger.info(
-                    "Analyzer generation backend: codex_cli configured; "
-                    "LiteLLM API keys are not required for stock analysis generation"
+                    "Analyzer generation backend: %s configured; LiteLLM API keys are not "
+                    "required for stock analysis generation",
+                    backend_id,
                 )
             else:
                 logger.warning("No LLM configured (LITELLM_MODEL / API keys), AI analysis will be unavailable")
@@ -2487,10 +2486,10 @@ class GeminiAnalyzer:
                 backend_id = resolve_generation_backend_id(config)
             except GenerationError:
                 pass
-            if backend_id == CODEX_CLI_BACKEND_ID:
+            if backend_id in LOCAL_CLI_GENERATION_BACKEND_IDS:
                 logger.info(
-                    "Analyzer LiteLLM: LITELLM_MODEL not configured; "
-                    "using codex_cli generation backend"
+                    "Analyzer LiteLLM: LITELLM_MODEL not configured; using %s generation backend",
+                    backend_id,
                 )
             else:
                 logger.warning("Analyzer LLM: LITELLM_MODEL not configured")
@@ -2590,7 +2589,7 @@ class GeminiAnalyzer:
         if backend_error is not None:
             return self._can_use_generation_fallback(backend_error)
         backend_id, _fallback_backend_id = self._resolve_generation_backend_config()
-        if backend_id == CODEX_CLI_BACKEND_ID:
+        if backend_id in LOCAL_CLI_GENERATION_BACKEND_IDS:
             return True
         return self._litellm_runtime_available()
 
@@ -2628,7 +2627,7 @@ class GeminiAnalyzer:
                 mixed_error = self._get_mixed_hermes_route_error(config, model)
                 if mixed_error is not None:
                     return mixed_error
-            if backend_id == CODEX_CLI_BACKEND_ID:
+            if backend_id in LOCAL_CLI_GENERATION_BACKEND_IDS:
                 backend = self._get_generation_backend(backend_id)
                 get_config_error = getattr(backend, "get_config_error", None)
                 if callable(get_config_error):
@@ -3513,21 +3512,21 @@ class GeminiAnalyzer:
             config = self._get_runtime_config()
             backend_id, _fallback_backend_id = self._resolve_generation_backend_config()
             model_name = config.litellm_model or "unknown"
-            if backend_id == CODEX_CLI_BACKEND_ID:
-                model_name = CODEX_CLI_BACKEND_ID
-                legacy_audit_context["transport"] = CODEX_CLI_BACKEND_ID
+            if backend_id in LOCAL_CLI_GENERATION_BACKEND_IDS:
+                model_name = backend_id
+                legacy_audit_context["transport"] = backend_id
             logger.info(f"========== AI 分析 {name}({code}) ==========")
             logger.info(f"[LLM配置] 模型: {model_name}")
             logger.info(f"[LLM配置] Prompt 长度: {len(prompt)} 字符")
             logger.info(f"[LLM配置] 是否包含新闻: {'是' if news_context else '否'}")
 
             # 本地 CLI backend 是进程执行能力，不记录完整 prompt。
-            if backend_id == CODEX_CLI_BACKEND_ID:
+            if backend_id in LOCAL_CLI_GENERATION_BACKEND_IDS:
                 prompt_preview = redact_diagnostic_text(prompt, limit=500)
             else:
                 prompt_preview = prompt[:500] + "..." if len(prompt) > 500 else prompt
             logger.info(f"[LLM Prompt 预览]\n{prompt_preview}")
-            if backend_id != CODEX_CLI_BACKEND_ID:
+            if backend_id not in LOCAL_CLI_GENERATION_BACKEND_IDS:
                 logger.debug(f"=== 完整 Prompt ({len(prompt)}字符) ===\n{prompt}\n=== End Prompt ===")
 
             # 设置生成配置
@@ -3574,12 +3573,12 @@ class GeminiAnalyzer:
                 logger.info(
                     f"[LLM返回] {model_name} 响应成功, 耗时 {elapsed:.2f}s, 响应长度 {len(response_text)} 字符"
                 )
-                if backend_id == CODEX_CLI_BACKEND_ID:
+                if backend_id in LOCAL_CLI_GENERATION_BACKEND_IDS:
                     response_preview = redact_diagnostic_text(response_text, limit=300)
                 else:
                     response_preview = response_text[:300] + "..." if len(response_text) > 300 else response_text
                 logger.info(f"[LLM返回 预览]\n{response_preview}")
-                if backend_id != CODEX_CLI_BACKEND_ID:
+                if backend_id not in LOCAL_CLI_GENERATION_BACKEND_IDS:
                     logger.debug(
                         f"=== {model_name} 完整响应 ({len(response_text)}字符) ===\n{response_text}\n=== End Response ==="
                     )
@@ -3878,6 +3877,40 @@ class GeminiAnalyzer:
 | 资金流出靠前板块 | {bottom_sector_text} | 板块风险参考 |
 
 > 资金流向只能作为价格位置的过滤器：接近压力且主力流出时不得追买；接近支撑且未放量跌破时，优先判断为持有观察、震荡或洗盘观察。
+"""
+
+        # 添加三大法人动向（台股筹码过滤器）— tw-only；仅当 institution 区块 status='ok'
+        # 且有净额时注入，其他市场 status='not_supported' 会跳过，严格 additive。
+        institution_block = (
+            fundamental_context.get("institution", {})
+            if isinstance(fundamental_context, dict)
+            else {}
+        )
+        institution_data = (
+            institution_block.get("data", {})
+            if isinstance(institution_block, dict)
+            else {}
+        )
+        if (
+            isinstance(institution_block, dict)
+            and institution_block.get("status") == "ok"
+            and isinstance(institution_data, dict)
+            and all(
+                institution_data.get(key) is not None
+                for key in ("foreign_net", "trust_net", "dealer_net", "total_net")
+            )
+        ):
+            prompt += f"""
+### 三大法人动向（台股筹码过滤器，净买卖超，单位:股）
+| 法人 | 净买卖超 | 决策含义 |
+|------|------|----------|
+| 外资 | {institution_data.get('foreign_net', 'N/A')} | 正值=净买超偏支持，负值=净卖超偏压制 |
+| 投信 | {institution_data.get('trust_net', 'N/A')} | 投信持续买超常伴随中线做多 |
+| 自营商 | {institution_data.get('dealer_net', 'N/A')} | 短线避险/自营方向参考 |
+| 三大法人合计 | {institution_data.get('total_net', 'N/A')} | 台股最受关注的筹码信号 |
+| 资料日期 | {institution_data.get('date', 'N/A')} | 来源 {institution_data.get('source', 'N/A')} |
+
+> 三大法人是台股的筹码过滤器（相当于 A 股主力资金/龙虎榜的角色，但口径不同、不可混用）：外资与投信同向净买支持价格、同向净卖压制价格。请据此判断台股筹码结构，不要在有本数据时写“筹码结构：数据缺失”。
 """
 
         # 添加筹码分布数据

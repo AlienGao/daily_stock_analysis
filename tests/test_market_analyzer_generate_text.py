@@ -21,7 +21,6 @@ for _mod in ("litellm", "google.generativeai", "google.genai", "anthropic"):
         sys.modules[_mod] = MagicMock()
 
 import pytest
-from unittest.mock import PropertyMock
 
 
 @pytest.fixture(autouse=True)
@@ -187,12 +186,20 @@ class TestAnalyzerGenerateText:
         assert result == "复盘"
         mock_persist.assert_not_called()
 
-    def test_codex_cli_is_available_without_litellm_api_keys(self):
+    @pytest.mark.parametrize(
+        ("generation_backend", "executable_name"),
+        [
+            ("codex_cli", "codex"),
+            ("claude_code_cli", "claude"),
+            ("opencode_cli", "opencode"),
+        ],
+    )
+    def test_local_cli_is_available_without_litellm_api_keys(self, generation_backend, executable_name):
         analyzer = self._make_analyzer()
         analyzer._litellm_available = False
         analyzer._router = None
         analyzer._config_override = SimpleNamespace(
-            generation_backend="codex_cli",
+            generation_backend=generation_backend,
             generation_fallback_backend="",
             generation_backend_timeout_seconds=300,
             generation_backend_max_output_bytes=1048576,
@@ -200,7 +207,7 @@ class TestAnalyzerGenerateText:
             local_cli_backend_max_concurrency=1,
         )
 
-        with patch("src.llm.local_cli_backend.shutil.which", return_value="/usr/bin/codex"), \
+        with patch("src.llm.local_cli_backend.shutil.which", return_value=f"/usr/bin/{executable_name}"), \
              patch("src.llm.local_cli_backend.os.access", return_value=True):
             assert analyzer.get_generation_backend_config_error() is None
             assert analyzer.is_available() is True
