@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 5,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260624",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301056",
+      "stock_code": "301056",
+      "stock_name": "森赫股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 2,
+      "ts_code": "600109",
+      "stock_code": "600109",
+      "stock_name": "国金证券",
+      "lgb_score": 94.76,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 3,
+      "ts_code": "301138",
+      "stock_code": "301138",
+      "stock_name": "华研精机",
+      "lgb_score": 94.04,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 4,
+      "ts_code": "300347",
+      "stock_code": "300347",
+      "stock_name": "泰格医药",
+      "lgb_score": 94.04,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 5,
+      "ts_code": "300251",
+      "stock_code": "300251",
+      "stock_name": "光线传媒",
+      "lgb_score": 92.85,
+      "raw_score": 0.14
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.21,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.002809,
+    "std": 0.024294,
+    "skew": -0.1343,
+    "kurtosis": 1.5118,
+    "min": -0.095423,
+    "max": 0.16333,
+    "median": 0.011327
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.07293047112790249,
+    "cv_rmse_std": 0.003796719450767962,
+    "cv_scores": [
+      0.0674,
+      0.070493,
+      0.074004,
+      0.074071,
+      0.078684
+    ],
+    "rank_ic_mean": 0.047685,
+    "rank_ic_std": 0.047815,
+    "icir": 0.9973,
+    "oof_corr": 0.033957,
+    "n_samples": 18327,
+    "n_features": 22
+  }
+}

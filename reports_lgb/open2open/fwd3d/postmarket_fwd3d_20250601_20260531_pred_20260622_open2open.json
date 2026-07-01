@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 3,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260622",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002625",
+      "stock_code": "002625",
+      "stock_name": "光启技术",
+      "lgb_score": 100.0,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 2,
+      "ts_code": "688657",
+      "stock_code": "688657",
+      "stock_name": "浩辰软件",
+      "lgb_score": 84.14,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 3,
+      "ts_code": "002229",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 84.11,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "002062",
+      "stock_code": "002062",
+      "stock_name": "宏润建设",
+      "lgb_score": 65.26,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 5,
+      "ts_code": "002947",
+      "stock_code": "002947",
+      "stock_name": "恒铭达",
+      "lgb_score": 63.46,
+      "raw_score": 0.06
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.62,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.002034,
+    "std": 0.015298,
+    "skew": -1.1797,
+    "kurtosis": 2.1952,
+    "min": -0.061891,
+    "max": 0.133415,
+    "median": 0.010727
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.05648778430896621,
+    "cv_rmse_std": 0.003947112657991144,
+    "cv_scores": [
+      0.057185,
+      0.058159,
+      0.048737,
+      0.059016,
+      0.059343
+    ],
+    "rank_ic_mean": 0.017385,
+    "rank_ic_std": 0.02222,
+    "icir": 0.7824,
+    "oof_corr": 0.024388,
+    "n_samples": 39382,
+    "n_features": 4
+  }
+}

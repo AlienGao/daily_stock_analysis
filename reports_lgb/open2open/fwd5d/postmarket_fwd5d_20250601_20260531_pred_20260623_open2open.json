@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 5,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260623",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002579",
+      "stock_code": "002579",
+      "stock_name": "中京电子",
+      "lgb_score": 100.0,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 2,
+      "ts_code": "600076",
+      "stock_code": "600076",
+      "stock_name": "康欣新材",
+      "lgb_score": 93.03,
+      "raw_score": 0.2
+    },
+    {
+      "rank": 3,
+      "ts_code": "688158",
+      "stock_code": "688158",
+      "stock_name": "优刻得-W",
+      "lgb_score": 88.55,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 4,
+      "ts_code": "300566",
+      "stock_code": "300566",
+      "stock_name": "激智科技",
+      "lgb_score": 86.79,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 5,
+      "ts_code": "300671",
+      "stock_code": "300671",
+      "stock_name": "富满微",
+      "lgb_score": 83.4,
+      "raw_score": 0.17
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.0,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.011682,
+    "std": 0.026823,
+    "skew": -1.0628,
+    "kurtosis": 2.0274,
+    "min": -0.083129,
+    "max": 0.219624,
+    "median": 0.029359
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.07368825211559613,
+    "cv_rmse_std": 0.005442329651027175,
+    "cv_scores": [
+      0.072458,
+      0.076226,
+      0.063658,
+      0.07719,
+      0.07891
+    ],
+    "rank_ic_mean": 0.031051,
+    "rank_ic_std": 0.026863,
+    "icir": 1.1559,
+    "oof_corr": 0.042216,
+    "n_samples": 39111,
+    "n_features": 4
+  }
+}

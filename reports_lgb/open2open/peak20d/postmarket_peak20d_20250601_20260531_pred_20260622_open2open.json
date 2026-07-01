@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260622",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688238",
+      "stock_code": "688238",
+      "stock_name": "和元生物",
+      "lgb_score": 100.0,
+      "raw_score": 0.36,
+      "predicted_days": 14
+    },
+    {
+      "rank": 2,
+      "ts_code": "688310",
+      "stock_code": "688310",
+      "stock_name": "迈得医疗",
+      "lgb_score": 97.6,
+      "raw_score": 0.35,
+      "predicted_days": 15
+    },
+    {
+      "rank": 3,
+      "ts_code": "688026",
+      "stock_code": "688026",
+      "stock_name": "洁特生物",
+      "lgb_score": 96.17,
+      "raw_score": 0.34,
+      "predicted_days": 16
+    },
+    {
+      "rank": 4,
+      "ts_code": "002897",
+      "stock_code": "002897",
+      "stock_name": "意华股份",
+      "lgb_score": 95.58,
+      "raw_score": 0.34,
+      "predicted_days": 14
+    },
+    {
+      "rank": 5,
+      "ts_code": "600113",
+      "stock_code": "600113",
+      "stock_name": "浙江东日",
+      "lgb_score": 90.66,
+      "raw_score": 0.32,
+      "predicted_days": 16
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.89,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.11092,
+    "std": 0.061644,
+    "skew": -0.4617,
+    "kurtosis": -1.3004,
+    "min": -0.05046,
+    "max": 0.358254,
+    "median": 0.159467
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.12711034844028576,
+    "cv_rmse_std": 0.013013420438796615,
+    "cv_scores": [
+      0.136423,
+      0.115199,
+      0.123244,
+      0.11328,
+      0.147406
+    ],
+    "rank_ic_mean": 0.173686,
+    "rank_ic_std": 0.034844,
+    "icir": 4.9847,
+    "oof_corr": 0.178931,
+    "n_samples": 39397,
+    "n_features": 4
+  },
+  "window_days": 20
+}

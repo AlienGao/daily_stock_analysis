@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 5,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260622",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "603400",
+      "stock_code": "603400",
+      "stock_name": "华之杰",
+      "lgb_score": 100.0,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 2,
+      "ts_code": "300904",
+      "stock_code": "300904",
+      "stock_name": "威力传动",
+      "lgb_score": 81.76,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
+      "ts_code": "688627",
+      "stock_code": "688627",
+      "stock_name": "精智达",
+      "lgb_score": 78.15,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 4,
+      "ts_code": "688472",
+      "stock_code": "688472",
+      "stock_name": "阿特斯",
+      "lgb_score": 77.48,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 5,
+      "ts_code": "002947",
+      "stock_code": "002947",
+      "stock_name": "恒铭达",
+      "lgb_score": 75.71,
+      "raw_score": 0.1
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.21,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.003538,
+    "std": 0.023247,
+    "skew": -0.6233,
+    "kurtosis": 0.4411,
+    "min": -0.088487,
+    "max": 0.165128,
+    "median": 0.011327
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.07293047112790249,
+    "cv_rmse_std": 0.003796719450767962,
+    "cv_scores": [
+      0.0674,
+      0.070493,
+      0.074004,
+      0.074071,
+      0.078684
+    ],
+    "rank_ic_mean": 0.047685,
+    "rank_ic_std": 0.047815,
+    "icir": 0.9973,
+    "oof_corr": 0.033957,
+    "n_samples": 18327,
+    "n_features": 22
+  }
+}

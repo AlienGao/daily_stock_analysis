@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 3,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260615",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002602",
+      "stock_code": "002602",
+      "stock_name": "世纪华通",
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "000558",
+      "stock_code": "000558",
+      "stock_name": "天府文旅",
+      "lgb_score": 87.16,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "600716",
+      "stock_code": "600716",
+      "stock_name": "凤凰股份",
+      "lgb_score": 78.47,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "688302",
+      "stock_code": "688302",
+      "stock_name": "海创药业-U",
+      "lgb_score": 76.59,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "600567",
+      "stock_code": "600567",
+      "stock_name": "山鹰国际",
+      "lgb_score": 74.03,
+      "raw_score": 0.07
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.62,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.001731,
+    "std": 0.015467,
+    "skew": -1.153,
+    "kurtosis": 1.9319,
+    "min": -0.066552,
+    "max": 0.118713,
+    "median": 0.010727
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.05648778430896621,
+    "cv_rmse_std": 0.003947112657991144,
+    "cv_scores": [
+      0.057185,
+      0.058159,
+      0.048737,
+      0.059016,
+      0.059343
+    ],
+    "rank_ic_mean": 0.017385,
+    "rank_ic_std": 0.02222,
+    "icir": 0.7824,
+    "oof_corr": 0.024388,
+    "n_samples": 39382,
+    "n_features": 4
+  }
+}

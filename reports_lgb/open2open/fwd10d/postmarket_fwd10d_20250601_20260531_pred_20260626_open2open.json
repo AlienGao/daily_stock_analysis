@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 10,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260626",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300302",
+      "stock_code": "300302",
+      "stock_name": "同有科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.39
+    },
+    {
+      "rank": 2,
+      "ts_code": "920547",
+      "stock_code": "920547",
+      "stock_name": "无锡晶海",
+      "lgb_score": 70.19,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 3,
+      "ts_code": "688408",
+      "stock_code": "688408",
+      "stock_name": "中信博",
+      "lgb_score": 70.19,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 4,
+      "ts_code": "002675",
+      "stock_code": "002675",
+      "stock_name": "东诚药业",
+      "lgb_score": 66.47,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 5,
+      "ts_code": "688061",
+      "stock_code": "688061",
+      "stock_name": "灿瑞科技",
+      "lgb_score": 63.01,
+      "raw_score": 0.22
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.72,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.033476,
+    "std": 0.021041,
+    "skew": 1.4914,
+    "kurtosis": 15.9074,
+    "min": -0.064722,
+    "max": 0.392511,
+    "median": 0.045605
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.10937376075492311,
+    "cv_rmse_std": 0.006244601234265029,
+    "cv_scores": [
+      0.108945,
+      0.111244,
+      0.097923,
+      0.112135,
+      0.116622
+    ],
+    "rank_ic_mean": 0.046119,
+    "rank_ic_std": 0.024408,
+    "icir": 1.8895,
+    "oof_corr": 0.060092,
+    "n_samples": 38974,
+    "n_features": 4
+  }
+}

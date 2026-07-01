@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 5,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260617",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300922",
+      "stock_code": "300922",
+      "stock_name": "天秦装备",
+      "lgb_score": 100.0,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 2,
+      "ts_code": "600459",
+      "stock_code": "600459",
+      "stock_name": "贵研铂业",
+      "lgb_score": 98.16,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 3,
+      "ts_code": "002167",
+      "stock_code": "002167",
+      "stock_name": "东方锆业",
+      "lgb_score": 87.18,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 4,
+      "ts_code": "300199",
+      "stock_code": "300199",
+      "stock_name": "翰宇药业",
+      "lgb_score": 86.78,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 5,
+      "ts_code": "002506",
+      "stock_code": "002506",
+      "stock_name": "协鑫集成",
+      "lgb_score": 85.54,
+      "raw_score": 0.15
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.0,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.011007,
+    "std": 0.027977,
+    "skew": -1.1975,
+    "kurtosis": 1.258,
+    "min": -0.087397,
+    "max": 0.189877,
+    "median": 0.029359
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.07368825211559613,
+    "cv_rmse_std": 0.005442329651027175,
+    "cv_scores": [
+      0.072458,
+      0.076226,
+      0.063658,
+      0.07719,
+      0.07891
+    ],
+    "rank_ic_mean": 0.031051,
+    "rank_ic_std": 0.026863,
+    "icir": 1.1559,
+    "oof_corr": 0.042216,
+    "n_samples": 39111,
+    "n_features": 4
+  }
+}

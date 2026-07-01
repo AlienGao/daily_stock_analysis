@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 10,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260630",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002937",
+      "stock_code": "002937",
+      "stock_name": "兴瑞科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.32
+    },
+    {
+      "rank": 2,
+      "ts_code": "000404",
+      "stock_code": "000404",
+      "stock_name": "长虹华意",
+      "lgb_score": 87.51,
+      "raw_score": 0.27
+    },
+    {
+      "rank": 3,
+      "ts_code": "688146",
+      "stock_code": "688146",
+      "stock_name": "中船特气",
+      "lgb_score": 83.41,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 4,
+      "ts_code": "920273",
+      "stock_code": "920273",
+      "stock_name": "一致魔芋",
+      "lgb_score": 83.41,
+      "raw_score": 0.26
+    },
+    {
+      "rank": 5,
+      "ts_code": "688639",
+      "stock_code": "688639",
+      "stock_name": "华恒生物",
+      "lgb_score": 75.57,
+      "raw_score": 0.22
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.72,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.033682,
+    "std": 0.021488,
+    "skew": 1.4821,
+    "kurtosis": 13.1553,
+    "min": -0.080143,
+    "max": 0.323288,
+    "median": 0.045605
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.10937376075492311,
+    "cv_rmse_std": 0.006244601234265029,
+    "cv_scores": [
+      0.108945,
+      0.111244,
+      0.097923,
+      0.112135,
+      0.116622
+    ],
+    "rank_ic_mean": 0.046119,
+    "rank_ic_std": 0.024408,
+    "icir": 1.8895,
+    "oof_corr": 0.060092,
+    "n_samples": 38974,
+    "n_features": 4
+  }
+}

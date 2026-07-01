@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260617",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301511",
+      "stock_code": "301511",
+      "stock_name": "德福科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.39,
+      "predicted_days": 11
+    },
+    {
+      "rank": 2,
+      "ts_code": "688082",
+      "stock_code": "688082",
+      "stock_name": "盛美上海",
+      "lgb_score": 91.99,
+      "raw_score": 0.35,
+      "predicted_days": 10
+    },
+    {
+      "rank": 3,
+      "ts_code": "002636",
+      "stock_code": "002636",
+      "stock_name": "金安国纪",
+      "lgb_score": 90.9,
+      "raw_score": 0.35,
+      "predicted_days": 10
+    },
+    {
+      "rank": 4,
+      "ts_code": "301377",
+      "stock_code": "301377",
+      "stock_name": "鼎泰高科",
+      "lgb_score": 86.69,
+      "raw_score": 0.33,
+      "predicted_days": 15
+    },
+    {
+      "rank": 5,
+      "ts_code": "920178",
+      "stock_code": "920178",
+      "stock_name": "锐翔智能",
+      "lgb_score": 85.35,
+      "raw_score": 0.33,
+      "predicted_days": 12
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.21,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.149826,
+    "std": 0.066736,
+    "skew": -0.8027,
+    "kurtosis": -0.8953,
+    "min": -0.019356,
+    "max": 0.386153,
+    "median": 0.198756
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.12912589954397044,
+    "cv_rmse_std": 0.01533487142135129,
+    "cv_scores": [
+      0.138337,
+      0.141427,
+      0.103139,
+      0.120087,
+      0.14264
+    ],
+    "rank_ic_mean": 0.222872,
+    "rank_ic_std": 0.033617,
+    "icir": 6.6297,
+    "oof_corr": 0.214242,
+    "n_samples": 18677,
+    "n_features": 22
+  },
+  "window_days": 20
+}

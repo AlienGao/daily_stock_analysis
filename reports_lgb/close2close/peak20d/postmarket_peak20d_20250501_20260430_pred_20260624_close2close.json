@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260624",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688048",
+      "stock_code": "688048",
+      "stock_name": "长光华芯",
+      "lgb_score": 100.0,
+      "raw_score": 0.39,
+      "predicted_days": 17
+    },
+    {
+      "rank": 2,
+      "ts_code": "688525",
+      "stock_code": "688525",
+      "stock_name": "佰维存储",
+      "lgb_score": 99.74,
+      "raw_score": 0.39,
+      "predicted_days": 16
+    },
+    {
+      "rank": 3,
+      "ts_code": "688323",
+      "stock_code": "688323",
+      "stock_name": "瑞华泰",
+      "lgb_score": 97.19,
+      "raw_score": 0.38,
+      "predicted_days": 16
+    },
+    {
+      "rank": 4,
+      "ts_code": "688167",
+      "stock_code": "688167",
+      "stock_name": "炬光科技",
+      "lgb_score": 91.83,
+      "raw_score": 0.36,
+      "predicted_days": 14
+    },
+    {
+      "rank": 5,
+      "ts_code": "001309",
+      "stock_code": "001309",
+      "stock_name": "德明利",
+      "lgb_score": 90.97,
+      "raw_score": 0.36,
+      "predicted_days": 15
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.21,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.160068,
+    "std": 0.059837,
+    "skew": -0.8924,
+    "kurtosis": -0.4731,
+    "min": -0.006261,
+    "max": 0.391635,
+    "median": 0.198756
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.12912589954397044,
+    "cv_rmse_std": 0.01533487142135129,
+    "cv_scores": [
+      0.138337,
+      0.141427,
+      0.103139,
+      0.120087,
+      0.14264
+    ],
+    "rank_ic_mean": 0.222872,
+    "rank_ic_std": 0.033617,
+    "icir": 6.6297,
+    "oof_corr": 0.214242,
+    "n_samples": 18677,
+    "n_features": 22
+  },
+  "window_days": 20
+}

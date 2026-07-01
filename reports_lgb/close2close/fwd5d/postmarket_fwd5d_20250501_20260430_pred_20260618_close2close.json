@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 5,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260618",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "600392",
+      "stock_code": "600392",
+      "stock_name": "盛和资源",
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "300834",
+      "stock_code": "300834",
+      "stock_name": "星辉环材",
+      "lgb_score": 92.22,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "603681",
+      "stock_code": "603681",
+      "stock_name": "永冠新材",
+      "lgb_score": 89.95,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "300099",
+      "stock_code": "300099",
+      "stock_name": "尤洛卡",
+      "lgb_score": 86.73,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "002623",
+      "stock_code": "002623",
+      "stock_name": "亚玛顿",
+      "lgb_score": 84.89,
+      "raw_score": 0.09
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.21,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.000498,
+    "std": 0.017861,
+    "skew": -0.6729,
+    "kurtosis": 1.0256,
+    "min": -0.088027,
+    "max": 0.123627,
+    "median": 0.011327
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.07293047112790249,
+    "cv_rmse_std": 0.003796719450767962,
+    "cv_scores": [
+      0.0674,
+      0.070493,
+      0.074004,
+      0.074071,
+      0.078684
+    ],
+    "rank_ic_mean": 0.047685,
+    "rank_ic_std": 0.047815,
+    "icir": 0.9973,
+    "oof_corr": 0.033957,
+    "n_samples": 18327,
+    "n_features": 22
+  }
+}

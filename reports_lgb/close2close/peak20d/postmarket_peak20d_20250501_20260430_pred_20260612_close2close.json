@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260612",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688041",
+      "stock_code": "688041",
+      "stock_name": "海光信息",
+      "lgb_score": 100.0,
+      "raw_score": 0.41,
+      "predicted_days": 11
+    },
+    {
+      "rank": 2,
+      "ts_code": "688141",
+      "stock_code": "688141",
+      "stock_name": "杰华特",
+      "lgb_score": 97.72,
+      "raw_score": 0.4,
+      "predicted_days": 13
+    },
+    {
+      "rank": 3,
+      "ts_code": "920438",
+      "stock_code": "920438",
+      "stock_name": "戈碧迦",
+      "lgb_score": 93.08,
+      "raw_score": 0.38,
+      "predicted_days": 11
+    },
+    {
+      "rank": 4,
+      "ts_code": "688325",
+      "stock_code": "688325",
+      "stock_name": "赛微微电",
+      "lgb_score": 92.76,
+      "raw_score": 0.38,
+      "predicted_days": 14
+    },
+    {
+      "rank": 5,
+      "ts_code": "300236",
+      "stock_code": "300236",
+      "stock_name": "上海新阳",
+      "lgb_score": 92.29,
+      "raw_score": 0.37,
+      "predicted_days": 10
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.21,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.153582,
+    "std": 0.065017,
+    "skew": -0.8854,
+    "kurtosis": -0.5887,
+    "min": -0.014352,
+    "max": 0.40556,
+    "median": 0.198756
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.12912589954397044,
+    "cv_rmse_std": 0.01533487142135129,
+    "cv_scores": [
+      0.138337,
+      0.141427,
+      0.103139,
+      0.120087,
+      0.14264
+    ],
+    "rank_ic_mean": 0.222872,
+    "rank_ic_std": 0.033617,
+    "icir": 6.6297,
+    "oof_corr": 0.214242,
+    "n_samples": 18677,
+    "n_features": 22
+  },
+  "window_days": 20
+}

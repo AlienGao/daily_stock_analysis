@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 5,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260623",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300566",
+      "stock_code": "300566",
+      "stock_name": "激智科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.18
+    },
+    {
+      "rank": 2,
+      "ts_code": "300113",
+      "stock_code": "300113",
+      "stock_name": "顺网科技",
+      "lgb_score": 95.62,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 3,
+      "ts_code": "002739",
+      "stock_code": "002739",
+      "stock_name": "儒意电影",
+      "lgb_score": 91.12,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 4,
+      "ts_code": "300841",
+      "stock_code": "300841",
+      "stock_name": "康华生物",
+      "lgb_score": 81.01,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 5,
+      "ts_code": "301501",
+      "stock_code": "301501",
+      "stock_name": "恒鑫生活",
+      "lgb_score": 80.64,
+      "raw_score": 0.13
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.21,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": -0.002292,
+    "std": 0.024849,
+    "skew": -0.1166,
+    "kurtosis": 1.711,
+    "min": -0.092662,
+    "max": 0.181587,
+    "median": 0.011327
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.07293047112790249,
+    "cv_rmse_std": 0.003796719450767962,
+    "cv_scores": [
+      0.0674,
+      0.070493,
+      0.074004,
+      0.074071,
+      0.078684
+    ],
+    "rank_ic_mean": 0.047685,
+    "rank_ic_std": 0.047815,
+    "icir": 0.9973,
+    "oof_corr": 0.033957,
+    "n_samples": 18327,
+    "n_features": 22
+  }
+}

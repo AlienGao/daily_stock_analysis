@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 10,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260615",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300927",
+      "stock_code": "300927",
+      "stock_name": "江天化学",
+      "lgb_score": 100.0,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 2,
+      "ts_code": "301156",
+      "stock_code": "301156",
+      "stock_name": "美农生物",
+      "lgb_score": 99.22,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 3,
+      "ts_code": "002602",
+      "stock_code": "002602",
+      "stock_name": "世纪华通",
+      "lgb_score": 98.27,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 4,
+      "ts_code": "600716",
+      "stock_code": "600716",
+      "stock_name": "凤凰股份",
+      "lgb_score": 93.49,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 5,
+      "ts_code": "688398",
+      "stock_code": "688398",
+      "stock_name": "赛特新材",
+      "lgb_score": 93.3,
+      "raw_score": 0.22
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.12,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.012894,
+    "std": 0.03573,
+    "skew": 0.6365,
+    "kurtosis": 2.9614,
+    "min": -0.149335,
+    "max": 0.250154,
+    "median": 0.010842
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.10555796166006633,
+    "cv_rmse_std": 0.004759488059331734,
+    "cv_scores": [
+      0.101733,
+      0.105965,
+      0.103919,
+      0.101645,
+      0.114528
+    ],
+    "rank_ic_mean": 0.083807,
+    "rank_ic_std": 0.064875,
+    "icir": 1.2918,
+    "oof_corr": 0.071869,
+    "n_samples": 17972,
+    "n_features": 22
+  }
+}

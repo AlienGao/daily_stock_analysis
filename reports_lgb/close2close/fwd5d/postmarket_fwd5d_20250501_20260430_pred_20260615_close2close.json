@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 5,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260615",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002602",
+      "stock_code": "002602",
+      "stock_name": "世纪华通",
+      "lgb_score": 100.0,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 2,
+      "ts_code": "300232",
+      "stock_code": "300232",
+      "stock_name": "洲明科技",
+      "lgb_score": 98.08,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 3,
+      "ts_code": "300244",
+      "stock_code": "300244",
+      "stock_name": "迪安诊断",
+      "lgb_score": 96.07,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 4,
+      "ts_code": "301580",
+      "stock_code": "301580",
+      "stock_name": "爱迪特",
+      "lgb_score": 94.18,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 5,
+      "ts_code": "688466",
+      "stock_code": "688466",
+      "stock_name": "金科环境",
+      "lgb_score": 93.03,
+      "raw_score": 0.12
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.21,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.002556,
+    "std": 0.019392,
+    "skew": 0.0351,
+    "kurtosis": 3.5506,
+    "min": -0.081518,
+    "max": 0.139454,
+    "median": 0.011327
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.07293047112790249,
+    "cv_rmse_std": 0.003796719450767962,
+    "cv_scores": [
+      0.0674,
+      0.070493,
+      0.074004,
+      0.074071,
+      0.078684
+    ],
+    "rank_ic_mean": 0.047685,
+    "rank_ic_std": 0.047815,
+    "icir": 0.9973,
+    "oof_corr": 0.033957,
+    "n_samples": 18327,
+    "n_features": 22
+  }
+}

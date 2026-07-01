@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 20,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260612",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "301338",
+      "stock_code": "301338",
+      "stock_name": "凯格精机",
+      "lgb_score": 100.0,
+      "raw_score": 0.52
+    },
+    {
+      "rank": 2,
+      "ts_code": "920220",
+      "stock_code": "920220",
+      "stock_name": "朗信电气",
+      "lgb_score": 91.66,
+      "raw_score": 0.47
+    },
+    {
+      "rank": 3,
+      "ts_code": "603267",
+      "stock_code": "603267",
+      "stock_name": "鸿远电子",
+      "lgb_score": 84.27,
+      "raw_score": 0.42
+    },
+    {
+      "rank": 4,
+      "ts_code": "301236",
+      "stock_code": "301236",
+      "stock_name": "软通动力",
+      "lgb_score": 79.21,
+      "raw_score": 0.39
+    },
+    {
+      "rank": 5,
+      "ts_code": "000676",
+      "stock_code": "000676",
+      "stock_name": "智度股份",
+      "lgb_score": 78.34,
+      "raw_score": 0.39
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.79,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.103013,
+    "std": 0.069552,
+    "skew": -0.2989,
+    "kurtosis": -1.2847,
+    "min": -0.102684,
+    "max": 0.523494,
+    "median": 0.162274
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.16314034724567866,
+    "cv_rmse_std": 0.018094067756429827,
+    "cv_scores": [
+      0.16451,
+      0.151589,
+      0.142632,
+      0.161018,
+      0.195952
+    ],
+    "rank_ic_mean": 0.118118,
+    "rank_ic_std": 0.035681,
+    "icir": 3.3104,
+    "oof_corr": 0.125467,
+    "n_samples": 38083,
+    "n_features": 4
+  }
+}

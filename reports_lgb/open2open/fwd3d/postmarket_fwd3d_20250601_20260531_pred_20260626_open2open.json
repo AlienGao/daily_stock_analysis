@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 3,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260626",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002428",
+      "stock_code": "002428",
+      "stock_name": "云南锗业",
+      "lgb_score": 100.0,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 2,
+      "ts_code": "300302",
+      "stock_code": "300302",
+      "stock_name": "同有科技",
+      "lgb_score": 85.84,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "002446",
+      "stock_code": "002446",
+      "stock_name": "盛路通信",
+      "lgb_score": 82.19,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "688408",
+      "stock_code": "688408",
+      "stock_name": "中信博",
+      "lgb_score": 81.59,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 5,
+      "ts_code": "300149",
+      "stock_code": "300149",
+      "stock_name": "睿智医药",
+      "lgb_score": 72.32,
+      "raw_score": 0.07
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.62,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.002183,
+    "std": 0.014912,
+    "skew": -1.2374,
+    "kurtosis": 2.1175,
+    "min": -0.066946,
+    "max": 0.119687,
+    "median": 0.010727
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.05648778430896621,
+    "cv_rmse_std": 0.003947112657991144,
+    "cv_scores": [
+      0.057185,
+      0.058159,
+      0.048737,
+      0.059016,
+      0.059343
+    ],
+    "rank_ic_mean": 0.017385,
+    "rank_ic_std": 0.02222,
+    "icir": 0.7824,
+    "oof_corr": 0.024388,
+    "n_samples": 39382,
+    "n_features": 4
+  }
+}

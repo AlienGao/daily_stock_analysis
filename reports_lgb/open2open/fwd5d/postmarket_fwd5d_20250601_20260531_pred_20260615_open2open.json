@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 5,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260615",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002602",
+      "stock_code": "002602",
+      "stock_name": "世纪华通",
+      "lgb_score": 100.0,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 2,
+      "ts_code": "600716",
+      "stock_code": "600716",
+      "stock_name": "凤凰股份",
+      "lgb_score": 90.31,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 3,
+      "ts_code": "600567",
+      "stock_code": "600567",
+      "stock_name": "山鹰国际",
+      "lgb_score": 81.33,
+      "raw_score": 0.16
+    },
+    {
+      "rank": 4,
+      "ts_code": "000558",
+      "stock_code": "000558",
+      "stock_name": "天府文旅",
+      "lgb_score": 76.75,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 5,
+      "ts_code": "600343",
+      "stock_code": "600343",
+      "stock_name": "航天动力",
+      "lgb_score": 70.87,
+      "raw_score": 0.13
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.0,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.011492,
+    "std": 0.027482,
+    "skew": -1.237,
+    "kurtosis": 1.4659,
+    "min": -0.085981,
+    "max": 0.219484,
+    "median": 0.029359
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.07368825211559613,
+    "cv_rmse_std": 0.005442329651027175,
+    "cv_scores": [
+      0.072458,
+      0.076226,
+      0.063658,
+      0.07719,
+      0.07891
+    ],
+    "rank_ic_mean": 0.031051,
+    "rank_ic_std": 0.026863,
+    "icir": 1.1559,
+    "oof_corr": 0.042216,
+    "n_samples": 39111,
+    "n_features": 4
+  }
+}

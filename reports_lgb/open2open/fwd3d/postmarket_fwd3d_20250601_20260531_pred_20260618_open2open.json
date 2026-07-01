@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 3,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260618",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002235",
+      "stock_code": "002235",
+      "stock_name": "安妮股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 2,
+      "ts_code": "603681",
+      "stock_code": "603681",
+      "stock_name": "永冠新材",
+      "lgb_score": 98.07,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "601515",
+      "stock_code": "601515",
+      "stock_name": "衢州东峰",
+      "lgb_score": 86.47,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 4,
+      "ts_code": "002263",
+      "stock_code": "002263",
+      "stock_name": "大东南",
+      "lgb_score": 75.72,
+      "raw_score": 0.07
+    },
+    {
+      "rank": 5,
+      "ts_code": "688261",
+      "stock_code": "688261",
+      "stock_name": "东微半导",
+      "lgb_score": 75.63,
+      "raw_score": 0.07
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.62,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.001917,
+    "std": 0.015098,
+    "skew": -1.2084,
+    "kurtosis": 2.0146,
+    "min": -0.07808,
+    "max": 0.111625,
+    "median": 0.010727
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.05648778430896621,
+    "cv_rmse_std": 0.003947112657991144,
+    "cv_scores": [
+      0.057185,
+      0.058159,
+      0.048737,
+      0.059016,
+      0.059343
+    ],
+    "rank_ic_mean": 0.017385,
+    "rank_ic_std": 0.02222,
+    "icir": 0.7824,
+    "oof_corr": 0.024388,
+    "n_samples": 39382,
+    "n_features": 4
+  }
+}

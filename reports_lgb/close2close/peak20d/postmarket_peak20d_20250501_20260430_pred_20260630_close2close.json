@@ -1,0 +1,88 @@
+{
+  "mode": "postmarket",
+  "label_mode": "peak_speed",
+  "forward_days": 3,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260630",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688048",
+      "stock_code": "688048",
+      "stock_name": "长光华芯",
+      "lgb_score": 100.0,
+      "raw_score": 0.41,
+      "predicted_days": 14
+    },
+    {
+      "rank": 2,
+      "ts_code": "688019",
+      "stock_code": "688019",
+      "stock_name": "安集科技",
+      "lgb_score": 88.41,
+      "raw_score": 0.36,
+      "predicted_days": 16
+    },
+    {
+      "rank": 3,
+      "ts_code": "002080",
+      "stock_code": "002080",
+      "stock_name": "中材科技",
+      "lgb_score": 84.32,
+      "raw_score": 0.34,
+      "predicted_days": 15
+    },
+    {
+      "rank": 4,
+      "ts_code": "300054",
+      "stock_code": "300054",
+      "stock_name": "鼎龙股份",
+      "lgb_score": 80.65,
+      "raw_score": 0.33,
+      "predicted_days": 16
+    },
+    {
+      "rank": 5,
+      "ts_code": "300408",
+      "stock_code": "300408",
+      "stock_name": "三环集团",
+      "lgb_score": 79.75,
+      "raw_score": 0.33,
+      "predicted_days": 12
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.21,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.150843,
+    "std": 0.065518,
+    "skew": -0.8273,
+    "kurtosis": -0.8322,
+    "min": -0.010675,
+    "max": 0.411147,
+    "median": 0.198756
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.12912589954397044,
+    "cv_rmse_std": 0.01533487142135129,
+    "cv_scores": [
+      0.138337,
+      0.141427,
+      0.103139,
+      0.120087,
+      0.14264
+    ],
+    "rank_ic_mean": 0.222872,
+    "rank_ic_std": 0.033617,
+    "icir": 6.6297,
+    "oof_corr": 0.214242,
+    "n_samples": 18677,
+    "n_features": 22
+  },
+  "window_days": 20
+}

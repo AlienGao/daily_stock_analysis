@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 3,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260616",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002252",
+      "stock_code": "002252",
+      "stock_name": "上海莱士",
+      "lgb_score": 100.0,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 2,
+      "ts_code": "000965",
+      "stock_code": "000965",
+      "stock_name": "天保基建",
+      "lgb_score": 94.94,
+      "raw_score": 0.09
+    },
+    {
+      "rank": 3,
+      "ts_code": "920445",
+      "stock_code": "920445",
+      "stock_name": "龙竹科技",
+      "lgb_score": 88.24,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 4,
+      "ts_code": "301046",
+      "stock_code": "301046",
+      "stock_name": "能辉科技",
+      "lgb_score": 88.09,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "002611",
+      "stock_code": "002611",
+      "stock_name": "东方精工",
+      "lgb_score": 87.46,
+      "raw_score": 0.08
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.62,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.001833,
+    "std": 0.015485,
+    "skew": -1.1149,
+    "kurtosis": 1.8846,
+    "min": -0.064799,
+    "max": 0.102969,
+    "median": 0.010727
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.05648778430896621,
+    "cv_rmse_std": 0.003947112657991144,
+    "cv_scores": [
+      0.057185,
+      0.058159,
+      0.048737,
+      0.059016,
+      0.059343
+    ],
+    "rank_ic_mean": 0.017385,
+    "rank_ic_std": 0.02222,
+    "icir": 0.7824,
+    "oof_corr": 0.024388,
+    "n_samples": 39382,
+    "n_features": 4
+  }
+}

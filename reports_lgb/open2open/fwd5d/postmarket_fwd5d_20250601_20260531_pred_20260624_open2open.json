@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 5,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260624",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002165",
+      "stock_code": "002165",
+      "stock_name": "红 宝 丽",
+      "lgb_score": 100.0,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 2,
+      "ts_code": "600684",
+      "stock_code": "600684",
+      "stock_name": "珠江股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 3,
+      "ts_code": "301098",
+      "stock_code": "301098",
+      "stock_name": "金埔园林",
+      "lgb_score": 91.75,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 4,
+      "ts_code": "300803",
+      "stock_code": "300803",
+      "stock_name": "指南针",
+      "lgb_score": 75.22,
+      "raw_score": 0.14
+    },
+    {
+      "rank": 5,
+      "ts_code": "000607",
+      "stock_code": "000607",
+      "stock_name": "华媒控股",
+      "lgb_score": 69.97,
+      "raw_score": 0.13
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.0,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.011093,
+    "std": 0.027478,
+    "skew": -1.1706,
+    "kurtosis": 1.5506,
+    "min": -0.08191,
+    "max": 0.219624,
+    "median": 0.029359
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.07368825211559613,
+    "cv_rmse_std": 0.005442329651027175,
+    "cv_scores": [
+      0.072458,
+      0.076226,
+      0.063658,
+      0.07719,
+      0.07891
+    ],
+    "rank_ic_mean": 0.031051,
+    "rank_ic_std": 0.026863,
+    "icir": 1.1559,
+    "oof_corr": 0.042216,
+    "n_samples": 39111,
+    "n_features": 4
+  }
+}

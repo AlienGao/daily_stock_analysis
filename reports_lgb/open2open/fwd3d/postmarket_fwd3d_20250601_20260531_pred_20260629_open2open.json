@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 3,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260629",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002456",
+      "stock_code": "002456",
+      "stock_name": "欧菲光",
+      "lgb_score": 100.0,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 2,
+      "ts_code": "688593",
+      "stock_code": "688593",
+      "stock_name": "新相微",
+      "lgb_score": 89.43,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 3,
+      "ts_code": "301588",
+      "stock_code": "301588",
+      "stock_name": "美新科技",
+      "lgb_score": 84.59,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 4,
+      "ts_code": "301182",
+      "stock_code": "301182",
+      "stock_name": "凯旺科技",
+      "lgb_score": 73.07,
+      "raw_score": 0.08
+    },
+    {
+      "rank": 5,
+      "ts_code": "002202",
+      "stock_code": "002202",
+      "stock_name": "金风科技",
+      "lgb_score": 65.86,
+      "raw_score": 0.07
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.62,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.002036,
+    "std": 0.015002,
+    "skew": -1.1773,
+    "kurtosis": 2.2916,
+    "min": -0.060002,
+    "max": 0.13053,
+    "median": 0.010727
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.05648778430896621,
+    "cv_rmse_std": 0.003947112657991144,
+    "cv_scores": [
+      0.057185,
+      0.058159,
+      0.048737,
+      0.059016,
+      0.059343
+    ],
+    "rank_ic_mean": 0.017385,
+    "rank_ic_std": 0.02222,
+    "icir": 0.7824,
+    "oof_corr": 0.024388,
+    "n_samples": 39382,
+    "n_features": 4
+  }
+}

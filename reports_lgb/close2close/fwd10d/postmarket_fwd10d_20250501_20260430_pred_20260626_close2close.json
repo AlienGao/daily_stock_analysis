@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 10,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260626",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "002903",
+      "stock_code": "002903",
+      "stock_name": "宇环数控",
+      "lgb_score": 100.0,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 2,
+      "ts_code": "688136",
+      "stock_code": "688136",
+      "stock_name": "科兴制药",
+      "lgb_score": 97.09,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 3,
+      "ts_code": "002428",
+      "stock_code": "002428",
+      "stock_name": "云南锗业",
+      "lgb_score": 92.83,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 4,
+      "ts_code": "000967",
+      "stock_code": "000967",
+      "stock_name": "盈峰环境",
+      "lgb_score": 92.67,
+      "raw_score": 0.22
+    },
+    {
+      "rank": 5,
+      "ts_code": "688766",
+      "stock_code": "688766",
+      "stock_name": "普冉股份",
+      "lgb_score": 91.47,
+      "raw_score": 0.21
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.12,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.011261,
+    "std": 0.035172,
+    "skew": 0.4964,
+    "kurtosis": 2.3243,
+    "min": -0.126861,
+    "max": 0.242989,
+    "median": 0.010842
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.10555796166006633,
+    "cv_rmse_std": 0.004759488059331734,
+    "cv_scores": [
+      0.101733,
+      0.105965,
+      0.103919,
+      0.101645,
+      0.114528
+    ],
+    "rank_ic_mean": 0.083807,
+    "rank_ic_std": 0.064875,
+    "icir": 1.2918,
+    "oof_corr": 0.071869,
+    "n_samples": 17972,
+    "n_features": 22
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 5,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260622",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688657",
+      "stock_code": "688657",
+      "stock_name": "浩辰软件",
+      "lgb_score": 100.0,
+      "raw_score": 0.19
+    },
+    {
+      "rank": 2,
+      "ts_code": "002625",
+      "stock_code": "002625",
+      "stock_name": "光启技术",
+      "lgb_score": 93.94,
+      "raw_score": 0.17
+    },
+    {
+      "rank": 3,
+      "ts_code": "002957",
+      "stock_code": "002957",
+      "stock_name": "科瑞技术",
+      "lgb_score": 85.87,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 4,
+      "ts_code": "002229",
+      "stock_code": "002229",
+      "stock_name": "鸿博股份",
+      "lgb_score": 84.9,
+      "raw_score": 0.15
+    },
+    {
+      "rank": 5,
+      "ts_code": "002729",
+      "stock_code": "002729",
+      "stock_name": "好利科技",
+      "lgb_score": 74.67,
+      "raw_score": 0.12
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.0,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.012498,
+    "std": 0.025643,
+    "skew": -1.2875,
+    "kurtosis": 1.6711,
+    "min": -0.087693,
+    "max": 0.19048,
+    "median": 0.029359
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.07368825211559613,
+    "cv_rmse_std": 0.005442329651027175,
+    "cv_scores": [
+      0.072458,
+      0.076226,
+      0.063658,
+      0.07719,
+      0.07891
+    ],
+    "rank_ic_mean": 0.031051,
+    "rank_ic_std": 0.026863,
+    "icir": 1.1559,
+    "oof_corr": 0.042216,
+    "n_samples": 39111,
+    "n_features": 4
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 10,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260612",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "300077",
+      "stock_code": "300077",
+      "stock_name": "国民技术",
+      "lgb_score": 100.0,
+      "raw_score": 0.39
+    },
+    {
+      "rank": 2,
+      "ts_code": "301188",
+      "stock_code": "301188",
+      "stock_name": "力诺药包",
+      "lgb_score": 96.98,
+      "raw_score": 0.38
+    },
+    {
+      "rank": 3,
+      "ts_code": "000048",
+      "stock_code": "000048",
+      "stock_name": "京基智农",
+      "lgb_score": 82.96,
+      "raw_score": 0.31
+    },
+    {
+      "rank": 4,
+      "ts_code": "920220",
+      "stock_code": "920220",
+      "stock_name": "朗信电气",
+      "lgb_score": 76.63,
+      "raw_score": 0.28
+    },
+    {
+      "rank": 5,
+      "ts_code": "688478",
+      "stock_code": "688478",
+      "stock_name": "晶升股份",
+      "lgb_score": 73.16,
+      "raw_score": 0.27
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.72,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.033769,
+    "std": 0.022693,
+    "skew": 2.3146,
+    "kurtosis": 24.0476,
+    "min": -0.070469,
+    "max": 0.392511,
+    "median": 0.045605
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.10937376075492311,
+    "cv_rmse_std": 0.006244601234265029,
+    "cv_scores": [
+      0.108945,
+      0.111244,
+      0.097923,
+      0.112135,
+      0.116622
+    ],
+    "rank_ic_mean": 0.046119,
+    "rank_ic_std": 0.024408,
+    "icir": 1.8895,
+    "oof_corr": 0.060092,
+    "n_samples": 38974,
+    "n_features": 4
+  }
+}

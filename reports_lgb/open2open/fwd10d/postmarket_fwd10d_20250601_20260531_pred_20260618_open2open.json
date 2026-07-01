@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 10,
+  "train_start": "20250601",
+  "train_end": "20260531",
+  "pred_date": "20260618",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "603681",
+      "stock_code": "603681",
+      "stock_name": "永冠新材",
+      "lgb_score": 100.0,
+      "raw_score": 0.32
+    },
+    {
+      "rank": 2,
+      "ts_code": "920553",
+      "stock_code": "920553",
+      "stock_name": "凯腾精工",
+      "lgb_score": 91.05,
+      "raw_score": 0.28
+    },
+    {
+      "rank": 3,
+      "ts_code": "000899",
+      "stock_code": "000899",
+      "stock_name": "赣能股份",
+      "lgb_score": 76.44,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 4,
+      "ts_code": "002847",
+      "stock_code": "002847",
+      "stock_name": "盐津铺子",
+      "lgb_score": 75.37,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 5,
+      "ts_code": "600758",
+      "stock_code": "600758",
+      "stock_name": "辽宁能源",
+      "lgb_score": 72.59,
+      "raw_score": 0.22
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 10.72,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.033974,
+    "std": 0.021488,
+    "skew": 1.2932,
+    "kurtosis": 10.8108,
+    "min": -0.052096,
+    "max": 0.317362,
+    "median": 0.045605
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.10937376075492311,
+    "cv_rmse_std": 0.006244601234265029,
+    "cv_scores": [
+      0.108945,
+      0.111244,
+      0.097923,
+      0.112135,
+      0.116622
+    ],
+    "rank_ic_mean": 0.046119,
+    "rank_ic_std": 0.024408,
+    "icir": 1.8895,
+    "oof_corr": 0.060092,
+    "n_samples": 38974,
+    "n_features": 4
+  }
+}

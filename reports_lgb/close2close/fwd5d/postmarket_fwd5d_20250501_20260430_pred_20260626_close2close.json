@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 5,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260626",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688766",
+      "stock_code": "688766",
+      "stock_name": "普冉股份",
+      "lgb_score": 100.0,
+      "raw_score": 0.13
+    },
+    {
+      "rank": 2,
+      "ts_code": "000725",
+      "stock_code": "000725",
+      "stock_name": "京东方Ａ",
+      "lgb_score": 96.74,
+      "raw_score": 0.12
+    },
+    {
+      "rank": 3,
+      "ts_code": "688808",
+      "stock_code": "688808",
+      "stock_name": "联讯仪器",
+      "lgb_score": 90.16,
+      "raw_score": 0.11
+    },
+    {
+      "rank": 4,
+      "ts_code": "301566",
+      "stock_code": "301566",
+      "stock_name": "达利凯普",
+      "lgb_score": 86.97,
+      "raw_score": 0.1
+    },
+    {
+      "rank": 5,
+      "ts_code": "688136",
+      "stock_code": "688136",
+      "stock_name": "科兴制药",
+      "lgb_score": 81.78,
+      "raw_score": 0.09
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.21,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.001384,
+    "std": 0.017084,
+    "skew": -0.5805,
+    "kurtosis": 1.5291,
+    "min": -0.06918,
+    "max": 0.125884,
+    "median": 0.011327
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.07293047112790249,
+    "cv_rmse_std": 0.003796719450767962,
+    "cv_scores": [
+      0.0674,
+      0.070493,
+      0.074004,
+      0.074071,
+      0.078684
+    ],
+    "rank_ic_mean": 0.047685,
+    "rank_ic_std": 0.047815,
+    "icir": 0.9973,
+    "oof_corr": 0.033957,
+    "n_samples": 18327,
+    "n_features": 22
+  }
+}

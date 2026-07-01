@@ -1,0 +1,82 @@
+{
+  "mode": "postmarket",
+  "label_mode": "fixed",
+  "forward_days": 10,
+  "train_start": "20250501",
+  "train_end": "20260430",
+  "pred_date": "20260612",
+  "predictions": [
+    {
+      "rank": 1,
+      "ts_code": "688216",
+      "stock_code": "688216",
+      "stock_name": "气派科技",
+      "lgb_score": 100.0,
+      "raw_score": 0.27
+    },
+    {
+      "rank": 2,
+      "ts_code": "000048",
+      "stock_code": "000048",
+      "stock_name": "京基智农",
+      "lgb_score": 95.98,
+      "raw_score": 0.25
+    },
+    {
+      "rank": 3,
+      "ts_code": "300077",
+      "stock_code": "300077",
+      "stock_name": "国民技术",
+      "lgb_score": 93.24,
+      "raw_score": 0.24
+    },
+    {
+      "rank": 4,
+      "ts_code": "300437",
+      "stock_code": "300437",
+      "stock_name": "清水源",
+      "lgb_score": 91.36,
+      "raw_score": 0.23
+    },
+    {
+      "rank": 5,
+      "ts_code": "600237",
+      "stock_code": "600237",
+      "stock_name": "铜峰电子",
+      "lgb_score": 90.98,
+      "raw_score": 0.23
+    }
+  ],
+  "tree_diagnostics": {
+    "n_trees": 200,
+    "avg_depth": 11.12,
+    "avg_n_leaves": 31.0,
+    "total_n_leaves": 6200
+  },
+  "prediction_stats": {
+    "mean": 0.012127,
+    "std": 0.036834,
+    "skew": 0.6328,
+    "kurtosis": 2.9158,
+    "min": -0.138495,
+    "max": 0.26548,
+    "median": 0.010842
+  },
+  "training_metrics": {
+    "cv_rmse_mean": 0.10555796166006633,
+    "cv_rmse_std": 0.004759488059331734,
+    "cv_scores": [
+      0.101733,
+      0.105965,
+      0.103919,
+      0.101645,
+      0.114528
+    ],
+    "rank_ic_mean": 0.083807,
+    "rank_ic_std": 0.064875,
+    "icir": 1.2918,
+    "oof_corr": 0.071869,
+    "n_samples": 17972,
+    "n_features": 22
+  }
+}
