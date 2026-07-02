@@ -607,6 +607,7 @@ const HfqNewHighPage: React.FC = () => {
       dataIndex: 'drawdown_from_high_pct',
       key: 'drawdown_from_high_pct',
       align: 'right',
+      sorter: (a, b) => (a.drawdown_from_high_pct ?? -Infinity) - (b.drawdown_from_high_pct ?? -Infinity),
       render: (v?: number | null) => (
         <span className={`font-mono tabular-nums ${pctColor(v)}`}>{fmtPct(v)}</span>
       ),
