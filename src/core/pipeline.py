@@ -2264,10 +2264,13 @@ class StockAnalysisPipeline:
     ) -> AnalysisResult:
         previous_advice = str(previous_operation_advice or "").strip()
         current_advice = str(getattr(result, "operation_advice", None) or "").strip()
+        explicit_action = current_advice if previous_advice != current_advice else None
         return populate_decision_action_fields(
             result,
+            explicit_action=explicit_action,
             report_type=report_type,
             use_existing_action=(previous_advice == current_advice),
+            align_with_score=(previous_advice == current_advice),
         )
 
     @staticmethod
@@ -2862,7 +2865,8 @@ class StockAnalysisPipeline:
     ) -> Optional[str]:
         """Load locally persisted intelligence as fail-open evidence context."""
         try:
-            service = IntelligenceService()
+            service = IntelligenceService(config=self.config)
+            service.refresh_auto_sources()
             days = max(1, int(self.config.get_effective_news_window_days() or 1))
             collected: list[Dict[str, Any]] = []
             seen_urls: set[str] = set()

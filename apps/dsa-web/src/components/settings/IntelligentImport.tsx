@@ -6,6 +6,7 @@ import { systemConfigApi, SystemConfigConflictError } from '../../api/systemConf
 import { Badge, Button, InlineAlert, MultiSelect } from '../common';
 import { useUiLanguage } from '../../contexts/UiLanguageContext';
 import type { UiLanguage } from '../../i18n/uiText';
+import { parseStockListValue } from '../../utils/stockList';
 
 const IMG_EXT = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
 const IMG_MAX = 5 * 1024 * 1024; // 5MB
@@ -97,6 +98,7 @@ function mergeItems(
 }
 
 export const IntelligentImport: React.FC<IntelligentImportProps> = ({
+  stockListValue,
   configVersion,
   maskToken,
   onMerged,
@@ -109,11 +111,9 @@ export const IntelligentImport: React.FC<IntelligentImportProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [pasteText, setPasteText] = useState('');
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(['ALL']);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const dataFileInputRef = useRef<HTMLInputElement | null>(null);
-
-
 
   const getCategoryStocks = useCallback(() => {
     const categoryStocks: Record<string, string[]> = {
@@ -130,6 +130,10 @@ export const IntelligentImport: React.FC<IntelligentImportProps> = ({
     
     return selectedCategories.flatMap(category => categoryStocks[category] || []);
   }, [selectedCategories]);
+
+  const parseCurrentList = useCallback(() => {
+    return parseStockListValue(stockListValue);
+  }, [stockListValue]);
 
   const addItems = useCallback((newItems: ExtractItem[]) => {
     setItems((prev) => mergeItems(prev, newItems));
@@ -273,8 +277,9 @@ export const IntelligentImport: React.FC<IntelligentImportProps> = ({
       return;
     }
     
+    const current = parseCurrentList();
     const categoryStocks = getCategoryStocks();
-    const merged = [...new Set([...toMerge, ...categoryStocks])];
+    const merged = [...new Set([...current, ...toMerge, ...categoryStocks])];
     const value = merged.join(',');
 
     setIsMerging(true);
@@ -299,7 +304,7 @@ export const IntelligentImport: React.FC<IntelligentImportProps> = ({
     } finally {
       setIsMerging(false);
     }
-  }, [items, configVersion, maskToken, onMerged, getCategoryStocks, selectedCategories, t]);
+  }, [items, configVersion, maskToken, onMerged, getCategoryStocks, parseCurrentList, selectedCategories, t]);
 
   const validCount = items.filter((i) => i.code).length;
   const checkedCount = items.filter((i) => i.checked && i.code).length;

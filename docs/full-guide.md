@@ -77,6 +77,8 @@ daily_stock_analysis/
 | `FEISHU_WEBHOOK_URL` | 飞书 Webhook URL | 可选 |
 | `FEISHU_WEBHOOK_SECRET` | 飞书 Webhook 签名密钥（开启“签名校验”时必填） | 可选 |
 | `FEISHU_WEBHOOK_KEYWORD` | 飞书 Webhook 关键词（开启“关键词”时必填） | 可选 |
+| `DINGTALK_WEBHOOK_URL` | 钉钉群机器人 Webhook URL | 可选 |
+| `DINGTALK_SECRET` | 钉钉群机器人加签密钥 (SEC开头) | 可选 |
 | `TELEGRAM_BOT_TOKEN` | Telegram Bot Token（@BotFather 获取） | 可选 |
 | `TELEGRAM_CHAT_ID` | Telegram Chat ID | 可选 |
 | `TELEGRAM_MESSAGE_THREAD_ID` | Telegram Topic ID (用于发送到子话题) | 可选 |
@@ -106,7 +108,7 @@ daily_stock_analysis/
 
 > *注：至少配置一个渠道，配置多个则同时推送。启动时配置校验会提示 Telegram / 邮件成对字段缺失，以及常见 Webhook URL 未以 `http://` 或 `https://` 开头的问题。
 >
-> 当前默认 `00-daily-analysis.yml` 只显式映射固定 Secret / Variable 名称，不会自动把 `STOCK_GROUP_1`、`EMAIL_GROUP_1` 这类任意编号变量导入运行环境。所以分组邮箱功能目前不适用于仓库自带默认 GitHub Actions workflow；它适用于本地 `.env`、Docker，或你自行显式扩展过 `env:` 映射的运行环境。Actions 已显式映射 `CUSTOM_WEBHOOK_BODY_TEMPLATE`、`WEBHOOK_VERIFY_SSL`、`FEISHU_WEBHOOK_SECRET`、`FEISHU_WEBHOOK_KEYWORD`、`PUSHPLUS_TOPIC`、`NTFY_URL`、`NTFY_TOKEN`、`GOTIFY_URL`、`GOTIFY_TOKEN`、P3 通知路由键以及 P4 通知降噪键；`MARKDOWN_TO_IMAGE_CHANNELS` 和 `MERGE_EMAIL_NOTIFICATION` 仍作为行为开关不在默认 workflow 中自动映射。
+> 当前默认 `00-daily-analysis.yml` 只显式映射固定 Secret / Variable 名称，不会自动把 `STOCK_GROUP_1`、`EMAIL_GROUP_1` 这类任意编号变量导入运行环境，也不会自动导入 `NEWS_INTEL_AUTO_FETCH_ENABLED` 这类新增可选开关。所以分组邮箱功能和本地资讯自动刷新能力目前不适用于仓库自带默认 GitHub Actions workflow；它们适用于本地 `.env`、Docker，或你自行显式扩展过 `env:` 映射的运行环境。Actions 已显式映射 `CUSTOM_WEBHOOK_BODY_TEMPLATE`、`WEBHOOK_VERIFY_SSL`、`FEISHU_WEBHOOK_SECRET`、`FEISHU_WEBHOOK_KEYWORD`、`PUSHPLUS_TOPIC`、`NTFY_URL`、`NTFY_TOKEN`、`GOTIFY_URL`、`GOTIFY_TOKEN`、P3 通知路由键以及 P4 通知降噪键；`MARKDOWN_TO_IMAGE_CHANNELS` 和 `MERGE_EMAIL_NOTIFICATION` 仍作为行为开关不在默认 workflow 中自动映射。
 
 #### 推送行为配置
 
@@ -151,7 +153,7 @@ daily_stock_analysis/
 
 | Secret 名称 | 说明 | 必填 |
 |------------|------|:----:|
-| `STOCK_LIST` | 自选股代码，如 `600519,300750,002594,7203.T,005930.KS` | ✅ |
+| `STOCK_LIST` | 自选股代码，如 `600519,300750,002594,7203.T,005930.KS`；推荐使用英文逗号，中文逗号、顿号、分号、空格和换行会被识别并规范为英文逗号 | ✅ |
 | `ANSPIRE_API_KEYS` | [Anspire AI Search](https://aisearch.anspire.cn/) 针对中文内容特别优化；同一 Key 可用于搜索与 Anspire 大模型网关的兜底示例（是否可用以控制台与账号权限为准） | 推荐 |
 | `SERPAPI_API_KEYS` | [SerpAPI](https://serpapi.com/baidu-search-api?utm_source=github_daily_stock_analysis) 搜索引擎结果补强，适合实时金融新闻 | 推荐 |
 | `TAVILY_API_KEYS` | [Tavily](https://tavily.com/) 搜索 API（新闻搜索） | 可选 |
@@ -161,6 +163,7 @@ daily_stock_analysis/
 | `SEARXNG_BASE_URLS` | SearXNG 自建实例（无配额兜底，需在 settings.yml 启用 format: json）；留空时默认自动发现公共实例 | 可选 |
 | `SEARXNG_PUBLIC_INSTANCES_ENABLED` | 是否在 `SEARXNG_BASE_URLS` 为空时自动从 `searx.space` 获取公共实例（默认 `true`） | 可选 |
 | `TUSHARE_TOKEN` | [Tushare Pro](https://tushare.pro/weborder/#/login?reg=834638 ) Token | 可选 |
+| `TICKFLOW_API_KEY` | [TickFlow](https://tickflow.org) API Key；可选，用于 A 股日 K、实时行情、股票列表/名称与大盘复盘增强；失败或权限不足时自动回退。 | 可选 |
 | `LONGBRIDGE_OAUTH_CLIENT_ID` | [Longbridge OpenAPI](https://open.longbridge.com/) OAuth client_id；留空且无 Legacy Access Token 时会兼容使用 `LONGBRIDGE_APP_KEY` | 可选 |
 | `LONGBRIDGE_OAUTH_TOKEN_CACHE_B64` | OAuth token 缓存文件的 base64 内容，供 GitHub Actions / Docker 等 headless 环境恢复 SDK token 缓存 | 可选 |
 | `LONGBRIDGE_APP_KEY` | Longbridge Legacy App Key；无 `LONGBRIDGE_ACCESS_TOKEN` 时也可作为 OAuth client_id 兼容别名 | 可选 |
@@ -177,7 +180,7 @@ daily_stock_analysis/
 | `LONGBRIDGE_PRINT_QUOTE_PACKAGES` | 连接时是否打印行情包（未设置时默认 `false`；设为 `1`/`true`/`yes` 开启） | 可选 |
 | `ENABLE_CHIP_DISTRIBUTION` | 启用筹码分布（Actions 默认 false；需筹码数据时在 Variables 中设为 true，接口可能不稳定） | 可选 |
 
-> **GitHub Actions：** 仓库自带 `00-daily-analysis.yml` 已把上表中的 `LONGBRIDGE_*` 映射到任务环境。OAuth 方式需要一个 client_id（优先 `LONGBRIDGE_OAUTH_CLIENT_ID`；留空且无 Legacy Access Token 时使用 `LONGBRIDGE_APP_KEY` 兼容），并把本机 `~/.longbridge/openapi/tokens/<client_id>` 文件 base64 后保存为 Secret `LONGBRIDGE_OAUTH_TOKEN_CACHE_B64`；Legacy 方式仍可配置 `LONGBRIDGE_APP_KEY`、`LONGBRIDGE_APP_SECRET`、`LONGBRIDGE_ACCESS_TOKEN`。可选接入点变量（如 `LONGBRIDGE_REGION`）可放在 **Variables** 或 **Secrets**。
+> **GitHub Actions：** 仓库自带 `00-daily-analysis.yml` 已把 `TUSHARE_TOKEN`、`TICKFLOW_API_KEY` / `TICKFLOW_*` 和上表中的 `LONGBRIDGE_*` 映射到任务环境。TickFlow 的 API Key 建议放在 **Secrets**，优先级、复权和批量开关可放在 **Variables** 或 **Secrets**。Longbridge OAuth 方式需要一个 client_id（优先 `LONGBRIDGE_OAUTH_CLIENT_ID`；留空且无 Legacy Access Token 时使用 `LONGBRIDGE_APP_KEY` 兼容），并把本机 `~/.longbridge/openapi/tokens/<client_id>` 文件 base64 后保存为 Secret `LONGBRIDGE_OAUTH_TOKEN_CACHE_B64`；Legacy 方式仍可配置 `LONGBRIDGE_APP_KEY`、`LONGBRIDGE_APP_SECRET`、`LONGBRIDGE_ACCESS_TOKEN`。可选接入点变量（如 `LONGBRIDGE_REGION`）可放在 **Variables** 或 **Secrets**。
 
 > **Longbridge 运行时行为：** 未配置凭据时不会实例化 Longbridge 这个可选 fetcher；若运行时遇到 `client is closed`、`context closed`、`connection closed` 等连接关闭类异常，会进入冷却期（默认 15 秒，可用 `LONGBRIDGE_CONNECTION_COOLDOWN_SECONDS` 调整），冷却期内美股/港股的实时与日线请求会自动跳过 Longbridge，退回 YFinance / AkShare 等兜底链路。
 
@@ -267,6 +270,8 @@ daily_stock_analysis/
 | `ANTHROPIC_MAX_TOKENS` | Claude 响应最大 token 数 | `8192` | 可选 |
 
 > GitHub Actions 说明：仓库自带 `00-daily-analysis.yml` 在 `GENERATION_FALLBACK_BACKEND` 未配置时显式使用 `litellm`，避免未设置的 Secret/Variable 被导出为空值并意外禁用 backend fallback。若要在 Actions 中禁用 backend fallback，请将 fallback 设为 primary backend，让 resolver 走 self no-op。
+
+> 生成后端状态说明：Web 设置页的快速检查只读取已保存配置、未保存草稿，并检查本地 CLI 可执行文件是否可见，不发起真实模型请求；JSON 冒烟测试是单独的显式操作，会使用服务端固定的 JSON 提示词和 schema 发起一次真实请求。`health_status` 与 `last_error_code/message` 只表示本次状态计算或冒烟测试结果，不是历史持久健康状态。
 
 > *注：`ANSPIRE_API_KEYS`、`AIHUBMIX_KEY`、`GEMINI_API_KEY`、`ANTHROPIC_API_KEY`、`OPENAI_API_KEY` 或 `OLLAMA_API_BASE` 至少配置一个。`ANSPIRE_API_KEYS` 与 `AIHUBMIX_KEY` 无需配置 `OPENAI_BASE_URL`，系统自动适配。
 
@@ -1704,7 +1709,7 @@ A: 企业微信/飞书有消息长度限制，系统已自动分段发送。如�
 A: AkShare 使用爬虫机制，可能被临时限流。系统已配置重试机制，一般等待几分钟后重试即可。
 
 ### Q: 如何添加自选股？
-A: 修改 `STOCK_LIST` 环境变量，多个代码用逗号分隔。
+A: 修改 `STOCK_LIST` 环境变量，多个代码推荐用英文逗号分隔。系统也会识别中文逗号、顿号、分号、空格和换行，并在 Web 设置页保存或自选增删后规范为英文逗号。
 
 ### Q: GitHub Actions 没有执行？
 A: 检查是否启用了 Actions，以及 cron 表达式是否正确（注意是 UTC 时间）。
@@ -1791,7 +1796,7 @@ worker 会把 `triggered`、`skipped`、`degraded`、`failed` 写入 `alert_trig
 - 删除账户使用软删除语义：默认账户列表、快照、风险、录入入口和事件列表不再显示该账户，但交易、现金流水和公司行动不会被物理清理；如需纠正单条流水，需在账户归档前使用事件列表里的删除修正入口。
 - 交易去重优先使用账户内唯一的 `trade_uid`，缺失时回退到基于日期、代码、方向、数量、价格、费用、税费、币种的确定性哈希。
 - 卖出会先校验可用数量，超卖返回 `409 portfolio_oversell`；并发写入冲突时可能返回 `409 portfolio_busy`。
-- 持仓快照的 `positions[]` 会返回 `price_source`、`price_date`、`price_stale`、`price_available` 等价格元信息；当天快照会先尝试实时行情，实时价不可用或非正值时再回退到 `as_of` 当天或之前最近的历史收盘价，历史 `as_of` 快照不会拉取实时价，也不会再把成本价静默当作现价；缺价持仓会标记 `price_available=false` 并从市值与未实现盈亏汇总中排除。
+- 持仓快照的 `positions[]` 会返回 `price_source`、`price_date`、`price_stale`、`price_available` 等价格元信息；当天快照默认会先尝试实时行情，实时价不可用或非正值时再回退到 `as_of` 当天或之前最近的历史收盘价；传入 `include_realtime=false` 时会跳过实时行情并直接使用本地历史收盘价回退路径，Web 持仓页用该模式优先渲染持仓列表，避免外部实时行情源变慢时阻塞首屏。历史 `as_of` 快照不会拉取实时价，也不会再把成本价静默当作现价；缺价持仓会标记 `price_available=false` 并从市值与未实现盈亏汇总中排除。
 - 汇率刷新会先尝试在线源；若在线获取失败，则回退到最近一次缓存并标记 `is_stale=true`，避免快照和风险页整体不可用。
 - 当 `PORTFOLIO_FX_UPDATE_ENABLED=false` 时，手动刷新接口会明确返回“在线刷新已禁用”，页面不会误导为“当前没有可刷新的汇率对”。
 - 风险摘要包含集中度、回撤、止损接近度等信息；`sector_concentration` 会优先尝试按板块归类，失败时降级到 `UNCLASSIFIED`，不会阻断风险结果返回。

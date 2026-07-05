@@ -6,6 +6,8 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, Optional
 
+from src.schemas.decision_scale import signal_key_for_score
+
 SUPPORTED_REPORT_LANGUAGES = ("zh", "en", "ko")
 
 _REPORT_LANGUAGE_ALIASES = {
@@ -568,6 +570,12 @@ _REPORT_LABELS: Dict[str, Dict[str, str]] = {
         "risk_control_label": "리스크 관리",
         "checklist_heading": "체크리스트",
         "failed_checks_heading": "미충족 항목",
+        "matched_skills_heading": "적중 거래 스킬",
+        "matched_skills_none": "이번 분석에서 활성화된 스킬이 적중하지 않았습니다",
+        "matched_skill_primary_label": "주요 적중",
+        "matched_skill_confidence_label": "신뢰도",
+        "matched_skill_reason_label": "적중 근거",
+        "matched_skill_conditions_label": "충족 조건",
         "history_compare_heading": "과거 신호 비교",
         "time_label": "시간",
         "score_label": "점수",
@@ -583,6 +591,8 @@ _REPORT_LABELS: Dict[str, Dict[str, str]] = {
         "analysis_model_label": "분석 모델",
         "not_investment_advice": "AI 생성 참고용이며 투자 권유가 아닙니다.",
         "details_report_hint": "상세 리포트 보기:",
+        "strategy_hits_top5_heading": "전략 적중 Top 5",
+        "strategy_hits_count_label": "적중 수",
         "financial_summary_heading": "재무 요약",
         "report_date_label": "보고 기준",
         "revenue_label": "매출액",
@@ -822,22 +832,13 @@ def _translate_from_map(
 
 
 def localize_operation_advice(value: Any, language: Optional[str]) -> str:
-    """Translate operation advice between Chinese and English when recognized.
-
-    The emoji is prepended so downstream categorisation (e.g. .env sync) can
-    use it as the sole reliable signal — emojis are set by get_signal_level,
-    never by the LLM.
-    """
-    _, emoji, _ = get_signal_level(value, None, None)
-    text = _translate_from_map(
+    """Translate operation advice labels when recognized."""
+    return _translate_from_map(
         value,
         language,
         canonical_map=_OPERATION_ADVICE_CANONICAL_MAP,
         translations=_OPERATION_ADVICE_TRANSLATIONS,
     )
-    if text and emoji:
-        return f"{emoji} {text}"
-    return text
 
 
 def localize_trend_prediction(value: Any, language: Optional[str]) -> str:
@@ -999,15 +1000,14 @@ def get_signal_level(advice: Any, score: Any, language: Optional[str]) -> tuple[
     except (TypeError, ValueError):
         numeric_score = 50
 
-    if numeric_score >= 80:
-        return (_OPERATION_ADVICE_TRANSLATIONS["strong_buy"][normalized_language], "🟢", "strong_buy")
-    if numeric_score >= 65:
+    score_signal = signal_key_for_score(numeric_score)
+    if score_signal == "strong_buy":
+        return (_OPERATION_ADVICE_TRANSLATIONS["strong_buy"][normalized_language], "💚", "strong_buy")
+    if score_signal == "buy":
         return (_OPERATION_ADVICE_TRANSLATIONS["buy"][normalized_language], "🟢", "buy")
-    if numeric_score >= 55:
-        return (_OPERATION_ADVICE_TRANSLATIONS["hold"][normalized_language], "🟡", "hold")
-    if numeric_score >= 45:
+    if score_signal == "watch":
         return (_OPERATION_ADVICE_TRANSLATIONS["watch"][normalized_language], "⚪", "watch")
-    if numeric_score >= 35:
+    if score_signal == "reduce":
         return (_OPERATION_ADVICE_TRANSLATIONS["reduce"][normalized_language], "🟠", "reduce")
     return (_OPERATION_ADVICE_TRANSLATIONS["sell"][normalized_language], "🔴", "sell")
 

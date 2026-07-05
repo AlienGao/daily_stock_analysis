@@ -1460,6 +1460,40 @@ def test_reassess_success_preview_is_read_only_and_uses_opaque_metadata(client_a
     assert _decision_signal_count(db) == before
 
 
+def test_reassess_preview_prefers_stability_adjusted_score(client_and_db) -> None:
+    client, db = client_and_db
+    raw_result = _valid_reassess_raw(
+        action=None,
+        sentiment_score=72,
+        operation_advice="观望",
+    )
+    dashboard = raw_result["dashboard"]
+    dashboard["decision_score_calibration"] = {
+        "raw_score": 72,
+        "adjusted_score": 59,
+        "final_action": "watch",
+        "guardrail_reason": "资金流偏弱，先观望回撤到 45-59。",
+    }
+    raw_result["dashboard"] = dashboard
+    record_id = _save_reassess_history(
+        db,
+        raw_result=raw_result,
+        context_snapshot=_valid_reassess_context(),
+    )
+
+    response = client.post(
+        "/api/v1/decision-signals/reassess",
+        json={"source_report_id": record_id, "decision_profile": "balanced", "persist": False},
+    )
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["preview"]["score"] == 59
+    assert payload["preview"]["action"] == "watch"
+    assert payload["preview"]["metadata"]["guardrail_result"]["final_action"] == "watch"
+    assert _decision_signal_count(db) == 0
+
+
 def test_reassess_service_has_no_live_market_provider_imports() -> None:
     source = (Path(__file__).resolve().parents[1] / "src/services/decision_signal_reassess_service.py").read_text(
         encoding="utf-8"
