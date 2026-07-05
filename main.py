@@ -1969,6 +1969,32 @@ def main() -> int:
                 _sync_discovery_to_stock_list(results)
             else:
                 logger.info("未发现符合条件的股票")
+
+            # ── ETF 数据更新 ──
+            logger.info("更新 ETF 日线数据…")
+            try:
+                from scripts.backfill_etf_daily import main as backfill_etf_main, delete_old_etf_data
+                import sys as _sys
+                old_argv = list(_sys.argv)
+                _sys.argv = ['backfill_etf_daily.py']
+                backfill_etf_main()
+                # 清理超过 5 年的旧数据
+                delete_old_etf_data(max_years=5)
+                _sys.argv = old_argv
+            except Exception as exc:
+                logger.warning("ETF 数据更新失败: %s", exc)
+
+            # ── A 股指数数据更新 ──
+            logger.info("更新 A 股指数日线/周线数据…")
+            try:
+                from scripts.backfill_index_a_daily import main as backfill_index_main
+                old_argv2 = list(_sys.argv)
+                _sys.argv = ['backfill_index_a_daily.py']
+                backfill_index_main()
+                _sys.argv = old_argv2
+            except Exception as exc:
+                logger.warning("A 股指数数据更新失败: %s", exc)
+
             raise _ModeExit(0)
 
         # 模式: 因子权重优化

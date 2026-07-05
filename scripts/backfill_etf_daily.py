@@ -483,5 +483,26 @@ def main():
     return 0
 
 
+def delete_old_etf_data(max_years: int = 5) -> int:
+    """删除 etf_daily 和 fund_adj_factor 表中超过 max_years 年的旧数据。
+
+    Returns: 删除的总行数
+    """
+    from src.storage import DatabaseManager, EtfDaily, FundAdjFactor
+    from sqlalchemy import delete
+    from datetime import datetime
+
+    cutoff = (datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=int(max_years * 365.25))).strftime("%Y-%m-%d")
+    db = DatabaseManager()
+    with db.get_session() as session:
+        cnt1 = session.execute(delete(EtfDaily).where(EtfDaily.date < cutoff)).rowcount
+        cnt2 = session.execute(delete(FundAdjFactor).where(FundAdjFactor.trade_date < cutoff)).rowcount
+        session.commit()
+    total = cnt1 + cnt2
+    if total > 0:
+        logger.info("清理超过 %d 年的旧数据: etf_daily %d 行, fund_adj_factor %d 行", max_years, cnt1, cnt2)
+    return total
+
+
 if __name__ == "__main__":
     sys.exit(main())
