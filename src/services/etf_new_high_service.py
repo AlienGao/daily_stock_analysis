@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-"""后复权收盘价创新高扫描与 K 线服务。"""
+"""ETF 后复权收盘价创新高扫描与 K 线服务。
+
+基于 hfq_new_high_service 架构，适配 ETF 数据。
+数据来源：etf_daily 表（Tushare fund_daily 回填）。
+"""
 from __future__ import annotations
 
 import json
@@ -33,7 +37,7 @@ BOLL_PERIOD = 20
 BOLL_MULT = 2.0
 DEFAULT_NEAR_PCT = 2.0
 DEFAULT_LOOKBACK_DAYS = 30
-DEFAULT_MAX_DRAWDOWN_FROM_HIGH_PCT = 20.0
+DEFAULT_MAX_DRAWDOWN_FROM_HIGH_PCT = 30.0
 NEW_HIGH_MAX_DRAWDOWN_PCT = 30.0
 _CACHE_TTL_SEC = 300
 _REPORTS_DIR = Path(__file__).resolve().parents[2] / "reports_market"
@@ -42,6 +46,7 @@ _boll_picks_cache: Dict[str, Any] = {"key": None, "payload": None, "ts": 0.0}
 _scan_inflight_lock = threading.Lock()
 _scan_inflight: Dict[tuple, threading.Event] = {}
 _SCAN_INFLIGHT_WAIT_SEC = 600.0
+
 
 def _reset_memory_cache_for_tests() -> None:
     global _memory_cache, _boll_picks_cache, _scan_inflight
@@ -59,6 +64,7 @@ def _parse_yyyymmdd(value: str) -> date:
 def _fmt_date(d: date) -> str:
     return d.strftime("%Y%m%d")
 
+
 def _to_date_str(value) -> str:
     if hasattr(value, "strftime"):
         return value.strftime("%Y%m%d")
@@ -66,18 +72,8 @@ def _to_date_str(value) -> str:
     return digits if len(digits) == 8 else ""
 
 
-def code_to_ts_code(code: str) -> str:
-    code_str = str(code).strip().zfill(6)
-    if code_str.startswith(("60", "68", "900")):
-        return f"{code_str}.SH"
-    if code_str.startswith(("00", "30", "200")):
-        return f"{code_str}.SZ"
-    if code_str.startswith(("43", "83", "87", "92")):
-        return f"{code_str}.BJ"
-    return code_str
-
-
 def lookup_adj_factor(adj_map: Dict[str, float], date_str: str) -> Optional[float]:
+    """从复权因子 map 中查找指定日期的 adj_factor。"""
     if date_str in adj_map:
         f = adj_map[date_str]
         if f is not None and f > 0 and math.isfinite(f):
@@ -94,25 +90,25 @@ def scan_single_code_new_highs(
     rows: List[Tuple[str, float]],
     start_date: str,
 ) -> Optional[Dict[str, Any]]:
-    """扫描单只股票 2026+ 创新高记录。rows: [(YYYYMMDD, hfq_close)] 升序。"""
+    """扫描单只 ETF 2026+ 创新高记录。rows: [(YYYYMMDD, close)] 升序。"""
     if not rows:
         return None
     running_max = float("-inf")
     new_highs: List[Dict[str, Any]] = []
-    current_hfq: Optional[float] = None
+    current_close: Optional[float] = None
     ytd_base: Optional[float] = None
 
     for ds, hc in rows:
         if hc is None or not math.isfinite(hc):
             continue
-        current_hfq = hc
+        current_close = hc
         if ds < start_date:
             running_max = max(running_max, hc)
             continue
         if ytd_base is None:
             ytd_base = hc
         if hc >= running_max:
-            new_highs.append({"date": ds, "hfq_close": round(hc, 4)})
+            new_highs.append({"date": ds, "close": round(hc, 4)})
             running_max = hc
 
     if not new_highs:
@@ -120,16 +116,16 @@ def scan_single_code_new_highs(
 
     new_highs_desc = sorted(new_highs, key=lambda x: x["date"], reverse=True)
     latest = new_highs_desc[0]
-    ytd_hfq_return_pct: Optional[float] = None
-    if ytd_base is not None and current_hfq is not None and ytd_base > 0:
-        ytd_hfq_return_pct = round((current_hfq / ytd_base - 1) * 100, 2)
+    ytd_return_pct: Optional[float] = None
+    if ytd_base is not None and current_close is not None and ytd_base > 0:
+        ytd_return_pct = round((current_close / ytd_base - 1) * 100, 2)
     return {
         "new_high_dates": new_highs_desc,
         "new_high_count": len(new_highs),
         "latest_new_high_date": latest["date"],
-        "latest_new_high_close": latest["hfq_close"],
-        "current_hfq_close": round(current_hfq, 4) if current_hfq is not None else None,
-        "ytd_hfq_return_pct": ytd_hfq_return_pct,
+        "latest_new_high_close": latest["close"],
+        "current_close": round(current_close, 4) if current_close is not None else None,
+        "ytd_return_pct": ytd_return_pct,
     }
 
 
@@ -198,8 +194,8 @@ def _mid_slope(closes: List[float], period: int = BOLL_PERIOD, lookback: int = 3
     return round(slope, 4)
 
 
-class HfqNewHighService:
-    """全 A 股后复权收盘创新高统计。"""
+class EtfNewHighService:
+    """全 ETF 收盘价创新高统计。"""
 
     def __init__(self) -> None:
         from src.storage import DatabaseManager
@@ -214,7 +210,7 @@ class HfqNewHighService:
     ) -> Dict[str, Any]:
         as_of = _parse_yyyymmdd(as_of_date) if as_of_date else date.today()
         as_of_str = _fmt_date(as_of)
-        cache_key = (start_date, as_of_str)
+        cache_key = ("etf", start_date, as_of_str)
 
         if not refresh:
             cached = self._get_cached(cache_key)
@@ -237,7 +233,7 @@ class HfqNewHighService:
             cached = self._get_cached(cache_key)
             if cached is not None:
                 return cached
-            logger.warning("[HfqNewHigh] inflight wait ended without cache for %s", cache_key)
+            logger.warning("[EtfNewHigh] inflight wait ended without cache for %s", cache_key)
             return self.scan_new_highs(start_date=start_date, as_of_date=as_of_str, refresh=refresh)
 
         try:
@@ -262,7 +258,7 @@ class HfqNewHighService:
         start_dt = _parse_yyyymmdd(start_date)
         preload_dt = start_dt - timedelta(days=400)
 
-        daily_df = self._load_daily_bars(preload_dt, as_of)
+        daily_df = self._load_etf_daily_bars(preload_dt, as_of)
         if daily_df.empty:
             payload = self._empty_payload(start_date, as_of_str)
             self._set_cache(cache_key, payload)
@@ -282,18 +278,17 @@ class HfqNewHighService:
             if not scanned:
                 continue
             bare = str(code).strip().zfill(6)
-            ts_code = code_to_ts_code(bare)
-            name = name_map.get(bare) or name_map.get(ts_code) or bare
+            name = name_map.get(bare) or bare
             drawdown = None
             lh = scanned["latest_new_high_close"]
-            cc = scanned["current_hfq_close"]
+            cc = scanned["current_close"]
             if lh and cc and lh > 0:
                 drawdown = round((cc / lh - 1) * 100, 2)
             # 剔除距新高超过 30% 的个股
             if drawdown is not None and drawdown < -NEW_HIGH_MAX_DRAWDOWN_PCT:
                 continue
             items.append({
-                "ts_code": ts_code,
+                "ts_code": bare,
                 "stock_code": bare,
                 "stock_name": name,
                 **scanned,
@@ -312,7 +307,7 @@ class HfqNewHighService:
         }
         self._set_cache(cache_key, payload)
         self._maybe_persist_disk(as_of_str, payload)
-        logger.info("[HfqNewHigh] scan done: %d stocks, as_of=%s", len(items), as_of_str)
+        logger.info("[EtfNewHigh] scan done: %d ETFs, as_of=%s", len(items), as_of_str)
         return payload
 
     def scan_boll_near_picks(
@@ -324,14 +319,14 @@ class HfqNewHighService:
         lookback_days: int = DEFAULT_LOOKBACK_DAYS,
         max_drawdown_from_high_pct: float = DEFAULT_MAX_DRAWDOWN_FROM_HIGH_PCT,
     ) -> Dict[str, Any]:
-        """近 lookback_days 日创新高且现价靠近 BOLL 中轨/下轨/上轨的后复权个股。"""
+        """近 lookback_days 日创新高且现价靠近 BOLL 中轨/下轨/上轨的 ETF。"""
         as_of = _parse_yyyymmdd(as_of_date) if as_of_date else date.today()
         as_of_str = _fmt_date(as_of)
         max_dd = round(float(max_drawdown_from_high_pct), 2)
-        cache_key = (start_date, as_of_str, round(float(near_pct), 2), int(lookback_days), max_dd)
+        boll_cache_key = ("etf_boll", start_date, as_of_str, round(float(near_pct), 2), int(lookback_days), max_dd)
 
         if not refresh:
-            cached = self._get_boll_picks_cached(cache_key)
+            cached = self._get_boll_picks_cached(boll_cache_key)
             if cached is not None:
                 return cached
 
@@ -349,14 +344,14 @@ class HfqNewHighService:
             payload = self._empty_boll_picks_payload(
                 start_date, as_of_str, near_pct, lookback_days, cutoff, max_dd,
             )
-            self._set_boll_picks_cache(cache_key, payload)
+            self._set_boll_picks_cache(boll_cache_key, payload)
             return payload
 
         codes = [str(it["stock_code"]).strip().zfill(6) for it in candidates]
         by_code = {str(it["stock_code"]).strip().zfill(6): it for it in candidates}
         start_dt = as_of - timedelta(days=90)
 
-        daily_df = self._load_daily_bars(start_dt, as_of, codes=codes)
+        daily_df = self._load_etf_daily_bars(start_dt, as_of, codes=codes)
         adj_by_code = self._load_adj_factors(start_dt, as_of, codes=codes)
         daily_df = self._attach_hfq_close(daily_df, adj_by_code)
         daily_df = daily_df.dropna(subset=["hfq_close"])
@@ -397,14 +392,14 @@ class HfqNewHighService:
             if near_lower:
                 zones.append("lower")
             band_zone = "_".join(zones)
-            _slope = _mid_slope(closes)
+            _sl = _mid_slope(closes)
             picks.append({
-                "ts_code": base["ts_code"],
+                "ts_code": bare,
                 "stock_code": bare,
                 "stock_name": base.get("stock_name") or bare,
                 "latest_new_high_date": base["latest_new_high_date"],
                 "latest_new_high_close": base.get("latest_new_high_close"),
-                "current_hfq_close": round(close, 4),
+                "current_close": round(close, 4),
                 "drawdown_from_high_pct": drawdown,
                 "boll_mid": round(mid, 4),
                 "boll_lower": round(lower, 4),
@@ -413,7 +408,7 @@ class HfqNewHighService:
                 "dist_lower_pct": dist_lower,
                 "dist_upper_pct": dist_upper,
                 "band_zone": band_zone,
-                "mid_slope": _slope,
+                "mid_slope": _sl,
             })
 
         picks.sort(
@@ -432,24 +427,23 @@ class HfqNewHighService:
             "total": len(picks),
             "items": picks,
         }
-        self._set_boll_picks_cache(cache_key, payload)
-        logger.info("[HfqNewHigh] boll picks done: %d stocks, as_of=%s", len(picks), as_of_str)
+        self._set_boll_picks_cache(boll_cache_key, payload)
+        logger.info("[EtfNewHigh] boll picks done: %d ETFs, as_of=%s", len(picks), as_of_str)
         return payload
 
-    def get_hfq_klines(
+    def get_klines(
         self,
-        stock_code: str,
+        etf_code: str,
         start_date: str = DEFAULT_START_DATE,
         end_date: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
-        bare = str(stock_code).split(".")[0].strip().zfill(6)
+        bare = str(etf_code).split(".")[0].strip().zfill(6)
         start_dt = _parse_yyyymmdd(start_date)
         end_dt = _parse_yyyymmdd(end_date) if end_date else date.today()
 
-        df = self._load_daily_bars(start_dt, end_dt, codes=[bare])
+        df = self._load_etf_daily_bars(start_dt, end_dt, codes=[bare])
         if df.empty:
             return []
-
         adj_by_code = self._load_adj_factors(start_dt, end_dt, codes=[bare])
         df = self._attach_hfq_ohlc(df, adj_by_code)
         df = df[df["date_str"] >= start_date].sort_values("date_str")
@@ -468,15 +462,15 @@ class HfqNewHighService:
             })
         return out
 
-    def _load_daily_bars(
+    def _load_etf_daily_bars(
         self,
         start_dt: date,
         end_dt: date,
         codes: Optional[List[str]] = None,
     ) -> pd.DataFrame:
         sql = """
-            SELECT code, date, open, high, low, close, volume
-            FROM stock_daily
+            SELECT code, date, name, open, high, low, close, volume, amount, pct_chg
+            FROM etf_daily
             WHERE date >= :start_dt AND date <= :end_dt AND close IS NOT NULL
         """
         params: Dict[str, Any] = {"start_dt": start_dt, "end_dt": end_dt}
@@ -490,7 +484,7 @@ class HfqNewHighService:
             with self.db.get_session() as session:
                 rows = session.execute(stmt, params).fetchall()
         except Exception as exc:
-            logger.warning("[HfqNewHigh] load daily failed: %s", exc)
+            logger.warning("[EtfNewHigh] load etf daily failed: %s", exc)
             return pd.DataFrame()
 
         if not rows:
@@ -503,11 +497,14 @@ class HfqNewHighService:
             records.append({
                 "code": str(r.code).strip().zfill(6),
                 "date_str": ds,
+                "name": str(r.name or "").strip(),
                 "open": _safe_optional_float(r.open),
                 "high": _safe_optional_float(r.high),
                 "low": _safe_optional_float(r.low),
                 "close": _safe_optional_float(r.close),
                 "volume": _safe_optional_float(r.volume),
+                "amount": _safe_optional_float(r.amount),
+                "pct_chg": _safe_optional_float(r.pct_chg),
             })
         return pd.DataFrame(records)
 
@@ -519,7 +516,7 @@ class HfqNewHighService:
     ) -> Dict[str, Dict[str, float]]:
         sql = """
             SELECT code, trade_date, adj_factor
-            FROM stock_adj_factor
+            FROM fund_adj_factor
             WHERE trade_date >= :start_dt AND trade_date <= :end_dt
               AND adj_factor IS NOT NULL AND adj_factor > 0
         """
@@ -539,7 +536,7 @@ class HfqNewHighService:
                 ds = _to_date_str(r.trade_date)
                 result.setdefault(code, {})[ds] = float(r.adj_factor)
         except Exception as exc:
-            logger.warning("[HfqNewHigh] load adj failed: %s", exc)
+            logger.warning("[EtfNewHigh] load adj failed: %s", exc)
         return result
 
     @staticmethod
@@ -589,40 +586,26 @@ class HfqNewHighService:
         return out
 
     @staticmethod
-    def _overlay_spot_names(name_map: Dict[str, str]) -> Dict[str, str]:
-        """Fill missing names from realtime_spot (covers newly listed BSE stocks, etc.)."""
-        try:
-            from src.data.stock_mapping import is_meaningful_stock_name
-            from src.storage import DatabaseManager
-
-            spot = DatabaseManager.get_instance().get_realtime_spot()
-            if spot is None or spot.empty or "name" not in spot.columns:
-                return name_map
-            merged = dict(name_map)
-            for idx, row in spot.iterrows():
-                ts = str(idx).strip()
-                bare = ts.split(".")[0].strip().zfill(6) if ts.split(".")[0].isdigit() else ts.split(".")[0]
-                name = str(row.get("name") or "").strip()
-                if not is_meaningful_stock_name(name, ts):
-                    continue
-                ts_code = code_to_ts_code(bare) if bare.isdigit() else ts
-                for key in {ts, bare, ts_code}:
-                    if key and not is_meaningful_stock_name(merged.get(key), key):
-                        merged[key] = name
-            return merged
-        except Exception as exc:
-            logger.debug("[HfqNewHigh] spot name overlay failed: %s", exc)
-            return name_map
-
-    @staticmethod
     def _load_name_map() -> Dict[str, str]:
         try:
             from src.data.stock_index_loader import get_stock_name_index_map
-
             name_map = get_stock_name_index_map()
         except Exception:
             name_map = {}
-        return HfqNewHighService._overlay_spot_names(name_map)
+        # Try to get names from etf_daily table as fallback
+        try:
+            from src.storage import DatabaseManager, EtfDaily
+            from sqlalchemy import distinct
+
+            db = DatabaseManager.get_instance()
+            with db.get_session() as session:
+                rows = session.query(EtfDaily.code, EtfDaily.name).distinct().all()
+                for code, name in rows:
+                    if name:
+                        name_map[str(code).strip().zfill(6)] = name
+        except Exception:
+            pass
+        return name_map
 
     @staticmethod
     def _empty_payload(start_date: str, as_of_str: str) -> Dict[str, Any]:
@@ -685,7 +668,7 @@ class HfqNewHighService:
     def _maybe_persist_disk(as_of_str: str, payload: Dict[str, Any]) -> None:
         try:
             _REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-            path = _REPORTS_DIR / f"hfq_new_highs_{as_of_str}.json"
+            path = _REPORTS_DIR / f"etf_new_highs_{as_of_str}.json"
             path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
         except Exception as exc:
-            logger.debug("[HfqNewHigh] disk cache skip: %s", exc)
+            logger.debug("[EtfNewHigh] disk cache skip: %s", exc)

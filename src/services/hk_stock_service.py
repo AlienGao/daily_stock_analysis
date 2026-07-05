@@ -163,46 +163,54 @@ class HkStockService:
             return {"trade_date": "", "total": 0, "items": []}
 
         rows = self._db.list_hk_ggt_components(trade_date)
-        entries: List[Tuple[Dict[str, Any], str, Optional[str]]] = []
+        codes = [_norm_hk_code(r.hk_code) for r in rows]
+        if not codes:
+            return {"trade_date": trade_date, "total": 0, "items": []}
+
+        # 批量获取每只港股的最新交易日，替代逐个查询
+        latest_by_code = self._db.batch_get_latest_hk_stock_daily_trade_date(codes)
         latest_trade_date: Optional[str] = None
+        for code, latest in latest_by_code.items():
+            if latest and (latest_trade_date is None or latest > latest_trade_date):
+                latest_trade_date = latest
+
+        # 批量获取最新交易日行情
+        latest_bars_by_code: Dict[str, Dict[str, Any]] = {}
+        if latest_trade_date:
+            batch_bars = self._db.list_hk_stock_daily_bars_batch(
+                codes,
+                start_date=_fmt_date(_parse_yyyymmdd(latest_trade_date) - timedelta(days=7)),
+                end_date=latest_trade_date,
+            )
+            for code, bar_list in batch_bars.items():
+                if not bar_list:
+                    continue
+                latest_bar = bar_list[-1]
+                if latest_bar.trade_date == latest_trade_date:
+                    entry: Dict[str, Any] = {
+                        "latest_price": _safe_float(latest_bar.close),
+                        "pct_change": _safe_float(latest_bar.pct_chg),
+                    }
+                    if entry["pct_change"] is None and entry["latest_price"] is not None:
+                        # fallback: 从前一个交易日算涨跌幅
+                        for pb in reversed(bar_list[:-1]):
+                            if pb.close is not None:
+                                entry["pct_change"] = (latest_bar.close - pb.close) / pb.close * 100
+                                break
+                    latest_bars_by_code[code] = entry
+
+        items = []
         for r in rows:
             d = r.to_dict()
             code = _norm_hk_code(d["hk_code"])
-            latest = self._db.get_latest_hk_stock_daily_trade_date(code)
-            if latest and (latest_trade_date is None or latest > latest_trade_date):
-                latest_trade_date = latest
-            entries.append((d, code, latest))
-
-        items = []
-        for d, code, latest in entries:
-            d["latest_price"] = None
-            d["pct_change"] = None
+            latest = latest_by_code.get(code)
             if latest_trade_date and latest == latest_trade_date:
-                bars = self._db.list_hk_stock_daily_bars(
-                    code,
-                    start_date=latest_trade_date,
-                    end_date=latest_trade_date,
-                )
-                if bars:
-                    latest_bar = bars[-1]
-                    close = _safe_float(getattr(latest_bar, "close", None))
-                    d["latest_price"] = close
-                    pct_chg = _safe_float(getattr(latest_bar, "pct_chg", None))
-                    if pct_chg is not None:
-                        d["pct_change"] = pct_chg
-                    elif close is not None:
-                        prev = self._db.list_hk_stock_daily_bars(
-                            code,
-                            start_date=_fmt_date(_parse_yyyymmdd(latest_trade_date) - timedelta(days=7)),
-                            end_date=latest_trade_date,
-                        )
-                        prev_close = None
-                        for pb in reversed(prev):
-                            if pb.trade_date < latest_trade_date and pb.close is not None:
-                                prev_close = pb.close
-                                break
-                        if prev_close and prev_close > 0:
-                            d["pct_change"] = (close - prev_close) / prev_close * 100
+                bar_entry = latest_bars_by_code.get(code)
+                if bar_entry:
+                    d["latest_price"] = bar_entry["latest_price"]
+                    d["pct_change"] = bar_entry["pct_change"]
+            d.setdefault("latest_price", None)
+            d.setdefault("pct_change", None)
             items.append(d)
 
         self._list_cache = {

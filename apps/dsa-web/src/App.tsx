@@ -24,6 +24,7 @@ const LightGBMPage = lazy(() => import('./pages/LightGBMPage'));
 const BrokerRecommendPage = lazy(() => import('./pages/BrokerRecommendPage'));
 const InstitutionSurveyPage = lazy(() => import('./pages/InstitutionSurveyPage'));
 const HfqNewHighPage = lazy(() => import('./pages/HfqNewHighPage'));
+const EtfNewHighPage = lazy(() => import('./pages/EtfNewHighPage'));
 const HkMonitorPage = lazy(() => import('./pages/HkMonitorPage'));
 const SimpleFactorBacktestPage = lazy(() => import('./pages/SimpleFactorBacktestPage'));
 const PortfolioPage = lazy(() => import('./pages/PortfolioPage'));
@@ -98,6 +99,7 @@ const AppContent: React.FC = () => {
         <Route path="/broker-recommend" element={<Suspense fallback={<div className="flex justify-center py-12"><div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan/20 border-t-cyan" /></div>}><BrokerRecommendPage /></Suspense>} />
         <Route path="/institution-survey" element={<Suspense fallback={<div className="flex justify-center py-12"><div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan/20 border-t-cyan" /></div>}><InstitutionSurveyPage /></Suspense>} />
         <Route path="/new-highs" element={<Suspense fallback={<div className="flex justify-center py-12"><div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan/20 border-t-cyan" /></div>}><HfqNewHighPage /></Suspense>} />
+        <Route path="/etf-new-highs" element={<Suspense fallback={<div className="flex justify-center py-12"><div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan/20 border-t-cyan" /></div>}><EtfNewHighPage /></Suspense>} />
         <Route path="/hk-monitor" element={<Suspense fallback={<div className="flex justify-center py-12"><div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan/20 border-t-cyan" /></div>}><HkMonitorPage /></Suspense>} />
         <Route path="/portfolio" element={<PortfolioPage />} />
         <Route path="/decision-signals" element={<DecisionSignalsPage />} />

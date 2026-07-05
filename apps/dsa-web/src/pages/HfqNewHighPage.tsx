@@ -457,14 +457,14 @@ const HfqNewHighPage: React.FC = () => {
     if (refresh) setRefreshing(true);
     else setLoading(true);
     setError(null);
-    setBollLoading(true);
     try {
-      const resp = await marketApi.getHfqNewHighs({ refresh });
+      const [resp, bollResp] = await Promise.all([
+        marketApi.getHfqNewHighs({ refresh }),
+        marketApi.getHfqBollPicks({ refresh }),
+      ]);
       setData(resp);
       setLoading(false);
       setRefreshing(false);
-
-      const bollResp = await marketApi.getHfqBollPicks({ refresh });
       setBollPicks(bollResp.items ?? []);
       setBollMeta({
         nearPct: bollResp.near_pct,
@@ -478,7 +478,6 @@ const HfqNewHighPage: React.FC = () => {
     } finally {
       setLoading(false);
       setRefreshing(false);
-      setBollLoading(false);
     }
   }, []);
 

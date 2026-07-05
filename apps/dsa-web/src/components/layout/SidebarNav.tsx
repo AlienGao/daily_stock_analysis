@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Activity, ArrowUpRight, BarChart3, Brain, Compass, Globe2, Home, LogOut, Search, Settings2, Sliders, TrendingUp, Users } from 'lucide-react';
+import { Activity, ArrowUpRight, BarChart3, Brain, Compass, Globe2, Home, LogOut, PieChart, Search, Settings2, Sliders, TrendingUp, Users } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { ALPHASIFT_CONFIG_CHANGED_EVENT, SYSTEM_CONFIG_CHANGED_EVENT, alphasiftApi } from '../../api/alphasift';
 import { useAuth } from '../../contexts/AuthContext';
@@ -31,11 +31,12 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'home', labelKey: 'layout.nav.home', to: '/', icon: Home, exact: true },
   { key: 'discovery', label: '寻股', to: '/discovery', icon: Compass, exact: true },
   { key: 'hk-monitor', label: '港股', to: '/hk-monitor', icon: Globe2 },
+  { key: 'etf-new-highs', label: 'ETF', to: '/etf-new-highs', icon: PieChart },
+  { key: 'new-highs', label: '新高', to: '/new-highs', icon: ArrowUpRight },
+  { key: 'broker-recommend', label: '金股', to: '/broker-recommend', icon: TrendingUp },
+  { key: 'simple-factor-backtest', label: '快测', to: '/simple-factor-backtest', icon: BarChart3 },
   { key: 'factor-backtest', label: '因子', to: '/factor-backtest', icon: Activity },
   { key: 'factor-tuning', label: '调优', to: '/factor-tuning', icon: Sliders },
-  { key: 'broker-recommend', label: '金股', to: '/broker-recommend', icon: TrendingUp },
-  { key: 'new-highs', label: '新高', to: '/new-highs', icon: ArrowUpRight },
-  { key: 'simple-factor-backtest', label: '快测', to: '/simple-factor-backtest', icon: BarChart3 },
   { key: 'lgb', label: 'LGB', to: '/lgb', icon: Brain },
   { key: 'institution-survey', label: '调研', to: '/institution-survey', icon: Users },
   // { key: 'chat', labelKey: 'layout.nav.chat', to: '/chat', icon: MessageSquareQuote, badge: 'completion' },
@@ -170,7 +171,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed = false, onNav
         })}
       </nav>
 
-      <div className={cn('shrink-0 space-y-1', isRail ? 'mt-2 border-t border-border/40 pt-2' : 'mt-3')}>
+      {/* <div className={cn('shrink-0 space-y-1', isRail ? 'mt-2 border-t border-border/40 pt-2' : 'mt-3')}>
         <ThemeToggle
           variant={isRail ? 'rail' : 'nav'}
           collapsed={collapsed}
@@ -180,7 +181,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed = false, onNav
           iconClassName={itemIconClass}
           labelClassName={itemLabelClass}
         />
-        {/* <UiLanguageToggle
+        <UiLanguageToggle
           variant={isRail ? 'rail' : 'nav'}
           collapsed={collapsed}
           wrapperClassName="w-full"
@@ -188,7 +189,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed = false, onNav
           triggerActiveClassName={itemActiveClass}
           iconClassName={itemIconClass}
           labelClassName={itemLabelClass}
-        /> */}
+        />
         {authEnabled ? (
           <button
             type="button"
@@ -199,7 +200,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed = false, onNav
             {!collapsed ? <span className={itemLabelClass}>{t('layout.logout')}</span> : null}
           </button>
         ) : null}
-      </div>
+      </div> */}
 
       <ConfirmDialog
         isOpen={showLogoutConfirm}

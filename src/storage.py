@@ -1881,6 +1881,243 @@ class ThsConceptMap(Base):
         return f"<ThsConceptMap(code={self.stock_code}, concept={self.concept_name})>"
 
 
+class EtfDaily(Base):
+    """ETF 日线行情。
+
+    数据来源：Tushare fund_daily，回填 2026 年至今。
+    按 (code, date) 唯一。
+    """
+
+    __tablename__ = 'etf_daily'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(10), nullable=False, index=True)
+    date = Column(Date, nullable=False, index=True)
+    name = Column(String(50))
+    open = Column(Float)
+    high = Column(Float)
+    low = Column(Float)
+    close = Column(Float)
+    volume = Column(Float)
+    amount = Column(Float)
+    pct_chg = Column(Float)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('code', 'date', name='uix_etf_daily_code_date'),
+        Index('ix_etf_daily_code_date', 'code', 'date'),
+    )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "code": self.code,
+            "date": self.date.strftime("%Y%m%d") if hasattr(self.date, "strftime") else str(self.date),
+            "name": self.name,
+            "open": self.open,
+            "high": self.high,
+            "low": self.low,
+            "close": self.close,
+            "volume": self.volume,
+            "amount": self.amount,
+            "pct_chg": self.pct_chg,
+        }
+
+
+class FundAdjFactor(Base):
+    """ETF 复权因子表（Tushare fund_adj），用于计算后复权价格。
+
+    后复权价格 = 未复权价格 × adj_factor
+    按 (code, date) 唯一。
+    """
+
+    __tablename__ = 'fund_adj_factor'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(10), nullable=False, index=True)
+    trade_date = Column(Date, nullable=False, index=True)
+    adj_factor = Column(Float, nullable=False)
+    created_at = Column(DateTime, default=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('code', 'trade_date', name='uix_fund_adj_code_date'),
+        Index('ix_fund_adj_code_date', 'code', 'trade_date'),
+    )
+
+    def __repr__(self):
+        return f"<FundAdjFactor(code={self.code}, date={self.trade_date}, factor={self.adj_factor})>"
+
+
+class GlobalIndexDaily(Base):
+    """全球主要指数日线行情。
+
+    数据来源：Tushare index_global API，回填 2026 年至今。
+    按 (ts_code, trade_date) 唯一。ts_code 为 Tushare 定义的指数代码（如 DJI, SPX, IXIC）。
+    """
+
+    __tablename__ = 'global_index_daily'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    ts_code = Column(String(20), nullable=False, index=True)
+    trade_date = Column(String(8), nullable=False, index=True)
+    name = Column(String(100))
+    open = Column(Float)
+    high = Column(Float)
+    low = Column(Float)
+    close = Column(Float)
+    pre_close = Column(Float)
+    pct_chg = Column(Float)
+    change = Column(Float)
+    swing = Column(Float)
+    vol = Column(Float)
+    amount = Column(Float)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('ts_code', 'trade_date', name='uix_global_index_code_date'),
+        Index('ix_global_index_code_date', 'ts_code', 'trade_date'),
+    )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "ts_code": self.ts_code,
+            "trade_date": self.trade_date,
+            "name": self.name,
+            "open": self.open,
+            "high": self.high,
+            "low": self.low,
+            "close": self.close,
+            "pre_close": self.pre_close,
+            "pct_chg": self.pct_chg,
+            "change": self.change,
+            "swing": self.swing,
+            "vol": self.vol,
+            "amount": self.amount,
+        }
+
+
+class IndexBasic(Base):
+    """A 股指数基本信息（Tushare index_basic）。按 ts_code 唯一。"""
+
+    __tablename__ = 'index_basic'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    ts_code = Column(String(20), nullable=False, index=True, unique=True)
+    name = Column(String(100))
+    fullname = Column(String(200))
+    market = Column(String(20))
+    publisher = Column(String(50))
+    index_type = Column(String(50))
+    category = Column(String(50))
+    base_date = Column(String(8))
+    list_date = Column(String(8))
+    created_at = Column(DateTime, default=datetime.now)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"ts_code": self.ts_code, "name": self.name, "fullname": self.fullname,
+                "market": self.market, "publisher": self.publisher, "index_type": self.index_type,
+                "category": self.category}
+
+    def __repr__(self): return f"<IndexBasic(ts_code={self.ts_code}, name={self.name})>"
+
+
+class IndexDaily(Base):
+    """A 股指数日线行情（Tushare index_daily）。按 (ts_code, trade_date) 唯一。"""
+
+    __tablename__ = 'index_daily'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    ts_code = Column(String(20), nullable=False, index=True)
+    trade_date = Column(String(8), nullable=False, index=True)
+    open = Column(Float)
+    high = Column(Float)
+    low = Column(Float)
+    close = Column(Float)
+    pre_close = Column(Float)
+    pct_chg = Column(Float)
+    vol = Column(Float)
+    amount = Column(Float)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('ts_code', 'trade_date', name='uix_index_daily_code_date'),
+        Index('ix_index_daily_code_date', 'ts_code', 'trade_date'),
+    )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"ts_code": self.ts_code, "trade_date": self.trade_date,
+                "open": self.open, "high": self.high, "low": self.low, "close": self.close,
+                "pre_close": self.pre_close, "pct_chg": self.pct_chg}
+
+    def __repr__(self): return f"<IndexDaily(ts_code={self.ts_code}, date={self.trade_date})>"
+
+
+class IndexWeekly(Base):
+    """A 股指数周线行情（Tushare index_weekly）。trade_date 为当周最后一个交易日。按 (ts_code, trade_date) 唯一。"""
+
+    __tablename__ = 'index_weekly'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    ts_code = Column(String(20), nullable=False, index=True)
+    trade_date = Column(String(8), nullable=False, index=True)
+    open = Column(Float)
+    high = Column(Float)
+    low = Column(Float)
+    close = Column(Float)
+    pre_close = Column(Float)
+    pct_chg = Column(Float)
+    vol = Column(Float)
+    amount = Column(Float)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('ts_code', 'trade_date', name='uix_index_weekly_code_date'),
+        Index('ix_index_weekly_code_date', 'ts_code', 'trade_date'),
+    )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"ts_code": self.ts_code, "trade_date": self.trade_date,
+                "open": self.open, "high": self.high, "low": self.low, "close": self.close,
+                "pre_close": self.pre_close, "pct_chg": self.pct_chg}
+
+    def __repr__(self): return f"<IndexWeekly(ts_code={self.ts_code}, date={self.trade_date})>"
+
+
+class IndexConstituent(Base):
+    """指数成分股及权重（Tushare index_weight）。
+
+    按 (index_code, con_code) 唯一，trade_date 为最近更新日期。
+    """
+
+    __tablename__ = 'index_constituent'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    index_code = Column(String(20), nullable=False, index=True)
+    con_code = Column(String(10), nullable=False)
+    con_name = Column(String(50))
+    weight = Column(Float)
+    trade_date = Column(String(8), nullable=False)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('index_code', 'con_code', name='uix_index_constituent_code'),
+    )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "con_code": self.con_code,
+            "con_name": self.con_name,
+            "weight": self.weight,
+            "trade_date": self.trade_date,
+        }
+
+    def __repr__(self): return f"<IndexConstituent(index={self.index_code}, con={self.con_code})>"
+
+
 class SectorDaily(Base):
     """板块日线历史行情（用于 StockScorer 板块状态判定）。
 
@@ -7823,6 +8060,25 @@ class DatabaseManager(metaclass=_DatabaseManagerMeta):
                 .limit(1)
             ).scalar_one_or_none()
             return str(row) if row else None
+
+    def batch_get_latest_hk_stock_daily_trade_date(self, codes: List[str]) -> Dict[str, Optional[str]]:
+        """批量获取多只港股的最新交易日。
+
+        Returns:
+            {hk_code: latest_trade_date or None}
+        """
+        if not codes:
+            return {}
+        normed = [str(c).zfill(5) for c in codes]
+        from sqlalchemy import func
+        with self.get_session() as session:
+            stmt = (
+                select(HkStockDaily.hk_code, func.max(HkStockDaily.trade_date))
+                .where(HkStockDaily.hk_code.in_(normed))
+                .group_by(HkStockDaily.hk_code)
+            )
+            rows = session.execute(stmt).all()
+            return {str(row[0]): str(row[1]) if row[1] else None for row in rows}
 
     def get_min_hk_stock_daily_trade_date(self) -> Optional[str]:
         """取所有港股通日K线中最小的最新交易日（即数据最落后的那只）。"""
