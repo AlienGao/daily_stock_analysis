@@ -26,6 +26,9 @@ class BrokerRecommendService:
     # 按单只股票缓存增强数据，不同数据类型有独立 TTL
     _enrichment_cache: Dict[str, Any] = {}
     _enrichment_cache_ts: Dict[str, float] = {}
+    _historical_stats_cache: Dict[tuple, Dict[str, Any]] = {}
+    _historical_stats_cache_ts: Dict[tuple, float] = {}
+    _query_date_cache: Dict[str, str] = {}
     _cache_lock = Lock()
 
     # 缓存每个月份的 query_date，避免 trade_cal API 波动导致缓存 key 不一致
@@ -1465,24 +1468,6 @@ class BrokerRecommendService:
                         trading_days.append(today_str)
                         trading_days.sort()
                         sell_date = trading_days[-1]
-                    # 为缺少历史价格的股票补充昨收价（Sina 有昨收但未存入 price_cache）
-                    prev_td = trading_days[-2] if len(trading_days) >= 2 else None
-                    if prev_td and rt_changes:
-                        prev_filled = 0
-                        for ts, td_price in rt_prices.items():
-                            if not td_price:
-                                continue
-                            ts_prices = price_cache.get(ts, {})
-                            dates_after_buy = [d for d in ts_prices if d >= buy_date]
-                            if len(dates_after_buy) < 2:
-                                today_price = list(td_price.values())[0]
-                                dchg = rt_changes.get(ts)
-                                if dchg is not None and dchg > -1:
-                                    prev_close = round(today_price / (1 + dchg), 2)
-                                    price_cache.setdefault(ts, {})[prev_td] = prev_close
-                                    prev_filled += 1
-                        if prev_filled:
-                            logger.info(f"[BrokerRecommend] 回测 {month} 昨收价补充 {prev_filled} 只")
                     # 将实时今日 OHLC 写入 DB（仅交易日）
                     from src.discovery.engine import is_trading_day
                     if rt_ohlc and is_trading_day():
@@ -1560,6 +1545,7 @@ class BrokerRecommendService:
                         "end_price": round(sell_price, 2),
                         "end_date": actual_sell_date,
                         "daily_change": daily_changes.get(ts),
+                        "month_cumulative_return": None,
                         "daily_returns": [],
                     }
 
@@ -2101,9 +2087,18 @@ class BrokerRecommendService:
 
 
     def get_historical_recommend_stats(self, ts_codes: List[str], exclude_after: str | None = None) -> Dict[str, Dict[str, Any]]:
-        """统计各股票历次推荐持仓期胜率、最高/最低期末收益（与展开历史口径一致）。"""
+        """统计各股票历次推荐持仓期胜率、最高/最低期末收益（与展开历史口径一致）。
+
+        使用内部缓存减少重复计算：缓存 key 为 (frozenset(codes), exclude_after)。
+        """
         if not ts_codes:
             return {}
+        cache_key = (frozenset(sorted(ts_codes)), exclude_after)
+        with self._cache_lock:
+            cached = self._historical_stats_cache.get(cache_key)
+            if cached and time.time() - self._historical_stats_cache_ts.get(cache_key, 0) < 3600:
+                return cached
+
         month_counts = self.db.get_broker_recommend_month_counts(ts_codes, exclude_after=exclude_after)
         codes_set = set(ts_codes)
         bucket: Dict[str, Dict[str, Any]] = {
@@ -2158,6 +2153,10 @@ class BrokerRecommendService:
                 "max_return": round(max(returns), 4),
                 "max_drawdown": round(min(returns), 4),
             }
+        # 写缓存
+        with self._cache_lock:
+            self._historical_stats_cache[cache_key] = out
+            self._historical_stats_cache_ts[cache_key] = time.time()
         return out
 
     def get_historical_month_counts(self, ts_codes: List[str]) -> Dict[str, int]:

@@ -187,16 +187,20 @@ class HkStockService:
                     continue
                 latest_bar = bar_list[-1]
                 if latest_bar.trade_date == latest_trade_date:
+                    pct_change = None
+                    prev_close = None
+                    for pb in reversed(bar_list[:-1]):
+                        if pb.close is not None and pb.close > 0:
+                            prev_close = pb.close
+                            break
+                    if prev_close and latest_bar.close is not None:
+                        pct_change = round((latest_bar.close - prev_close) / prev_close * 100, 2)
                     entry: Dict[str, Any] = {
                         "latest_price": _safe_float(latest_bar.close),
-                        "pct_change": _safe_float(latest_bar.pct_chg),
+                        "pct_change": pct_change,
                     }
-                    if entry["pct_change"] is None and entry["latest_price"] is not None:
-                        # fallback: 从前一个交易日算涨跌幅
-                        for pb in reversed(bar_list[:-1]):
-                            if pb.close is not None:
-                                entry["pct_change"] = (latest_bar.close - pb.close) / pb.close * 100
-                                break
+                    if entry["pct_change"] is None:
+                        entry["pct_change"] = _safe_float(latest_bar.pct_chg)
                     latest_bars_by_code[code] = entry
 
         items = []
@@ -209,6 +213,9 @@ class HkStockService:
                 if bar_entry:
                     d["latest_price"] = bar_entry["latest_price"]
                     d["pct_change"] = bar_entry["pct_change"]
+            elif latest_trade_date:
+                d["latest_price"] = None
+                d["pct_change"] = None
             d.setdefault("latest_price", None)
             d.setdefault("pct_change", None)
             items.append(d)

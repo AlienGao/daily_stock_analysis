@@ -380,6 +380,14 @@ function fmtPct(v?: number | null): string {
   return `${v >= 0 ? '+' : ''}${(v * 100).toFixed(2)}%`;
 }
 
+function avgValidCumRet(rows: StockRow[]): number | null {
+  const values = rows
+    .map(row => row.cumRet)
+    .filter((v): v is number => v != null);
+  if (!values.length) return null;
+  return values.reduce((sum, v) => sum + v, 0) / values.length;
+}
+
 type StrategyMonthlyStock = {
   month_return?: number | null;
   buy_amount?: number | null;
@@ -1005,8 +1013,8 @@ const BrokerRecommendPage: React.FC = () => {
   const [strategyFetchTrigger, setStrategyFetchTrigger] = useState(0);
   const strategyStartStr = strategyStartMonth.format('YYYYMM');
   const strategyEndStr = strategyEndMonth.format('YYYYMM');
-  const [consecutiveData, setConsecutiveData] = useState<ConsecutiveStockItem[]>([]);
-  const consecutiveSet = useMemo(() => new Set(consecutiveData.map(c => c.ts_code)), [consecutiveData]);
+  const [consecutiveData, setConsecutiveData] = useState<ConsecutiveStockItem[] | null>(null);
+  const consecutiveSet = useMemo(() => new Set((consecutiveData ?? []).map(c => c.ts_code)), [consecutiveData]);
   const [historicalStats, setHistoricalStats] = useState<Record<string, HistoricalRecommendStatsItem>>({});
   const [currentMonthReturns, setCurrentMonthReturns] = useState<Record<string, number | null>>({});
   const [currentMonthMeta, setCurrentMonthMeta] = useState<Pick<CurrentMonthReturnsResponse, 'month' | 'buy_date' | 'sell_date'> | null>(null);
@@ -1182,7 +1190,7 @@ const BrokerRecommendPage: React.FC = () => {
         if (!cancelled) setHistoricalStats({});
       });
     return () => { cancelled = true; };
-  }, [activeRecommend]);
+  }, [activeRecommend, monthStr]);
 
   useEffect(() => {
     if (isCurrentMonth || !activeRecommend?.items?.length) {
@@ -1277,6 +1285,7 @@ const BrokerRecommendPage: React.FC = () => {
     async function load() {
       setLoadingData(true);
       setLoadingEnrichment(true);
+      setLoadingUpToDownDaily(true);
       if (isMonthChange) {
         setRecommendData(null);
         setBacktestData(null);
@@ -1285,7 +1294,6 @@ const BrokerRecommendPage: React.FC = () => {
         setExpandedKey('');
         setTableKey(k => k + 1);
       }
-      setLoadingUpToDownDaily(true);
       try {
         const [recResult, btResult, enrichResult, consResult, topResult, upDailyResult] =
           await Promise.allSettled([
@@ -1554,9 +1562,12 @@ const BrokerRecommendPage: React.FC = () => {
       const stockRet = activeBacktest?.stock_returns?.find(
         s => s.ts_code === item.ts_code
       );
-      const cumRet = stockRet?.daily_returns?.length
+      const fallbackCumRet = stockRet?.daily_returns?.length
         ? stockRet.daily_returns[stockRet.daily_returns.length - 1].cumulative
         : undefined;
+      const cumRet = stockRet && 'month_cumulative_return' in stockRet
+        ? stockRet.month_cumulative_return ?? undefined
+        : fallbackCumRet;
       return {
         ts_code: item.ts_code,
         name: item.name,
@@ -1618,6 +1629,44 @@ const BrokerRecommendPage: React.FC = () => {
     () => sortStockRows(stockRows, tableSort),
     [stockRows, tableSort],
   );
+
+  const brokerGroups = useMemo((): Map<string, BrokerRecommendItem[]> => {
+    if (!activeRecommend?.items?.length) return new Map();
+    const map = new Map<string, BrokerRecommendItem[]>();
+    for (const item of activeRecommend.items) {
+      const existing = map.get(item.broker) || [];
+      existing.push(item);
+      map.set(item.broker, existing);
+    }
+    return map;
+  }, [activeRecommend]);
+
+  const stockRowsByCode = useMemo(() => {
+    const map = new Map<string, StockRow>();
+    for (const row of stockRows) {
+      map.set(row.ts_code, row);
+    }
+    return map;
+  }, [stockRows]);
+
+  const brokerDisplayReturns = useMemo(() => {
+    const map = new Map<string, number | null>();
+    if (!activeRecommend?.items?.length) return map;
+    for (const [broker, items] of brokerGroups.entries()) {
+      const rows = items
+        .map(item => stockRowsByCode.get(item.ts_code))
+        .filter((row): row is StockRow => Boolean(row));
+      map.set(broker, avgValidCumRet(rows));
+    }
+    return map;
+  }, [activeRecommend, brokerGroups, stockRowsByCode]);
+
+  const bestBrokerDisplayReturn = useMemo(() => {
+    const values = Array.from(brokerDisplayReturns.values())
+      .filter((v): v is number => v != null);
+    if (!values.length) return null;
+    return Math.max(...values);
+  }, [brokerDisplayReturns]);
 
   const currentMonthRecommendCodes = useMemo(() => {
     if (!isCurrentMonth || !activeRecommend?.items?.length) return new Set<string>();
@@ -1845,18 +1894,6 @@ const BrokerRecommendPage: React.FC = () => {
     },
   ], [loadingEnrichment, monthStr, tableSort, isCurrentMonth, enrichAsOfLabel, holdPeriodLabel, currentMonthRetLabel, currentMonthStr, activeEnrichment]);
 
-  // Broker groups
-  const brokerGroups = useMemo((): Map<string, BrokerRecommendItem[]> => {
-    if (!activeRecommend?.items?.length) return new Map();
-    const map = new Map<string, BrokerRecommendItem[]>();
-    for (const item of activeRecommend.items) {
-      const existing = map.get(item.broker) || [];
-      existing.push(item);
-      map.set(item.broker, existing);
-    }
-    return map;
-  }, [activeRecommend]);
-
   return (
     <AppPage className="max-w-none px-2 md:px-3">
       <Tabs
@@ -1944,8 +1981,8 @@ const BrokerRecommendPage: React.FC = () => {
               <div className="text-xs text-secondary-text">券商数量</div>
             </button>
             <Card className="p-3 text-center">
-              <div className={`text-lg font-bold ${(activeBacktest?.brokers[0]?.cumulative_return || 0) >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                {fmtPct(activeBacktest?.brokers[0]?.cumulative_return ?? 0)}
+              <div className={`text-lg font-bold ${bestBrokerDisplayReturn != null ? (bestBrokerDisplayReturn >= 0 ? 'text-red-400' : 'text-emerald-400') : 'text-tertiary-text'}`}>
+                {fmtPct(bestBrokerDisplayReturn)}
               </div>
               <div className="text-xs text-secondary-text">最优券商收益</div>
             </Card>
@@ -2202,19 +2239,23 @@ const BrokerRecommendPage: React.FC = () => {
               <div className="space-y-2">
                 {Array.from(brokerGroups.entries())
                   .sort(([, aItems], [, bItems]) => {
-                    const aBt = activeBacktest?.brokers.find(b => b.broker === aItems[0]?.broker);
-                    const bBt = activeBacktest?.brokers.find(b => b.broker === bItems[0]?.broker);
-                    return (bBt?.cumulative_return ?? -Infinity) - (aBt?.cumulative_return ?? -Infinity);
+                    const aRet = brokerDisplayReturns.get(aItems[0]?.broker ?? '') ?? -Infinity;
+                    const bRet = brokerDisplayReturns.get(bItems[0]?.broker ?? '') ?? -Infinity;
+                    return bRet - aRet;
                   })
                   .map(([broker, items], idx) => {
                   const brokerBt = activeBacktest?.brokers.find(b => b.broker === broker);
+                  const brokerDisplayReturn = brokerDisplayReturns.get(broker) ?? null;
                   const brokerRows: StockRow[] = items.map(item => {
                     const stockRet = activeBacktest?.stock_returns?.find(
                       s => s.ts_code === item.ts_code
                     );
-                    const cumRet = stockRet?.daily_returns?.length
+                    const fallbackCumRet = stockRet?.daily_returns?.length
                       ? stockRet.daily_returns[stockRet.daily_returns.length - 1].cumulative
                       : undefined;
+                    const cumRet = stockRet && 'month_cumulative_return' in stockRet
+                      ? stockRet.month_cumulative_return ?? undefined
+                      : fallbackCumRet;
                     const row: StockRow = {
                       ts_code: item.ts_code,
                       name: item.name,
@@ -2268,12 +2309,12 @@ const BrokerRecommendPage: React.FC = () => {
                           )}
                         </span>
                         <span className="text-xs text-secondary-text">{items.length}只</span>
-                        <span className={`text-xs font-medium ${(brokerBt?.cumulative_return ?? 0) >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                          {fmtPct(brokerBt?.cumulative_return)}
+                        <span className={`text-xs font-medium ${brokerDisplayReturn != null ? (brokerDisplayReturn >= 0 ? 'text-red-400' : 'text-emerald-400') : 'text-tertiary-text'}`}>
+                          {fmtPct(brokerDisplayReturn)}
                         </span>
                         {brokerBt && (
                           <span className="text-xs text-secondary-text">
-                            胜率 {brokerBt.win_rate != null
+                            胜率 {brokerDisplayReturn != null && brokerBt.win_rate != null
                               ? `${(brokerBt.win_rate * 100).toFixed(0)}%`
                               : '--'}
                           </span>
