@@ -110,6 +110,12 @@ class HkStockListItem(BaseModel):
     name: Optional[str] = None
     latest_price: Optional[float] = None
     pct_change: Optional[float] = None
+    boll_mid: Optional[float] = None
+    boll_upper: Optional[float] = None
+    boll_lower: Optional[float] = None
+    boll_mid_dist_pct: Optional[float] = None
+    boll_upper_dist_pct: Optional[float] = None
+    boll_lower_dist_pct: Optional[float] = None
 
 
 class HkStockListResponse(BaseModel):

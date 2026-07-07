@@ -15,24 +15,25 @@ const fmtPct = (v?: number | null) => {
 
 const measureTableListHeight = (root: HTMLElement): number => {
   const wrapper = root.querySelector('.ant-table-wrapper');
-  const pagination = root.querySelector('.ant-pagination');
   if (!wrapper) return root.offsetHeight;
-  const thead = wrapper.querySelector('.ant-table-thead') as HTMLElement | null;
-  let tbodyHeight = 0;
-  wrapper.querySelectorAll('.ant-table-tbody > tr.ant-table-row').forEach(row => {
-    tbodyHeight += (row as HTMLElement).offsetHeight;
-  });
-  const theadHeight = thead?.offsetHeight ?? 0;
-  const paginationHeight = pagination
-    ? (pagination as HTMLElement).offsetHeight + 12
-    : 0;
-  return theadHeight + tbodyHeight + paginationHeight;
+  return Math.ceil((wrapper as HTMLElement).getBoundingClientRect().height);
 };
 
 const pctColor = (v?: number | null) => {
   if (v == null || Number.isNaN(v)) return 'text-secondary-text';
   return v >= 0 ? 'text-red-400' : 'text-emerald-400';
 };
+
+const fmtPrice = (v?: number | null) => (v == null || Number.isNaN(v) ? '--' : v.toFixed(3));
+
+const BollDistanceCell: React.FC<{ distance?: number | null; bandPrice?: number | null }> = ({ distance, bandPrice }) => (
+  <span
+    className={`font-mono text-xs tabular-nums ${pctColor(distance)}`}
+    title={bandPrice == null ? undefined : `轨道价 ${fmtPrice(bandPrice)}`}
+  >
+    {fmtPct(distance)}
+  </span>
+);
 
 // ── BOLL 推荐卡片 ─────────────────────────────────────────
 
@@ -210,8 +211,10 @@ const HkMonitorPage: React.FC = () => {
     apply();
     const ro = new ResizeObserver(() => apply());
     ro.observe(el);
+    const wrapper = el.querySelector('.ant-table-wrapper');
+    if (wrapper) ro.observe(wrapper);
     return () => ro.disconnect();
-  }, [items]);
+  }, [items, expandedKey, loading, searchText]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -263,7 +266,34 @@ const HkMonitorPage: React.FC = () => {
       dataIndex: 'latest_price',
       align: 'right',
       render: (v: number | null) => (
-        <span className="font-mono tabular-nums">{v == null ? '--' : v.toFixed(3)}</span>
+        <span className="font-mono tabular-nums">{fmtPrice(v)}</span>
+      ),
+    },
+    {
+      title: '距上轨',
+      dataIndex: 'boll_upper_dist_pct',
+      align: 'right',
+      sorter: (a, b) => (a.boll_upper_dist_pct ?? Number.POSITIVE_INFINITY) - (b.boll_upper_dist_pct ?? Number.POSITIVE_INFINITY),
+      render: (_v: number | null, record) => (
+        <BollDistanceCell distance={record.boll_upper_dist_pct} bandPrice={record.boll_upper} />
+      ),
+    },
+    {
+      title: '距中轨',
+      dataIndex: 'boll_mid_dist_pct',
+      align: 'right',
+      sorter: (a, b) => (a.boll_mid_dist_pct ?? Number.POSITIVE_INFINITY) - (b.boll_mid_dist_pct ?? Number.POSITIVE_INFINITY),
+      render: (_v: number | null, record) => (
+        <BollDistanceCell distance={record.boll_mid_dist_pct} bandPrice={record.boll_mid} />
+      ),
+    },
+    {
+      title: '距下轨',
+      dataIndex: 'boll_lower_dist_pct',
+      align: 'right',
+      sorter: (a, b) => (a.boll_lower_dist_pct ?? Number.POSITIVE_INFINITY) - (b.boll_lower_dist_pct ?? Number.POSITIVE_INFINITY),
+      render: (_v: number | null, record) => (
+        <BollDistanceCell distance={record.boll_lower_dist_pct} bandPrice={record.boll_lower} />
       ),
     },
     {

@@ -242,14 +242,8 @@ const ExpandPanel: React.FC<{
 
 const measureTableListHeight = (root: HTMLElement): number => {
   const wrapper = root.querySelector('.ant-table-wrapper');
-  const pagination = root.querySelector('.ant-pagination');
   if (!wrapper) return root.offsetHeight;
-  const thead = wrapper.querySelector('.ant-table-thead') as HTMLElement | null;
-  let tbodyHeight = 0;
-  wrapper.querySelectorAll('.ant-table-tbody > tr.ant-table-row').forEach(row => {
-    tbodyHeight += (row as HTMLElement).offsetHeight;
-  });
-  return (thead?.offsetHeight ?? 0) + tbodyHeight + (pagination ? (pagination as HTMLElement).offsetHeight + 12 : 0);
+  return Math.ceil((wrapper as HTMLElement).getBoundingClientRect().height);
 };
 
 const sortItemsDefault = (items: NewHighItemLike[]) =>
@@ -421,6 +415,8 @@ const NewHighTablePanel: React.FC<{
     apply();
     const ro = new ResizeObserver(() => apply());
     ro.observe(el);
+    const wrapper = el.querySelector('.ant-table-wrapper');
+    if (wrapper) ro.observe(wrapper);
     return () => ro.disconnect();
   }, [data, tablePage, tablePageSize, loading, bollLoading]);
 

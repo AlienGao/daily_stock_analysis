@@ -78,3 +78,33 @@ def test_list_components_recomputes_pct_change_from_latest_two_closes():
     item = result["items"][0]
     assert item["latest_price"] == 29.90
     assert item["pct_change"] == 46.0
+
+
+def test_list_components_includes_latest_boll_distances():
+    db = MagicMock()
+    db.get_latest_hk_ggt_trade_date.return_value = "20260706"
+    db.list_hk_ggt_components.return_value = [
+        _component("00700", "腾讯控股"),
+    ]
+    db.batch_get_latest_hk_stock_daily_trade_date.return_value = {
+        "00700": "20260706",
+    }
+    db.list_hk_stock_daily_bars_batch.return_value = {
+        "00700": [
+            _bar(f"202606{day:02d}", 100.0 + idx)
+            for idx, day in enumerate(range(11, 31), start=1)
+        ][:-6] + [
+            _bar(f"202607{day:02d}", 114.0 + day)
+            for day in range(1, 7)
+        ],
+    }
+
+    result = HkStockService(db=db).list_components()
+
+    item = result["items"][0]
+    assert item["boll_mid"] == 110.5
+    assert item["boll_upper"] == 122.0326
+    assert item["boll_lower"] == 98.9674
+    assert item["boll_mid_dist_pct"] == 8.6
+    assert item["boll_upper_dist_pct"] == -1.67
+    assert item["boll_lower_dist_pct"] == 21.25

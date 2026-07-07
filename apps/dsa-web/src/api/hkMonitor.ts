@@ -49,6 +49,12 @@ export type HkStockListItem = {
   name?: string | null;
   latest_price?: number | null;
   pct_change?: number | null;
+  boll_mid?: number | null;
+  boll_upper?: number | null;
+  boll_lower?: number | null;
+  boll_mid_dist_pct?: number | null;
+  boll_upper_dist_pct?: number | null;
+  boll_lower_dist_pct?: number | null;
 };
 
 export type HkStockListResponse = {
