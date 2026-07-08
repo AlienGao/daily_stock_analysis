@@ -26,6 +26,32 @@ const pctColor = (v?: number | null) => {
 
 const fmtPrice = (v?: number | null) => (v == null || Number.isNaN(v) ? '--' : v.toFixed(3));
 
+const calcDistPct = (price?: number | null, band?: number | null) => {
+  if (price == null || band == null || !Number.isFinite(price) || !Number.isFinite(band) || band <= 0) return null;
+  return Number((((price - band) / band) * 100).toFixed(2));
+};
+
+const patchItemFromKlines = (item: HkStockListItem, klines: HkStockKLineItem[]): HkStockListItem => {
+  const bars = klines.filter(bar => bar.close != null && Number.isFinite(bar.close));
+  const latest = bars.at(-1);
+  if (!latest) return item;
+
+  const prev = [...bars].reverse().find(bar => bar.date < latest.date && bar.close > 0);
+  const pctChange = prev ? Number((((latest.close - prev.close) / prev.close) * 100).toFixed(2)) : item.pct_change;
+
+  return {
+    ...item,
+    latest_price: latest.close,
+    pct_change: pctChange,
+    boll_mid: latest.boll_mid ?? item.boll_mid ?? null,
+    boll_upper: latest.boll_upper ?? item.boll_upper ?? null,
+    boll_lower: latest.boll_lower ?? item.boll_lower ?? null,
+    boll_mid_dist_pct: calcDistPct(latest.close, latest.boll_mid) ?? item.boll_mid_dist_pct ?? null,
+    boll_upper_dist_pct: calcDistPct(latest.close, latest.boll_upper) ?? item.boll_upper_dist_pct ?? null,
+    boll_lower_dist_pct: calcDistPct(latest.close, latest.boll_lower) ?? item.boll_lower_dist_pct ?? null,
+  };
+};
+
 const BollDistanceCell: React.FC<{ distance?: number | null; bandPrice?: number | null }> = ({ distance, bandPrice }) => (
   <span
     className={`font-mono text-xs tabular-nums ${pctColor(distance)}`}
@@ -172,7 +198,10 @@ const KLineChart: React.FC<{ data: HkStockKLineItem[]; loading: boolean }> = ({ 
   );
 };
 
-const ExpandPanel: React.FC<{ record: HkStockListItem }> = ({ record }) => {
+const ExpandPanel: React.FC<{
+  record: HkStockListItem;
+  onKlinesLoaded: (hkCode: string, klines: HkStockKLineItem[]) => void;
+}> = ({ record, onKlinesLoaded }) => {
   const [klines, setKlines] = useState<HkStockKLineItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -180,10 +209,16 @@ const ExpandPanel: React.FC<{ record: HkStockListItem }> = ({ record }) => {
     let cancelled = false;
     setLoading(true);
     void hkStockApi.getKlines(record.hk_code)
-      .then(resp => { if (!cancelled) { setKlines(resp.data); setLoading(false); } })
+      .then(resp => {
+        if (!cancelled) {
+          setKlines(resp.data);
+          onKlinesLoaded(record.hk_code, resp.data);
+          setLoading(false);
+        }
+      })
       .catch(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [record.hk_code]);
+  }, [onKlinesLoaded, record.hk_code]);
 
   return <KLineChart data={klines} loading={loading} />;
 };
@@ -243,6 +278,12 @@ const HkMonitorPage: React.FC = () => {
       item.hk_code.includes(q)
     );
   }, [items, searchText]);
+
+  const handleKlinesLoaded = useCallback((hkCode: string, klines: HkStockKLineItem[]) => {
+    setItems(prevItems => prevItems.map(item => (
+      item.hk_code === hkCode ? patchItemFromKlines(item, klines) : item
+    )));
+  }, []);
 
   const columns: ColumnsType<HkStockListItem> = useMemo(() => [
     {
@@ -379,7 +420,7 @@ const HkMonitorPage: React.FC = () => {
                 expandable={{
                   expandedRowKeys: expandedKey ? [expandedKey] : [],
                   onExpand: (expanded, record) => setExpandedKey(expanded ? record.hk_code : ''),
-                  expandedRowRender: record => <ExpandPanel record={record} />,
+                  expandedRowRender: record => <ExpandPanel record={record} onKlinesLoaded={handleKlinesLoaded} />,
                 }}
               />
             </div>

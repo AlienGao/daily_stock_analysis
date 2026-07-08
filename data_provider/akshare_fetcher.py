@@ -2022,7 +2022,11 @@ class AkshareFetcher(BaseFetcher):
         try:
             self._set_random_user_agent()
             self._enforce_rate_limit()
-            df = ak.stock_hk_ggt_components_em()
+            try:
+                df = ak.stock_hk_ggt_components_em()
+            except Exception as exc:
+                logger.warning("[Akshare] stock_hk_ggt_components_em 失败，尝试 EastMoney HTTP fallback: %s", exc)
+                df = self._fetch_hk_ggt_components_em_http_fallback()
             if df is None or df.empty:
                 return []
 
@@ -2055,6 +2059,71 @@ class AkshareFetcher(BaseFetcher):
         except Exception as e:
             logger.warning("[Akshare] 获取港股通成份失败: %s", e)
             return []
+
+    def _fetch_hk_ggt_components_em_http_fallback(self) -> Optional[pd.DataFrame]:
+        """EastMoney push2 HTTPS 偶发断连时，用同参数 HTTP 接口兜底。"""
+        url = "http://push2.eastmoney.com/api/qt/clist/get"
+        params = {
+            "pn": "1",
+            "pz": "100",
+            "po": "1",
+            "np": "1",
+            "ut": "bd1d9ddb04089700cf9c27f6f7426281",
+            "fltt": "2",
+            "fid": "f12",
+            "fs": "b:DLMK0146,b:DLMK0144",
+            "fields": (
+                "f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f12,f13,f14,f15,f16,f17,"
+                "f18,f19,f20,f21,f23,f24,f25,f26,f22,f33,f11,f62,f128,"
+                "f136,f115,f152"
+            ),
+        }
+        headers = {
+            "User-Agent": random.choice(USER_AGENTS),
+            "Referer": "https://quote.eastmoney.com/center/gridlist.html",
+            "Accept": "application/json,text/plain,*/*",
+        }
+        rows: List[Dict[str, Any]] = []
+        page = 1
+        total: Optional[int] = None
+        while True:
+            page_params = dict(params, pn=str(page))
+            resp = requests.get(
+                url,
+                params=page_params,
+                headers=headers,
+                timeout=10,
+                proxies={"http": None, "https": None},
+            )
+            resp.raise_for_status()
+            payload = resp.json()
+            data = payload.get("data") or {}
+            total = int(data.get("total") or total or 0)
+            diff = data.get("diff") or []
+            if not diff:
+                break
+            for item in diff:
+                rows.append({
+                    "序号": item.get("f1"),
+                    "代码": item.get("f12"),
+                    "名称": item.get("f14"),
+                    "最新价": item.get("f2"),
+                    "涨跌额": item.get("f4"),
+                    "涨跌幅": item.get("f3"),
+                    "今开": item.get("f17"),
+                    "最高": item.get("f15"),
+                    "最低": item.get("f16"),
+                    "昨收": item.get("f18"),
+                    "成交量": item.get("f5"),
+                    "成交额": item.get("f6"),
+                })
+            if total and len(rows) >= total:
+                break
+            page += 1
+            if page > 20:
+                break
+        logger.info("[Akshare] EastMoney HTTP fallback 返回 %d/%s 条", len(rows), total or "?")
+        return pd.DataFrame(rows)
 
     def fetch_hk_ggt_minute_bars(self, hk_code: str, start_date: str = "20260622") -> list:
         """获取港股 1 分钟历史 (ak.stock_hk_hist_min_em, period=1)。"""
