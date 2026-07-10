@@ -25,7 +25,9 @@ import logging
 import multiprocessing
 import os
 import random
+import re
 import time
+import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional, Dict, Any, List, Tuple
@@ -2020,30 +2022,49 @@ class AkshareFetcher(BaseFetcher):
         import akshare as ak
 
         try:
+            official_components = self._fetch_hk_ggt_official_components()
+            official_codes = {row["hk_code"] for row in official_components}
+            official_by_code = {row["hk_code"]: row for row in official_components}
             self._set_random_user_agent()
             self._enforce_rate_limit()
             try:
                 df = ak.stock_hk_ggt_components_em()
             except Exception as exc:
                 logger.warning("[Akshare] stock_hk_ggt_components_em 失败，尝试 EastMoney HTTP fallback: %s", exc)
-                df = self._fetch_hk_ggt_components_em_http_fallback()
+                try:
+                    df = self._fetch_hk_ggt_components_em_http_fallback()
+                except Exception as fallback_exc:
+                    logger.warning("[Akshare] EastMoney HTTP fallback 失败: %s", fallback_exc)
+                    df = None
             if df is None or df.empty:
+                if official_components:
+                    logger.info("[Akshare] 使用沪深交易所港股通标的名单返回 %d 条", len(official_components))
+                    return official_components
                 return []
 
             code_col = self._pick_col(df, ["代码", "symbol", "code"])
             name_col = self._pick_col(df, ["名称", "name"])
             if not code_col:
                 logger.warning("[Akshare] stock_hk_ggt_components_em 缺少代码列: %s", list(df.columns))
-                return []
+                return official_components
 
             rows = []
+            seen_codes = set()
             for _, row in df.iterrows():
                 hk_code = self._norm_hk_code(row.get(code_col))
                 if not hk_code.strip("0"):
                     continue
+                if official_codes and hk_code not in official_codes:
+                    continue
+                if hk_code in seen_codes:
+                    continue
+                seen_codes.add(hk_code)
+                name = str(row.get(name_col, "") if name_col else "").strip()
+                if not name:
+                    name = str(official_by_code.get(hk_code, {}).get("name") or "").strip()
                 rows.append({
                     "hk_code": hk_code,
-                    "name": str(row.get(name_col, "") if name_col else "")[:100],
+                    "name": name[:100],
                     "latest_price": row.get(self._pick_col(df, ["最新价", "现价", "close"])),
                     "pct_change": row.get(self._pick_col(df, ["涨跌幅", "pct_chg"])),
                     "change_amount": row.get(self._pick_col(df, ["涨跌额", "change"])),
@@ -2054,10 +2075,117 @@ class AkshareFetcher(BaseFetcher):
                     "volume": row.get(self._pick_col(df, ["成交量", "vol", "volume"])),
                     "amount": row.get(self._pick_col(df, ["成交额", "amount"])),
                 })
-            logger.info("[Akshare] stock_hk_ggt_components_em 返回 %d 条", len(rows))
+            if official_components and len(rows) < len(official_components):
+                by_code = {row["hk_code"]: row for row in rows}
+                for official in official_components:
+                    existing = by_code.get(official["hk_code"])
+                    if existing:
+                        if not str(existing.get("name") or "").strip():
+                            existing["name"] = official.get("name") or ""
+                    else:
+                        by_code[official["hk_code"]] = official
+                rows = [by_code[row["hk_code"]] for row in official_components]
+            logger.info(
+                "[Akshare] stock_hk_ggt_components_em 返回 %d 条%s",
+                len(rows),
+                "（已按沪深交易所名单过滤）" if official_codes else "",
+            )
             return rows
         except Exception as e:
             logger.warning("[Akshare] 获取港股通成份失败: %s", e)
+            return []
+
+    def _fetch_hk_ggt_official_components(self) -> List[Dict[str, Any]]:
+        """从上交所/深交所港股通标的名单获取当前有效证券，用于过滤已剔除标的。"""
+        rows = self._fetch_hk_ggt_components_from_sse()
+        if rows:
+            return rows
+        rows = self._fetch_hk_ggt_components_from_szse()
+        if rows:
+            return rows
+        return []
+
+    def _fetch_hk_ggt_components_from_sse(self) -> List[Dict[str, Any]]:
+        url = "https://query.sse.com.cn/commonQuery.do"
+        params = {
+            "jsonCallBack": "jsonpCallback",
+            "sqlId": "COMMON_SSE_JYFW_HGT_XXPL_BDZQQD_L",
+            "isPagination": "true",
+            "pageHelp.pageSize": "1000",
+            "pageHelp.pageNo": "1",
+            "pageHelp.beginPage": "1",
+            "pageHelp.cacheSize": "1",
+            "pageHelp.endPage": "1",
+            "keyword": "",
+        }
+        headers = {
+            "User-Agent": random.choice(USER_AGENTS),
+            "Referer": "https://www.sse.com.cn/services/hkexsc/disclo/eligible/",
+            "Accept": "application/json,text/javascript,*/*",
+        }
+        try:
+            resp = requests.get(url, params=params, headers=headers, timeout=10)
+            resp.raise_for_status()
+            text = resp.text.strip()
+            match = re.match(r"^[^(]+\((.*)\)$", text, flags=re.S)
+            payload = json.loads(match.group(1) if match else text)
+            data = (payload.get("pageHelp") or {}).get("data") or payload.get("result") or []
+            rows: List[Dict[str, Any]] = []
+            seen_codes = set()
+            for item in data:
+                if str(item.get("SECURITY_TYPE") or "").strip() != "股票":
+                    continue
+                hk_code = self._norm_hk_code(item.get("SECURITY_CODE"))
+                if not hk_code.strip("0") or hk_code in seen_codes:
+                    continue
+                seen_codes.add(hk_code)
+                name = str(item.get("ABBR_CN") or "").strip() or str(item.get("ABBR_EN") or "").strip()
+                rows.append({
+                    "hk_code": hk_code,
+                    "name": name,
+                })
+            logger.info("[Akshare] 上交所港股通股票名单返回 %d 条", len(rows))
+            return rows
+        except Exception as exc:
+            logger.warning("[Akshare] 上交所港股通名单获取失败: %s", exc)
+            return []
+
+    def _fetch_hk_ggt_components_from_szse(self) -> List[Dict[str, Any]]:
+        url = "https://www.szse.cn/api/report/ShowReport/data"
+        params = {
+            "SHOWTYPE": "JSON",
+            "CATALOGID": "SGT_GGTBDQD",
+            "PAGENO": "1",
+            "PAGESIZE": "1000",
+            "random": str(random.random()),
+        }
+        headers = {
+            "User-Agent": random.choice(USER_AGENTS),
+            "Referer": "https://www.szse.cn/szhk/hkbussiness/underlylist/index.html",
+            "Accept": "application/json,text/javascript,*/*",
+        }
+        try:
+            resp = requests.get(url, params=params, headers=headers, timeout=10)
+            resp.raise_for_status()
+            payload = resp.json()
+            blocks = payload if isinstance(payload, list) else []
+            data = blocks[0].get("data", []) if blocks else []
+            rows: List[Dict[str, Any]] = []
+            seen_codes = set()
+            for item in data:
+                hk_code = self._norm_hk_code(item.get("zqdm"))
+                if not hk_code.strip("0") or hk_code in seen_codes:
+                    continue
+                seen_codes.add(hk_code)
+                name = str(item.get("zqjc") or "").strip() or str(item.get("zqywjc") or "").strip()
+                rows.append({
+                    "hk_code": hk_code,
+                    "name": name,
+                })
+            logger.info("[Akshare] 深交所港股通名单返回 %d 条", len(rows))
+            return rows
+        except Exception as exc:
+            logger.warning("[Akshare] 深交所港股通名单获取失败: %s", exc)
             return []
 
     def _fetch_hk_ggt_components_em_http_fallback(self) -> Optional[pd.DataFrame]:

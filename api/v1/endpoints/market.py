@@ -474,9 +474,11 @@ def list_hk_ggt_components(
     responses={500: {"model": ErrorResponse}},
     summary="港股通成份股列表（含最新价）",
 )
-def list_hk_stocks() -> HkStockListResponse:
+def list_hk_stocks(
+    refresh: bool = Query(False, description="强制刷新港股通成份快照后再返回列表"),
+) -> HkStockListResponse:
     try:
-        result = HkStockService().list_components()
+        result = HkStockService().list_components(refresh=refresh)
         return HkStockListResponse(**result)
     except Exception as exc:
         logger.error("hk-stocks failed: %s", exc, exc_info=True)

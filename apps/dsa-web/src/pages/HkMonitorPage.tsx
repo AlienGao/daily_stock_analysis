@@ -251,14 +251,17 @@ const HkMonitorPage: React.FC = () => {
     return () => ro.disconnect();
   }, [items, expandedKey, loading, searchText]);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (opts?: { refresh?: boolean }) => {
     setLoading(true);
     setError(null);
     try {
-      const [listResp, bollResp] = await Promise.all([
-        hkStockApi.list(),
-        hkStockApi.getBollPicks(),
-      ]);
+      const shouldRefresh = opts?.refresh ?? false;
+      const [listResp, bollResp] = shouldRefresh
+        ? [await hkStockApi.list({ refresh: true }), await hkStockApi.getBollPicks()]
+        : await Promise.all([
+          hkStockApi.list(),
+          hkStockApi.getBollPicks(),
+        ]);
       setItems(listResp.items ?? []);
       setBollPicks([...(bollResp.upper ?? []), ...(bollResp.mid ?? []), ...(bollResp.lower ?? [])]);
     } catch (err: unknown) {
@@ -290,14 +293,16 @@ const HkMonitorPage: React.FC = () => {
       title: '名称',
       dataIndex: 'name',
       key: 'name',
+      width: 150,
       render: (v: string | null) => (
-        <span className="text-sm font-medium text-foreground">{v || '--'}</span>
+        <span className="block max-w-full truncate whitespace-nowrap text-sm font-medium text-foreground" title={v || undefined}>{v || '--'}</span>
       ),
     },
     {
       title: '代码',
       dataIndex: 'hk_code',
       key: 'hk_code',
+      width: 60,
       render: (v: string) => (
         <span className="font-mono text-xs text-tertiary-text">{v}</span>
       ),
@@ -387,7 +392,7 @@ const HkMonitorPage: React.FC = () => {
                 className="h-7 w-48 rounded-md border border-border/20 bg-muted/20 pl-7 pr-2 text-xs text-foreground outline-none placeholder:text-tertiary-text focus:border-primary/40 focus:ring-1 focus:ring-primary/30"
               />
             </div>
-            <Button variant="secondary" size="sm" disabled={loading} onClick={load}>
+            <Button variant="secondary" size="sm" disabled={loading} onClick={() => { void load({ refresh: true }); }}>
               <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
               刷新
             </Button>

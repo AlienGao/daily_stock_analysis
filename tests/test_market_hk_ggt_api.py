@@ -30,6 +30,28 @@ def test_list_hk_ggt_components():
     assert data["items"][0]["hk_code"] == "00700"
 
 
+def test_list_hk_stocks_passes_refresh_flag():
+    app = create_app()
+    client = TestClient(app)
+    payload = {
+        "trade_date": "20260709",
+        "total": 1,
+        "items": [{
+            "hk_code": "00700",
+            "name": "腾讯控股",
+            "latest_price": 510.0,
+            "pct_change": 2.0,
+        }],
+    }
+    with patch("api.v1.endpoints.market.HkStockService") as mock_cls:
+        mock_cls.return_value.list_components.return_value = payload
+        resp = client.get("/api/v1/market/hk-stocks", params={"refresh": "true"})
+
+    assert resp.status_code == 200
+    mock_cls.return_value.list_components.assert_called_once_with(refresh=True)
+    assert resp.json()["items"][0]["hk_code"] == "00700"
+
+
 def test_get_hk_ggt_minutes():
     app = create_app()
     client = TestClient(app)

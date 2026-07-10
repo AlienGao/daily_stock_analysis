@@ -150,14 +150,24 @@ class HkStockService:
 
     # ── 成份股列表 ──────────────────────────────────────────────
 
-    def list_components(self) -> Dict[str, Any]:
+    def list_components(self, *, refresh: bool = False) -> Dict[str, Any]:
         """返回所有港股通成份股快照（从 hk_ggt_component 表读取最新交易日）。
 
-        仅查 DB，不触发网络回填或 BOLL 计算，确保接口快速返回。
+        默认仅查 DB，不触发网络刷新或 BOLL 计算，确保接口快速返回。
+        手动 refresh 时先强制刷新成份快照，再读取最新快照供港股页面展示。
         """
         now = _time.time()
-        if hasattr(self, '_list_cache') and self._list_cache is not None and now - getattr(self, '_list_cache_ts', 0) < CACHE_TTL_SEC:
+        if (
+            not refresh
+            and hasattr(self, '_list_cache')
+            and self._list_cache is not None
+            and now - getattr(self, '_list_cache_ts', 0) < CACHE_TTL_SEC
+        ):
             return self._list_cache
+        if refresh:
+            from src.services.hk_ggt_monitor_service import HkGgtMonitorService
+
+            HkGgtMonitorService(db=self._db).refresh_components(force=True)
         trade_date = self._db.get_latest_hk_ggt_trade_date()
         if not trade_date:
             return {"trade_date": "", "total": 0, "items": []}

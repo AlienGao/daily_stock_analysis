@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from src.services.hk_stock_service import HkStockService
 
@@ -108,3 +108,34 @@ def test_list_components_includes_latest_boll_distances():
     assert item["boll_mid_dist_pct"] == 8.6
     assert item["boll_upper_dist_pct"] == -1.67
     assert item["boll_lower_dist_pct"] == 21.25
+
+
+def test_list_components_refreshes_ggt_snapshot_before_reading_latest_date():
+    db = MagicMock()
+    db.get_latest_hk_ggt_trade_date.return_value = "20260709"
+    db.list_hk_ggt_components.return_value = [
+        _component("00700", "腾讯控股"),
+    ]
+    db.batch_get_latest_hk_stock_daily_trade_date.return_value = {
+        "00700": "20260709",
+    }
+    db.list_hk_stock_daily_bars_batch.return_value = {
+        "00700": [
+            _bar("20260708", 500.0),
+            _bar("20260709", 510.0),
+        ],
+    }
+
+    with patch("data_provider.akshare_fetcher.AkshareFetcher") as fetcher_cls, \
+            patch("src.services.hk_ggt_monitor_service.get_market_now") as get_market_now:
+        get_market_now.return_value.strftime.return_value = "20260709"
+        fetcher_cls.return_value.fetch_hk_ggt_components.return_value = [
+            {"hk_code": "00700", "name": "腾讯控股"},
+        ]
+        result = HkStockService(db=db).list_components(refresh=True)
+
+    db.replace_hk_ggt_components.assert_called_once_with(
+        "20260709",
+        [{"hk_code": "00700", "name": "腾讯控股"}],
+    )
+    assert result["trade_date"] == "20260709"

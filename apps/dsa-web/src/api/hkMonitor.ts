@@ -101,8 +101,11 @@ export type HkBollPickListResponse = {
 };
 
 export const hkStockApi = {
-  async list(): Promise<HkStockListResponse> {
-    const resp = await apiClient.get<HkStockListResponse>('/api/v1/market/hk-stocks', { timeout: 120_000 });
+  async list(opts?: { refresh?: boolean }): Promise<HkStockListResponse> {
+    const resp = await apiClient.get<HkStockListResponse>('/api/v1/market/hk-stocks', {
+      params: { refresh: opts?.refresh ?? false },
+      timeout: 120_000,
+    });
     return resp.data;
   },
 
