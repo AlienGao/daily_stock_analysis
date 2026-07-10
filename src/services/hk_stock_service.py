@@ -9,6 +9,9 @@ import time as _time
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
+from src.data.stock_mapping import is_meaningful_stock_name
+from src.data.stock_index_loader import get_index_stock_name
+
 BOLL_PERIOD = 20
 BOLL_MULT = 2.0
 BOLL_NEAR_PCT = 1.5
@@ -91,6 +94,16 @@ def _fmt_date(d: date) -> str:
 
 def _parse_yyyymmdd(s: str) -> date:
     return datetime.strptime(str(s).replace("-", "")[:8], "%Y%m%d").date()
+
+
+def _resolve_hk_display_name(name: Any, hk_code: str) -> str:
+    current = str(name or "").strip()
+    if is_meaningful_stock_name(current, hk_code):
+        return current
+    index_name = get_index_stock_name(hk_code) or get_index_stock_name(f"{hk_code}.HK")
+    if is_meaningful_stock_name(index_name, hk_code):
+        return str(index_name).strip()
+    return current
 
 
 def _compute_boll(
@@ -234,6 +247,7 @@ class HkStockService:
         for r in rows:
             d = r.to_dict()
             code = _norm_hk_code(d["hk_code"])
+            d["name"] = _resolve_hk_display_name(d.get("name"), code)
             latest = latest_by_code.get(code)
             if latest_trade_date and latest == latest_trade_date:
                 bar_entry = latest_bars_by_code.get(code)

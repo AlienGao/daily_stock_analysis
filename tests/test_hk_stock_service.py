@@ -110,6 +110,21 @@ def test_list_components_includes_latest_boll_distances():
     assert item["boll_lower_dist_pct"] == 21.25
 
 
+def test_list_components_fills_blank_name_from_stock_index():
+    db = MagicMock()
+    db.get_latest_hk_ggt_trade_date.return_value = "20260710"
+    db.list_hk_ggt_components.return_value = [
+        _component("00522", ""),
+    ]
+    db.batch_get_latest_hk_stock_daily_trade_date.return_value = {}
+    db.list_hk_stock_daily_bars_batch.return_value = {}
+
+    with patch("src.services.hk_stock_service.get_index_stock_name", return_value="ASMPT"):
+        result = HkStockService(db=db).list_components()
+
+    assert result["items"][0]["name"] == "ASMPT"
+
+
 def test_list_components_refreshes_ggt_snapshot_before_reading_latest_date():
     db = MagicMock()
     db.get_latest_hk_ggt_trade_date.return_value = "20260709"
