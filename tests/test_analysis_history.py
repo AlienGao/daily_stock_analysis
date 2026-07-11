@@ -1596,6 +1596,27 @@ class AnalysisHistoryTestCase(unittest.TestCase):
         self.assertIn("Unnamed Stock (AAPL)", markdown)
         self.assertNotIn("核心结论", markdown)
 
+    def test_history_markdown_signal_metadata_uses_explicit_avoid_action(self) -> None:
+        result = AnalysisResult(
+            code="AAPL",
+            name="Apple",
+            sentiment_score=90,
+            trend_prediction="Bullish",
+            operation_advice="Hold",
+            analysis_summary="Risk remains elevated.",
+            report_language="en",
+            action="avoid",
+            action_label="Avoid",
+        )
+
+        markdown = HistoryService(self.db)._generate_single_stock_markdown(
+            result,
+            MagicMock(created_at=None),
+        )
+
+        self.assertIn("**🟡 Avoid** | Bullish", markdown)
+        self.assertNotIn("Strong Buy", markdown)
+
     def test_history_markdown_returns_persisted_market_review_report(self) -> None:
         """Market review history should return the saved Markdown without rebuilding a stock report."""
         result = AnalysisResult(

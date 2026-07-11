@@ -129,6 +129,7 @@ from api.v1.schemas.research import (
     LGBDiagnosticsResponse,
 )
 from api.v1.schemas.decision_signals import (
+    DecisionProfile,
     DecisionSignalCreateRequest,
     DecisionSignalFeedbackItem,
     DecisionSignalFeedbackRequest,
@@ -258,6 +259,7 @@ __all__ = [
     "LGBPredictionStats",
     "LGBDiagnosticsResponse",
     # decision signals
+    "DecisionProfile",
     "DecisionSignalCreateRequest",
     "DecisionSignalFeedbackItem",
     "DecisionSignalFeedbackRequest",
