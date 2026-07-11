@@ -123,7 +123,7 @@ def clean_wal_files(dry_run: bool = False) -> tuple:
 
 def main():
     parser = argparse.ArgumentParser(description="清理运行日志，保留最近 N 个交易日")
-    parser.add_argument("--days", type=int, default=3, help="保留交易日数（默认 3）")
+    parser.add_argument("--days", type=int, default=1, help="保留交易日数（默认 1）")
     parser.add_argument("--dry-run", action="store_true", help="预览模式，不实际删除")
     args = parser.parse_args()
 

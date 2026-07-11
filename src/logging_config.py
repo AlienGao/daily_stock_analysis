@@ -92,8 +92,8 @@ def setup_logging(
 
     配置三层日志输出：
     1. 控制台：根据 debug 参数或 console_level 设置级别
-    2. 常规日志文件：INFO 级别，10MB 轮转，保留 5 个备份
-    3. 调试日志文件：DEBUG 级别，50MB 轮转，保留 3 个备份
+    2. 常规日志文件：INFO 级别，10MB 轮转，仅保留当前文件
+    3. 调试日志文件：DEBUG 级别，50MB 轮转，仅保留当前文件
 
     Args:
         log_prefix: 日志文件名前缀（如 "api_server" -> api_server_20240101.log）
