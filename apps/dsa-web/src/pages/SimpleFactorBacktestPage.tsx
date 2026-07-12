@@ -8,8 +8,11 @@ import { DatePicker, Table, InputNumber, Checkbox, Button, Tooltip as AntTooltip
 import dayjs from 'dayjs';
 import { Play, Loader2, Activity, Download, Trash2 } from 'lucide-react';
 import { AppPage, Card, StatCard, EmptyState, ApiErrorAlert } from '../components/common';
+import { CandlestickMiniChart } from '../components/charts/CandlestickMiniChart';
 import { CapitalCurveTooltip, fmtMoney, fmtSignedPct, buildCapitalCurveChartMeta } from '../components/charts/CapitalCurveTooltip';
 import apiClient from '../api';
+import type { KLineItem } from '../api/stocks';
+import { stocksApi } from '../api/stocks';
 import type { ParsedApiError } from '../api/error';
 import { getParsedApiError } from '../api/error';
 const HOLD_DAY_OPTIONS = [
@@ -225,6 +228,48 @@ function renderTradePrice(raw: number, adj?: number, label = '后复权') {
 const TASK_KEY = 'simple_factor_bt_task';
 const BATCH_COMBOS_TASK_KEY = 'simple_factor_bt_batch_combos_task';
 
+// ── 交易记录 K 线展开 ──────────────────────────────────────────
+
+const TdKLinePanel: React.FC<{ stockCode: string; stockName: string }> = ({ stockCode, stockName }) => {
+  const [klines, setKlines] = useState<KLineItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    // 从 2026 年初至今
+    void stocksApi.getHistory(stockCode, 365, { startDate: '20260101' })
+      .then(resp => {
+        if (!cancelled) {
+          setKlines(resp);
+          setLoading(false);
+        }
+      })
+      .catch(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [stockCode]);
+
+  const chartData = useMemo(() => klines
+    .filter(d => d.close > 0)
+    .map(d => ({
+      date: d.date,
+      price: d.close,
+      open: d.open ?? d.close,
+      high: d.high ?? d.close,
+      low: d.low ?? d.close,
+    })), [klines]);
+
+  if (loading) return <div className="flex h-48 items-center justify-center text-secondary-text"><Loader2 className="mr-2 h-4 w-4 animate-spin" />加载 K 线…</div>;
+  if (!chartData.length) return <div className="py-6 text-center text-sm text-secondary-text">暂无日 K 线数据</div>;
+
+  return (
+    <div className="w-full min-w-0 py-1">
+      <div className="mb-1 text-xs text-tertiary-text">{stockName}（{stockCode}）· 共 {chartData.length} 个交易日 · 2026 年初至今 BOLL</div>
+      <CandlestickMiniChart data={chartData} height={200} overlay="boll" />
+    </div>
+  );
+};
+
 const SimpleFactorBacktestPage: React.FC = () => {
   const abortRef = useRef(false);
   const taskIdRef = useRef('');
@@ -267,6 +312,9 @@ const SimpleFactorBacktestPage: React.FC = () => {
   const [leftMaxHeight, setLeftMaxHeight] = useState<number | null>(null);
   const pendingCacheApplyRef = useRef<CacheHistoryItem | null>(null);
   const initDoneRef = useRef(false);
+
+  // kline expand
+  const [expandedKey, setExpandedKey] = useState<string>('');
 
   const loadPresets = useCallback(async () => {
     try {
@@ -895,14 +943,14 @@ const SimpleFactorBacktestPage: React.FC = () => {
   }, [result, summaryPeriod]);
 
   const tradeColumns = [
-    { title: '发现日', dataIndex: 'trade_date', key: 'trade_date', width: 90 },
-    { title: '股票', key: 'stock', width: 100, render: (_: unknown, r: BacktestTrade) => (
+    { title: '发现日', dataIndex: 'trade_date', key: 'trade_date', width: 80 },
+    { title: '股票', key: 'stock', width: 88, render: (_: unknown, r: BacktestTrade) => (
       <div className="leading-tight">
         <div>{r.stock_name}</div>
         <div className="text-xs text-secondary-text">{r.stock_code}</div>
       </div>
     )},
-    { title: '买入日', dataIndex: 'buy_date', key: 'buy_date', width: 90 },
+    { title: '买入日', dataIndex: 'buy_date', key: 'buy_date', width: 80 },
     {
       title: (
         <AntTooltip title="表格为不复权价；盈亏、收益率、买卖金额按后复权价计算（含分红送转）">
@@ -911,10 +959,10 @@ const SimpleFactorBacktestPage: React.FC = () => {
       ),
       dataIndex: 'buy_price',
       key: 'buy_price',
-      width: 75,
+      width: 65,
       render: (_: unknown, r: BacktestTrade) => renderTradePrice(r.buy_price, r.buy_price_adj),
     },
-    { title: '股数', dataIndex: 'shares', key: 'shares', width: 70, render: (_: unknown, r: BacktestTrade) => r.shares > 0 ? r.shares.toLocaleString() : '--' },
+    { title: '股数', dataIndex: 'shares', key: 'shares', width: 60, render: (_: unknown, r: BacktestTrade) => r.shares > 0 ? r.shares.toLocaleString() : '--' },
     {
       title: (
         <AntTooltip title="后复权买入价 × 股数（除权日前后与不复权价可能不一致）">
@@ -922,13 +970,13 @@ const SimpleFactorBacktestPage: React.FC = () => {
         </AntTooltip>
       ),
       key: 'buy_amount',
-      width: 90,
+      width: 72,
       render: (_: unknown, r: BacktestTrade) => {
         if (!r.shares) return '--';
         return Math.round(r.allocated).toLocaleString();
       },
     },
-    { title: '卖出日', dataIndex: 'sell_date', key: 'sell_date', width: 90 },
+    { title: '卖出日', dataIndex: 'sell_date', key: 'sell_date', width: 80 },
     {
       title: (
         <AntTooltip title="表格为不复权价；盈亏、收益率按后复权价计算">
@@ -937,7 +985,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
       ),
       dataIndex: 'sell_price',
       key: 'sell_price',
-      width: 75,
+      width: 65,
       render: (_: unknown, r: BacktestTrade) => renderTradePrice(r.sell_price, r.sell_price_adj),
     },
     {
@@ -947,7 +995,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
         </AntTooltip>
       ),
       key: 'sell_amount',
-      width: 90,
+      width: 72,
       render: (_: unknown, r: BacktestTrade) => {
         if (!r.shares) return '--';
         return Math.round(r.allocated + r.pnl).toLocaleString();
@@ -955,25 +1003,24 @@ const SimpleFactorBacktestPage: React.FC = () => {
     },
     {
       title: (
-        <AntTooltip title="按后复权买卖价计算（除权日连续），非不复权价直接相除">
-          <span className="cursor-help border-b border-dotted border-secondary-text/40">收益</span>
+        <AntTooltip title="按后复权价计算（除权日连续）&#10;上行：收益率（复权买卖价）&#10;下行：盈亏金额">
+          <span className="cursor-help border-b border-dotted border-secondary-text/40">收益/盈亏</span>
         </AntTooltip>
       ),
-      dataIndex: 'return_pct',
-      key: 'return_pct',
-      width: 75,
+      key: 'return_pnl',
+      width: 78,
       render: (_: unknown, r: BacktestTrade) => (
-        <span className={r.return_pct >= 0 ? 'text-red-400' : 'text-emerald-400'}>
-          {r.return_pct >= 0 ? '+' : ''}{pct(r.return_pct)}
-        </span>
+        <div className="leading-tight">
+          <div className={r.return_pct >= 0 ? 'text-red-400' : 'text-emerald-400'}>
+            {r.return_pct >= 0 ? '+' : ''}{pct(r.return_pct)}
+          </div>
+          <div className={`text-[11px] ${r.pnl >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+            {r.pnl >= 0 ? '+' : ''}{r.pnl.toFixed(0)}
+          </div>
+        </div>
       ),
     },
-    { title: '盈亏', dataIndex: 'pnl', key: 'pnl', width: 90, render: (_: unknown, r: BacktestTrade) => (
-      <span className={r.pnl >= 0 ? 'text-red-400' : 'text-emerald-400'}>
-        {r.pnl >= 0 ? '+' : ''}{r.pnl.toFixed(0)}
-      </span>
-    )},
-    { title: '状态', dataIndex: 'status', key: 'status', width: 75, render: (_: unknown, r: BacktestTrade) => {
+    { title: '状态', dataIndex: 'status', key: 'status', width: 65, render: (_: unknown, r: BacktestTrade) => {
       const m: Record<string, string> = { closed: '已平', extended: '延期', canceled: '取消', open: '持仓', pending: '待执行', locked: '锁仓' };
       return m[r.status] || r.status;
     }},
@@ -1572,8 +1619,13 @@ const SimpleFactorBacktestPage: React.FC = () => {
                     columns={tradeColumns}
                     rowKey={(r) => `${r.trade_date}_${r.stock_code}_${r.hold_days}`}
                     size="small"
-                    scroll={{ x: 1060, y: 640 }}
+                    scroll={{ y: 640 }}
                     pagination={{ pageSize: 100, showSizeChanger: true, showTotal: (t) => `共 ${t} 条` }}
+                    expandable={{
+                      expandedRowKeys: expandedKey ? [expandedKey] : [],
+                      onExpand: (expanded, record) => setExpandedKey(expanded ? `${record.trade_date}_${record.stock_code}_${record.hold_days}` : ''),
+                      expandedRowRender: record => <TdKLinePanel stockCode={record.stock_code} stockName={record.stock_name} />,
+                    }}
                   />
                   {rankSlotContribution.length > 0 && (
                     <div className="mt-6 border-t border-divider pt-4">
