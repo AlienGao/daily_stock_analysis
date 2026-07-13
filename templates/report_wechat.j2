@@ -24,16 +24,6 @@
 {% if one_sentence %}
 📌 **{{ one_sentence[:80] }}**
 {% endif %}
-{% set signal_excerpt = decision_signal_excerpt(result) %}
-{% if signal_excerpt %}
-{{ signal_excerpt }}
-{% endif %}
-
-{% set matched_skills = result.matched_skills or [] %}
-{% if matched_skills %}
-🎯 {{ labels.matched_skills_heading }}: {% for sk in matched_skills[:3] %}**{{ sk.name or sk.id }}**{% if sk.confidence %}({{ sk.confidence }}){% endif %}{% if not loop.last %} · {% endif %}{% endfor %}
-{% endif %}
-
 {% if intel.get('earnings_outlook') %}
 📊 {{ labels.earnings_outlook_label }}: {{ intel.earnings_outlook[:60] }}
 {% endif %}

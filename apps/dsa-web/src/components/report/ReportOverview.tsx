@@ -4,7 +4,7 @@ import type {
   ReportMeta,
   ReportSummary as ReportSummaryType,
 } from '../../types/analysis';
-import { Badge, Card, ScoreGauge } from '../common';
+import { Badge, Card } from '../common';
 import { formatDateTime } from '../../utils/format';
 import { getMarketPhaseSummaryLabel, getPartialBarLabel } from '../../utils/marketPhase';
 import { getReportText, normalizeReportLanguage } from '../../utils/reportLanguage';
@@ -164,7 +164,6 @@ export const ReportOverview: React.FC<ReportOverviewProps> = ({
   meta,
   summary,
   details,
-  watchlist: _watchlist,
 }) => {
   const reportLanguage = normalizeReportLanguage(meta.reportLanguage);
   const text = getReportText(reportLanguage);
@@ -335,49 +334,15 @@ export const ReportOverview: React.FC<ReportOverviewProps> = ({
               </div>
 
             </div>
-            {relatedBoards.length > 0 && (
+            {preparedRelatedBoards.length > 0 && (
               <div className="rounded-xl border border-border bg-card p-4">
                 <section aria-label={text.relatedBoards}>
                   <div className="mb-3 flex items-baseline gap-2">
                     <span className="label-uppercase">{text.boardLinkage}</span>
                     <h3 className="mt-0.5 text-base font-semibold text-foreground">{text.relatedBoards}</h3>
                   </div>
-                  <div className="home-related-board-list flex flex-nowrap items-center gap-2 overflow-x-auto">
-                    {relatedBoards.map((board, index) => {
-                      const boardName = normalizeBoardName(board.name);
-                      const signal = boardSignals.get(boardName);
-                      return (
-                        <div
-                          key={`${boardName}-${board.code || index}`}
-                          className="inline-flex shrink-0 items-center gap-2 text-sm"
-                        >
-                          <span className="home-accent-chip px-2 py-0.5 text-xs font-medium">
-                            {boardName}
-                          </span>
-                          {board.type && (
-                            <span className="home-board-pill rounded-full px-2 py-0.5 text-xs">
-                              {board.type}
-                            </span>
-                          )}
-                          {signal && (
-                            <Badge
-                              variant={getBoardStatusVariant(signal.status)}
-                              className="home-board-status-badge shadow-none"
-                            >
-                              {getBoardStatusLabel(signal.status)}
-                            </Badge>
-                          )}
-                          {signal && signal.changePct !== undefined && signal.changePct !== null && (
-                            <span
-                              className="text-xs font-mono"
-                              style={getPriceChangeStyle(signal.changePct)}
-                            >
-                              {formatChangePct(signal.changePct)}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
+                  <div className="home-related-board-list flex w-full min-w-0 max-w-full flex-nowrap items-center gap-2 overflow-x-auto touch-pan-x">
+                    {preparedRelatedBoards.map(renderBoardChip)}
                   </div>
                 </section>
               </div>

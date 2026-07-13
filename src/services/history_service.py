@@ -82,6 +82,13 @@ class HistoryService:
         self.db = db_manager or DatabaseManager.get_instance()
 
     @staticmethod
+    def _serialize_created_at(value: Optional[datetime]) -> Optional[str]:
+        """Serialize stored server-local timestamps with an explicit offset."""
+        if value is None:
+            return None
+        return value.astimezone().isoformat()
+
+    @staticmethod
     def _history_code_filter_candidates(stock_code: str) -> List[str]:
         raw_code = str(stock_code or "").strip()
         if not raw_code:
@@ -225,7 +232,7 @@ class HistoryService:
             
         except Exception as e:
             logger.error(f"查询历史列表失败: {e}", exc_info=True)
-            return {"total": 0, "items": []}
+            raise
 
     @staticmethod
     def _safe_float(value: Any) -> Optional[float]:
@@ -320,7 +327,7 @@ class HistoryService:
             "action": action_fields["action"],
             "action_label": action_fields["action_label"],
             "model_used": normalize_model_used(model_used),
-            "created_at": record.created_at.isoformat() if record.created_at else None,
+            "created_at": self._serialize_created_at(record.created_at),
             "market_phase_summary": market_phase_summary,
             **market_fields,
         }
@@ -570,7 +577,7 @@ class HistoryService:
             "storage_stock_code": str(record.code or "").strip(),
             "stock_name": record.name,
             "report_type": record.report_type,
-            "created_at": record.created_at.isoformat() if record.created_at else None,
+            "created_at": self._serialize_created_at(record.created_at),
             "model_used": model_used,
             "analysis_summary": market_review_content or record.analysis_summary,
             "operation_advice": record.operation_advice,
