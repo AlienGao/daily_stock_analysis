@@ -1,0 +1,178 @@
+[
+  {
+    "rank": 1,
+    "stock_code": "300598",
+    "stock_name": "诚迈科技",
+    "score": 57.5,
+    "sector": "软件开发",
+    "factor_scores": {
+      "ma_entry": 69.8887378687196,
+      "sector": 0.0,
+      "ranking_momentum": 93.11451224908987,
+      "rebound": 0.0,
+      "popularity": 66.4033771293093
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "回踩MA5均线",
+      "排名连续上升(2天)",
+      "趋势加速↑(8.2%/天)",
+      "今日强于84%个股",
+      "人气飙升(+41位)"
+    ],
+    "buy_price_low": 26.2,
+    "buy_price_high": 28.9,
+    "stop_loss": 28.37,
+    "take_profit_1": 30.52,
+    "take_profit_2": 34.41,
+    "discovered_at": "15:04:20",
+    "price_at_discovery": 28.39,
+    "pct_chg": 1.76,
+    "tech_score": 61.15,
+    "rr_score": 71.95945945945941,
+    "market_score": 35.914359532751696,
+    "sector_score": 72.44354101105878,
+    "volume_score": 53.5347427392981,
+    "position_score": 85,
+    "formation_score": 40.0,
+    "composite_score": 60.055
+  },
+  {
+    "rank": 2,
+    "stock_code": "300996",
+    "stock_name": "普联软件",
+    "score": 52.3,
+    "sector": "软件开发",
+    "factor_scores": {
+      "ma_entry": 100.0,
+      "sector": 0.0,
+      "ranking_momentum": 82.10223404608253,
+      "rebound": 0.0,
+      "popularity": 34.375820752085005
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线",
+      "BOLL中轨支撑",
+      "缩量回踩",
+      "排名连续上升(2天)",
+      "趋势加速↑(9.7%/天)"
+    ],
+    "buy_price_low": 10.5,
+    "buy_price_high": 11.4,
+    "stop_loss": 11.29,
+    "take_profit_1": 12.34,
+    "take_profit_2": 13.91,
+    "discovered_at": "15:04:20",
+    "price_at_discovery": 11.36,
+    "pct_chg": -0.18,
+    "tech_score": 61.84,
+    "rr_score": 68.60000000000002,
+    "market_score": 35.914359532751696,
+    "sector_score": 54.85741007194245,
+    "volume_score": 65.0,
+    "position_score": 75,
+    "formation_score": 65.0,
+    "composite_score": 58.977999999999994
+  },
+  {
+    "rank": 3,
+    "stock_code": "002986",
+    "stock_name": "宇新股份",
+    "score": 52.8,
+    "sector": "石油加工贸易",
+    "factor_scores": {
+      "ma_entry": 75.80650711550052,
+      "sector": 0.0,
+      "ranking_momentum": 89.62418281233673,
+      "rebound": 0.0,
+      "popularity": 50.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线",
+      "排名连续上升(2天)",
+      "趋势加速↑(12.0%/天)",
+      "今日强于70%个股"
+    ],
+    "buy_price_low": 11.1,
+    "buy_price_high": 12.3,
+    "stop_loss": 12.05,
+    "take_profit_1": 13.12,
+    "take_profit_2": 14.83,
+    "discovered_at": "15:04:20",
+    "price_at_discovery": 12.08,
+    "pct_chg": 0.83,
+    "tech_score": 60.24,
+    "rr_score": 68.80907372400753,
+    "market_score": 35.914359532751696,
+    "sector_score": 84.45001406469763,
+    "volume_score": 46.53748679553509,
+    "position_score": 75,
+    "formation_score": 50.0,
+    "composite_score": 58.007999999999996
+  },
+  {
+    "rank": 4,
+    "stock_code": "920685",
+    "stock_name": "新芝生物",
+    "score": 50.6,
+    "sector": "通用设备",
+    "factor_scores": {
+      "ma_entry": 100.0,
+      "sector": 0.0,
+      "ranking_momentum": 76.37064095841566,
+      "rebound": 0.0,
+      "popularity": 32.32233047033631
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线",
+      "缩量回踩",
+      "趋势加速↑(19.6%/天)"
+    ],
+    "buy_price_low": 9.7,
+    "buy_price_high": 10.6,
+    "stop_loss": 10.4,
+    "take_profit_1": 11.14,
+    "take_profit_2": 12.69,
+    "discovered_at": "15:04:20",
+    "price_at_discovery": 10.5,
+    "pct_chg": 0.0,
+    "tech_score": 59.12,
+    "rr_score": 67.98179059180585,
+    "market_score": 35.914359532751696,
+    "sector_score": 56.99370517928287,
+    "volume_score": 65.0,
+    "position_score": 75,
+    "formation_score": 50.0,
+    "composite_score": 56.56399999999999
+  }
+]
