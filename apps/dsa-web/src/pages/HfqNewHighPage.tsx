@@ -3,7 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
-import { ArrowUpRight, Loader2, RefreshCw } from 'lucide-react';
+import { ArrowUpRight, Loader2, RefreshCw, Search } from 'lucide-react';
 import { AppPage, Button, EmptyState } from '../components/common';
 import { CandlestickMiniChart } from '../components/charts/CandlestickMiniChart';
 import { getMonthlyRecommendations } from '../api/brokerRecommend';
@@ -402,6 +402,7 @@ const HfqNewHighPage: React.FC = () => {
   const [tablePage, setTablePage] = useState(1);
   const [tablePageSize, setTablePageSize] = useState(50);
   const [focusTsCode, setFocusTsCode] = useState('');
+  const [searchText, setSearchText] = useState<string>('');
   const tableWrapRef = useRef<HTMLDivElement>(null);
   const pendingLocateRef = useRef('');
   const [panelHeight, setPanelHeight] = useState<number | undefined>(undefined);
@@ -525,6 +526,15 @@ const HfqNewHighPage: React.FC = () => {
     void fetchGoldHighlight();
   }, [fetchGoldHighlight]);
 
+  const filteredItems = useMemo(() => {
+    if (!searchText.trim()) return data?.items ?? [];
+    const q = searchText.trim().toLowerCase();
+    return (data?.items ?? []).filter(item =>
+      (item.stock_name && item.stock_name.toLowerCase().includes(q)) ||
+      item.stock_code.includes(q)
+    );
+  }, [data?.items, searchText]);
+
   const columns: ColumnsType<HfqNewHighItem> = useMemo(() => [
     {
       title: '名称 / 代码',
@@ -624,18 +634,30 @@ const HfqNewHighPage: React.FC = () => {
             </div>
             <p className="mt-1 text-xs text-tertiary-text">2026 年至今全 A 股后复权收盘价创新高，按最近创新高日排序</p>
           </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            disabled={loading || refreshing}
-            onClick={() => {
-              void fetchData(true);
-              void fetchGoldHighlight();
-            }}
-          >
-            <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-            刷新
-          </Button>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-tertiary-text" />
+              <input
+                type="text"
+                placeholder="搜索名称 / 代码…"
+                value={searchText}
+                onChange={e => setSearchText(e.target.value)}
+                className="h-7 w-48 rounded-md border border-border/20 bg-muted/20 pl-7 pr-2 text-xs text-foreground outline-none placeholder:text-tertiary-text focus:border-primary/40 focus:ring-1 focus:ring-primary/30"
+              />
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={loading || refreshing}
+              onClick={() => {
+                void fetchData(true);
+                void fetchGoldHighlight();
+              }}
+            >
+              <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              刷新
+            </Button>
+          </div>
         </div>
 
       {loading && !data ? (
@@ -647,6 +669,8 @@ const HfqNewHighPage: React.FC = () => {
         <EmptyState title="加载失败" description={error} />
       ) : !data?.items?.length ? (
         <EmptyState title="暂无新高记录" description={`截止 ${fmtDate(data?.as_of_date ?? '')} 无符合条件个股`} />
+      ) : filteredItems.length === 0 ? (
+        <EmptyState title="无搜索结果" description={`搜索 "${searchText}" 无匹配个股`} />
       ) : (
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-tertiary-text">
@@ -671,7 +695,7 @@ const HfqNewHighPage: React.FC = () => {
                 rowKey="ts_code"
                 size="small"
                 columns={columns}
-                dataSource={data.items}
+                dataSource={filteredItems}
                 rowClassName={rowClassName}
                 pagination={{
                   current: tablePage,
