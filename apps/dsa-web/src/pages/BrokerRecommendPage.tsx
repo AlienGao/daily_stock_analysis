@@ -536,6 +536,7 @@ type StockRow = {
   broker_count: number;
   isConsecutive?: boolean;
   dailyChange?: number | null;
+  dailyChangeDate?: string | null;
   endPrice?: number;
   endDate?: string;
   cumRet?: number;
@@ -1574,6 +1575,7 @@ const BrokerRecommendPage: React.FC = () => {
         broker_count: item.broker_count,
         isConsecutive: consecutiveSet.has(item.ts_code),
         dailyChange: stockRet?.daily_change,
+        dailyChangeDate: stockRet?.daily_change_date,
         endPrice: stockRet?.end_price,
         endDate: stockRet?.end_date,
         cumRet,
@@ -1749,8 +1751,17 @@ const BrokerRecommendPage: React.FC = () => {
       sorter: (a: StockRow, b: StockRow) => (a.dailyChange ?? -Infinity) - (b.dailyChange ?? -Infinity),
       sortOrder: columnSortOrder('dailyChange', tableSort),
       render: (_: any, row: StockRow) => (
-        <span className={`text-xs font-medium ${row.dailyChange != null ? (row.dailyChange >= 0 ? 'text-red-400' : 'text-emerald-400') : 'text-tertiary-text'}`}>
-          {row.dailyChange != null ? `${row.dailyChange >= 0 ? '+' : ''}${(row.dailyChange * 100).toFixed(2)}%` : '--'}
+        <span className="text-xs">
+          {row.dailyChange != null ? (
+            <span className={`font-medium ${row.dailyChange >= 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+              {`${row.dailyChange >= 0 ? '+' : ''}${(row.dailyChange * 100).toFixed(2)}%`}
+            </span>
+          ) : (
+            <span className="text-tertiary-text">--</span>
+          )}
+          {row.dailyChangeDate ? (
+            <span className="text-tertiary-text ml-1">({fmtDate(row.dailyChangeDate).slice(5)})</span>
+          ) : null}
         </span>
       ),
     }] : []),

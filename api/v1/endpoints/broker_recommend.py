@@ -127,6 +127,7 @@ class StockReturnItem(BaseModel):
     end_price: Optional[float] = None
     end_date: Optional[str] = None
     daily_change: Optional[float] = None
+    daily_change_date: Optional[str] = None
     month_cumulative_return: Optional[float] = None
     daily_returns: List[BrokerDailyReturn]
     nineturn: Optional[NineTurnSignal] = None
@@ -777,6 +778,7 @@ def get_backtest(
             end_price=sr.get("end_price"),
             end_date=sr.get("end_date"),
             daily_change=sr.get("daily_change"),
+            daily_change_date=sr.get("daily_change_date"),
             month_cumulative_return=sr.get("month_cumulative_return"),
             daily_returns=[
                 BrokerDailyReturn(

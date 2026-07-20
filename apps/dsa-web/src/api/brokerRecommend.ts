@@ -115,6 +115,7 @@ export type StockReturnItem = {
   end_price?: number;
   end_date?: string;
   daily_change?: number | null;
+  daily_change_date?: string | null;
   month_cumulative_return?: number | null;
   daily_returns: BrokerDailyReturn[];
   nineturn?: {

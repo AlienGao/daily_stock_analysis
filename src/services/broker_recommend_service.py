@@ -1258,7 +1258,7 @@ class BrokerRecommendService:
         """批量获取当日实时最新价（从 realtime_spot DB 读取）。
 
         仅在当月回测使用，作为 DB 数据的补充。
-        返回 (prices_dict, daily_changes_dict, today_ohlc_dict)。
+        返回 (prices_dict, daily_changes_dict, today_ohlc_dict, daily_change_dates_dict)。
         """
         from datetime import date as dt_date
 
@@ -1266,13 +1266,14 @@ class BrokerRecommendService:
         prices: Dict[str, Dict[str, float]] = {}
         daily_changes: Dict[str, float] = {}
         today_ohlc: Dict[str, Dict[str, float]] = {}
+        daily_change_dates: Dict[str, str] = {}
 
         try:
             from src.storage import DatabaseManager
             bare_codes = [ts.split(".")[0] if "." in ts else ts for ts in ts_codes]
             spot_df = DatabaseManager().get_current_prices(bare_codes)
             if spot_df is None or spot_df.empty:
-                return prices, daily_changes, today_ohlc
+                return prices, daily_changes, today_ohlc, daily_change_dates
 
             for ts in ts_codes:
                 code = ts.split(".")[0] if "." in ts else ts
@@ -1280,9 +1281,14 @@ class BrokerRecommendService:
                     row = spot_df.loc[code]
                     price = float(row["price"])
                     prices[ts] = {today: price}
-                    pct = row.get("pct_chg")
-                    if pd.notna(pct):
-                        daily_changes[ts] = round(float(pct) / 100, 4)
+                    trade_date = row.get("trade_date")
+                    trade_date_str = str(trade_date) if pd.notna(trade_date) else ""
+                    # 仅当天快照的涨跌幅有效，过期快照（如跨周末）的 pct_chg 不可用
+                    if trade_date_str == today:
+                        pct = row.get("pct_chg")
+                        if pd.notna(pct):
+                            daily_changes[ts] = round(float(pct) / 100, 4)
+                        daily_change_dates[ts] = trade_date_str
                     ohlc = {}
                     if pd.notna(row.get("open_price")):
                         ohlc["open"] = float(row["open_price"])
@@ -1298,7 +1304,7 @@ class BrokerRecommendService:
         except Exception:
             logger.warning("[BrokerRecommend] realtime_spot 读取出错", exc_info=True)
 
-        return prices, daily_changes, today_ohlc
+        return prices, daily_changes, today_ohlc, daily_change_dates
 
     def compute_backtest(self, month: str, top_n_per_broker: int = 10) -> Dict[str, Any]:
         """对指定月份金股池按券商分组做回测。
@@ -1447,7 +1453,7 @@ class BrokerRecommendService:
         daily_changes: Dict[str, float] = {}
         if is_current:
             try:
-                rt_prices, rt_changes, rt_ohlc = self._get_realtime_prices_batch(all_ts)
+                rt_prices, rt_changes, rt_ohlc, rt_change_dates = self._get_realtime_prices_batch(all_ts)
                 if rt_prices:
                     # 后复权：实时价也需要 × adj_factor 才能和 price_cache 对齐
                     adj_all = self._load_all_adj_factors(all_ts)
@@ -1545,6 +1551,7 @@ class BrokerRecommendService:
                         "end_price": round(sell_price, 2),
                         "end_date": actual_sell_date,
                         "daily_change": daily_changes.get(ts),
+                        "daily_change_date": rt_change_dates.get(ts),
                         "month_cumulative_return": None,
                         "daily_returns": [],
                     }
@@ -1751,7 +1758,7 @@ class BrokerRecommendService:
             ts_codes, month_start, effective_end, skip_tushare=False, use_adj=True,
         )
         try:
-            rt_prices, _, _ = self._get_realtime_prices_batch(ts_codes)
+            rt_prices, _, _, _ = self._get_realtime_prices_batch(ts_codes)
             if rt_prices:
                 adj_all = self._load_all_adj_factors(ts_codes)
                 today_str = date.today().strftime("%Y%m%d")
@@ -2267,7 +2274,7 @@ class BrokerRecommendService:
                     )
                 date_4_ago = trading_days[i - 4]
                 # 取今日实时行情作为 OHLC 补充
-                _, _, rt_today_ohlc = self._get_realtime_prices_batch(pool)
+                _, _, rt_today_ohlc, _ = self._get_realtime_prices_batch(pool)
                 prev_day = BrokerRecommendService._nineturn_prev_trade_date(
                     trading_days, i, prev_month_last_day,
                 )
