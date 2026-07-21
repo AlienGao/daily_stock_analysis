@@ -1263,6 +1263,7 @@ class BrokerRecommendService:
         from datetime import date as dt_date
 
         today = dt_date.today().strftime("%Y%m%d")
+        today_iso = dt_date.today().isoformat()  # YYYY-MM-DD，匹配 DB 中 trade_date 的格式
         prices: Dict[str, Dict[str, float]] = {}
         daily_changes: Dict[str, float] = {}
         today_ohlc: Dict[str, Dict[str, float]] = {}
@@ -1284,11 +1285,11 @@ class BrokerRecommendService:
                     trade_date = row.get("trade_date")
                     trade_date_str = str(trade_date) if pd.notna(trade_date) else ""
                     # 仅当天快照的涨跌幅有效，过期快照（如跨周末）的 pct_chg 不可用
-                    if trade_date_str == today:
+                    if trade_date_str == today_iso:
                         pct = row.get("pct_chg")
                         if pd.notna(pct):
                             daily_changes[ts] = round(float(pct) / 100, 4)
-                        daily_change_dates[ts] = trade_date_str
+                        daily_change_dates[ts] = today  # YYYYMMDD，兼容前端 fmtDate
                     ohlc = {}
                     if pd.notna(row.get("open_price")):
                         ohlc["open"] = float(row["open_price"])
