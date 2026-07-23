@@ -2,7 +2,7 @@ import type React from 'react';
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Brush,
-  BarChart, Bar, CartesianGrid,
+  BarChart, Bar, CartesianGrid, ReferenceArea,
 } from 'recharts';
 import { DatePicker, Table, InputNumber, Checkbox, Button, Tooltip as AntTooltip } from 'antd';
 import dayjs from 'dayjs';
@@ -803,11 +803,14 @@ const SimpleFactorBacktestPage: React.FC = () => {
     const annualReturn = totalReturn > -1 ? Math.pow(1 + totalReturn, 252 / Math.max(periods, 1)) - 1 : totalReturn;
     const wins = closed.filter((t) => t.return_pct > 0).length;
     const winRate = closed.length > 0 ? wins / closed.length : 0;
-    let peak = initCap, mdd = 0;
+    let peak = initCap, mdd = 0, mddStart = '', mddEnd = '';
+    let peakDate = curve[0]?.date || '', ddStart = '';
     for (const pt of curve) {
-      if (pt.capital > peak) peak = pt.capital;
-      const dd = (peak - pt.capital) / peak;
-      if (dd > mdd) mdd = dd;
+      if (pt.capital > peak) { peak = pt.capital; peakDate = pt.date; }
+      const dd = peak > 0 ? (peak - pt.capital) / peak : 0;
+      if (dd > 0 && !ddStart) ddStart = pt.date;
+      if (dd > mdd) { mdd = dd; mddStart = ddStart || peakDate; mddEnd = pt.date; }
+      if (dd === 0) ddStart = '';
     }
     const dr: number[] = [];
     for (let i = 1; i < curve.length; i++) dr.push((curve[i].capital - curve[i - 1].capital) / curve[i - 1].capital);
@@ -817,7 +820,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
     const sharpe = stdR > 0 ? (meanR - dailyRf) / stdR * Math.sqrt(252) : 0;
     return {
       total_return: totalReturn, annual_return: annualReturn, sharpe,
-      max_drawdown: mdd, win_rate: winRate, trade_count: closed.length,
+      max_drawdown: mdd, mddStart, mddEnd, win_rate: winRate, trade_count: closed.length,
       openCount, canceledCount,
     };
   }, [result, summaryPeriod]);
@@ -1469,7 +1472,12 @@ const SimpleFactorBacktestPage: React.FC = () => {
                       </span>
                     </span>
                     <span className="text-xs text-secondary-text">胜率: {pct(currentStats.win_rate)}</span>
-                    <span className="text-xs text-secondary-text">最大回撤: {pct(currentStats.max_drawdown)}</span>
+                    <span className="text-xs text-secondary-text">
+                      最大回撤: {pct(currentStats.max_drawdown)}
+                      {currentStats.mddStart && currentStats.mddEnd ? (
+                        <span className="text-tertiary-text ml-1">({currentStats.mddStart.slice(5)} ~ {currentStats.mddEnd.slice(5)})</span>
+                      ) : null}
+                    </span>
                     <span className="text-xs text-secondary-text">Sharpe: {currentStats.sharpe?.toFixed(2) || '--'}</span>
                     <span className="text-xs text-secondary-text">持仓中: {currentStats.openCount}</span>
                     <span className="text-xs text-secondary-text">跳过: {currentStats.canceledCount}</span>
@@ -1497,6 +1505,15 @@ const SimpleFactorBacktestPage: React.FC = () => {
                           />
                         )}
                       />
+                      {currentStats?.mddStart && currentStats?.mddEnd && currentStats.max_drawdown > 0.001 && (
+                        <ReferenceArea
+                          x1={currentStats.mddStart}
+                          x2={currentStats.mddEnd}
+                          fill="#ef4444"
+                          fillOpacity={0.15}
+                          stroke="none"
+                        />
+                      )}
                       <Legend
                         wrapperStyle={{ cursor: 'pointer' }}
                         formatter={(v) => String(v) === 'benchmark' ? '基准' : `${String(v).replace('hd', '')}日持有`}

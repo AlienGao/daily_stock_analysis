@@ -1,0 +1,183 @@
+[
+  {
+    "rank": 1,
+    "stock_code": "920168",
+    "stock_name": "通宝光电",
+    "score": 46.2,
+    "sector": "汽车零部件",
+    "factor_scores": {
+      "ma_entry": 30.10094530275834,
+      "sector": 0.0,
+      "momentum": 44.68242608112158,
+      "ranking_momentum": 66.76052017788886,
+      "rebound": 0.0,
+      "popularity": 77.28725755093755
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "趋势加速↑(12.0%/天)",
+      "今日强于90%个股",
+      "人气飙升(+1022位)",
+      "人气排名持续改善"
+    ],
+    "buy_price_low": 14.1,
+    "buy_price_high": 15.6,
+    "stop_loss": 15.3,
+    "take_profit_1": 16.21,
+    "take_profit_2": 17.92,
+    "discovered_at": "15:00:44",
+    "price_at_discovery": 15.31,
+    "pct_chg": 5.01,
+    "tech_score": 65.3,
+    "rr_score": 77.01711491442545,
+    "market_score": 36.60093450600982,
+    "sector_score": 88.6196082960158,
+    "volume_score": 54.425627348022594,
+    "position_score": 85,
+    "formation_score": 20.0,
+    "composite_score": 59.56999999999999
+  },
+  {
+    "rank": 2,
+    "stock_code": "600261",
+    "stock_name": "阳光照明",
+    "score": 41.9,
+    "sector": "光学光电子",
+    "factor_scores": {
+      "ma_entry": 97.44426952601104,
+      "sector": 0.0,
+      "momentum": 43.058833869084964,
+      "ranking_momentum": 35.64989617390622,
+      "rebound": 0.0,
+      "popularity": 29.24484653996905
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线",
+      "今日强于61%个股"
+    ],
+    "buy_price_low": 2.8,
+    "buy_price_high": 3.0,
+    "stop_loss": 2.97,
+    "take_profit_1": 3.11,
+    "take_profit_2": 3.36,
+    "discovered_at": "15:00:44",
+    "price_at_discovery": 2.98,
+    "pct_chg": 2.41,
+    "tech_score": 64.45,
+    "rr_score": 80.53097345132741,
+    "market_score": 36.60093450600982,
+    "sector_score": 73.9618689895311,
+    "volume_score": 44.253291767892634,
+    "position_score": 85,
+    "formation_score": 50.0,
+    "composite_score": 57.685
+  },
+  {
+    "rank": 3,
+    "stock_code": "002758",
+    "stock_name": "浙农股份",
+    "score": 38.8,
+    "sector": "农化制品",
+    "factor_scores": {
+      "ma_entry": 85.73685072056224,
+      "sector": 0.0,
+      "momentum": 44.452218141968956,
+      "ranking_momentum": 91.2339929645207,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线",
+      "排名连续上升(2天)",
+      "趋势加速↑(6.8%/天)",
+      "今日强于85%个股"
+    ],
+    "buy_price_low": 7.2,
+    "buy_price_high": 7.9,
+    "stop_loss": 7.78,
+    "take_profit_1": 8.15,
+    "take_profit_2": 8.98,
+    "discovered_at": "15:00:44",
+    "price_at_discovery": 7.79,
+    "pct_chg": 4.28,
+    "tech_score": 65.4,
+    "rr_score": 78.01857585139331,
+    "market_score": 36.60093450600982,
+    "sector_score": 72.02749666866656,
+    "volume_score": 57.93439533389362,
+    "position_score": 85,
+    "formation_score": 50.0,
+    "composite_score": 57.42
+  },
+  {
+    "rank": 4,
+    "stock_code": "603055",
+    "stock_name": "台华新材",
+    "score": 39.2,
+    "sector": "纺织制造",
+    "factor_scores": {
+      "ma_entry": 90.21983509996774,
+      "sector": 0.0,
+      "momentum": 45.23444091105542,
+      "ranking_momentum": 86.85335149893949,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线",
+      "缩量回踩",
+      "排名连续上升(2天)",
+      "趋势加速↑(14.8%/天)"
+    ],
+    "buy_price_low": 7.7,
+    "buy_price_high": 8.5,
+    "stop_loss": 8.33,
+    "take_profit_1": 8.85,
+    "take_profit_2": 9.6,
+    "discovered_at": "15:00:44",
+    "price_at_discovery": 8.39,
+    "pct_chg": 2.07,
+    "tech_score": 59.24,
+    "rr_score": 66.25514403292169,
+    "market_score": 36.60093450600982,
+    "sector_score": 51.68181818181818,
+    "volume_score": 65.0,
+    "position_score": 75,
+    "formation_score": 50.0,
+    "composite_score": 53.227999999999994
+  }
+]
