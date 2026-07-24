@@ -1,0 +1,180 @@
+[
+  {
+    "rank": 1,
+    "stock_code": "920187",
+    "stock_name": "通领科技",
+    "score": 64.4,
+    "sector": "汽车零部件",
+    "factor_scores": {
+      "ma_entry": 97.76137728893704,
+      "sector": 0.0,
+      "ranking_momentum": 66.01835993679998,
+      "rebound": 0.0,
+      "popularity": 78.78696133885742
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线",
+      "趋势加速↑(10.9%/天)",
+      "人气飙升(+1282位)"
+    ],
+    "buy_price_low": 18.0,
+    "buy_price_high": 19.9,
+    "stop_loss": 19.5,
+    "take_profit_1": 21.35,
+    "take_profit_2": 23.94,
+    "discovered_at": "15:01:02",
+    "price_at_discovery": 19.51,
+    "pct_chg": -4.36,
+    "tech_score": 61.35,
+    "rr_score": 73.72638809387523,
+    "market_score": 37.43833000392209,
+    "sector_score": 42.63052852632359,
+    "volume_score": 60.81011200788563,
+    "position_score": 75,
+    "formation_score": 50.0,
+    "composite_score": 62.265
+  },
+  {
+    "rank": 2,
+    "stock_code": "601985",
+    "stock_name": "中国核电",
+    "score": 45.6,
+    "sector": "电力",
+    "factor_scores": {
+      "ma_entry": 99.97066172921993,
+      "sector": 39.3518114479969,
+      "ranking_momentum": 100.0,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线多头排列",
+      "均线粘合",
+      "回踩MA5均线",
+      "缩量回踩",
+      "趋势加速↑(20.0%/天)",
+      "今日强于68%个股",
+      "所属板块: 电力"
+    ],
+    "buy_price_low": 8.5,
+    "buy_price_high": 9.0,
+    "stop_loss": 8.83,
+    "take_profit_1": 9.17,
+    "take_profit_2": 9.52,
+    "discovered_at": "15:01:02",
+    "price_at_discovery": 8.9,
+    "pct_chg": -2.09,
+    "tech_score": 66.33,
+    "rr_score": 83.62831858407067,
+    "market_score": 37.43833000392209,
+    "sector_score": 28.50588898651717,
+    "volume_score": 72.28029280205143,
+    "position_score": 75,
+    "formation_score": 80.0,
+    "composite_score": 60.111
+  },
+  {
+    "rank": 3,
+    "stock_code": "601456",
+    "stock_name": "国联民生",
+    "score": 35.5,
+    "sector": "证券",
+    "factor_scores": {
+      "ma_entry": 85.9420123501098,
+      "sector": 0.0,
+      "ranking_momentum": 75.42899531717748,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线多头排列",
+      "均线粘合",
+      "回踩MA5均线",
+      "缩量回踩",
+      "趋势加速↑(6.6%/天)",
+      "今日强于72%个股"
+    ],
+    "buy_price_low": 8.5,
+    "buy_price_high": 9.1,
+    "stop_loss": 8.88,
+    "take_profit_1": 9.16,
+    "take_profit_2": 9.62,
+    "discovered_at": "15:01:02",
+    "price_at_discovery": 8.89,
+    "pct_chg": -1.88,
+    "tech_score": 64.09,
+    "rr_score": 86.30136986301365,
+    "market_score": 37.43833000392209,
+    "sector_score": 31.24278744024304,
+    "volume_score": 49.34434753397226,
+    "position_score": 75,
+    "formation_score": 80.0,
+    "composite_score": 55.513
+  },
+  {
+    "rank": 4,
+    "stock_code": "688787",
+    "stock_name": "海天瑞声",
+    "score": 52.7,
+    "sector": "IT服务",
+    "factor_scores": {
+      "ma_entry": 32.181530532605436,
+      "sector": 0.0,
+      "ranking_momentum": 91.31247801789443,
+      "rebound": 0.0,
+      "popularity": 81.63491591136508
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "趋势加速↑(11.4%/天)",
+      "人气飙升(+738位)",
+      "人气核心圈(排名2063)",
+      "人气股上涨(+5.3%)",
+      "人气排名持续改善"
+    ],
+    "buy_price_low": 86.2,
+    "buy_price_high": 93.1,
+    "stop_loss": 86.14,
+    "take_profit_1": 105.48,
+    "take_profit_2": 156.78,
+    "discovered_at": "15:01:02",
+    "price_at_discovery": 91.25,
+    "pct_chg": -3.74,
+    "tech_score": 56.16,
+    "rr_score": 69.61839530332684,
+    "market_score": 37.43833000392209,
+    "sector_score": 4.149712668284117,
+    "volume_score": 40.0,
+    "position_score": 85,
+    "formation_score": 20.0,
+    "composite_score": 55.122
+  }
+]
