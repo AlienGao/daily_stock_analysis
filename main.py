@@ -1986,6 +1986,16 @@ def main() -> int:
             except Exception as exc:
                 logger.warning("A 股指数数据更新失败: %s", exc)
 
+            # ── 国际指数数据更新 ──
+            logger.info("更新国际指数日线数据…")
+            try:
+                from scripts.backfill_global_index import main as backfill_global_main
+                _sys.argv = ['backfill_global_index.py']
+                backfill_global_main()
+                _sys.argv = old_argv2
+            except Exception as exc:
+                logger.warning("国际指数数据更新失败: %s", exc)
+
             raise _ModeExit(0)
 
         # 模式: 因子权重优化
