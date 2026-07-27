@@ -2,9 +2,12 @@ const configuredApiBaseUrl = import.meta.env.VITE_API_URL?.trim();
 const configuredPortfolioModuleEnabled = import.meta.env.VITE_PORTFOLIO_MODULE_ENABLED?.trim().toLowerCase();
 
 declare const __APP_PACKAGE_VERSION__: string | undefined;
+declare const __APP_REVISION__: string | undefined;
 declare const __APP_BUILD_TIME__: string | undefined;
 
 const PLACEHOLDER_WEB_VERSION = '0.0.0';
+const DEVELOPMENT_WEB_VERSION = 'development';
+const UNKNOWN_REVISION = 'unknown';
 const UNKNOWN_BUILD_TIME = '未提供';
 
 // 默认保持同源 API，避免生产/静态部署时把请求错误打到用户本机 localhost。
@@ -15,6 +18,7 @@ export const PORTFOLIO_MODULE_ENABLED = configuredPortfolioModuleEnabled === 'tr
 export type WebBuildInfo = {
   version: string;
   rawVersion: string;
+  revision: string;
   buildId: string;
   buildTime: string;
   isFallbackVersion: boolean;
@@ -57,19 +61,23 @@ export function createBuildIdentifier(buildTimestamp?: string) {
 
 export function resolveWebBuildInfo({
   packageVersion,
+  revision,
   buildTimestamp,
 }: {
   packageVersion?: string;
+  revision?: string;
   buildTimestamp?: string;
 }): WebBuildInfo {
   const rawVersion = packageVersion?.trim() || PLACEHOLDER_WEB_VERSION;
+  const normalizedRevision = revision?.trim() || UNKNOWN_REVISION;
   const buildTime = normalizeBuildTimestamp(buildTimestamp);
   const buildId = createBuildIdentifier(buildTime);
   const isFallbackVersion = rawVersion === PLACEHOLDER_WEB_VERSION;
 
   return {
-    version: isFallbackVersion ? buildId : rawVersion,
+    version: isFallbackVersion ? DEVELOPMENT_WEB_VERSION : rawVersion,
     rawVersion,
+    revision: normalizedRevision,
     buildId,
     buildTime,
     isFallbackVersion,
@@ -79,11 +87,15 @@ export function resolveWebBuildInfo({
 const runtimePackageVersion = typeof __APP_PACKAGE_VERSION__ === 'string'
   ? __APP_PACKAGE_VERSION__.trim()
   : PLACEHOLDER_WEB_VERSION;
+const runtimeRevision = typeof __APP_REVISION__ === 'string'
+  ? __APP_REVISION__.trim()
+  : UNKNOWN_REVISION;
 const runtimeBuildTime = typeof __APP_BUILD_TIME__ === 'string'
   ? __APP_BUILD_TIME__.trim()
   : '';
 
 export const WEB_BUILD_INFO = resolveWebBuildInfo({
   packageVersion: runtimePackageVersion,
+  revision: runtimeRevision,
   buildTimestamp: runtimeBuildTime,
 });
