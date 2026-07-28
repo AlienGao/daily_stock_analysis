@@ -1263,7 +1263,6 @@ class BrokerRecommendService:
         from datetime import date as dt_date
 
         today = dt_date.today().strftime("%Y%m%d")
-        today_iso = dt_date.today().isoformat()  # YYYY-MM-DD，匹配 DB 中 trade_date 的格式
         prices: Dict[str, Dict[str, float]] = {}
         daily_changes: Dict[str, float] = {}
         today_ohlc: Dict[str, Dict[str, float]] = {}
@@ -1272,9 +1271,20 @@ class BrokerRecommendService:
         try:
             from src.storage import DatabaseManager
             bare_codes = [ts.split(".")[0] if "." in ts else ts for ts in ts_codes]
-            spot_df = DatabaseManager().get_current_prices(bare_codes)
-            if spot_df is None or spot_df.empty:
-                return prices, daily_changes, today_ohlc, daily_change_dates
+            db = DatabaseManager()
+            spot_df = db.get_current_prices(bare_codes)
+            if spot_df is None:
+                spot_df = pd.DataFrame()
+
+            def _compact_date(value: Any) -> str:
+                if value is None or pd.isna(value):
+                    return ""
+                if hasattr(value, "strftime"):
+                    return value.strftime("%Y%m%d")
+                raw = str(value).strip()
+                if len(raw) >= 10 and raw[4] == "-" and raw[7] == "-":
+                    return raw[:10].replace("-", "")
+                return raw[:8] if len(raw) >= 8 and raw[:8].isdigit() else ""
 
             for ts in ts_codes:
                 code = ts.split(".")[0] if "." in ts else ts
@@ -1283,13 +1293,17 @@ class BrokerRecommendService:
                     price = float(row["price"])
                     prices[ts] = {today: price}
                     trade_date = row.get("trade_date")
-                    trade_date_str = str(trade_date) if pd.notna(trade_date) else ""
-                    # 仅当天快照的涨跌幅有效，过期快照（如跨周末）的 pct_chg 不可用
-                    if trade_date_str == today_iso:
+                    trade_date_str = _compact_date(trade_date)
+                    if trade_date_str == today:
+                        pre_close = row.get("pre_close")
                         pct = row.get("pct_chg")
-                        if pd.notna(pct):
+                        # upsert 会在新快照缺值时保留旧 pct_chg；现价/昨收不受该陈旧值影响。
+                        if pd.notna(pre_close) and float(pre_close) > 0:
+                            daily_changes[ts] = round((price - float(pre_close)) / float(pre_close), 4)
+                        elif pd.notna(pct):
                             daily_changes[ts] = round(float(pct) / 100, 4)
-                        daily_change_dates[ts] = today  # YYYYMMDD，兼容前端 fmtDate
+                        if ts in daily_changes:
+                            daily_change_dates[ts] = today
                     ohlc = {}
                     if pd.notna(row.get("open_price")):
                         ohlc["open"] = float(row["open_price"])
@@ -1302,6 +1316,69 @@ class BrokerRecommendService:
                         today_ohlc[ts] = ohlc
                 except (KeyError, ValueError, TypeError):
                     continue
+
+            # 无当日有效涨跌幅时，逐股票回退到各自最近交易日，避免停牌股混用全局日期。
+            unresolved_codes = {
+                ts.split(".")[0] if "." in ts else ts
+                for ts in ts_codes
+                if ts not in daily_changes
+            }
+            if unresolved_codes:
+                try:
+                    from sqlalchemy import func, select
+
+                    ranked = select(
+                        StockDaily.code.label("code"),
+                        StockDaily.date.label("date"),
+                        StockDaily.close.label("close"),
+                        StockDaily.pct_chg.label("pct_chg"),
+                        func.row_number().over(
+                            partition_by=StockDaily.code,
+                            order_by=StockDaily.date.desc(),
+                        ).label("row_num"),
+                    ).where(
+                        StockDaily.code.in_(unresolved_codes),
+                        StockDaily.close.is_not(None),
+                    ).subquery()
+                    with db.get_session() as session:
+                        rows = session.execute(
+                            select(
+                                ranked.c.code,
+                                ranked.c.date,
+                                ranked.c.close,
+                                ranked.c.pct_chg,
+                            ).where(ranked.c.row_num <= 2).order_by(
+                                ranked.c.code,
+                                ranked.c.row_num,
+                            )
+                        ).all()
+
+                    history: Dict[str, List[Any]] = {}
+                    for row in rows:
+                        history.setdefault(str(row[0]), []).append(row)
+                    for ts in ts_codes:
+                        if ts in daily_changes:
+                            continue
+                        code = ts.split(".")[0] if "." in ts else ts
+                        code_rows = history.get(code, [])
+                        if not code_rows:
+                            continue
+                        latest = code_rows[0]
+                        pct = latest[3]
+                        if pct is not None and pd.notna(pct):
+                            daily_changes[ts] = round(float(pct) / 100, 4)
+                        elif len(code_rows) >= 2:
+                            latest_close = latest[2]
+                            previous_close = code_rows[1][2]
+                            if latest_close is not None and previous_close is not None and float(previous_close) > 0:
+                                daily_changes[ts] = round(
+                                    (float(latest_close) - float(previous_close)) / float(previous_close),
+                                    4,
+                                )
+                        if ts in daily_changes:
+                            daily_change_dates[ts] = _compact_date(latest[1])
+                except Exception:
+                    logger.warning("[BrokerRecommend] stock_daily 涨跌幅降级查询失败", exc_info=True)
         except Exception:
             logger.warning("[BrokerRecommend] realtime_spot 读取出错", exc_info=True)
 
@@ -1452,6 +1529,7 @@ class BrokerRecommendService:
 
         # 当月补充实时最新价（Sina 批量接口，2~3s）
         daily_changes: Dict[str, float] = {}
+        daily_change_dates: Dict[str, str] = {}
         if is_current:
             try:
                 rt_prices, rt_changes, rt_ohlc, rt_change_dates = self._get_realtime_prices_batch(all_ts)
@@ -1498,6 +1576,7 @@ class BrokerRecommendService:
                         if ohlc_saved:
                             logger.info(f"[BrokerRecommend] 回测 {month} 今日 OHLC 写入 {ohlc_saved} 只")
                 daily_changes = rt_changes
+                daily_change_dates = rt_change_dates
             except Exception:
                 pass
 
@@ -1552,7 +1631,7 @@ class BrokerRecommendService:
                         "end_price": round(sell_price, 2),
                         "end_date": actual_sell_date,
                         "daily_change": daily_changes.get(ts),
-                        "daily_change_date": rt_change_dates.get(ts),
+                        "daily_change_date": daily_change_dates.get(ts),
                         "month_cumulative_return": None,
                         "daily_returns": [],
                     }
@@ -4526,4 +4605,3 @@ def _holding_max_drawdown(daily_returns: List[Dict[str, Any]]) -> Optional[float
         if dd < max_dd:
             max_dd = dd
     return round(max_dd, 4)
-

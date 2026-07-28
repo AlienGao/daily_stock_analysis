@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """金股历史推荐统计单元测试。"""
 
-from datetime import datetime
+from datetime import date, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -74,6 +74,92 @@ class TestGetHistoricalRecommendStats:
         assert row["win_rate"] == pytest.approx(0.5)
         assert row["max_return"] == pytest.approx(0.15)
         assert row["max_drawdown"] == pytest.approx(-0.2201)
+
+
+class TestBrokerDailyChange:
+    @staticmethod
+    def _spot(**overrides):
+        import pandas as pd
+
+        row = {
+            "code": "600519",
+            "price": 105.0,
+            "pct_chg": 5.0,
+            "pre_close": 100.0,
+            "open_price": 101.0,
+            "high": 106.0,
+            "low": 99.0,
+            "trade_date": date.today().isoformat(),
+        }
+        row.update(overrides)
+        return pd.DataFrame([row]).set_index("code")
+
+    def test_uses_current_snapshot_pct_change(self):
+        db = MagicMock()
+        db.get_current_prices.return_value = self._spot(pct_chg=9.0)
+
+        with patch("src.storage.DatabaseManager", return_value=db):
+            _, changes, _, change_dates = BrokerRecommendService()._get_realtime_prices_batch(["600519.SH"])
+
+        assert changes == {"600519.SH": 0.05}
+        assert change_dates == {"600519.SH": date.today().strftime("%Y%m%d")}
+        db.get_session.assert_not_called()
+
+    def test_computes_current_change_from_pre_close_when_pct_is_missing(self):
+        db = MagicMock()
+        db.get_current_prices.return_value = self._spot(pct_chg=None)
+
+        with patch("src.storage.DatabaseManager", return_value=db):
+            _, changes, _, change_dates = BrokerRecommendService()._get_realtime_prices_batch(["600519.SH"])
+
+        assert changes == {"600519.SH": 0.05}
+        assert change_dates == {"600519.SH": date.today().strftime("%Y%m%d")}
+
+    def test_falls_back_to_each_stocks_latest_daily_change(self):
+        import pandas as pd
+
+        db = MagicMock()
+        db.get_current_prices.return_value = pd.concat([
+            self._spot(code="600519", trade_date="2026-07-24", pct_chg=None),
+            self._spot(code="000001", trade_date="2026-07-23", pct_chg=None),
+        ])
+        session = MagicMock()
+        session.execute.return_value.all.return_value = [
+            ("000001", date(2026, 7, 23), 9.8, -2.0),
+            ("000001", date(2026, 7, 22), 10.0, None),
+            ("600519", date(2026, 7, 24), 105.0, None),
+            ("600519", date(2026, 7, 23), 100.0, 1.0),
+        ]
+        db.get_session.return_value = session
+        session.__enter__.return_value = session
+
+        with patch("src.storage.DatabaseManager", return_value=db):
+            _, changes, _, change_dates = BrokerRecommendService()._get_realtime_prices_batch([
+                "600519.SH", "000001.SZ",
+            ])
+
+        assert changes == {"600519.SH": 0.05, "000001.SZ": -0.02}
+        assert change_dates == {"600519.SH": "20260724", "000001.SZ": "20260723"}
+
+    def test_falls_back_to_daily_change_when_spot_is_empty(self):
+        import pandas as pd
+
+        db = MagicMock()
+        db.get_current_prices.return_value = pd.DataFrame()
+        session = MagicMock()
+        session.execute.return_value.all.return_value = [
+            ("600519", date(2026, 7, 24), 101.0, 1.0),
+            ("600519", date(2026, 7, 23), 100.0, None),
+        ]
+        db.get_session.return_value = session
+        session.__enter__.return_value = session
+
+        with patch("src.storage.DatabaseManager", return_value=db):
+            prices, changes, _, change_dates = BrokerRecommendService()._get_realtime_prices_batch(["600519.SH"])
+
+        assert prices == {}
+        assert changes == {"600519.SH": 0.01}
+        assert change_dates == {"600519.SH": "20260724"}
 
 
 class TestPeriodReturnFromDailyReturns:
@@ -306,4 +392,3 @@ class TestYtdBacktestCurrentMonth:
         months = [mr["month"] for mr in huatai["monthly_returns"]]
         assert cm in months
         assert months == sorted(months, reverse=True)
-
