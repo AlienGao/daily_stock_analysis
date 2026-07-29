@@ -6,6 +6,7 @@ import { Loader2, RefreshCw, Search } from 'lucide-react';
 import { AppPage, Button, EmptyState } from '../components/common';
 import { CandlestickMiniChart } from '../components/charts/CandlestickMiniChart';
 import { hkStockApi, type HkBollPickItem, type HkStockKLineItem, type HkStockListItem } from '../api/hkMonitor';
+import { calcBollBandWidthPct, compareBollBandWidth } from '../utils/hkBollBandwidth';
 
 const fmtPct = (v?: number | null) => {
   if (v == null || Number.isNaN(v)) return '--';
@@ -290,21 +291,15 @@ const HkMonitorPage: React.FC = () => {
 
   const columns: ColumnsType<HkStockListItem> = useMemo(() => [
     {
-      title: '名称',
+      title: '名称 / 代码',
       dataIndex: 'name',
       key: 'name',
-      width: 150,
-      render: (v: string | null) => (
-        <span className="block max-w-full truncate whitespace-nowrap text-sm font-medium text-foreground" title={v || undefined}>{v || '--'}</span>
-      ),
-    },
-    {
-      title: '代码',
-      dataIndex: 'hk_code',
-      key: 'hk_code',
-      width: 60,
-      render: (v: string) => (
-        <span className="font-mono text-xs text-tertiary-text">{v}</span>
+      width: 160,
+      render: (v: string | null, record) => (
+        <span className="block min-w-0">
+          <span className="block max-w-full truncate whitespace-nowrap text-sm font-medium text-foreground" title={v || undefined}>{v || '--'}</span>
+          <span className="mt-0.5 block font-mono text-[11px] text-tertiary-text">{record.hk_code}</span>
+        </span>
       ),
     },
     {
@@ -341,6 +336,20 @@ const HkMonitorPage: React.FC = () => {
       render: (_v: number | null, record) => (
         <BollDistanceCell distance={record.boll_lower_dist_pct} bandPrice={record.boll_lower} />
       ),
+    },
+    {
+      title: '轨道宽度',
+      key: 'boll_band_width_pct',
+      align: 'right',
+      sorter: compareBollBandWidth,
+      render: (_v, record) => {
+        const widthPct = calcBollBandWidthPct(record);
+        return (
+          <span className="font-mono text-xs tabular-nums text-emerald-400">
+            {widthPct == null ? '--' : `${widthPct.toFixed(2)}%`}
+          </span>
+        );
+      },
     },
     {
       title: '涨跌幅',
