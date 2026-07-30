@@ -167,7 +167,7 @@ class HkStockService:
         """返回所有港股通成份股快照（从 hk_ggt_component 表读取最新交易日）。
 
         默认仅查 DB，不触发网络刷新或 BOLL 计算，确保接口快速返回。
-        手动 refresh 时先强制刷新成份快照，再读取最新快照供港股页面展示。
+        手动 refresh 时先强制刷新成份快照和近期日线，再读取最新快照供港股页面展示。
         """
         now = _time.time()
         if (
@@ -189,6 +189,17 @@ class HkStockService:
         codes = [_norm_hk_code(r.hk_code) for r in rows]
         if not codes:
             return {"trade_date": trade_date, "total": 0, "items": []}
+
+        if refresh:
+            market_today = get_market_now("hk").date()
+            try:
+                self.backfill_daily(
+                    codes=codes,
+                    start_date=_fmt_date(market_today - timedelta(days=7)),
+                    end_date=_fmt_date(market_today),
+                )
+            except Exception as exc:
+                logger.warning("[HkStock] refresh latest daily bars failed: %s", exc)
 
         # 批量获取每只港股的最新交易日，替代逐个查询
         latest_by_code = self._db.batch_get_latest_hk_stock_daily_trade_date(codes)

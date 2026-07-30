@@ -98,10 +98,11 @@ class RealtimeSpotProvider:
     # ------------------------------------------------------------------
 
     @classmethod
-    def _fetch_tencent(cls) -> Optional[pd.DataFrame]:
-        """腾讯 HTTP 全市场实时行情 (qt.gtimg.cn)，分批拉取。"""
+    def _fetch_tencent(cls, codes: Optional[List[str]] = None) -> Optional[pd.DataFrame]:
+        """腾讯 HTTP 实时行情 (qt.gtimg.cn)，分批拉取。"""
         try:
-            codes = cls._get_code_list()
+            if codes is None:
+                codes = cls._get_code_list()
             if not codes:
                 logger.warning("[RealtimeSpot] 腾讯无可用代码列表")
                 return None
@@ -237,13 +238,14 @@ class RealtimeSpotProvider:
         return None
 
     @classmethod
-    def _fetch_sina(cls) -> Optional[pd.DataFrame]:
-        """新浪 HTTP 全市场实时行情 (hq.sinajs.cn)，分批拉取。
+    def _fetch_sina(cls, codes: Optional[List[str]] = None) -> Optional[pd.DataFrame]:
+        """新浪 HTTP 实时行情 (hq.sinajs.cn)，分批拉取。
 
         新浪不提供换手率和量比，pct_chg 由 price/pre_close 计算。
         """
         try:
-            codes = cls._get_code_list()
+            if codes is None:
+                codes = cls._get_code_list()
             if not codes:
                 logger.warning("[RealtimeSpot] 新浪无可用代码列表")
                 return None
@@ -311,6 +313,26 @@ class RealtimeSpotProvider:
         except Exception as e:
             logger.warning("[RealtimeSpot] 新浪接口异常: %s", e)
             return None
+
+    @classmethod
+    def fetch_codes(cls, codes: List[str]) -> Optional[pd.DataFrame]:
+        """按代码批量拉取最新行情，不读取或写入全市场槽位缓存。"""
+        requested = sorted({
+            str(code).split(".")[0].strip().zfill(6)
+            for code in codes
+            if code is not None and str(code).strip()
+        })
+        if not requested:
+            return None
+
+        df = cls._fetch_tencent(requested)
+        source_label = "tencent"
+        if df is None or df.empty:
+            df = cls._fetch_sina(requested)
+            source_label = "sina"
+        if df is None or df.empty:
+            return None
+        return cls._normalize(df, source_label)
 
     # ------------------------------------------------------------------
     # 东财补充：换手率/量比（60s 间隔独立更新）

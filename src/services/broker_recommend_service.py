@@ -1276,6 +1276,43 @@ class BrokerRecommendService:
             if spot_df is None:
                 spot_df = pd.DataFrame()
 
+            current_slot = int(time.time() // 30)
+            stale_codes: set[str] = set()
+            if not spot_df.empty and "slot" in spot_df.columns:
+                for code in bare_codes:
+                    try:
+                        row = spot_df.loc[code]
+                        slot = row.get("slot")
+                        if pd.notna(slot) and current_slot - int(slot) > 1:
+                            stale_codes.add(code)
+                    except (KeyError, TypeError, ValueError):
+                        continue
+
+            stale_refresh_failed: set[str] = set()
+            if stale_codes:
+                try:
+                    from src.discovery.realtime_spot import RealtimeSpotProvider
+
+                    live_df = RealtimeSpotProvider.fetch_codes(sorted(stale_codes))
+                    refreshed_codes: set[str] = set()
+                    if live_df is not None and not live_df.empty:
+                        live_df = live_df.copy()
+                        live_df["slot"] = current_slot
+                        refreshed_codes = set(live_df.index.astype(str))
+                        spot_df = pd.concat([
+                            spot_df.drop(index=list(refreshed_codes), errors="ignore"),
+                            live_df,
+                        ])
+                    stale_refresh_failed = stale_codes - refreshed_codes
+                    if stale_refresh_failed:
+                        logger.warning(
+                            "[BrokerRecommend] 实时行情陈旧且刷新失败: %s",
+                            ",".join(sorted(stale_refresh_failed)),
+                        )
+                except Exception:
+                    stale_refresh_failed = set(stale_codes)
+                    logger.warning("[BrokerRecommend] 陈旧实时行情刷新失败", exc_info=True)
+
             def _compact_date(value: Any) -> str:
                 if value is None or pd.isna(value):
                     return ""
@@ -1288,6 +1325,8 @@ class BrokerRecommendService:
 
             for ts in ts_codes:
                 code = ts.split(".")[0] if "." in ts else ts
+                if code in stale_refresh_failed:
+                    continue
                 try:
                     row = spot_df.loc[code]
                     price = float(row["price"])
@@ -1322,6 +1361,7 @@ class BrokerRecommendService:
                 ts.split(".")[0] if "." in ts else ts
                 for ts in ts_codes
                 if ts not in daily_changes
+                and (ts.split(".")[0] if "." in ts else ts) not in stale_refresh_failed
             }
             if unresolved_codes:
                 try:

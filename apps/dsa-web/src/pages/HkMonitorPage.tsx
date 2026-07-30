@@ -1,12 +1,13 @@
 import type React from 'react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Table } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import type { ColumnsType, SorterResult, SortOrder } from 'antd/es/table/interface';
 import { Loader2, RefreshCw, Search } from 'lucide-react';
 import { AppPage, Button, EmptyState } from '../components/common';
 import { CandlestickMiniChart } from '../components/charts/CandlestickMiniChart';
 import { hkStockApi, type HkBollPickItem, type HkStockKLineItem, type HkStockListItem } from '../api/hkMonitor';
 import { calcBollBandWidthPct, compareBollBandWidth } from '../utils/hkBollBandwidth';
+import { sortHkItemsByPctChangeDesc } from '../utils/hkMonitorSort';
 
 const fmtPct = (v?: number | null) => {
   if (v == null || Number.isNaN(v)) return '--';
@@ -31,6 +32,8 @@ const calcDistPct = (price?: number | null, band?: number | null) => {
   if (price == null || band == null || !Number.isFinite(price) || !Number.isFinite(band) || band <= 0) return null;
   return Number((((price - band) / band) * 100).toFixed(2));
 };
+
+const DEFAULT_TABLE_SORT = { columnKey: 'pct_change', order: 'descend' as SortOrder };
 
 const patchItemFromKlines = (item: HkStockListItem, klines: HkStockKLineItem[]): HkStockListItem => {
   const bars = klines.filter(bar => bar.close != null && Number.isFinite(bar.close));
@@ -234,6 +237,7 @@ const HkMonitorPage: React.FC = () => {
   const [searchText, setSearchText] = useState<string>('');
   const [bollPicks, setBollPicks] = useState<HkBollPickItem[]>([]);
   const [bollLoading] = useState(false);
+  const [tableSort, setTableSort] = useState(DEFAULT_TABLE_SORT);
   const [panelHeight, setPanelHeight] = useState<number | undefined>(undefined);
   const tableWrapRef = useRef<HTMLDivElement>(null);
 
@@ -263,7 +267,8 @@ const HkMonitorPage: React.FC = () => {
           hkStockApi.list(),
           hkStockApi.getBollPicks(),
         ]);
-      setItems(listResp.items ?? []);
+      setItems(sortHkItemsByPctChangeDesc(listResp.items ?? []));
+      if (shouldRefresh) setTableSort({ ...DEFAULT_TABLE_SORT });
       setBollPicks([...(bollResp.upper ?? []), ...(bollResp.mid ?? []), ...(bollResp.lower ?? [])]);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : '加载失败');
@@ -313,8 +318,10 @@ const HkMonitorPage: React.FC = () => {
     {
       title: '距上轨',
       dataIndex: 'boll_upper_dist_pct',
+      key: 'boll_upper_dist_pct',
       align: 'right',
       sorter: (a, b) => (a.boll_upper_dist_pct ?? Number.POSITIVE_INFINITY) - (b.boll_upper_dist_pct ?? Number.POSITIVE_INFINITY),
+      sortOrder: tableSort.columnKey === 'boll_upper_dist_pct' ? tableSort.order : null,
       render: (_v: number | null, record) => (
         <BollDistanceCell distance={record.boll_upper_dist_pct} bandPrice={record.boll_upper} />
       ),
@@ -322,8 +329,10 @@ const HkMonitorPage: React.FC = () => {
     {
       title: '距中轨',
       dataIndex: 'boll_mid_dist_pct',
+      key: 'boll_mid_dist_pct',
       align: 'right',
       sorter: (a, b) => (a.boll_mid_dist_pct ?? Number.POSITIVE_INFINITY) - (b.boll_mid_dist_pct ?? Number.POSITIVE_INFINITY),
+      sortOrder: tableSort.columnKey === 'boll_mid_dist_pct' ? tableSort.order : null,
       render: (_v: number | null, record) => (
         <BollDistanceCell distance={record.boll_mid_dist_pct} bandPrice={record.boll_mid} />
       ),
@@ -331,8 +340,10 @@ const HkMonitorPage: React.FC = () => {
     {
       title: '距下轨',
       dataIndex: 'boll_lower_dist_pct',
+      key: 'boll_lower_dist_pct',
       align: 'right',
       sorter: (a, b) => (a.boll_lower_dist_pct ?? Number.POSITIVE_INFINITY) - (b.boll_lower_dist_pct ?? Number.POSITIVE_INFINITY),
+      sortOrder: tableSort.columnKey === 'boll_lower_dist_pct' ? tableSort.order : null,
       render: (_v: number | null, record) => (
         <BollDistanceCell distance={record.boll_lower_dist_pct} bandPrice={record.boll_lower} />
       ),
@@ -342,6 +353,7 @@ const HkMonitorPage: React.FC = () => {
       key: 'boll_band_width_pct',
       align: 'right',
       sorter: compareBollBandWidth,
+      sortOrder: tableSort.columnKey === 'boll_band_width_pct' ? tableSort.order : null,
       render: (_v, record) => {
         const widthPct = calcBollBandWidthPct(record);
         return (
@@ -354,14 +366,28 @@ const HkMonitorPage: React.FC = () => {
     {
       title: '涨跌幅',
       dataIndex: 'pct_change',
+      key: 'pct_change',
       align: 'right',
-      sorter: (a, b) => (a.pct_change ?? 0) - (b.pct_change ?? 0),
-      defaultSortOrder: 'descend',
+      sorter: (a, b) => (a.pct_change ?? Number.NEGATIVE_INFINITY) - (b.pct_change ?? Number.NEGATIVE_INFINITY),
+      sortOrder: tableSort.columnKey === 'pct_change' ? tableSort.order : null,
       render: (v: number | null) => (
         <span className={`font-mono tabular-nums ${pctColor(v)}`}>{fmtPct(v)}</span>
       ),
     },
-  ], []);
+  ], [tableSort]);
+
+  const handleTableChange = useCallback((
+    _pagination: unknown,
+    _filters: unknown,
+    sorter: SorterResult<HkStockListItem> | SorterResult<HkStockListItem>[],
+  ) => {
+    const activeSorter = Array.isArray(sorter) ? sorter[0] : sorter;
+    const columnKey = activeSorter?.columnKey;
+    setTableSort({
+      columnKey: columnKey == null ? '' : String(columnKey),
+      order: activeSorter?.order ?? null,
+    });
+  }, []);
 
   const locateStock = useCallback((hkCode: string) => {
     if (expandedKey === hkCode) { setExpandedKey(''); setSearchText(''); return; }
@@ -430,6 +456,7 @@ const HkMonitorPage: React.FC = () => {
                 pagination={{ pageSize: 50, showSizeChanger: true }}
                 columns={columns}
                 dataSource={filteredItems}
+                onChange={handleTableChange}
                 rowClassName={rowClassName}
                 expandable={{
                   expandedRowKeys: expandedKey ? [expandedKey] : [],

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -147,10 +148,85 @@ def test_list_components_refreshes_ggt_snapshot_before_reading_latest_date():
         fetcher_cls.return_value.fetch_hk_ggt_components.return_value = [
             {"hk_code": "00700", "name": "腾讯控股"},
         ]
-        result = HkStockService(db=db).list_components(refresh=True)
+        service = HkStockService(db=db)
+        with patch.object(service, "backfill_daily", return_value=2) as backfill:
+            result = service.list_components(refresh=True)
 
     db.replace_hk_ggt_components.assert_called_once_with(
         "20260709",
         [{"hk_code": "00700", "name": "腾讯控股"}],
     )
+    backfill.assert_called_once()
     assert result["trade_date"] == "20260709"
+
+
+def test_list_components_refreshes_latest_prices_before_pct_change_sorting():
+    db = MagicMock()
+    db.get_latest_hk_ggt_trade_date.return_value = "20260730"
+    db.list_hk_ggt_components.return_value = [
+        _component("00668", "安克创新"),
+        _component("01876", "百威亚太"),
+    ]
+    db.batch_get_latest_hk_stock_daily_trade_date.return_value = {
+        "00668": "20260729",
+        "01876": "20260729",
+    }
+    db.list_hk_stock_daily_bars_batch.return_value = {
+        "00668": [
+            _bar("20260728", 107.30),
+            _bar("20260729", 114.90),
+        ],
+        "01876": [
+            _bar("20260728", 6.93),
+            _bar("20260729", 7.50),
+        ],
+    }
+    service = HkStockService(db=db)
+
+    stale = service.list_components()
+    stale_by_code = {item["hk_code"]: item for item in stale["items"]}
+    assert stale_by_code["01876"]["pct_change"] == 8.23
+    assert stale_by_code["00668"]["pct_change"] == 7.08
+
+    def sync_latest_daily(**_kwargs):
+        db.batch_get_latest_hk_stock_daily_trade_date.return_value = {
+            "00668": "20260730",
+            "01876": "20260730",
+        }
+        db.list_hk_stock_daily_bars_batch.return_value = {
+            "00668": [
+                _bar("20260729", 107.30),
+                _bar("20260730", 118.30),
+            ],
+            "01876": [
+                _bar("20260729", 6.93),
+                _bar("20260730", 7.05),
+            ],
+        }
+        return 4
+
+    with patch("src.services.hk_ggt_monitor_service.HkGgtMonitorService"), \
+            patch("src.services.hk_stock_service.get_market_now", return_value=datetime(2026, 7, 30, 16, 10)), \
+            patch.object(service, "backfill_daily", side_effect=sync_latest_daily) as backfill:
+        refreshed = service.list_components(refresh=True)
+
+    backfill.assert_called_once_with(
+        codes=["00668", "01876"],
+        start_date="20260723",
+        end_date="20260730",
+    )
+    refreshed_by_code = {item["hk_code"]: item for item in refreshed["items"]}
+    assert refreshed_by_code["00668"]["latest_price"] == 118.30
+    assert refreshed_by_code["00668"]["pct_change"] == 10.25
+    assert refreshed_by_code["01876"]["latest_price"] == 7.05
+    assert refreshed_by_code["01876"]["pct_change"] == 1.73
+
+    sorted_codes = [
+        item["hk_code"]
+        for item in sorted(
+            refreshed["items"],
+            key=lambda item: item["pct_change"],
+            reverse=True,
+        )
+    ]
+    assert sorted_codes == ["00668", "01876"]

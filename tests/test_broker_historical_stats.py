@@ -115,6 +115,57 @@ class TestBrokerDailyChange:
         assert changes == {"600519.SH": 0.05}
         assert change_dates == {"600519.SH": date.today().strftime("%Y%m%d")}
 
+    def test_refreshes_stale_snapshot_before_calculating_daily_change(self):
+        import pandas as pd
+
+        db = MagicMock()
+        stale = self._spot(
+            code="600882",
+            price=23.67,
+            pct_chg=3.91,
+            pre_close=22.78,
+            slot=1,
+        )
+        db.get_current_prices.return_value = stale
+        fresh = pd.DataFrame([{
+            "code": "600882",
+            "price": 22.65,
+            "pct_chg": -0.57,
+            "pre_close": 22.78,
+            "open_price": 22.51,
+            "high": 23.76,
+            "low": 22.31,
+            "trade_date": date.today().isoformat(),
+        }]).set_index("code")
+
+        with patch("src.storage.DatabaseManager", return_value=db), patch(
+            "src.discovery.realtime_spot.RealtimeSpotProvider.fetch_codes",
+            return_value=fresh,
+        ) as fetch_codes:
+            prices, changes, ohlc, change_dates = BrokerRecommendService()._get_realtime_prices_batch([
+                "600882.SH",
+            ])
+
+        assert prices == {"600882.SH": {date.today().strftime("%Y%m%d"): 22.65}}
+        assert changes == {"600882.SH": -0.0057}
+        assert ohlc["600882.SH"]["close"] == pytest.approx(22.65)
+        assert change_dates == {"600882.SH": date.today().strftime("%Y%m%d")}
+        fetch_codes.assert_called_once_with(["600882"])
+
+    def test_does_not_report_stale_change_when_refresh_fails(self):
+        db = MagicMock()
+        db.get_current_prices.return_value = self._spot(slot=1)
+
+        with patch("src.storage.DatabaseManager", return_value=db), patch(
+            "src.discovery.realtime_spot.RealtimeSpotProvider.fetch_codes",
+            return_value=None,
+        ):
+            _, changes, _, change_dates = BrokerRecommendService()._get_realtime_prices_batch(["600519.SH"])
+
+        assert changes == {}
+        assert change_dates == {}
+        db.get_session.assert_not_called()
+
     def test_falls_back_to_each_stocks_latest_daily_change(self):
         import pandas as pd
 

@@ -436,6 +436,36 @@ class TestToTencentCodes:
 
 
 # ============================================================
+#  RealtimeSpotProvider — targeted refresh
+# ============================================================
+
+class TestFetchCodes:
+
+    def test_fetches_only_requested_codes_and_normalizes(self, monkeypatch):
+        raw = pd.DataFrame([{
+            "code": "600882",
+            "name": "妙可蓝多",
+            "price": 22.65,
+            "pct_chg": -0.57,
+            "pre_close": 22.78,
+        }])
+        seen = []
+
+        def fake_tencent(cls, codes=None):
+            seen.append(codes)
+            return raw
+
+        monkeypatch.setattr(RealtimeSpotProvider, "_fetch_tencent", classmethod(fake_tencent))
+
+        result = RealtimeSpotProvider.fetch_codes(["600882.SH", "600882"])
+
+        assert seen == [["600882"]]
+        assert result is not None
+        assert result.loc["600882", "price"] == pytest.approx(22.65)
+        assert result.loc["600882", "pct_chg"] == pytest.approx(-0.57)
+
+
+# ============================================================
 #  RealtimeSpotProvider — 降级链
 # ============================================================
 
