@@ -1,0 +1,181 @@
+[
+  {
+    "rank": 1,
+    "stock_code": "600593",
+    "stock_name": "大连圣亚",
+    "score": 34.5,
+    "sector": "旅游及酒店",
+    "factor_scores": {
+      "ma_entry": 73.83140799890882,
+      "sector": 0.0,
+      "momentum": 21.442279119021258,
+      "ranking_momentum": 94.7877789327364,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "回踩MA5均线",
+      "BOLL中轨支撑",
+      "趋势加速↑(6.8%/天)",
+      "今日强于60%个股"
+    ],
+    "buy_price_low": 35.2,
+    "buy_price_high": 37.5,
+    "stop_loss": 37.17,
+    "take_profit_1": 40.22,
+    "take_profit_2": 43.38,
+    "discovered_at": "15:01:00",
+    "price_at_discovery": 37.83,
+    "pct_chg": 2.63,
+    "tech_score": 68.78,
+    "rr_score": 73.24868651488626,
+    "market_score": 38.47938201436525,
+    "sector_score": 79.7351293345777,
+    "volume_score": 89.9996069285405,
+    "position_score": 75,
+    "formation_score": 55.0,
+    "composite_score": 58.496
+  },
+  {
+    "rank": 2,
+    "stock_code": "000752",
+    "stock_name": "*ST西发",
+    "score": 39.0,
+    "sector": "饮料制造",
+    "factor_scores": {
+      "ma_entry": 100.0,
+      "sector": 0.0,
+      "momentum": 28.762449295866872,
+      "ranking_momentum": 80.04324424680273,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线",
+      "趋势加速↑(14.5%/天)"
+    ],
+    "buy_price_low": 7.4,
+    "buy_price_high": 8.0,
+    "stop_loss": 8.03,
+    "take_profit_1": 8.47,
+    "take_profit_2": 9.07,
+    "discovered_at": "15:01:00",
+    "price_at_discovery": 8.08,
+    "pct_chg": 1.25,
+    "tech_score": 65.49,
+    "rr_score": 68.59296482412074,
+    "market_score": 38.47938201436525,
+    "sector_score": 84.28756529878544,
+    "volume_score": 70.00033630475578,
+    "position_score": 75,
+    "formation_score": 50.0,
+    "composite_score": 57.54299999999999
+  },
+  {
+    "rank": 3,
+    "stock_code": "301221",
+    "stock_name": "光庭信息",
+    "score": 29.9,
+    "sector": "软件开发",
+    "factor_scores": {
+      "ma_entry": 70.0716786788364,
+      "sector": 0.0,
+      "momentum": 30.683324419403203,
+      "ranking_momentum": 66.609149371496,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "回踩MA10均线",
+      "趋势加速↑(6.0%/天)",
+      "今日强于74%个股"
+    ],
+    "buy_price_low": 24.4,
+    "buy_price_high": 26.5,
+    "stop_loss": 26.25,
+    "take_profit_1": 28.15,
+    "take_profit_2": 33.12,
+    "discovered_at": "15:01:00",
+    "price_at_discovery": 26.26,
+    "pct_chg": 3.75,
+    "tech_score": 69.08,
+    "rr_score": 70.26022304832706,
+    "market_score": 38.47938201436525,
+    "sector_score": 80.46396178739624,
+    "volume_score": 84.4860947774095,
+    "position_score": 85,
+    "formation_score": 20.0,
+    "composite_score": 57.32599999999999
+  },
+  {
+    "rank": 4,
+    "stock_code": "688216",
+    "stock_name": "气派科技",
+    "score": 46.1,
+    "sector": "半导体",
+    "factor_scores": {
+      "ma_entry": 36.606223903710855,
+      "sector": 0.0,
+      "momentum": 36.6953725029997,
+      "ranking_momentum": 73.11458633630042,
+      "rebound": 0.0,
+      "popularity": 71.07141117946999
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "排名连续上升(2天)",
+      "趋势加速↑(5.5%/天)",
+      "今日强于85%个股",
+      "人气飙升(+35位)",
+      "人气股上涨(+8.2%)"
+    ],
+    "buy_price_low": 23.1,
+    "buy_price_high": 25.6,
+    "stop_loss": 23.53,
+    "take_profit_1": 30.69,
+    "take_profit_2": 50.4,
+    "discovered_at": "15:01:00",
+    "price_at_discovery": 25.12,
+    "pct_chg": 5.1,
+    "tech_score": 54.29,
+    "rr_score": 71.21461187214612,
+    "market_score": 38.47938201436525,
+    "sector_score": 0.0,
+    "volume_score": 40.000015981562,
+    "position_score": 85,
+    "formation_score": 20.0,
+    "composite_score": 51.833
+  }
+]
