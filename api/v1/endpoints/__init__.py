@@ -23,7 +23,7 @@ from api.v1.endpoints import (
     alerts,
     research,
     decision_signals,
-    alphasift,
+    screening,
     market,
 )
 __all__ = [
@@ -43,6 +43,6 @@ __all__ = [
     "alerts",
     "research",
     "decision_signals",
-    "alphasift",
+    "screening",
     "market",
 ]

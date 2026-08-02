@@ -15,7 +15,7 @@ import os
 from api.v1.endpoints import (
     agent,
     alerts,
-    alphasift,
+    screening,
     analysis,
     auth,
     backtest,
@@ -56,7 +56,7 @@ router.include_router(alerts.router, prefix="/alerts", tags=["Alerts"])
 router.include_router(research.router, prefix="/research", tags=["Research"])
 router.include_router(decision_signals.router, prefix="/decision-signals", tags=["DecisionSignals"])
 router.include_router(factor_backtest.router, prefix="/factor-backtest-simple", tags=["FactorBacktestSimple"])
-router.include_router(alphasift.router, prefix="/alphasift", tags=["AlphaSift"])
+router.include_router(screening.router, prefix="/screening", tags=["Screening"])
 router.include_router(market.router, prefix="/market", tags=["Market"])
 router.include_router(intelligence.router, prefix="/intelligence", tags=["Intelligence"])
 router.include_router(health.router, tags=["Health"])

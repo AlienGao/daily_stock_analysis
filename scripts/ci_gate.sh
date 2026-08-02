@@ -23,15 +23,22 @@ deterministic_checks() {
 
 offline_test_suite() {
   echo "==> backend-gate: offline test suite"
+  # ``--timeout=120`` hard-fails any single test that runs longer than two
+  # minutes (issue #2131: backend-gate previously hung indefinitely around
+  # screening hotspot cases without leaving any traceback). ``-o
+  # timeout_method=thread`` makes pytest-timeout use a watcher thread that
+  # is reliable even when the test has swallowed Ctrl-C / signal handling
+  # (yfinance). ``-o faulthandler_timeout=300`` dumps all
+  # thread + interpreter stacks to stderr after five minutes of total
+  # test silence, giving us a post-mortem root cause for any future
+  # CI hang instead of ``backend-gate`` being silently cancelled by the
+  # workflow timeout.
   local portfolio_enabled
   portfolio_enabled="$(echo "${PORTFOLIO_MODULE_ENABLED:-false}" | tr '[:upper:]' '[:lower:]')"
   if [[ "$portfolio_enabled" == "true" ]]; then
-    python -m pytest -m "not network"
+    python -m pytest -m "not network"       --timeout=120 -o timeout_method=thread       -o faulthandler_timeout=300
   else
-    python -m pytest -m "not network" \
-      --ignore=tests/test_portfolio_api.py \
-      --ignore=tests/test_portfolio_service.py \
-      --ignore=tests/test_portfolio_pr2.py
+    python -m pytest -m "not network"       --timeout=120 -o timeout_method=thread       -o faulthandler_timeout=300       --ignore=tests/test_portfolio_api.py       --ignore=tests/test_portfolio_service.py       --ignore=tests/test_portfolio_pr2.py
   fi
 }
 

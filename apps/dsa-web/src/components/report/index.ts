@@ -10,3 +10,4 @@ export * from './ReportDetails';
 export * from './ReportMarkdown';
 export * from './ReportMarkdownBody';
 export * from './MarketReviewReportView';
+export * from './ShareImageButton';
