@@ -8,7 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 > For user-friendly release highlights, see the [GitHub Releases](https://github.com/ZhuLinsen/daily_stock_analysis/releases) page.
 
 ## [Unreleased]
+- [改进] 港股监控右侧 BOLL 推荐上方增加最近结束的最高连续回撤个股列表
 
+- [新功能] 港股通监控左侧列表新增最近一次连续回撤列，展示最近一段至少连续 2 个交易日收跌的累计跌幅及回撤起止日期
+- [修复] 港股通监控缩小名称/代码列和右侧 BOLL 推荐面板宽度、加宽最高回撤列并禁止表头文字换行，优化左右区域空间分配
+- [修复] 港股通监控按数据库全部已有日线的历史最高价计算当前回撤，避免错误使用近 180 天最高收盘价
 - [新功能] 港股通监控左侧新增可排序的 BOLL 上下轨宽度列，并将股票名称、代码合并展示；宽度按相对中轨口径计算
 - [修复] 港股通监控点击刷新后同步全部当前成份股近期日线，再按最新交易日涨跌幅降序排列个股列表并重置表格排序状态
 - [修复] 金股页当天涨幅按股票读取有效实时涨跌幅，缺失时用昨收补算并回退各自最近交易日日线，避免休市、停牌或快照字段缺失时错误显示 `--`

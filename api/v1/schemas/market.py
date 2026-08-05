@@ -116,6 +116,12 @@ class HkStockListItem(BaseModel):
     boll_mid_dist_pct: Optional[float] = None
     boll_upper_dist_pct: Optional[float] = None
     boll_lower_dist_pct: Optional[float] = None
+    high_n_price: Optional[float] = None
+    drawdown_pct: Optional[float] = None
+    latest_consecutive_drawdown_pct: Optional[float] = None
+    latest_consecutive_drawdown_days: Optional[int] = None
+    latest_consecutive_drawdown_start_date: Optional[str] = None
+    latest_consecutive_drawdown_end_date: Optional[str] = None
 
 
 class HkStockListResponse(BaseModel):

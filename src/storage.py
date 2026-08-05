@@ -8633,6 +8633,24 @@ class DatabaseManager(metaclass=_DatabaseManagerMeta):
             rows = session.execute(stmt).all()
             return {str(row[0]): str(row[1]) if row[1] else None for row in rows}
 
+    def batch_get_hk_stock_all_time_high(self, codes: List[str]) -> Dict[str, float]:
+        """批量获取多只港股在数据库全部日线中的最高价。"""
+        if not codes:
+            return {}
+        normed = [str(c).zfill(5) for c in codes]
+        with self.get_session() as session:
+            stmt = (
+                select(HkStockDaily.hk_code, func.max(HkStockDaily.high))
+                .where(
+                    HkStockDaily.hk_code.in_(normed),
+                    HkStockDaily.high.is_not(None),
+                    HkStockDaily.high > 0,
+                )
+                .group_by(HkStockDaily.hk_code)
+            )
+            rows = session.execute(stmt).all()
+            return {str(row[0]): float(row[1]) for row in rows if row[1] is not None}
+
     def get_min_hk_stock_daily_trade_date(self) -> Optional[str]:
         """取所有港股通日K线中最小的最新交易日（即数据最落后的那只）。"""
         import sqlalchemy as sa

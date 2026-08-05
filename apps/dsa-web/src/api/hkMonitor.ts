@@ -55,6 +55,12 @@ export type HkStockListItem = {
   boll_mid_dist_pct?: number | null;
   boll_upper_dist_pct?: number | null;
   boll_lower_dist_pct?: number | null;
+  high_n_price?: number | null;
+  drawdown_pct?: number | null;
+  latest_consecutive_drawdown_pct?: number | null;
+  latest_consecutive_drawdown_days?: number | null;
+  latest_consecutive_drawdown_start_date?: string | null;
+  latest_consecutive_drawdown_end_date?: string | null;
 };
 
 export type HkStockListResponse = {

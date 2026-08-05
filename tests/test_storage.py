@@ -16,7 +16,7 @@ from sqlalchemy.sql import func
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.config import Config
-from src.storage import Base, CURRENT_SCHEMA_VERSION, DatabaseManager, DatabaseSchemaMigration, StockDaily
+from src.storage import Base, CURRENT_SCHEMA_VERSION, DatabaseManager, DatabaseSchemaMigration, HkStockDaily, StockDaily
 
 class TestStorage(unittest.TestCase):
 
@@ -161,6 +161,24 @@ class TestStorage(unittest.TestCase):
         self.assertEqual(row.version, CURRENT_SCHEMA_VERSION)
         self.assertIn("metadata.create_all", row.description)
 
+        DatabaseManager.reset_instance()
+
+    def test_batch_get_hk_stock_all_time_high_uses_all_database_rows(self):
+        DatabaseManager.reset_instance()
+        db = DatabaseManager(db_url="sqlite:///:memory:")
+
+        with db.get_session() as session:
+            session.add_all([
+                HkStockDaily(hk_code="00700", trade_date="20200102", high=700.0, close=680.0),
+                HkStockDaily(hk_code="00700", trade_date="20260730", high=550.0, close=540.0),
+                HkStockDaily(hk_code="09988", trade_date="20260730", high=130.0, close=120.0),
+                HkStockDaily(hk_code="09988", trade_date="20260731", high=None, close=125.0),
+            ])
+            session.commit()
+
+        result = db.batch_get_hk_stock_all_time_high(["700", "09988", "00005"])
+
+        self.assertEqual(result, {"00700": 700.0, "09988": 130.0})
         DatabaseManager.reset_instance()
 
     def test_schema_migration_record_is_idempotent(self):

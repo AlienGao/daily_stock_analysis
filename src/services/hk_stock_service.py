@@ -51,6 +51,35 @@ def _band_distance_pct(close: float, band: float) -> Optional[float]:
     return round((close - band) / band * 100, 2)
 
 
+def _latest_consecutive_drawdown(
+    dated_closes: List[Tuple[str, float]],
+) -> Optional[Tuple[float, int, str, str]]:
+    """返回最近一段至少连续 2 个交易日收跌的跌幅、天数和起止日期。"""
+    valid = [
+        (trade_date, float(close))
+        for trade_date, close in dated_closes
+        if close is not None and math.isfinite(close) and close > 0
+    ]
+    end_idx = len(valid) - 1
+    while end_idx > 0:
+        while end_idx > 0 and valid[end_idx][1] >= valid[end_idx - 1][1]:
+            end_idx -= 1
+        if end_idx <= 0:
+            return None
+
+        start_idx = end_idx
+        while start_idx > 0 and valid[start_idx][1] < valid[start_idx - 1][1]:
+            start_idx -= 1
+        decline_days = end_idx - start_idx
+        if decline_days >= 2:
+            start_date, start_close = valid[start_idx]
+            end_date, end_close = valid[end_idx]
+            drawdown_pct = round((end_close - start_close) / start_close * 100, 2)
+            return drawdown_pct, decline_days, start_date, end_date
+        end_idx = start_idx - 1
+    return None
+
+
 def _is_near_band(close: float, band: float, near_pct: float = BOLL_NEAR_PCT) -> bool:
     dist = _band_distance_pct(close, band)
     return dist is not None and abs(dist) <= near_pct
@@ -203,6 +232,8 @@ class HkStockService:
 
         # 批量获取每只港股的最新交易日，替代逐个查询
         latest_by_code = self._db.batch_get_latest_hk_stock_daily_trade_date(codes)
+        all_time_high_result = self._db.batch_get_hk_stock_all_time_high(codes)
+        all_time_high_by_code = all_time_high_result if isinstance(all_time_high_result, dict) else {}
         latest_trade_date: Optional[str] = None
         for code, latest in latest_by_code.items():
             if latest and (latest_trade_date is None or latest > latest_trade_date):
@@ -211,7 +242,9 @@ class HkStockService:
         # 批量获取最新交易日行情，并复用同一批日线计算最新 BOLL。
         latest_bars_by_code: Dict[str, Dict[str, Any]] = {}
         if latest_trade_date:
-            batch_start = _fmt_date(_parse_yyyymmdd(latest_trade_date) - timedelta(days=90))
+            batch_start = _fmt_date(
+                _parse_yyyymmdd(latest_trade_date) - timedelta(days=DEFAULT_LOOKBACK_DAYS)
+            )
             batch_bars = self._db.list_hk_stock_daily_bars_batch(
                 codes,
                 start_date=batch_start,
@@ -236,11 +269,27 @@ class HkStockService:
                     }
                     if entry["pct_change"] is None:
                         entry["pct_change"] = _safe_float(latest_bar.pct_chg)
-                    closes = [
-                        _safe_float(getattr(bar, "close", None))
-                        for bar in bar_list
-                        if _safe_float(getattr(bar, "close", None)) is not None
-                    ]
+                    dated_closes = []
+                    for bar in bar_list:
+                        close = _safe_float(getattr(bar, "close", None))
+                        if close is not None and close > 0:
+                            dated_closes.append((bar.trade_date, close))
+                    closes = [close for _, close in dated_closes]
+                    latest_consecutive_drawdown = _latest_consecutive_drawdown(dated_closes)
+                    if latest_consecutive_drawdown:
+                        drawdown_pct, decline_days, start_date, end_date = latest_consecutive_drawdown
+                        entry["latest_consecutive_drawdown_pct"] = drawdown_pct
+                        entry["latest_consecutive_drawdown_days"] = decline_days
+                        entry["latest_consecutive_drawdown_start_date"] = start_date
+                        entry["latest_consecutive_drawdown_end_date"] = end_date
+                    all_time_high = _safe_float(all_time_high_by_code.get(code))
+                    latest_price = _safe_float(entry["latest_price"])
+                    if all_time_high is not None and all_time_high > 0 and latest_price is not None:
+                        entry["high_n_price"] = round(all_time_high, 4)
+                        entry["drawdown_pct"] = round(
+                            (latest_price - all_time_high) / all_time_high * 100,
+                            2,
+                        )
                     boll = _compute_boll_realtime(closes)
                     if boll:
                         close, mid, upper, lower = boll
@@ -272,6 +321,12 @@ class HkStockService:
                         "boll_mid_dist_pct",
                         "boll_upper_dist_pct",
                         "boll_lower_dist_pct",
+                        "high_n_price",
+                        "drawdown_pct",
+                        "latest_consecutive_drawdown_pct",
+                        "latest_consecutive_drawdown_days",
+                        "latest_consecutive_drawdown_start_date",
+                        "latest_consecutive_drawdown_end_date",
                     ):
                         d[key] = bar_entry.get(key)
             elif latest_trade_date:
@@ -285,6 +340,12 @@ class HkStockService:
             d.setdefault("boll_mid_dist_pct", None)
             d.setdefault("boll_upper_dist_pct", None)
             d.setdefault("boll_lower_dist_pct", None)
+            d.setdefault("high_n_price", None)
+            d.setdefault("drawdown_pct", None)
+            d.setdefault("latest_consecutive_drawdown_pct", None)
+            d.setdefault("latest_consecutive_drawdown_days", None)
+            d.setdefault("latest_consecutive_drawdown_start_date", None)
+            d.setdefault("latest_consecutive_drawdown_end_date", None)
             items.append(d)
 
         self._list_cache = {

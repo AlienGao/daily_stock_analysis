@@ -35,6 +35,30 @@ const calcDistPct = (price?: number | null, band?: number | null) => {
 
 const DEFAULT_TABLE_SORT = { columnKey: 'pct_change', order: 'descend' as SortOrder };
 
+const calcLatestConsecutiveDrawdown = (
+  bars: Array<{ date: string; close: number }>,
+): { pct: number; days: number; startDate: string; endDate: string } | null => {
+  let endIdx = bars.length - 1;
+  while (endIdx > 0) {
+    while (endIdx > 0 && bars[endIdx].close >= bars[endIdx - 1].close) endIdx -= 1;
+    if (endIdx <= 0) return null;
+
+    let startIdx = endIdx;
+    while (startIdx > 0 && bars[startIdx].close < bars[startIdx - 1].close) startIdx -= 1;
+    const days = endIdx - startIdx;
+    if (days >= 2) {
+      return {
+        pct: Number((((bars[endIdx].close - bars[startIdx].close) / bars[startIdx].close) * 100).toFixed(2)),
+        days,
+        startDate: bars[startIdx].date,
+        endDate: bars[endIdx].date,
+      };
+    }
+    endIdx = startIdx - 1;
+  }
+  return null;
+};
+
 const patchItemFromKlines = (item: HkStockListItem, klines: HkStockKLineItem[]): HkStockListItem => {
   const bars = klines.filter(bar => bar.close != null && Number.isFinite(bar.close));
   const latest = bars.at(-1);
@@ -42,6 +66,17 @@ const patchItemFromKlines = (item: HkStockListItem, klines: HkStockKLineItem[]):
 
   const prev = [...bars].reverse().find(bar => bar.date < latest.date && bar.close > 0);
   const pctChange = prev ? Number((((latest.close - prev.close) / prev.close) * 100).toFixed(2)) : item.pct_change;
+
+  const loadedHighs = klines
+    .map(bar => bar.high)
+    .filter((high): high is number => high != null && Number.isFinite(high) && high > 0);
+  const highNPrice = item.high_n_price != null
+    ? Math.max(item.high_n_price, latest.close, ...loadedHighs)
+    : null;
+  const drawdownPct = highNPrice != null && highNPrice > 0 && latest.close > 0
+    ? Number((((latest.close - highNPrice) / highNPrice) * 100).toFixed(2))
+    : item.drawdown_pct ?? null;
+  const latestConsecutiveDrawdown = calcLatestConsecutiveDrawdown(bars);
 
   return {
     ...item,
@@ -53,6 +88,14 @@ const patchItemFromKlines = (item: HkStockListItem, klines: HkStockKLineItem[]):
     boll_mid_dist_pct: calcDistPct(latest.close, latest.boll_mid) ?? item.boll_mid_dist_pct ?? null,
     boll_upper_dist_pct: calcDistPct(latest.close, latest.boll_upper) ?? item.boll_upper_dist_pct ?? null,
     boll_lower_dist_pct: calcDistPct(latest.close, latest.boll_lower) ?? item.boll_lower_dist_pct ?? null,
+    high_n_price: highNPrice,
+    drawdown_pct: drawdownPct,
+    latest_consecutive_drawdown_pct: latestConsecutiveDrawdown?.pct ?? item.latest_consecutive_drawdown_pct ?? null,
+    latest_consecutive_drawdown_days: latestConsecutiveDrawdown?.days ?? item.latest_consecutive_drawdown_days ?? null,
+    latest_consecutive_drawdown_start_date: latestConsecutiveDrawdown?.startDate
+      ?? item.latest_consecutive_drawdown_start_date ?? null,
+    latest_consecutive_drawdown_end_date: latestConsecutiveDrawdown?.endDate
+      ?? item.latest_consecutive_drawdown_end_date ?? null,
   };
 };
 
@@ -153,17 +196,36 @@ const BollPickColumn: React.FC<{
 const BollPickPanel: React.FC<{
   loading: boolean;
   picks: HkBollPickItem[];
+  drawdownItems: HkStockListItem[];
   activeHkCode: string;
   onSelect: (hkCode: string) => void;
   className?: string;
-}> = ({ loading, picks, activeHkCode, onSelect, className = '' }) => {
+}> = ({ loading, picks, drawdownItems, activeHkCode, onSelect, className = '' }) => {
   const upperPicks = useMemo(() => picks.filter(p => p.band === 'upper'), [picks]);
   const midPicks = useMemo(() => picks.filter(p => p.band === 'mid'), [picks]);
   const lowerPicks = useMemo(() => picks.filter(p => p.band === 'lower'), [picks]);
+  const recentDrawdowns = useMemo(() => drawdownItems
+    .filter(item => (item.latest_consecutive_drawdown_days ?? 0) >= 2 && item.latest_consecutive_drawdown_pct != null)
+    .sort((a, b) => (a.latest_consecutive_drawdown_pct ?? 0) - (b.latest_consecutive_drawdown_pct ?? 0))
+    .slice(0, 8), [drawdownItems]);
 
   return (
     <div className={`flex h-full max-h-full min-h-0 flex-col overflow-hidden rounded-xl border border-border/20 bg-card/40 ${className}`}>
       <div className="shrink-0 border-b border-border/20 px-3 py-2">
+        <div className="mb-2 rounded-lg border border-border/15 bg-muted/10 p-2">
+          <div className="text-xs font-medium text-foreground">最近结束的最高回撤</div>
+          <div className="mt-1 space-y-1">
+            {recentDrawdowns.length ? recentDrawdowns.map(item => (
+              <button type="button" key={item.hk_code} onClick={() => onSelect(item.hk_code)} className="grid w-full grid-cols-3 items-center gap-2 rounded px-1 py-0.5 text-left text-[10px] hover:bg-muted/30">
+                <span className="min-w-0 truncate text-foreground">{item.name || item.hk_code}</span>
+                <span className="truncate whitespace-nowrap text-center font-mono text-[9px] text-tertiary-text">
+                  {item.latest_consecutive_drawdown_start_date || '--'} ~ {item.latest_consecutive_drawdown_end_date || '--'}
+                </span>
+                <span className="text-right font-mono text-emerald-400">{fmtPct(item.latest_consecutive_drawdown_pct)}</span>
+              </button>
+            )) : <div className="py-1 text-[10px] text-tertiary-text">暂无最近连续回撤</div>}
+          </div>
+        </div>
         <div className="text-sm font-medium text-foreground">BOLL 推荐</div>
         <div className="mt-0.5 text-[11px] text-tertiary-text">收盘价距 BOLL(20,2) 轨道 ±1.5%</div>
       </div>
@@ -296,10 +358,10 @@ const HkMonitorPage: React.FC = () => {
 
   const columns: ColumnsType<HkStockListItem> = useMemo(() => [
     {
-      title: '名称 / 代码',
+      title: <span className="whitespace-nowrap">名称 / 代码</span>,
       dataIndex: 'name',
       key: 'name',
-      width: 160,
+      width: 112,
       render: (v: string | null, record) => (
         <span className="block min-w-0">
           <span className="block max-w-full truncate whitespace-nowrap text-sm font-medium text-foreground" title={v || undefined}>{v || '--'}</span>
@@ -308,7 +370,7 @@ const HkMonitorPage: React.FC = () => {
       ),
     },
     {
-      title: '最新价',
+      title: <span className="whitespace-nowrap">最新价</span>,
       dataIndex: 'latest_price',
       align: 'right',
       render: (v: number | null) => (
@@ -316,7 +378,7 @@ const HkMonitorPage: React.FC = () => {
       ),
     },
     {
-      title: '距上轨',
+      title: <span className="whitespace-nowrap">距上轨</span>,
       dataIndex: 'boll_upper_dist_pct',
       key: 'boll_upper_dist_pct',
       align: 'right',
@@ -327,7 +389,7 @@ const HkMonitorPage: React.FC = () => {
       ),
     },
     {
-      title: '距中轨',
+      title: <span className="whitespace-nowrap">距中轨</span>,
       dataIndex: 'boll_mid_dist_pct',
       key: 'boll_mid_dist_pct',
       align: 'right',
@@ -338,7 +400,7 @@ const HkMonitorPage: React.FC = () => {
       ),
     },
     {
-      title: '距下轨',
+      title: <span className="whitespace-nowrap">距下轨</span>,
       dataIndex: 'boll_lower_dist_pct',
       key: 'boll_lower_dist_pct',
       align: 'right',
@@ -349,7 +411,7 @@ const HkMonitorPage: React.FC = () => {
       ),
     },
     {
-      title: '轨道宽度',
+      title: <span className="whitespace-nowrap">轨道宽度</span>,
       key: 'boll_band_width_pct',
       align: 'right',
       sorter: compareBollBandWidth,
@@ -364,7 +426,61 @@ const HkMonitorPage: React.FC = () => {
       },
     },
     {
-      title: '涨跌幅',
+      title: <span className="whitespace-nowrap">最高回撤</span>,
+      dataIndex: 'drawdown_pct',
+      key: 'drawdown_pct',
+      align: 'right',
+      width: 112,
+      sorter: (a, b) => (a.drawdown_pct ?? Number.NEGATIVE_INFINITY) - (b.drawdown_pct ?? Number.NEGATIVE_INFINITY),
+      sortOrder: tableSort.columnKey === 'drawdown_pct' ? tableSort.order : null,
+      render: (v: number | null | undefined, record) => (
+        <span
+          className={`font-mono text-xs tabular-nums ${v != null ? 'text-amber-400' : 'text-tertiary-text'}`}
+          title={record.high_n_price != null ? `数据库历史最高价 ${fmtPrice(record.high_n_price)}` : undefined}
+        >
+          {v != null ? `${v.toFixed(2)}%` : '--'}
+        </span>
+      ),
+    },
+    {
+      title: <span className="whitespace-nowrap">连续回撤</span>,
+      dataIndex: 'latest_consecutive_drawdown_pct',
+      key: 'latest_consecutive_drawdown_pct',
+      align: 'right',
+      width: 112,
+      sorter: (a, b) => (a.latest_consecutive_drawdown_pct ?? Number.NEGATIVE_INFINITY)
+        - (b.latest_consecutive_drawdown_pct ?? Number.NEGATIVE_INFINITY),
+      sortOrder: tableSort.columnKey === 'latest_consecutive_drawdown_pct' ? tableSort.order : null,
+      render: (v: number | null | undefined, record) => {
+        const startDate = record.latest_consecutive_drawdown_start_date;
+        const endDate = record.latest_consecutive_drawdown_end_date;
+        const shortDate = (date?: string | null) => date
+          ? `${date.replaceAll('-', '').slice(4, 6)}-${date.replaceAll('-', '').slice(6, 8)}`
+          : '--';
+        const fullDate = (date?: string | null) => date
+          ? date.replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3')
+          : '--';
+        return (
+          <span
+            className="block font-mono tabular-nums"
+            title={record.latest_consecutive_drawdown_days != null
+              ? `最近一次连续下跌 ${record.latest_consecutive_drawdown_days} 个交易日：${fullDate(startDate)} 至 ${fullDate(endDate)}`
+              : undefined}
+          >
+            <span className={`block text-xs ${v != null ? 'text-orange-400' : 'text-tertiary-text'}`}>
+              {v != null ? `${v.toFixed(2)}%` : '--'}
+            </span>
+            {startDate && endDate && (
+              <span className="mt-0.5 block whitespace-nowrap text-[10px] leading-none text-tertiary-text">
+                {shortDate(startDate)} → {shortDate(endDate)}
+              </span>
+            )}
+          </span>
+        );
+      },
+    },
+    {
+      title: <span className="whitespace-nowrap">涨跌幅</span>,
       dataIndex: 'pct_change',
       key: 'pct_change',
       align: 'right',
@@ -465,11 +581,12 @@ const HkMonitorPage: React.FC = () => {
                 }}
               />
             </div>
-            <div className="sticky top-2 hidden min-h-[calc(100vh-8rem)] w-[520px] shrink-0 overflow-hidden lg:block xl:w-[560px]"
+            <div className="sticky top-2 hidden min-h-[calc(100vh-8rem)] w-[440px] shrink-0 overflow-hidden lg:block xl:w-[480px]"
               style={panelHeight ? { height: panelHeight, maxHeight: panelHeight } : { minHeight: "calc(100vh - 8rem)" }}>
               <BollPickPanel
                 loading={bollLoading}
                 picks={bollPicks}
+                drawdownItems={items}
                 activeHkCode={expandedKey}
                 onSelect={locateStock}
               />
@@ -482,6 +599,7 @@ const HkMonitorPage: React.FC = () => {
               className="h-full max-h-full"
               loading={bollLoading}
               picks={bollPicks}
+              drawdownItems={items}
               activeHkCode={expandedKey}
               onSelect={locateStock}
             />

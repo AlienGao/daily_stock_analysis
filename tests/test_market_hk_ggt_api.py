@@ -41,6 +41,12 @@ def test_list_hk_stocks_passes_refresh_flag():
             "name": "腾讯控股",
             "latest_price": 510.0,
             "pct_change": 2.0,
+            "high_n_price": 600.0,
+            "drawdown_pct": -15.0,
+            "latest_consecutive_drawdown_pct": -6.5,
+            "latest_consecutive_drawdown_days": 3,
+            "latest_consecutive_drawdown_start_date": "20260701",
+            "latest_consecutive_drawdown_end_date": "20260706",
         }],
     }
     with patch("api.v1.endpoints.market.HkStockService") as mock_cls:
@@ -50,6 +56,12 @@ def test_list_hk_stocks_passes_refresh_flag():
     assert resp.status_code == 200
     mock_cls.return_value.list_components.assert_called_once_with(refresh=True)
     assert resp.json()["items"][0]["hk_code"] == "00700"
+    assert resp.json()["items"][0]["high_n_price"] == 600.0
+    assert resp.json()["items"][0]["drawdown_pct"] == -15.0
+    assert resp.json()["items"][0]["latest_consecutive_drawdown_pct"] == -6.5
+    assert resp.json()["items"][0]["latest_consecutive_drawdown_days"] == 3
+    assert resp.json()["items"][0]["latest_consecutive_drawdown_start_date"] == "20260701"
+    assert resp.json()["items"][0]["latest_consecutive_drawdown_end_date"] == "20260706"
 
 
 def test_get_hk_ggt_minutes():

@@ -19,10 +19,11 @@ def _component(code: str, name: str):
     )
 
 
-def _bar(trade_date: str, close: float, pct_chg: float | None = None):
+def _bar(trade_date: str, close: float, pct_chg: float | None = None, high: float | None = None):
     return SimpleNamespace(
         hk_code="",
         trade_date=trade_date,
+        high=close if high is None else high,
         close=close,
         pct_chg=pct_chg,
     )
@@ -39,6 +40,10 @@ def test_list_components_uses_latest_market_trade_date_pct_change():
         "00700": "20260630",
         "09988": "20260629",
     }
+    db.batch_get_hk_stock_all_time_high.return_value = {
+        "00700": 500.0,
+        "09988": 180.0,
+    }
 
     db.list_hk_stock_daily_bars_batch.return_value = {
         "00700": [
@@ -54,8 +59,12 @@ def test_list_components_uses_latest_market_trade_date_pct_change():
     by_code = {item["hk_code"]: item for item in result["items"]}
     assert by_code["00700"]["latest_price"] == 410.0
     assert by_code["00700"]["pct_change"] == 2.5
+    assert by_code["00700"]["high_n_price"] == 500.0
+    assert by_code["00700"]["drawdown_pct"] == -18.0
     assert by_code["09988"]["latest_price"] is None
     assert by_code["09988"]["pct_change"] is None
+    assert by_code["09988"]["high_n_price"] is None
+    assert by_code["09988"]["drawdown_pct"] is None
 
 
 def test_list_components_recomputes_pct_change_from_latest_two_closes():
@@ -109,6 +118,56 @@ def test_list_components_includes_latest_boll_distances():
     assert item["boll_mid_dist_pct"] == 8.6
     assert item["boll_upper_dist_pct"] == -1.67
     assert item["boll_lower_dist_pct"] == 21.25
+
+
+def test_list_components_includes_latest_drawdown_from_database_all_time_high():
+    db = MagicMock()
+    db.get_latest_hk_ggt_trade_date.return_value = "20260706"
+    db.list_hk_ggt_components.return_value = [_component("00700", "腾讯控股")]
+    db.batch_get_latest_hk_stock_daily_trade_date.return_value = {"00700": "20260706"}
+    db.batch_get_hk_stock_all_time_high.return_value = {"00700": 200.0}
+    db.list_hk_stock_daily_bars_batch.return_value = {
+        "00700": [
+            _bar("20260701", 100.0),
+            _bar("20260702", 120.0, high=150.0),
+            _bar("20260703", 110.0),
+            _bar("20260706", 90.0),
+        ],
+    }
+
+    result = HkStockService(db=db).list_components()
+
+    item = result["items"][0]
+    assert item["high_n_price"] == 200.0
+    assert item["drawdown_pct"] == -55.0
+    assert item["latest_consecutive_drawdown_pct"] == -25.0
+    assert item["latest_consecutive_drawdown_days"] == 2
+    assert item["latest_consecutive_drawdown_start_date"] == "20260702"
+    assert item["latest_consecutive_drawdown_end_date"] == "20260706"
+
+
+def test_list_components_skips_single_day_drop_for_latest_consecutive_drawdown():
+    db = MagicMock()
+    db.get_latest_hk_ggt_trade_date.return_value = "20260707"
+    db.list_hk_ggt_components.return_value = [_component("00700", "腾讯控股")]
+    db.batch_get_latest_hk_stock_daily_trade_date.return_value = {"00700": "20260707"}
+    db.batch_get_hk_stock_all_time_high.return_value = {"00700": 150.0}
+    db.list_hk_stock_daily_bars_batch.return_value = {
+        "00700": [
+            _bar("20260701", 100.0),
+            _bar("20260702", 95.0),
+            _bar("20260703", 90.0),
+            _bar("20260706", 92.0),
+            _bar("20260707", 91.0),
+        ],
+    }
+
+    item = HkStockService(db=db).list_components()["items"][0]
+
+    assert item["latest_consecutive_drawdown_pct"] == -10.0
+    assert item["latest_consecutive_drawdown_days"] == 2
+    assert item["latest_consecutive_drawdown_start_date"] == "20260701"
+    assert item["latest_consecutive_drawdown_end_date"] == "20260703"
 
 
 def test_list_components_fills_blank_name_from_stock_index():
