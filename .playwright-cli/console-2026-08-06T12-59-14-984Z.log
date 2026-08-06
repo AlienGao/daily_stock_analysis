@@ -1,0 +1,6 @@
+[     266ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:5173/?token=HYELQtzIrPsB' failed: Error during WebSocket handshake: Unexpected response code: 400 @ http://127.0.0.1:5174/@vite/client:744
+[     266ms] [ERROR] [vite] failed to connect to websocket (Error: WebSocket closed without opened.).  @ http://127.0.0.1:5174/@vite/client:771
+[     267ms] Error: WebSocket closed without opened.
+    at WebSocket.<anonymous> (http://127.0.0.1:5174/@vite/client:423:30)
+[    4972ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://127.0.0.1:5174/@fs/tmp/.vite-hk-cache/deps/chunk-VYOQ3BWM.js?v=ac96d92f:5
+[    5106ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:5174/api/v1/auth/status:0

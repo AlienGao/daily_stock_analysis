@@ -414,6 +414,7 @@ const HkMonitorPage: React.FC = () => {
       title: <span className="whitespace-nowrap">轨道宽度</span>,
       key: 'boll_band_width_pct',
       align: 'right',
+      width: 100,
       sorter: compareBollBandWidth,
       sortOrder: tableSort.columnKey === 'boll_band_width_pct' ? tableSort.order : null,
       render: (_v, record) => {
@@ -430,7 +431,7 @@ const HkMonitorPage: React.FC = () => {
       dataIndex: 'drawdown_pct',
       key: 'drawdown_pct',
       align: 'right',
-      width: 112,
+      width: 100,
       sorter: (a, b) => (a.drawdown_pct ?? Number.NEGATIVE_INFINITY) - (b.drawdown_pct ?? Number.NEGATIVE_INFINITY),
       sortOrder: tableSort.columnKey === 'drawdown_pct' ? tableSort.order : null,
       render: (v: number | null | undefined, record) => (
@@ -447,7 +448,7 @@ const HkMonitorPage: React.FC = () => {
       dataIndex: 'latest_consecutive_drawdown_pct',
       key: 'latest_consecutive_drawdown_pct',
       align: 'right',
-      width: 112,
+      width: 100,
       sorter: (a, b) => (a.latest_consecutive_drawdown_pct ?? Number.NEGATIVE_INFINITY)
         - (b.latest_consecutive_drawdown_pct ?? Number.NEGATIVE_INFINITY),
       sortOrder: tableSort.columnKey === 'latest_consecutive_drawdown_pct' ? tableSort.order : null,

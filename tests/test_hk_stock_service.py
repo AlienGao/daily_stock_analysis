@@ -271,7 +271,7 @@ def test_list_components_refreshes_latest_prices_before_pct_change_sorting():
 
     backfill.assert_called_once_with(
         codes=["00668", "01876"],
-        start_date="20260723",
+        start_date="20260131",
         end_date="20260730",
     )
     refreshed_by_code = {item["hk_code"]: item for item in refreshed["items"]}

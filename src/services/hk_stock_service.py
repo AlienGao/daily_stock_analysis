@@ -196,7 +196,7 @@ class HkStockService:
         """返回所有港股通成份股快照（从 hk_ggt_component 表读取最新交易日）。
 
         默认仅查 DB，不触发网络刷新或 BOLL 计算，确保接口快速返回。
-        手动 refresh 时先强制刷新成份快照和近期日线，再读取最新快照供港股页面展示。
+        手动 refresh 时先强制刷新成份快照和最近 180 个自然日日线，再读取最新快照供港股页面展示。
         """
         now = _time.time()
         if (
@@ -224,7 +224,7 @@ class HkStockService:
             try:
                 self.backfill_daily(
                     codes=codes,
-                    start_date=_fmt_date(market_today - timedelta(days=7)),
+                    start_date=_fmt_date(market_today - timedelta(days=DEFAULT_LOOKBACK_DAYS)),
                     end_date=_fmt_date(market_today),
                 )
             except Exception as exc:

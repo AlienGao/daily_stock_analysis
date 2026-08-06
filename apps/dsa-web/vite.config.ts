@@ -213,7 +213,10 @@ const getVendorChunkName = (id: string): string | undefined => {
 
 // https://vite.dev/config/
 export default defineConfig({
-  cacheDir: '/tmp/.vite-hk-cache',
+  // Keep dependency optimization cache scoped to this checkout. A shared /tmp
+  // cache can survive dependency/source changes and make Vite return 504
+  // "Outdated Optimize Dep" responses, which leaves the app blank on startup.
+  cacheDir: path.resolve(__dirname, 'node_modules/.vite'),
   define: {
     __APP_PACKAGE_VERSION__: JSON.stringify(appVersion),
     __APP_REVISION__: JSON.stringify(appRevision),

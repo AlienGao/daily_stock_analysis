@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 > For user-friendly release highlights, see the [GitHub Releases](https://github.com/ZhuLinsen/daily_stock_analysis/releases) page.
 
 ## [Unreleased]
+- [修复] 港股通成份刷新时回填最近 180 个自然日日线，避免新纳入成份股仅保留近期行情
 - [改进] 港股监控右侧 BOLL 推荐上方增加最近结束的最高连续回撤个股列表
 
 - [新功能] 港股通监控左侧列表新增最近一次连续回撤列，展示最近一段至少连续 2 个交易日收跌的累计跌幅及回撤起止日期
