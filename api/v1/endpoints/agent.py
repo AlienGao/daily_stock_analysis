@@ -11,12 +11,14 @@ import threading
 import uuid
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
+from api.deps import get_agent_chat_session_service
 from api.v1.schemas.system_config import AgentBackendStatusResponse
 from src.config import get_config
+from src.services.agent_chat_session_service import AgentChatSessionService
 from src.services.agent_model_service import list_agent_model_deployments
 
 # Tool name -> Chinese display name mapping
@@ -77,6 +79,8 @@ def _build_agent_chat_context(
 ) -> Dict[str, Any]:
     """Build the shared context contract for regular and streaming Agent Chat."""
     context = dict(base_context if base_context is not None else request.context or {})
+    context.pop("skills", None)
+    context.pop("strategies", None)
     if skills is not None:
         context["skills"] = skills
     report_language = context.get("report_language")
@@ -202,7 +206,10 @@ async def get_strategies():
     )
 
 @router.post("/chat", response_model=ChatResponse)
-async def agent_chat(request: ChatRequest):
+async def agent_chat(
+    request: ChatRequest,
+    session_service: AgentChatSessionService = Depends(get_agent_chat_session_service),
+):
     """
     Chat with the AI Agent without progress events.
 
@@ -224,7 +231,13 @@ async def agent_chat(request: ChatRequest):
     session_id = request.session_id or str(uuid.uuid4())
     
     try:
-        skills = request.effective_skills
+        skill_selection = session_service.resolve_skill_selection(
+            config,
+            session_id,
+            request.effective_skills,
+        )
+        skills = skill_selection.effective_skill_ids
+        selected_skill_ids = skill_selection.selected_skill_ids_update
         executor = _build_executor(config, skills or None)
 
         ctx = _enrich_chat_context(request.message, request.context)
@@ -235,7 +248,7 @@ async def agent_chat(request: ChatRequest):
         result = await loop.run_in_executor(
             None,
             lambda: executor.chat(message=request.message, session_id=session_id,
-                                  context=ctx),
+                                  context=ctx, selected_skill_ids=selected_skill_ids),
         )
 
         return ChatResponse(
@@ -261,13 +274,21 @@ class SessionItem(BaseModel):
 class SessionsResponse(BaseModel):
     sessions: List[SessionItem]
 
+class SessionStateResponse(BaseModel):
+    selected_skill_ids: Optional[List[str]]
+
 class SessionMessagesResponse(BaseModel):
     session_id: str
     messages: List[Dict[str, Any]]
+    session_state: SessionStateResponse
 
 
 @router.get("/chat/sessions", response_model=SessionsResponse)
-async def list_chat_sessions(limit: int = 50, user_id: Optional[str] = None):
+async def list_chat_sessions(
+    limit: int = 50,
+    user_id: Optional[str] = None,
+    session_service: AgentChatSessionService = Depends(get_agent_chat_session_service),
+):
     """获取聊天会话列表
 
     Args:
@@ -278,28 +299,37 @@ async def list_chat_sessions(limit: int = 50, user_id: Optional[str] = None):
             include the platform prefix, e.g. ``telegram_12345``,
             ``feishu_ou_abc``.
     """
-    from src.storage import get_db
-    sessions = get_db().get_chat_sessions(
-        limit=limit,
-        session_prefix=user_id,
-        extra_session_ids=[user_id] if user_id else None,
-    )
+    sessions = session_service.list_sessions(limit, user_id)
     return SessionsResponse(sessions=sessions)
 
 
 @router.get("/chat/sessions/{session_id}", response_model=SessionMessagesResponse)
-async def get_chat_session_messages(session_id: str, limit: int = 100):
+async def get_chat_session_messages(
+    session_id: str,
+    limit: int = 100,
+    session_service: AgentChatSessionService = Depends(get_agent_chat_session_service),
+):
     """获取单个会话的完整消息"""
-    from src.storage import get_db
-    messages = get_db().get_conversation_messages(session_id, limit=limit)
-    return SessionMessagesResponse(session_id=session_id, messages=messages)
+    detail = session_service.get_session_detail(
+        session_id,
+        limit,
+    )
+    return SessionMessagesResponse(
+        session_id=session_id,
+        messages=detail.messages,
+        session_state=SessionStateResponse(
+            selected_skill_ids=detail.selected_skill_ids,
+        ),
+    )
 
 
 @router.delete("/chat/sessions/{session_id}")
-async def delete_chat_session(session_id: str):
+async def delete_chat_session(
+    session_id: str,
+    session_service: AgentChatSessionService = Depends(get_agent_chat_session_service),
+):
     """删除指定会话"""
-    from src.storage import get_db
-    count = get_db().delete_conversation_session(session_id)
+    count = session_service.delete_session(session_id)
     return {"deleted": count}
 
 
@@ -385,10 +415,18 @@ def _try_resolve_stock_code_from_message(message: str) -> Optional[str]:
         if resolved:
             return resolved
 
-    # 3) Token-level fallback for code-like fragments.
+    # 3) Token-level fallback for explicit code-like fragments. Lowercase
+    # prose such as "check risk" or "follow up" must not become US tickers.
     for token in re.split(r"[\s,，;；:：|/()（）\[\]【】]+", text):
         token = token.strip()
         if not token:
+            continue
+        is_numeric_code = token.isdigit() and len(token) in (5, 6)
+        is_explicit_us_ticker = (
+            token == token.upper()
+            and re.fullmatch(r"[A-Z]{1,5}(?:\.[A-Z])?", token) is not None
+        )
+        if not is_numeric_code and not is_explicit_us_ticker:
             continue
         resolved = resolve_name_to_code(token)
         if resolved:
@@ -515,7 +553,10 @@ async def agent_research(request: ResearchRequest):
 
 
 @router.post("/chat/stream")
-async def agent_chat_stream(request: ChatRequest):
+async def agent_chat_stream(
+    request: ChatRequest,
+    session_service: AgentChatSessionService = Depends(get_agent_chat_session_service),
+):
     """
     Chat with the AI Agent, streaming progress via SSE.
     Each SSE event is a JSON object with a 'type' field:
@@ -539,6 +580,21 @@ async def agent_chat_stream(request: ChatRequest):
     queue: asyncio.Queue = asyncio.Queue()
     cancel_event = threading.Event()
     request_id = request.request_id or str(uuid.uuid4())
+    skill_selection = session_service.resolve_skill_selection(
+        config,
+        session_id,
+        request.effective_skills,
+    )
+    skills = skill_selection.effective_skill_ids
+    selected_skill_ids = skill_selection.selected_skill_ids_update
+    stream_ctx = _enrich_chat_context(request.message, request.context)
+    stream_ctx = _build_agent_chat_context(
+        request,
+        config,
+        skills,
+        base_context=stream_ctx,
+    )
+
     if backend_id == "codex_app_server":
         with _ACTIVE_CODEX_STREAMS_LOCK:
             if request_id in _ACTIVE_CODEX_STREAMS:
@@ -550,10 +606,6 @@ async def agent_chat_stream(request: ChatRequest):
                     },
                 )
             _ACTIVE_CODEX_STREAMS[request_id] = cancel_event
-
-    skills = request.effective_skills
-    stream_ctx = _enrich_chat_context(request.message, request.context)
-    stream_ctx = _build_agent_chat_context(request, config, skills, base_context=stream_ctx)
 
     def progress_callback(event: dict):
         if backend_id == "codex_app_server" and cancel_event.is_set():
@@ -610,6 +662,7 @@ async def agent_chat_stream(request: ChatRequest):
                     message=request.message,
                     session_id=session_id,
                     context=stream_ctx,
+                    selected_skill_ids=selected_skill_ids,
                 )
             except asyncio.CancelledError:
                 raise

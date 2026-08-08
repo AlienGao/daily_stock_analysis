@@ -93,6 +93,7 @@ static/
 /apps/dsa-web/dist/
 /apps/dsa-web/data/
 /apps/dsa-web/logs/
+/node_modules/
 
 .playwright-mcp
 .codex

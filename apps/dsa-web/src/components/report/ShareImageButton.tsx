@@ -10,7 +10,7 @@ type DesktopWindow = Window & {
   dsaDesktop?: unknown;
 };
 
-type ShareState = 'idle' | 'loading' | 'success' | 'error';
+type ShareState = 'idle' | 'loading' | 'ready' | 'success' | 'error';
 
 interface ShareImageButtonProps {
   recordId?: number;
@@ -93,6 +93,7 @@ export const ShareImageButton: React.FC<ShareImageButtonProps> = ({
     let blob = cachedImageRef.current?.recordId === activeRecordId
       ? cachedImageRef.current.blob
       : null;
+    let generatedNow = false;
 
     if (!blob) {
       const loadToken = loadTokenRef.current + 1;
@@ -108,6 +109,7 @@ export const ShareImageButton: React.FC<ShareImageButtonProps> = ({
       }
       if (loadTokenRef.current !== loadToken) return;
       cachedImageRef.current = { recordId: activeRecordId, blob };
+      generatedNow = true;
     }
 
     const filename = `${safeFilenamePart(reportTitle)}-${activeRecordId}.png`;
@@ -115,6 +117,14 @@ export const ShareImageButton: React.FC<ShareImageButtonProps> = ({
     const canShareFile = typeof navigator.share === 'function'
       && typeof navigator.canShare === 'function'
       && navigator.canShare({ files: [file] });
+
+    // A file cannot be shared before it exists, while navigator.share() must run
+    // inside a transient user-activation event. Prepare on the first click and
+    // let the next click invoke native sharing synchronously.
+    if (generatedNow && canShareFile) {
+      setState('ready');
+      return;
+    }
 
     setState('loading');
     try {
@@ -126,7 +136,7 @@ export const ShareImageButton: React.FC<ShareImageButtonProps> = ({
           });
         } catch (error) {
           if (error instanceof DOMException && error.name === 'AbortError') {
-            setState('idle');
+            setState('ready');
             return;
           }
           console.warn('Native file sharing failed; falling back to download:', error);
@@ -148,6 +158,8 @@ export const ShareImageButton: React.FC<ShareImageButtonProps> = ({
 
   const tooltipText = state === 'loading'
     ? text.generatingShareImage
+    : state === 'ready'
+      ? text.shareImageReadyToShare
     : state === 'success'
       ? text.shareImageReady
       : state === 'error'
@@ -167,7 +179,7 @@ export const ShareImageButton: React.FC<ShareImageButtonProps> = ({
           {state === 'loading' ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> : null}
           {state === 'success' ? <Check className="h-5 w-5 text-success" aria-hidden="true" /> : null}
           {state === 'error' ? <TriangleAlert className="h-5 w-5 text-danger" aria-hidden="true" /> : null}
-          {state === 'idle' ? <Share2 className="h-5 w-5" aria-hidden="true" /> : null}
+          {state === 'idle' || state === 'ready' ? <Share2 className="h-5 w-5" aria-hidden="true" /> : null}
           <span>{tooltipText}</span>
         </button>
       </span>

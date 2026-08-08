@@ -1304,12 +1304,6 @@ class NotificationService(
                     f"{labels['score_label']} {r.sentiment_score} | "
                     f"{localize_trend_prediction(r.trend_prediction, report_language)}"
                 )
-                signal_excerpt = self._decision_signal_excerpt(r, report_language)
-                if signal_excerpt:
-                    report_lines.append(signal_excerpt)
-            self._append_strategy_hits_top5(
-                report_lines, results, labels, report_language, wechat_compact=False
-            )
             report_lines.extend([
                 "",
                 "---",
@@ -1646,16 +1640,7 @@ class NotificationService(
                     f"{labels['score_label']} {r.sentiment_score} | "
                     f"{localize_trend_prediction(r.trend_prediction, report_language)}"
                 )
-                signal_excerpt = self._decision_signal_excerpt(r, report_language)
-                if signal_excerpt:
-                    lines.append(signal_excerpt)
-            self._append_strategy_hits_top5(
-                lines, results, labels, report_language, wechat_compact=True
-            )
         else:
-            self._append_strategy_hits_top5(
-                lines, results, labels, report_language, wechat_compact=True
-            )
             for result in sorted_results:
                 signal_text, signal_emoji, _ = self._get_signal_level(result)
                 dashboard = result.dashboard if hasattr(result, 'dashboard') and result.dashboard else {}

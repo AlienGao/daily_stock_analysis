@@ -137,6 +137,7 @@ vi.mock('../../components/settings', () => ({
         type="button"
         onClick={() => onDraftItemsChange?.([
           { key: 'LLM_CHANNELS', value: 'draft,backup' },
+          { key: 'LLM_DRAFT_API_SURFACE', value: 'responses' },
           { key: 'LITELLM_MODEL', value: 'openai/draft-model' },
           { key: 'GENERATION_BACKEND', value: 'codex_cli' },
         ])}
@@ -1241,6 +1242,7 @@ describe('SettingsPage', () => {
     await waitFor(() => {
       expect(statusItems).toHaveTextContent('GENERATION_BACKEND=litellm');
       expect(statusItems).toHaveTextContent('LLM_CHANNELS=draft,backup');
+      expect(statusItems).toHaveTextContent('LLM_DRAFT_API_SURFACE=responses');
       expect(statusItems).toHaveTextContent('LITELLM_MODEL=openai/draft-model');
       expect(statusItems).toHaveTextContent('OPENAI_MODEL=gpt-draft');
       expect(statusItems).toHaveTextContent('GEMINI_MODEL=gemini-draft');
@@ -1461,6 +1463,7 @@ describe('SettingsPage', () => {
     render(<SettingsPage />);
 
     expect(screen.getByRole('button', { name: '开启选股' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '查看配置项' })).not.toBeInTheDocument();
     expect(screen.queryByTestId('settings-field-SCREENING_ENABLED')).not.toBeInTheDocument();
   });
 

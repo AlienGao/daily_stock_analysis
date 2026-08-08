@@ -33,13 +33,44 @@ offline_test_suite() {
   # test silence, giving us a post-mortem root cause for any future
   # CI hang instead of ``backend-gate`` being silently cancelled by the
   # workflow timeout.
+  pytest_args=(
+    -m "not network"
+    --timeout=120 -o timeout_method=thread
+    -o faulthandler_timeout=300
+    --durations=30 --durations-min=0.5
+  )
+
   local portfolio_enabled
   portfolio_enabled="$(echo "${PORTFOLIO_MODULE_ENABLED:-false}" | tr '[:upper:]' '[:lower:]')"
-  if [[ "$portfolio_enabled" == "true" ]]; then
-    python -m pytest -m "not network"       --timeout=120 -o timeout_method=thread       -o faulthandler_timeout=300
-  else
-    python -m pytest -m "not network"       --timeout=120 -o timeout_method=thread       -o faulthandler_timeout=300       --ignore=tests/test_portfolio_api.py       --ignore=tests/test_portfolio_service.py       --ignore=tests/test_portfolio_pr2.py
+  if [[ "$portfolio_enabled" != "true" ]]; then
+    pytest_args+=(
+      --ignore=tests/test_portfolio_api.py
+      --ignore=tests/test_portfolio_service.py
+      --ignore=tests/test_portfolio_pr2.py
+    )
   fi
+
+  if [[ -n "${PYTEST_SPLITS:-}" || -n "${PYTEST_GROUP:-}" ]]; then
+    if [[ ! "${PYTEST_SPLITS:-}" =~ ^[1-9][0-9]*$ ]] \
+      || [[ ! "${PYTEST_GROUP:-}" =~ ^[1-9][0-9]*$ ]] \
+      || (( PYTEST_GROUP > PYTEST_SPLITS )); then
+      echo "PYTEST_SPLITS and PYTEST_GROUP must be positive integers with group <= splits." >&2
+      exit 2
+    fi
+    if [[ ! -f .github/ci-test-durations.json ]]; then
+      echo "Missing .github/ci-test-durations.json required for balanced CI shards." >&2
+      exit 2
+    fi
+    echo "==> backend-gate: pytest shard ${PYTEST_GROUP}/${PYTEST_SPLITS}"
+    python scripts/ci_test_shard.py \
+      --splits "${PYTEST_SPLITS}" \
+      --group "${PYTEST_GROUP}" \
+      --first-shard-overhead "${PYTEST_FIRST_SHARD_OVERHEAD:-0}" \
+      -- "${pytest_args[@]}"
+    return
+  fi
+
+  python -m pytest "${pytest_args[@]}"
 }
 
 run_all() {

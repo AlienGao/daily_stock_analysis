@@ -2003,7 +2003,8 @@ class TestOrchestratorExecution(unittest.TestCase):
         with patch.object(orch, "_execute_pipeline", side_effect=fake_execute):
             with patch("src.agent.orchestrator.build_visible_chat_history", return_value=history):
                 with patch("src.agent.conversation.conversation_manager.get_or_create"):
-                    with patch("src.agent.conversation.conversation_manager.add_message"):
+                    with patch("src.agent.conversation.conversation_manager.add_user_message"), \
+                         patch("src.agent.conversation.conversation_manager.add_message"):
                         orch.chat("hello", "session-1")
 
         self.assertEqual(captured["history"], history)
@@ -2016,7 +2017,8 @@ class TestOrchestratorExecution(unittest.TestCase):
         with patch.object(orch, "_execute_pipeline", return_value=OrchestratorResult(success=True, content="ok")):
             with patch("src.agent.orchestrator.build_visible_chat_history", return_value=[]) as build_history:
                 with patch("src.agent.conversation.conversation_manager.get_or_create"):
-                    with patch("src.agent.conversation.conversation_manager.add_message"):
+                    with patch("src.agent.conversation.conversation_manager.add_user_message"), \
+                         patch("src.agent.conversation.conversation_manager.add_message"):
                         orch.chat("hello", "session-1")
 
         build_history.assert_called_once()
@@ -2036,7 +2038,8 @@ class TestOrchestratorExecution(unittest.TestCase):
         with patch.object(orch, "_execute_pipeline", side_effect=fake_execute):
             with patch("src.agent.orchestrator.build_visible_chat_history", return_value=[]):
                 with patch("src.agent.conversation.conversation_manager.get_or_create"):
-                    with patch("src.agent.conversation.conversation_manager.add_message"):
+                    with patch("src.agent.conversation.conversation_manager.add_user_message"), \
+                         patch("src.agent.conversation.conversation_manager.add_message"):
                         orch.chat(
                             "换成 AAPL 看看",
                             "session-1",
@@ -2112,13 +2115,13 @@ class TestOrchestratorExecution(unittest.TestCase):
 
         with patch.object(orch, "_execute_pipeline", return_value=fake_result):
             with patch("src.agent.conversation.conversation_manager.get_or_create", return_value=fake_session):
-                with patch("src.agent.conversation.conversation_manager.add_message") as add_message:
+                with patch("src.agent.conversation.conversation_manager.add_user_message") as add_user_message, \
+                     patch("src.agent.conversation.conversation_manager.add_message") as add_message:
                     result = orch.chat("hello", "session-1")
 
         self.assertTrue(result.success)
-        self.assertEqual(add_message.call_count, 2)
-        add_message.assert_any_call("session-1", "user", "hello")
-        add_message.assert_any_call("session-1", "assistant", "assistant reply")
+        add_user_message.assert_called_once_with("session-1", "hello", None)
+        add_message.assert_called_once_with("session-1", "assistant", "assistant reply")
 
     def test_chat_transaction_persists_user_before_multi_agent_execution(self):
         """SSE acceptance can occur after persistence but before the pipeline starts."""
@@ -2130,10 +2133,19 @@ class TestOrchestratorExecution(unittest.TestCase):
         with patch.object(orch, "_execute_pipeline", return_value=fake_result) as execute_pipeline:
             with patch("src.agent.orchestrator.build_visible_chat_history", return_value=[]):
                 with patch("src.agent.conversation.conversation_manager.get_or_create"):
-                    with patch("src.agent.conversation.conversation_manager.add_message") as add_message:
-                        turn = orch.prepare_turn(message="hello", session_id="session-accepted")
+                    with patch("src.agent.conversation.conversation_manager.add_user_message") as add_user_message, \
+                         patch("src.agent.conversation.conversation_manager.add_message") as add_message:
+                        turn = orch.prepare_turn(
+                            message="hello",
+                            session_id="session-accepted",
+                            selected_skill_ids=["technical"],
+                        )
 
-                        add_message.assert_called_once_with("session-accepted", "user", "hello")
+                        add_user_message.assert_called_once_with(
+                            "session-accepted",
+                            "hello",
+                            ["technical"],
+                        )
                         execute_pipeline.assert_not_called()
 
                         result = orch.execute_turn(turn)
@@ -2160,7 +2172,8 @@ class TestOrchestratorExecution(unittest.TestCase):
 
         with patch.object(orch, "_execute_pipeline", return_value=fake_result):
             with patch("src.agent.conversation.conversation_manager.get_or_create", return_value=fake_session):
-                with patch("src.agent.conversation.conversation_manager.add_message") as add_message:
+                with patch("src.agent.conversation.conversation_manager.add_user_message"), \
+                     patch("src.agent.conversation.conversation_manager.add_message") as add_message:
                     result = orch.chat("hello", "session-2")
 
         self.assertFalse(result.success)
