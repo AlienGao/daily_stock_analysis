@@ -20,6 +20,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
 
+from src.services.etf_scope import (
+    get_etf_theme,
+    is_pure_etf_name,
+    normalize_etf_code,
+    select_representative_etfs,
+)
+
 load_dotenv()
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -252,6 +259,79 @@ def _v(val):
         return None
 
 
+def _load_etf_candidates(db) -> list[dict]:
+    """读取现有 ETF，并计算最近 20 个交易日的平均成交额。"""
+    from sqlalchemy import text
+
+    sql = text("""
+        WITH ranked AS (
+            SELECT code, name, amount,
+                   ROW_NUMBER() OVER (PARTITION BY code ORDER BY date DESC) AS rn,
+                   COUNT(*) OVER (PARTITION BY code) AS history_days
+            FROM etf_daily
+        )
+        SELECT code,
+               MAX(name) AS name,
+               MAX(history_days) AS history_days,
+               AVG(CASE WHEN rn <= 20 THEN COALESCE(amount, 0) END) AS avg_amount
+        FROM ranked
+        GROUP BY code
+    """)
+    with db.get_session() as session:
+        rows = session.execute(sql).fetchall()
+    return [
+        {
+            "code": normalize_etf_code(row.code),
+            "name": str(row.name or "").strip(),
+            "history_days": int(row.history_days or 0),
+            "avg_amount": float(row.avg_amount or 0),
+        }
+        for row in rows
+    ]
+
+
+def prune_related_etf_data(db, dry_run: bool = False) -> dict:
+    """同主题只保留近期成交额最高的一只，并同步清理复权因子。"""
+    from sqlalchemy import delete, select
+    from src.storage import EtfDaily, FundAdjFactor
+
+    candidates = _load_etf_candidates(db)
+    selected, excluded = select_representative_etfs(candidates)
+    keep_codes = {item["code"] for item in selected.values()}
+    drop_codes = sorted({item["code"] for item in excluded if item["code"] not in keep_codes})
+
+    with db.get_session() as session:
+        adj_codes = {
+            normalize_etf_code(code)
+            for code in session.execute(select(FundAdjFactor.code).distinct()).scalars()
+        }
+    orphan_adj_codes = sorted(adj_codes - keep_codes)
+
+    result = {
+        "themes": len(selected),
+        "kept_codes": sorted(keep_codes),
+        "dropped_codes": drop_codes,
+        "orphan_adj_codes": orphan_adj_codes,
+        "etf_daily_rows": 0,
+        "fund_adj_factor_rows": 0,
+    }
+    if dry_run or (not drop_codes and not orphan_adj_codes):
+        return result
+
+    with db.get_session() as session:
+        if drop_codes:
+            result["etf_daily_rows"] = session.execute(
+                delete(EtfDaily).where(EtfDaily.code.in_(drop_codes))
+            ).rowcount
+        adj_drop_codes = sorted(set(drop_codes) | set(orphan_adj_codes))
+        if adj_drop_codes:
+            result["fund_adj_factor_rows"] = session.execute(
+                delete(FundAdjFactor).where(FundAdjFactor.code.in_(adj_drop_codes))
+            ).rowcount
+        session.commit()
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser(description="回填 ETF 日线数据")
     parser.add_argument("--start", default=None, help="起始日期 YYYY-MM-DD")
@@ -261,9 +341,20 @@ def main():
     parser.add_argument("--codes", default=None, help="逗号分隔的 ts_code 列表，如 510050.SH,510300.SH")
     parser.add_argument("--use-major", action="store_true", help="仅回填预定义 MAJOR_ETF_TS_CODES（默认全量）")
     parser.add_argument("--use-all", action="store_true", help="通过 fund_basic 获取全量 ETF 列表（默认行为）")
+    parser.add_argument("--prune-related", action="store_true", help="仅清理同主题重复 ETF，不请求行情")
     args = parser.parse_args()
 
     from src.storage import DatabaseManager
+
+    if args.prune_related:
+        result = prune_related_etf_data(DatabaseManager(), dry_run=args.dry_run)
+        logger.info(
+            "ETF 精简完成: 保留 %d 个主题/%d 只，删除 %d 只、日线 %d 行、复权因子 %d 行%s",
+            result["themes"], len(result["kept_codes"]), len(result["dropped_codes"]),
+            result["etf_daily_rows"], result["fund_adj_factor_rows"],
+            "（dry-run）" if args.dry_run else "",
+        )
+        return 0
 
     end_date = args.end or date.today().strftime("%Y-%m-%d")
     if args.test:
@@ -312,98 +403,32 @@ def main():
                 etf_list.append((ts, ""))
         logger.info("共 %d 只 ETF", len(etf_list))
 
-    # ── 同类型 ETF 去重（同名/同类型只保留一只） ──
-    # 策略：按名称核心词分组，每组保留沪市（.SH）的，无沪市则保留任意一只
+    # ── 同主题 ETF 去重 ──
+    # 已有品种按近期成交额选择代表；新主题缺少行情时按代码稳定选择。
     if etf_list and not args.codes:
-        from collections import OrderedDict
-        # 已知的 ETF 核心词分类（按优先级排序，匹配到更具体的分类优先）
-        KEYWORDS = [
-            # 宽基
-            "上证50", "沪深300", "中证500", "中证1000", "中证2000",
-            "上证指数",
-            # 科创板（先匹配具体再匹配通用）
-            "科创50", "科创100", "科创AI", "科创芯片", "科创生物医药",
-            "科创新能源", "科创人工智能", "科创材料", "科创信息",
-            "科创成长", "科创板综合",
-            # 创业板
-            "创业板50", "创业板300", "创业板200", "创业板综合",
-            "创业板增强", "创业板成长", "创业板动量", "创业板低波",
-            "创业板",
-            # 红利
-            "红利低波", "红利质量", "红利价值",
-            "红利",
-            # 金融
-            "证券", "证券保险", "券商", "银行", "保险", "金融",
-            # 军工
-            "军工",
-            # 科技/芯片/半导体
-            "芯片", "半导体", "人工智能", "AI", "软件", "信息技术",
-            "数字经济", "互联网", "计算机",
-            # 医药/医疗
-            "医疗", "医药", "生物医药", "医疗器械", "创新药", "医美",
-            "疫苗", "中药",
-            # 消费
-            "消费50", "消费龙头", "可选消费", "食品饮料", "酒", "白酒",
-            "消费",
-            # 新能源/车/电池/光伏
-            "新能源车", "新能源汽车",
-            "电池", "光伏",
-            "新能源",
-            # 周期/制造
-            "有色金属", "钢铁", "煤炭", "化工", "稀土", "稀有金属",
-            "矿业", "油气", "石油天然气", "石化",
-            "工业互联网", "工程机械", "机器人", "高端制造", "电力",
-            # 农业
-            "养殖", "农业", "畜牧",
-            # 地产/基建/建材
-            "地产", "基建", "建材", "央企",
-            # 旅游/传媒
-            "旅游", "传媒", "游戏",
-            # 跨境
-            "中概互联", "恒生科技", "恒生互联网", "恒生医疗", "恒生消费",
-            "恒生生物科技", "恒生中国企业", "港股通50", "港股通科技",
-            "香港银行", "沪港深",
-            "纳指", "标普500", "日经225", "日经",
-            # 商品
-            "黄金", "豆粕", "能源化工",
-        ]
-        selected = {}
+        existing = {item["code"]: item for item in _load_etf_candidates(DatabaseManager())}
+        candidates = []
         for ts_code, name in etf_list:
             ts_code = str(ts_code).strip()
             name = str(name or "").strip()
-            # 仅保留纯 ETF 代码（排除 LOF、联接基金、REIT、定开混合等）
             if not ts_code.endswith((".SH", ".SZ")):
                 continue
-            bare_code = ts_code.split(".")[0].strip()
+            bare_code = normalize_etf_code(ts_code)
             if not (bare_code.isdigit() and len(bare_code) == 6):
                 continue
-            skip_words = ["联接", "LOF", "REIT", "定开", "混合", "ETF联接", "指数增强", "ETF(LOF)",
-                           "ETF联接", "ETF-LOF", "联接-LOF", "FOF", "ETF-FOF"]
-            name_lower = name.lower()
-            if any(w.lower() in name_lower for w in skip_words):
+            if not is_pure_etf_name(name) or get_etf_theme(name) is None:
                 continue
-            # 找最长的匹配关键词（更具体的优先）
-            matched_keyword = None
-            best_len = 0
-            for kw in KEYWORDS:
-                if kw in name:
-                    if len(kw) > best_len:
-                        matched_keyword = kw
-                        best_len = len(kw)
-            if not matched_keyword:
-                continue
-            market_sh = ".SH" in ts_code
-            existing = selected.get(matched_keyword)
-            if existing is None:
-                selected[matched_keyword] = (ts_code, name)
-            elif market_sh and ".SH" not in existing[0]:
-                selected[matched_keyword] = (ts_code, name)
-            elif market_sh and ".SH" in existing[0]:
-                # 沪市 vs 沪市，保留名字更短的（更纯正的ETF）
-                if len(name) < len(existing[1]):
-                    selected[matched_keyword] = (ts_code, name)
-        etf_list = list(selected.values())
-        logger.info("去重后 %d 只 ETF（按 %d 个核心词分类）", len(etf_list), len(selected))
+            metric = existing.get(bare_code, {})
+            candidates.append({
+                "code": bare_code,
+                "ts_code": ts_code,
+                "name": name,
+                "history_days": metric.get("history_days", 0),
+                "avg_amount": metric.get("avg_amount", 0),
+            })
+        selected, _ = select_representative_etfs(candidates)
+        etf_list = [(item["ts_code"], item["name"]) for item in selected.values()]
+        logger.info("去重后 %d 只 ETF（每个主题保留一只）", len(etf_list))
 
     # ── 分批获取名称（如果名称为空） ──
     from data_provider.tushare_fetcher import TushareFetcher
@@ -479,6 +504,13 @@ def main():
             adj_cnt = sess.query(func.count()).select_from(FundAdjFactor).scalar()
             adj_code_cnt = sess.query(func.count(FundAdjFactor.code.distinct())).scalar()
             logger.info("fund_adj_factor 表: %d 行, %d 只 ETF", adj_cnt, adj_code_cnt)
+
+        prune_result = prune_related_etf_data(db)
+        logger.info(
+            "清理同主题重复 ETF: 保留 %d 只，删除 %d 只、日线 %d 行、复权因子 %d 行",
+            len(prune_result["kept_codes"]), len(prune_result["dropped_codes"]),
+            prune_result["etf_daily_rows"], prune_result["fund_adj_factor_rows"],
+        )
 
     return 0
 

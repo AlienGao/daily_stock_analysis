@@ -108,6 +108,8 @@ class HkGgtComponentListResponse(BaseModel):
 class HkStockListItem(BaseModel):
     hk_code: str
     name: Optional[str] = None
+    pinyin_full: Optional[str] = None
+    pinyin_abbr: Optional[str] = None
     latest_price: Optional[float] = None
     pct_change: Optional[float] = None
     boll_mid: Optional[float] = None
@@ -349,6 +351,7 @@ class AIndexNewHighItem(BaseModel):
     ts_code: str
     stock_code: str
     stock_name: str
+    category: Optional[str] = None
     latest_new_high_date: str
     latest_new_high_close: float
     new_high_count: int
@@ -386,6 +389,7 @@ class AIndexBollPickItem(BaseModel):
     ts_code: str
     stock_code: str
     stock_name: str
+    category: Optional[str] = None
     latest_new_high_date: str
     latest_new_high_close: Optional[float] = None
     current_close: float

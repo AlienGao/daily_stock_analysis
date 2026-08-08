@@ -346,6 +346,8 @@ const HkMonitorPage: React.FC = () => {
     const q = searchText.trim().toLowerCase();
     return items.filter(item =>
       (item.name && item.name.toLowerCase().includes(q)) ||
+      (item.pinyin_full && item.pinyin_full.includes(q)) ||
+      (item.pinyin_abbr && item.pinyin_abbr.includes(q)) ||
       item.hk_code.includes(q)
     );
   }, [items, searchText]);

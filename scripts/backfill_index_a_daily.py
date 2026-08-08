@@ -27,8 +27,7 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("backfill_index_a")
 
-# ── 核心 A 股指数列表（优先级高于 index_basic 拉取） ──
-# 覆盖宽基、风格、策略主要指数
+# ── 核心宽基指数列表（用于 index_basic 拉取失败时降级） ──
 MAJOR_INDICES = [
     ("000001.SH", "上证指数"),
     ("000016.SH", "上证50"),
@@ -36,11 +35,9 @@ MAJOR_INDICES = [
     ("000905.SH", "中证500"),
     ("000852.SH", "中证1000"),
     ("000688.SH", "科创50"),
-    ("000015.SH", "上证红利"),
     ("932056.SH", "科创100"),
     ("399001.SZ", "深证成指"),
     ("399006.SZ", "创业板指"),
-    ("399005.SZ", "中小板指"),
     ("399300.SZ", "沪深300"),
     ("399673.SZ", "创业板50"),
     ("399303.SZ", "国证2000"),
@@ -53,22 +50,41 @@ DEDICATED_INDEX_CODES: set = set()
 INDEX_DAILY_START = "2026-01-01"
 
 
-def fetch_index_list(fetcher) -> list[tuple[str, str]]:
-    """通过 Tushare index_basic 获取 A 股指数列表。"""
-    results = []
-    for market in ("SSE", "SZSE", "CSI"):
+def _clean_text(value) -> str:
+    if value is None: return ""
+    text = str(value).strip()
+    return "" if text.lower() == "nan" else text
+
+
+def _fallback_index(ts_code: str, name: str) -> dict:
+    return {"ts_code": ts_code, "name": name, "category": "规模指数"}
+
+
+def fetch_index_list(fetcher) -> list[dict]:
+    """通过 Tushare index_basic 获取宽基和申万一级行业指数元数据。"""
+    from src.services.a_index_new_high_service import is_allowed_a_index
+
+    results_by_code = {}
+    for market in ("SSE", "SZSE", "CSI", "SW"):
         try:
             fetcher._check_rate_limit()
             df = fetcher._api.index_basic(market=market)
             if df is not None and not df.empty:
                 for _, row in df.iterrows():
-                    ts_code = str(row.get("ts_code", "")).strip()
-                    name = str(row.get("name", "")).strip()
-                    if ts_code:
-                        results.append((ts_code, name))
+                    item = {
+                        key: _clean_text(row.get(key))
+                        for key in (
+                            "ts_code", "name", "fullname", "market", "publisher",
+                            "index_type", "category", "base_date", "list_date",
+                        )
+                    }
+                    item["market"] = item["market"] or market
+                    if item["ts_code"] and is_allowed_a_index(item["category"], item["ts_code"]):
+                        results_by_code[item["ts_code"]] = item
         except Exception as exc:
             logger.warning("index_basic(%s) failed: %s", market, exc)
-    logger.info("index_basic 返回 %d 个指数", len(results))
+    results = list(results_by_code.values())
+    logger.info("index_basic 返回 %d 个宽基/申万一级行业指数", len(results))
     return results
 
 
@@ -144,17 +160,22 @@ def _v(val):
     except (TypeError, ValueError): return None
 
 
-def _save_index_basic(db, index_list: list[tuple[str, str]]):
+def _save_index_basic(db, index_list: list[dict]):
     """写入 index_basic 表。"""
     from src.storage import IndexBasic
     saved = 0
     with db.get_session() as session:
-        for ts_code, name in index_list:
+        for item in index_list:
+            ts_code = item["ts_code"]
             existing = session.query(IndexBasic).filter(IndexBasic.ts_code == ts_code).first()
             if existing:
-                existing.name = name
+                for key in ("name", "fullname", "market", "publisher", "index_type", "category", "base_date", "list_date"):
+                    setattr(existing, key, item.get(key) or None)
             else:
-                session.add(IndexBasic(ts_code=ts_code, name=name))
+                session.add(IndexBasic(**{
+                    key: (item.get(key) or None)
+                    for key in ("ts_code", "name", "fullname", "market", "publisher", "index_type", "category", "base_date", "list_date")
+                }))
                 saved += 1
         session.commit()
     return saved
@@ -245,14 +266,13 @@ def main():
         logger.warning("index_basic 拉取失败: %s，使用预定义列表", exc)
         all_indices = []
     if not all_indices:
-        all_indices = MAJOR_INDICES
+        all_indices = [_fallback_index(ts, name) for ts, name in MAJOR_INDICES]
         logger.info("使用预定义 %d 个指数", len(all_indices))
     # 合并预定义列表（确保主要指数都在）
-    defined_ts = set(ts for ts, _ in MAJOR_INDICES)
-    existing_ts = set(ts for ts, _ in all_indices)
+    existing_ts = {item["ts_code"] for item in all_indices}
     for ts, name in MAJOR_INDICES:
         if ts not in existing_ts:
-            all_indices.append((ts, name))
+            all_indices.append(_fallback_index(ts, name))
     logger.info("合计 %d 个指数", len(all_indices))
 
     # 只保留中证/上交所/深交所/申万指数
@@ -268,7 +288,7 @@ def main():
             pass
         return ""
     ALLOWED_MARKETS = {"CSI", "SSE", "SZSE", "SW"}
-    filtered_idx = [(t, n) for t, n in all_indices if _get_market(t, db) in ALLOWED_MARKETS]
+    filtered_idx = [item for item in all_indices if (item.get("market") or _get_market(item["ts_code"], db)) in ALLOWED_MARKETS]
     skip_count = len(all_indices) - len(filtered_idx)
     if skip_count:
         logger.info("过滤掉 %d 个非目标市场指数", skip_count)
@@ -292,7 +312,8 @@ def main():
     total_failed = 0
     total_con = 0
 
-    for idx, (ts_code, name) in enumerate(all_indices):
+    for idx, item in enumerate(all_indices):
+        ts_code, name = item["ts_code"], item.get("name", "")
         label = f"[{idx + 1}/{len(all_indices)}] {ts_code} {name}"
 
         # 日线

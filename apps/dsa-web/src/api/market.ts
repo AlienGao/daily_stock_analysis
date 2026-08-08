@@ -203,6 +203,7 @@ export type AIndexNewHighItem = {
   ts_code: string;
   stock_code: string;
   stock_name: string;
+  category?: string | null;
   latest_new_high_date: string;
   latest_new_high_close: number;
   new_high_count: number;
@@ -239,6 +240,7 @@ export type AIndexBollPickListResponse = {
     ts_code: string;
     stock_code: string;
     stock_name: string;
+    category?: string | null;
     latest_new_high_date: string;
     latest_new_high_close: number | null;
     current_close: number;

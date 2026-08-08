@@ -1,0 +1,61 @@
+- generic [ref=e5]:
+  - complementary "桌面侧边导航" [ref=e6]:
+    - navigation "主导航" [ref=e12]:
+      - link "首页" [ref=e13] [cursor=pointer]:
+        - /url: /
+      - link "寻股" [ref=e18] [cursor=pointer]:
+        - /url: /discovery
+      - link "港股" [ref=e23] [cursor=pointer]:
+        - /url: /hk-monitor
+      - link "ETF" [ref=e30] [cursor=pointer]:
+        - /url: /etf-new-highs
+      - link "新高" [ref=e35] [cursor=pointer]:
+        - /url: /new-highs
+      - link "金股" [ref=e40] [cursor=pointer]:
+        - /url: /broker-recommend
+      - link "快测" [ref=e45] [cursor=pointer]:
+        - /url: /simple-factor-backtest
+      - link "因子" [ref=e49] [cursor=pointer]:
+        - /url: /factor-backtest
+      - link "调优" [ref=e53] [cursor=pointer]:
+        - /url: /factor-tuning
+      - link "LGB" [ref=e56] [cursor=pointer]:
+        - /url: /lgb
+      - link "调研" [ref=e66] [cursor=pointer]:
+        - /url: /institution-survey
+      - link "设置" [ref=e73] [cursor=pointer]:
+        - /url: /settings
+  - main [ref=e78]:
+    - main [ref=e81]:
+      - generic [ref=e82]:
+        - generic [ref=e83]:
+          - heading "指数新高" [level=1] [ref=e88]
+          - button "刷新" [disabled]
+        - generic [ref=e95]:
+          - tablist [ref=e96]:
+            - generic [ref=e98]:
+              - tab "ETF 专题" [ref=e100] [cursor=pointer]
+              - tab "国际主要指数" [ref=e102] [cursor=pointer]
+              - tab "A 股指数" [active] [selected] [ref=e104] [cursor=pointer]
+          - tabpanel "A 股指数" [ref=e1745]:
+            - generic [ref=e1746]:
+              - generic [ref=e1747]:
+                - generic [ref=e1748]:
+                  - generic [ref=e1749]: 分类
+                  - radiogroup "segmented control" [ref=e1750]:
+                    - generic [ref=e1751]:
+                      - generic [ref=e1752] [cursor=pointer]:
+                        - radio "综合 0" [checked]
+                        - generic "综合 0" [ref=e1753]
+                      - generic [ref=e1754] [cursor=pointer]:
+                        - radio "行业 0"
+                        - generic "行业 0" [ref=e1755]
+                      - generic [ref=e1756] [cursor=pointer]:
+                        - radio "其他 0"
+                        - generic "其他 0" [ref=e1757]
+                - generic [ref=e1758]:
+                  - generic [ref=e1759]: BOLL 频率
+                  - generic [ref=e1760]:
+                    - button "日线" [ref=e1761]
+                    - button "周线" [ref=e1762]
+              - generic [ref=e1763]: 扫描新高数据…

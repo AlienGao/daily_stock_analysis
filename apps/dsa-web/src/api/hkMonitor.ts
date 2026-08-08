@@ -4,6 +4,8 @@ export type HkGgtComponentItem = {
   trade_date: string;
   hk_code: string;
   name?: string | null;
+  pinyin_full?: string | null;
+  pinyin_abbr?: string | null;
   latest_price?: number | null;
   pct_change?: number | null;
   change_amount?: number | null;

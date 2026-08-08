@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 > For user-friendly release highlights, see the [GitHub Releases](https://github.com/ZhuLinsen/daily_stock_analysis/releases) page.
 
 ## [Unreleased]
+- [改进] ETF 专题按主题仅保留近期成交额最高的一只代表 ETF，并同步清理重复品种的行情与复权因子
+- [改进] 指数新高页的 A 股指数新增综合、行业、其他分类切换，并同步筛选列表与 BOLL 推荐
+- [改进] 指数新高页的 A 股指数仅保留宽基与申万 2021 一级行业指数，并在回填时完整保存指数分类元数据
 - [修复] 港股通成份刷新时回填最近 180 个自然日日线，避免新纳入成份股仅保留近期行情
 - [改进] 港股监控右侧 BOLL 推荐上方增加最近结束的最高连续回撤个股列表
 

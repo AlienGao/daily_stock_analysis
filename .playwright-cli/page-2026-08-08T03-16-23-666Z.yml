@@ -1,0 +1,28 @@
+- generic [ref=e5]:
+  - complementary "桌面侧边导航" [ref=e6]:
+    - navigation "主导航" [ref=e12]:
+      - link "首页" [ref=e13] [cursor=pointer]:
+        - /url: /
+      - link "寻股" [ref=e18] [cursor=pointer]:
+        - /url: /discovery
+      - link "港股" [ref=e23] [cursor=pointer]:
+        - /url: /hk-monitor
+      - link "ETF" [ref=e30] [cursor=pointer]:
+        - /url: /etf-new-highs
+      - link "新高" [ref=e35] [cursor=pointer]:
+        - /url: /new-highs
+      - link "金股" [ref=e40] [cursor=pointer]:
+        - /url: /broker-recommend
+      - link "快测" [ref=e45] [cursor=pointer]:
+        - /url: /simple-factor-backtest
+      - link "因子" [ref=e49] [cursor=pointer]:
+        - /url: /factor-backtest
+      - link "调优" [ref=e53] [cursor=pointer]:
+        - /url: /factor-tuning
+      - link "LGB" [ref=e56] [cursor=pointer]:
+        - /url: /lgb
+      - link "调研" [ref=e66] [cursor=pointer]:
+        - /url: /institution-survey
+      - link "设置" [ref=e73] [cursor=pointer]:
+        - /url: /settings
+  - main [ref=e78]

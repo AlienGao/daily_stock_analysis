@@ -135,6 +135,15 @@ def _resolve_hk_display_name(name: Any, hk_code: str) -> str:
     return current
 
 
+def _hk_name_pinyin(name: str) -> Tuple[str, str]:
+    try:
+        from pypinyin import lazy_pinyin
+        parts = lazy_pinyin(name or '')
+        return ''.join(parts).lower(), ''.join(part[0] for part in parts if part).lower()
+    except Exception:
+        return '', ''
+
+
 def _compute_boll(
     closes: List[float],
     period: int = 20,
@@ -308,6 +317,7 @@ class HkStockService:
             d = r.to_dict()
             code = _norm_hk_code(d["hk_code"])
             d["name"] = _resolve_hk_display_name(d.get("name"), code)
+            d["pinyin_full"], d["pinyin_abbr"] = _hk_name_pinyin(d["name"])
             latest = latest_by_code.get(code)
             if latest_trade_date and latest == latest_trade_date:
                 bar_entry = latest_bars_by_code.get(code)

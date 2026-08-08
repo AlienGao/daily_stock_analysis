@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Table, Tabs } from 'antd';
+import { Segmented, Table, Tabs } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { ArrowUpRight, Loader2, PieChart, RefreshCw, X } from 'lucide-react';
 import { AppPage, Button, EmptyState } from '../components/common';
@@ -31,12 +31,13 @@ type BollPickItemLike = {
   ts_code: string;
   stock_code: string;
   stock_name: string;
+  category?: string | null;
   latest_new_high_date: string;
   latest_new_high_close?: number | null;
   drawdown_from_high_pct?: number | null;
   dist_mid_pct: number;
   dist_lower_pct: number;
-  dist_upper_pct?: number;
+  dist_upper_pct?: number | null;
   band_zone: string;
 };
 
@@ -44,6 +45,7 @@ type NewHighItemLike = {
   ts_code: string;
   stock_code: string;
   stock_name: string;
+  category?: string | null;
   latest_new_high_date: string;
   latest_new_high_close: number;
   new_high_count: number;
@@ -59,7 +61,7 @@ const BollPickCard: React.FC<{
   item: BollPickItemLike;
   active: boolean;
   distLabel: string;
-  distValue: number | undefined;
+  distValue: number | null | undefined;
   onSelect: (tsCode: string) => void;
 }> = ({ item, active, distLabel, distValue, onSelect }) => {
   const closeVal = 'current_close' in item ? (item as any).current_close || (item as any).current_hfq_close : undefined;
@@ -520,6 +522,7 @@ const EtfNewHighPage: React.FC = () => {
   const [aIndexBollPicks, setAIndexBollPicks] = useState<BollPickItemLike[]>([]);
   const [aIndexBollLoading, setAIndexBollLoading] = useState(false);
   const [aIndexFreq, setAIndexFreq] = useState('daily');
+  const [aIndexCategory, setAIndexCategory] = useState<'composite' | 'industry' | 'other'>('composite');
   const [constituentIndex, setConstituentIndex] = useState<string | null>(null);
   const [constituentData, setConstituentData] = useState<Array<{ con_code: string; con_name: string | null; weight: number | null }>>([]);
   const [constituentLoading, setConstituentLoading] = useState(false);
@@ -630,6 +633,33 @@ const EtfNewHighPage: React.FC = () => {
     }
   }, []);
 
+  const isAIndexCategoryMatch = useCallback((category?: string | null) => {
+    if (aIndexCategory === 'composite') return category === '综合指数';
+    if (aIndexCategory === 'industry') return category === '行业指数';
+    return category !== '综合指数' && category !== '行业指数';
+  }, [aIndexCategory]);
+
+  const filteredAIndexData = useMemo(() => {
+    if (!aIndexData) return null;
+    const items = aIndexData.items.filter(item => isAIndexCategoryMatch(item.category));
+    return { ...aIndexData, total: items.length, items };
+  }, [aIndexData, isAIndexCategoryMatch]);
+
+  const filteredAIndexBollPicks = useMemo(
+    () => aIndexBollPicks.filter(item => isAIndexCategoryMatch(item.category)),
+    [aIndexBollPicks, isAIndexCategoryMatch],
+  );
+
+  const aIndexCategoryCounts = useMemo(() => {
+    const counts = { composite: 0, industry: 0, other: 0 };
+    for (const item of aIndexData?.items ?? []) {
+      if (item.category === '综合指数') counts.composite += 1;
+      else if (item.category === '行业指数') counts.industry += 1;
+      else counts.other += 1;
+    }
+    return counts;
+  }, [aIndexData]);
+
   return (
     <AppPage className="max-w-none px-2 md:px-3">
       <div className="space-y-4">
@@ -677,9 +707,26 @@ const EtfNewHighPage: React.FC = () => {
               label: <span className="text-sm font-medium">A 股指数</span>,
               children: (
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-tertiary-text">BOLL 频率：</span>
-                    <div className="flex gap-1">
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-tertiary-text">分类</span>
+                      <Segmented
+                        size="small"
+                        value={aIndexCategory}
+                        options={[
+                          { label: `综合 ${aIndexCategoryCounts.composite}`, value: 'composite' },
+                          { label: `行业 ${aIndexCategoryCounts.industry}`, value: 'industry' },
+                          { label: `其他 ${aIndexCategoryCounts.other}`, value: 'other' },
+                        ]}
+                        onChange={(value) => {
+                          setAIndexCategory(value as 'composite' | 'industry' | 'other');
+                          setConstituentIndex(null);
+                        }}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-tertiary-text">BOLL 频率</span>
+                      <div className="flex gap-1">
                       <button type="button"
                         className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
                           aIndexFreq === 'daily'
@@ -694,12 +741,14 @@ const EtfNewHighPage: React.FC = () => {
                             : 'bg-muted/20 text-secondary-text hover:bg-muted/40'
                         }`}
                         onClick={() => handleFreqChange('weekly')}>周线</button>
+                      </div>
                     </div>
                   </div>
                   <NewHighTablePanel
+                    key={`${aIndexFreq}-${aIndexCategory}`}
                     loading={aIndexLoading} refreshing={false}
-                    data={aIndexData} error={aIndexError}
-                    bollPicks={aIndexBollPicks} bollLoading={aIndexBollLoading}
+                    data={filteredAIndexData} error={aIndexError}
+                    bollPicks={filteredAIndexBollPicks} bollLoading={aIndexBollLoading}
                     bollMeta={{ nearPct: 2, lookbackDays: 30, maxDrawdownFromHighPct: 30 }}
                     onRefresh={(r) => fetchAIndex(r, aIndexFreq)}
                     currentCloseKey="current_close" ytdReturnKey="ytd_return_pct"

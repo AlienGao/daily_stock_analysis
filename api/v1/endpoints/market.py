@@ -438,12 +438,12 @@ def list_a_index_constituents(
     "/a-index-clear-disallowed",
     response_model=dict,
     responses={500: {"model": ErrorResponse}},
-    summary="清除非允许市场(A股)的存量指数数据",
+    summary="清除非宽基/申万一级行业的存量 A 股指数数据",
 )
 def clear_disallowed_index_data() -> dict:
     try:
         result = AIndexNewHighService().clear_non_allowed_data()
-        return {"deleted": result, "message": "已清除非 CSI/SSE/SZSE/SW 指数数据"}
+        return {"deleted": result, "message": "已清除非宽基/申万一级行业指数数据"}
     except Exception as exc:
         logger.error("a-index-clear-disallowed failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail={"error": "internal_error", "message": str(exc)}) from exc

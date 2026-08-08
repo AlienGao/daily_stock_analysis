@@ -35,6 +35,41 @@ _scan_inflight_lock = threading.Lock()
 _scan_inflight: Dict[tuple, threading.Event] = {}
 _SCAN_INFLIGHT_WAIT_SEC = 600.0
 
+# Tushare index_basic category values used for broad-based indices.
+ALLOWED_A_INDEX_CATEGORIES = frozenset({"规模指数", "综合指数"})
+# Current SW2021 level-1 industries. One index is retained per industry so the
+# page does not mix exchange, CSI, SW level-2/3, sample-space and methodology
+# variants of the same industry.
+SW2021_L1_INDUSTRY_CODES = frozenset({
+    "801010.SI", "801030.SI", "801040.SI", "801050.SI", "801080.SI",
+    "801110.SI", "801120.SI", "801130.SI", "801140.SI", "801150.SI",
+    "801160.SI", "801170.SI", "801180.SI", "801200.SI", "801210.SI",
+    "801230.SI", "801710.SI", "801720.SI", "801730.SI", "801740.SI",
+    "801750.SI", "801760.SI", "801770.SI", "801780.SI", "801790.SI",
+    "801880.SI", "801890.SI", "801950.SI", "801960.SI", "801970.SI",
+    "801980.SI",
+})
+LEGACY_BROAD_INDEX_CODES = frozenset({
+    "000001.SH", "000016.SH", "000300.SH", "000905.SH", "000852.SH",
+    "000688.SH", "932056.SH", "399001.SZ", "399006.SZ", "399300.SZ",
+    "399673.SZ", "399303.SZ",
+})
+
+
+def is_allowed_a_index(category: Any, ts_code: Any) -> bool:
+    """Return whether an index belongs to the page's broad/industry scope.
+
+    The code allowlist keeps core broad indices visible in legacy databases
+    whose index_basic metadata has not been refreshed yet.
+    """
+    normalized_category = str(category or "").strip()
+    normalized_code = str(ts_code or "").strip().upper()
+    return (
+        normalized_category in ALLOWED_A_INDEX_CATEGORIES
+        or normalized_code in SW2021_L1_INDUSTRY_CODES
+        or normalized_code in LEGACY_BROAD_INDEX_CODES
+    )
+
 
 def _safe_optional_float(value: Any) -> Optional[float]:
     if value is None: return None
@@ -88,11 +123,14 @@ class AIndexNewHighService:
         self.db = DatabaseManager.get_instance()
 
     def list_indices(self) -> List[Dict[str, Any]]:
-        """返回所有已录入的 A 股指数列表。"""
+        """返回已录入的宽基指数和行业指数列表。"""
         from src.storage import IndexBasic
         with self.db.get_session() as session:
             rows = session.query(IndexBasic).order_by(IndexBasic.ts_code).all()
-            return [r.to_dict() for r in rows]
+            return [
+                r.to_dict() for r in rows
+                if is_allowed_a_index(r.category, r.ts_code)
+            ]
 
     def scan_new_highs(
         self,
@@ -148,13 +186,19 @@ class AIndexNewHighService:
         preload_dt = start_dt - timedelta(days=400)
         table = FOR_TABLE.get(freq, "index_daily")
 
-        daily_df = self._load_bars(table, preload_dt, as_of)
+        allowed_codes = self._get_allowed_index_codes()
+        if not allowed_codes:
+            payload = self._empty_payload(start_date, as_of_str)
+            self._set_cache(cache_key, payload)
+            return payload
+
+        daily_df = self._load_bars(table, preload_dt, as_of, codes=allowed_codes)
         if daily_df.empty:
             payload = self._empty_payload(start_date, as_of_str)
             self._set_cache(cache_key, payload)
             return payload
 
-        name_map = self._get_name_map()
+        metadata_map = self._get_index_metadata_map()
         items: List[Dict[str, Any]] = []
 
         for ts_code, grp in daily_df.groupby("ts_code"):
@@ -162,13 +206,15 @@ class AIndexNewHighService:
             rows = list(zip(grp["date_str"].tolist(), grp["close"].tolist()))
             scanned = self._scan_single(rows, start_date)
             if not scanned: continue
-            name = name_map.get(ts_code) or ts_code
+            metadata = metadata_map.get(ts_code, {})
+            name = metadata.get("name") or ts_code
             drawdown = None
             lh, cc = scanned["latest_new_high_close"], scanned["current_close"]
             if lh and cc and lh > 0: drawdown = round((cc / lh - 1) * 100, 2)
             if drawdown is not None and drawdown < -NEW_HIGH_MAX_DRAWDOWN_PCT: continue
             items.append({
                 "ts_code": ts_code, "stock_code": ts_code, "stock_name": name,
+                "category": metadata.get("category"),
                 **scanned, "drawdown_from_high_pct": drawdown,
             })
 
@@ -260,14 +306,37 @@ class AIndexNewHighService:
             })
         return pd.DataFrame(records)
 
-    def _get_name_map(self) -> Dict[str, str]:
+    def _get_index_metadata_map(self) -> Dict[str, Dict[str, Optional[str]]]:
         from src.storage import IndexBasic
         try:
             with self.db.get_session() as session:
-                rows = session.query(IndexBasic.ts_code, IndexBasic.name).all()
-                return {r[0]: r[1] or r[0] for r in rows}
+                rows = session.query(
+                    IndexBasic.ts_code, IndexBasic.name, IndexBasic.category,
+                ).all()
+                return {
+                    str(row.ts_code).strip(): {
+                        "name": row.name or str(row.ts_code).strip(),
+                        "category": row.category,
+                    }
+                    for row in rows
+                }
         except Exception:
             return {}
+
+    def _get_allowed_index_codes(self) -> List[str]:
+        from src.storage import IndexBasic
+        try:
+            with self.db.get_session() as session:
+                rows = session.query(
+                    IndexBasic.ts_code, IndexBasic.category,
+                ).all()
+                return [
+                    str(row.ts_code).strip() for row in rows
+                    if is_allowed_a_index(row.category, row.ts_code)
+                ]
+        except Exception as exc:
+            logger.warning("[AIndex] load allowed index codes failed: %s", exc)
+            return []
 
     def list_constituents(self, index_code: str) -> List[Dict[str, Any]]:
         """获取指数成分股列表（含名称和权重）。
@@ -332,68 +401,40 @@ class AIndexNewHighService:
             return []
 
     def clear_non_allowed_data(self) -> Dict[str, int]:
-        """删除非允许市场的指数数据（CSI/SSE/SZSE/SW 之外）。
+        """删除宽基/行业范围之外的指数及其关联数据。
 
         Returns:
             {table: deleted_count}
         """
-        from src.storage import IndexBasic, IndexDaily, IndexWeekly
-        ALLOWED_MARKETS = {"CSI", "SSE", "SZSE", "SW"}
+        from src.storage import IndexBasic, IndexConstituent, IndexDaily, IndexWeekly
 
-        # 先查所有 index_basic 中非允许市场的 ts_code
-        # market 字段可能为空字符串或 NULL，这些也属于非允许
         with self.db.get_session() as session:
-            from sqlalchemy import or_
-            disallowed = session.query(IndexBasic.ts_code).filter(
-                or_(
-                    IndexBasic.market.is_(None),
-                    IndexBasic.market == "",
-                    IndexBasic.market.notin_(list(ALLOWED_MARKETS)),
-                )
-            ).all()
-            disallowed_codes = [r[0] for r in disallowed]
-
-        if not disallowed_codes:
-            return {"index_basic": 0, "index_daily": 0, "index_weekly": 0}
-
-        import math
-        counts = {}
-        with self.db.get_session() as session:
-            # 删除 index_daily
-            for code in disallowed_codes:
-                cnt = session.query(IndexDaily).filter(IndexDaily.ts_code == code).delete(synchronize_session=False)
-                counts.setdefault("index_daily", 0)
-                counts["index_daily"] += cnt
-            # 删除 index_weekly
-            for code in disallowed_codes:
-                cnt = session.query(IndexWeekly).filter(IndexWeekly.ts_code == code).delete(synchronize_session=False)
-                counts.setdefault("index_weekly", 0)
-                counts["index_weekly"] += cnt
-            # 删除 index_basic
-            from sqlalchemy import or_
-            cnt = session.query(IndexBasic).filter(
-                or_(
-                    IndexBasic.market.is_(None),
-                    IndexBasic.market == "",
-                    IndexBasic.market.notin_(list(ALLOWED_MARKETS)),
-                )
-            ).delete(synchronize_session=False)
-            counts["index_basic"] = cnt
+            rows = session.query(IndexBasic.ts_code, IndexBasic.category).all()
+            disallowed_codes = [
+                str(row.ts_code).strip() for row in rows
+                if not is_allowed_a_index(row.category, row.ts_code)
+            ]
+            counts = {
+                "index_basic": 0,
+                "index_daily": 0,
+                "index_weekly": 0,
+                "index_constituent": 0,
+            }
+            for offset in range(0, len(disallowed_codes), 500):
+                codes = disallowed_codes[offset:offset + 500]
+                counts["index_daily"] += session.query(IndexDaily).filter(
+                    IndexDaily.ts_code.in_(codes)
+                ).delete(synchronize_session=False)
+                counts["index_weekly"] += session.query(IndexWeekly).filter(
+                    IndexWeekly.ts_code.in_(codes)
+                ).delete(synchronize_session=False)
+                counts["index_constituent"] += session.query(IndexConstituent).filter(
+                    IndexConstituent.index_code.in_(codes)
+                ).delete(synchronize_session=False)
+                counts["index_basic"] += session.query(IndexBasic).filter(
+                    IndexBasic.ts_code.in_(codes)
+                ).delete(synchronize_session=False)
             session.commit()
-
-        # 清理孤立的 constituent 记录
-        try:
-            from src.storage import IndexConstituent
-            with self.db.get_session() as session:
-                remaining = [r[0] for r in session.query(IndexBasic.ts_code).all()]
-                kept_set = set(remaining)
-                all_constituent = session.query(IndexConstituent.index_code).distinct().all()
-                for (ic,) in all_constituent:
-                    if ic not in kept_set:
-                        session.query(IndexConstituent).filter(IndexConstituent.index_code == ic).delete(synchronize_session=False)
-                session.commit()
-        except Exception:
-            pass
 
         return counts
 
@@ -461,6 +502,7 @@ class AIndexNewHighService:
             if nl: zones.append("lower")
             picks.append({
                 "ts_code": code, "stock_code": code, "stock_name": base.get("stock_name") or code,
+                "category": base.get("category"),
                 "latest_new_high_date": base["latest_new_high_date"],
                 "latest_new_high_close": base.get("latest_new_high_close"),
                 "current_close": round(close, 4),
