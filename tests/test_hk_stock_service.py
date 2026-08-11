@@ -144,6 +144,36 @@ def test_list_components_includes_latest_drawdown_from_database_all_time_high():
     assert item["latest_consecutive_drawdown_days"] == 2
     assert item["latest_consecutive_drawdown_start_date"] == "20260702"
     assert item["latest_consecutive_drawdown_end_date"] == "20260706"
+    assert result["recent_trade_dates"] == ["20260706", "20260703", "20260702", "20260701"]
+
+
+def test_list_components_returns_only_five_latest_trade_dates_for_recent_drawdown_filter():
+    db = MagicMock()
+    db.get_latest_hk_ggt_trade_date.return_value = "20260707"
+    db.list_hk_ggt_components.return_value = [_component("00700", "腾讯控股")]
+    db.batch_get_latest_hk_stock_daily_trade_date.return_value = {"00700": "20260707"}
+    db.batch_get_hk_stock_all_time_high.return_value = {"00700": 150.0}
+    db.list_hk_stock_daily_bars_batch.return_value = {
+        "00700": [
+            _bar("20260701", 100.0),
+            _bar("20260702", 101.0),
+            _bar("20260703", 102.0),
+            _bar("20260704", 103.0),
+            _bar("20260705", 104.0),
+            _bar("20260706", 105.0),
+            _bar("20260707", 106.0),
+        ],
+    }
+
+    result = HkStockService(db=db).list_components()
+
+    assert result["recent_trade_dates"] == [
+        "20260707",
+        "20260706",
+        "20260705",
+        "20260704",
+        "20260703",
+    ]
 
 
 def test_list_components_skips_single_day_drop_for_latest_consecutive_drawdown():

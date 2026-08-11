@@ -7,6 +7,7 @@ import { AppPage, Button, EmptyState } from '../components/common';
 import { CandlestickMiniChart } from '../components/charts/CandlestickMiniChart';
 import { hkStockApi, type HkBollPickItem, type HkStockKLineItem, type HkStockListItem } from '../api/hkMonitor';
 import { calcBollBandWidthPct, compareBollBandWidth } from '../utils/hkBollBandwidth';
+import { filterRecentDrawdowns } from '../utils/hkMonitorDrawdown';
 import { sortHkItemsByPctChangeDesc } from '../utils/hkMonitorSort';
 
 const fmtPct = (v?: number | null) => {
@@ -197,17 +198,18 @@ const BollPickPanel: React.FC<{
   loading: boolean;
   picks: HkBollPickItem[];
   drawdownItems: HkStockListItem[];
+  recentTradeDates: readonly string[];
   activeHkCode: string;
   onSelect: (hkCode: string) => void;
   className?: string;
-}> = ({ loading, picks, drawdownItems, activeHkCode, onSelect, className = '' }) => {
+}> = ({ loading, picks, drawdownItems, recentTradeDates, activeHkCode, onSelect, className = '' }) => {
   const upperPicks = useMemo(() => picks.filter(p => p.band === 'upper'), [picks]);
   const midPicks = useMemo(() => picks.filter(p => p.band === 'mid'), [picks]);
   const lowerPicks = useMemo(() => picks.filter(p => p.band === 'lower'), [picks]);
-  const recentDrawdowns = useMemo(() => drawdownItems
-    .filter(item => (item.latest_consecutive_drawdown_days ?? 0) >= 2 && item.latest_consecutive_drawdown_pct != null)
-    .sort((a, b) => (a.latest_consecutive_drawdown_pct ?? 0) - (b.latest_consecutive_drawdown_pct ?? 0))
-    .slice(0, 8), [drawdownItems]);
+  const recentDrawdowns = useMemo(
+    () => filterRecentDrawdowns(drawdownItems, recentTradeDates),
+    [drawdownItems, recentTradeDates],
+  );
 
   return (
     <div className={`flex h-full max-h-full min-h-0 flex-col overflow-hidden rounded-xl border border-border/20 bg-card/40 ${className}`}>
@@ -293,6 +295,7 @@ const ExpandPanel: React.FC<{
 
 const HkMonitorPage: React.FC = () => {
   const [items, setItems] = useState<HkStockListItem[]>([]);
+  const [recentTradeDates, setRecentTradeDates] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedKey, setExpandedKey] = useState<string>('');
@@ -330,6 +333,7 @@ const HkMonitorPage: React.FC = () => {
           hkStockApi.getBollPicks(),
         ]);
       setItems(sortHkItemsByPctChangeDesc(listResp.items ?? []));
+      setRecentTradeDates(listResp.recent_trade_dates ?? []);
       if (shouldRefresh) setTableSort({ ...DEFAULT_TABLE_SORT });
       setBollPicks([...(bollResp.upper ?? []), ...(bollResp.mid ?? []), ...(bollResp.lower ?? [])]);
     } catch (err: unknown) {
@@ -590,6 +594,7 @@ const HkMonitorPage: React.FC = () => {
                 loading={bollLoading}
                 picks={bollPicks}
                 drawdownItems={items}
+                recentTradeDates={recentTradeDates}
                 activeHkCode={expandedKey}
                 onSelect={locateStock}
               />
@@ -603,6 +608,7 @@ const HkMonitorPage: React.FC = () => {
               loading={bollLoading}
               picks={bollPicks}
               drawdownItems={items}
+              recentTradeDates={recentTradeDates}
               activeHkCode={expandedKey}
               onSelect={locateStock}
             />

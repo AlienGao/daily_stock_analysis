@@ -35,6 +35,7 @@ def test_list_hk_stocks_passes_refresh_flag():
     client = TestClient(app)
     payload = {
         "trade_date": "20260709",
+        "recent_trade_dates": ["20260709", "20260708", "20260707", "20260706", "20260703"],
         "total": 1,
         "items": [{
             "hk_code": "00700",
@@ -58,6 +59,7 @@ def test_list_hk_stocks_passes_refresh_flag():
     assert resp.json()["items"][0]["hk_code"] == "00700"
     assert resp.json()["items"][0]["high_n_price"] == 600.0
     assert resp.json()["items"][0]["drawdown_pct"] == -15.0
+    assert resp.json()["recent_trade_dates"] == ["20260709", "20260708", "20260707", "20260706", "20260703"]
     assert resp.json()["items"][0]["latest_consecutive_drawdown_pct"] == -6.5
     assert resp.json()["items"][0]["latest_consecutive_drawdown_days"] == 3
     assert resp.json()["items"][0]["latest_consecutive_drawdown_start_date"] == "20260701"

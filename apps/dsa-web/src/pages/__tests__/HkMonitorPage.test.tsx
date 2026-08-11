@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { HkStockListItem } from '../../api/hkMonitor';
 import { calcBollBandWidthPct, compareBollBandWidth } from '../../utils/hkBollBandwidth';
+import { filterRecentDrawdowns } from '../../utils/hkMonitorDrawdown';
 import { sortHkItemsByPctChangeDesc } from '../../utils/hkMonitorSort';
 
 const stock = (
@@ -46,5 +47,33 @@ describe('港股通刷新排序', () => {
       '00700',
       '00941',
     ]);
+  });
+});
+
+describe('港股通近期连续回撤', () => {
+  it('只展示最近五个交易日结束的回撤，并按跌幅从深到浅排列', () => {
+    const items = [
+      {
+        hk_code: '00001',
+        latest_consecutive_drawdown_pct: -8,
+        latest_consecutive_drawdown_days: 2,
+        latest_consecutive_drawdown_end_date: '20260701',
+      },
+      {
+        hk_code: '00002',
+        latest_consecutive_drawdown_pct: -12,
+        latest_consecutive_drawdown_days: 3,
+        latest_consecutive_drawdown_end_date: '20260704',
+      },
+      {
+        hk_code: '00003',
+        latest_consecutive_drawdown_pct: -10,
+        latest_consecutive_drawdown_days: 2,
+        latest_consecutive_drawdown_end_date: '20260707',
+      },
+    ] satisfies HkStockListItem[];
+
+    expect(filterRecentDrawdowns(items, ['20260707', '20260706', '20260705', '20260704', '20260703']).map(item => item.hk_code))
+      .toEqual(['00002', '00003']);
   });
 });

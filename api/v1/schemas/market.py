@@ -128,6 +128,10 @@ class HkStockListItem(BaseModel):
 
 class HkStockListResponse(BaseModel):
     trade_date: str
+    recent_trade_dates: List[str] = Field(
+        default_factory=list,
+        description="行情批次中最近 5 个港股交易日，供近期回撤展示筛选",
+    )
     total: int
     items: List[HkStockListItem] = Field(default_factory=list)
 

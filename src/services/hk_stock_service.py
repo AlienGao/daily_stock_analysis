@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_LOOKBACK_DAYS = 180
 CACHE_TTL_SEC = 300
+RECENT_TRADE_DATE_LIMIT = 5
 
 
 def _compute_boll_realtime(
@@ -221,12 +222,12 @@ class HkStockService:
             HkGgtMonitorService(db=self._db).refresh_components(force=True)
         trade_date = self._db.get_latest_hk_ggt_trade_date()
         if not trade_date:
-            return {"trade_date": "", "total": 0, "items": []}
+            return {"trade_date": "", "recent_trade_dates": [], "total": 0, "items": []}
 
         rows = self._db.list_hk_ggt_components(trade_date)
         codes = [_norm_hk_code(r.hk_code) for r in rows]
         if not codes:
-            return {"trade_date": trade_date, "total": 0, "items": []}
+            return {"trade_date": trade_date, "recent_trade_dates": [], "total": 0, "items": []}
 
         if refresh:
             market_today = get_market_now("hk").date()
@@ -250,6 +251,7 @@ class HkStockService:
 
         # 批量获取最新交易日行情，并复用同一批日线计算最新 BOLL。
         latest_bars_by_code: Dict[str, Dict[str, Any]] = {}
+        recent_trade_dates: List[str] = []
         if latest_trade_date:
             batch_start = _fmt_date(
                 _parse_yyyymmdd(latest_trade_date) - timedelta(days=DEFAULT_LOOKBACK_DAYS)
@@ -259,6 +261,15 @@ class HkStockService:
                 start_date=batch_start,
                 end_date=latest_trade_date,
             )
+            recent_trade_dates = sorted(
+                {
+                    str(getattr(bar, "trade_date", ""))
+                    for bar_list in batch_bars.values()
+                    for bar in bar_list
+                    if getattr(bar, "trade_date", None)
+                },
+                reverse=True,
+            )[:RECENT_TRADE_DATE_LIMIT]
             for code, bar_list in batch_bars.items():
                 if not bar_list:
                     continue
@@ -360,6 +371,7 @@ class HkStockService:
 
         self._list_cache = {
             "trade_date": latest_trade_date or trade_date,
+            "recent_trade_dates": recent_trade_dates,
             "total": len(items),
             "items": items,
         }

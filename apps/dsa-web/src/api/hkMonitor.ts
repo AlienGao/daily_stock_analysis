@@ -67,6 +67,7 @@ export type HkStockListItem = {
 
 export type HkStockListResponse = {
   trade_date: string;
+  recent_trade_dates?: string[];
   total: number;
   items: HkStockListItem[];
 };
