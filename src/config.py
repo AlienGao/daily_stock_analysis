@@ -1033,6 +1033,10 @@ class Config:
     agent_event_alert_rules_json: str = ""  # JSON array of serialized EventMonitor rules
 
     # === 港股通监控 ===
+    hk_ggt_backfill_sleep_sec: float = 0.3
+    hk_ggt_rt_poll_enabled: bool = True
+    hk_ggt_rt_poll_interval_sec: int = 60
+    hk_ggt_monitor_refresh_timeout_sec: int = 120
 
     # === 通知配置（可同时配置多个，全部推送）===
     
@@ -1812,6 +1816,28 @@ class Config:
             stock_index_remote_update_enabled=parse_env_bool(
                 os.getenv('STOCK_INDEX_REMOTE_UPDATE_ENABLED'),
                 default=True,
+            ),
+            hk_ggt_backfill_sleep_sec=parse_env_float(
+                os.getenv('HK_GGT_BACKFILL_SLEEP_SEC'),
+                0.3,
+                field_name='HK_GGT_BACKFILL_SLEEP_SEC',
+                minimum=0.0,
+            ),
+            hk_ggt_rt_poll_enabled=parse_env_bool(
+                os.getenv('HK_GGT_RT_POLL_ENABLED'),
+                default=True,
+            ),
+            hk_ggt_rt_poll_interval_sec=parse_env_int(
+                os.getenv('HK_GGT_RT_POLL_INTERVAL_SEC'),
+                60,
+                field_name='HK_GGT_RT_POLL_INTERVAL_SEC',
+                minimum=30,
+            ),
+            hk_ggt_monitor_refresh_timeout_sec=parse_env_int(
+                os.getenv('HK_GGT_MONITOR_REFRESH_TIMEOUT_SEC'),
+                120,
+                field_name='HK_GGT_MONITOR_REFRESH_TIMEOUT_SEC',
+                minimum=1,
             ),
             generation_backend=generation_backend,
             generation_fallback_backend=generation_fallback_backend,

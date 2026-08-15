@@ -32,6 +32,8 @@ export type HkGgtMinuteBarItem = {
   high?: number | null;
   low?: number | null;
   close?: number | null;
+  prev_close?: number | null;
+  pct_change?: number | null;
   volume?: number | null;
   amount?: number | null;
   avg_price?: number | null;
@@ -49,6 +51,8 @@ export type HkGgtMinuteBarListResponse = {
 export type HkStockListItem = {
   hk_code: string;
   name?: string | null;
+  pinyin_full?: string | null;
+  pinyin_abbr?: string | null;
   latest_price?: number | null;
   pct_change?: number | null;
   boll_mid?: number | null;
@@ -70,6 +74,27 @@ export type HkStockListResponse = {
   recent_trade_dates?: string[];
   total: number;
   items: HkStockListItem[];
+};
+
+export type HkStockRealtimeItem = {
+  hk_code: string;
+  name?: string | null;
+  latest_price?: number | null;
+  pct_change?: number | null;
+  bar_time?: string | null;
+  intraday_consecutive_drawdown_pct?: number | null;
+  intraday_consecutive_drawdown_minutes?: number | null;
+  intraday_consecutive_drawdown_start_time?: string | null;
+  intraday_consecutive_drawdown_end_time?: string | null;
+};
+
+export type HkStockRealtimeResponse = {
+  trade_date: string;
+  updated_at?: string | null;
+  market_open: boolean;
+  total: number;
+  items: HkStockRealtimeItem[];
+  top_drawdowns: HkStockRealtimeItem[];
 };
 
 export type HkStockKLineItem = {
@@ -114,6 +139,13 @@ export const hkStockApi = {
     const resp = await apiClient.get<HkStockListResponse>('/api/v1/market/hk-stocks', {
       params: { refresh: opts?.refresh ?? false },
       timeout: 120_000,
+    });
+    return resp.data;
+  },
+
+  async getRealtime(): Promise<HkStockRealtimeResponse> {
+    const resp = await apiClient.get<HkStockRealtimeResponse>('/api/v1/market/hk-stocks/realtime', {
+      timeout: 30_000,
     });
     return resp.data;
   },

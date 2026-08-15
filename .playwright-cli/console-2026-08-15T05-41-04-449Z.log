@@ -1,0 +1,5 @@
+[     195ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://127.0.0.1:5174/node_modules/.vite/deps/chunk-MFW4HYMT.js?v=e87c0bd6:20102
+[     391ms] [ERROR] Access to XMLHttpRequest at 'http://127.0.0.1:8001/api/v1/auth/status' from origin 'http://127.0.0.1:5174' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://127.0.0.1:5174/hk-monitor:0
+[     391ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://127.0.0.1:8001/api/v1/auth/status:0
+[   88321ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://127.0.0.1:5174/node_modules/.vite/deps/chunk-MFW4HYMT.js?v=e87c0bd6:20102
+[   90142ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://127.0.0.1:5174/node_modules/.vite/deps/chunk-O7Q6HGGT.js?v=989167ce:20102

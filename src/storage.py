@@ -1462,6 +1462,52 @@ class HkGgtComponent(Base):
         }
 
 
+class HkGgtMinuteBar(Base):
+    """港股通成份股分钟行情快照。"""
+
+    __tablename__ = 'hk_ggt_minute_bar'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    hk_code = Column(String(5), nullable=False, index=True)
+    trade_date = Column(String(8), nullable=False, index=True)
+    bar_time = Column(String(19), nullable=False, index=True)
+    open = Column(Float)
+    high = Column(Float)
+    low = Column(Float)
+    close = Column(Float, nullable=False)
+    prev_close = Column(Float)
+    pct_change = Column(Float)
+    volume = Column(Float)
+    amount = Column(Float)
+    avg_price = Column(Float)
+    period = Column(String(8), nullable=False, default='1')
+    source = Column(String(32), nullable=False, default='tushare_rt')
+    created_at = Column(DateTime, default=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('hk_code', 'bar_time', 'period', name='uix_hk_ggt_minute_code_time_period'),
+        Index('ix_hk_ggt_minute_date_code_time', 'trade_date', 'hk_code', 'bar_time'),
+    )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'hk_code': self.hk_code,
+            'trade_date': self.trade_date,
+            'bar_time': self.bar_time,
+            'open': self.open,
+            'high': self.high,
+            'low': self.low,
+            'close': self.close,
+            'prev_close': self.prev_close,
+            'pct_change': self.pct_change,
+            'volume': self.volume,
+            'amount': self.amount,
+            'avg_price': self.avg_price,
+            'period': self.period,
+            'source': self.source,
+        }
+
+
 class HkStockDaily(Base):
     """港股通个股日线数据。"""
 
@@ -8545,6 +8591,113 @@ class DatabaseManager(metaclass=_DatabaseManagerMeta):
                 HkGgtComponent.trade_date == trade_date
             )
             return [str(row[0]) for row in session.execute(stmt).all() if row[0]]
+
+    def upsert_hk_ggt_minute_bars(self, rows: List[Dict[str, Any]]) -> int:
+        """批量插入或更新港股通分钟行情，同一分钟保留最新来源快照。"""
+        records = []
+        for row in rows:
+            code_digits = ''.join(char for char in str(row.get('hk_code') or '') if char.isdigit())
+            hk_code = code_digits[-5:].zfill(5) if code_digits else ''
+            trade_date = str(row.get('trade_date') or '').replace('-', '')[:8]
+            bar_time = str(row.get('bar_time') or '')[:19]
+            close = self._normalize_sql_value(row.get('close'))
+            if not hk_code or not trade_date or len(bar_time) < 16 or close is None:
+                continue
+            records.append({
+                'hk_code': hk_code,
+                'trade_date': trade_date,
+                'bar_time': bar_time,
+                'open': self._normalize_sql_value(row.get('open')),
+                'high': self._normalize_sql_value(row.get('high')),
+                'low': self._normalize_sql_value(row.get('low')),
+                'close': close,
+                'prev_close': self._normalize_sql_value(row.get('prev_close')),
+                'pct_change': self._normalize_sql_value(row.get('pct_change')),
+                'volume': self._normalize_sql_value(row.get('volume')),
+                'amount': self._normalize_sql_value(row.get('amount')),
+                'avg_price': self._normalize_sql_value(row.get('avg_price')),
+                'period': str(row.get('period') or '1')[:8],
+                'source': str(row.get('source') or 'unknown')[:32],
+            })
+        if not records:
+            return 0
+
+        def _write(session: Session) -> int:
+            statement = sqlite_insert(HkGgtMinuteBar).values(records)
+            excluded = statement.excluded
+            statement = statement.on_conflict_do_update(
+                index_elements=['hk_code', 'bar_time', 'period'],
+                set_={
+                    'trade_date': excluded.trade_date,
+                    'open': excluded.open,
+                    'high': excluded.high,
+                    'low': excluded.low,
+                    'close': excluded.close,
+                    'prev_close': excluded.prev_close,
+                    'pct_change': excluded.pct_change,
+                    'volume': excluded.volume,
+                    'amount': excluded.amount,
+                    'avg_price': excluded.avg_price,
+                    'source': excluded.source,
+                    'created_at': datetime.now(),
+                },
+            )
+            session.execute(statement)
+            return len(records)
+
+        saved = self._run_write_transaction('upsert_hk_ggt_minute_bars', _write)
+        logger.info('[HkGgt] 保存分钟行情 %d 条 trade_date=%s', saved, records[0]['trade_date'])
+        return saved
+
+    def list_hk_ggt_minute_bars(
+        self,
+        hk_code: str,
+        trade_date: str,
+    ) -> List[HkGgtMinuteBar]:
+        code_digits = ''.join(char for char in str(hk_code or '') if char.isdigit())
+        code = code_digits[-5:].zfill(5) if code_digits else ''
+        normalized_date = str(trade_date or '').replace('-', '')[:8]
+        with self.get_session() as session:
+            stmt = (
+                select(HkGgtMinuteBar)
+                .where(
+                    HkGgtMinuteBar.hk_code == code,
+                    HkGgtMinuteBar.trade_date == normalized_date,
+                )
+                .order_by(HkGgtMinuteBar.bar_time)
+            )
+            return list(session.execute(stmt).scalars().all())
+
+    def list_hk_ggt_minute_bars_batch(
+        self,
+        codes: List[str],
+        trade_date: str,
+    ) -> Dict[str, List[HkGgtMinuteBar]]:
+        if not codes:
+            return {}
+        normalized_codes = []
+        for code in codes:
+            code_digits = ''.join(char for char in str(code or '') if char.isdigit())
+            if code_digits:
+                normalized_codes.append(code_digits[-5:].zfill(5))
+        if not normalized_codes:
+            return {}
+        normalized_date = str(trade_date or '').replace('-', '')[:8]
+        with self.get_session() as session:
+            stmt = (
+                select(HkGgtMinuteBar)
+                .where(
+                    HkGgtMinuteBar.hk_code.in_(normalized_codes),
+                    HkGgtMinuteBar.trade_date == normalized_date,
+                )
+                .order_by(HkGgtMinuteBar.hk_code, HkGgtMinuteBar.bar_time)
+            )
+            rows = list(session.execute(stmt).scalars().all())
+
+        grouped: Dict[str, List[HkGgtMinuteBar]] = {}
+        for row in rows:
+            grouped.setdefault(row.hk_code, []).append(row)
+        return grouped
 
     def upsert_hk_stock_daily_bars(self, rows: List[Dict[str, Any]]) -> int:
         """批量插入或更新港股通日线数据。"""

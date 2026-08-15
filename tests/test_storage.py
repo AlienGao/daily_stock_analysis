@@ -181,6 +181,52 @@ class TestStorage(unittest.TestCase):
         self.assertEqual(result, {"00700": 700.0, "09988": 130.0})
         DatabaseManager.reset_instance()
 
+    def test_hk_ggt_minute_bars_upsert_and_batch_query(self):
+        DatabaseManager.reset_instance()
+        db = DatabaseManager(db_url="sqlite:///:memory:")
+        try:
+            rows = [
+                {
+                    "hk_code": "00700",
+                    "trade_date": "20260814",
+                    "bar_time": "2026-08-14 10:00:00",
+                    "close": 500.0,
+                    "prev_close": 498.0,
+                    "period": "1",
+                    "source": "tushare_rt",
+                },
+                {
+                    "hk_code": "00700",
+                    "trade_date": "20260814",
+                    "bar_time": "2026-08-14 10:01:00",
+                    "close": 499.0,
+                    "prev_close": 498.0,
+                    "period": "1",
+                    "source": "tushare_rt",
+                },
+            ]
+            self.assertEqual(db.upsert_hk_ggt_minute_bars(rows), 2)
+            self.assertEqual(db.upsert_hk_ggt_minute_bars([{
+                **rows[1],
+                "close": 498.5,
+                "pct_change": 0.1,
+            }]), 1)
+
+            bars = db.list_hk_ggt_minute_bars("700", "2026-08-14")
+            self.assertEqual(len(bars), 2)
+            self.assertEqual([bar.bar_time for bar in bars], [
+                "2026-08-14 10:00:00",
+                "2026-08-14 10:01:00",
+            ])
+            self.assertEqual(bars[-1].close, 498.5)
+            self.assertEqual(bars[-1].pct_change, 0.1)
+
+            grouped = db.list_hk_ggt_minute_bars_batch(["00700"], "20260814")
+            self.assertEqual(list(grouped), ["00700"])
+            self.assertEqual(len(grouped["00700"]), 2)
+        finally:
+            DatabaseManager.reset_instance()
+
     def test_schema_migration_record_is_idempotent(self):
         DatabaseManager.reset_instance()
         db = DatabaseManager(db_url="sqlite:///:memory:")

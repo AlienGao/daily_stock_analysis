@@ -37,7 +37,7 @@ def main() -> int:
 
     config = get_config()
     start_date = (args.start_date or "20260622").replace("-", "")[:8]
-    sleep_sec = args.sleep if args.sleep is not None else float(0.3 or 0.3)
+    sleep_sec = args.sleep if args.sleep is not None else config.hk_ggt_backfill_sleep_sec
 
     service = HkGgtMonitorService()
     trade_date = args.trade_date or service.resolve_trade_date()
@@ -74,7 +74,7 @@ def main() -> int:
                 break
             if attempt < args.max_retries:
                 time.sleep(min(10.0, sleep_sec + attempt * 2))
-        saved = len(rows)
+        saved = db.upsert_hk_ggt_minute_bars(rows)
         total_saved += saved
         if not rows:
             failed.append(code)

@@ -5,9 +5,16 @@ import type { ColumnsType, SorterResult, SortOrder } from 'antd/es/table/interfa
 import { Loader2, RefreshCw, Search } from 'lucide-react';
 import { AppPage, Button, EmptyState } from '../components/common';
 import { CandlestickMiniChart } from '../components/charts/CandlestickMiniChart';
-import { hkStockApi, type HkBollPickItem, type HkStockKLineItem, type HkStockListItem } from '../api/hkMonitor';
+import {
+  hkStockApi,
+  type HkBollPickItem,
+  type HkStockKLineItem,
+  type HkStockListItem,
+  type HkStockRealtimeItem,
+} from '../api/hkMonitor';
 import { calcBollBandWidthPct, compareBollBandWidth } from '../utils/hkBollBandwidth';
 import { filterRecentDrawdowns } from '../utils/hkMonitorDrawdown';
+import { mergeHkRealtimeBollPicks, mergeHkRealtimeItems } from '../utils/hkMonitorRealtime';
 import { sortHkItemsByPctChangeDesc } from '../utils/hkMonitorSort';
 
 const fmtPct = (v?: number | null) => {
@@ -28,6 +35,7 @@ const pctColor = (v?: number | null) => {
 };
 
 const fmtPrice = (v?: number | null) => (v == null || Number.isNaN(v) ? '--' : v.toFixed(3));
+const minuteLabel = (v?: string | null) => (v && v.length >= 16 ? v.slice(11, 16) : '--');
 
 const calcDistPct = (price?: number | null, band?: number | null) => {
   if (price == null || band == null || !Number.isFinite(price) || !Number.isFinite(band) || band <= 0) return null;
@@ -197,12 +205,14 @@ const BollPickColumn: React.FC<{
 const BollPickPanel: React.FC<{
   loading: boolean;
   picks: HkBollPickItem[];
+  intradayDrawdowns: HkStockRealtimeItem[];
+  realtimeUpdatedAt?: string | null;
   drawdownItems: HkStockListItem[];
   recentTradeDates: readonly string[];
   activeHkCode: string;
   onSelect: (hkCode: string) => void;
   className?: string;
-}> = ({ loading, picks, drawdownItems, recentTradeDates, activeHkCode, onSelect, className = '' }) => {
+}> = ({ loading, picks, intradayDrawdowns, realtimeUpdatedAt, drawdownItems, recentTradeDates, activeHkCode, onSelect, className = '' }) => {
   const upperPicks = useMemo(() => picks.filter(p => p.band === 'upper'), [picks]);
   const midPicks = useMemo(() => picks.filter(p => p.band === 'mid'), [picks]);
   const lowerPicks = useMemo(() => picks.filter(p => p.band === 'lower'), [picks]);
@@ -213,8 +223,36 @@ const BollPickPanel: React.FC<{
 
   return (
     <div className={`flex h-full max-h-full min-h-0 flex-col overflow-hidden rounded-xl border border-border/20 bg-card/40 ${className}`}>
-      <div className="shrink-0 border-b border-border/20 px-3 py-2">
-        <div className="mb-2 rounded-lg border border-border/15 bg-muted/10 p-2">
+      <div className="shrink-0 divide-y divide-border/15 border-b border-border/20 px-3">
+        <section className="py-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs font-medium text-foreground">日内分钟连续最大回撤 Top 5</div>
+            {realtimeUpdatedAt && (
+              <span className="shrink-0 font-mono text-[9px] text-tertiary-text">{minuteLabel(realtimeUpdatedAt)}</span>
+            )}
+          </div>
+          <div className="mt-1 space-y-0.5">
+            {intradayDrawdowns.length ? intradayDrawdowns.map((item, index) => (
+              <button
+                type="button"
+                key={item.hk_code}
+                onClick={() => onSelect(item.hk_code)}
+                title={item.intraday_consecutive_drawdown_minutes != null
+                  ? `连续 ${item.intraday_consecutive_drawdown_minutes} 分钟`
+                  : undefined}
+                className="grid w-full grid-cols-[18px_minmax(0,1fr)_86px_58px] items-center gap-1 rounded px-1 py-0.5 text-left text-[10px] hover:bg-muted/30"
+              >
+                <span className="font-mono text-[9px] text-tertiary-text">{index + 1}</span>
+                <span className="min-w-0 truncate text-foreground">{item.name || item.hk_code}</span>
+                <span className="whitespace-nowrap text-center font-mono text-[9px] text-tertiary-text">
+                  {minuteLabel(item.intraday_consecutive_drawdown_start_time)} → {minuteLabel(item.intraday_consecutive_drawdown_end_time)}
+                </span>
+                <span className="text-right font-mono text-emerald-400">{fmtPct(item.intraday_consecutive_drawdown_pct)}</span>
+              </button>
+            )) : <div className="py-1 text-[10px] text-tertiary-text">暂无日内连续回撤</div>}
+          </div>
+        </section>
+        <section className="py-2">
           <div className="text-xs font-medium text-foreground">最近结束的最高回撤</div>
           <div className="mt-1 space-y-1">
             {recentDrawdowns.length ? recentDrawdowns.map(item => (
@@ -227,9 +265,11 @@ const BollPickPanel: React.FC<{
               </button>
             )) : <div className="py-1 text-[10px] text-tertiary-text">暂无最近连续回撤</div>}
           </div>
-        </div>
-        <div className="text-sm font-medium text-foreground">BOLL 推荐</div>
-        <div className="mt-0.5 text-[11px] text-tertiary-text">收盘价距 BOLL(20,2) 轨道 ±1.5%</div>
+        </section>
+        <section className="py-2">
+          <div className="text-sm font-medium text-foreground">BOLL 推荐</div>
+          <div className="mt-0.5 text-[11px] text-tertiary-text">收盘价距 BOLL(20,2) 轨道 ±1.5%</div>
+        </section>
       </div>
       <div className="grid h-full min-h-0 flex-1 grid-cols-3 grid-rows-1 gap-2 overflow-hidden p-2">
         <BollPickColumn title="上轨附近" titleClass="text-orange-400" items={upperPicks} loading={loading} emptyText="暂无" activeHkCode={activeHkCode} onSelect={onSelect} />
@@ -301,6 +341,8 @@ const HkMonitorPage: React.FC = () => {
   const [expandedKey, setExpandedKey] = useState<string>('');
   const [searchText, setSearchText] = useState<string>('');
   const [bollPicks, setBollPicks] = useState<HkBollPickItem[]>([]);
+  const [intradayDrawdowns, setIntradayDrawdowns] = useState<HkStockRealtimeItem[]>([]);
+  const [realtimeUpdatedAt, setRealtimeUpdatedAt] = useState<string | null>(null);
   const [bollLoading] = useState(false);
   const [tableSort, setTableSort] = useState(DEFAULT_TABLE_SORT);
   const [panelHeight, setPanelHeight] = useState<number | undefined>(undefined);
@@ -326,16 +368,27 @@ const HkMonitorPage: React.FC = () => {
     setError(null);
     try {
       const shouldRefresh = opts?.refresh ?? false;
-      const [listResp, bollResp] = shouldRefresh
-        ? [await hkStockApi.list({ refresh: true }), await hkStockApi.getBollPicks()]
+      const [listResp, bollResp, realtimeResp] = shouldRefresh
+        ? [
+          await hkStockApi.list({ refresh: true }),
+          await hkStockApi.getBollPicks(),
+          await hkStockApi.getRealtime().catch(() => null),
+        ]
         : await Promise.all([
           hkStockApi.list(),
           hkStockApi.getBollPicks(),
+          hkStockApi.getRealtime().catch(() => null),
         ]);
-      setItems(sortHkItemsByPctChangeDesc(listResp.items ?? []));
+      const baseItems = listResp.items ?? [];
+      const basePicks = [...(bollResp.upper ?? []), ...(bollResp.mid ?? []), ...(bollResp.lower ?? [])];
+      setItems(sortHkItemsByPctChangeDesc(
+        realtimeResp ? mergeHkRealtimeItems(baseItems, realtimeResp.items) : baseItems,
+      ));
       setRecentTradeDates(listResp.recent_trade_dates ?? []);
       if (shouldRefresh) setTableSort({ ...DEFAULT_TABLE_SORT });
-      setBollPicks([...(bollResp.upper ?? []), ...(bollResp.mid ?? []), ...(bollResp.lower ?? [])]);
+      setBollPicks(realtimeResp ? mergeHkRealtimeBollPicks(basePicks, realtimeResp.items) : basePicks);
+      setIntradayDrawdowns(realtimeResp?.top_drawdowns ?? []);
+      setRealtimeUpdatedAt(realtimeResp?.updated_at ?? null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : '加载失败');
     } finally {
@@ -344,6 +397,25 @@ const HkMonitorPage: React.FC = () => {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+
+  const refreshRealtime = useCallback(async () => {
+    try {
+      const realtimeResp = await hkStockApi.getRealtime();
+      setItems(current => mergeHkRealtimeItems(current, realtimeResp.items));
+      setBollPicks(current => mergeHkRealtimeBollPicks(current, realtimeResp.items));
+      setIntradayDrawdowns(realtimeResp.top_drawdowns ?? []);
+      setRealtimeUpdatedAt(realtimeResp.updated_at ?? null);
+    } catch {
+      // Keep the last successful snapshot; the backend polling path is best-effort.
+    }
+  }, []);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void refreshRealtime();
+    }, 60_000);
+    return () => window.clearInterval(interval);
+  }, [refreshRealtime]);
 
   const filteredItems = useMemo(() => {
     if (!searchText.trim()) return items;
@@ -593,6 +665,8 @@ const HkMonitorPage: React.FC = () => {
               <BollPickPanel
                 loading={bollLoading}
                 picks={bollPicks}
+                intradayDrawdowns={intradayDrawdowns}
+                realtimeUpdatedAt={realtimeUpdatedAt}
                 drawdownItems={items}
                 recentTradeDates={recentTradeDates}
                 activeHkCode={expandedKey}
@@ -607,6 +681,8 @@ const HkMonitorPage: React.FC = () => {
               className="h-full max-h-full"
               loading={bollLoading}
               picks={bollPicks}
+              intradayDrawdowns={intradayDrawdowns}
+              realtimeUpdatedAt={realtimeUpdatedAt}
               drawdownItems={items}
               recentTradeDates={recentTradeDates}
               activeHkCode={expandedKey}

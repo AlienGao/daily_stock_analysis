@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 > For user-friendly release highlights, see the [GitHub Releases](https://github.com/ZhuLinsen/daily_stock_analysis/releases) page.
 
 ## [Unreleased]
+- [新功能] 港股通监控在交易时段每分钟采集并刷新最新价，右侧新增日内分钟连续最大回撤 Top 5 排名
 - [改进] ETF 专题按主题仅保留近期成交额最高的一只代表 ETF，并同步清理重复品种的行情与复权因子
 - [改进] 指数新高页的 A 股指数新增综合、行业、其他分类切换，并同步筛选列表与 BOLL 推荐
 - [改进] 指数新高页的 A 股指数仅保留宽基与申万 2021 一级行业指数，并在回填时完整保存指数分类元数据

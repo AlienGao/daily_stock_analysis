@@ -222,6 +222,37 @@ def _schedule_stock_index_background_refresh(app: FastAPI, reason: str) -> None:
     )
 
 
+async def _poll_hk_ggt_realtime_in_background(interval_seconds: int) -> None:
+    from src.services.hk_ggt_monitor_service import HkGgtMonitorService
+
+    service = HkGgtMonitorService()
+    loop = asyncio.get_running_loop()
+    next_poll = loop.time() + interval_seconds
+    while True:
+        await asyncio.sleep(max(0, next_poll - loop.time()))
+        next_poll += interval_seconds
+        try:
+            await run_in_threadpool(service.poll_rt_once)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:  # noqa: BLE001 - realtime quotes stay best-effort.
+            logger.warning("[HkGgt] background realtime poll failed: %s", exc)
+        if next_poll <= loop.time():
+            next_poll = loop.time() + interval_seconds
+
+
+def _schedule_hk_ggt_realtime_poll(app: FastAPI) -> None:
+    from src.config import get_config
+
+    config = get_config()
+    if not config.hk_ggt_rt_poll_enabled:
+        return
+    interval_seconds = max(30, int(config.hk_ggt_rt_poll_interval_sec))
+    app.state.hk_ggt_realtime_poll_task = asyncio.create_task(
+        _poll_hk_ggt_realtime_in_background(interval_seconds)
+    )
+
+
 def _load_runtime_scheduler_args() -> dict:
     raw_value = os.getenv(RUNTIME_SCHEDULER_ARGS_ENV)
     if not raw_value:
@@ -292,10 +323,16 @@ async def app_lifespan(app: FastAPI):
         runtime_scheduler=app.state.runtime_scheduler_service,
     )
     _schedule_stock_index_background_refresh(app, "startup")
+    _schedule_hk_ggt_realtime_poll(app)
 
     try:
         yield
     finally:
+        hk_poll_task = getattr(app.state, "hk_ggt_realtime_poll_task", None)
+        if hk_poll_task is not None and not hk_poll_task.done():
+            hk_poll_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await hk_poll_task
         refresh_task = getattr(app.state, "stock_index_refresh_task", None)
         if refresh_task is not None and not refresh_task.done():
             refresh_task.cancel()

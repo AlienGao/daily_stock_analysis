@@ -32,10 +32,12 @@ from api.v1.schemas.market import (
     HfqKLineResponse,
     HfqNewHighListResponse,
     HkGgtComponentListResponse,
+    HkGgtMinuteBarListResponse,
     HkGgtPollResponse,
     HkBollPickListResponse,
     HkStockListResponse,
     HkStockKLineResponse,
+    HkStockRealtimeResponse,
 )
 from src.services.hk_ggt_monitor_service import HkGgtMonitorService
 from src.services.hk_stock_service import HkStockService
@@ -486,6 +488,21 @@ def list_hk_stocks(
 
 
 @router.get(
+    "/hk-stocks/realtime",
+    response_model=HkStockRealtimeResponse,
+    responses={500: {"model": ErrorResponse}},
+    summary="港股通最新分钟价与日内连续最大回撤",
+)
+def get_hk_stock_realtime() -> HkStockRealtimeResponse:
+    try:
+        result = HkGgtMonitorService().get_realtime_snapshot()
+        return HkStockRealtimeResponse(**result)
+    except Exception as exc:
+        logger.error("hk-stocks realtime failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail={"error": "internal_error", "message": str(exc)}) from exc
+
+
+@router.get(
     "/hk-stocks/{hk_code}/klines",
     response_model=HkStockKLineResponse,
     responses={500: {"model": ErrorResponse}},
@@ -518,6 +535,24 @@ def list_hk_boll_picks(
         return HkBollPickListResponse(**result)
     except Exception as exc:
         logger.error("hk-stocks boll-picks failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail={"error": "internal_error", "message": str(exc)}) from exc
+
+
+@router.get(
+    "/hk-ggt/{hk_code}/minutes",
+    response_model=HkGgtMinuteBarListResponse,
+    responses={500: {"model": ErrorResponse}},
+    summary="港股通个股分钟行情",
+)
+def get_hk_ggt_minutes(
+    hk_code: str,
+    trade_date: Optional[str] = Query(None, description="交易日 YYYYMMDD，默认今日"),
+) -> HkGgtMinuteBarListResponse:
+    try:
+        result = HkGgtMonitorService().get_minute_bars(hk_code, trade_date)
+        return HkGgtMinuteBarListResponse(**result)
+    except Exception as exc:
+        logger.error("hk-ggt minutes failed for %s: %s", hk_code, exc, exc_info=True)
         raise HTTPException(status_code=500, detail={"error": "internal_error", "message": str(exc)}) from exc
 
 

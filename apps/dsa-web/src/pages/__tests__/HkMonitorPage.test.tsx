@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { HkStockListItem } from '../../api/hkMonitor';
 import { calcBollBandWidthPct, compareBollBandWidth } from '../../utils/hkBollBandwidth';
 import { filterRecentDrawdowns } from '../../utils/hkMonitorDrawdown';
+import { mergeHkRealtimeBollPicks, mergeHkRealtimeItems } from '../../utils/hkMonitorRealtime';
 import { sortHkItemsByPctChangeDesc } from '../../utils/hkMonitorSort';
 
 const stock = (
@@ -75,5 +76,45 @@ describe('港股通近期连续回撤', () => {
 
     expect(filterRecentDrawdowns(items, ['20260707', '20260706', '20260705', '20260704', '20260703']).map(item => item.hk_code))
       .toEqual(['00002', '00003']);
+  });
+});
+
+describe('港股通分钟行情刷新', () => {
+  it('用最新分钟价更新价格、涨跌幅、轨道距离和历史高点回撤', () => {
+    const [updated] = mergeHkRealtimeItems([
+      {
+        hk_code: '00700',
+        latest_price: 500,
+        pct_change: 0,
+        boll_upper: 520,
+        boll_mid: 500,
+        boll_lower: 480,
+        high_n_price: 600,
+        drawdown_pct: -16.67,
+      },
+    ], [{ hk_code: '00700', latest_price: 510, pct_change: 2 }]);
+
+    expect(updated.latest_price).toBe(510);
+    expect(updated.pct_change).toBe(2);
+    expect(updated.boll_upper_dist_pct).toBe(-1.92);
+    expect(updated.boll_mid_dist_pct).toBe(2);
+    expect(updated.drawdown_pct).toBe(-15);
+  });
+
+  it('同步更新 BOLL 推荐卡片现价与距轨道百分比', () => {
+    const [updated] = mergeHkRealtimeBollPicks([
+      {
+        hk_code: '00700',
+        name: '腾讯控股',
+        close: 500,
+        band: 'upper',
+        boll_mid: 480,
+        boll_upper: 510,
+        boll_lower: 450,
+      },
+    ], [{ hk_code: '00700', latest_price: 505 }]);
+
+    expect(updated.close).toBe(505);
+    expect(updated.dist_pct).toBe(-0.98);
   });
 });

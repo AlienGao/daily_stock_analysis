@@ -105,6 +105,51 @@ class HkGgtComponentListResponse(BaseModel):
     available_dates: List[str] = Field(default_factory=list)
 
 
+class HkGgtMinuteBarItem(BaseModel):
+    hk_code: str
+    trade_date: str
+    bar_time: str
+    open: Optional[float] = None
+    high: Optional[float] = None
+    low: Optional[float] = None
+    close: Optional[float] = None
+    prev_close: Optional[float] = None
+    pct_change: Optional[float] = None
+    volume: Optional[float] = None
+    amount: Optional[float] = None
+    avg_price: Optional[float] = None
+    period: str = "1"
+    source: str
+
+
+class HkGgtMinuteBarListResponse(BaseModel):
+    hk_code: str
+    trade_date: str
+    total: int
+    items: List[HkGgtMinuteBarItem] = Field(default_factory=list)
+
+
+class HkStockRealtimeItem(BaseModel):
+    hk_code: str
+    name: Optional[str] = None
+    latest_price: Optional[float] = None
+    pct_change: Optional[float] = None
+    bar_time: Optional[str] = None
+    intraday_consecutive_drawdown_pct: Optional[float] = None
+    intraday_consecutive_drawdown_minutes: Optional[int] = None
+    intraday_consecutive_drawdown_start_time: Optional[str] = None
+    intraday_consecutive_drawdown_end_time: Optional[str] = None
+
+
+class HkStockRealtimeResponse(BaseModel):
+    trade_date: str
+    updated_at: Optional[str] = None
+    market_open: bool = False
+    total: int
+    items: List[HkStockRealtimeItem] = Field(default_factory=list)
+    top_drawdowns: List[HkStockRealtimeItem] = Field(default_factory=list)
+
+
 class HkStockListItem(BaseModel):
     hk_code: str
     name: Optional[str] = None
