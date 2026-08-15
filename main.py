@@ -86,6 +86,14 @@ logger = logging.getLogger(__name__)
 _RUNTIME_ENV_FILE_KEYS = set()
 _WEBUI_DEV_PROCESS: Optional[subprocess.Popen] = None
 _PUBLIC_BIND_HOSTS = frozenset({"0.0.0.0", "::", "[::]", "*"})
+_LAST_ANALYSIS_FAILURE_REASON: Optional[str] = None
+
+
+class _RunFullAnalysisSummary(dict):
+    """Detailed API result whose truthiness matches the run outcome."""
+
+    def __bool__(self) -> bool:
+        return str(self.get("status") or "completed").lower() != "failed"
 
 
 def _get_active_env_path() -> Path:
@@ -772,7 +780,7 @@ def run_full_analysis(
     stock_codes: Optional[List[str]] = None,
     *,
     raise_errors: bool = False,
-) -> Dict[str, Any]:
+) -> Union[Dict[str, Any], bool]:
     """
     执行完整的分析流程（个股 + 大盘复盘）。
 
@@ -805,6 +813,14 @@ def run_full_analysis(
     requested_total = 0
     success_count = 0
     fail_count = 0
+    global _LAST_ANALYSIS_FAILURE_REASON
+    _LAST_ANALYSIS_FAILURE_REASON = None
+
+    def _return_with_auto_backtest(
+        result: Union[Dict[str, Any], bool],
+    ) -> Union[Dict[str, Any], bool]:
+        _run_auto_backtest(config)
+        return result
 
     try:
         _refresh_stock_index_cache_for_analysis(config)
@@ -817,12 +833,35 @@ def run_full_analysis(
 
         effective_codes = stock_codes if stock_codes is not None else list(config.stock_list or [])
         requested_total = len(effective_codes)
+        using_config_stock_list = stock_codes is None and portfolio_stock_codes is None
 
         # --auto-discover: 运行时覆盖配置，启用自动股票发现
         if getattr(args, 'auto_discover', False):
             config.auto_discover = True
             logger.info("已通过 --auto-discover 启用自动股票发现")
 
+        # Fail fast on an empty persisted watchlist before trading-day filtering.
+        # Otherwise should_skip=True would mask the configuration error as success.
+        if (
+            not getattr(args, "dry_run", False)
+            and using_config_stock_list
+            and not effective_codes
+            and not market_review_requested
+        ):
+            _LAST_ANALYSIS_FAILURE_REASON = "empty_stock_list"
+            logger.error(
+                "本轮分析未生成报告：STOCK_LIST 为空，且未启用大盘复盘。"
+            )
+            return _return_with_auto_backtest(_RunFullAnalysisSummary({
+                "status": "failed",
+                "requested": requested_total,
+                "analyzed": 0,
+                "succeeded": 0,
+                "failed": 0,
+                "error": "STOCK_LIST 为空，且未启用大盘复盘",
+            }))
+
+        # Issue #373: Trading day filter (per-stock, per-market)
         filtered_codes, effective_region, should_skip = _compute_trading_day_filter(
             config, args, effective_codes
         )
@@ -873,6 +912,24 @@ def run_full_analysis(
             and not args.no_market_review
             and (market_review_region or '') != ''
         )
+        if (
+            not getattr(args, "dry_run", False)
+            and not stock_codes
+            and using_config_stock_list
+            and not should_run_market_review
+        ):
+            _LAST_ANALYSIS_FAILURE_REASON = "empty_stock_list"
+            logger.error(
+                "本轮分析未生成报告：STOCK_LIST 为空，且未启用大盘复盘。"
+            )
+            return _return_with_auto_backtest(_RunFullAnalysisSummary({
+                "status": "failed",
+                "requested": requested_total,
+                "analyzed": 0,
+                "succeeded": 0,
+                "failed": 0,
+                "error": "STOCK_LIST 为空，且未启用大盘复盘",
+            }))
         should_use_daily_market_context = (
             should_run_market_review
             and getattr(config, 'daily_market_context_enabled', True)
@@ -1097,6 +1154,40 @@ def run_full_analysis(
             elif can_reuse_market_context:
                 market_report = market_context_full_report or market_context_summary
 
+        expected_stock_report = (
+            not getattr(args, "dry_run", False)
+            and bool(stock_codes)
+            and not skip_futu_stock_analysis
+        )
+        deferred_failure_result = None
+        if expected_stock_report and results and not getattr(
+            pipeline, "_last_local_report_path", None
+        ):
+            _LAST_ANALYSIS_FAILURE_REASON = "report_save_failed"
+            save_error = getattr(pipeline, "_last_local_report_error", None) or "unknown error"
+            logger.error(
+                "本轮分析已生成个股结果，但汇总报告保存失败，未生成本地报告文件: %s",
+                save_error,
+            )
+            deferred_failure_result = False
+        expected_market_report = (
+            not getattr(args, "dry_run", False)
+            and should_run_market_review
+        )
+        if (expected_stock_report or expected_market_report) and not results and not market_report:
+            _LAST_ANALYSIS_FAILURE_REASON = "no_report"
+            logger.error(
+                "本轮分析未生成任何报告：预期的个股分析或大盘复盘均未产出结果。"
+            )
+            return _return_with_auto_backtest(_RunFullAnalysisSummary({
+                "status": "failed",
+                "requested": requested_total,
+                "analyzed": len(stock_codes or []),
+                "succeeded": success_count,
+                "failed": fail_count,
+                "error": "预期的个股分析或大盘复盘均未产出结果",
+            }))
+
         # Issue #190: 合并推送（个股+大盘复盘）
         if merge_notification and (results or market_report) and not args.no_notify:
             parts = []
@@ -1257,29 +1348,36 @@ def run_full_analysis(
         except Exception as e:
             logger.error(f"飞书文档生成失败: {e}")
 
-        # === Auto backtest ===
-        _run_auto_backtest(config)
-
-        return {
-            "status": "completed",
+        final_status = "failed" if deferred_failure_result is False else "completed"
+        summary = _RunFullAnalysisSummary({
+            "status": final_status,
             "requested": requested_total,
             "analyzed": len(stock_codes or []),
             "succeeded": success_count,
             "failed": fail_count,
-        }
+        })
+        if deferred_failure_result is False:
+            summary["error"] = getattr(
+                pipeline,
+                "_last_local_report_error",
+                None,
+            ) or "本地报告保存失败"
+        return _return_with_auto_backtest(summary)
 
     except Exception as e:
+        if _LAST_ANALYSIS_FAILURE_REASON is None:
+            _LAST_ANALYSIS_FAILURE_REASON = "runtime_error"
         logger.exception(f"分析流程执行失败: {e}")
         if raise_errors:
             raise
-        return {
+        return _RunFullAnalysisSummary({
             "status": "failed",
             "requested": requested_total,
             "analyzed": len(stock_codes or []) if isinstance(stock_codes, list) else 0,
             "succeeded": success_count,
             "failed": fail_count,
             "error": str(e),
-        }
+        })
 
 
 def run_scheduled_analysis(
@@ -1295,19 +1393,31 @@ def _run_analysis_with_runtime_scheduler_lock(
     config: Config,
     args: argparse.Namespace,
     stock_codes: Optional[List[str]] = None,
-) -> None:
+) -> bool:
     from src.services.runtime_scheduler import run_with_global_analysis_lock
+
+    task_result: Dict[str, bool] = {"ok": True}
+
+    def _locked_task_runner(
+        locked_config: Config,
+        locked_args: argparse.Namespace,
+        locked_stock_codes: Optional[List[str]] = None,
+    ) -> bool:
+        result = run_full_analysis(locked_config, locked_args, locked_stock_codes)
+        task_result["ok"] = bool(result)
+        return task_result["ok"]
 
     # Keep startup/triggered analysis in sync with API runtime scheduler and
     # run-now entrypoint. Blocking is expected here because startup paths should
     # wait for an in-flight job before returning a response.
-    run_with_global_analysis_lock(
-        task_runner=run_full_analysis,
+    lock_acquired = run_with_global_analysis_lock(
+        task_runner=_locked_task_runner,
         config=config,
         args=args,
         stock_codes=stock_codes,
         blocking=True,
     )
+    return bool(lock_acquired and task_result["ok"])
 
 
 def start_api_server(host: str, port: int, config: Config) -> None:
@@ -1891,7 +2001,7 @@ def main() -> int:
             logger.info("模式: 仅大盘复盘")
             notifier, analyzer, search_service = build_market_review_runtime(config)
 
-            _run_market_review_with_shared_lock(
+            market_review_result = _run_market_review_with_shared_lock(
                 config,
                 run_market_review,
                 notifier=notifier,
@@ -1901,7 +2011,7 @@ def main() -> int:
                 override_region=effective_region,
                 trigger_source="cli",
             )
-            raise _ModeExit(0)
+            raise _ModeExit(0 if market_review_result else 1)
 
         # 模式: 盘中实时扫描
         if getattr(args, 'scan', False):
@@ -2085,7 +2195,12 @@ def main() -> int:
                 except Exception:
                     pass
 
-                run_full_analysis(runtime_config, args, scheduled_stock_codes)
+                result = run_full_analysis(runtime_config, args, scheduled_stock_codes)
+                if not result:
+                    reason = _LAST_ANALYSIS_FAILURE_REASON or "unknown"
+                    raise RuntimeError(
+                        f"scheduled analysis reported failure: {reason}"
+                    )
 
             background_tasks = []
             if getattr(config, 'agent_event_monitor_enabled', False):
@@ -2123,7 +2238,7 @@ def main() -> int:
         # 模式3: 正常单次运行
         if config.run_immediately:
             try:
-                _run_analysis_with_runtime_scheduler_lock(config, args, stock_codes)
+                analysis_ok = _run_analysis_with_runtime_scheduler_lock(config, args, stock_codes)
             except FutuPortfolioError as exc:
                 if not start_serve:
                     raise
@@ -2131,6 +2246,16 @@ def main() -> int:
                     "Futu 持仓导入失败，Web/API 服务继续运行: %s",
                     exc,
                 )
+            else:
+                if analysis_ok is False:
+                    if start_serve:
+                        logger.error("启动时分析执行失败，Web/API 服务继续运行。")
+                    elif _LAST_ANALYSIS_FAILURE_REASON in {
+                        "no_report",
+                        "empty_stock_list",
+                        "report_save_failed",
+                    }:
+                        return 1
         else:
             logger.info("配置为不立即运行分析 (RUN_IMMEDIATELY=false)")
 
