@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Table } from 'antd';
+import { Modal, Table, Tabs } from 'antd';
 import type { ColumnsType, SorterResult, SortOrder } from 'antd/es/table/interface';
 import { Loader2, RefreshCw, Search } from 'lucide-react';
 import { AppPage, Button, EmptyState } from '../components/common';
@@ -8,6 +8,7 @@ import { CandlestickMiniChart } from '../components/charts/CandlestickMiniChart'
 import {
   hkStockApi,
   type HkBollPickItem,
+  type HkMinuteBollAlertItem,
   type HkStockKLineItem,
   type HkStockListItem,
   type HkStockRealtimeItem,
@@ -206,13 +207,15 @@ const BollPickPanel: React.FC<{
   loading: boolean;
   picks: HkBollPickItem[];
   intradayDrawdowns: HkStockRealtimeItem[];
+  minuteGainers: HkStockRealtimeItem[];
+  minuteBollAlerts: HkMinuteBollAlertItem[];
   realtimeUpdatedAt?: string | null;
   drawdownItems: HkStockListItem[];
   recentTradeDates: readonly string[];
   activeHkCode: string;
   onSelect: (hkCode: string) => void;
   className?: string;
-}> = ({ loading, picks, intradayDrawdowns, realtimeUpdatedAt, drawdownItems, recentTradeDates, activeHkCode, onSelect, className = '' }) => {
+}> = ({ loading, picks, intradayDrawdowns, minuteGainers, minuteBollAlerts, realtimeUpdatedAt, drawdownItems, recentTradeDates, activeHkCode, onSelect, className = '' }) => {
   const upperPicks = useMemo(() => picks.filter(p => p.band === 'upper'), [picks]);
   const midPicks = useMemo(() => picks.filter(p => p.band === 'mid'), [picks]);
   const lowerPicks = useMemo(() => picks.filter(p => p.band === 'lower'), [picks]);
@@ -223,59 +226,140 @@ const BollPickPanel: React.FC<{
 
   return (
     <div className={`flex h-full max-h-full min-h-0 flex-col overflow-hidden rounded-xl border border-border/20 bg-card/40 ${className}`}>
-      <div className="shrink-0 divide-y divide-border/15 border-b border-border/20 px-3">
-        <section className="py-2">
-          <div className="flex items-center justify-between gap-2">
-            <div className="text-xs font-medium text-foreground">日内分钟连续最大回撤 Top 5</div>
-            {realtimeUpdatedAt && (
-              <span className="shrink-0 font-mono text-[9px] text-tertiary-text">{minuteLabel(realtimeUpdatedAt)}</span>
-            )}
-          </div>
-          <div className="mt-1 space-y-0.5">
-            {intradayDrawdowns.length ? intradayDrawdowns.map((item, index) => (
-              <button
-                type="button"
-                key={item.hk_code}
-                onClick={() => onSelect(item.hk_code)}
-                title={item.intraday_consecutive_drawdown_minutes != null
-                  ? `连续 ${item.intraday_consecutive_drawdown_minutes} 分钟`
-                  : undefined}
-                className="grid w-full grid-cols-[18px_minmax(0,1fr)_86px_58px] items-center gap-1 rounded px-1 py-0.5 text-left text-[10px] hover:bg-muted/30"
-              >
-                <span className="font-mono text-[9px] text-tertiary-text">{index + 1}</span>
-                <span className="min-w-0 truncate text-foreground">{item.name || item.hk_code}</span>
-                <span className="whitespace-nowrap text-center font-mono text-[9px] text-tertiary-text">
-                  {minuteLabel(item.intraday_consecutive_drawdown_start_time)} → {minuteLabel(item.intraday_consecutive_drawdown_end_time)}
-                </span>
-                <span className="text-right font-mono text-emerald-400">{fmtPct(item.intraday_consecutive_drawdown_pct)}</span>
-              </button>
-            )) : <div className="py-1 text-[10px] text-tertiary-text">暂无日内连续回撤</div>}
-          </div>
-        </section>
-        <section className="py-2">
-          <div className="text-xs font-medium text-foreground">最近结束的最高回撤</div>
-          <div className="mt-1 space-y-1">
-            {recentDrawdowns.length ? recentDrawdowns.map(item => (
-              <button type="button" key={item.hk_code} onClick={() => onSelect(item.hk_code)} className="grid w-full grid-cols-3 items-center gap-2 rounded px-1 py-0.5 text-left text-[10px] hover:bg-muted/30">
-                <span className="min-w-0 truncate text-foreground">{item.name || item.hk_code}</span>
-                <span className="truncate whitespace-nowrap text-center font-mono text-[9px] text-tertiary-text">
-                  {item.latest_consecutive_drawdown_start_date || '--'} ~ {item.latest_consecutive_drawdown_end_date || '--'}
-                </span>
-                <span className="text-right font-mono text-emerald-400">{fmtPct(item.latest_consecutive_drawdown_pct)}</span>
-              </button>
-            )) : <div className="py-1 text-[10px] text-tertiary-text">暂无最近连续回撤</div>}
-          </div>
-        </section>
-        <section className="py-2">
-          <div className="text-sm font-medium text-foreground">BOLL 推荐</div>
-          <div className="mt-0.5 text-[11px] text-tertiary-text">收盘价距 BOLL(20,2) 轨道 ±1.5%</div>
-        </section>
-      </div>
-      <div className="grid h-full min-h-0 flex-1 grid-cols-3 grid-rows-1 gap-2 overflow-hidden p-2">
-        <BollPickColumn title="上轨附近" titleClass="text-orange-400" items={upperPicks} loading={loading} emptyText="暂无" activeHkCode={activeHkCode} onSelect={onSelect} />
-        <BollPickColumn title="中轨附近" titleClass="text-sky-400" items={midPicks} loading={loading} emptyText="暂无" activeHkCode={activeHkCode} onSelect={onSelect} />
-        <BollPickColumn title="下轨附近" titleClass="text-pink-400" items={lowerPicks} loading={loading} emptyText="暂无" activeHkCode={activeHkCode} onSelect={onSelect} />
-      </div>
+      <Tabs
+        defaultActiveKey="boll"
+        size="small"
+        tabBarGutter={16}
+        tabBarStyle={{ margin: 0, paddingInline: 12 }}
+        className="flex h-full min-h-0 flex-1 flex-col [&_.ant-tabs-content]:h-full [&_.ant-tabs-content]:min-h-0 [&_.ant-tabs-content-holder]:min-h-0 [&_.ant-tabs-content-holder]:flex-1 [&_.ant-tabs-content-holder]:overflow-hidden [&_.ant-tabs-tabpane]:h-full [&_.ant-tabs-tabpane]:min-h-0"
+        items={[
+          {
+            key: 'boll',
+            label: <span className="text-xs font-medium">BOLL 推荐</span>,
+            children: (
+              <div className="flex h-full min-h-0 flex-col">
+                <div className="shrink-0 border-b border-border/15 px-3 py-2 text-[11px] text-tertiary-text">
+                  收盘价距 BOLL(20,2) 轨道 ±1.5%
+                </div>
+                <div className="grid min-h-0 flex-1 grid-cols-3 grid-rows-1 gap-2 overflow-hidden p-2">
+                  <BollPickColumn title="上轨附近" titleClass="text-orange-400" items={upperPicks} loading={loading} emptyText="暂无" activeHkCode={activeHkCode} onSelect={onSelect} />
+                  <BollPickColumn title="中轨附近" titleClass="text-sky-400" items={midPicks} loading={loading} emptyText="暂无" activeHkCode={activeHkCode} onSelect={onSelect} />
+                  <BollPickColumn title="下轨附近" titleClass="text-pink-400" items={lowerPicks} loading={loading} emptyText="暂无" activeHkCode={activeHkCode} onSelect={onSelect} />
+                </div>
+              </div>
+            ),
+          },
+          {
+            key: 'intraday',
+            label: <span className="text-xs font-medium">日内数据</span>,
+            children: (
+              <div className="flex h-full min-h-0 flex-col px-3 pb-3">
+                <section className="shrink-0 py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-xs font-medium text-foreground">日内分钟连续最大回撤 Top 5</div>
+                    {realtimeUpdatedAt && (
+                      <span className="shrink-0 font-mono text-[9px] text-tertiary-text">{minuteLabel(realtimeUpdatedAt)}</span>
+                    )}
+                  </div>
+                  <div className="mt-1 space-y-0.5">
+                    {intradayDrawdowns.length ? intradayDrawdowns.map((item, index) => (
+                      <button
+                        type="button"
+                        key={item.hk_code}
+                        onClick={() => onSelect(item.hk_code)}
+                        title={item.intraday_consecutive_drawdown_minutes != null
+                          ? `连续 ${item.intraday_consecutive_drawdown_minutes} 分钟`
+                          : undefined}
+                        className="grid w-full grid-cols-[18px_minmax(0,1fr)_86px_58px] items-center gap-1 rounded px-1 py-0.5 text-left text-[10px] hover:bg-muted/30"
+                      >
+                        <span className="font-mono text-[9px] text-tertiary-text">{index + 1}</span>
+                        <span className="min-w-0 truncate text-foreground">{item.name || item.hk_code}</span>
+                        <span className="whitespace-nowrap text-center font-mono text-[9px] text-tertiary-text">
+                          {minuteLabel(item.intraday_consecutive_drawdown_start_time)} → {minuteLabel(item.intraday_consecutive_drawdown_end_time)}
+                        </span>
+                        <span className="text-right font-mono text-emerald-400">{fmtPct(item.intraday_consecutive_drawdown_pct)}</span>
+                      </button>
+                    )) : <div className="py-1 text-[10px] text-tertiary-text">暂无日内连续回撤</div>}
+                  </div>
+                </section>
+                <section className="shrink-0 border-t border-border/15 py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-xs font-medium text-foreground">分钟涨幅 Top 5</div>
+                    {realtimeUpdatedAt && (
+                      <span className="shrink-0 font-mono text-[9px] text-tertiary-text">{minuteLabel(realtimeUpdatedAt)}</span>
+                    )}
+                  </div>
+                  <div className="mt-1 space-y-0.5">
+                    {minuteGainers.length ? minuteGainers.map((item, index) => (
+                      <button
+                        type="button"
+                        key={item.hk_code}
+                        onClick={() => onSelect(item.hk_code)}
+                        className="grid w-full grid-cols-[18px_minmax(0,1fr)_86px_58px] items-center gap-1 rounded px-1 py-0.5 text-left text-[10px] hover:bg-muted/30"
+                      >
+                        <span className="font-mono text-[9px] text-tertiary-text">{index + 1}</span>
+                        <span className="min-w-0 truncate text-foreground">{item.name || item.hk_code}</span>
+                        <span className="whitespace-nowrap text-center font-mono text-[9px] text-tertiary-text">
+                          {minuteLabel(item.minute_change_start_time)} → {minuteLabel(item.minute_change_end_time)}
+                        </span>
+                        <span className={`text-right font-mono ${pctColor(item.minute_change_pct)}`}>
+                          {fmtPct(item.minute_change_pct)}
+                        </span>
+                      </button>
+                    )) : <div className="py-1 text-[10px] text-tertiary-text">暂无分钟涨幅</div>}
+                  </div>
+                </section>
+                <section className="flex min-h-0 flex-1 flex-col border-t border-border/15 py-2">
+                  <div className="flex shrink-0 items-center justify-between gap-2">
+                    <div className="text-xs font-medium text-foreground">今日 BOLL 报警</div>
+                    <span className="font-mono text-[9px] text-tertiary-text">{minuteBollAlerts.length} 条</span>
+                  </div>
+                  <div className="mt-1 min-h-0 flex-1 space-y-0.5 overflow-y-auto">
+                    {minuteBollAlerts.length ? minuteBollAlerts.map(alert => (
+                      <button
+                        type="button"
+                        key={alert.id}
+                        onClick={() => onSelect(alert.hk_code)}
+                        className="grid w-full grid-cols-[minmax(0,1fr)_42px_48px_52px] items-center gap-1 rounded px-1 py-0.5 text-left text-[10px] hover:bg-muted/30"
+                      >
+                        <span className="min-w-0 truncate text-foreground">{alert.name || alert.hk_code}</span>
+                        <span className="font-mono text-[9px] text-tertiary-text">{minuteLabel(alert.bar_time)}</span>
+                        <span className="text-center text-[9px] text-sky-400">{alert.band_label || (alert.band === 'lower' ? '下轨' : '中轨')}</span>
+                        <span className={`text-right font-mono text-[9px] ${pctColor(alert.distance_pct)}`}>{fmtPct(alert.distance_pct)}</span>
+                      </button>
+                    )) : <div className="py-1 text-[10px] text-tertiary-text">今日暂无报警</div>}
+                  </div>
+                </section>
+              </div>
+            ),
+          },
+          {
+            key: 'drawdown',
+            label: <span className="text-xs font-medium">最近最大回撤</span>,
+            children: (
+              <div className="h-full overflow-y-auto px-3 pb-3">
+                <section className="py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-xs font-medium text-foreground">最近结束的最高回撤</div>
+                    <span className="font-mono text-[9px] text-tertiary-text">{recentDrawdowns.length} 条</span>
+                  </div>
+                  <div className="mt-1 space-y-1">
+                    {recentDrawdowns.length ? recentDrawdowns.map(item => (
+                      <button type="button" key={item.hk_code} onClick={() => onSelect(item.hk_code)} className="grid w-full grid-cols-3 items-center gap-2 rounded px-1 py-0.5 text-left text-[10px] hover:bg-muted/30">
+                        <span className="min-w-0 truncate text-foreground">{item.name || item.hk_code}</span>
+                        <span className="truncate whitespace-nowrap text-center font-mono text-[9px] text-tertiary-text">
+                          {item.latest_consecutive_drawdown_start_date || '--'} ~ {item.latest_consecutive_drawdown_end_date || '--'}
+                        </span>
+                        <span className="text-right font-mono text-emerald-400">{fmtPct(item.latest_consecutive_drawdown_pct)}</span>
+                      </button>
+                    )) : <div className="py-1 text-[10px] text-tertiary-text">暂无最近连续回撤</div>}
+                  </div>
+                </section>
+              </div>
+            ),
+          },
+        ]}
+      />
     </div>
   );
 };
@@ -342,11 +426,32 @@ const HkMonitorPage: React.FC = () => {
   const [searchText, setSearchText] = useState<string>('');
   const [bollPicks, setBollPicks] = useState<HkBollPickItem[]>([]);
   const [intradayDrawdowns, setIntradayDrawdowns] = useState<HkStockRealtimeItem[]>([]);
+  const [minuteGainers, setMinuteGainers] = useState<HkStockRealtimeItem[]>([]);
+  const [minuteBollAlerts, setMinuteBollAlerts] = useState<HkMinuteBollAlertItem[]>([]);
+  const [bollAlertModalItems, setBollAlertModalItems] = useState<HkMinuteBollAlertItem[]>([]);
+  const [bollAlertModalOpen, setBollAlertModalOpen] = useState(false);
+  const bollAlertIdsRef = useRef<Set<number> | null>(null);
   const [realtimeUpdatedAt, setRealtimeUpdatedAt] = useState<string | null>(null);
   const [bollLoading] = useState(false);
   const [tableSort, setTableSort] = useState(DEFAULT_TABLE_SORT);
   const [panelHeight, setPanelHeight] = useState<number | undefined>(undefined);
   const tableWrapRef = useRef<HTMLDivElement>(null);
+
+  const updateMinuteBollAlerts = useCallback((alerts: HkMinuteBollAlertItem[]) => {
+    setMinuteBollAlerts(alerts);
+    const knownIds = bollAlertIdsRef.current;
+    const currentIds = new Set(alerts.map(alert => alert.id));
+    if (knownIds === null) {
+      bollAlertIdsRef.current = currentIds;
+      return;
+    }
+    const freshAlerts = alerts.filter(alert => !knownIds.has(alert.id));
+    bollAlertIdsRef.current = currentIds;
+    if (freshAlerts.length) {
+      setBollAlertModalItems(freshAlerts);
+      setBollAlertModalOpen(true);
+    }
+  }, []);
 
   useLayoutEffect(() => {
     const el = tableWrapRef.current;
@@ -388,13 +493,15 @@ const HkMonitorPage: React.FC = () => {
       if (shouldRefresh) setTableSort({ ...DEFAULT_TABLE_SORT });
       setBollPicks(realtimeResp ? mergeHkRealtimeBollPicks(basePicks, realtimeResp.items) : basePicks);
       setIntradayDrawdowns(realtimeResp?.top_drawdowns ?? []);
+      setMinuteGainers(realtimeResp?.top_gainers ?? []);
+      updateMinuteBollAlerts(realtimeResp?.today_boll_alerts ?? []);
       setRealtimeUpdatedAt(realtimeResp?.updated_at ?? null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : '加载失败');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [updateMinuteBollAlerts]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -404,11 +511,13 @@ const HkMonitorPage: React.FC = () => {
       setItems(current => mergeHkRealtimeItems(current, realtimeResp.items));
       setBollPicks(current => mergeHkRealtimeBollPicks(current, realtimeResp.items));
       setIntradayDrawdowns(realtimeResp.top_drawdowns ?? []);
+      setMinuteGainers(realtimeResp.top_gainers ?? []);
+      updateMinuteBollAlerts(realtimeResp.today_boll_alerts ?? []);
       setRealtimeUpdatedAt(realtimeResp.updated_at ?? null);
     } catch {
       // Keep the last successful snapshot; the backend polling path is best-effort.
     }
-  }, []);
+  }, [updateMinuteBollAlerts]);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -666,6 +775,8 @@ const HkMonitorPage: React.FC = () => {
                 loading={bollLoading}
                 picks={bollPicks}
                 intradayDrawdowns={intradayDrawdowns}
+                minuteGainers={minuteGainers}
+                minuteBollAlerts={minuteBollAlerts}
                 realtimeUpdatedAt={realtimeUpdatedAt}
                 drawdownItems={items}
                 recentTradeDates={recentTradeDates}
@@ -682,6 +793,8 @@ const HkMonitorPage: React.FC = () => {
               loading={bollLoading}
               picks={bollPicks}
               intradayDrawdowns={intradayDrawdowns}
+              minuteGainers={minuteGainers}
+              minuteBollAlerts={minuteBollAlerts}
               realtimeUpdatedAt={realtimeUpdatedAt}
               drawdownItems={items}
               recentTradeDates={recentTradeDates}
@@ -690,6 +803,33 @@ const HkMonitorPage: React.FC = () => {
             />
           </div>
         )}
+        <Modal
+          open={bollAlertModalOpen}
+          title="港股分钟 BOLL 报警"
+          onCancel={() => setBollAlertModalOpen(false)}
+          onOk={() => setBollAlertModalOpen(false)}
+          okText="知道了"
+          cancelButtonProps={{ style: { display: 'none' } }}
+        >
+          <div className="max-h-[min(70vh,32rem)] space-y-2 overflow-y-auto pr-1">
+            {bollAlertModalItems.map(alert => (
+              <button
+                type="button"
+                key={alert.id}
+                onClick={() => { setBollAlertModalOpen(false); locateStock(alert.hk_code); }}
+                className="flex w-full items-center justify-between rounded border border-border/20 bg-muted/10 px-3 py-2 text-left text-sm hover:bg-muted/25"
+              >
+                <span>
+                  <span className="font-medium text-foreground">{alert.name || alert.hk_code}</span>
+                  <span className="ml-2 text-xs text-tertiary-text">{alert.hk_code} · {minuteLabel(alert.bar_time)}</span>
+                </span>
+                <span className="font-mono text-xs text-sky-400">
+                  {alert.band_label || (alert.band === 'lower' ? '下轨' : '中轨')} {fmtPct(alert.distance_pct)}
+                </span>
+              </button>
+            ))}
+          </div>
+        </Modal>
       </div>
     </AppPage>
   );

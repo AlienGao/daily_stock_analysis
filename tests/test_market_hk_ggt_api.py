@@ -79,14 +79,14 @@ def test_get_hk_ggt_minutes():
             "bar_time": "2026-06-24 10:15:00",
             "close": 401.0,
             "period": "1",
-            "source": "tushare_rt",
+            "source": "tencent_rt",
         }],
     }
     with patch("api.v1.endpoints.market.HkGgtMonitorService") as mock_cls:
         mock_cls.return_value.get_minute_bars.return_value = payload
         resp = client.get("/api/v1/market/hk-ggt/00700/minutes", params={"trade_date": "20260624"})
     assert resp.status_code == 200
-    assert resp.json()["items"][0]["source"] == "tushare_rt"
+    assert resp.json()["items"][0]["source"] == "tencent_rt"
 
 
 def test_get_hk_stock_realtime_drawdown_ranking():
@@ -117,6 +117,29 @@ def test_get_hk_stock_realtime_drawdown_ranking():
             "intraday_consecutive_drawdown_start_time": "2026-08-14 10:11:00",
             "intraday_consecutive_drawdown_end_time": "2026-08-14 10:15:00",
         }],
+        "top_gainers": [{
+            "hk_code": "09988",
+            "name": "阿里巴巴-W",
+            "latest_price": 121.5,
+            "minute_change_pct": 1.25,
+            "minute_change_start_time": "2026-08-14 10:14:00",
+            "minute_change_end_time": "2026-08-14 10:15:00",
+        }],
+        "today_boll_alerts": [{
+            "id": 1,
+            "trade_date": "20260814",
+            "hk_code": "00700",
+            "name": "腾讯控股",
+            "bar_time": "2026-08-14 10:15:00",
+            "band": "mid",
+            "band_label": "中轨",
+            "close": 505.0,
+            "band_value": 504.5,
+            "boll_mid": 504.5,
+            "boll_lower": 498.0,
+            "distance_pct": 0.1,
+            "source": "tencent_rt",
+        }],
     }
     with patch("api.v1.endpoints.market.HkGgtMonitorService") as mock_cls:
         mock_cls.return_value.get_realtime_snapshot.return_value = payload
@@ -125,3 +148,6 @@ def test_get_hk_stock_realtime_drawdown_ranking():
     assert resp.status_code == 200
     assert resp.json()["top_drawdowns"][0]["hk_code"] == "00700"
     assert resp.json()["top_drawdowns"][0]["intraday_consecutive_drawdown_pct"] == -3.5
+    assert resp.json()["top_gainers"][0]["hk_code"] == "09988"
+    assert resp.json()["top_gainers"][0]["minute_change_pct"] == 1.25
+    assert resp.json()["today_boll_alerts"][0]["band"] == "mid"

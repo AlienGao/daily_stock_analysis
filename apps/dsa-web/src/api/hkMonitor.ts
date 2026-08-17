@@ -86,6 +86,26 @@ export type HkStockRealtimeItem = {
   intraday_consecutive_drawdown_minutes?: number | null;
   intraday_consecutive_drawdown_start_time?: string | null;
   intraday_consecutive_drawdown_end_time?: string | null;
+  minute_change_pct?: number | null;
+  minute_change_start_time?: string | null;
+  minute_change_end_time?: string | null;
+};
+
+export type HkMinuteBollAlertItem = {
+  id: number;
+  trade_date: string;
+  hk_code: string;
+  name?: string | null;
+  bar_time: string;
+  band: 'mid' | 'lower' | string;
+  band_label?: string | null;
+  close: number;
+  band_value: number;
+  boll_mid: number;
+  boll_lower: number;
+  distance_pct: number;
+  source: string;
+  created_at?: string | null;
 };
 
 export type HkStockRealtimeResponse = {
@@ -95,6 +115,8 @@ export type HkStockRealtimeResponse = {
   total: number;
   items: HkStockRealtimeItem[];
   top_drawdowns: HkStockRealtimeItem[];
+  top_gainers: HkStockRealtimeItem[];
+  today_boll_alerts: HkMinuteBollAlertItem[];
 };
 
 export type HkStockKLineItem = {

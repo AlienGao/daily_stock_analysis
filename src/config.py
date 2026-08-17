@@ -871,6 +871,8 @@ class Config:
     
     # === 自选股配置 ===
     stock_list: List[str] = field(default_factory=list)
+    # 港股分钟榜单的个股范围（连续回撤 / 分钟涨幅，不限制港股通成份及分钟采集）
+    hk_list: List[str] = field(default_factory=list)
 
     # === 飞书云文档配置 ===
     feishu_app_id: Optional[str] = None
@@ -1443,7 +1445,18 @@ class Config:
             for c in split_stock_list(stock_list_str)
             if (c or "").strip()
         ]
-        
+
+        hk_list_str = cls._resolve_env_value(
+            'HK_LIST',
+            default='',
+            prefer_env_file=True,
+        )
+        hk_list = [
+            (c or "").strip().upper()
+            for c in split_stock_list(hk_list_str)
+            if (c or "").strip()
+        ]
+
         # === LiteLLM multi-key parsing ===
         # GEMINI_API_KEYS (comma-separated) > GEMINI_API_KEY (single)
         _gemini_keys_raw = os.getenv('GEMINI_API_KEYS', '')
@@ -1798,6 +1811,7 @@ class Config:
 
         return cls(
             stock_list=stock_list,
+            hk_list=hk_list,
             feishu_app_id=os.getenv('FEISHU_APP_ID'),
             feishu_app_secret=os.getenv('FEISHU_APP_SECRET'),
             feishu_folder_token=os.getenv('FEISHU_FOLDER_TOKEN'),

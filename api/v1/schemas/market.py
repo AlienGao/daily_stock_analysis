@@ -139,6 +139,26 @@ class HkStockRealtimeItem(BaseModel):
     intraday_consecutive_drawdown_minutes: Optional[int] = None
     intraday_consecutive_drawdown_start_time: Optional[str] = None
     intraday_consecutive_drawdown_end_time: Optional[str] = None
+    minute_change_pct: Optional[float] = None
+    minute_change_start_time: Optional[str] = None
+    minute_change_end_time: Optional[str] = None
+
+
+class HkMinuteBollAlertItem(BaseModel):
+    id: int
+    trade_date: str
+    hk_code: str
+    name: Optional[str] = None
+    bar_time: str
+    band: str
+    band_label: Optional[str] = None
+    close: float
+    band_value: float
+    boll_mid: float
+    boll_lower: float
+    distance_pct: float
+    source: str
+    created_at: Optional[str] = None
 
 
 class HkStockRealtimeResponse(BaseModel):
@@ -148,6 +168,8 @@ class HkStockRealtimeResponse(BaseModel):
     total: int
     items: List[HkStockRealtimeItem] = Field(default_factory=list)
     top_drawdowns: List[HkStockRealtimeItem] = Field(default_factory=list)
+    top_gainers: List[HkStockRealtimeItem] = Field(default_factory=list)
+    today_boll_alerts: List[HkMinuteBollAlertItem] = Field(default_factory=list)
 
 
 class HkStockListItem(BaseModel):
@@ -225,6 +247,7 @@ class HkGgtPollResponse(BaseModel):
     bar_time: Optional[str] = None
     saved: int = 0
     matched: Optional[int] = None
+    alerts_created: int = 0
 
 
 class EtfNewHighDateItem(BaseModel):

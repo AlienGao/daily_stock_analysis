@@ -16,7 +16,15 @@ from sqlalchemy.sql import func
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.config import Config
-from src.storage import Base, CURRENT_SCHEMA_VERSION, DatabaseManager, DatabaseSchemaMigration, HkStockDaily, StockDaily
+from src.storage import (
+    Base,
+    CURRENT_SCHEMA_VERSION,
+    DatabaseManager,
+    DatabaseSchemaMigration,
+    HkMinuteBollAlert,
+    HkStockDaily,
+    StockDaily,
+)
 
 class TestStorage(unittest.TestCase):
 
@@ -193,7 +201,7 @@ class TestStorage(unittest.TestCase):
                     "close": 500.0,
                     "prev_close": 498.0,
                     "period": "1",
-                    "source": "tushare_rt",
+                    "source": "tencent_rt",
                 },
                 {
                     "hk_code": "00700",
@@ -202,7 +210,7 @@ class TestStorage(unittest.TestCase):
                     "close": 499.0,
                     "prev_close": 498.0,
                     "period": "1",
-                    "source": "tushare_rt",
+                    "source": "tencent_rt",
                 },
             ]
             self.assertEqual(db.upsert_hk_ggt_minute_bars(rows), 2)
@@ -224,6 +232,38 @@ class TestStorage(unittest.TestCase):
             grouped = db.list_hk_ggt_minute_bars_batch(["00700"], "20260814")
             self.assertEqual(list(grouped), ["00700"])
             self.assertEqual(len(grouped["00700"]), 2)
+        finally:
+            DatabaseManager.reset_instance()
+
+    def test_hk_minute_boll_alerts_keep_only_closest_per_day_code(self):
+        DatabaseManager.reset_instance()
+        db = DatabaseManager(db_url="sqlite:///:memory:")
+        try:
+            row = {
+                "trade_date": "20260814",
+                "hk_code": "00700",
+                "bar_time": "2026-08-14 10:19:00",
+                "band": "mid",
+                "close": 100.0,
+                "band_value": 100.0,
+                "boll_mid": 100.0,
+                "boll_lower": 100.0,
+                "distance_pct": 0.3,
+                "source": "tencent_rt",
+            }
+            self.assertEqual(db.insert_hk_minute_boll_alerts([row]), 1)
+            self.assertEqual(db.insert_hk_minute_boll_alerts([row]), 0)
+            closer_lower = dict(row)
+            closer_lower.update({
+                "band": "lower",
+                "distance_pct": -0.1,
+                "band_value": 99.9,
+            })
+            self.assertEqual(db.insert_hk_minute_boll_alerts([closer_lower]), 1)
+            alerts = db.list_hk_minute_boll_alerts("2026-08-14", ["700"])
+            self.assertEqual(len(alerts), 1)
+            self.assertEqual(alerts[0].band, "lower")
+            self.assertEqual(alerts[0].distance_pct, -0.1)
         finally:
             DatabaseManager.reset_instance()
 

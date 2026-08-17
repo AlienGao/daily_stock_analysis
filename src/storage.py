@@ -1481,7 +1481,7 @@ class HkGgtMinuteBar(Base):
     amount = Column(Float)
     avg_price = Column(Float)
     period = Column(String(8), nullable=False, default='1')
-    source = Column(String(32), nullable=False, default='tushare_rt')
+    source = Column(String(32), nullable=False, default='tencent_rt')
     created_at = Column(DateTime, default=datetime.now)
 
     __table_args__ = (
@@ -1505,6 +1505,57 @@ class HkGgtMinuteBar(Base):
             'avg_price': self.avg_price,
             'period': self.period,
             'source': self.source,
+        }
+
+
+class HkMinuteBollAlert(Base):
+    """港股自选股分钟 BOLL 中轨/下轨报警。"""
+
+    __tablename__ = 'hk_minute_boll_alert'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    trade_date = Column(String(8), nullable=False, index=True)
+    hk_code = Column(String(5), nullable=False, index=True)
+    bar_time = Column(String(19), nullable=False, index=True)
+    band = Column(String(8), nullable=False, index=True)
+    close = Column(Float, nullable=False)
+    band_value = Column(Float, nullable=False)
+    boll_mid = Column(Float, nullable=False)
+    boll_lower = Column(Float, nullable=False)
+    distance_pct = Column(Float, nullable=False)
+    source = Column(String(32), nullable=False, default='tencent_rt')
+    created_at = Column(DateTime, default=datetime.now, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint(
+            'trade_date',
+            'hk_code',
+            'band',
+            name='uix_hk_minute_boll_alert_date_code_band',
+        ),
+        Index(
+            'ix_hk_minute_boll_alert_date_time',
+            'trade_date',
+            'bar_time',
+        ),
+    )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'id': self.id,
+            'trade_date': self.trade_date,
+            'hk_code': self.hk_code,
+            'bar_time': self.bar_time,
+            'band': self.band,
+            'close': self.close,
+            'band_value': self.band_value,
+            'boll_mid': self.boll_mid,
+            'boll_lower': self.boll_lower,
+            'distance_pct': self.distance_pct,
+            'source': self.source,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S')
+            if self.created_at
+            else None,
         }
 
 
@@ -8698,6 +8749,113 @@ class DatabaseManager(metaclass=_DatabaseManagerMeta):
         for row in rows:
             grouped.setdefault(row.hk_code, []).append(row)
         return grouped
+
+    def insert_hk_minute_boll_alerts(self, rows: List[Dict[str, Any]]) -> int:
+        """写入分钟 BOLL 报警；同日同股只保留距轨道最近的一条。"""
+        records = []
+        for row in rows:
+            code_digits = ''.join(char for char in str(row.get('hk_code') or '') if char.isdigit())
+            hk_code = code_digits[-5:].zfill(5) if code_digits else ''
+            trade_date = str(row.get('trade_date') or '').replace('-', '')[:8]
+            bar_time = str(row.get('bar_time') or '')[:19]
+            band = str(row.get('band') or '').strip().lower()
+            close = self._normalize_sql_value(row.get('close'))
+            band_value = self._normalize_sql_value(row.get('band_value'))
+            boll_mid = self._normalize_sql_value(row.get('boll_mid'))
+            boll_lower = self._normalize_sql_value(row.get('boll_lower'))
+            distance_pct = self._normalize_sql_value(row.get('distance_pct'))
+            if (
+                not hk_code
+                or not trade_date
+                or len(bar_time) < 16
+                or band not in {'mid', 'lower'}
+                or close is None
+                or band_value is None
+                or boll_mid is None
+                or boll_lower is None
+                or distance_pct is None
+            ):
+                continue
+            records.append({
+                'trade_date': trade_date,
+                'hk_code': hk_code,
+                'bar_time': bar_time,
+                'band': band,
+                'close': close,
+                'band_value': band_value,
+                'boll_mid': boll_mid,
+                'boll_lower': boll_lower,
+                'distance_pct': distance_pct,
+                'source': str(row.get('source') or 'tencent_rt')[:32],
+            })
+        if not records:
+            return 0
+
+        def _write(session: Session) -> int:
+            saved = 0
+            for record in records:
+                existing_rows = list(session.execute(
+                    select(HkMinuteBollAlert)
+                    .where(
+                        HkMinuteBollAlert.trade_date == record['trade_date'],
+                        HkMinuteBollAlert.hk_code == record['hk_code'],
+                    )
+                ).scalars().all())
+                if not existing_rows:
+                    session.execute(insert(HkMinuteBollAlert).values(record))
+                    saved += 1
+                    continue
+
+                closest = min(existing_rows, key=lambda row: abs(row.distance_pct))
+                if abs(record['distance_pct']) < abs(closest.distance_pct):
+                    session.execute(delete(HkMinuteBollAlert).where(
+                        HkMinuteBollAlert.trade_date == record['trade_date'],
+                        HkMinuteBollAlert.hk_code == record['hk_code'],
+                    ))
+                    session.execute(insert(HkMinuteBollAlert).values(record))
+                    saved += 1
+                elif len(existing_rows) > 1:
+                    stale_ids = [row.id for row in existing_rows if row.id != closest.id]
+                    session.execute(delete(HkMinuteBollAlert).where(
+                        HkMinuteBollAlert.id.in_(stale_ids),
+                    ))
+            return saved
+
+        inserted = self._run_write_transaction('insert_hk_minute_boll_alerts', _write)
+        if inserted:
+            logger.info(
+                '[HkGgt] 新增分钟 BOLL 报警 %d 条 trade_date=%s',
+                inserted,
+                records[0]['trade_date'],
+            )
+        return inserted
+
+    def list_hk_minute_boll_alerts(
+        self,
+        trade_date: str,
+        codes: Optional[List[str]] = None,
+    ) -> List[HkMinuteBollAlert]:
+        normalized_date = str(trade_date or '').replace('-', '')[:8]
+        conditions = [HkMinuteBollAlert.trade_date == normalized_date]
+        if codes is not None:
+            normalized_codes = []
+            for code in codes:
+                code_digits = ''.join(char for char in str(code or '') if char.isdigit())
+                if code_digits:
+                    normalized_codes.append(code_digits[-5:].zfill(5))
+            if not normalized_codes:
+                return []
+            conditions.append(HkMinuteBollAlert.hk_code.in_(normalized_codes))
+        with self.get_session() as session:
+            stmt = (
+                select(HkMinuteBollAlert)
+                .where(*conditions)
+                .order_by(
+                    desc(HkMinuteBollAlert.bar_time),
+                    desc(HkMinuteBollAlert.id),
+                )
+            )
+            return list(session.execute(stmt).scalars().all())
 
     def upsert_hk_stock_daily_bars(self, rows: List[Dict[str, Any]]) -> int:
         """批量插入或更新港股通日线数据。"""

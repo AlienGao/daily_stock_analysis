@@ -67,6 +67,23 @@ class ConfigEnvCompatibilityTestCase(unittest.TestCase):
 
     @patch("src.config.setup_env")
     @patch.object(Config, "_parse_litellm_yaml", return_value=[])
+    @patch.object(Config, "_parse_stock_email_groups", return_value=[])
+    def test_hk_list_accepts_common_copy_paste_separators(
+        self, _mock_parse_stock_email_groups, _mock_parse_litellm_yaml, _mock_setup_env
+    ):
+        with tempfile.TemporaryDirectory() as temporary_dir:
+            env_file = Path(temporary_dir) / ".env"
+            env_file.write_text(
+                "HK_LIST=00700，hk09988  00388; 09618\n",
+                encoding="utf-8",
+            )
+            with patch.dict(os.environ, {"ENV_FILE": str(env_file)}, clear=True):
+                config = Config._load_from_env()
+
+        self.assertEqual(config.hk_list, ["00700", "HK09988", "00388", "09618"])
+
+    @patch("src.config.setup_env")
+    @patch.object(Config, "_parse_litellm_yaml", return_value=[])
     def test_load_from_env_reads_tickflow_api_key(
         self, _mock_parse_litellm_yaml, _mock_setup_env
     ):

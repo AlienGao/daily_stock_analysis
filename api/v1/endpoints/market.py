@@ -491,7 +491,7 @@ def list_hk_stocks(
     "/hk-stocks/realtime",
     response_model=HkStockRealtimeResponse,
     responses={500: {"model": ErrorResponse}},
-    summary="港股通最新分钟价与日内连续最大回撤",
+    summary="港股通最新分钟价、日内连续最大回撤与分钟涨幅榜",
 )
 def get_hk_stock_realtime() -> HkStockRealtimeResponse:
     try:
@@ -560,7 +560,7 @@ def get_hk_ggt_minutes(
     "/hk-ggt/poll",
     response_model=HkGgtPollResponse,
     responses={500: {"model": ErrorResponse}},
-    summary="手动触发一轮 rt_hk_k 轮询落库",
+    summary="手动触发一轮腾讯港股实时行情轮询落库",
 )
 def poll_hk_ggt_rt() -> HkGgtPollResponse:
     try:

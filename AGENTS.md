@@ -409,7 +409,7 @@ Access 834k tokens of past work via get_observations([IDs]) or mem-search skill.
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **daily_stock_analysis** (76913 symbols, 106517 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **daily_stock_analysis** (82096 symbols, 113066 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
