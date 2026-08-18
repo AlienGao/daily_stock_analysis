@@ -867,6 +867,24 @@
   background: rgba(255, 255, 255, 0.2);
 }
 
+/* ============ 港股监控右侧面板 Tabs 高度链 ============ */
+/* antd v6 的 Tabs DOM 为 .ant-tabs-body-holder > .ant-tabs-body > .ant-tabs-content，
+   这里显式约束各级高度，使各 Tab 内容在面板内滚动（列内/列表内出现滚动条）而不是溢出被裁剪。 */
+.hk-monitor-right-tabs .ant-tabs-body-holder {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.hk-monitor-right-tabs .ant-tabs-body {
+  height: 100%;
+  min-height: 0;
+}
+
+.hk-monitor-right-tabs .ant-tabs-content {
+  height: 100%;
+  min-height: 0;
+}
+
 /* ============ Animations ============ */
 @keyframes slideInRight {
   from {

@@ -231,7 +231,7 @@ const BollPickPanel: React.FC<{
         size="small"
         tabBarGutter={16}
         tabBarStyle={{ margin: 0, paddingInline: 12 }}
-        className="flex h-full min-h-0 flex-1 flex-col [&_.ant-tabs-content]:h-full [&_.ant-tabs-content]:min-h-0 [&_.ant-tabs-content-holder]:min-h-0 [&_.ant-tabs-content-holder]:flex-1 [&_.ant-tabs-content-holder]:overflow-hidden [&_.ant-tabs-tabpane]:h-full [&_.ant-tabs-tabpane]:min-h-0"
+        className="hk-monitor-right-tabs flex h-full min-h-0 flex-1 flex-col"
         items={[
           {
             key: 'boll',

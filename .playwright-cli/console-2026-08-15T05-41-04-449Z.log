@@ -2111,3 +2111,17 @@
 [239259968ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:5174/api/v1/market/hk-stocks/realtime:0
 [239625252ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:5174/api/v1/market/hk-stocks/realtime:0
 [239685255ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:5174/api/v1/market/hk-stocks/realtime:0
+[240225256ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:5174/api/v1/market/hk-stocks/realtime:0
+[240285258ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:5174/api/v1/market/hk-stocks/realtime:0
+[240345256ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:5174/api/v1/market/hk-stocks/realtime:0
+[240405259ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:5174/api/v1/market/hk-stocks/realtime:0
+[240465259ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:5174/api/v1/market/hk-stocks/realtime:0
+[240525259ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:5174/api/v1/market/hk-stocks/realtime:0
+[240585247ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:5174/api/v1/market/hk-stocks/realtime:0
+[240645251ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:5174/api/v1/market/hk-stocks/realtime:0
+[240705247ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:5174/api/v1/market/hk-stocks/realtime:0
+[240765251ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:5174/api/v1/market/hk-stocks/realtime:0
+[240825247ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:5174/api/v1/market/hk-stocks/realtime:0
+[240885251ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:5174/api/v1/market/hk-stocks/realtime:0
+[240945250ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:5174/api/v1/market/hk-stocks/realtime:0
+[241005251ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:5174/api/v1/market/hk-stocks/realtime:0
