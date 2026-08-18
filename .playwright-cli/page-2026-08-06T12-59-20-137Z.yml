@@ -1,8 +1,0 @@
-- generic [ref=e4]:
-  - alert [ref=e6]:
-    - generic [ref=e8]:
-      - paragraph [ref=e9]: 请求失败
-      - paragraph [ref=e10]: 请求未成功完成（HTTP 500）。
-    - group [ref=e11]:
-      - generic "查看详情" [ref=e12] [cursor=pointer]
-  - button "重试" [ref=e13] [cursor=pointer]

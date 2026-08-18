@@ -1,8 +1,0 @@
-[      44ms] [ERROR] Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep) @ http://127.0.0.1:5173/@fs/tmp/.vite-hk-cache/deps/react_jsx-dev-runtime.js?v=c996e198:0
-[      45ms] [ERROR] Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep) @ http://127.0.0.1:5173/@fs/tmp/.vite-hk-cache/deps/antd_locale_zh_CN.js?v=c996e198:0
-[      45ms] [ERROR] Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep) @ http://127.0.0.1:5173/@fs/tmp/.vite-hk-cache/deps/react_compiler-runtime.js?v=c996e198:0
-[      46ms] [ERROR] Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep) @ http://127.0.0.1:5173/@fs/tmp/.vite-hk-cache/deps/next-themes.js?v=c996e198:0
-[      46ms] [ERROR] Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep) @ http://127.0.0.1:5173/@fs/tmp/.vite-hk-cache/deps/react-dom_client.js?v=c996e198:0
-[      47ms] [ERROR] Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep) @ http://127.0.0.1:5173/@fs/tmp/.vite-hk-cache/deps/dayjs.js?v=c996e198:0
-[      47ms] [ERROR] Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep) @ http://127.0.0.1:5173/@fs/tmp/.vite-hk-cache/deps/dayjs_locale_zh-cn.js?v=c996e198:0
-[      47ms] [ERROR] Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep) @ http://127.0.0.1:5173/@fs/tmp/.vite-hk-cache/deps/antd.js?v=c996e198:0
