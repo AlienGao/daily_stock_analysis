@@ -1,0 +1,182 @@
+[
+  {
+    "rank": 1,
+    "stock_code": "600720",
+    "stock_name": "中交设计",
+    "score": 49.1,
+    "sector": "建筑装饰",
+    "factor_scores": {
+      "ma_entry": 19.871334077342855,
+      "sector": 0.0,
+      "ranking_momentum": 95.52146233565024,
+      "rebound": 0.0,
+      "popularity": 78.5382036090229
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA10均线",
+      "排名连续上升(3天)",
+      "趋势加速↑(7.3%/天)",
+      "今日强于90%个股",
+      "人气核心圈(排名1169)"
+    ],
+    "buy_price_low": 4.9,
+    "buy_price_high": 5.3,
+    "stop_loss": 5.2,
+    "take_profit_1": 5.39,
+    "take_profit_2": 5.62,
+    "discovered_at": "15:00:50",
+    "price_at_discovery": 5.23,
+    "pct_chg": 4.18,
+    "tech_score": 70.47,
+    "rr_score": 79.99999999999962,
+    "market_score": 47.121903119448305,
+    "sector_score": 83.8874053182918,
+    "volume_score": 89.99999996792009,
+    "position_score": 75,
+    "formation_score": 30.0,
+    "composite_score": 64.059
+  },
+  {
+    "rank": 2,
+    "stock_code": "301439",
+    "stock_name": "泓淋电力",
+    "score": 56.0,
+    "sector": "电网设备",
+    "factor_scores": {
+      "ma_entry": 71.73507444536237,
+      "sector": 0.0,
+      "ranking_momentum": 79.12579175413823,
+      "rebound": 0.0,
+      "popularity": 67.67766952966366
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA10均线",
+      "缩量回踩",
+      "KDJ超卖(J-9)",
+      "趋势加速↑(8.0%/天)",
+      "今日强于60%个股",
+      "人气飙升(+1575位)",
+      "人气核心圈(排名1654)",
+      "人气排名持续改善"
+    ],
+    "buy_price_low": 13.7,
+    "buy_price_high": 15.1,
+    "stop_loss": 14.83,
+    "take_profit_1": 15.57,
+    "take_profit_2": 17.29,
+    "discovered_at": "15:00:50",
+    "price_at_discovery": 14.87,
+    "pct_chg": 1.64,
+    "tech_score": 66.09,
+    "rr_score": 73.90648567119163,
+    "market_score": 47.121903119448305,
+    "sector_score": 7.312517857142844,
+    "volume_score": 88.82392939899371,
+    "position_score": 85,
+    "formation_score": 40.0,
+    "composite_score": 63.063
+  },
+  {
+    "rank": 3,
+    "stock_code": "688626",
+    "stock_name": "翔宇医疗",
+    "score": 42.2,
+    "sector": "医疗器械",
+    "factor_scores": {
+      "ma_entry": 48.72286612936368,
+      "sector": 29.987386836169392,
+      "ranking_momentum": 18.929433016424653,
+      "rebound": 0.0,
+      "popularity": 70.5931975761219
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "回踩MA5均线",
+      "今日强于94%个股",
+      "人气飙升(+1639位)",
+      "所属板块: 医疗器械"
+    ],
+    "buy_price_low": 42.0,
+    "buy_price_high": 44.7,
+    "stop_loss": 44.75,
+    "take_profit_1": 48.39,
+    "take_profit_2": 52.25,
+    "discovered_at": "15:00:50",
+    "price_at_discovery": 45.58,
+    "pct_chg": 5.56,
+    "tech_score": 67.08,
+    "rr_score": 73.01410541945071,
+    "market_score": 47.121903119448305,
+    "sector_score": 53.738260846578754,
+    "volume_score": 80.58410468420456,
+    "position_score": 75,
+    "formation_score": 40.0,
+    "composite_score": 59.616
+  },
+  {
+    "rank": 4,
+    "stock_code": "601996",
+    "stock_name": "丰林集团",
+    "score": 49.7,
+    "sector": "种植业与林业",
+    "factor_scores": {
+      "ma_entry": 74.2824670908871,
+      "sector": 0.0,
+      "ranking_momentum": 74.61028080982325,
+      "rebound": 0.0,
+      "popularity": 50.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "回踩MA5均线",
+      "缩量回踩",
+      "趋势加速↑(10.8%/天)",
+      "今日强于61%个股",
+      "人气核心圈(排名1790)"
+    ],
+    "buy_price_low": 2.3,
+    "buy_price_high": 2.4,
+    "stop_loss": 2.43,
+    "take_profit_1": 2.6,
+    "take_profit_2": 2.81,
+    "discovered_at": "15:00:50",
+    "price_at_discovery": 2.46,
+    "pct_chg": 1.65,
+    "tech_score": 58.21,
+    "rr_score": 73.68421052631582,
+    "market_score": 47.121903119448305,
+    "sector_score": 33.87920948616605,
+    "volume_score": 44.73433506399731,
+    "position_score": 75,
+    "formation_score": 40.0,
+    "composite_score": 55.657
+  }
+]
