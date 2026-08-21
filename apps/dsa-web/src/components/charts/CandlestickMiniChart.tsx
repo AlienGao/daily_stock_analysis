@@ -1,7 +1,6 @@
 import type { EChartsOption } from 'echarts';
 import type React from 'react';
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
-import ReactEChartsCore from 'echarts-for-react/lib/core';
+import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as echarts from 'echarts/core';
 import { CandlestickChart, LineChart } from 'echarts/charts';
 import {
@@ -28,6 +27,8 @@ type OhlcPoint = {
   high?: number | null;
   low?: number | null;
 };
+
+type ChartSeries = Extract<NonNullable<EChartsOption['series']>, unknown[]>;
 
 /** Normalize date string to YYYY-MM-DD or YYYY-MM-DD HH:mm for ECharts axis. */
 const normalizeDate = (date: string): string => {
@@ -75,8 +76,6 @@ const CandlestickMiniChart: React.FC<{
   const validData = data.filter(d => d.price != null);
   const count = validData.length;
 
-  if (count < 1) return null;
-
   const dates = validData.map(d => normalizeDate(d.date));
 
   // OHLC data: [open, close, low, high]
@@ -89,7 +88,7 @@ const CandlestickMiniChart: React.FC<{
 
   const closes = validData.map(d => d.price!);
 
-  const getOverlaySeries = (): EChartsOption['series'] => {
+  const getOverlaySeries = (): ChartSeries => {
     if (overlay === 'boll') {
       const ma20: (number | null)[] = [];
       const upper: (number | null)[] = [];
@@ -189,9 +188,9 @@ const CandlestickMiniChart: React.FC<{
         if (!params || params.length === 0) return '';
         const candle = params.find((p: any) => p.seriesType === 'candlestick');
         if (!candle) return '';
-        // ECharts candlestick data is [open, close, lowest, highest] - access by index
+        // ECharts candlestick data is [open, close, lowest, highest].
         const val = Array.isArray(candle.data) ? candle.data : (candle.data?.value ?? []);
-        const open = val[1], close = val[2], low = val[3], high = val[4];
+        const open = val[0], close = val[1], low = val[2], high = val[3];
         if (open == null || close == null) return '';
         const isUp = close >= open;
         const chg = open > 0 ? ((close - open) / open * 100) : 0;
@@ -262,6 +261,8 @@ const CandlestickMiniChart: React.FC<{
     ro.observe(dom);
     return () => ro.disconnect();
   }, []);
+
+  if (count < 1) return null;
 
   return (
     <div className="w-full min-w-0">

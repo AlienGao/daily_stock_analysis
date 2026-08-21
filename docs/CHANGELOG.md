@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 > For user-friendly release highlights, see the [GitHub Releases](https://github.com/ZhuLinsen/daily_stock_analysis/releases) page.
 
 ## [Unreleased]
+- [修复] 港股页面展开个股 K 线异步加载时避免 Hook 顺序异常，修正蜡烛图 tooltip 的 OHLC 取值并规范化行情数值
 - [改进] 港股页右侧将 BOLL 推荐、日内数据与最近最大回撤拆分为三个 Tab 切换展示
 - [修复] 港股页右侧面板 Tab 内容高度链失效导致溢出内容被整体裁剪且无滚动条，改为显式约束 antd Tabs 各级容器高度，各 Tab 在块内滚动（BOLL 推荐分列滚动、日内数据报警列表滚动、最近最大回撤整块滚动）
 - [新功能] 港股页面对 `.env` `HK_LIST` 自选股的分钟 BOLL(20,2) 中轨/下轨 ±0.5% 触发当天一次报警；同股当天最多保留距轨道最近的一条，右侧展示报警记录并对新增报警弹窗提示

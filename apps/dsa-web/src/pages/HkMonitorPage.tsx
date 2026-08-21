@@ -368,13 +368,13 @@ const BollPickPanel: React.FC<{
 
 const KLineChart: React.FC<{ data: HkStockKLineItem[]; loading: boolean }> = ({ data, loading }) => {
   const chartData = useMemo(() => data
-    .filter(d => d.close > 0)
+    .filter(d => Number.isFinite(Number(d.close)) && Number(d.close) > 0)
     .map(d => ({
       date: d.date,
-      price: d.close,
-      open: d.open ?? d.close,
-      high: d.high ?? d.close,
-      low: d.low ?? d.close,
+      price: Number(d.close),
+      open: d.open == null ? Number(d.close) : Number(d.open),
+      high: d.high == null ? Number(d.close) : Number(d.high),
+      low: d.low == null ? Number(d.close) : Number(d.low),
     })), [data]);
 
   if (loading) return <div className="flex h-48 items-center justify-center text-secondary-text"><Loader2 className="mr-2 h-4 w-4 animate-spin" />加载 K 线…</div>;
