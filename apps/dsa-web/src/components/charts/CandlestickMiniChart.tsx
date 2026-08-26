@@ -188,8 +188,11 @@ const CandlestickMiniChart: React.FC<{
         if (!params || params.length === 0) return '';
         const candle = params.find((p: any) => p.seriesType === 'candlestick');
         if (!candle) return '';
-        // ECharts candlestick data is [open, close, lowest, highest].
-        const val = Array.isArray(candle.data) ? candle.data : (candle.data?.value ?? []);
+        // ECharts 在 category x 轴且无显式 encode 时会给 candlestick 数据项前置序号，
+        // params.data/value 形如 [dataIndex, open, close, lowest, highest]，按索引取数不可靠。
+        // 因此按 params.dataIndex 直接读 ohlcData（与图表绘制同一份数据，已含 fallback 语义）。
+        const val = ohlcData[candle.dataIndex];
+        if (!val) return '';
         const open = val[0], close = val[1], low = val[2], high = val[3];
         if (open == null || close == null) return '';
         const isUp = close >= open;

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 > For user-friendly release highlights, see the [GitHub Releases](https://github.com/ZhuLinsen/daily_stock_analysis/releases) page.
 
 ## [Unreleased]
+- [修复] 港股、新高、金股等页面展开 K 线图 tooltip 的开盘价显示错误：ECharts 在 category x 轴下会给 candlestick 数据项前置序号，导致按数组索引取值错位，改为按 dataIndex 读取原始 OHLC 数据
 - [修复] 港股页面展开个股 K 线异步加载时避免 Hook 顺序异常，修正蜡烛图 tooltip 的 OHLC 取值并规范化行情数值
 - [改进] 港股页右侧将 BOLL 推荐、日内数据与最近最大回撤拆分为三个 Tab 切换展示
 - [修复] 港股页右侧面板 Tab 内容高度链失效导致溢出内容被整体裁剪且无滚动条，改为显式约束 antd Tabs 各级容器高度，各 Tab 在块内滚动（BOLL 推荐分列滚动、日内数据报警列表滚动、最近最大回撤整块滚动）
