@@ -560,6 +560,7 @@ const HkMonitorPage: React.FC = () => {
       title: <span className="whitespace-nowrap">最新价</span>,
       dataIndex: 'latest_price',
       align: 'right',
+      width: 90,
       render: (v: number | null) => (
         <span className="font-mono tabular-nums">{fmtPrice(v)}</span>
       ),
@@ -601,7 +602,7 @@ const HkMonitorPage: React.FC = () => {
       title: <span className="whitespace-nowrap">轨道宽度</span>,
       key: 'boll_band_width_pct',
       align: 'right',
-      width: 100,
+      width: 90,
       sorter: compareBollBandWidth,
       sortOrder: tableSort.columnKey === 'boll_band_width_pct' ? tableSort.order : null,
       render: (_v, record) => {
@@ -618,7 +619,7 @@ const HkMonitorPage: React.FC = () => {
       dataIndex: 'drawdown_pct',
       key: 'drawdown_pct',
       align: 'right',
-      width: 100,
+      width: 90,
       sorter: (a, b) => (a.drawdown_pct ?? Number.NEGATIVE_INFINITY) - (b.drawdown_pct ?? Number.NEGATIVE_INFINITY),
       sortOrder: tableSort.columnKey === 'drawdown_pct' ? tableSort.order : null,
       render: (v: number | null | undefined, record) => (
