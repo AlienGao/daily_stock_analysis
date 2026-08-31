@@ -297,6 +297,7 @@ const makeColumns = <T extends NewHighItemLike>({
 }: { currentCloseKey: keyof T; ytdReturnKey: keyof T; onNameClick?: (tsCode: string) => void }): ColumnsType<T> => [
   {
     title: '名称 / 代码',
+    width: 165,
     key: 'name',
     render: (_, r) => (
       <div>

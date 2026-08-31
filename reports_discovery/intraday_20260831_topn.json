@@ -1,0 +1,183 @@
+[
+  {
+    "rank": 1,
+    "stock_code": "300164",
+    "stock_name": "通源石油",
+    "score": 49.8,
+    "sector": "油气开采及服务",
+    "factor_scores": {
+      "ma_entry": 10.907116022422885,
+      "sector": 0.0,
+      "momentum": 53.489386822429644,
+      "ranking_momentum": 80.34955569544918,
+      "rebound": 0.0,
+      "popularity": 93.8057512413647
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "排名连续上升(2天)",
+      "趋势加速↑(14.3%/天)",
+      "今日强于93%个股",
+      "人气飙升(+137位)",
+      "人气核心圈(排名212)",
+      "人气股上涨(+2.8%)"
+    ],
+    "buy_price_low": 9.9,
+    "buy_price_high": 10.7,
+    "stop_loss": 10.46,
+    "take_profit_1": 11.71,
+    "take_profit_2": 13.03,
+    "discovered_at": "15:01:04",
+    "price_at_discovery": 10.72,
+    "pct_chg": 5.2,
+    "tech_score": 69.25,
+    "rr_score": 71.44329896907216,
+    "market_score": 49.08388574380132,
+    "sector_score": 100.0,
+    "volume_score": 90.0,
+    "position_score": 75,
+    "formation_score": 20.0,
+    "composite_score": 63.41499999999999
+  },
+  {
+    "rank": 2,
+    "stock_code": "920207",
+    "stock_name": "众诚科技",
+    "score": 34.1,
+    "sector": "软件开发",
+    "factor_scores": {
+      "ma_entry": 20.012494696144444,
+      "sector": 0.0,
+      "momentum": 23.126013513839283,
+      "ranking_momentum": 67.16516716449041,
+      "rebound": 0.0,
+      "popularity": 52.49425901794147
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "趋势加速↑(14.7%/天)",
+      "今日强于83%个股",
+      "人气飙升(+267位)"
+    ],
+    "buy_price_low": 20.7,
+    "buy_price_high": 22.4,
+    "stop_loss": 22.15,
+    "take_profit_1": 23.74,
+    "take_profit_2": 27.68,
+    "discovered_at": "15:01:04",
+    "price_at_discovery": 22.22,
+    "pct_chg": 2.87,
+    "tech_score": 74.8,
+    "rr_score": 74.09470752089136,
+    "market_score": 49.08388574380132,
+    "sector_score": 100.0,
+    "volume_score": 90.0,
+    "position_score": 85,
+    "formation_score": 20.0,
+    "composite_score": 62.58999999999999
+  },
+  {
+    "rank": 3,
+    "stock_code": "603636",
+    "stock_name": "南威软件",
+    "score": 42.2,
+    "sector": "IT服务",
+    "factor_scores": {
+      "ma_entry": 66.14404840174603,
+      "sector": 0.0,
+      "momentum": 61.45607343738369,
+      "ranking_momentum": 69.88278794260896,
+      "rebound": 0.0,
+      "popularity": 31.306502526136516
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "回踩MA5均线",
+      "排名连续上升(2天)",
+      "趋势加速↑(13.7%/天)",
+      "今日强于74%个股"
+    ],
+    "buy_price_low": 6.5,
+    "buy_price_high": 7.2,
+    "stop_loss": 7.07,
+    "take_profit_1": 7.5,
+    "take_profit_2": 8.43,
+    "discovered_at": "15:01:04",
+    "price_at_discovery": 7.09,
+    "pct_chg": 1.87,
+    "tech_score": 71.25,
+    "rr_score": 68.99038461538464,
+    "market_score": 49.08388574380132,
+    "sector_score": 94.1266536238328,
+    "volume_score": 88.83315281607074,
+    "position_score": 75,
+    "formation_score": 40.0,
+    "composite_score": 62.535
+  },
+  {
+    "rank": 4,
+    "stock_code": "688530",
+    "stock_name": "欧莱新材",
+    "score": 54.0,
+    "sector": "半导体",
+    "factor_scores": {
+      "ma_entry": 66.92524349070169,
+      "sector": 0.0,
+      "momentum": 23.700343687459252,
+      "ranking_momentum": 92.00218519950462,
+      "rebound": 0.0,
+      "popularity": 67.67766952966369
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "回踩MA5均线",
+      "趋势加速↑(30.0%/天)",
+      "今日强于71%个股",
+      "人气核心圈(排名1862)"
+    ],
+    "buy_price_low": 57.3,
+    "buy_price_high": 62.3,
+    "stop_loss": 61.54,
+    "take_profit_1": 69.64,
+    "take_profit_2": 81.38,
+    "discovered_at": "15:01:04",
+    "price_at_discovery": 62.2,
+    "pct_chg": 1.67,
+    "tech_score": 52.82,
+    "rr_score": 72.45409015025038,
+    "market_score": 49.08388574380132,
+    "sector_score": 18.439302415579554,
+    "volume_score": 40.03320553983017,
+    "position_score": 85,
+    "formation_score": 40.0,
+    "composite_score": 53.17399999999999
+  }
+]

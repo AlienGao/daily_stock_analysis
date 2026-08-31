@@ -67,6 +67,10 @@ export type HkStockListItem = {
   latest_consecutive_drawdown_days?: number | null;
   latest_consecutive_drawdown_start_date?: string | null;
   latest_consecutive_drawdown_end_date?: string | null;
+  latest_consecutive_gain_pct?: number | null;
+  latest_consecutive_gain_days?: number | null;
+  latest_consecutive_gain_start_date?: string | null;
+  latest_consecutive_gain_end_date?: string | null;
 };
 
 export type HkStockListResponse = {

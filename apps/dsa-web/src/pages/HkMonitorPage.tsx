@@ -14,7 +14,7 @@ import {
   type HkStockRealtimeItem,
 } from '../api/hkMonitor';
 import { calcBollBandWidthPct, compareBollBandWidth } from '../utils/hkBollBandwidth';
-import { filterRecentDrawdowns } from '../utils/hkMonitorDrawdown';
+import { filterRecentDrawdowns, filterRecentGains } from '../utils/hkMonitorDrawdown';
 import { mergeHkRealtimeBollPicks, mergeHkRealtimeItems } from '../utils/hkMonitorRealtime';
 import { sortHkItemsByPctChangeDesc } from '../utils/hkMonitorSort';
 
@@ -69,6 +69,30 @@ const calcLatestConsecutiveDrawdown = (
   return null;
 };
 
+const calcLatestConsecutiveGain = (
+  bars: Array<{ date: string; close: number }>,
+): { pct: number; days: number; startDate: string; endDate: string } | null => {
+  let endIdx = bars.length - 1;
+  while (endIdx > 0) {
+    while (endIdx > 0 && bars[endIdx].close <= bars[endIdx - 1].close) endIdx -= 1;
+    if (endIdx <= 0) return null;
+
+    let startIdx = endIdx;
+    while (startIdx > 0 && bars[startIdx].close > bars[startIdx - 1].close) startIdx -= 1;
+    const days = endIdx - startIdx;
+    if (days >= 2) {
+      return {
+        pct: Number((((bars[endIdx].close - bars[startIdx].close) / bars[startIdx].close) * 100).toFixed(2)),
+        days,
+        startDate: bars[startIdx].date,
+        endDate: bars[endIdx].date,
+      };
+    }
+    endIdx = startIdx - 1;
+  }
+  return null;
+};
+
 const patchItemFromKlines = (item: HkStockListItem, klines: HkStockKLineItem[]): HkStockListItem => {
   const bars = klines.filter(bar => bar.close != null && Number.isFinite(bar.close));
   const latest = bars.at(-1);
@@ -87,6 +111,7 @@ const patchItemFromKlines = (item: HkStockListItem, klines: HkStockKLineItem[]):
     ? Number((((latest.close - highNPrice) / highNPrice) * 100).toFixed(2))
     : item.drawdown_pct ?? null;
   const latestConsecutiveDrawdown = calcLatestConsecutiveDrawdown(bars);
+  const latestConsecutiveGain = calcLatestConsecutiveGain(bars);
 
   return {
     ...item,
@@ -106,6 +131,12 @@ const patchItemFromKlines = (item: HkStockListItem, klines: HkStockKLineItem[]):
       ?? item.latest_consecutive_drawdown_start_date ?? null,
     latest_consecutive_drawdown_end_date: latestConsecutiveDrawdown?.endDate
       ?? item.latest_consecutive_drawdown_end_date ?? null,
+    latest_consecutive_gain_pct: latestConsecutiveGain?.pct ?? item.latest_consecutive_gain_pct ?? null,
+    latest_consecutive_gain_days: latestConsecutiveGain?.days ?? item.latest_consecutive_gain_days ?? null,
+    latest_consecutive_gain_start_date: latestConsecutiveGain?.startDate
+      ?? item.latest_consecutive_gain_start_date ?? null,
+    latest_consecutive_gain_end_date: latestConsecutiveGain?.endDate
+      ?? item.latest_consecutive_gain_end_date ?? null,
   };
 };
 
@@ -223,6 +254,10 @@ const BollPickPanel: React.FC<{
     () => filterRecentDrawdowns(drawdownItems, recentTradeDates),
     [drawdownItems, recentTradeDates],
   );
+  const recentGains = useMemo(
+    () => filterRecentGains(drawdownItems, recentTradeDates),
+    [drawdownItems, recentTradeDates],
+  );
 
   return (
     <div className={`flex h-full max-h-full min-h-0 flex-col overflow-hidden rounded-xl border border-border/20 bg-card/40 ${className}`}>
@@ -274,7 +309,7 @@ const BollPickPanel: React.FC<{
                       >
                         <span className="font-mono text-[9px] text-tertiary-text">{index + 1}</span>
                         <span className="min-w-0 truncate text-foreground">{item.name || item.hk_code}</span>
-                        <span className="whitespace-nowrap text-center font-mono text-[9px] text-tertiary-text">
+                        <span className="whitespace-nowrap text-center font-mono text-[10px] text-tertiary-text">
                           {minuteLabel(item.intraday_consecutive_drawdown_start_time)} → {minuteLabel(item.intraday_consecutive_drawdown_end_time)}
                         </span>
                         <span className="text-right font-mono text-emerald-400">{fmtPct(item.intraday_consecutive_drawdown_pct)}</span>
@@ -299,7 +334,7 @@ const BollPickPanel: React.FC<{
                       >
                         <span className="font-mono text-[9px] text-tertiary-text">{index + 1}</span>
                         <span className="min-w-0 truncate text-foreground">{item.name || item.hk_code}</span>
-                        <span className="whitespace-nowrap text-center font-mono text-[9px] text-tertiary-text">
+                        <span className="whitespace-nowrap text-center font-mono text-[10px] text-tertiary-text">
                           {minuteLabel(item.minute_change_start_time)} → {minuteLabel(item.minute_change_end_time)}
                         </span>
                         <span className={`text-right font-mono ${pctColor(item.minute_change_pct)}`}>
@@ -323,9 +358,9 @@ const BollPickPanel: React.FC<{
                         className="grid w-full grid-cols-[minmax(0,1fr)_42px_48px_52px] items-center gap-1 rounded px-1 py-0.5 text-left text-[10px] hover:bg-muted/30"
                       >
                         <span className="min-w-0 truncate text-foreground">{alert.name || alert.hk_code}</span>
-                        <span className="font-mono text-[9px] text-tertiary-text">{minuteLabel(alert.bar_time)}</span>
-                        <span className="text-center text-[9px] text-sky-400">{alert.band_label || (alert.band === 'lower' ? '下轨' : '中轨')}</span>
-                        <span className={`text-right font-mono text-[9px] ${pctColor(alert.distance_pct)}`}>{fmtPct(alert.distance_pct)}</span>
+                        <span className="font-mono text-[10px] text-tertiary-text">{minuteLabel(alert.bar_time)}</span>
+                        <span className="text-center text-[10px] text-sky-400">{alert.band_label || (alert.band === 'lower' ? '下轨' : '中轨')}</span>
+                        <span className={`text-right font-mono text-[10px] ${pctColor(alert.distance_pct)}`}>{fmtPct(alert.distance_pct)}</span>
                       </button>
                     )) : <div className="py-1 text-[10px] text-tertiary-text">今日暂无报警</div>}
                   </div>
@@ -353,6 +388,31 @@ const BollPickPanel: React.FC<{
                         <span className="text-right font-mono text-emerald-400">{fmtPct(item.latest_consecutive_drawdown_pct)}</span>
                       </button>
                     )) : <div className="py-1 text-[10px] text-tertiary-text">暂无最近连续回撤</div>}
+                  </div>
+                </section>
+              </div>
+            ),
+          },
+          {
+            key: 'gain',
+            label: <span className="text-xs font-medium">最近最大涨幅</span>,
+            children: (
+              <div className="h-full overflow-y-auto px-3 pb-3">
+                <section className="py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-xs font-medium text-foreground">最近结束的最高涨幅</div>
+                    <span className="font-mono text-[9px] text-tertiary-text">{recentGains.length} 条</span>
+                  </div>
+                  <div className="mt-1 space-y-1">
+                    {recentGains.length ? recentGains.map(item => (
+                      <button type="button" key={item.hk_code} onClick={() => onSelect(item.hk_code)} className="grid w-full grid-cols-3 items-center gap-2 rounded px-1 py-0.5 text-left text-[10px] hover:bg-muted/30">
+                        <span className="min-w-0 truncate text-foreground">{item.name || item.hk_code}</span>
+                        <span className="truncate whitespace-nowrap text-center font-mono text-[9px] text-tertiary-text">
+                          {item.latest_consecutive_gain_start_date || '--'} ~ {item.latest_consecutive_gain_end_date || '--'}
+                        </span>
+                        <span className={`text-right font-mono ${pctColor(item.latest_consecutive_gain_pct)}`}>{fmtPct(item.latest_consecutive_gain_pct)}</span>
+                      </button>
+                    )) : <div className="py-1 text-[10px] text-tertiary-text">暂无最近连续上涨</div>}
                   </div>
                 </section>
               </div>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { HkStockListItem } from '../../api/hkMonitor';
 import { calcBollBandWidthPct, compareBollBandWidth } from '../../utils/hkBollBandwidth';
-import { filterRecentDrawdowns } from '../../utils/hkMonitorDrawdown';
+import { filterRecentDrawdowns, filterRecentGains } from '../../utils/hkMonitorDrawdown';
 import { mergeHkRealtimeBollPicks, mergeHkRealtimeItems } from '../../utils/hkMonitorRealtime';
 import { sortHkItemsByPctChangeDesc } from '../../utils/hkMonitorSort';
 
@@ -76,6 +76,82 @@ describe('港股通近期连续回撤', () => {
 
     expect(filterRecentDrawdowns(items, ['20260707', '20260706', '20260705', '20260704', '20260703']).map(item => item.hk_code))
       .toEqual(['00002', '00003']);
+  });
+});
+
+describe('港股通近期连续上涨', () => {
+  it('只展示最近五个交易日结束的上涨，按涨幅从高到低排列并取前 8 只', () => {
+    const items = [
+      {
+        hk_code: '00001',
+        latest_consecutive_gain_pct: 5,
+        latest_consecutive_gain_days: 2,
+        latest_consecutive_gain_end_date: '20260701',
+      },
+      {
+        hk_code: '00002',
+        latest_consecutive_gain_pct: 12,
+        latest_consecutive_gain_days: 3,
+        latest_consecutive_gain_end_date: '20260704',
+      },
+      {
+        hk_code: '00003',
+        latest_consecutive_gain_pct: 10,
+        latest_consecutive_gain_days: 2,
+        latest_consecutive_gain_end_date: '20260707',
+      },
+      {
+        hk_code: '00004',
+        latest_consecutive_gain_pct: 9,
+        latest_consecutive_gain_days: 2,
+        latest_consecutive_gain_end_date: '20260706',
+      },
+      {
+        hk_code: '00005',
+        latest_consecutive_gain_pct: 8,
+        latest_consecutive_gain_days: 2,
+        latest_consecutive_gain_end_date: '20260705',
+      },
+      {
+        hk_code: '00006',
+        latest_consecutive_gain_pct: 7,
+        latest_consecutive_gain_days: 2,
+        latest_consecutive_gain_end_date: '20260704',
+      },
+      {
+        hk_code: '00007',
+        latest_consecutive_gain_pct: 6,
+        latest_consecutive_gain_days: 2,
+        latest_consecutive_gain_end_date: '20260704',
+      },
+      {
+        hk_code: '00008',
+        latest_consecutive_gain_pct: 5.5,
+        latest_consecutive_gain_days: 2,
+        latest_consecutive_gain_end_date: '20260704',
+      },
+      {
+        hk_code: '00009',
+        latest_consecutive_gain_pct: 5.4,
+        latest_consecutive_gain_days: 2,
+        latest_consecutive_gain_end_date: '20260704',
+      },
+      {
+        hk_code: '00010',
+        latest_consecutive_gain_pct: 20,
+        latest_consecutive_gain_days: 1,
+        latest_consecutive_gain_end_date: '20260707',
+      },
+      {
+        hk_code: '00011',
+        latest_consecutive_gain_pct: 4.5,
+        latest_consecutive_gain_days: 2,
+        latest_consecutive_gain_end_date: '20260704',
+      },
+    ] satisfies HkStockListItem[];
+
+    expect(filterRecentGains(items, ['20260707', '20260706', '20260705', '20260704', '20260703']).map(item => item.hk_code))
+      .toEqual(['00002', '00003', '00004', '00005', '00006', '00007', '00008', '00009']);
   });
 });
 
