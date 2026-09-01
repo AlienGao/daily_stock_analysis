@@ -1584,13 +1584,13 @@ def refresh_repurchase_postmarket(tushare_fetcher=None) -> int:
 
 
 def refresh_broker_recommend_postmarket(tushare_fetcher=None) -> int:
-    """盘后用 Tushare broker_recommend 刷新当月券商金股数据。
+    """盘后用 Tushare broker_recommend 覆盖刷新当月券商金股数据。
 
-    月初 1-3 日 Tushare 更新当月数据，每日调用确保数据及时入库。
-    已存在数据时跳过（当月数据不会变化）。
+    券商金股在当月内滚动发布（月初可能只有部分券商更新），因此每次盘后都覆盖
+    刷新当月数据，避免数据停留在月初的不完整版本。历史月份不受影响。
 
     Returns:
-        落库条数，失败或已存在返回 0
+        落库条数，失败或当月无数据返回 0
     """
     try:
         from datetime import date as _date
@@ -1602,10 +1602,6 @@ def refresh_broker_recommend_postmarket(tushare_fetcher=None) -> int:
 
         month = _date.today().strftime("%Y%m")
         db = DatabaseManager()
-
-        existing = db.get_broker_recommend_monthly(month)
-        if existing:
-            return 0
 
         df = tushare_fetcher.get_broker_recommend(month)
         if df is None or df.empty:
@@ -2080,6 +2076,7 @@ def ensure_postmarket_scan(
         ("tech_indicator", lambda: refresh_tech_indicator_postmarket(tushare_fetcher)),
         ("adj_factor", lambda: refresh_adj_factor_postmarket(tushare_fetcher)),
         ("institution_survey", lambda: refresh_institution_survey_postmarket()),
+        ("broker_recommend", lambda: refresh_broker_recommend_postmarket(tushare_fetcher)),
         ("hk_ggt_components", lambda: refresh_hk_ggt_components_postmarket(akshare_fetcher)),
     ]
     refresher_counts: Dict[str, int] = {}

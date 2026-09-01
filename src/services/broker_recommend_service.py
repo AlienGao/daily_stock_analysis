@@ -1448,99 +1448,49 @@ class BrokerRecommendService:
         if not is_current:
             stored = self.db.get_broker_backtest(month)
         if stored and stored.get("brokers"):
-            # 检查是否有当前月份的股票不在存储结果中（新入库的价格数据）
+            # 检查是否有当月股票不在存储结果中（新入库的股票/价格数据）。
+            # 不完整时全量重算：存储的券商聚合（胜率/累计收益）无法按单只股票增量补齐，
+            # 且 stock_returns 中已含补算股票，重算后整体持久化，避免新旧结果混存。
             current_df = self.get_monthly_recommendations(month)
             if not current_df.empty:
                 stored_codes = {sr["ts_code"] for sr in stored["stock_returns"]}
                 current_codes = set(current_df["ts_code"].unique())
                 missing = current_codes - stored_codes
-                if missing:
-                    logger.info(f"[BrokerRecommend] 回测 {month} 缓存缺失 {len(missing)} 只股票，补算")
-                    year = int(month[:4])
-                    mon = int(month[4:6])
-                    last_day = calendar.monthrange(year, mon)[1]
-                    month_start = f"{month}01"
-                    month_end = effective_end
-                    trading_days = self._get_trading_days(month_start, month_end)
-                    if len(trading_days) < 2:
-                        trading_days = [stored.get("buy_date", month_start), stored.get("sell_date", month_end)]
-                    buy_date = trading_days[0]
-                    sell_date = trading_days[-1]
-                    # 并行预取缺失股票价格
-                    price_cache = self._prefetch_prices(list(missing), month_start, month_end, skip_tushare=is_current, use_adj=True)
-                    for ts in missing:
-                        prices = price_cache.get(ts, {})
-                        if not prices:
-                            continue
-                        available_dates = sorted(prices.keys())
-                        buy_dates = [d for d in available_dates if d >= buy_date]
-                        sell_dates = [d for d in available_dates if d <= sell_date]
-                        if not buy_dates or not sell_dates:
-                            continue
-                        buy_price = prices[buy_dates[0]]
-                        sell_price = prices[sell_dates[-1]]
-                        if not buy_price or not sell_price or buy_price <= 0:
-                            continue
-                        if buy_dates[0] == sell_dates[-1]:
-                            continue
-                        row = current_df[current_df["ts_code"] == ts]
-                        name = str(row["name"].iloc[0]) if not row.empty else ""
-                        broker_count = int(row["broker_count"].iloc[0]) if not row.empty else 1
-                        broker = str(row["broker"].iloc[0]) if not row.empty else ""
-                        daily_rets = []
-                        prev_p = None
-                        for td in trading_days:
-                            p = prices.get(td)
-                            if p and buy_price > 0:
-                                cumulative = (p - buy_price) / buy_price
-                                if prev_p and prev_p > 0:
-                                    d_ret = (p - prev_p) / prev_p
-                                else:
-                                    d_ret = 0.0
-                                daily_rets.append({"date": td, "price": round(p, 2), "return": round(d_ret, 4), "cumulative": round(cumulative, 4)})
-                                prev_p = p
-                        stored["stock_returns"].append({
-                            "ts_code": ts, "name": name,
-                            "broker_count": broker_count, "broker": broker,
-                            "end_price": round(sell_price, 2),
-                            "end_date": sell_dates[-1],
-                            "daily_returns": daily_rets,
-                        })
-                    # 持久化更新后的结果
-                    self.db.save_broker_backtest(
-                        month=month,
-                        buy_date=stored["buy_date"],
-                        sell_date=stored["sell_date"],
-                        total_recommendations=stored["total_recommendations"],
-                        unique_stocks=len(stored["stock_returns"]),
-                        unique_brokers=stored["unique_brokers"],
-                        stock_returns=stored["stock_returns"],
-                        broker_returns=stored["brokers"],
+                # 券商聚合不完整（如旧版本只补 stock_returns 未补 brokers）也触发重算
+                stored_brokers = {b.get("broker") for b in stored.get("brokers", [])}
+                current_brokers = set(current_df["broker"].unique())
+                if missing or stored_brokers != current_brokers:
+                    logger.info(
+                        f"[BrokerRecommend] 回测 {month} 缓存不完整 "
+                        f"(缺 {len(missing)} 只股票 / {len(stored_brokers)}→{len(current_brokers)} 家券商)，全量重算"
                     )
-            # 补充 OHLC 数据用于蜡烛图
-            stored_stocks = {sr["ts_code"]: sr for sr in stored.get("stock_returns", [])}
-            if stored_stocks:
-                ohlc_merged = 0
-                for sr in stored["stock_returns"]:
-                    before = len([d for d in sr.get("daily_returns", []) if d.get("open")])
-                    sr["daily_returns"] = self._sync_daily_returns_from_ohlc(
-                        sr["ts_code"],
-                        sr.get("daily_returns", []),
-                        stored.get("buy_date", f"{month}01"),
-                        stored.get("sell_date", effective_end),
-                    )
-                    ohlc_merged += len([d for d in sr.get("daily_returns", []) if d.get("open")]) - before
-                logger.info(
-                    f"[BrokerRecommend] 回测 {month} OHLC 同步 {ohlc_merged} 条 "
-                    f"(覆盖 {len(stored_stocks)} 只股票)"
-                )
+                    stored = None
 
-            # 为存储数据补充当月累计收益（与 daily_returns 后复权累计一致）
-            for sr in stored["stock_returns"]:
-                sr["month_cumulative_return"] = self._month_cumulative_return_from_stock(sr)
-            stored["next_month"] = self._next_month_str(month)
-            logger.info(f"[BrokerRecommend] 回测 {month} 命中存储")
-            return stored
+            if stored:
+                # 补充 OHLC 数据用于蜡烛图
+                stored_stocks = {sr["ts_code"]: sr for sr in stored.get("stock_returns", [])}
+                if stored_stocks:
+                    ohlc_merged = 0
+                    for sr in stored["stock_returns"]:
+                        before = len([d for d in sr.get("daily_returns", []) if d.get("open")])
+                        sr["daily_returns"] = self._sync_daily_returns_from_ohlc(
+                            sr["ts_code"],
+                            sr.get("daily_returns", []),
+                            stored.get("buy_date", f"{month}01"),
+                            stored.get("sell_date", effective_end),
+                        )
+                        ohlc_merged += len([d for d in sr.get("daily_returns", []) if d.get("open")]) - before
+                    logger.info(
+                        f"[BrokerRecommend] 回测 {month} OHLC 同步 {ohlc_merged} 条 "
+                        f"(覆盖 {len(stored_stocks)} 只股票)"
+                    )
+
+                # 为存储数据补充当月累计收益（与 daily_returns 后复权累计一致）
+                for sr in stored["stock_returns"]:
+                    sr["month_cumulative_return"] = self._month_cumulative_return_from_stock(sr)
+                stored["next_month"] = self._next_month_str(month)
+                logger.info(f"[BrokerRecommend] 回测 {month} 命中存储")
+                return stored
 
         df = self.get_monthly_recommendations(month)
         if df is None or df.empty:

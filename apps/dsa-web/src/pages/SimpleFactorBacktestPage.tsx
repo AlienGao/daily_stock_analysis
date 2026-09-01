@@ -973,7 +973,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
         </AntTooltip>
       ),
       key: 'buy_amount',
-      width: 72,
+      width: 80,
       render: (_: unknown, r: BacktestTrade) => {
         if (!r.shares) return '--';
         return Math.round(r.allocated).toLocaleString();
@@ -998,7 +998,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
         </AntTooltip>
       ),
       key: 'sell_amount',
-      width: 72,
+      width: 80,
       render: (_: unknown, r: BacktestTrade) => {
         if (!r.shares) return '--';
         return Math.round(r.allocated + r.pnl).toLocaleString();
@@ -1023,7 +1023,7 @@ const SimpleFactorBacktestPage: React.FC = () => {
         </div>
       ),
     },
-    { title: '状态', dataIndex: 'status', key: 'status', width: 65, render: (_: unknown, r: BacktestTrade) => {
+    { title: '状态', dataIndex: 'status', key: 'status', width: 55, render: (_: unknown, r: BacktestTrade) => {
       const m: Record<string, string> = { closed: '已平', extended: '延期', canceled: '取消', open: '持仓', pending: '待执行', locked: '锁仓' };
       return m[r.status] || r.status;
     }},

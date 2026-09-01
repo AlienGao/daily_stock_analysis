@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 > For user-friendly release highlights, see the [GitHub Releases](https://github.com/ZhuLinsen/daily_stock_analysis/releases) page.
 
 ## [Unreleased]
+- [修复] 券商金股回测缓存检测到当月新增股票/券商时改为全量重算并整体持久化，同时校验券商聚合完整性（旧版本只增量补 `stock_returns`，导致新增券商无胜率/累计收益、新旧结果混存）
+- [修复] 券商金股月度数据在当月滚动发布期间不再因已有数据而跳过刷新：盘后任务每日覆盖落库当月金股，避免月初抓取的不完整版本（如 202608 仅 8 家券商）永久停留在页面；同时将 broker_recommend 刷新接入盘后任务列表
 - [新功能] 港股页「最近最大回撤」Tab 后新增「最近最大涨幅」Tab：展示最近 5 个交易日内结束的连续上涨段（至少连续 2 个交易日收涨），按涨幅降序取前 8 只，展开 K 线后按最新日线重算
 - [修复] 港股、新高、金股等页面展开 K 线图 tooltip 的开盘价显示错误：ECharts 在 category x 轴下会给 candlestick 数据项前置序号，导致按数组索引取值错位，改为按 dataIndex 读取原始 OHLC 数据
 - [修复] 港股页面展开个股 K 线异步加载时避免 Hook 顺序异常，修正蜡烛图 tooltip 的 OHLC 取值并规范化行情数值

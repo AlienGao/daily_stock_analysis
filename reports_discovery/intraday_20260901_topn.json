@@ -1,0 +1,183 @@
+[
+  {
+    "rank": 1,
+    "stock_code": "601901",
+    "stock_name": "方正证券",
+    "score": 29.0,
+    "sector": "证券",
+    "factor_scores": {
+      "ma_entry": 70.6181044787007,
+      "sector": 0.0,
+      "momentum": 50.0,
+      "ranking_momentum": 49.01780149480688,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线",
+      "BOLL中轨支撑",
+      "今日强于71%个股"
+    ],
+    "buy_price_low": 6.5,
+    "buy_price_high": 6.9,
+    "stop_loss": 6.96,
+    "take_profit_1": 7.19,
+    "take_profit_2": 7.47,
+    "discovered_at": "15:07:37",
+    "price_at_discovery": 6.98,
+    "pct_chg": 1.45,
+    "tech_score": 78.97,
+    "rr_score": 100.0,
+    "market_score": 53.77880106014919,
+    "sector_score": 67.73873310340099,
+    "volume_score": 59.210978128067545,
+    "position_score": 85,
+    "formation_score": 65.0,
+    "composite_score": 63.979
+  },
+  {
+    "rank": 2,
+    "stock_code": "601881",
+    "stock_name": "中国银河",
+    "score": 31.2,
+    "sector": "证券",
+    "factor_scores": {
+      "ma_entry": 70.6181044787007,
+      "sector": 0.0,
+      "momentum": 50.0,
+      "ranking_momentum": 63.12623468039249,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线",
+      "BOLL中轨支撑",
+      "排名连续上升(2天)"
+    ],
+    "buy_price_low": 11.6,
+    "buy_price_high": 12.3,
+    "stop_loss": 12.39,
+    "take_profit_1": 12.83,
+    "take_profit_2": 13.33,
+    "discovered_at": "15:07:37",
+    "price_at_discovery": 12.46,
+    "pct_chg": 0.81,
+    "tech_score": 77.74,
+    "rr_score": 100.0,
+    "market_score": 53.77880106014919,
+    "sector_score": 73.6393100478339,
+    "volume_score": 60.42184954949784,
+    "position_score": 75,
+    "formation_score": 65.0,
+    "composite_score": 63.77799999999999
+  },
+  {
+    "rank": 3,
+    "stock_code": "300608",
+    "stock_name": "思特奇",
+    "score": 52.2,
+    "sector": "软件开发",
+    "factor_scores": {
+      "ma_entry": 73.43673049648972,
+      "sector": 0.0,
+      "momentum": 46.807055630483234,
+      "ranking_momentum": 37.14126001770921,
+      "rebound": 0.0,
+      "popularity": 77.92856425996064
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "回踩MA5均线",
+      "趋势加速↑(2.5%/天)",
+      "今日强于65%个股",
+      "人气飙升(+139位)",
+      "人气核心圈(排名2082)"
+    ],
+    "buy_price_low": 9.5,
+    "buy_price_high": 10.4,
+    "stop_loss": 10.21,
+    "take_profit_1": 10.88,
+    "take_profit_2": 11.74,
+    "discovered_at": "15:07:37",
+    "price_at_discovery": 10.3,
+    "pct_chg": 1.18,
+    "tech_score": 65.57,
+    "rr_score": 73.41772151898726,
+    "market_score": 53.77880106014919,
+    "sector_score": 93.19369164628063,
+    "volume_score": 48.242776513621735,
+    "position_score": 75,
+    "formation_score": 40.0,
+    "composite_score": 61.559
+  },
+  {
+    "rank": 4,
+    "stock_code": "601456",
+    "stock_name": "国联民生",
+    "score": 28.3,
+    "sector": "证券",
+    "factor_scores": {
+      "ma_entry": 70.6181044787007,
+      "sector": 0.0,
+      "momentum": 50.0,
+      "ranking_momentum": 44.74096665606802,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线",
+      "BOLL中轨支撑",
+      "今日强于64%个股"
+    ],
+    "buy_price_low": 8.5,
+    "buy_price_high": 8.9,
+    "stop_loss": 8.91,
+    "take_profit_1": 9.25,
+    "take_profit_2": 9.61,
+    "discovered_at": "15:07:37",
+    "price_at_discovery": 8.98,
+    "pct_chg": 1.13,
+    "tech_score": 75.44,
+    "rr_score": 96.42857142857089,
+    "market_score": 53.77880106014919,
+    "sector_score": 66.37186456282717,
+    "volume_score": 58.2574316457441,
+    "position_score": 75,
+    "formation_score": 65.0,
+    "composite_score": 61.297999999999995
+  }
+]
