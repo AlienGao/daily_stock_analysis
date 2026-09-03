@@ -20,6 +20,7 @@ from api.v1.endpoints import (
     auth,
     backtest,
     broker_recommend,
+    data,
     decision_signals,
     discovery,
     factor_backtest,
@@ -53,6 +54,7 @@ if os.getenv("PORTFOLIO_MODULE_ENABLED", "false").strip().lower() == "true":
 
 router.include_router(broker_recommend.router, prefix="/broker-recommend", tags=["BrokerRecommend"])
 router.include_router(alerts.router, prefix="/alerts", tags=["Alerts"])
+router.include_router(data.router, prefix="/data", tags=["Data"])
 router.include_router(research.router, prefix="/research", tags=["Research"])
 router.include_router(decision_signals.router, prefix="/decision-signals", tags=["DecisionSignals"])
 router.include_router(factor_backtest.router, prefix="/factor-backtest-simple", tags=["FactorBacktestSimple"])
