@@ -287,7 +287,7 @@ class TestCurrentMonthStockReturns:
                  "000651": {"20260602": 1.0, "20260611": 1.0},
              }), \
              patch.object(svc, "_get_realtime_prices_batch", return_value=({}, {}, {}, {})), \
-             patch.object(svc, "_sync_daily_returns_from_ohlc", side_effect=lambda _ts, drs, *_a: drs), \
+             patch.object(svc, "_sync_daily_returns_from_ohlc", side_effect=lambda _ts, drs, *_a, **_kw: drs), \
              patch("src.services.broker_recommend_service.date") as mock_date:
             mock_date.today.return_value.strftime.return_value = "202606"
             out = svc.get_current_month_stock_returns(["000651.SZ"])
@@ -309,7 +309,7 @@ class TestCurrentMonthStockReturns:
                  "000524": {"20260630": 1.0},
              }), \
              patch.object(svc, "_get_realtime_prices_batch", return_value=({}, {}, {}, {})), \
-             patch.object(svc, "_sync_daily_returns_from_ohlc", side_effect=lambda _ts, drs, *_a: drs), \
+             patch.object(svc, "_sync_daily_returns_from_ohlc", side_effect=lambda _ts, drs, *_a, **_kw: drs), \
              patch("src.services.broker_recommend_service.date") as mock_date:
             mock_date.today.return_value.strftime.return_value = "202607"
             out = svc.get_current_month_stock_returns(["000524.SZ"])
@@ -341,9 +341,9 @@ class TestCurrentMonthStockReturns:
                  {"000524.SZ": {"20260706": 44.65}},
                  {"000524.SZ": 0.0},
                  {},
-                 {"000524.SZ": "2026-07-06"},
+                 {"000524.SZ": "20260706"},
              )), \
-             patch.object(svc, "_sync_daily_returns_from_ohlc", side_effect=lambda _ts, drs, *_a: drs), \
+             patch.object(svc, "_sync_daily_returns_from_ohlc", side_effect=lambda _ts, drs, *_a, **_kw: drs), \
              patch("src.services.broker_recommend_service.date") as mock_date:
             mock_date.today.return_value.strftime.side_effect = lambda fmt: {
                 "%Y%m": "202607",
@@ -371,7 +371,7 @@ class TestResolveSellDateWithAdj:
                  "300502.SZ": {"20260602": 100.0, "20260610": 110.0, "20260611": 80.0},
              }),              patch.object(svc, "_load_all_adj_factors", return_value={
                  "300502": {"20260602": 1.0, "20260610": 1.0},
-             }),              patch.object(svc, "_get_realtime_prices_batch", return_value=({}, {}, {}, {})),              patch.object(svc, "_sync_daily_returns_from_ohlc", side_effect=lambda _ts, drs, *_a: drs),              patch("src.services.broker_recommend_service.date") as mock_date:
+             }),              patch.object(svc, "_get_realtime_prices_batch", return_value=({}, {}, {}, {})),              patch.object(svc, "_sync_daily_returns_from_ohlc", side_effect=lambda _ts, drs, *_a, **_kw: drs),              patch("src.services.broker_recommend_service.date") as mock_date:
             mock_date.today.return_value.strftime.return_value = "202606"
             out = svc.get_current_month_stock_returns(["300502.SZ"])
         assert out["items"][0]["end_date"] == "20260610"

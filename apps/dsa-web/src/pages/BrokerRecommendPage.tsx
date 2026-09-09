@@ -280,6 +280,25 @@ function fmtDate(s: string): string {
   return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
 }
 
+/** 是否处于 A 股盘中交易时段（北京时间 09:30–15:00，工作日）。 */
+function isCnTradingSession(): boolean {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    hour12: false,
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).formatToParts(new Date());
+  const partMap: Record<string, string> = {};
+  parts.forEach((p) => {
+    if (p.type !== 'literal') partMap[p.type] = p.value;
+  });
+  const weekday = partMap.weekday ?? '';
+  const minuteOfDay = (Number(partMap.hour ?? '0') * 60) + Number(partMap.minute ?? '0');
+  const isWeekday = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].includes(weekday);
+  return isWeekday && minuteOfDay >= (9 * 60 + 30) && minuteOfDay < (15 * 60);
+}
+
 
 
 
@@ -584,6 +603,7 @@ function brokerStockRowStyle(record: StockRow): React.CSSProperties | undefined 
 
 
 const stockHistoryCache = new Map<string, StockHistoryResponse>();
+const stockHistoryFetchedAt = new Map<string, number>();
 
 
 function sanitizeChartBars(drs: BrokerDailyReturn[]): BrokerDailyReturn[] {
@@ -688,6 +708,7 @@ function StockHistoryExpandPanel({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAllMonths, setShowAllMonths] = useState(false);
+  const [liveTick, setLiveTick] = useState(0);
   const [preKlineBase, setPreKlineBase] = useState<
     Array<{ date: string; price: number; open: number; high: number; low: number }>
   >([]);
@@ -695,6 +716,16 @@ function StockHistoryExpandPanel({
   const [preKlineError, setPreKlineError] = useState<string | null>(null);
   const preWindow = useMemo(() => preSixMonthWindow(highlightMonth), [highlightMonth]);
   const preKlineMinBars = useMemo(() => minPreKlineBars(preWindow), [preWindow]);
+  // 展开的是当前月、且处于盘中会话时，缓存超过 30 秒即失效并跟随轮询刷新，
+  // 使展开累计收益与表格实时估算（30s 轮询）保持一致
+  const highlightIsCurrentMonth = highlightMonth === dayjs().format('YYYYMM');
+  const liveEntry = highlightIsCurrentMonth && isCnTradingSession();
+
+  useEffect(() => {
+    if (!liveEntry) return;
+    const timer = window.setInterval(() => setLiveTick(t => t + 1), 30_000);
+    return () => window.clearInterval(timer);
+  }, [liveEntry]);
 
   const preKlineBars = useMemo(() => {
     const base = filterPreKlineBars(preKlineBase, preWindow);
@@ -705,17 +736,20 @@ function StockHistoryExpandPanel({
   useEffect(() => {
     let cancelled = false;
     const cached = stockHistoryCache.get(tsCode);
-    if (cached) {
+    const cacheFresh = Date.now() - (stockHistoryFetchedAt.get(tsCode) ?? 0) < 30_000;
+    if (cached && (!liveEntry || cacheFresh)) {
       setData(cached);
       setLoading(false);
       return;
     }
-    setLoading(true);
+    // 盘中轮询刷新时保留旧数据渲染，静默更新，避免每 30 秒闪一次 loading
+    if (!cached) setLoading(true);
     setError(null);
     getStockHistory(tsCode)
       .then(resp => {
         if (cancelled) return;
         stockHistoryCache.set(tsCode, resp);
+        stockHistoryFetchedAt.set(tsCode, Date.now());
         setData(resp);
       })
       .catch(() => {
@@ -725,7 +759,7 @@ function StockHistoryExpandPanel({
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [tsCode]);
+  }, [tsCode, liveTick, liveEntry]);
 
   useEffect(() => {
     let cancelled = false;
@@ -994,6 +1028,7 @@ const BrokerRecommendPage: React.FC = () => {
 
   useEffect(() => {
     stockHistoryCache.clear();
+    stockHistoryFetchedAt.clear();
   }, [monthStr]);
 
   const prevMonthRef = useRef(monthStr);
@@ -1019,6 +1054,7 @@ const BrokerRecommendPage: React.FC = () => {
   const [historicalStats, setHistoricalStats] = useState<Record<string, HistoricalRecommendStatsItem>>({});
   const [currentMonthReturns, setCurrentMonthReturns] = useState<Record<string, number | null>>({});
   const [currentMonthMeta, setCurrentMonthMeta] = useState<Pick<CurrentMonthReturnsResponse, 'month' | 'buy_date' | 'sell_date'> | null>(null);
+  const [currentMonthRetRealtime, setCurrentMonthRetRealtime] = useState(false);
   const [prevMonthTopData, setPrevMonthTopData] = useState<PrevMonthCurrentTopResponse | null>(null);
   const [loadingPrevMonthTop, setLoadingPrevMonthTop] = useState(false);
   const [upToDownDaily, setUpToDownDaily] = useState<UpToDownDailyResponse | null>(null);
@@ -1197,6 +1233,7 @@ const BrokerRecommendPage: React.FC = () => {
     if (isCurrentMonth || !activeRecommend?.items?.length) {
       setCurrentMonthReturns({});
       setCurrentMonthMeta(null);
+      setCurrentMonthRetRealtime(false);
       return;
     }
     const codes = [...new Set(activeRecommend.items.map((i) => i.ts_code))];
@@ -1214,11 +1251,13 @@ const BrokerRecommendPage: React.FC = () => {
           buy_date: resp.buy_date,
           sell_date: resp.sell_date,
         });
+        setCurrentMonthRetRealtime(Boolean(resp.is_realtime));
       })
       .catch(() => {
         if (!cancelled) {
           setCurrentMonthReturns({});
           setCurrentMonthMeta(null);
+          setCurrentMonthRetRealtime(false);
         }
       });
     return () => { cancelled = true; };
@@ -1350,15 +1389,13 @@ const BrokerRecommendPage: React.FC = () => {
     return () => { cancelled = true; };
   }, [monthStr, fetchTrigger]);
 
-  // 盘中轮询：当前月交易日 09:30-15:00 每 30 秒拉最新回测数据（含最新价）
+  // 盘中轮询：当前月交易日 09:30-15:00（北京时间）每 30 秒拉最新回测数据（含实时价估算）
   useEffect(() => {
     if (!isCurrentMonth || activeTab !== 'monthly') return;
-    const isTradingHour = (h: number) => h >= 9 && (h < 15 || (h === 15 && new Date().getMinutes() < 0));
-    if (!isTradingHour(new Date().getHours())) return;
+    if (!isCnTradingSession()) return;
 
-    const interval = setInterval(async () => {
-      const hour = new Date().getHours();
-      if (!isTradingHour(hour)) { clearInterval(interval); return; }
+    const timer = window.setInterval(async () => {
+      if (!isCnTradingSession()) { window.clearInterval(timer); return; }
       try {
         const bt = await getBacktest(monthStr);
         if (bt?.month === monthStr) setBacktestData(bt);
@@ -1366,7 +1403,7 @@ const BrokerRecommendPage: React.FC = () => {
         // 静默失败，下次重试
       }
     }, 30_000);
-    return () => clearInterval(interval);
+    return () => window.clearInterval(timer);
   }, [isCurrentMonth, activeTab, monthStr]);
 
   const handleFetch = useCallback(async () => {
@@ -1878,7 +1915,16 @@ const BrokerRecommendPage: React.FC = () => {
       ),
     },
     ...(!isCurrentMonth ? [{
-      title: <span>{fmtMonthLabel(currentMonthStr)}累计收益</span>, key: 'currentMonthRet',
+      title: (
+        <span>
+          {fmtMonthLabel(currentMonthStr)}累计收益
+          {currentMonthRetRealtime ? (
+            <AntTooltip title="交易时段盘中按实时价估算，每 30 秒自动刷新">
+              <span className="text-[10px] text-tertiary-text font-normal ml-1">（盘中实时）</span>
+            </AntTooltip>
+          ) : null}
+        </span>
+      ), key: 'currentMonthRet',
       sorter: (a: StockRow, b: StockRow) => (a.currentMonthRet ?? -Infinity) - (b.currentMonthRet ?? -Infinity),
       sortOrder: columnSortOrder('currentMonthRet', tableSort),
       render: (_: unknown, row: StockRow) => {
@@ -1903,7 +1949,7 @@ const BrokerRecommendPage: React.FC = () => {
         <span className="text-xs text-secondary-text whitespace-nowrap">{row.sector || '--'}</span>
       ),
     },
-  ], [loadingEnrichment, monthStr, tableSort, isCurrentMonth, enrichAsOfLabel, holdPeriodLabel, currentMonthRetLabel, currentMonthStr, activeEnrichment]);
+  ], [loadingEnrichment, monthStr, tableSort, isCurrentMonth, enrichAsOfLabel, holdPeriodLabel, currentMonthRetLabel, currentMonthRetRealtime, currentMonthStr, activeEnrichment]);
 
   return (
     <AppPage className="max-w-none px-2 md:px-3">
@@ -1950,6 +1996,11 @@ const BrokerRecommendPage: React.FC = () => {
                 : activeRecommend
                 ? `${monthStr} 月券商金股`
                 : '--'}
+              {activeBacktest?.is_realtime ? (
+                <AntTooltip title="交易时段盘中：sell_date 当日收益按实时价估算，每 30 秒自动刷新">
+                  <span className="text-cyan ml-1.5">· 盘中实时估算</span>
+                </AntTooltip>
+              ) : null}
             </span>
           </div>
         </Card>
@@ -2167,6 +2218,11 @@ const BrokerRecommendPage: React.FC = () => {
                 <div className="flex flex-wrap items-center gap-2 min-w-0 ml-auto">
                   <span className="text-[11px] text-tertiary-text shrink-0">
                     {loadingPrevMonthTop ? '上月推荐当月 Top5…' : (prevMonthTopLabel || '上月推荐当月 Top5')}
+                    {!loadingPrevMonthTop && prevMonthTopData?.is_realtime ? (
+                      <AntTooltip title="交易时段盘中按实时价估算，每 30 秒自动刷新">
+                        <span className="text-[10px] text-tertiary-text">（盘中实时）</span>
+                      </AntTooltip>
+                    ) : null}
                   </span>
                   {!loadingPrevMonthTop && prevMonthTopData?.items?.length ? (
                     <div className="flex flex-wrap items-center gap-1.5">

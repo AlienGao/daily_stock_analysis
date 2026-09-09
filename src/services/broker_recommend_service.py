@@ -31,6 +31,12 @@ class BrokerRecommendService:
     _query_date_cache: Dict[str, str] = {}
     _cache_lock = Lock()
 
+    # 盘中实时快照网络直连刷新按 30s slot 合并：页面首屏多路重请求（backtest /
+    # prev-month / current-month-returns / 30s 轮询）会在同一 slot 内并发触发
+    # fetch_codes 直连上游，多路互相拖慢导致前端超时；此处只允许同 slot 拉一次。
+    _spot_refresh_cache: Dict[int, Any] = {}
+    _spot_refresh_lock = Lock()
+
     # 缓存每个月份的 query_date，避免 trade_cal API 波动导致缓存 key 不一致
     _query_date_cache: Dict[str, str] = {}
 
@@ -1033,14 +1039,57 @@ class BrokerRecommendService:
         f = adj_map.get(date_str)
         return f is not None and f > 0
 
+    @staticmethod
+    def _in_intraday_window(now: Optional[datetime] = None) -> bool:
+        """是否处于 A 股盘中时间窗口（09:30–15:00，北京时间）。"""
+        now = now or datetime.now()
+        minute_of_day = now.hour * 60 + now.minute
+        return 9 * 60 + 30 <= minute_of_day < 15 * 60
+
+    def _is_intraday_live_window(self) -> bool:
+        """是否处于 A 股盘中交易时段（交易日 09:30–15:00）。
+
+        盘中当日复权因子尚未生成，允许用最近因子近似实时价估算当日收益；
+        收盘后 / 非交易日返回 False，维持收盘口径。
+        """
+        try:
+            if not self._in_intraday_window():
+                return False
+            from src.discovery.engine import is_trading_day
+            return bool(is_trading_day())
+        except Exception:
+            return False
+
+    def _is_post_close_session(self, now: Optional[datetime] = None) -> bool:
+        """是否处于交易日收盘后（15:00 起）：今日行情已定型，快照 trade_date==今日
+        可视为真实收盘行情（收盘到当日复权因子入库约 18:01 之间按最近因子近似）。
+
+        盘中窗口走 _is_intraday_live_window 实时估算；开盘前 / 非交易日返回 False。
+        """
+        now = now or datetime.now()
+        if self._in_intraday_window(now):
+            return False
+        if now.hour * 60 + now.minute < 15 * 60:
+            return False
+        try:
+            from src.discovery.engine import is_trading_day
+            return bool(is_trading_day())
+        except Exception:
+            return False
+
     def _resolve_sell_date_with_adj(
         self,
         ts_code: str,
         trading_days: List[str],
         sell_date: str,
         adj_map: Optional[Dict[str, float]] = None,
+        allow_live_today: bool = False,
     ) -> str:
-        """截止日无当日复权因子时，回退至上一交易日。"""
+        """截止日无当日复权因子时，回退至上一交易日。
+
+        allow_live_today: 盘中实时估算模式（今日因子尚未生成），今日端日保留不回退，
+        复权按最近可得因子近似。
+        """
         if not trading_days:
             return sell_date
         if adj_map is None:
@@ -1049,9 +1098,15 @@ class BrokerRecommendService:
         candidates = [d for d in trading_days if d <= sell_date]
         if not candidates:
             return sell_date
+        today_str = date.today().strftime("%Y%m%d")
         for d in reversed(candidates):
+            if d == today_str and allow_live_today and not self._has_exact_adj_factor(adj_map, d):
+                return today_str
             if self._has_exact_adj_factor(adj_map, d):
                 return d
+        # 全区间无精确因子：盘中估算保留最后候选日（今日），否则维持原回退
+        if allow_live_today and candidates[-1] == today_str:
+            return today_str
         return candidates[0]
 
     @staticmethod
@@ -1254,6 +1309,43 @@ class BrokerRecommendService:
                     prices[tc] = {}
         return prices
 
+    def _get_spot_fresh_df(self, stale_codes: set, current_slot: int) -> Optional[pd.DataFrame]:
+        """按 30s slot 合并实时行情直连刷新，返回带 slot 列的新鲜行情 df。
+
+        盘中多路重请求（页面首屏 backtest / prev-month / current-month-returns /
+        盘中 30s 轮询）会在同一 30s slot 内并发触发 fetch_codes 直连上游：单路 10-30s
+        的网络刷新多路并发会互相拖慢直至前端超时。这里用进程内缓存 + 锁把网络刷新
+        串行化并跨调用合并——同一 slot 内重叠的股票只拉一次，其余调用者复用结果；
+        不重叠部分按需补拉后合并进缓存。刷新完全失败返回 None，由调用方降级。
+        """
+        with self._spot_refresh_lock:
+            cached = self._spot_refresh_cache.get(current_slot)
+            covered: set = set()
+            if cached is not None and not cached.empty:
+                covered = set(cached.index.astype(str))
+            missing = stale_codes - covered
+            if not missing:
+                return cached
+            try:
+                from src.discovery.realtime_spot import RealtimeSpotProvider
+
+                live_df = RealtimeSpotProvider.fetch_codes(sorted(missing))
+                if live_df is None or live_df.empty:
+                    return cached
+                live_df = live_df.copy()
+                live_df["slot"] = current_slot
+                if cached is not None and not cached.empty:
+                    live_df = pd.concat([cached, live_df])
+                    live_df = live_df[~live_df.index.duplicated(keep="last")]
+                self._spot_refresh_cache = {
+                    s: df for s, df in self._spot_refresh_cache.items() if s >= current_slot - 1
+                }
+                self._spot_refresh_cache[current_slot] = live_df
+                return live_df
+            except Exception:
+                logger.warning("[BrokerRecommend] 实时行情直连刷新失败", exc_info=True)
+                return cached
+
     def _get_realtime_prices_batch(self, ts_codes: List[str]) -> tuple:
         """批量获取当日实时最新价（从 realtime_spot DB 读取）。
 
@@ -1290,28 +1382,20 @@ class BrokerRecommendService:
 
             stale_refresh_failed: set[str] = set()
             if stale_codes:
-                try:
-                    from src.discovery.realtime_spot import RealtimeSpotProvider
-
-                    live_df = RealtimeSpotProvider.fetch_codes(sorted(stale_codes))
-                    refreshed_codes: set[str] = set()
-                    if live_df is not None and not live_df.empty:
-                        live_df = live_df.copy()
-                        live_df["slot"] = current_slot
-                        refreshed_codes = set(live_df.index.astype(str))
-                        spot_df = pd.concat([
-                            spot_df.drop(index=list(refreshed_codes), errors="ignore"),
-                            live_df,
-                        ])
-                    stale_refresh_failed = stale_codes - refreshed_codes
-                    if stale_refresh_failed:
-                        logger.warning(
-                            "[BrokerRecommend] 实时行情陈旧且刷新失败: %s",
-                            ",".join(sorted(stale_refresh_failed)),
-                        )
-                except Exception:
-                    stale_refresh_failed = set(stale_codes)
-                    logger.warning("[BrokerRecommend] 陈旧实时行情刷新失败", exc_info=True)
+                live_df = self._get_spot_fresh_df(stale_codes, current_slot)
+                refreshed_codes: set[str] = set()
+                if live_df is not None and not live_df.empty:
+                    refreshed_codes = set(live_df.index.astype(str))
+                    spot_df = pd.concat([
+                        spot_df.drop(index=list(refreshed_codes), errors="ignore"),
+                        live_df,
+                    ])
+                stale_refresh_failed = stale_codes - refreshed_codes
+                if stale_refresh_failed:
+                    logger.warning(
+                        "[BrokerRecommend] 实时行情陈旧且刷新失败: %s",
+                        ",".join(sorted(stale_refresh_failed)),
+                    )
 
             def _compact_date(value: Any) -> str:
                 if value is None or pd.isna(value):
@@ -1520,6 +1604,10 @@ class BrokerRecommendService:
         # 当月补充实时最新价（Sina 批量接口，2~3s）
         daily_changes: Dict[str, float] = {}
         daily_change_dates: Dict[str, str] = {}
+        # 今日快照并入集合（盘中实时价或收盘后真实收盘价）：
+        # {ts_code: {"price": 今日不复权价, "ohlc": 今日快照 OHLC}}
+        today_merged: Dict[str, Dict[str, Any]] = {}
+        is_realtime = False
         if is_current:
             try:
                 rt_prices, rt_changes, rt_ohlc, rt_change_dates = self._get_realtime_prices_batch(all_ts)
@@ -1527,28 +1615,50 @@ class BrokerRecommendService:
                     # 后复权：实时价也需要 × adj_factor 才能和 price_cache 对齐
                     adj_all = self._load_all_adj_factors(all_ts)
                     today_str = date.today().strftime("%Y%m%d")
+                    live_window = self._is_intraday_live_window()
+                    post_close = self._is_post_close_session()
                     rt_merged = 0
                     for ts, p in rt_prices.items():
                         code = ts.split(".")[0] if "." in ts else ts
-                        adj_map = adj_all.get(code, {}) or {}
-                        if not self._has_exact_adj_factor(adj_map, today_str):
+                        # 仅当快照确为今日（有真实盘中/收盘行情）才并入；
+                        # 停牌、非交易日残留（trade_date 非今日）停留在上一交易日口径
+                        if rt_change_dates.get(ts) != today_str:
                             continue
-                        f = adj_map[today_str]
+                        adj_map = adj_all.get(code, {}) or {}
+                        has_exact = self._has_exact_adj_factor(adj_map, today_str)
+                        # 盘中实时估算 / 收盘后交易日真实收盘快照 / 当日因子已入库均可并入；
+                        # 因子未入库时按最近因子近似（入库后自动收敛为精确值）
+                        if not (live_window or post_close or has_exact):
+                            continue
+                        f = adj_map[today_str] if has_exact else self._lookup_adj_factor(adj_map, today_str)
                         p = {d: round(v * f, 4) for d, v in p.items()}
                         price_cache.setdefault(ts, {}).update(p)
                         rt_merged += 1
-                    logger.info(f"[BrokerRecommend] 回测 {month} 实时价补充 {rt_merged} 只")
-                    # 有实时数据且当日复权因子已入库时，把今天加入交易日列表
+                        raw_price = rt_prices[ts].get(today_str)
+                        if raw_price:
+                            today_merged[ts] = {
+                                "price": float(raw_price),
+                                "ohlc": rt_ohlc.get(ts) or None,
+                            }
+                    is_realtime = live_window and bool(today_merged)
+                    logger.info(
+                        f"[BrokerRecommend] 回测 {month} 实时价补充 {rt_merged} 只"
+                        + (f"（盘中估算 {len(today_merged)} 只）" if today_merged else "")
+                    )
+                    # 有实时数据时，把今天加入交易日列表（盘中估算或收盘态因子就绪均适用）
                     if rt_merged and today_str not in trading_days:
                         trading_days.append(today_str)
                         trading_days.sort()
                         sell_date = trading_days[-1]
-                    # 将实时今日 OHLC 写入 DB（仅交易日）
+                    # 将今日收盘 OHLC 写入 DB（仅收盘态交易日；盘中不写，避免盘中中间价污染日线表）
                     from src.discovery.engine import is_trading_day
-                    if rt_ohlc and is_trading_day():
+                    if rt_ohlc and is_trading_day() and not live_window:
                         ohlc_saved = 0
                         today_date = date.today()
                         for ts, ohlc in rt_ohlc.items():
+                            # 只写确为今日会话的快照，避免把停牌残留快照当作今日 bar
+                            if rt_change_dates.get(ts) != today_str:
+                                continue
                             code = ts.split(".")[0] if "." in ts else ts
                             try:
                                 row = {
@@ -1701,13 +1811,21 @@ class BrokerRecommendService:
 
         stock_returns_list = list(stock_results.values())
 
-        # 并行预取 OHLC 数据用于蜡烛图展示
+        # 并行预取 OHLC 触发缺库数据补拉（_sync 内部会再次逐只读取 DB 命中）
         if stock_returns_list:
-            ohlc_cache = self._prefetch_ohlc(list(stock_results.keys()), month_start, month_end, use_adj=False)
+            self._prefetch_ohlc(list(stock_results.keys()), month_start, month_end, use_adj=False)
+            today_live_str = date.today().strftime("%Y%m%d")
             for sr in stock_returns_list:
-                ohlc = ohlc_cache.get(sr["ts_code"], {})
+                merged = today_merged.get(sr["ts_code"])
+                if merged:
+                    # 盘中/收盘态今日快照：今日 bar 不入 stock_daily 时注入快照价/OHLC，
+                    # 已入库时以 DB 收盘 bar 为准（同源同值），由 _sync 保留今日
+                    self._overwrite_live_today_bar(
+                        sr["daily_returns"], today_live_str, merged["price"], merged["ohlc"],
+                    )
                 sr["daily_returns"] = self._sync_daily_returns_from_ohlc(
                     sr["ts_code"], sr["daily_returns"], buy_date, sell_date,
+                    allow_live_today=bool(merged),
                 )
                 sr["month_cumulative_return"] = self._month_cumulative_return_from_stock(sr)
 
@@ -1743,6 +1861,7 @@ class BrokerRecommendService:
             "unique_brokers": len(all_brokers),
             "brokers": brokers_result,
             "stock_returns": stock_returns_list,
+            "is_realtime": is_realtime,
         }
 
 
@@ -1766,15 +1885,22 @@ class BrokerRecommendService:
         trading_days: List[str],
         buy_date: str,
         sell_date: str,
+        live_bar: Optional[Dict[str, Any]] = None,
     ) -> tuple[Optional[float], str]:
         """从预取价格缓存计算持仓窗口累计收益（后复权，经 OHLC 同步）。
 
-        Returns:
-            (cumulative_return, effective_sell_date)
+        live_bar: 盘中实时估算/收盘态合并模式下的今日 bar（{price: 不复权价, ohlc}），
+        传入时今日端日不回退、今日 bar 保留。
         """
-        effective_sell = self._resolve_sell_date_with_adj(ts_code, trading_days, sell_date)
-        window_days = [d for d in trading_days if d <= effective_sell]
         prices = price_cache.get(ts_code, {})
+        today_str = date.today().strftime("%Y%m%d")
+        # prices 含今日（stock_daily 已入库今日收盘 bar，或快照合并）→ 端日保留，
+        # 否则与表格/展开口径一致停在有精确因子的最近交易日
+        allow_live_today = bool(live_bar) or today_str in prices
+        effective_sell = self._resolve_sell_date_with_adj(
+            ts_code, trading_days, sell_date, allow_live_today=allow_live_today,
+        )
+        window_days = [d for d in trading_days if d <= effective_sell]
         if not prices or not window_days:
             return None, effective_sell
         available = sorted(prices.keys())
@@ -1804,8 +1930,13 @@ class BrokerRecommendService:
                 prev_p = p
         if not daily_rets:
             return None, effective_sell
+        if live_bar:
+            self._overwrite_live_today_bar(
+                daily_rets, date.today().strftime("%Y%m%d"),
+                live_bar.get("price"), live_bar.get("ohlc"),
+            )
         daily_rets = self._sync_daily_returns_from_ohlc(
-            ts_code, daily_rets, buy_date, effective_sell,
+            ts_code, daily_rets, buy_date, effective_sell, allow_live_today=allow_live_today,
         )
         cum = self._month_cumulative_return_from_stock({"ts_code": ts_code, "daily_returns": daily_rets})
         return cum, effective_sell
@@ -1827,26 +1958,40 @@ class BrokerRecommendService:
         price_cache = self._prefetch_prices(
             ts_codes, month_start, effective_end, skip_tushare=False, use_adj=True,
         )
+        # 今日快照并入集合（盘中实时价或收盘后真实收盘价）：
+        # {ts_code: {"price": 今日不复权价, "ohlc": 今日快照 OHLC}}
+        today_merged: Dict[str, Dict[str, Any]] = {}
+        is_realtime = False
         try:
-            rt_prices, _, _, _ = self._get_realtime_prices_batch(ts_codes)
+            rt_prices, _, rt_ohlc, rt_change_dates = self._get_realtime_prices_batch(ts_codes)
             if rt_prices:
                 adj_all = self._load_all_adj_factors(ts_codes)
                 today_str = date.today().strftime("%Y%m%d")
+                live_window = self._is_intraday_live_window()
+                post_close = self._is_post_close_session()
+                rt_merged = 0
                 for ts, p in rt_prices.items():
                     code = ts.split(".")[0] if "." in ts else ts
-                    adj_map = adj_all.get(code, {}) or {}
-                    if not self._has_exact_adj_factor(adj_map, today_str):
+                    # 仅当快照确为今日（有真实盘中/收盘行情）才并入
+                    if rt_change_dates.get(ts) != today_str:
                         continue
-                    f = adj_map[today_str]
+                    adj_map = adj_all.get(code, {}) or {}
+                    has_exact = self._has_exact_adj_factor(adj_map, today_str)
+                    # 盘中实时估算 / 收盘后交易日真实收盘快照 / 当日因子已入库均可并入
+                    if not (live_window or post_close or has_exact):
+                        continue
+                    f = adj_map[today_str] if has_exact else self._lookup_adj_factor(adj_map, today_str)
                     p = {d: round(v * f, 4) for d, v in p.items()}
                     price_cache.setdefault(ts, {}).update(p)
-                if any(
-                    self._has_exact_adj_factor(
-                        adj_all.get(ts.split(".")[0] if "." in ts else ts, {}) or {},
-                        today_str,
-                    )
-                    for ts in rt_prices
-                ) and today_str not in trading_days:
+                    rt_merged += 1
+                    raw_price = rt_prices[ts].get(today_str)
+                    if raw_price:
+                        today_merged[ts] = {
+                            "price": float(raw_price),
+                            "ohlc": rt_ohlc.get(ts) or None,
+                        }
+                is_realtime = live_window and bool(today_merged)
+                if rt_merged and today_str not in trading_days:
                     trading_days = sorted(trading_days + [today_str])
                     sell_date = trading_days[-1]
         except Exception:
@@ -1855,8 +2000,9 @@ class BrokerRecommendService:
         items: List[Dict[str, Any]] = []
         response_sell = buy_date
         for ts in ts_codes:
+            live = today_merged.get(ts)
             cum, effective_sell = self._cumulative_return_from_price_window(
-                ts, price_cache, trading_days, buy_date, sell_date,
+                ts, price_cache, trading_days, buy_date, sell_date, live_bar=live,
             )
             items.append({
                 "ts_code": ts,
@@ -1870,6 +2016,7 @@ class BrokerRecommendService:
             "month": month,
             "buy_date": buy_date,
             "sell_date": response_sell if items else sell_date,
+            "is_realtime": is_realtime,
             "items": items,
         }
 
@@ -1970,8 +2117,31 @@ class BrokerRecommendService:
             "current_month": result.get("month", current_month),
             "buy_date": result.get("buy_date", ""),
             "sell_date": result.get("sell_date", ""),
+            "is_realtime": bool(result.get("is_realtime", False)),
             "items": items[: max(1, int(top_n))],
         }
+
+    @staticmethod
+    def _overwrite_live_today_bar(
+        daily_returns: List[Dict[str, Any]],
+        today_str: str,
+        live_price: Optional[float],
+        live_ohlc: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """把序列中「今日」一根替换为盘中实时口径：price=不复权实时价，OHLC=实时快照。
+
+        实时价不入 stock_daily，由 OHLC 同步阶段按最近复权因子估算累计收益。
+        """
+        if not daily_returns or not live_price or float(live_price) <= 0:
+            return
+        for dr in daily_returns:
+            d = str(dr.get("date", ""))[:8]
+            if d == today_str:
+                dr["price"] = round(float(live_price), 4)
+                dr["open"] = (live_ohlc or {}).get("open")
+                dr["high"] = (live_ohlc or {}).get("high")
+                dr["low"] = (live_ohlc or {}).get("low")
+                return
 
     def _sync_daily_returns_from_ohlc(
         self,
@@ -1979,8 +2149,13 @@ class BrokerRecommendService:
         daily_returns: List[Dict[str, Any]],
         start_date: str,
         end_date: str,
+        allow_live_today: bool = False,
     ) -> List[Dict[str, Any]]:
-        """用不复权 OHLC 补 K 线字段；用后复权收盘价重算日收益/累计收益（避免除权月假回撤）。"""
+        """用不复权 OHLC 补 K 线字段；用后复权收盘价重算日收益/累计收益（避免除权月假回撤）。
+
+        allow_live_today: 盘中实时估算模式。今日实时 bar 不入 stock_daily，允许其
+        以注入的实时价保留（因子未生成时按最近因子近似），其余 bar 行为不变。
+        """
         if not daily_returns:
             return daily_returns
         ohlc = self._prefetch_ohlc([ts_code], start_date, end_date, use_adj=False).get(ts_code, {})
@@ -1989,22 +2164,33 @@ class BrokerRecommendService:
 
         code = ts_code.split(".")[0] if "." in ts_code else ts_code
         adj_map = self._load_all_adj_factors([ts_code]).get(code, {}) or {}
+        today_str = date.today().strftime("%Y%m%d")
+        # 收盘态（15:00–当日因子入库）stock_daily 已写入今日收盘 bar：今日是真实行情，
+        # 端日不回退、今日 bar 不裁掉（因子未入库时按最近因子近似，入库后自动收敛）。
+        today_bar_in_db = bool((ohlc.get(today_str) or {}).get("close"))
+        keep_today = allow_live_today or today_bar_in_db
         dr_dates = sorted(
             str(d.get("date", ""))[:8]
             for d in daily_returns
             if d.get("date")
         )
         if dr_dates:
-            end_date = self._resolve_sell_date_with_adj(ts_code, dr_dates, end_date, adj_map)
+            end_date = self._resolve_sell_date_with_adj(
+                ts_code, dr_dates, end_date, adj_map, allow_live_today=keep_today,
+            )
 
         bars: List[Dict[str, Any]] = []
         adj_closes: List[float] = []
         for dr in sorted(daily_returns, key=lambda x: str(x.get("date", ""))):
             d = str(dr.get("date", ""))[:8]
-            if not d or d > end_date or d not in ohlc:
+            if not d or d > end_date:
                 continue
-            bar = ohlc[d]
-            close = bar.get("close")
+            bar = ohlc.get(d)
+            if bar is None:
+                # 盘中实时估算/收盘态：今日 bar 允许以注入的不复权实时价兜底
+                if not (keep_today and d == today_str):
+                    continue
+            close = bar.get("close") if bar else None
             if close is None:
                 close = dr.get("price")
             if close is None:
@@ -2015,9 +2201,9 @@ class BrokerRecommendService:
             bars.append({
                 "date": d,
                 "price": round(close_f, 4),
-                "open": bar.get("open"),
-                "high": bar.get("high"),
-                "low": bar.get("low"),
+                "open": bar.get("open") if bar else dr.get("open"),
+                "high": bar.get("high") if bar else dr.get("high"),
+                "low": bar.get("low") if bar else dr.get("low"),
             })
             adj_closes.append(adj_close)
 
@@ -2045,8 +2231,13 @@ class BrokerRecommendService:
         month: str,
         buy_date: Optional[str] = None,
         sell_date: Optional[str] = None,
+        allow_live_today: bool = False,
     ) -> tuple:
-        """计算单只股票在指定推荐月的持仓期日收益与 OHLC。"""
+        """计算单只股票在指定推荐月的持仓期日收益与 OHLC。
+
+        allow_live_today: 当月且处于盘中/收盘后会话时，合并今日快照（实时价或收盘价），
+        与表格回测口径一致；历史月默认 False，行为不变。
+        """
         effective_end = self._effective_month_end(month)
         is_current = month == date.today().strftime("%Y%m")
         month_start = f"{month}01"
@@ -2068,6 +2259,29 @@ class BrokerRecommendService:
         ).get(ts_code, {})
         if not prices:
             return [], buy_date, sell_date, None
+
+        # 当月盘中/收盘后：合并今日快照，使展开面板与表格（回测）同口径
+        merged_today: Optional[Dict[str, Any]] = None
+        today_str = date.today().strftime("%Y%m%d")
+        if is_current and allow_live_today:
+            try:
+                rt_prices, _, rt_ohlc, rt_change_dates = self._get_realtime_prices_batch([ts_code])
+                if (rt_prices or {}).get(ts_code) and rt_change_dates.get(ts_code) == today_str:
+                    code = ts_code.split(".")[0] if "." in ts_code else ts_code
+                    adj_map = (self._load_all_adj_factors([ts_code]).get(code, {}) or {})
+                    f = self._lookup_adj_factor(adj_map, today_str)
+                    raw_price = rt_prices[ts_code].get(today_str)
+                    if raw_price and f > 0:
+                        prices[today_str] = round(float(raw_price) * f, 4)
+                        merged_today = {
+                            "price": float(raw_price),
+                            "ohlc": rt_ohlc.get(ts_code) or None,
+                        }
+                        if today_str not in trading_days:
+                            trading_days = sorted(trading_days + [today_str])
+                            sell_date = trading_days[-1]
+            except Exception:
+                logger.warning("[BrokerRecommend] 个股展开实时价补充失败 %s", ts_code, exc_info=True)
 
         available_dates = sorted(prices.keys())
         buy_dates = [d for d in available_dates if d >= buy_date]
@@ -2101,7 +2315,14 @@ class BrokerRecommendService:
                 prev_p = p
                 cum_ret = cumulative
 
-        daily_rets = self._sync_daily_returns_from_ohlc(ts_code, daily_rets, buy_date, sell_date)
+        if merged_today:
+            # 今日快照 bar（盘中实时价/收盘价）注入后由 _sync 保留今日，不入 stock_daily
+            self._overwrite_live_today_bar(
+                daily_rets, today_str, merged_today["price"], merged_today["ohlc"],
+            )
+        daily_rets = self._sync_daily_returns_from_ohlc(
+            ts_code, daily_rets, buy_date, sell_date, allow_live_today=bool(merged_today),
+        )
         return daily_rets, buy_date, sell_date, cum_ret
 
 
@@ -2124,8 +2345,13 @@ class BrokerRecommendService:
         month: str,
         stored: Optional[Dict[str, Any]] = None,
         stock_return: Optional[Dict[str, Any]] = None,
+        allow_live_today: bool = False,
     ) -> tuple:
-        """与展开历史 K 线一致：必要时重算、OHLC 同步、清洗后返回持仓期序列与期末收益。"""
+        """与展开历史 K 线一致：必要时重算、OHLC 同步、清洗后返回持仓期序列与期末收益。
+
+        allow_live_today: 当月盘中/收盘后会话传 True，使今日快照/已入库今日 bar 在
+        重算与二次同步中均保留（与表格回测口径一致）；历史月默认 False 行为不变。
+        """
         buy_date: Optional[str] = None
         sell_date: Optional[str] = None
         daily_returns: List[Dict[str, Any]] = []
@@ -2144,12 +2370,14 @@ class BrokerRecommendService:
         if need_compute:
             daily_returns, buy_date, sell_date, cum_ret = self._build_single_stock_window_returns(
                 ts_code, month, buy_date=buy_date, sell_date=sell_date,
+                allow_live_today=allow_live_today,
             )
         sync_start = buy_date or f"{month}01"
         sync_end = sell_date or self._effective_month_end(month)
         if daily_returns:
             daily_returns = self._sync_daily_returns_from_ohlc(
                 ts_code, daily_returns, sync_start, sync_end,
+                allow_live_today=allow_live_today,
             )
 
         daily_returns = self._sanitize_daily_returns_bars(daily_returns)
@@ -2422,6 +2650,10 @@ class BrokerRecommendService:
         name = str(rows[0].get("name") or "")
         entries: List[Dict[str, Any]] = []
 
+        # 当前月展开：盘中/收盘后会话允许今日快照或已入库今日收盘 bar 保留，与表格一致
+        current_month = date.today().strftime("%Y%m")
+        allow_current_live = (self._is_intraday_live_window() or self._is_post_close_session())
+
         for month in months:
             month_rows = [r for r in rows if r["month"] == month]
             brokers = sorted({str(r.get("broker") or "") for r in month_rows if r.get("broker")})
@@ -2439,6 +2671,7 @@ class BrokerRecommendService:
                 )
             daily_returns, cum_ret, buy_date, sell_date = self._resolve_stock_holding_daily_returns(
                 ts_code, month, stored=stored, stock_return=sr,
+                allow_live_today=(month == current_month and allow_current_live),
             )
 
             entries.append({

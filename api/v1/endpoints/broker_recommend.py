@@ -145,6 +145,7 @@ class BrokerBacktestResponse(BaseModel):
     unique_brokers: int
     brokers: List[BrokerBacktestItem]
     stock_returns: List[StockReturnItem]
+    is_realtime: bool = False
 
 
 
@@ -190,6 +191,7 @@ class CurrentMonthReturnsResponse(BaseModel):
     buy_date: str
     sell_date: str
     items: List[CurrentMonthReturnItem]
+    is_realtime: bool = False
 
 
 class PrevMonthCurrentTopItem(BaseModel):
@@ -207,6 +209,7 @@ class PrevMonthCurrentTopResponse(BaseModel):
     buy_date: str
     sell_date: str
     items: List[PrevMonthCurrentTopItem]
+    is_realtime: bool = False
 
 
 class YtdMonthlyReturn(BaseModel):
@@ -452,6 +455,7 @@ def get_current_month_returns(
         month=result.get("month", ""),
         buy_date=result.get("buy_date", ""),
         sell_date=result.get("sell_date", ""),
+        is_realtime=bool(result.get("is_realtime", False)),
         items=[
             CurrentMonthReturnItem(
                 ts_code=item["ts_code"],
@@ -474,6 +478,7 @@ def get_prev_month_current_top(
         current_month=result.get("current_month", ""),
         buy_date=result.get("buy_date", ""),
         sell_date=result.get("sell_date", ""),
+        is_realtime=bool(result.get("is_realtime", False)),
         items=[
             PrevMonthCurrentTopItem(
                 ts_code=item["ts_code"],
@@ -809,4 +814,5 @@ def get_backtest(
         unique_brokers=result["unique_brokers"],
         brokers=brokers,
         stock_returns=stock_returns,
+        is_realtime=bool(result.get("is_realtime", False)),
     )

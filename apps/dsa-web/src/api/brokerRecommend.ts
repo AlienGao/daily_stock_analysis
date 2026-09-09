@@ -152,6 +152,8 @@ export type BrokerBacktestResponse = {
   unique_brokers: number;
   brokers: BrokerBacktestItem[];
   stock_returns: StockReturnItem[];
+  /** 当前处于交易时段盘中，sell_date 当日收益按实时价估算 */
+  is_realtime?: boolean;
 };
 
 export type YtdMonthlyReturn = {
@@ -368,6 +370,8 @@ export type CurrentMonthReturnsResponse = {
   buy_date: string;
   sell_date: string;
   items: CurrentMonthReturnItem[];
+  /** 交易时段盘中：当月收益按实时价估算 */
+  is_realtime?: boolean;
 };
 
 export type PrevMonthCurrentTopItem = {
@@ -385,6 +389,8 @@ export type PrevMonthCurrentTopResponse = {
   buy_date: string;
   sell_date: string;
   items: PrevMonthCurrentTopItem[];
+  /** 交易时段盘中：当月收益按实时价估算 */
+  is_realtime?: boolean;
 };
 
 export async function getPrevMonthCurrentTop(topN = 5): Promise<PrevMonthCurrentTopResponse> {
