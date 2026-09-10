@@ -193,4 +193,59 @@ describe('港股通分钟行情刷新', () => {
     expect(updated.close).toBe(505);
     expect(updated.dist_pct).toBe(-0.98);
   });
+
+  it('盘中（market_open=true）时分钟快照覆盖日线价格', () => {
+    const [updated] = mergeHkRealtimeItems([
+      { hk_code: '00700', latest_price: 500, pct_change: 0 },
+    ], [{ hk_code: '00700', latest_price: 510, pct_change: 2, bar_time: '2026-09-10 14:30:00' }], {
+      marketOpen: true,
+      listTradeDate: '20260910',
+    });
+
+    expect(updated.latest_price).toBe(510);
+    expect(updated.pct_change).toBe(2);
+  });
+
+  it('盘后（market_open=false）且日线已含当日收盘时，保留日线收盘价不被旧分钟快照覆盖', () => {
+    const [updated] = mergeHkRealtimeItems([
+      { hk_code: '02650', latest_price: 14.92, pct_change: 107.22 },
+    ], [{ hk_code: '02650', latest_price: 12.4, pct_change: 72.22, bar_time: '2026-09-10 15:59:00' }], {
+      marketOpen: false,
+      listTradeDate: '20260910',
+    });
+
+    expect(updated.latest_price).toBe(14.92);
+    expect(updated.pct_change).toBe(107.22);
+  });
+
+  it('盘后日线仍停留在更早交易日时，用当日分钟快照补位', () => {
+    const [updated] = mergeHkRealtimeItems([
+      { hk_code: '00700', latest_price: 500, pct_change: 0 },
+    ], [{ hk_code: '00700', latest_price: 510, pct_change: 2, bar_time: '2026-09-10 15:59:00' }], {
+      marketOpen: false,
+      listTradeDate: '20260909',
+    });
+
+    expect(updated.latest_price).toBe(510);
+    expect(updated.pct_change).toBe(2);
+  });
+
+  it('盘后 BOLL 推荐卡片同样保留日线收盘现价', () => {
+    const [updated] = mergeHkRealtimeBollPicks([
+      {
+        hk_code: '02650',
+        name: '挚达科技',
+        close: 14.92,
+        band: 'upper',
+        boll_mid: 9.59,
+        boll_upper: 13.26,
+        boll_lower: 5.91,
+      },
+    ], [{ hk_code: '02650', latest_price: 12.4, bar_time: '2026-09-10 15:59:00' }], {
+      marketOpen: false,
+      listTradeDate: '20260910',
+    });
+
+    expect(updated.close).toBe(14.92);
+  });
 });

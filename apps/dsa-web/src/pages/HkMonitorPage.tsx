@@ -546,12 +546,15 @@ const HkMonitorPage: React.FC = () => {
         ]);
       const baseItems = listResp.items ?? [];
       const basePicks = [...(bollResp.upper ?? []), ...(bollResp.mid ?? []), ...(bollResp.lower ?? [])];
+      const mergeOpts = realtimeResp
+        ? { marketOpen: realtimeResp.market_open, listTradeDate: listResp.trade_date }
+        : undefined;
       setItems(sortHkItemsByPctChangeDesc(
-        realtimeResp ? mergeHkRealtimeItems(baseItems, realtimeResp.items) : baseItems,
+        realtimeResp ? mergeHkRealtimeItems(baseItems, realtimeResp.items, mergeOpts) : baseItems,
       ));
       setRecentTradeDates(listResp.recent_trade_dates ?? []);
       if (shouldRefresh) setTableSort({ ...DEFAULT_TABLE_SORT });
-      setBollPicks(realtimeResp ? mergeHkRealtimeBollPicks(basePicks, realtimeResp.items) : basePicks);
+      setBollPicks(realtimeResp ? mergeHkRealtimeBollPicks(basePicks, realtimeResp.items, mergeOpts) : basePicks);
       setIntradayDrawdowns(realtimeResp?.top_drawdowns ?? []);
       setMinuteGainers(realtimeResp?.top_gainers ?? []);
       updateMinuteBollAlerts(realtimeResp?.today_boll_alerts ?? []);
@@ -568,8 +571,12 @@ const HkMonitorPage: React.FC = () => {
   const refreshRealtime = useCallback(async () => {
     try {
       const realtimeResp = await hkStockApi.getRealtime();
-      setItems(current => mergeHkRealtimeItems(current, realtimeResp.items));
-      setBollPicks(current => mergeHkRealtimeBollPicks(current, realtimeResp.items));
+      const mergeOpts = {
+        marketOpen: realtimeResp.market_open,
+        listTradeDate: recentTradeDates[0],
+      };
+      setItems(current => mergeHkRealtimeItems(current, realtimeResp.items, mergeOpts));
+      setBollPicks(current => mergeHkRealtimeBollPicks(current, realtimeResp.items, mergeOpts));
       setIntradayDrawdowns(realtimeResp.top_drawdowns ?? []);
       setMinuteGainers(realtimeResp.top_gainers ?? []);
       updateMinuteBollAlerts(realtimeResp.today_boll_alerts ?? []);
@@ -577,7 +584,7 @@ const HkMonitorPage: React.FC = () => {
     } catch {
       // Keep the last successful snapshot; the backend polling path is best-effort.
     }
-  }, [updateMinuteBollAlerts]);
+  }, [updateMinuteBollAlerts, recentTradeDates]);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
