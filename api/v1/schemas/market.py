@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Market statistics API schemas."""
 
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -242,6 +242,40 @@ class HkBollPickListResponse(BaseModel):
     upper: List[HkBollPickItem] = Field(default_factory=list)
     mid: List[HkBollPickItem] = Field(default_factory=list)
     lower: List[HkBollPickItem] = Field(default_factory=list)
+
+
+class HkRecentDeclineEndingItem(BaseModel):
+    hk_code: str
+    name: Optional[str] = None
+    decline_days: int
+    drawdown_pct: float
+    start_date: str
+    end_date: str
+    rebound_pct: Optional[float] = Field(
+        None, description="结束日收盘至最新收盘的反弹幅度（%）"
+    )
+    rebound_days: int = Field(0, description="结束日之后的交易日数")
+    latest_price: Optional[float] = None
+    latest_trade_date: Optional[str] = None
+
+
+class HkRecentDeclineEndingSummary(BaseModel):
+    avg_decline_days: Optional[float] = None
+    avg_drawdown_pct: Optional[float] = None
+    avg_rebound_pct: Optional[float] = None
+    decline_days_dist: Dict[str, int] = Field(
+        default_factory=dict, description="连跌天数分布，5+ 表示 5 天及以上"
+    )
+
+
+class HkRecentDeclineEndingResponse(BaseModel):
+    trade_date: str
+    recent_trade_dates: List[str] = Field(
+        default_factory=list, description="行情批次中最近 N 个港股交易日（统计窗口）"
+    )
+    total: int
+    summary: HkRecentDeclineEndingSummary = Field(default_factory=HkRecentDeclineEndingSummary)
+    items: List[HkRecentDeclineEndingItem] = Field(default_factory=list)
 
 
 class HkGgtPollResponse(BaseModel):

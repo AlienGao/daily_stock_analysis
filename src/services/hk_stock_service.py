@@ -110,6 +110,44 @@ def _latest_consecutive_gain(
     return None
 
 
+def _latest_ended_decline(
+    dated_closes: List[Tuple[str, float]],
+) -> Optional[Tuple[float, int, str, str, float]]:
+    """返回最近一段已结束的至少连续 2 个交易日收跌区间。
+
+    与 _latest_consecutive_drawdown 的区别：仅当连跌区间之后还有交易日（即下跌
+    已止住、后续出现收涨或走平）才返回，连跌延续到最新交易日时返回 None。
+    返回 (跌幅%, 连跌天数, 起始日, 结束日, 结束日收盘价)。
+    """
+    valid = [
+        (trade_date, float(close))
+        for trade_date, close in dated_closes
+        if close is not None and math.isfinite(close) and close > 0
+    ]
+    end_idx = len(valid) - 1
+    while end_idx > 0:
+        while end_idx > 0 and valid[end_idx][1] >= valid[end_idx - 1][1]:
+            end_idx -= 1
+        if end_idx <= 0:
+            return None
+
+        start_idx = end_idx
+        while start_idx > 0 and valid[start_idx][1] < valid[start_idx - 1][1]:
+            start_idx -= 1
+        decline_days = end_idx - start_idx
+        if decline_days < 2:
+            end_idx = start_idx - 1
+            continue
+        if end_idx >= len(valid) - 1:
+            # 连跌延续到最新交易日，尚未结束
+            return None
+        start_date, start_close = valid[start_idx]
+        end_date, end_close = valid[end_idx]
+        drawdown_pct = round((end_close - start_close) / start_close * 100, 2)
+        return drawdown_pct, decline_days, start_date, end_date, end_close
+    return None
+
+
 def _is_near_band(close: float, band: float, near_pct: float = BOLL_NEAR_PCT) -> bool:
     dist = _band_distance_pct(close, band)
     return dist is not None and abs(dist) <= near_pct
@@ -228,6 +266,9 @@ class HkStockService:
         self._db = db or DatabaseManager()
         self._boll_picks_cache: Optional[Dict[str, Any]] = None
         self._boll_picks_cache_ts: float = 0.0
+        self._decline_endings_cache: Optional[Dict[str, Any]] = None
+        self._decline_endings_cache_days: int = 0
+        self._decline_endings_cache_ts: float = 0.0
 
     # ── 成份股列表 ──────────────────────────────────────────────
 
@@ -722,6 +763,135 @@ class HkStockService:
         }
         self._boll_picks_cache = result
         self._boll_picks_cache_ts = now
+        return result
+
+    def scan_recent_decline_endings(self, days: int = 3) -> Dict[str, Any]:
+        """统计近 N 个交易日内刚结束连续下跌（至少连续 2 日收跌）的成份股。
+
+        止跌判定：最近一段连续收跌的结束日落在最近 N 个交易日窗口内，且结束日
+        之后至少还有一个交易日（连跌已结束、非延续中）。附带止跌以来的反弹
+        幅度（结束日收盘 → 最新收盘）与汇总均值，供港股页「近3日止跌」展示。
+        """
+        days = max(2, min(int(days or 3), 10))
+        now = _time.time()
+        if (
+            self._decline_endings_cache is not None
+            and self._decline_endings_cache_days == days
+            and now - self._decline_endings_cache_ts < CACHE_TTL_SEC
+        ):
+            return self._decline_endings_cache
+
+        self._trigger_backfill_async()
+        trade_date = self._db.get_latest_hk_ggt_trade_date()
+        empty: Dict[str, Any] = {
+            "trade_date": trade_date or "",
+            "recent_trade_dates": [],
+            "total": 0,
+            "summary": {},
+            "items": [],
+        }
+        if not trade_date:
+            return empty
+
+        comp_rows = self._db.list_hk_ggt_components(trade_date)
+        if not comp_rows:
+            return empty
+
+        codes: List[str] = []
+        code_names: Dict[str, str] = {}
+        for r in comp_rows:
+            d = r.to_dict()
+            c = _norm_hk_code(d["hk_code"])
+            codes.append(c)
+            code_names[c] = _resolve_hk_display_name(d.get("name"), c)
+
+        # 一次批量拉取所有成份股的日 K 线（最新 180 天），与 BOLL 推荐一致
+        today = date.today()
+        start = _fmt_date(today - timedelta(days=DEFAULT_LOOKBACK_DAYS))
+        end = _fmt_date(today)
+        batch = self._db.list_hk_stock_daily_bars_batch(codes, start_date=start, end_date=end)
+
+        recent_trade_dates = sorted(
+            {
+                str(getattr(bar, "trade_date", ""))
+                for bar_list in batch.values()
+                for bar in bar_list
+                if getattr(bar, "trade_date", None)
+            },
+            reverse=True,
+        )[:days]
+        window = set(recent_trade_dates)
+
+        items: List[Dict[str, Any]] = []
+        for code in codes:
+            bars = batch.get(code, [])
+            dated_closes = [
+                (str(getattr(bar, "trade_date", "")), close)
+                for bar in bars
+                if (close := _safe_float(getattr(bar, "close", None))) is not None
+                and close > 0
+            ]
+            ended = _latest_ended_decline(dated_closes)
+            if not ended or ended[3] not in window:
+                continue
+            drawdown_pct, decline_days, start_date, end_date, end_close = ended
+            later = [(td, close) for td, close in dated_closes if td > end_date]
+            rebound_days = len(later)
+            rebound_pct = None
+            if later and end_close and end_close > 0:
+                rebound_pct = round((later[-1][1] - end_close) / end_close * 100, 2)
+            latest_trade_date, latest_price = later[-1] if later else dated_closes[-1]
+            items.append({
+                "hk_code": code,
+                "name": code_names.get(code, code),
+                "decline_days": decline_days,
+                "drawdown_pct": drawdown_pct,
+                "start_date": start_date,
+                "end_date": end_date,
+                "rebound_pct": rebound_pct,
+                "rebound_days": rebound_days,
+                "latest_price": latest_price,
+                "latest_trade_date": latest_trade_date,
+            })
+
+        # 先按跌幅升序稳定排序，再按结束日倒序：最新止跌在前，同日内跌幅更深在前
+        items.sort(key=lambda item: item["drawdown_pct"])
+        items.sort(key=lambda item: item["end_date"], reverse=True)
+
+        summary: Dict[str, Any] = {}
+        if items:
+            rebound_values = [
+                item["rebound_pct"] for item in items if item["rebound_pct"] is not None
+            ]
+            decline_days_dist: Dict[str, int] = {}
+            for item in items:
+                bucket = str(item["decline_days"]) if item["decline_days"] < 5 else "5+"
+                decline_days_dist[bucket] = decline_days_dist.get(bucket, 0) + 1
+            summary = {
+                "avg_decline_days": round(
+                    sum(item["decline_days"] for item in items) / len(items), 1
+                ),
+                "avg_drawdown_pct": round(
+                    sum(item["drawdown_pct"] for item in items) / len(items), 2
+                ),
+                "avg_rebound_pct": (
+                    round(sum(rebound_values) / len(rebound_values), 2)
+                    if rebound_values
+                    else None
+                ),
+                "decline_days_dist": decline_days_dist,
+            }
+
+        result = {
+            "trade_date": trade_date,
+            "recent_trade_dates": recent_trade_dates,
+            "total": len(items),
+            "summary": summary,
+            "items": items,
+        }
+        self._decline_endings_cache = result
+        self._decline_endings_cache_days = days
+        self._decline_endings_cache_ts = now
         return result
 
     # ── 数据回填 ──────────────────────────────────────────────────

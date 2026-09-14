@@ -9,6 +9,7 @@ import {
   hkStockApi,
   type HkBollPickItem,
   type HkMinuteBollAlertItem,
+  type HkRecentDeclineEndingResponse,
   type HkStockKLineItem,
   type HkStockListItem,
   type HkStockRealtimeItem,
@@ -37,6 +38,16 @@ const pctColor = (v?: number | null) => {
 
 const fmtPrice = (v?: number | null) => (v == null || Number.isNaN(v) ? '--' : v.toFixed(3));
 const minuteLabel = (v?: string | null) => (v && v.length >= 16 ? v.slice(11, 16) : '--');
+
+const shortDateLabel = (v?: string | null) => {
+  const normalized = v ? String(v).replaceAll('-', '') : '';
+  return /^\d{8}$/.test(normalized) ? `${normalized.slice(4, 6)}-${normalized.slice(6, 8)}` : '--';
+};
+
+const fullDateLabel = (v?: string | null) => {
+  const normalized = v ? String(v).replaceAll('-', '') : '';
+  return /^\d{8}$/.test(normalized) ? `${normalized.slice(0, 4)}-${normalized.slice(4, 6)}-${normalized.slice(6, 8)}` : '--';
+};
 
 const calcDistPct = (price?: number | null, band?: number | null) => {
   if (price == null || band == null || !Number.isFinite(price) || !Number.isFinite(band) || band <= 0) return null;
@@ -243,10 +254,11 @@ const BollPickPanel: React.FC<{
   realtimeUpdatedAt?: string | null;
   drawdownItems: HkStockListItem[];
   recentTradeDates: readonly string[];
+  declineEndings: HkRecentDeclineEndingResponse | null;
   activeHkCode: string;
   onSelect: (hkCode: string) => void;
   className?: string;
-}> = ({ loading, picks, intradayDrawdowns, minuteGainers, minuteBollAlerts, realtimeUpdatedAt, drawdownItems, recentTradeDates, activeHkCode, onSelect, className = '' }) => {
+}> = ({ loading, picks, intradayDrawdowns, minuteGainers, minuteBollAlerts, realtimeUpdatedAt, drawdownItems, recentTradeDates, declineEndings, activeHkCode, onSelect, className = '' }) => {
   const upperPicks = useMemo(() => picks.filter(p => p.band === 'upper'), [picks]);
   const midPicks = useMemo(() => picks.filter(p => p.band === 'mid'), [picks]);
   const lowerPicks = useMemo(() => picks.filter(p => p.band === 'lower'), [picks]);
@@ -418,6 +430,48 @@ const BollPickPanel: React.FC<{
               </div>
             ),
           },
+          {
+            key: 'stopfall',
+            label: <span className="text-xs font-medium">近3日止跌</span>,
+            children: (
+              <div className="h-full overflow-y-auto px-3 pb-3">
+                <section className="py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-xs font-medium text-foreground">近 3 个交易日刚结束下跌</div>
+                    <span className="font-mono text-[9px] text-tertiary-text">{declineEndings?.total ?? 0} 只</span>
+                  </div>
+                  {declineEndings && (
+                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[9px] text-tertiary-text">
+                      <span>平均连跌 {declineEndings.summary.avg_decline_days?.toFixed(1) ?? '--'} 天</span>
+                      <span>平均跌幅 {fmtPct(declineEndings.summary.avg_drawdown_pct)}</span>
+                      <span>平均反弹 {fmtPct(declineEndings.summary.avg_rebound_pct)}</span>
+                    </div>
+                  )}
+                  <div className="mt-1 space-y-1">
+                    {declineEndings && declineEndings.items.length ? declineEndings.items.map(item => (
+                      <button
+                        type="button"
+                        key={item.hk_code}
+                        onClick={() => onSelect(item.hk_code)}
+                        title={`连跌 ${item.decline_days} 个交易日：${fullDateLabel(item.start_date)} 至 ${fullDateLabel(item.end_date)}，止跌后 ${item.rebound_days} 个交易日${item.rebound_pct != null ? `反弹 ${fmtPct(item.rebound_pct)}` : ''}`}
+                        className="grid w-full grid-cols-[minmax(0,1fr)_120px_110px] items-center gap-1 rounded px-1 py-0.5 text-left text-[10px] hover:bg-muted/30"
+                      >
+                        <span className="min-w-0 truncate text-foreground">{item.name || item.hk_code}</span>
+                        <span className="truncate whitespace-nowrap text-center font-mono text-[9px] text-tertiary-text">
+                          连跌{item.decline_days}天 · {shortDateLabel(item.start_date)}→{shortDateLabel(item.end_date)}
+                        </span>
+                        <span className="whitespace-nowrap text-right font-mono text-[10px]">
+                          <span className="text-emerald-400">{fmtPct(item.drawdown_pct)}</span>
+                          <span className="text-tertiary-text"> → </span>
+                          <span className={pctColor(item.rebound_pct)}>{fmtPct(item.rebound_pct)}</span>
+                        </span>
+                      </button>
+                    )) : <div className="py-1 text-[10px] text-tertiary-text">暂无近 3 日止跌个股</div>}
+                  </div>
+                </section>
+              </div>
+            ),
+          },
         ]}
       />
     </div>
@@ -492,6 +546,7 @@ const HkMonitorPage: React.FC = () => {
   const [bollAlertModalOpen, setBollAlertModalOpen] = useState(false);
   const bollAlertIdsRef = useRef<Set<number> | null>(null);
   const [realtimeUpdatedAt, setRealtimeUpdatedAt] = useState<string | null>(null);
+  const [declineEndings, setDeclineEndings] = useState<HkRecentDeclineEndingResponse | null>(null);
   const [bollLoading] = useState(false);
   const [tableSort, setTableSort] = useState(DEFAULT_TABLE_SORT);
   const [panelHeight, setPanelHeight] = useState<number | undefined>(undefined);
@@ -533,16 +588,18 @@ const HkMonitorPage: React.FC = () => {
     setError(null);
     try {
       const shouldRefresh = opts?.refresh ?? false;
-      const [listResp, bollResp, realtimeResp] = shouldRefresh
+      const [listResp, bollResp, realtimeResp, declineResp] = shouldRefresh
         ? [
           await hkStockApi.list({ refresh: true }),
           await hkStockApi.getBollPicks(),
           await hkStockApi.getRealtime().catch(() => null),
+          await hkStockApi.getRecentDeclineEndings(3).catch(() => null),
         ]
         : await Promise.all([
           hkStockApi.list(),
           hkStockApi.getBollPicks(),
           hkStockApi.getRealtime().catch(() => null),
+          hkStockApi.getRecentDeclineEndings(3).catch(() => null),
         ]);
       const baseItems = listResp.items ?? [];
       const basePicks = [...(bollResp.upper ?? []), ...(bollResp.mid ?? []), ...(bollResp.lower ?? [])];
@@ -559,6 +616,7 @@ const HkMonitorPage: React.FC = () => {
       setMinuteGainers(realtimeResp?.top_gainers ?? []);
       updateMinuteBollAlerts(realtimeResp?.today_boll_alerts ?? []);
       setRealtimeUpdatedAt(realtimeResp?.updated_at ?? null);
+      setDeclineEndings(declineResp);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : '加载失败');
     } finally {
@@ -848,6 +906,7 @@ const HkMonitorPage: React.FC = () => {
                 realtimeUpdatedAt={realtimeUpdatedAt}
                 drawdownItems={items}
                 recentTradeDates={recentTradeDates}
+                declineEndings={declineEndings}
                 activeHkCode={expandedKey}
                 onSelect={locateStock}
               />
@@ -866,6 +925,7 @@ const HkMonitorPage: React.FC = () => {
               realtimeUpdatedAt={realtimeUpdatedAt}
               drawdownItems={items}
               recentTradeDates={recentTradeDates}
+              declineEndings={declineEndings}
               activeHkCode={expandedKey}
               onSelect={locateStock}
             />

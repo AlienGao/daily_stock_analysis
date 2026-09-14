@@ -319,3 +319,100 @@ def test_list_components_refreshes_latest_prices_before_pct_change_sorting():
         )
     ]
     assert sorted_codes == ["00668", "01876"]
+
+
+def test_scan_recent_decline_endings_finds_ended_decline_with_rebound():
+    db = MagicMock()
+    db.get_latest_hk_ggt_trade_date.return_value = "20260710"
+    db.list_hk_ggt_components.return_value = [
+        _component("00700", "腾讯控股"),
+        _component("09988", "阿里巴巴"),
+    ]
+    db.list_hk_stock_daily_bars_batch.return_value = {
+        # 0707-0708 连跌后 0709-0710 回升：止跌且结束日在近 3 日窗口内
+        "00700": [
+            _bar("20260706", 100.0),
+            _bar("20260707", 95.0),
+            _bar("20260708", 90.0),
+            _bar("20260709", 93.0),
+            _bar("20260710", 96.0),
+        ],
+        # 连跌延续到最新交易日：未止跌，应排除
+        "09988": [
+            _bar("20260706", 50.0),
+            _bar("20260707", 49.0),
+            _bar("20260708", 48.0),
+            _bar("20260709", 47.0),
+            _bar("20260710", 46.0),
+        ],
+    }
+    service = HkStockService(db=db)
+    with patch.object(service, "_trigger_backfill_async"):
+        result = service.scan_recent_decline_endings(days=3)
+
+    assert result["trade_date"] == "20260710"
+    assert result["recent_trade_dates"] == ["20260710", "20260709", "20260708"]
+    assert result["total"] == 1
+    item = result["items"][0]
+    assert item["hk_code"] == "00700"
+    assert item["name"] == "腾讯控股"
+    assert item["decline_days"] == 2
+    assert item["drawdown_pct"] == -10.0
+    assert item["start_date"] == "20260706"
+    assert item["end_date"] == "20260708"
+    assert item["rebound_pct"] == 6.67
+    assert item["rebound_days"] == 2
+    assert item["latest_trade_date"] == "20260710"
+    assert result["summary"]["avg_decline_days"] == 2.0
+    assert result["summary"]["avg_drawdown_pct"] == -10.0
+    assert result["summary"]["avg_rebound_pct"] == 6.67
+    assert result["summary"]["decline_days_dist"] == {"2": 1}
+
+
+def test_scan_recent_decline_endings_excludes_ongoing_and_out_of_window_declines():
+    db = MagicMock()
+    db.get_latest_hk_ggt_trade_date.return_value = "20260710"
+    db.list_hk_ggt_components.return_value = [
+        _component("00001", "长江和记"),
+        _component("00002", "中电控股"),
+    ]
+    db.list_hk_stock_daily_bars_batch.return_value = {
+        # 连跌延续到最新交易日（未结束）
+        "00001": [
+            _bar("20260708", 60.0),
+            _bar("20260709", 58.0),
+            _bar("20260710", 56.0),
+        ],
+        # 连跌已结束但结束日超出近 3 日窗口
+        "00002": [
+            _bar("20260701", 30.0),
+            _bar("20260702", 29.0),
+            _bar("20260703", 28.0),
+            _bar("20260706", 29.5),
+            _bar("20260707", 30.0),
+            _bar("20260708", 30.5),
+            _bar("20260709", 31.0),
+            _bar("20260710", 31.5),
+        ],
+    }
+    service = HkStockService(db=db)
+    with patch.object(service, "_trigger_backfill_async"):
+        result = service.scan_recent_decline_endings(days=3)
+
+    assert result["total"] == 0
+    assert result["items"] == []
+    assert result["summary"] == {}
+
+
+def test_scan_recent_decline_endings_returns_empty_without_components():
+    db = MagicMock()
+    db.get_latest_hk_ggt_trade_date.return_value = ""
+    db.list_hk_ggt_components.return_value = []
+
+    service = HkStockService(db=db)
+    with patch.object(service, "_trigger_backfill_async"):
+        result = service.scan_recent_decline_endings(days=3)
+
+    assert result["trade_date"] == ""
+    assert result["total"] == 0
+    assert result["items"] == []

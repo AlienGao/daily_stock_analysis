@@ -160,6 +160,32 @@ export type HkBollPickListResponse = {
   lower: HkBollPickItem[];
 };
 
+export type HkRecentDeclineEndingItem = {
+  hk_code: string;
+  name?: string | null;
+  decline_days: number;
+  drawdown_pct: number;
+  start_date: string;
+  end_date: string;
+  rebound_pct?: number | null;
+  rebound_days?: number;
+  latest_price?: number | null;
+  latest_trade_date?: string | null;
+};
+
+export type HkRecentDeclineEndingResponse = {
+  trade_date: string;
+  recent_trade_dates: string[];
+  total: number;
+  summary: {
+    avg_decline_days?: number | null;
+    avg_drawdown_pct?: number | null;
+    avg_rebound_pct?: number | null;
+    decline_days_dist?: Record<string, number>;
+  };
+  items: HkRecentDeclineEndingItem[];
+};
+
 export const hkStockApi = {
   async list(opts?: { refresh?: boolean }): Promise<HkStockListResponse> {
     const resp = await apiClient.get<HkStockListResponse>('/api/v1/market/hk-stocks', {
@@ -179,6 +205,14 @@ export const hkStockApi = {
   async getBollPicks(nearPct: number = 1.5): Promise<HkBollPickListResponse> {
     const resp = await apiClient.get<HkBollPickListResponse>('/api/v1/market/hk-stocks/boll-picks', {
       params: { near_pct: nearPct },
+      timeout: 300_000,
+    });
+    return resp.data;
+  },
+
+  async getRecentDeclineEndings(days: number = 3): Promise<HkRecentDeclineEndingResponse> {
+    const resp = await apiClient.get<HkRecentDeclineEndingResponse>('/api/v1/market/hk-stocks/recent-decline-endings', {
+      params: { days },
       timeout: 300_000,
     });
     return resp.data;

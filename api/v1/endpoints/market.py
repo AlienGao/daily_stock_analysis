@@ -35,6 +35,7 @@ from api.v1.schemas.market import (
     HkGgtMinuteBarListResponse,
     HkGgtPollResponse,
     HkBollPickListResponse,
+    HkRecentDeclineEndingResponse,
     HkStockListResponse,
     HkStockKLineResponse,
     HkStockRealtimeResponse,
@@ -535,6 +536,23 @@ def list_hk_boll_picks(
         return HkBollPickListResponse(**result)
     except Exception as exc:
         logger.error("hk-stocks boll-picks failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail={"error": "internal_error", "message": str(exc)}) from exc
+
+
+@router.get(
+    "/hk-stocks/recent-decline-endings",
+    response_model=HkRecentDeclineEndingResponse,
+    responses={500: {"model": ErrorResponse}},
+    summary="港股通近 N 个交易日刚结束连续下跌个股统计（止跌统计）",
+)
+def list_hk_recent_decline_endings(
+    days: int = Query(3, ge=2, le=10, description="统计窗口（交易日数），默认 3"),
+) -> HkRecentDeclineEndingResponse:
+    try:
+        result = HkStockService().scan_recent_decline_endings(days=days)
+        return HkRecentDeclineEndingResponse(**result)
+    except Exception as exc:
+        logger.error("hk-stocks recent-decline-endings failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail={"error": "internal_error", "message": str(exc)}) from exc
 
 
