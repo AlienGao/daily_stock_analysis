@@ -1,0 +1,183 @@
+[
+  {
+    "rank": 1,
+    "stock_code": "002140",
+    "stock_name": "东华科技",
+    "score": 55.4,
+    "sector": "建筑装饰",
+    "factor_scores": {
+      "ma_entry": 100.0,
+      "sector": 0.0,
+      "momentum": 33.96043723688662,
+      "ranking_momentum": 45.39945627566587,
+      "rebound": 0.0,
+      "popularity": 67.67766952966367
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线",
+      "缩量回踩",
+      "KDJ超卖(J8)"
+    ],
+    "buy_price_low": 8.7,
+    "buy_price_high": 9.3,
+    "stop_loss": 9.13,
+    "take_profit_1": 9.51,
+    "take_profit_2": 10.16,
+    "discovered_at": "15:00:49",
+    "price_at_discovery": 9.19,
+    "pct_chg": 1.32,
+    "tech_score": 69.09,
+    "rr_score": 73.44262295081977,
+    "market_score": 46.92778243781798,
+    "sector_score": 58.499926502673155,
+    "volume_score": 81.67406244123303,
+    "position_score": 75,
+    "formation_score": 60.0,
+    "composite_score": 64.983
+  },
+  {
+    "rank": 2,
+    "stock_code": "300687",
+    "stock_name": "赛意信息",
+    "score": 43.3,
+    "sector": "IT服务",
+    "factor_scores": {
+      "ma_entry": 21.30079335284451,
+      "sector": 0.0,
+      "momentum": 60.314320263916734,
+      "ranking_momentum": 40.13923770188682,
+      "rebound": 0.0,
+      "popularity": 83.7365946017404
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "今日强于96%个股",
+      "人气飙升(+705位)",
+      "人气核心圈(排名824)"
+    ],
+    "buy_price_low": 26.8,
+    "buy_price_high": 28.0,
+    "stop_loss": 28.82,
+    "take_profit_1": 30.75,
+    "take_profit_2": 33.3,
+    "discovered_at": "15:00:49",
+    "price_at_discovery": 29.07,
+    "pct_chg": 7.11,
+    "tech_score": 67.92,
+    "rr_score": 66.66666666666666,
+    "market_score": 46.92778243781798,
+    "sector_score": 100.0,
+    "volume_score": 74.88508194364167,
+    "position_score": 75,
+    "formation_score": 20.0,
+    "composite_score": 60.53399999999999
+  },
+  {
+    "rank": 3,
+    "stock_code": "920198",
+    "stock_name": "微创光电",
+    "score": 51.1,
+    "sector": "计算机设备",
+    "factor_scores": {
+      "ma_entry": 94.33845874480022,
+      "sector": 0.0,
+      "momentum": 37.078137440643516,
+      "ranking_momentum": 59.987537609802224,
+      "rebound": 0.0,
+      "popularity": 50.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "回踩MA5均线",
+      "缩量回踩",
+      "KDJ超卖回升(J20)",
+      "趋势加速↑(25.3%/天)",
+      "今日强于69%个股",
+      "人气飙升(+704位)"
+    ],
+    "buy_price_low": 7.3,
+    "buy_price_high": 8.0,
+    "stop_loss": 7.82,
+    "take_profit_1": 8.38,
+    "take_profit_2": 9.45,
+    "discovered_at": "15:00:49",
+    "price_at_discovery": 7.87,
+    "pct_chg": 1.94,
+    "tech_score": 62.5,
+    "rr_score": 72.70875763747469,
+    "market_score": 46.92778243781798,
+    "sector_score": 70.63452752552702,
+    "volume_score": 45.74704106213409,
+    "position_score": 75,
+    "formation_score": 50.0,
+    "composite_score": 59.08
+  },
+  {
+    "rank": 4,
+    "stock_code": "688409",
+    "stock_name": "富创精密",
+    "score": 40.6,
+    "sector": "半导体",
+    "factor_scores": {
+      "ma_entry": 32.81478673938034,
+      "sector": 51.46027438042257,
+      "momentum": 34.95725594874885,
+      "ranking_momentum": 84.06998891402665,
+      "rebound": 0.0,
+      "popularity": 43.73826155061841
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "趋势加速↑(15.3%/天)",
+      "今日强于97%个股",
+      "人气核心圈(排名1254)",
+      "所属板块: 半导体"
+    ],
+    "buy_price_low": 185.1,
+    "buy_price_high": 192.6,
+    "stop_loss": 200.31,
+    "take_profit_1": 215.67,
+    "take_profit_2": 239.69,
+    "discovered_at": "15:00:49",
+    "price_at_discovery": 200.9,
+    "pct_chg": 7.95,
+    "tech_score": 65.84,
+    "rr_score": 75.10533197733535,
+    "market_score": 46.92778243781798,
+    "sector_score": 98.54742243377933,
+    "volume_score": 48.664362826986206,
+    "position_score": 75,
+    "formation_score": 20.0,
+    "composite_score": 58.268
+  }
+]
