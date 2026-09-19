@@ -7,6 +7,7 @@ import { AppPage, Button, EmptyState } from '../components/common';
 import { CandlestickMiniChart } from '../components/charts/CandlestickMiniChart';
 import {
   hkStockApi,
+  type HkAfternoonRiseItem,
   type HkBollPickItem,
   type HkMinuteBollAlertItem,
   type HkRecentDeclineEndingResponse,
@@ -255,10 +256,12 @@ const BollPickPanel: React.FC<{
   drawdownItems: HkStockListItem[];
   recentTradeDates: readonly string[];
   declineEndings: HkRecentDeclineEndingResponse | null;
+  afternoonRisers: HkAfternoonRiseItem[];
+  afternoonScanned: number;
   activeHkCode: string;
   onSelect: (hkCode: string) => void;
   className?: string;
-}> = ({ loading, picks, intradayDrawdowns, minuteGainers, minuteBollAlerts, realtimeUpdatedAt, drawdownItems, recentTradeDates, declineEndings, activeHkCode, onSelect, className = '' }) => {
+}> = ({ loading, picks, intradayDrawdowns, minuteGainers, minuteBollAlerts, realtimeUpdatedAt, drawdownItems, recentTradeDates, declineEndings, afternoonRisers, afternoonScanned, activeHkCode, onSelect, className = '' }) => {
   const upperPicks = useMemo(() => picks.filter(p => p.band === 'upper'), [picks]);
   const midPicks = useMemo(() => picks.filter(p => p.band === 'mid'), [picks]);
   const lowerPicks = useMemo(() => picks.filter(p => p.band === 'lower'), [picks]);
@@ -293,6 +296,48 @@ const BollPickPanel: React.FC<{
                   <BollPickColumn title="中轨附近" titleClass="text-sky-400" items={midPicks} loading={loading} emptyText="暂无" activeHkCode={activeHkCode} onSelect={onSelect} />
                   <BollPickColumn title="下轨附近" titleClass="text-pink-400" items={lowerPicks} loading={loading} emptyText="暂无" activeHkCode={activeHkCode} onSelect={onSelect} />
                 </div>
+              </div>
+            ),
+          },
+          {
+            key: 'afternoonRise',
+            label: <span className="text-xs font-medium">下午上涨</span>,
+            children: (
+              <div className="flex h-full min-h-0 flex-col px-3 pb-3">
+                <section className="flex min-h-0 flex-1 flex-col py-2">
+                  <div className="flex shrink-0 items-center justify-between gap-2">
+                    <div className="text-xs font-medium text-foreground">下午突破上午收盘价</div>
+                    <span className="font-mono text-[9px] text-tertiary-text">
+                      {afternoonRisers.length}/{afternoonScanned} 只
+                    </span>
+                  </div>
+                  <div className="mt-1 grid shrink-0 grid-cols-[44px_minmax(0,1fr)_56px_56px] items-center gap-1 px-1 text-[9px] text-tertiary-text">
+                    <span>时间</span>
+                    <span>名称</span>
+                    <span className="text-right" title="首次超过上午收盘价时的涨幅">突破</span>
+                    <span className="text-right" title="最新价相对上午收盘价的涨幅">现价</span>
+                  </div>
+                  <div className="mt-0.5 min-h-0 flex-1 space-y-0.5 overflow-y-auto">
+                    {afternoonRisers.length ? afternoonRisers.map(item => (
+                      <button
+                        type="button"
+                        key={item.hk_code}
+                        onClick={() => onSelect(item.hk_code)}
+                        title={`上午收盘 ${fmtPrice(item.morning_close)} · ${minuteLabel(item.first_cross_time)} 突破（${fmtPrice(item.first_cross_price)}，${fmtPct(item.cross_gain_pct)}）${item.latest_price != null ? ` · 现价 ${fmtPrice(item.latest_price)}（${fmtPct(item.latest_gain_pct)}）` : ''}`}
+                        className="grid w-full grid-cols-[44px_minmax(0,1fr)_56px_56px] items-center gap-1 rounded px-1 py-0.5 text-left text-[10px] hover:bg-muted/30"
+                      >
+                        <span className="font-mono text-[10px] text-tertiary-text">{minuteLabel(item.first_cross_time)}</span>
+                        <span className="min-w-0 truncate text-foreground">{item.name || item.hk_code}</span>
+                        <span className={`text-right font-mono ${pctColor(item.cross_gain_pct)}`}>{fmtPct(item.cross_gain_pct)}</span>
+                        <span className={`text-right font-mono ${pctColor(item.latest_gain_pct)}`}>{fmtPct(item.latest_gain_pct)}</span>
+                      </button>
+                    )) : (
+                      <div className="py-1 text-[10px] text-tertiary-text">
+                        {afternoonScanned ? '暂无个股下午突破上午收盘价' : '暂无上午收盘数据'}
+                      </div>
+                    )}
+                  </div>
+                </section>
               </div>
             ),
           },
@@ -541,6 +586,8 @@ const HkMonitorPage: React.FC = () => {
   const [bollPicks, setBollPicks] = useState<HkBollPickItem[]>([]);
   const [intradayDrawdowns, setIntradayDrawdowns] = useState<HkStockRealtimeItem[]>([]);
   const [minuteGainers, setMinuteGainers] = useState<HkStockRealtimeItem[]>([]);
+  const [afternoonRisers, setAfternoonRisers] = useState<HkAfternoonRiseItem[]>([]);
+  const [afternoonScanned, setAfternoonScanned] = useState(0);
   const [minuteBollAlerts, setMinuteBollAlerts] = useState<HkMinuteBollAlertItem[]>([]);
   const [bollAlertModalItems, setBollAlertModalItems] = useState<HkMinuteBollAlertItem[]>([]);
   const [bollAlertModalOpen, setBollAlertModalOpen] = useState(false);
@@ -614,6 +661,8 @@ const HkMonitorPage: React.FC = () => {
       setBollPicks(realtimeResp ? mergeHkRealtimeBollPicks(basePicks, realtimeResp.items, mergeOpts) : basePicks);
       setIntradayDrawdowns(realtimeResp?.top_drawdowns ?? []);
       setMinuteGainers(realtimeResp?.top_gainers ?? []);
+      setAfternoonRisers(realtimeResp?.afternoon_risers ?? []);
+      setAfternoonScanned(realtimeResp?.afternoon_scanned ?? 0);
       updateMinuteBollAlerts(realtimeResp?.today_boll_alerts ?? []);
       setRealtimeUpdatedAt(realtimeResp?.updated_at ?? null);
       setDeclineEndings(declineResp);
@@ -637,6 +686,8 @@ const HkMonitorPage: React.FC = () => {
       setBollPicks(current => mergeHkRealtimeBollPicks(current, realtimeResp.items, mergeOpts));
       setIntradayDrawdowns(realtimeResp.top_drawdowns ?? []);
       setMinuteGainers(realtimeResp.top_gainers ?? []);
+      setAfternoonRisers(realtimeResp.afternoon_risers ?? []);
+      setAfternoonScanned(realtimeResp.afternoon_scanned ?? 0);
       updateMinuteBollAlerts(realtimeResp.today_boll_alerts ?? []);
       setRealtimeUpdatedAt(realtimeResp.updated_at ?? null);
     } catch {
@@ -907,6 +958,8 @@ const HkMonitorPage: React.FC = () => {
                 drawdownItems={items}
                 recentTradeDates={recentTradeDates}
                 declineEndings={declineEndings}
+                afternoonRisers={afternoonRisers}
+                afternoonScanned={afternoonScanned}
                 activeHkCode={expandedKey}
                 onSelect={locateStock}
               />
@@ -926,6 +979,8 @@ const HkMonitorPage: React.FC = () => {
               drawdownItems={items}
               recentTradeDates={recentTradeDates}
               declineEndings={declineEndings}
+              afternoonRisers={afternoonRisers}
+              afternoonScanned={afternoonScanned}
               activeHkCode={expandedKey}
               onSelect={locateStock}
             />

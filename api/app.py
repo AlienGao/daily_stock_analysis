@@ -253,6 +253,44 @@ def _schedule_hk_ggt_realtime_poll(app: FastAPI) -> None:
     )
 
 
+HK_GGT_MINUTE_CLEANUP_CHECK_INTERVAL_SECONDS = 30 * 60
+
+
+async def _cleanup_hk_ggt_minute_bars_in_background() -> None:
+    """每天一次滚动清理港股通分钟行情，只保留最近 N 个交易日。
+
+    每 30 分钟检查一次是否已清理过当日，重复触发是幂等的（已清理则删除 0 行）。"""
+    from src.core.trading_calendar import get_market_now
+    from src.services.hk_ggt_monitor_service import HkGgtMonitorService
+
+    service = HkGgtMonitorService()
+    last_cleanup_date = ""
+    while True:
+        await asyncio.sleep(HK_GGT_MINUTE_CLEANUP_CHECK_INTERVAL_SECONDS)
+        try:
+            today = get_market_now("hk").strftime("%Y%m%d")
+            if today == last_cleanup_date:
+                continue
+            result = await run_in_threadpool(service.cleanup_old_minute_bars)
+            last_cleanup_date = today
+            if result.get("deleted_rows"):
+                logger.info(
+                    "[HkGgt] 分钟行情滚动保留清理完成: 删除 %d 行, 移除交易日 %s",
+                    result["deleted_rows"],
+                    ",".join(result.get("removed_dates") or []),
+                )
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:  # noqa: BLE001 - retention cleanup stays best-effort.
+            logger.warning("[HkGgt] 分钟行情滚动保留清理失败: %s", exc)
+
+
+def _schedule_hk_ggt_minute_cleanup(app: FastAPI) -> None:
+    app.state.hk_ggt_minute_cleanup_task = asyncio.create_task(
+        _cleanup_hk_ggt_minute_bars_in_background()
+    )
+
+
 def _load_runtime_scheduler_args() -> dict:
     raw_value = os.getenv(RUNTIME_SCHEDULER_ARGS_ENV)
     if not raw_value:
@@ -324,6 +362,7 @@ async def app_lifespan(app: FastAPI):
     )
     _schedule_stock_index_background_refresh(app, "startup")
     _schedule_hk_ggt_realtime_poll(app)
+    _schedule_hk_ggt_minute_cleanup(app)
 
     # 名称解析器的 AkShare 缓存预热：命中磁盘缓存则零网络加载，否则发起
     # 后台单飞拉取。把冷启动等待从首个用户请求挪到进程启动窗口。

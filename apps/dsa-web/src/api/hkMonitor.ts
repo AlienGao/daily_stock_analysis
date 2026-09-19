@@ -112,6 +112,18 @@ export type HkMinuteBollAlertItem = {
   created_at?: string | null;
 };
 
+export type HkAfternoonRiseItem = {
+  hk_code: string;
+  name?: string | null;
+  morning_close: number;
+  first_cross_time: string;
+  first_cross_price: number;
+  cross_gain_pct: number;
+  latest_price?: number | null;
+  latest_gain_pct?: number | null;
+  latest_bar_time?: string | null;
+};
+
 export type HkStockRealtimeResponse = {
   trade_date: string;
   updated_at?: string | null;
@@ -121,6 +133,9 @@ export type HkStockRealtimeResponse = {
   top_drawdowns: HkStockRealtimeItem[];
   top_gainers: HkStockRealtimeItem[];
   today_boll_alerts: HkMinuteBollAlertItem[];
+  afternoon_rise_total: number;
+  afternoon_scanned: number;
+  afternoon_risers: HkAfternoonRiseItem[];
 };
 
 export type HkStockKLineItem = {

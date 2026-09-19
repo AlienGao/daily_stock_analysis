@@ -1050,6 +1050,7 @@ class Config:
     hk_ggt_rt_poll_enabled: bool = True
     hk_ggt_rt_poll_interval_sec: int = 60
     hk_ggt_monitor_refresh_timeout_sec: int = 120
+    hk_ggt_minute_retention_days: int = 5  # 分钟行情滚动保留的交易日数
 
     # === 通知配置（可同时配置多个，全部推送）===
     
@@ -1865,6 +1866,12 @@ class Config:
                 os.getenv('HK_GGT_MONITOR_REFRESH_TIMEOUT_SEC'),
                 120,
                 field_name='HK_GGT_MONITOR_REFRESH_TIMEOUT_SEC',
+                minimum=1,
+            ),
+            hk_ggt_minute_retention_days=parse_env_int(
+                os.getenv('HK_GGT_MINUTE_RETENTION_DAYS'),
+                5,
+                field_name='HK_GGT_MINUTE_RETENTION_DAYS',
                 minimum=1,
             ),
             generation_backend=generation_backend,

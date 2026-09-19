@@ -20,6 +20,7 @@ from src.storage import DatabaseManager
 logger = logging.getLogger(__name__)
 
 DEFAULT_MINUTE_START_DATE = "20260622"
+DEFAULT_MINUTE_RETENTION_TRADING_DAYS = 5
 MAX_STALE_TRADING_DAYS = 5
 HK_TIMEZONE = ZoneInfo("Asia/Hong_Kong")
 MAX_CONSECUTIVE_BAR_GAP_SECONDS = 120
@@ -29,6 +30,7 @@ TENCENT_HK_QUOTE_BATCH_SIZE = 500
 MINUTE_BOLL_PERIOD = 20
 MINUTE_BOLL_MULTIPLIER = 2.0
 MINUTE_BOLL_ALERT_NEAR_PCT = 0.5
+HK_AFTERNOON_SESSION_START = time(13, 0)
 
 
 def _norm_hk_code(code: str) -> str:
@@ -284,6 +286,62 @@ def _compute_minute_boll(bars: List[Any]) -> Optional[Dict[str, Any]]:
     }
 
 
+def _afternoon_rise_info(bars: List[Any]) -> Optional[Dict[str, Any]]:
+    """统计个股下午分钟价首次超过上午收盘价（13:00 前最后一根分钟收盘价）的信息。
+
+    无上午收盘价时返回 None；下午未突破时 first_cross_time 为 None。"""
+    valid: List[tuple[str, datetime, float]] = []
+    for bar in bars:
+        raw_time = str(getattr(bar, "bar_time", "") or "")[:19]
+        close = _safe_float(getattr(bar, "close", None))
+        if not raw_time or close is None or close <= 0:
+            continue
+        try:
+            parsed_time = datetime.strptime(raw_time, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            continue
+        valid.append((raw_time, parsed_time, close))
+    valid.sort(key=lambda item: item[1])
+
+    morning_close: Optional[float] = None
+    afternoon_start_index = len(valid)
+    for index, (_, parsed_time, close) in enumerate(valid):
+        if parsed_time.time() >= HK_AFTERNOON_SESSION_START:
+            afternoon_start_index = index
+            break
+        morning_close = close
+    if morning_close is None or morning_close <= 0:
+        return None
+
+    first_cross: Optional[tuple[str, float]] = None
+    for raw_time, _, close in valid[afternoon_start_index:]:
+        if close > morning_close:
+            first_cross = (raw_time, close)
+            break
+    latest_time, _, latest_price = valid[-1]
+    latest_gain_pct = round((latest_price - morning_close) / morning_close * 100, 2)
+    if first_cross is None:
+        return {
+            "morning_close": morning_close,
+            "first_cross_time": None,
+            "first_cross_price": None,
+            "cross_gain_pct": None,
+            "latest_price": latest_price,
+            "latest_gain_pct": latest_gain_pct,
+            "latest_bar_time": latest_time,
+        }
+    cross_gain_pct = (first_cross[1] - morning_close) / morning_close * 100
+    return {
+        "morning_close": morning_close,
+        "first_cross_time": first_cross[0],
+        "first_cross_price": first_cross[1],
+        "cross_gain_pct": round(cross_gain_pct, 2),
+        "latest_price": latest_price,
+        "latest_gain_pct": latest_gain_pct,
+        "latest_bar_time": latest_time,
+    }
+
+
 class HkGgtMonitorService:
     """港股通成分监控服务。"""
 
@@ -434,6 +492,28 @@ class HkGgtMonitorService:
             "items": [row.to_dict() for row in rows],
         }
 
+    def cleanup_old_minute_bars(self, retention_days: Optional[int] = None) -> Dict[str, Any]:
+        """滚动保留最近 N 个交易日的分钟行情，删除更早交易日的数据。
+
+        交易日以表中已有的 trade_date 去重排序为准，不依赖交易日历。"""
+        configured = getattr(self._config, "hk_ggt_minute_retention_days", None)
+        effective = retention_days if retention_days is not None else configured
+        retention = max(1, int(effective or DEFAULT_MINUTE_RETENTION_TRADING_DAYS))
+        dates = self._db.list_hk_ggt_minute_dates()
+        keep_dates = dates[:retention]
+        removed_dates = dates[retention:]
+        deleted = (
+            self._db.delete_hk_ggt_minute_bars_except_dates(keep_dates)
+            if removed_dates
+            else 0
+        )
+        return {
+            "retention_days": retention,
+            "kept_dates": keep_dates,
+            "removed_dates": removed_dates,
+            "deleted_rows": deleted,
+        }
+
     def get_realtime_snapshot(self, trade_date: Optional[str] = None) -> Dict[str, Any]:
         """返回最新分钟价及按日内连续分钟下跌计算的回撤排名。"""
         resolved_date = self.resolve_trade_date(trade_date)
@@ -461,12 +541,23 @@ class HkGgtMonitorService:
         items: List[Dict[str, Any]] = []
         drawdowns: List[Dict[str, Any]] = []
         gainers: List[Dict[str, Any]] = []
+        afternoon_risers: List[Dict[str, Any]] = []
+        afternoon_scanned = 0
         ranked_codes = self._watchlist_codes()
         updated_at: Optional[str] = None
         for code in codes:
             bars = grouped.get(code) or []
             if not bars:
                 continue
+            rise_info = _afternoon_rise_info(bars)
+            if rise_info is not None:
+                afternoon_scanned += 1
+                if rise_info.get("first_cross_time"):
+                    afternoon_risers.append({
+                        "hk_code": code,
+                        "name": component_by_code[code].get("name"),
+                        **rise_info,
+                    })
             latest = bars[-1]
             latest_price = _safe_float(getattr(latest, "close", None))
             pct_change = _safe_float(getattr(latest, "pct_change", None))
@@ -506,6 +597,7 @@ class HkGgtMonitorService:
 
         drawdowns.sort(key=lambda item: item["intraday_consecutive_drawdown_pct"])
         gainers.sort(key=lambda item: item["minute_change_pct"], reverse=True)
+        afternoon_risers.sort(key=lambda item: (item["first_cross_time"], item["hk_code"]))
         today_boll_alerts: List[Dict[str, Any]] = []
         if ranked_codes:
             closest_alert_by_code = {}
@@ -540,6 +632,9 @@ class HkGgtMonitorService:
             "top_drawdowns": drawdowns[:5],
             "top_gainers": gainers[:5],
             "today_boll_alerts": today_boll_alerts,
+            "afternoon_rise_total": len(afternoon_risers),
+            "afternoon_scanned": afternoon_scanned,
+            "afternoon_risers": afternoon_risers,
         }
 
     def poll_rt_once(self) -> Dict[str, Any]:

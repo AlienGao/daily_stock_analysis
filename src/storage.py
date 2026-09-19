@@ -16,6 +16,7 @@ from contextlib import contextmanager
 import hashlib
 import json
 import logging
+import re
 import threading
 import time
 from datetime import datetime, date, time as dt_time, timedelta, timezone
@@ -9150,6 +9151,41 @@ class DatabaseManager(metaclass=_DatabaseManagerMeta):
         for row in rows:
             grouped.setdefault(row.hk_code, []).append(row)
         return grouped
+
+    def list_hk_ggt_minute_dates(self) -> List[str]:
+        """列出港股通分钟行情已有的交易日（降序）。"""
+        from sqlalchemy import distinct
+
+        with self.get_session() as session:
+            stmt = (
+                select(distinct(HkGgtMinuteBar.trade_date))
+                .order_by(desc(HkGgtMinuteBar.trade_date))
+            )
+            return [str(row[0]) for row in session.execute(stmt).all() if row[0]]
+
+    def delete_hk_ggt_minute_bars_except_dates(self, keep_dates: List[str]) -> int:
+        """删除不在保留交易日清单内的港股通分钟行情（滚动保留）。
+
+        keep_dates 为空时直接返回 0，避免误删全表。"""
+        normalized_keep = sorted({
+            str(date or '').replace('-', '')[:8]
+            for date in (keep_dates or [])
+            if str(date or '').strip()
+        })
+        if not normalized_keep:
+            return 0
+
+        def _delete(session: Session) -> int:
+            stmt = delete(HkGgtMinuteBar).where(
+                HkGgtMinuteBar.trade_date.not_in(normalized_keep)
+            )
+            result = session.execute(stmt)
+            return int(result.rowcount or 0)
+
+        deleted = self._run_write_transaction('delete_hk_ggt_minute_bars_except_dates', _delete)
+        if deleted:
+            logger.info('[HkGgt] 分钟行情滚动清理 %d 条，保留交易日 %s', deleted, normalized_keep)
+        return deleted
 
     def insert_hk_minute_boll_alerts(self, rows: List[Dict[str, Any]]) -> int:
         """写入分钟 BOLL 报警；同日同股只保留距轨道最近的一条。"""

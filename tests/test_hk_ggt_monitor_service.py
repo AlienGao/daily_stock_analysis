@@ -10,6 +10,7 @@ from src.core.trading_calendar import MarketPhase
 from src.services.hk_ggt_monitor_service import (
     align_bar_time,
     is_hk_ggt_poll_window,
+    _afternoon_rise_info,
     _fetch_tencent_hk_quotes,
     _max_consecutive_drawdown,
     _max_rolling_gain,
@@ -425,3 +426,155 @@ def test_realtime_snapshot_limits_top_drawdowns_to_hk_list():
     assert [item["hk_code"] for item in result["top_drawdowns"]] == ["09988"]
     assert [item["hk_code"] for item in result["top_gainers"]] == ["09988"]
     assert [item["hk_code"] for item in result["items"]] == ["00700", "09988"]
+
+
+def test_afternoon_rise_info_detects_first_cross_after_morning_close():
+    bars = [
+        _minute("2026-08-14 11:59:00", 99.5),
+        _minute("2026-08-14 12:00:00", 99.0),
+        _minute("2026-08-14 13:00:00", 98.0),
+        _minute("2026-08-14 13:01:00", 99.2),
+        _minute("2026-08-14 13:02:00", 101.0),
+    ]
+
+    assert _afternoon_rise_info(bars) == {
+        "morning_close": 99.0,
+        "first_cross_time": "2026-08-14 13:01:00",
+        "first_cross_price": 99.2,
+        "cross_gain_pct": 0.2,
+        "latest_price": 101.0,
+        "latest_gain_pct": 2.02,
+        "latest_bar_time": "2026-08-14 13:02:00",
+    }
+
+
+def test_afternoon_rise_info_without_cross_keeps_latest_status():
+    info = _afternoon_rise_info([
+        _minute("2026-08-14 12:00:00", 100.0),
+        _minute("2026-08-14 13:01:00", 99.0),
+    ])
+
+    assert info is not None
+    assert info["first_cross_time"] is None
+    assert info["morning_close"] == 100.0
+    assert info["latest_gain_pct"] == -1.0
+
+
+def test_afternoon_rise_info_requires_morning_close():
+    assert _afternoon_rise_info([_minute("2026-08-14 13:01:00", 100.0)]) is None
+    assert _afternoon_rise_info([]) is None
+
+
+def test_realtime_snapshot_collects_afternoon_risers_sorted_by_cross_time():
+    db = MagicMock()
+    db.get_latest_hk_ggt_trade_date.return_value = "20260814"
+    db.list_hk_ggt_components.return_value = [
+        SimpleNamespace(hk_code="00700", to_dict=lambda: {"hk_code": "00700", "name": "腾讯控股"}),
+        SimpleNamespace(hk_code="09988", to_dict=lambda: {"hk_code": "09988", "name": "阿里巴巴-W"}),
+        SimpleNamespace(hk_code="01810", to_dict=lambda: {"hk_code": "01810", "name": "小米集团-W"}),
+    ]
+    db.list_hk_ggt_minute_bars_batch.return_value = {
+        "00700": [
+            _minute("2026-08-14 12:00:00", 100.0),
+            _minute("2026-08-14 13:05:00", 101.0),
+            _minute("2026-08-14 13:06:00", 102.0),
+        ],
+        "09988": [
+            _minute("2026-08-14 12:00:00", 50.0),
+            _minute("2026-08-14 13:01:00", 50.5),
+            _minute("2026-08-14 13:02:00", 50.2),
+        ],
+        "01810": [
+            _minute("2026-08-14 12:00:00", 30.0),
+            _minute("2026-08-14 13:01:00", 29.0),
+        ],
+    }
+
+    with patch("src.services.hk_ggt_monitor_service.get_market_now", return_value=datetime(2026, 8, 14, 13, 6)):
+        result = HkGgtMonitorService(db=db, config=MagicMock()).get_realtime_snapshot("20260814")
+
+    assert result["afternoon_scanned"] == 3
+    assert result["afternoon_rise_total"] == 2
+    assert [(item["hk_code"], item["first_cross_time"]) for item in result["afternoon_risers"]] == [
+        ("09988", "2026-08-14 13:01:00"),
+        ("00700", "2026-08-14 13:05:00"),
+    ]
+    assert result["afternoon_risers"][0]["name"] == "阿里巴巴-W"
+    assert result["afternoon_risers"][0]["cross_gain_pct"] == 1.0
+    assert result["afternoon_risers"][1]["latest_gain_pct"] == 2.0
+
+
+def test_cleanup_old_minute_bars_keeps_recent_trading_days():
+    db = MagicMock()
+    db.list_hk_ggt_minute_dates.return_value = [
+        "20260918", "20260917", "20260916", "20260915", "20260912",
+        "20260911", "20260910",
+    ]
+    db.delete_hk_ggt_minute_bars_except_dates.return_value = 435600
+    service = HkGgtMonitorService(db=db, config=SimpleNamespace())
+
+    result = service.cleanup_old_minute_bars()
+
+    assert result["retention_days"] == 5
+    assert result["kept_dates"] == ["20260918", "20260917", "20260916", "20260915", "20260912"]
+    assert result["removed_dates"] == ["20260911", "20260910"]
+    assert result["deleted_rows"] == 435600
+    db.delete_hk_ggt_minute_bars_except_dates.assert_called_once_with(
+        ["20260918", "20260917", "20260916", "20260915", "20260912"]
+    )
+
+
+def test_cleanup_old_minute_bars_skips_when_within_retention():
+    db = MagicMock()
+    db.list_hk_ggt_minute_dates.return_value = ["20260918", "20260917"]
+    service = HkGgtMonitorService(db=db, config=SimpleNamespace())
+
+    result = service.cleanup_old_minute_bars(retention_days=5)
+
+    assert result["deleted_rows"] == 0
+    assert result["removed_dates"] == []
+    db.delete_hk_ggt_minute_bars_except_dates.assert_not_called()
+
+
+def test_cleanup_old_minute_bars_uses_configured_retention():
+    db = MagicMock()
+    db.list_hk_ggt_minute_dates.return_value = ["20260918", "20260917", "20260916"]
+    service = HkGgtMonitorService(db=db, config=SimpleNamespace(hk_ggt_minute_retention_days=1))
+
+    result = service.cleanup_old_minute_bars()
+
+    assert result["retention_days"] == 1
+    assert result["kept_dates"] == ["20260918"]
+    db.delete_hk_ggt_minute_bars_except_dates.assert_called_once_with(["20260918"])
+
+
+def test_storage_hk_ggt_minute_rolling_cleanup():
+    from src.storage import DatabaseManager
+
+    # 单例可能被其他测试初始化为真实库，先重置确保拿到隔离的内存库
+    DatabaseManager.reset_instance()
+    db = DatabaseManager(db_url="sqlite:///:memory:")
+    try:
+        rows = []
+        for trade_date, minute in (("20260901", "10:00"), ("20260917", "10:05"), ("20260918", "10:10")):
+            rows.append({
+                "hk_code": "00700",
+                "trade_date": trade_date,
+                "bar_time": f"{trade_date[:4]}-{trade_date[4:6]}-{trade_date[6:]} {minute}:00",
+                "close": 100.0,
+                "period": "1",
+                "source": "tencent_rt",
+            })
+        db.upsert_hk_ggt_minute_bars(rows)
+
+        assert db.list_hk_ggt_minute_dates() == ["20260918", "20260917", "20260901"]
+
+        # keep_dates 为空时必须直接返回 0，不能误删全表
+        assert db.delete_hk_ggt_minute_bars_except_dates([]) == 0
+        assert db.list_hk_ggt_minute_dates() == ["20260918", "20260917", "20260901"]
+
+        assert db.delete_hk_ggt_minute_bars_except_dates(["20260918", "20260917"]) == 1
+        assert db.list_hk_ggt_minute_dates() == ["20260918", "20260917"]
+        assert db.list_hk_ggt_minute_bars("00700", "20260901") == []
+    finally:
+        DatabaseManager.reset_instance()

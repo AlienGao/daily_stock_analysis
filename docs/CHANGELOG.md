@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 > For user-friendly release highlights, see the [GitHub Releases](https://github.com/ZhuLinsen/daily_stock_analysis/releases) page.
 
 ## [Unreleased]
+- [改进] 港股通分钟行情新增滚动保留策略：serve/API 进程每日自动清理最近 5 个交易日（`HK_GGT_MINUTE_RETENTION_DAYS`，默认 5）之前的分钟数据，保留窗口以表内已有交易日为准；新增 `HK_GGT_MINUTE_RETENTION_DAYS` 配置项
+- [新功能] 港股页右侧「日内数据」Tab 前新增「下午上涨」Tab：统计当日港股通成份股下午分钟价首次超过上午收盘价（13:00 前最后一根分钟收盘价）的个股，按首次突破时间先后排序，展示突破时与最新价相对上午收盘价的涨幅及突破/覆盖统计，随 realtime 快照每分钟刷新
 - [修复] 港股页左侧列表与 BOLL 推荐不再被收盘前最后一分钟的旧快照覆盖：盘中（market_open）仍以分钟快照为准，收盘后当日线已含当日收盘价时保留日线收盘（含收市竞价），仅当日线仍停留在更早交易日时才用分钟快照补位，修复「点击刷新后列表价格不更新」的问题
 - [新功能] 券商金股当月收益支持交易时段盘中实时估算：当月明细、券商汇总与 YTD 当月段、上月推荐×当月收益 Top5、历史月份「当月累计收益」列在 A 股交易日 09:30–15:00（北京时间）按实时价×最近复权因子估算并返回 `is_realtime` 标记；前端盘中 30 秒轮询改为按 Asia/Shanghai 时段判定并展示「盘中实时估算」标注
 - [修复] 券商金股当月明细与展开面板的累计收益不再停在上一交易日：收盘后交易日（15:00–当日复权因子入库约 18:01）今日收盘 bar 已入库/已快照时，end_date、最新价与累计收益同步推进到今日（因子未入库按最近因子近似、入库后自动收敛），展开面板（stock-history）当月盘中/收盘后与表格同口径，消除「端价已到今日而收益率仍是昨日」的展示不一致；今日 OHLC 写库仅限快照 trade_date 为今日的个股，避免残留快照污染日线表

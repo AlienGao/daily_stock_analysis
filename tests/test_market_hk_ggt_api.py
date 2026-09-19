@@ -140,6 +140,19 @@ def test_get_hk_stock_realtime_drawdown_ranking():
             "distance_pct": 0.1,
             "source": "tencent_rt",
         }],
+        "afternoon_rise_total": 1,
+        "afternoon_scanned": 2,
+        "afternoon_risers": [{
+            "hk_code": "00700",
+            "name": "腾讯控股",
+            "morning_close": 500.0,
+            "first_cross_time": "2026-08-14 13:05:00",
+            "first_cross_price": 504.0,
+            "cross_gain_pct": 0.8,
+            "latest_price": 505.0,
+            "latest_gain_pct": 1.0,
+            "latest_bar_time": "2026-08-14 13:10:00",
+        }],
     }
     with patch("api.v1.endpoints.market.HkGgtMonitorService") as mock_cls:
         mock_cls.return_value.get_realtime_snapshot.return_value = payload
@@ -151,3 +164,7 @@ def test_get_hk_stock_realtime_drawdown_ranking():
     assert resp.json()["top_gainers"][0]["hk_code"] == "09988"
     assert resp.json()["top_gainers"][0]["minute_change_pct"] == 1.25
     assert resp.json()["today_boll_alerts"][0]["band"] == "mid"
+    assert resp.json()["afternoon_rise_total"] == 1
+    assert resp.json()["afternoon_risers"][0]["hk_code"] == "00700"
+    assert resp.json()["afternoon_risers"][0]["first_cross_time"] == "2026-08-14 13:05:00"
+    assert resp.json()["afternoon_risers"][0]["cross_gain_pct"] == 0.8

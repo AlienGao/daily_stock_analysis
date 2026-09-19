@@ -144,6 +144,18 @@ class HkStockRealtimeItem(BaseModel):
     minute_change_end_time: Optional[str] = None
 
 
+class HkAfternoonRiseItem(BaseModel):
+    hk_code: str
+    name: Optional[str] = None
+    morning_close: float = Field(..., description="上午收盘价（13:00 前最后一根分钟收盘价）")
+    first_cross_time: str = Field(..., description="下午首次超过上午收盘价的时间")
+    first_cross_price: float = Field(..., description="首次超过时的分钟价")
+    cross_gain_pct: float = Field(..., description="首次超过时相对上午收盘价的涨幅（%）")
+    latest_price: Optional[float] = None
+    latest_gain_pct: Optional[float] = Field(None, description="最新价相对上午收盘价的涨幅（%）")
+    latest_bar_time: Optional[str] = None
+
+
 class HkMinuteBollAlertItem(BaseModel):
     id: int
     trade_date: str
@@ -170,6 +182,9 @@ class HkStockRealtimeResponse(BaseModel):
     top_drawdowns: List[HkStockRealtimeItem] = Field(default_factory=list)
     top_gainers: List[HkStockRealtimeItem] = Field(default_factory=list)
     today_boll_alerts: List[HkMinuteBollAlertItem] = Field(default_factory=list)
+    afternoon_rise_total: int = Field(0, description="下午超过上午收盘价的个股数")
+    afternoon_scanned: int = Field(0, description="有上午收盘价数据的成份股数量")
+    afternoon_risers: List[HkAfternoonRiseItem] = Field(default_factory=list)
 
 
 class HkStockListItem(BaseModel):
