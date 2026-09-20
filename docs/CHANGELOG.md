@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 > For user-friendly release highlights, see the [GitHub Releases](https://github.com/ZhuLinsen/daily_stock_analysis/releases) page.
 
 ## [Unreleased]
+- [改进] 港股页「日内数据」前端入口整体暂时下线（含分钟 BOLL 报警弹窗，均以前端注释保留实现与恢复入口），realtime 接口与「下午上涨」Tab 不受影响
 - [改进] 港股通分钟行情新增滚动保留策略：serve/API 进程每日自动清理最近 5 个交易日（`HK_GGT_MINUTE_RETENTION_DAYS`，默认 5）之前的分钟数据，保留窗口以表内已有交易日为准；新增 `HK_GGT_MINUTE_RETENTION_DAYS` 配置项
 - [新功能] 港股页右侧「日内数据」Tab 前新增「下午上涨」Tab：统计当日港股通成份股下午分钟价首次超过上午收盘价（13:00 前最后一根分钟收盘价）的个股，按首次突破时间先后排序，展示突破时与最新价相对上午收盘价的涨幅及突破/覆盖统计，随 realtime 快照每分钟刷新
 - [修复] 港股页左侧列表与 BOLL 推荐不再被收盘前最后一分钟的旧快照覆盖：盘中（market_open）仍以分钟快照为准，收盘后当日线已含当日收盘价时保留日线收盘（含收市竞价），仅当日线仍停留在更早交易日时才用分钟快照补位，修复「点击刷新后列表价格不更新」的问题

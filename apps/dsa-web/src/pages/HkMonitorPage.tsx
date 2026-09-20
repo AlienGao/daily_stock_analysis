@@ -1,6 +1,7 @@
 import type React from 'react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Modal, Table, Tabs } from 'antd';
+// 日内数据 Tab 下线（含分钟 BOLL 报警弹窗）：恢复时改回 import { Modal, Table, Tabs }
+import { Table, Tabs } from 'antd';
 import type { ColumnsType, SorterResult, SortOrder } from 'antd/es/table/interface';
 import { Loader2, RefreshCw, Search } from 'lucide-react';
 import { AppPage, Button, EmptyState } from '../components/common';
@@ -9,11 +10,13 @@ import {
   hkStockApi,
   type HkAfternoonRiseItem,
   type HkBollPickItem,
-  type HkMinuteBollAlertItem,
+  // 日内数据 Tab 下线（含分钟 BOLL 报警弹窗）：恢复时一并启用 HkMinuteBollAlertItem
+  // type HkMinuteBollAlertItem,
   type HkRecentDeclineEndingResponse,
   type HkStockKLineItem,
   type HkStockListItem,
-  type HkStockRealtimeItem,
+  // 日内数据 Tab 下线：恢复时一并启用 HkStockRealtimeItem
+  // type HkStockRealtimeItem,
 } from '../api/hkMonitor';
 import { calcBollBandWidthPct, compareBollBandWidth } from '../utils/hkBollBandwidth';
 import { filterRecentDrawdowns, filterRecentGains } from '../utils/hkMonitorDrawdown';
@@ -249,10 +252,11 @@ const BollPickColumn: React.FC<{
 const BollPickPanel: React.FC<{
   loading: boolean;
   picks: HkBollPickItem[];
-  intradayDrawdowns: HkStockRealtimeItem[];
-  minuteGainers: HkStockRealtimeItem[];
-  minuteBollAlerts: HkMinuteBollAlertItem[];
-  realtimeUpdatedAt?: string | null;
+  // 日内数据 Tab 下线，以下 props 暂不展示，恢复时同步启用
+  // intradayDrawdowns: HkStockRealtimeItem[];
+  // minuteGainers: HkStockRealtimeItem[];
+  // minuteBollAlerts: HkMinuteBollAlertItem[];
+  // realtimeUpdatedAt?: string | null;
   drawdownItems: HkStockListItem[];
   recentTradeDates: readonly string[];
   declineEndings: HkRecentDeclineEndingResponse | null;
@@ -261,7 +265,7 @@ const BollPickPanel: React.FC<{
   activeHkCode: string;
   onSelect: (hkCode: string) => void;
   className?: string;
-}> = ({ loading, picks, intradayDrawdowns, minuteGainers, minuteBollAlerts, realtimeUpdatedAt, drawdownItems, recentTradeDates, declineEndings, afternoonRisers, afternoonScanned, activeHkCode, onSelect, className = '' }) => {
+}> = ({ loading, picks, drawdownItems, recentTradeDates, declineEndings, afternoonRisers, afternoonScanned, activeHkCode, onSelect, className = '' }) => {
   const upperPicks = useMemo(() => picks.filter(p => p.band === 'upper'), [picks]);
   const midPicks = useMemo(() => picks.filter(p => p.band === 'mid'), [picks]);
   const lowerPicks = useMemo(() => picks.filter(p => p.band === 'lower'), [picks]);
@@ -341,6 +345,8 @@ const BollPickPanel: React.FC<{
               </div>
             ),
           },
+          // 日内数据 Tab 暂时下线：如需恢复，同时启用本文件内标注「日内数据 Tab 下线」的 props / state / 赋值
+          /*
           {
             key: 'intraday',
             label: <span className="text-xs font-medium">日内数据</span>,
@@ -425,6 +431,7 @@ const BollPickPanel: React.FC<{
               </div>
             ),
           },
+          */
           {
             key: 'drawdown',
             label: <span className="text-xs font-medium">最近最大回撤</span>,
@@ -584,23 +591,27 @@ const HkMonitorPage: React.FC = () => {
   const [expandedKey, setExpandedKey] = useState<string>('');
   const [searchText, setSearchText] = useState<string>('');
   const [bollPicks, setBollPicks] = useState<HkBollPickItem[]>([]);
-  const [intradayDrawdowns, setIntradayDrawdowns] = useState<HkStockRealtimeItem[]>([]);
-  const [minuteGainers, setMinuteGainers] = useState<HkStockRealtimeItem[]>([]);
+  // 日内数据 Tab 下线
+  // const [intradayDrawdowns, setIntradayDrawdowns] = useState<HkStockRealtimeItem[]>([]);
+  // const [minuteGainers, setMinuteGainers] = useState<HkStockRealtimeItem[]>([]);
   const [afternoonRisers, setAfternoonRisers] = useState<HkAfternoonRiseItem[]>([]);
   const [afternoonScanned, setAfternoonScanned] = useState(0);
-  const [minuteBollAlerts, setMinuteBollAlerts] = useState<HkMinuteBollAlertItem[]>([]);
-  const [bollAlertModalItems, setBollAlertModalItems] = useState<HkMinuteBollAlertItem[]>([]);
-  const [bollAlertModalOpen, setBollAlertModalOpen] = useState(false);
-  const bollAlertIdsRef = useRef<Set<number> | null>(null);
-  const [realtimeUpdatedAt, setRealtimeUpdatedAt] = useState<string | null>(null);
+  // const [minuteBollAlerts, setMinuteBollAlerts] = useState<HkMinuteBollAlertItem[]>([]);
+  // 日内数据 Tab 下线（含分钟 BOLL 报警弹窗）：恢复时一并启用以下报警弹窗状态
+  // const [bollAlertModalItems, setBollAlertModalItems] = useState<HkMinuteBollAlertItem[]>([]);
+  // const [bollAlertModalOpen, setBollAlertModalOpen] = useState(false);
+  // const bollAlertIdsRef = useRef<Set<number> | null>(null);
+  // const [realtimeUpdatedAt, setRealtimeUpdatedAt] = useState<string | null>(null);
   const [declineEndings, setDeclineEndings] = useState<HkRecentDeclineEndingResponse | null>(null);
   const [bollLoading] = useState(false);
   const [tableSort, setTableSort] = useState(DEFAULT_TABLE_SORT);
   const [panelHeight, setPanelHeight] = useState<number | undefined>(undefined);
   const tableWrapRef = useRef<HTMLDivElement>(null);
 
+  // 日内数据 Tab 下线（含分钟 BOLL 报警弹窗）：弹窗触发整体停用，恢复时启用本块并在 load / refreshRealtime 中恢复调用
+  /*
   const updateMinuteBollAlerts = useCallback((alerts: HkMinuteBollAlertItem[]) => {
-    setMinuteBollAlerts(alerts);
+    // setMinuteBollAlerts(alerts); // 恢复时同步启用 minuteBollAlerts state
     const knownIds = bollAlertIdsRef.current;
     const currentIds = new Set(alerts.map(alert => alert.id));
     if (knownIds === null) {
@@ -614,6 +625,7 @@ const HkMonitorPage: React.FC = () => {
       setBollAlertModalOpen(true);
     }
   }, []);
+  */
 
   useLayoutEffect(() => {
     const el = tableWrapRef.current;
@@ -659,19 +671,21 @@ const HkMonitorPage: React.FC = () => {
       setRecentTradeDates(listResp.recent_trade_dates ?? []);
       if (shouldRefresh) setTableSort({ ...DEFAULT_TABLE_SORT });
       setBollPicks(realtimeResp ? mergeHkRealtimeBollPicks(basePicks, realtimeResp.items, mergeOpts) : basePicks);
-      setIntradayDrawdowns(realtimeResp?.top_drawdowns ?? []);
-      setMinuteGainers(realtimeResp?.top_gainers ?? []);
+      // 日内数据 Tab 下线
+      // setIntradayDrawdowns(realtimeResp?.top_drawdowns ?? []);
+      // setMinuteGainers(realtimeResp?.top_gainers ?? []);
       setAfternoonRisers(realtimeResp?.afternoon_risers ?? []);
       setAfternoonScanned(realtimeResp?.afternoon_scanned ?? 0);
-      updateMinuteBollAlerts(realtimeResp?.today_boll_alerts ?? []);
-      setRealtimeUpdatedAt(realtimeResp?.updated_at ?? null);
+      // 日内数据 Tab 下线（含分钟 BOLL 报警弹窗）
+      // updateMinuteBollAlerts(realtimeResp?.today_boll_alerts ?? []);
+      // setRealtimeUpdatedAt(realtimeResp?.updated_at ?? null);
       setDeclineEndings(declineResp);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : '加载失败');
     } finally {
       setLoading(false);
     }
-  }, [updateMinuteBollAlerts]);
+  }, []);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -684,16 +698,18 @@ const HkMonitorPage: React.FC = () => {
       };
       setItems(current => mergeHkRealtimeItems(current, realtimeResp.items, mergeOpts));
       setBollPicks(current => mergeHkRealtimeBollPicks(current, realtimeResp.items, mergeOpts));
-      setIntradayDrawdowns(realtimeResp.top_drawdowns ?? []);
-      setMinuteGainers(realtimeResp.top_gainers ?? []);
+      // 日内数据 Tab 下线
+      // setIntradayDrawdowns(realtimeResp.top_drawdowns ?? []);
+      // setMinuteGainers(realtimeResp.top_gainers ?? []);
       setAfternoonRisers(realtimeResp.afternoon_risers ?? []);
       setAfternoonScanned(realtimeResp.afternoon_scanned ?? 0);
-      updateMinuteBollAlerts(realtimeResp.today_boll_alerts ?? []);
-      setRealtimeUpdatedAt(realtimeResp.updated_at ?? null);
+      // 日内数据 Tab 下线（含分钟 BOLL 报警弹窗）
+      // updateMinuteBollAlerts(realtimeResp.today_boll_alerts ?? []);
+      // setRealtimeUpdatedAt(realtimeResp.updated_at ?? null);
     } catch {
       // Keep the last successful snapshot; the backend polling path is best-effort.
     }
-  }, [updateMinuteBollAlerts, recentTradeDates]);
+  }, [recentTradeDates]);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -951,10 +967,11 @@ const HkMonitorPage: React.FC = () => {
               <BollPickPanel
                 loading={bollLoading}
                 picks={bollPicks}
-                intradayDrawdowns={intradayDrawdowns}
-                minuteGainers={minuteGainers}
-                minuteBollAlerts={minuteBollAlerts}
-                realtimeUpdatedAt={realtimeUpdatedAt}
+                // 日内数据 Tab 下线
+                // intradayDrawdowns={intradayDrawdowns}
+                // minuteGainers={minuteGainers}
+                // minuteBollAlerts={minuteBollAlerts}
+                // realtimeUpdatedAt={realtimeUpdatedAt}
                 drawdownItems={items}
                 recentTradeDates={recentTradeDates}
                 declineEndings={declineEndings}
@@ -972,10 +989,11 @@ const HkMonitorPage: React.FC = () => {
               className="h-full max-h-full"
               loading={bollLoading}
               picks={bollPicks}
-              intradayDrawdowns={intradayDrawdowns}
-              minuteGainers={minuteGainers}
-              minuteBollAlerts={minuteBollAlerts}
-              realtimeUpdatedAt={realtimeUpdatedAt}
+              // 日内数据 Tab 下线
+              // intradayDrawdowns={intradayDrawdowns}
+              // minuteGainers={minuteGainers}
+              // minuteBollAlerts={minuteBollAlerts}
+              // realtimeUpdatedAt={realtimeUpdatedAt}
               drawdownItems={items}
               recentTradeDates={recentTradeDates}
               declineEndings={declineEndings}
@@ -986,6 +1004,7 @@ const HkMonitorPage: React.FC = () => {
             />
           </div>
         )}
+        {/* 日内数据 Tab 下线（含分钟 BOLL 报警弹窗）：恢复时启用本块 Modal 与上方报警状态、updateMinuteBollAlerts
         <Modal
           open={bollAlertModalOpen}
           title="港股分钟 BOLL 报警"
@@ -1013,6 +1032,7 @@ const HkMonitorPage: React.FC = () => {
             ))}
           </div>
         </Modal>
+        */}
       </div>
     </AppPage>
   );
