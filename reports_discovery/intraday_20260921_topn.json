@@ -1,0 +1,179 @@
+[
+  {
+    "rank": 1,
+    "stock_code": "002494",
+    "stock_name": "华斯股份",
+    "score": 48.1,
+    "sector": "服装家纺",
+    "factor_scores": {
+      "ma_entry": 25.943659407960695,
+      "sector": 50.79116592445473,
+      "momentum": 67.44708826908645,
+      "ranking_momentum": 54.97736831156149,
+      "rebound": 0.0,
+      "popularity": 77.8074343152114
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "趋势加速↑(31.2%/天)",
+      "今日强于92%个股",
+      "人气飙升(+829位)",
+      "所属板块: 服装家纺"
+    ],
+    "buy_price_low": 4.4,
+    "buy_price_high": 4.8,
+    "stop_loss": 4.72,
+    "take_profit_1": 5.1,
+    "take_profit_2": 5.4,
+    "discovered_at": "15:00:58",
+    "price_at_discovery": 4.81,
+    "pct_chg": 5.48,
+    "tech_score": 71.1,
+    "rr_score": 78.076923076923,
+    "market_score": 49.72829739088051,
+    "sector_score": 98.18376993464048,
+    "volume_score": 89.9999999999978,
+    "position_score": 75,
+    "formation_score": 20.0,
+    "composite_score": 64.19999999999999
+  },
+  {
+    "rank": 2,
+    "stock_code": "300181",
+    "stock_name": "佐力药业",
+    "score": 40.3,
+    "sector": "中药",
+    "factor_scores": {
+      "ma_entry": 54.83881439039456,
+      "sector": 0.0,
+      "momentum": 88.9286089351774,
+      "ranking_momentum": 21.89877445667244,
+      "rebound": 0.0,
+      "popularity": 50.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "回踩MA5均线",
+      "人气核心圈(排名1797)"
+    ],
+    "buy_price_low": 12.5,
+    "buy_price_high": 13.7,
+    "stop_loss": 13.41,
+    "take_profit_1": 13.94,
+    "take_profit_2": 14.86,
+    "discovered_at": "15:00:58",
+    "price_at_discovery": 13.53,
+    "pct_chg": 1.73,
+    "tech_score": 74.15,
+    "rr_score": 85.41666666666725,
+    "market_score": 49.72829739088051,
+    "sector_score": 84.55882352941177,
+    "volume_score": 89.28985193136545,
+    "position_score": 85,
+    "formation_score": 40.0,
+    "composite_score": 63.995
+  },
+  {
+    "rank": 3,
+    "stock_code": "600871",
+    "stock_name": "石化油服",
+    "score": 49.2,
+    "sector": "油气开采及服务",
+    "factor_scores": {
+      "ma_entry": 28.002932746797004,
+      "sector": 0.0,
+      "momentum": 19.23670573243694,
+      "ranking_momentum": 100.0,
+      "rebound": 0.0,
+      "popularity": 78.85516420714642
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "排名连续上升(2天)",
+      "趋势加速↑(21.3%/天)",
+      "今日强于82%个股",
+      "人气核心圈(排名1789)"
+    ],
+    "buy_price_low": 2.1,
+    "buy_price_high": 2.3,
+    "stop_loss": 2.22,
+    "take_profit_1": 2.38,
+    "take_profit_2": 2.57,
+    "discovered_at": "15:00:58",
+    "price_at_discovery": 2.25,
+    "pct_chg": 3.69,
+    "tech_score": 68.85,
+    "rr_score": 79.13043478260867,
+    "market_score": 49.72829739088051,
+    "sector_score": 96.95771040504489,
+    "volume_score": 74.14163273249356,
+    "position_score": 75,
+    "formation_score": 20.0,
+    "composite_score": 62.95499999999999
+  },
+  {
+    "rank": 4,
+    "stock_code": "603335",
+    "stock_name": "迪生力",
+    "score": 44.1,
+    "sector": "汽车零部件",
+    "factor_scores": {
+      "ma_entry": 25.525538959555778,
+      "sector": 0.0,
+      "momentum": 35.95750451770965,
+      "ranking_momentum": 79.56855725398117,
+      "rebound": 0.0,
+      "popularity": 70.21649709931214
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "趋势加速↑(6.9%/天)",
+      "今日强于79%个股",
+      "人气核心圈(排名2070)"
+    ],
+    "buy_price_low": 5.9,
+    "buy_price_high": 6.5,
+    "stop_loss": 6.34,
+    "take_profit_1": 6.73,
+    "take_profit_2": 7.34,
+    "discovered_at": "15:00:58",
+    "price_at_discovery": 6.4,
+    "pct_chg": 3.39,
+    "tech_score": 67.35,
+    "rr_score": 72.87066246056789,
+    "market_score": 49.72829739088051,
+    "sector_score": 86.52812694740817,
+    "volume_score": 80.42869670394828,
+    "position_score": 85,
+    "formation_score": 20.0,
+    "composite_score": 60.375
+  }
+]

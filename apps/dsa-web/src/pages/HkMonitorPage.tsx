@@ -277,6 +277,11 @@ const BollPickPanel: React.FC<{
     () => filterRecentGains(drawdownItems, recentTradeDates),
     [drawdownItems, recentTradeDates],
   );
+  // 只记录首次突破的时刻，按首次突破时间倒序（最近突破在最上）；用副本排序，避免就地改 state
+  const afternoonRiserRows = useMemo(
+    () => [...afternoonRisers].sort((a, b) => b.first_cross_time.localeCompare(a.first_cross_time)),
+    [afternoonRisers],
+  );
 
   return (
     <div className={`flex h-full max-h-full min-h-0 flex-col overflow-hidden rounded-xl border border-border/20 bg-card/40 ${className}`}>
@@ -310,30 +315,28 @@ const BollPickPanel: React.FC<{
               <div className="flex h-full min-h-0 flex-col px-3 pb-3">
                 <section className="flex min-h-0 flex-1 flex-col py-2">
                   <div className="flex shrink-0 items-center justify-between gap-2">
-                    <div className="text-xs font-medium text-foreground">下午突破上午收盘价</div>
+                    <div className="text-xs font-medium text-foreground">下午首次突破上午收盘价</div>
                     <span className="font-mono text-[9px] text-tertiary-text">
                       {afternoonRisers.length}/{afternoonScanned} 只
                     </span>
                   </div>
-                  <div className="mt-1 grid shrink-0 grid-cols-[44px_minmax(0,1fr)_56px_56px] items-center gap-1 px-1 text-[9px] text-tertiary-text">
+                  <div className="mt-1 grid shrink-0 grid-cols-[44px_minmax(0,1fr)_60px] items-center gap-1 px-1 text-[9px] text-tertiary-text">
                     <span>时间</span>
                     <span>名称</span>
                     <span className="text-right" title="首次超过上午收盘价时的涨幅">突破</span>
-                    <span className="text-right" title="最新价相对上午收盘价的涨幅">现价</span>
                   </div>
                   <div className="mt-0.5 min-h-0 flex-1 space-y-0.5 overflow-y-auto">
-                    {afternoonRisers.length ? afternoonRisers.map(item => (
+                    {afternoonRiserRows.length ? afternoonRiserRows.map(item => (
                       <button
                         type="button"
                         key={item.hk_code}
                         onClick={() => onSelect(item.hk_code)}
-                        title={`上午收盘 ${fmtPrice(item.morning_close)} · ${minuteLabel(item.first_cross_time)} 突破（${fmtPrice(item.first_cross_price)}，${fmtPct(item.cross_gain_pct)}）${item.latest_price != null ? ` · 现价 ${fmtPrice(item.latest_price)}（${fmtPct(item.latest_gain_pct)}）` : ''}`}
-                        className="grid w-full grid-cols-[44px_minmax(0,1fr)_56px_56px] items-center gap-1 rounded px-1 py-0.5 text-left text-[10px] hover:bg-muted/30"
+                        title={`上午收盘 ${fmtPrice(item.morning_close)} · ${minuteLabel(item.first_cross_time)} 首次突破（${fmtPrice(item.first_cross_price)}，${fmtPct(item.cross_gain_pct)}）`}
+                        className="grid w-full grid-cols-[44px_minmax(0,1fr)_60px] items-center gap-1 rounded px-1 py-0.5 text-left text-[10px] hover:bg-muted/30"
                       >
                         <span className="font-mono text-[10px] text-tertiary-text">{minuteLabel(item.first_cross_time)}</span>
                         <span className="min-w-0 truncate text-foreground">{item.name || item.hk_code}</span>
                         <span className={`text-right font-mono ${pctColor(item.cross_gain_pct)}`}>{fmtPct(item.cross_gain_pct)}</span>
-                        <span className={`text-right font-mono ${pctColor(item.latest_gain_pct)}`}>{fmtPct(item.latest_gain_pct)}</span>
                       </button>
                     )) : (
                       <div className="py-1 text-[10px] text-tertiary-text">
