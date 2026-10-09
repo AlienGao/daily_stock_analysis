@@ -103,8 +103,8 @@ def main():
             out = pd.DataFrame()
             out["code"] = df["ts_code"].astype(str).str.split(".").str[0].str.zfill(6)
             out["trade_date"] = trade_date
-            raw_limit_type = df.get("limit_type", "")
-            fallback_limit = df.get("limit", "")
+            raw_limit_type = df.get("limit_type", pd.Series("", index=df.index))
+            fallback_limit = df.get("limit", pd.Series("", index=df.index))
             out_limit_type = raw_limit_type.where(
                 raw_limit_type.notna() & (raw_limit_type != ""),
                 fallback_limit,
