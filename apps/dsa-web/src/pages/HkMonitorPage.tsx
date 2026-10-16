@@ -492,7 +492,7 @@ const BollPickPanel: React.FC<{
               <div className="h-full overflow-y-auto px-3 pb-3">
                 <section className="py-2">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="text-xs font-medium text-foreground">近 3 个交易日刚结束下跌</div>
+                    <div className="text-xs font-medium text-foreground">近 3 个交易日刚结束下跌（需连收两根阳线）</div>
                     <span className="font-mono text-[9px] text-tertiary-text">{declineEndings?.total ?? 0} 只</span>
                   </div>
                   {declineEndings && (

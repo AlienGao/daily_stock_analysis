@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 > For user-friendly release highlights, see the [GitHub Releases](https://github.com/ZhuLinsen/daily_stock_analysis/releases) page.
 
 ## [Unreleased]
+- [改进] 港股页「近3日止跌」止跌判定加严：连跌结束后需连收两根阳线（收盘价 > 开盘价，与前端 K 线阴阳一致）才判定为止跌，结束日之后仅走平/单日收阳的个股不再计入，Tab 标题同步标注「需连收两根阳线」
 - [改进] 港股页「日内数据」前端入口整体暂时下线（含分钟 BOLL 报警弹窗，均以前端注释保留实现与恢复入口），realtime 接口与「下午上涨」Tab 不受影响
 - [改进] 港股通分钟行情新增滚动保留策略：serve/API 进程每日自动清理最近 5 个交易日（`HK_GGT_MINUTE_RETENTION_DAYS`，默认 5）之前的分钟数据，保留窗口以表内已有交易日为准；新增 `HK_GGT_MINUTE_RETENTION_DAYS` 配置项
 - [新功能] 港股页右侧「日内数据」Tab 前新增「下午上涨」Tab：统计当日港股通成份股下午分钟价首次超过上午收盘价（13:00 前最后一根分钟收盘价）的个股，每只只记录首次突破的时间点与突破时相对上午收盘价的涨幅，按首次突破时间排序（最近突破在前），随 realtime 快照每分钟刷新，并展示突破/覆盖统计

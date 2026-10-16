@@ -19,10 +19,17 @@ def _component(code: str, name: str):
     )
 
 
-def _bar(trade_date: str, close: float, pct_chg: float | None = None, high: float | None = None):
+def _bar(
+    trade_date: str,
+    close: float,
+    pct_chg: float | None = None,
+    high: float | None = None,
+    open_: float | None = None,
+):
     return SimpleNamespace(
         hk_code="",
         trade_date=trade_date,
+        open=open_,
         high=close if high is None else high,
         close=close,
         pct_chg=pct_chg,
@@ -329,21 +336,21 @@ def test_scan_recent_decline_endings_finds_ended_decline_with_rebound():
         _component("09988", "阿里巴巴"),
     ]
     db.list_hk_stock_daily_bars_batch.return_value = {
-        # 0707-0708 连跌后 0709-0710 回升：止跌且结束日在近 3 日窗口内
+        # 0707-0708 连跌后 0709-0710 连收两根阳线：止跌且结束日在近 3 日窗口内
         "00700": [
-            _bar("20260706", 100.0),
-            _bar("20260707", 95.0),
-            _bar("20260708", 90.0),
-            _bar("20260709", 93.0),
-            _bar("20260710", 96.0),
+            _bar("20260706", 100.0, open_=102.0),
+            _bar("20260707", 95.0, open_=100.0),
+            _bar("20260708", 90.0, open_=95.0),
+            _bar("20260709", 93.0, open_=91.0),
+            _bar("20260710", 96.0, open_=94.0),
         ],
         # 连跌延续到最新交易日：未止跌，应排除
         "09988": [
-            _bar("20260706", 50.0),
-            _bar("20260707", 49.0),
-            _bar("20260708", 48.0),
-            _bar("20260709", 47.0),
-            _bar("20260710", 46.0),
+            _bar("20260706", 50.0, open_=51.0),
+            _bar("20260707", 49.0, open_=50.0),
+            _bar("20260708", 48.0, open_=49.0),
+            _bar("20260709", 47.0, open_=48.0),
+            _bar("20260710", 46.0, open_=47.0),
         ],
     }
     service = HkStockService(db=db)
@@ -369,6 +376,48 @@ def test_scan_recent_decline_endings_finds_ended_decline_with_rebound():
     assert result["summary"]["decline_days_dist"] == {"2": 1}
 
 
+def test_scan_recent_decline_endings_requires_two_bullish_candles():
+    db = MagicMock()
+    db.get_latest_hk_ggt_trade_date.return_value = "20260710"
+    db.list_hk_ggt_components.return_value = [
+        _component("00005", "汇丰控股"),
+        _component("00006", "电能实业"),
+        _component("00007", "长江基建"),
+    ]
+    db.list_hk_stock_daily_bars_batch.return_value = {
+        # 连跌后首日收阳，次日收涨但为阴线（收 < 开）：不足两根阳线，应排除
+        "00005": [
+            _bar("20260706", 100.0, open_=102.0),
+            _bar("20260707", 95.0, open_=100.0),
+            _bar("20260708", 90.0, open_=95.0),
+            _bar("20260709", 93.0, open_=91.0),
+            _bar("20260710", 95.0, open_=96.5),
+        ],
+        # 连跌后首日为十字星（收 == 开），次日收阳：首日非阳线，应排除
+        "00006": [
+            _bar("20260706", 100.0, open_=102.0),
+            _bar("20260707", 95.0, open_=100.0),
+            _bar("20260708", 90.0, open_=95.0),
+            _bar("20260709", 93.0, open_=93.0),
+            _bar("20260710", 96.0, open_=94.0),
+        ],
+        # 连跌结束于最新交易日的前一日，之后仅一根阳线：无法连收两根阳线，应排除
+        "00007": [
+            _bar("20260706", 100.0, open_=102.0),
+            _bar("20260707", 95.0, open_=100.0),
+            _bar("20260708", 90.0, open_=95.0),
+            _bar("20260709", 93.0, open_=91.0),
+        ],
+    }
+    service = HkStockService(db=db)
+    with patch.object(service, "_trigger_backfill_async"):
+        result = service.scan_recent_decline_endings(days=3)
+
+    assert result["total"] == 0
+    assert result["items"] == []
+    assert result["summary"] == {}
+
+
 def test_scan_recent_decline_endings_excludes_ongoing_and_out_of_window_declines():
     db = MagicMock()
     db.get_latest_hk_ggt_trade_date.return_value = "20260710"
@@ -379,20 +428,20 @@ def test_scan_recent_decline_endings_excludes_ongoing_and_out_of_window_declines
     db.list_hk_stock_daily_bars_batch.return_value = {
         # 连跌延续到最新交易日（未结束）
         "00001": [
-            _bar("20260708", 60.0),
-            _bar("20260709", 58.0),
-            _bar("20260710", 56.0),
+            _bar("20260708", 60.0, open_=61.0),
+            _bar("20260709", 58.0, open_=60.0),
+            _bar("20260710", 56.0, open_=58.0),
         ],
-        # 连跌已结束但结束日超出近 3 日窗口
+        # 连跌已结束且随后连收两根阳线，但结束日超出近 3 日窗口
         "00002": [
-            _bar("20260701", 30.0),
-            _bar("20260702", 29.0),
-            _bar("20260703", 28.0),
-            _bar("20260706", 29.5),
-            _bar("20260707", 30.0),
-            _bar("20260708", 30.5),
-            _bar("20260709", 31.0),
-            _bar("20260710", 31.5),
+            _bar("20260701", 30.0, open_=31.0),
+            _bar("20260702", 29.0, open_=30.0),
+            _bar("20260703", 28.0, open_=29.0),
+            _bar("20260706", 29.5, open_=28.5),
+            _bar("20260707", 30.0, open_=29.2),
+            _bar("20260708", 30.5, open_=29.8),
+            _bar("20260709", 31.0, open_=30.2),
+            _bar("20260710", 31.5, open_=30.8),
         ],
     }
     service = HkStockService(db=db)

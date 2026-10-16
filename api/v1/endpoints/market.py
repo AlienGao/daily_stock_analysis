@@ -543,7 +543,7 @@ def list_hk_boll_picks(
     "/hk-stocks/recent-decline-endings",
     response_model=HkRecentDeclineEndingResponse,
     responses={500: {"model": ErrorResponse}},
-    summary="港股通近 N 个交易日刚结束连续下跌个股统计（止跌统计）",
+    summary="港股通近 N 个交易日刚结束连续下跌且连收两根阳线个股统计（止跌统计）",
 )
 def list_hk_recent_decline_endings(
     days: int = Query(3, ge=2, le=10, description="统计窗口（交易日数），默认 3"),

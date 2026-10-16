@@ -110,29 +110,37 @@ def _latest_consecutive_gain(
     return None
 
 
+def _is_bullish_candle(open_price: Optional[float], close: float) -> bool:
+    """阳线判定：收盘价高于开盘价（与前端 K 线图及 analysis_tools 口径一致）。"""
+    if open_price is None or not math.isfinite(open_price):
+        return False
+    return close > open_price
+
+
 def _latest_ended_decline(
-    dated_closes: List[Tuple[str, float]],
+    dated_bars: List[Tuple[str, Optional[float], float]],
 ) -> Optional[Tuple[float, int, str, str, float]]:
-    """返回最近一段已结束的至少连续 2 个交易日收跌区间。
+    """返回最近一段已结束、且随后连收两根阳线的连跌区间。
 
     与 _latest_consecutive_drawdown 的区别：仅当连跌区间之后还有交易日（即下跌
-    已止住、后续出现收涨或走平）才返回，连跌延续到最新交易日时返回 None。
+    已止住）且紧接的两个交易日均为阳线（收盘价 > 开盘价，连续两根阳线确认止跌）
+    时才返回；连跌延续到最新交易日、或结束日之后不足两根阳线时返回 None。
     返回 (跌幅%, 连跌天数, 起始日, 结束日, 结束日收盘价)。
     """
     valid = [
-        (trade_date, float(close))
-        for trade_date, close in dated_closes
+        (trade_date, open_price, float(close))
+        for trade_date, open_price, close in dated_bars
         if close is not None and math.isfinite(close) and close > 0
     ]
     end_idx = len(valid) - 1
     while end_idx > 0:
-        while end_idx > 0 and valid[end_idx][1] >= valid[end_idx - 1][1]:
+        while end_idx > 0 and valid[end_idx][2] >= valid[end_idx - 1][2]:
             end_idx -= 1
         if end_idx <= 0:
             return None
 
         start_idx = end_idx
-        while start_idx > 0 and valid[start_idx][1] < valid[start_idx - 1][1]:
+        while start_idx > 0 and valid[start_idx][2] < valid[start_idx - 1][2]:
             start_idx -= 1
         decline_days = end_idx - start_idx
         if decline_days < 2:
@@ -141,8 +149,17 @@ def _latest_ended_decline(
         if end_idx >= len(valid) - 1:
             # 连跌延续到最新交易日，尚未结束
             return None
-        start_date, start_close = valid[start_idx]
-        end_date, end_close = valid[end_idx]
+        if len(valid) - 1 - end_idx < 2:
+            # 连跌结束后不足两个交易日，无法形成连续两根阳线
+            return None
+        if not all(
+            _is_bullish_candle(valid[idx][1], valid[idx][2])
+            for idx in (end_idx + 1, end_idx + 2)
+        ):
+            # 连跌结束后的前两根 K 线未连收阳线，不判定为止跌
+            return None
+        start_date, _start_open, start_close = valid[start_idx]
+        end_date, _end_open, end_close = valid[end_idx]
         drawdown_pct = round((end_close - start_close) / start_close * 100, 2)
         return drawdown_pct, decline_days, start_date, end_date, end_close
     return None
@@ -766,11 +783,13 @@ class HkStockService:
         return result
 
     def scan_recent_decline_endings(self, days: int = 3) -> Dict[str, Any]:
-        """统计近 N 个交易日内刚结束连续下跌（至少连续 2 日收跌）的成份股。
+        """统计近 N 个交易日内刚结束连续下跌且随后连收两根阳线的成份股。
 
-        止跌判定：最近一段连续收跌的结束日落在最近 N 个交易日窗口内，且结束日
-        之后至少还有一个交易日（连跌已结束、非延续中）。附带止跌以来的反弹
-        幅度（结束日收盘 → 最新收盘）与汇总均值，供港股页「近3日止跌」展示。
+        止跌判定：最近一段连续收跌（至少 2 个交易日收跌）的结束日落在最近 N 个
+        交易日窗口内，且结束日之后紧接的两个交易日均为阳线（收盘价 > 开盘价，
+        连续两根阳线确认止跌）；连跌延续到最新交易日或阳线不足两根时不计入。
+        附带止跌以来的反弹幅度（结束日收盘 → 最新收盘）与汇总均值，供港股页
+        「近3日止跌」展示。
         """
         days = max(2, min(int(days or 3), 10))
         now = _time.time()
@@ -825,22 +844,27 @@ class HkStockService:
         items: List[Dict[str, Any]] = []
         for code in codes:
             bars = batch.get(code, [])
-            dated_closes = [
-                (str(getattr(bar, "trade_date", "")), close)
+            dated_bars = [
+                (
+                    str(getattr(bar, "trade_date", "")),
+                    _safe_float(getattr(bar, "open", None)),
+                    close,
+                )
                 for bar in bars
                 if (close := _safe_float(getattr(bar, "close", None))) is not None
                 and close > 0
             ]
-            ended = _latest_ended_decline(dated_closes)
+            ended = _latest_ended_decline(dated_bars)
             if not ended or ended[3] not in window:
                 continue
             drawdown_pct, decline_days, start_date, end_date, end_close = ended
-            later = [(td, close) for td, close in dated_closes if td > end_date]
+            later = [(td, close) for td, _open, close in dated_bars if td > end_date]
             rebound_days = len(later)
             rebound_pct = None
             if later and end_close and end_close > 0:
                 rebound_pct = round((later[-1][1] - end_close) / end_close * 100, 2)
-            latest_trade_date, latest_price = later[-1] if later else dated_closes[-1]
+            # _latest_ended_decline 仅在连跌结束日之后已有两根阳线时返回，later 至少含 2 个交易日
+            latest_trade_date, latest_price = later[-1]
             items.append({
                 "hk_code": code,
                 "name": code_names.get(code, code),
