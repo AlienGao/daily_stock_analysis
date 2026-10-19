@@ -23,7 +23,7 @@ export const filterRecentDrawdowns = (
     : candidates;
   return [...recentCandidates]
     .sort((a, b) => (a.latest_consecutive_drawdown_pct ?? 0) - (b.latest_consecutive_drawdown_pct ?? 0))
-    .slice(0, 8);
+    .slice(0, 15);
 };
 
 export const filterRecentGains = (
@@ -44,5 +44,5 @@ export const filterRecentGains = (
     : candidates;
   return [...recentCandidates]
     .sort((a, b) => (b.latest_consecutive_gain_pct ?? 0) - (a.latest_consecutive_gain_pct ?? 0))
-    .slice(0, 8);
+    .slice(0, 12);
 };
