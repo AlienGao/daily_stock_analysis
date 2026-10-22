@@ -29,10 +29,28 @@ const fmtPct = (v?: number | null) => {
   return `${sign}${v.toFixed(2)}%`;
 };
 
-const measureTableListHeight = (root: HTMLElement): number => {
+// 表格表体独立滚动高度：视口可用高度减去统计行 / 表头 / 分页，使整表高度适配视口、页面不再随表格拉长
+const MIN_TABLE_BODY_HEIGHT = 200;
+const MIN_PANEL_HEIGHT = 320;
+const VIEWPORT_BOTTOM_GAP = 16;
+
+const measureViewportFitHeight = (root: HTMLElement): number => {
+  const top = root.getBoundingClientRect().top;
+  return Math.max(MIN_PANEL_HEIGHT, Math.floor(window.innerHeight - top - VIEWPORT_BOTTOM_GAP));
+};
+
+const measureTableBodyScrollHeight = (root: HTMLElement): number => {
   const wrapper = root.querySelector('.ant-table-wrapper');
-  if (!wrapper) return root.offsetHeight;
-  return Math.ceil((wrapper as HTMLElement).getBoundingClientRect().height);
+  if (!wrapper) return 0;
+  const available = measureViewportFitHeight(root);
+  const label = root.firstElementChild as HTMLElement | null;
+  const labelHeight = label && label !== wrapper ? label.getBoundingClientRect().height : 0;
+  const thead = wrapper.querySelector('.ant-table-thead');
+  const headerHeight = thead ? thead.getBoundingClientRect().height : 39;
+  const pagination = wrapper.querySelector('.ant-table-pagination');
+  const paginationHeight = pagination ? pagination.getBoundingClientRect().height : 0;
+  const bodyHeight = Math.floor(available - labelHeight - headerHeight - paginationHeight - 2);
+  return Math.max(MIN_TABLE_BODY_HEIGHT, bodyHeight);
 };
 
 const pctColor = (v?: number | null) => {
@@ -157,7 +175,7 @@ const patchItemFromKlines = (item: HkStockListItem, klines: HkStockKLineItem[]):
 
 const BollDistanceCell: React.FC<{ distance?: number | null; bandPrice?: number | null }> = ({ distance, bandPrice }) => (
   <span
-    className={`font-mono text-xs tabular-nums ${pctColor(distance)}`}
+    className={`whitespace-nowrap font-mono text-xs tabular-nums ${pctColor(distance)}`}
     title={bandPrice == null ? undefined : `轨道价 ${fmtPrice(bandPrice)}`}
   >
     {fmtPct(distance)}
@@ -609,6 +627,7 @@ const HkMonitorPage: React.FC = () => {
   const [bollLoading] = useState(false);
   const [tableSort, setTableSort] = useState(DEFAULT_TABLE_SORT);
   const [panelHeight, setPanelHeight] = useState<number | undefined>(undefined);
+  const [tableScrollY, setTableScrollY] = useState<number | undefined>(undefined);
   const tableWrapRef = useRef<HTMLDivElement>(null);
 
   // 日内数据 Tab 下线（含分钟 BOLL 报警弹窗）：弹窗触发整体停用，恢复时启用本块并在 load / refreshRealtime 中恢复调用
@@ -634,15 +653,19 @@ const HkMonitorPage: React.FC = () => {
     const el = tableWrapRef.current;
     if (!el) return;
     const apply = () => {
-      const h = measureTableListHeight(el);
-      if (h > 0) setPanelHeight(h);
+      const fitHeight = measureViewportFitHeight(el);
+      if (fitHeight > 0) setPanelHeight(fitHeight);
+      const scrollY = measureTableBodyScrollHeight(el);
+      if (scrollY > 0) setTableScrollY(scrollY);
     };
     apply();
     const ro = new ResizeObserver(() => apply());
     ro.observe(el);
-    const wrapper = el.querySelector('.ant-table-wrapper');
-    if (wrapper) ro.observe(wrapper);
-    return () => ro.disconnect();
+    window.addEventListener('resize', apply);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', apply);
+    };
   }, [items, expandedKey, loading, searchText]);
 
   const load = useCallback(async (opts?: { refresh?: boolean }) => {
@@ -743,7 +766,7 @@ const HkMonitorPage: React.FC = () => {
       title: <span className="whitespace-nowrap">名称 / 代码</span>,
       dataIndex: 'name',
       key: 'name',
-      width: 112,
+      width: 95,
       render: (v: string | null, record) => (
         <span className="block min-w-0">
           <span className="block max-w-full truncate whitespace-nowrap text-sm font-medium text-foreground" title={v || undefined}>{v || '--'}</span>
@@ -755,7 +778,7 @@ const HkMonitorPage: React.FC = () => {
       title: <span className="whitespace-nowrap">最新价</span>,
       dataIndex: 'latest_price',
       align: 'right',
-      width: 90,
+      width: 80,
       render: (v: number | null) => (
         <span className="font-mono tabular-nums">{fmtPrice(v)}</span>
       ),
@@ -765,6 +788,7 @@ const HkMonitorPage: React.FC = () => {
       dataIndex: 'boll_upper_dist_pct',
       key: 'boll_upper_dist_pct',
       align: 'right',
+      width: 85,
       sorter: (a, b) => (a.boll_upper_dist_pct ?? Number.POSITIVE_INFINITY) - (b.boll_upper_dist_pct ?? Number.POSITIVE_INFINITY),
       sortOrder: tableSort.columnKey === 'boll_upper_dist_pct' ? tableSort.order : null,
       render: (_v: number | null, record) => (
@@ -776,6 +800,7 @@ const HkMonitorPage: React.FC = () => {
       dataIndex: 'boll_mid_dist_pct',
       key: 'boll_mid_dist_pct',
       align: 'right',
+      width: 85,
       sorter: (a, b) => (a.boll_mid_dist_pct ?? Number.POSITIVE_INFINITY) - (b.boll_mid_dist_pct ?? Number.POSITIVE_INFINITY),
       sortOrder: tableSort.columnKey === 'boll_mid_dist_pct' ? tableSort.order : null,
       render: (_v: number | null, record) => (
@@ -787,6 +812,7 @@ const HkMonitorPage: React.FC = () => {
       dataIndex: 'boll_lower_dist_pct',
       key: 'boll_lower_dist_pct',
       align: 'right',
+      width: 85,
       sorter: (a, b) => (a.boll_lower_dist_pct ?? Number.POSITIVE_INFINITY) - (b.boll_lower_dist_pct ?? Number.POSITIVE_INFINITY),
       sortOrder: tableSort.columnKey === 'boll_lower_dist_pct' ? tableSort.order : null,
       render: (_v: number | null, record) => (
@@ -831,7 +857,7 @@ const HkMonitorPage: React.FC = () => {
       dataIndex: 'latest_consecutive_drawdown_pct',
       key: 'latest_consecutive_drawdown_pct',
       align: 'right',
-      width: 100,
+      width: 90,
       sorter: (a, b) => (a.latest_consecutive_drawdown_pct ?? Number.NEGATIVE_INFINITY)
         - (b.latest_consecutive_drawdown_pct ?? Number.NEGATIVE_INFINITY),
       sortOrder: tableSort.columnKey === 'latest_consecutive_drawdown_pct' ? tableSort.order : null,
@@ -868,10 +894,11 @@ const HkMonitorPage: React.FC = () => {
       dataIndex: 'pct_change',
       key: 'pct_change',
       align: 'right',
+      width: 80,
       sorter: (a, b) => (a.pct_change ?? Number.NEGATIVE_INFINITY) - (b.pct_change ?? Number.NEGATIVE_INFINITY),
       sortOrder: tableSort.columnKey === 'pct_change' ? tableSort.order : null,
       render: (v: number | null) => (
-        <span className={`font-mono tabular-nums ${pctColor(v)}`}>{fmtPct(v)}</span>
+        <span className={`whitespace-nowrap font-mono tabular-nums ${pctColor(v)}`}>{fmtPct(v)}</span>
       ),
     },
   ], [tableSort]);
@@ -953,6 +980,7 @@ const HkMonitorPage: React.FC = () => {
                 rowKey="hk_code"
                 size="small"
                 tableLayout="fixed"
+                scroll={tableScrollY ? { y: tableScrollY } : undefined}
                 pagination={{ pageSize: 50, showSizeChanger: true }}
                 columns={columns}
                 dataSource={filteredItems}

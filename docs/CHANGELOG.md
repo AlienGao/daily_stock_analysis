@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 > For user-friendly release highlights, see the [GitHub Releases](https://github.com/ZhuLinsen/daily_stock_analysis/releases) page.
 
 ## [Unreleased]
+- [修复] 港股页左侧成份表格行高异常（整行被撑高）：距上轨/中轨/下轨/涨跌幅四列无显式宽度时会被量成 19px，`overflow-wrap: break-word` 将百分比逐字符竖排；改为给四列显式宽度并对数值单元格禁用换行
+- [改进] 港股页左侧成份表格支持独立滚动：表体高度适配视口，在表格内滚动且表头保持可见，页面不再随表格整体拉长，右侧面板高度继续与表格保持一致
 - [改进] 港股页「近3日止跌」止跌判定加严：连跌结束后需连收两根阳线（收盘价 > 开盘价，与前端 K 线阴阳一致）才判定为止跌，结束日之后仅走平/单日收阳的个股不再计入，Tab 标题同步标注「需连收两根阳线」
 - [改进] 港股页「日内数据」前端入口整体暂时下线（含分钟 BOLL 报警弹窗，均以前端注释保留实现与恢复入口），realtime 接口与「下午上涨」Tab 不受影响
 - [改进] 港股通分钟行情新增滚动保留策略：serve/API 进程每日自动清理最近 5 个交易日（`HK_GGT_MINUTE_RETENTION_DAYS`，默认 5）之前的分钟数据，保留窗口以表内已有交易日为准；新增 `HK_GGT_MINUTE_RETENTION_DAYS` 配置项
