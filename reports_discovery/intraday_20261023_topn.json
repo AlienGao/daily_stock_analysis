@@ -1,0 +1,178 @@
+[
+  {
+    "rank": 1,
+    "stock_code": "600600",
+    "stock_name": "青岛啤酒",
+    "score": 31.5,
+    "sector": "饮料制造",
+    "factor_scores": {
+      "ma_entry": 86.48628629032876,
+      "sector": 0.0,
+      "momentum": 44.47647280283129,
+      "ranking_momentum": 44.004506927645714,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线"
+    ],
+    "buy_price_low": 47.9,
+    "buy_price_high": 50.8,
+    "stop_loss": 50.27,
+    "take_profit_1": 52.02,
+    "take_profit_2": 54.61,
+    "discovered_at": "15:31:55",
+    "price_at_discovery": 50.5,
+    "pct_chg": 1.59,
+    "tech_score": 73.26,
+    "rr_score": 92.04152249134965,
+    "market_score": 28.61850165260857,
+    "sector_score": 75.05776090352042,
+    "volume_score": 65.0,
+    "position_score": 85,
+    "formation_score": 50.0,
+    "composite_score": 60.732
+  },
+  {
+    "rank": 2,
+    "stock_code": "300886",
+    "stock_name": "华业香料",
+    "score": 56.7,
+    "sector": "化学制品",
+    "factor_scores": {
+      "ma_entry": 32.764433238355195,
+      "sector": 0.0,
+      "momentum": 43.91581194024782,
+      "ranking_momentum": 96.14577096611497,
+      "rebound": 0.0,
+      "popularity": 93.98825436510457
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "排名连续上升(2天)",
+      "趋势加速↑(11.3%/天)",
+      "今日强于96%个股",
+      "人气飙升(+608位)",
+      "人气股上涨(+9.6%)"
+    ],
+    "buy_price_low": 21.4,
+    "buy_price_high": 23.3,
+    "stop_loss": 22.84,
+    "take_profit_1": 24.87,
+    "take_profit_2": 27.7,
+    "discovered_at": "15:31:55",
+    "price_at_discovery": 23.22,
+    "pct_chg": 8.25,
+    "tech_score": 62.09,
+    "rr_score": 79.82031789910168,
+    "market_score": 28.61850165260857,
+    "sector_score": 100.0,
+    "volume_score": 65.0,
+    "position_score": 75,
+    "formation_score": 20.0,
+    "composite_score": 60.473
+  },
+  {
+    "rank": 3,
+    "stock_code": "301584",
+    "stock_name": "建发致新",
+    "score": 42.0,
+    "sector": "医药商业",
+    "factor_scores": {
+      "ma_entry": 24.011985704421235,
+      "sector": 0.0,
+      "momentum": 44.67633182234795,
+      "ranking_momentum": 68.4252704395888,
+      "rebound": 0.0,
+      "popularity": 67.67766952966369
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "今日强于96%个股"
+    ],
+    "buy_price_low": 17.2,
+    "buy_price_high": 18.8,
+    "stop_loss": 18.45,
+    "take_profit_1": 19.56,
+    "take_profit_2": 21.97,
+    "discovered_at": "15:31:55",
+    "price_at_discovery": 18.62,
+    "pct_chg": 7.38,
+    "tech_score": 67.18,
+    "rr_score": 73.51955307262556,
+    "market_score": 28.61850165260857,
+    "sector_score": 96.74471306343915,
+    "volume_score": 65.0,
+    "position_score": 85,
+    "formation_score": 20.0,
+    "composite_score": 59.626000000000005
+  },
+  {
+    "rank": 4,
+    "stock_code": "300069",
+    "stock_name": "金利华电",
+    "score": 45.2,
+    "sector": "电网设备",
+    "factor_scores": {
+      "ma_entry": 24.556810619695014,
+      "sector": 0.0,
+      "momentum": 44.5831874078953,
+      "ranking_momentum": 65.12306249529738,
+      "rebound": 0.0,
+      "popularity": 79.07184641099553
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "趋势加速↑(5.3%/天)",
+      "人气飙升(+781位)",
+      "人气核心圈(排名1047)",
+      "人气股上涨(+6.5%)"
+    ],
+    "buy_price_low": 20.4,
+    "buy_price_high": 22.0,
+    "stop_loss": 21.01,
+    "take_profit_1": 23.39,
+    "take_profit_2": 28.82,
+    "discovered_at": "15:31:55",
+    "price_at_discovery": 21.61,
+    "pct_chg": 1.79,
+    "tech_score": 54.59,
+    "rr_score": 71.73287276914223,
+    "market_score": 28.61850165260857,
+    "sector_score": 16.39813348632624,
+    "volume_score": 65.0,
+    "position_score": 85,
+    "formation_score": 20.0,
+    "composite_score": 51.773
+  }
+]
