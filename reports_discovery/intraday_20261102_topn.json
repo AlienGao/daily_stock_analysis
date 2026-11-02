@@ -1,0 +1,181 @@
+[
+  {
+    "rank": 1,
+    "stock_code": "600739",
+    "stock_name": "辽宁成大",
+    "score": 50.8,
+    "sector": "生物制品",
+    "factor_scores": {
+      "ma_entry": 32.98440037250691,
+      "sector": 0.0,
+      "momentum": 33.14602973546477,
+      "ranking_momentum": 100.0,
+      "rebound": 0.0,
+      "popularity": 76.25236973674942
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "趋势加速↑(10.9%/天)",
+      "今日强于65%个股",
+      "人气飙升(+2307位)",
+      "人气核心圈(排名1096)",
+      "人气排名持续改善"
+    ],
+    "buy_price_low": 9.3,
+    "buy_price_high": 10.1,
+    "stop_loss": 9.88,
+    "take_profit_1": 10.27,
+    "take_profit_2": 10.85,
+    "discovered_at": "15:00:49",
+    "price_at_discovery": 9.95,
+    "pct_chg": 2.79,
+    "tech_score": 66.99,
+    "rr_score": 76.45051194539256,
+    "market_score": 32.89807887040105,
+    "sector_score": 95.07946148092735,
+    "volume_score": 90.0,
+    "position_score": 85,
+    "formation_score": 20.0,
+    "composite_score": 62.132999999999996
+  },
+  {
+    "rank": 2,
+    "stock_code": "600054",
+    "stock_name": "黄山旅游",
+    "score": 25.0,
+    "sector": "旅游及酒店",
+    "factor_scores": {
+      "ma_entry": 85.7082848261119,
+      "sector": 0.0,
+      "momentum": 15.99536325593347,
+      "ranking_momentum": 83.5096591377052,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线",
+      "趋势加速↑(22.2%/天)",
+      "拥挤惩罚(近5日选中3天-10分)"
+    ],
+    "buy_price_low": 9.8,
+    "buy_price_high": 10.4,
+    "stop_loss": 10.31,
+    "take_profit_1": 10.66,
+    "take_profit_2": 11.07,
+    "discovered_at": "15:00:49",
+    "price_at_discovery": 10.35,
+    "pct_chg": 1.67,
+    "tech_score": 75.14,
+    "rr_score": 100.0,
+    "market_score": 32.89807887040105,
+    "sector_score": 83.74374502890981,
+    "volume_score": 89.99998589142125,
+    "position_score": 75,
+    "formation_score": 50.0,
+    "composite_score": 60.098
+  },
+  {
+    "rank": 3,
+    "stock_code": "000544",
+    "stock_name": "中原环保",
+    "score": 26.1,
+    "sector": "环境治理",
+    "factor_scores": {
+      "ma_entry": 66.60048975722238,
+      "sector": 0.0,
+      "momentum": 32.55739031105004,
+      "ranking_momentum": 46.23241095486465,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线"
+    ],
+    "buy_price_low": 6.8,
+    "buy_price_high": 7.2,
+    "stop_loss": 7.09,
+    "take_profit_1": 7.31,
+    "take_profit_2": 7.6,
+    "discovered_at": "15:00:49",
+    "price_at_discovery": 7.1,
+    "pct_chg": 1.28,
+    "tech_score": 69.56,
+    "rr_score": 96.71052631578948,
+    "market_score": 32.89807887040105,
+    "sector_score": 61.522250295449965,
+    "volume_score": 61.06693324160665,
+    "position_score": 85,
+    "formation_score": 50.0,
+    "composite_score": 56.522
+  },
+  {
+    "rank": 4,
+    "stock_code": "603213",
+    "stock_name": "镇洋发展",
+    "score": 4.700000000000003,
+    "sector": "化学原料",
+    "factor_scores": {
+      "ma_entry": 85.83493518616164,
+      "sector": 0.0,
+      "momentum": 33.1042919015058,
+      "ranking_momentum": 71.7267242267821,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线",
+      "趋势加速↑(13.2%/天)",
+      "拥挤惩罚(近5日全勤-30分)"
+    ],
+    "buy_price_low": 13.2,
+    "buy_price_high": 13.7,
+    "stop_loss": 13.53,
+    "take_profit_1": 14.04,
+    "take_profit_2": 14.58,
+    "discovered_at": "15:00:49",
+    "price_at_discovery": 13.63,
+    "pct_chg": 0.0,
+    "tech_score": 71.96,
+    "rr_score": 95.98662207357815,
+    "market_score": 32.89807887040105,
+    "sector_score": 65.73195070070197,
+    "volume_score": 87.38555435273199,
+    "position_score": 75,
+    "formation_score": 50.0,
+    "composite_score": 51.782
+  }
+]
