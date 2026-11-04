@@ -1835,8 +1835,10 @@ const BrokerRecommendPage: React.FC = () => {
       render: (_, row) => {
         const nt = row.nineturn;
         if (!nt) return <span className="text-xs text-tertiary-text">--</span>;
-        const showNineUp = nt.nine_up_turn && (!nt.up_count || nt.up_count <= 9);
-        const showNineDown = nt.nine_down_turn && (!nt.down_count || nt.down_count <= 9);
+        // Tushare stk_nineturn：nine_up_turn=+9 表示上九转信号，nine_down_turn=-9 表示下九转信号，
+        // up_count/down_count 会继续累计（可 >9），不能据此抑制 9 转信号
+        const showNineUp = nt.nine_up_turn > 0;
+        const showNineDown = nt.nine_down_turn < 0;
         if (showNineUp) return <span className="text-xs text-emerald-400 font-medium">上涨9转</span>;
         if (showNineDown) return <span className="text-xs text-red-400 font-medium">下跌9转</span>;
         if (nt.up_count || nt.down_count) return (
@@ -1859,14 +1861,14 @@ const BrokerRecommendPage: React.FC = () => {
         const hasPrice = fc.min_price != null || fc.max_price != null;
         const hasImpDg = !!fc.imp_dg;
         if (!hasRating && !hasPrice && !hasImpDg) return <span className="text-xs text-tertiary-text">--</span>;
+        // 目标价区间退化（min==max）时只显示单值，避免出现 "108.25~108.25"
+        const targetPriceText = fc.min_price != null && fc.max_price != null && fc.min_price === fc.max_price
+          ? fc.min_price.toFixed(2)
+          : `${fc.min_price != null ? fc.min_price.toFixed(2) : '?'}~${fc.max_price != null ? fc.max_price.toFixed(2) : '?'}`;
         return (
           <div className="text-xs">
             {hasRating && <div className="font-medium text-cyan-400">{fc.rating}</div>}
-            {hasPrice && (
-              <div className="text-secondary-text">
-                {fc.min_price != null ? fc.min_price!.toFixed(2) : '?'}~{fc.max_price != null ? fc.max_price!.toFixed(2) : '?'}
-              </div>
-            )}
+            {hasPrice && <div className="text-secondary-text">{targetPriceText}</div>}
             {hasImpDg && <div className="text-tertiary-text">{fc.imp_dg}</div>}
           </div>
         );

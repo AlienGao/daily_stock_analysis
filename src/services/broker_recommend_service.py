@@ -258,7 +258,8 @@ class BrokerRecommendService:
             wavg = data.get("weight_avg")
             if c5 is not None and c95 is not None and wavg and float(wavg) > 0:
                 try:
-                    data["concentration"] = round((float(c95) - float(c5)) / float(wavg), 4)
+                    # concentration 统一为百分比（与 scr90 同口径），前端直接按 % 展示
+                    data["concentration"] = round((float(c95) - float(c5)) / float(wavg) * 100, 2)
                 except (ValueError, TypeError):
                     pass
         if "scr90" not in data or data["scr90"] is None:
@@ -593,7 +594,7 @@ class BrokerRecommendService:
                         result[ts_code] = {
                             "cost_avg": round(cost_avg, 2),
                             "winner_rate": round(winner_rate, 4),
-                            "concentration": round(concentration, 4),
+                            "concentration": round(concentration * 100, 2),
                             "cost_5pct": cost_low_90,
                             "cost_15pct": cost_low_70,
                             "cost_50pct": None,
@@ -641,7 +642,7 @@ class BrokerRecommendService:
                         "cost_avg": round(weight_avg, 2),
                         "winner_rate": round(winner_rate, 4),
                         "concentration": round(
-                            (cost_95 - cost_5) / weight_avg, 4
+                            (cost_95 - cost_5) / weight_avg * 100, 2
                         ) if weight_avg > 0 else None,
                         "scr90": scr90,
                         "cost_5pct": cost_5,
@@ -2859,7 +2860,7 @@ class BrokerRecommendService:
                         cyq_data[ts_code] = {
                             "cost_avg": round(weight_avg, 2),
                             "winner_rate": round(winner_rate, 4),
-                            "concentration": round((cost_95 - cost_5) / weight_avg, 4) if weight_avg > 0 else None,
+                            "concentration": round((cost_95 - cost_5) / weight_avg * 100, 2) if weight_avg > 0 else None,
                         }
                 if cyq_data:
                     for ts_code, data in cyq_data.items():

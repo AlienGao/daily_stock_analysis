@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 > For user-friendly release highlights, see the [GitHub Releases](https://github.com/ZhuLinsen/daily_stock_analysis/releases) page.
 
 ## [Unreleased]
+- [修复] 金股页「全部金股明细」集中度/九转信号/盈利预测展示错误：集中度 `concentration` 由比率统一改为百分比（与 `scr90` 同口径，修复大量个股显示 0.2% 而非 20%）；九转信号按 `nine_up_turn=+9`/`nine_down_turn=-9` 锁存语义展示，不再被 >9 的累计计数压掉；盈利预测目标价 `min==max` 时只显示单值
 - [修复] 港股页左侧成份表格行高异常（整行被撑高）：距上轨/中轨/下轨/涨跌幅四列无显式宽度时会被量成 19px，`overflow-wrap: break-word` 将百分比逐字符竖排；改为给四列显式宽度并对数值单元格禁用换行
 - [改进] 港股页左侧成份表格支持独立滚动：表体高度适配视口，在表格内滚动且表头保持可见，页面不再随表格整体拉长，右侧面板高度继续与表格保持一致
 - [改进] 港股页「近3日止跌」止跌判定加严：连跌结束后需连收两根阳线（收盘价 > 开盘价，与前端 K 线阴阳一致）才判定为止跌，结束日之后仅走平/单日收阳的个股不再计入，Tab 标题同步标注「需连收两根阳线」
