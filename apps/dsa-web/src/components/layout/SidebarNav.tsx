@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Activity, ArrowUpRight, BarChart3, Brain, Compass, Globe2, Home, LogOut, PieChart, Search, Settings2, Sliders, TrendingUp, Users } from 'lucide-react';
+import { Activity, ArrowUpRight, BarChart3, Brain, Compass, Database, Globe2, Home, LogOut, PieChart, Search, Settings2, Sliders, TrendingUp, Users } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { SCREENING_CONFIG_CHANGED_EVENT, SYSTEM_CONFIG_CHANGED_EVENT, screeningApi } from '../../api/screening';
 import { useAuth } from '../../contexts/AuthContext';
@@ -42,6 +42,7 @@ const NAV_ITEMS: NavItem[] = [
   // { key: 'chat', labelKey: 'layout.nav.chat', to: '/chat', icon: MessageSquareQuote, badge: 'completion' },
   { key: 'screening', labelKey: 'layout.nav.screening', to: '/screening', icon: Search },
   // { key: 'decision-signals', labelKey: 'layout.nav.decisionSignals', to: '/decision-signals', icon: Activity },
+  { key: 'data', labelKey: 'layout.nav.dataCenter', to: '/data', icon: Database },
   { key: 'settings', labelKey: 'layout.nav.settings', to: '/settings', icon: Settings2 },
 ];
 

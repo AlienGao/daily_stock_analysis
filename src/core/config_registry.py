@@ -77,6 +77,9 @@ _CATEGORY_DEFINITIONS: List[Dict[str, Any]] = [
 ]
 
 WEB_SETTINGS_HIDDEN_FROM_UI = {
+    # Optional FXMacroData authorization is read from the process environment
+    # when a tool runs; it is not a Web settings or model-input field.
+    "FXMACRODATA_API_KEY",
     "DATABASE_PATH",
     "SQLITE_WAL_ENABLED",
     "SQLITE_BUSY_TIMEOUT_MS",
@@ -86,6 +89,9 @@ WEB_SETTINGS_HIDDEN_FROM_UI = {
     "PROXY_HOST",
     "PROXY_PORT",
     "SEARXNG_TIMEOUT_SECONDS",
+    # CLI-only schedule-mode behavior (python main.py --schedule); the WebUI
+    # runtime scheduler does not consult the startup dedup gate.
+    "SCHEDULE_STARTUP_DEDUP",
 }
 
 _FIELD_DEFINITIONS: Dict[str, Dict[str, Any]] = {
@@ -658,6 +664,24 @@ _FIELD_DEFINITIONS: Dict[str, Dict[str, Any]] = {
         ],
         "warning_codes": [],
     },
+    "MODELFLARE_KEY": {
+        "title": "Modelflare API Key",
+        "description": "Modelflare API key. Automatically enables its channel with the default endpoint and model; explicit channel configuration takes precedence.",
+        "category": "ai_model",
+        "data_type": "string",
+        "ui_control": "password",
+        "is_sensitive": True,
+        "is_required": False,
+        "is_editable": True,
+        "default_value": None,
+        "options": [],
+        "validation": {},
+        "display_order": 4,
+        "help_key": "settings.ai_model.provider_keys",
+        "examples": ["MODELFLARE_KEY=sk-xxxx"],
+        "docs": [{"label": "LLM 配置指南", "href": "https://github.com/ZhuLinsen/daily_stock_analysis/blob/main/docs/LLM_CONFIG_GUIDE.md"}],
+        "warning_codes": ["secret_value"],
+    },
     "AIHUBMIX_KEY": {
         "title": "AIHubmix Key",
         "description": "AIHubmix one-stop API key – access all mainstream models with a single key, no VPN required. Auto-sets base URL to aihubmix.com/v1. Get key: https://inferera.com/?aff=CfMq",
@@ -860,6 +884,34 @@ _FIELD_DEFINITIONS: Dict[str, Dict[str, Any]] = {
         "options": [],
         "validation": {},
         "display_order": 18,
+    },
+    "MX_APIKEY": {
+        "title": "MiaoXiang (MX_API) API Key",
+        "description": "API key for the optional MiaoXiang supplementary data provider (chip distribution / per-stock capital flow). Only used when the primary eastmoney endpoints fail or are rate-limited; not configured means no behavior change.",
+        "category": "data_source",
+        "data_type": "string",
+        "ui_control": "password",
+        "is_sensitive": True,
+        "is_required": False,
+        "is_editable": True,
+        "default_value": None,
+        "options": [],
+        "validation": {},
+        "display_order": 20,
+    },
+    "MX_PRIORITY": {
+        "title": "MiaoXiang Data Source Priority",
+        "description": "Priority for the MiaoxiangFetcher supplementary data source. Lower numbers are tried earlier. The fetcher never participates in daily K-line fetching.",
+        "category": "data_source",
+        "data_type": "integer",
+        "ui_control": "number",
+        "is_sensitive": False,
+        "is_required": False,
+        "is_editable": True,
+        "default_value": "6",
+        "options": [],
+        "validation": {"min": 0, "max": 99},
+        "display_order": 21,
     },
     "TICKFLOW_BATCH_SIZE": {
         "title": "TickFlow Batch Size",
@@ -3990,7 +4042,7 @@ _FIELD_DEFINITIONS: Dict[str, Dict[str, Any]] = {
     },
     "AGENT_BACKEND": {
         "title": "Ask-Stock Backend",
-        "description": "Choose how the ask-stock Chat runs. Auto keeps the current default-model route and never selects experimental Codex automatically.",
+        "description": "Choose how the ask-stock Chat runs. Auto keeps the current default-model route.",
         "category": "agent",
         "data_type": "string",
         "ui_control": "select",
@@ -4001,15 +4053,13 @@ _FIELD_DEFINITIONS: Dict[str, Dict[str, Any]] = {
         "options": [
             {"label": "Auto (recommended)", "value": "auto"},
             {"label": "Default model settings", "value": "litellm"},
-            {"label": "Codex local Agent (experimental)", "value": "codex_app_server"},
         ],
-        "validation": {"enum": ["auto", "litellm", "codex_app_server"]},
+        "validation": {"enum": ["auto", "litellm"]},
         "display_order": 2,
         "help_key": "settings.agent.AGENT_BACKEND",
         "examples": [
             "AGENT_BACKEND=auto",
             "AGENT_BACKEND=litellm",
-            "AGENT_BACKEND=codex_app_server",
         ],
         "docs": [
             {
@@ -4050,7 +4100,7 @@ _FIELD_DEFINITIONS: Dict[str, Dict[str, Any]] = {
     },
     "AGENT_MAX_STEPS": {
         "title": "Agent Max Steps",
-        "description": f"Maximum reasoning-step limit for the default-model Agent and per-turn tool-call limit for Codex. At the default ({AGENT_MAX_STEPS_DEFAULT}), each default-model sub-agent keeps its own preset. When raised above {AGENT_MAX_STEPS_DEFAULT}, all sub-agents adopt this value. When lowered below a sub-agent's preset, that sub-agent is capped at this value.",
+        "description": f"Maximum reasoning-step limit for the default-model Agent. At the default ({AGENT_MAX_STEPS_DEFAULT}), each default-model sub-agent keeps its own preset. When raised above {AGENT_MAX_STEPS_DEFAULT}, all sub-agents adopt this value. When lowered below a sub-agent's preset, that sub-agent is capped at this value.",
         "category": "agent",
         "data_type": "integer",
         "ui_control": "number",
@@ -4215,7 +4265,7 @@ _FIELD_DEFINITIONS: Dict[str, Dict[str, Any]] = {
     },
     "AGENT_ORCHESTRATOR_TIMEOUT_S": {
         "title": "Agent Timeout",
-        "description": "Shared timeout budget in seconds for Agent execution. Single-agent runs use it as the overall ReAct loop budget; multi-agent mode uses it as the cooperative pipeline budget. Set to 0 to disable only for the default LiteLLM path; Codex requires a positive value so every request ends within a known time.",
+        "description": "Shared timeout budget in seconds for Agent execution. Single-agent runs use it as the overall ReAct loop budget; multi-agent mode uses it as the cooperative pipeline budget. Set to 0 to disable the timeout.",
         "category": "agent",
         "data_type": "integer",
         "ui_control": "number",
@@ -4930,6 +4980,19 @@ _FIELD_HELP_METADATA: Dict[str, Dict[str, Any]] = {
     "TICKFLOW_PRIORITY": {
         "help_key": "settings.data_source.TICKFLOW_PRIORITY",
         "examples": ["TICKFLOW_PRIORITY=2"],
+        "docs": _DOC_FULL_GUIDE_DATA_SOURCE,
+    },
+    "MX_APIKEY": {
+        "help_key": "settings.data_source.MX_APIKEY",
+        "examples": [
+            "MX_APIKEY=mkt_your_miaoxiang_key",
+        ],
+        "docs": _DOC_FULL_GUIDE_DATA_SOURCE,
+        "warning_codes": ["secret_value"],
+    },
+    "MX_PRIORITY": {
+        "help_key": "settings.data_source.MX_PRIORITY",
+        "examples": ["MX_PRIORITY=6"],
         "docs": _DOC_FULL_GUIDE_DATA_SOURCE,
     },
     "TICKFLOW_KLINE_ADJUST": {

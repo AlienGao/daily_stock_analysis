@@ -243,6 +243,7 @@ class SearchResult:
     relevance_score: Optional[int] = None
     relevance_category: Optional[str] = None
     relevance_reasons: Optional[List[str]] = None
+    retrieved_at: Optional[str] = None  # 首次实际检索完成时间（UTC）；缓存读取不刷新
     
     def to_text(self) -> str:
         """转换为文本格式"""
@@ -268,6 +269,13 @@ class SearchResponse:
     error_message: Optional[str] = None
     search_time: float = 0.0  # 搜索耗时（秒）
     
+    def mark_retrieved(self) -> None:
+        """Record actual acquisition once; preserve timestamps on cached/copied results."""
+        retrieved_at = datetime.now(timezone.utc).isoformat()
+        for result in self.results:
+            if result.retrieved_at is None:
+                result.retrieved_at = retrieved_at
+
     def to_context(self, max_results: int = 5) -> str:
         """将搜索结果转换为可用于 AI 分析的上下文"""
         if not self.success or not self.results:
@@ -375,6 +383,7 @@ class BaseSearchProvider(ABC):
             response.search_time = time.time() - start_time
 
             if response.success:
+                response.mark_retrieved()
                 self._record_success(api_key)
                 logger.info(f"[{self._name}] 搜索 '{query}' 成功，返回 {len(response.results)} 条结果，耗时 {response.search_time:.2f}s")
             else:
@@ -527,6 +536,7 @@ class TavilySearchProvider(BaseSearchProvider):
             response.search_time = time.time() - start_time
 
             if response.success:
+                response.mark_retrieved()
                 self._record_success(api_key)
                 logger.info(f"[{self._name}] 搜索 '{query}' 成功，返回 {len(response.results)} 条结果，耗时 {response.search_time:.2f}s")
             else:
@@ -2762,6 +2772,7 @@ class SearXNGSearchProvider(BaseSearchProvider):
             )
             response.search_time = time.time() - start_time
             if response.success:
+                response.mark_retrieved()
                 logger.info(
                     "[%s] 搜索 '%s' 成功，实例=%s，返回 %s 条结果，耗时 %.2fs",
                     self.name,
@@ -2997,7 +3008,7 @@ class SearchService:
             "news_strategy_profile": news_strategy_profile,
         }
         self._providers: List[BaseSearchProvider] = []
-        self._intel_cache: Dict[str, Dict[str, SearchResponse]] = {}
+        self._intel_cache: Dict[str, Dict[str, Tuple[float, SearchResponse]]] = {}
         self.news_max_age_days = max(1, news_max_age_days)
         raw_profile = (news_strategy_profile or "short").strip().lower()
         self.news_strategy_profile = normalize_news_strategy_profile(news_strategy_profile)
@@ -3391,7 +3402,24 @@ class SearchService:
             return
         if key not in self._intel_cache:
             self._intel_cache[key] = {}
-        self._intel_cache[key][dimension] = response
+        self._intel_cache[key][dimension] = (time.time(), response)
+
+    def _get_intel_cache_dimension(self, stock_code: str, dimension: str) -> Optional['SearchResponse']:
+        """Return a fresh intel-cache entry, dropping it once its TTL lapses.
+
+        The intel cache exists to dedupe cross-method lookups within one run;
+        it must not outlive the provider cache, otherwise a long-lived service
+        keeps serving stale news after ``_cache_ttl`` has expired.
+        """
+        key = str(stock_code or "").strip()
+        entry = (self._intel_cache.get(key) or {}).get(dimension)
+        if entry is None:
+            return None
+        stored_at, response = entry
+        if time.time() - stored_at > self._cache_ttl:
+            self._intel_cache.get(key, {}).pop(dimension, None)
+            return None
+        return response
 
     def _effective_news_window_days(self) -> int:
         """Resolve effective news window from strategy profile and global max-age."""
@@ -3946,6 +3974,7 @@ class SearchService:
             relevance_score=score,
             relevance_category=category,
             relevance_reasons=reasons,
+            retrieved_at=item.retrieved_at,
         )
 
     @classmethod
@@ -4308,6 +4337,7 @@ class SearchService:
                             relevance_score=item.relevance_score,
                             relevance_category=item.relevance_category,
                             relevance_reasons=item.relevance_reasons,
+                            retrieved_at=item.retrieved_at,
                         )
                     )
                     if len(filtered) >= max_results:
@@ -4332,6 +4362,7 @@ class SearchService:
                     relevance_score=item.relevance_score,
                     relevance_category=item.relevance_category,
                     relevance_reasons=item.relevance_reasons,
+                    retrieved_at=item.retrieved_at,
                 )
             )
             if len(filtered) >= max_results:
@@ -4385,6 +4416,7 @@ class SearchService:
                     relevance_score=item.relevance_score,
                     relevance_category=item.relevance_category,
                     relevance_reasons=item.relevance_reasons,
+                    retrieved_at=item.retrieved_at,
                 )
             )
 
@@ -4688,9 +4720,10 @@ class SearchService:
 
         # 优先命中跨方法共享缓存（来自 search_comprehensive_intel 或同进程前次调用）
         intel_key = str(stock_code or "").strip()
-        if intel_key in self._intel_cache and "latest_news" in self._intel_cache[intel_key]:
+        intel_cached = self._get_intel_cache_dimension(intel_key, "latest_news")
+        if intel_cached is not None:
             logger.info(f"新闻搜索命中 intel_cache: {stock_name}({stock_code})")
-            return self._intel_cache[intel_key]["latest_news"]
+            return intel_cached
 
         cache_key = self._cache_key(
             (
@@ -5000,9 +5033,20 @@ class SearchService:
             {维度名称: SearchResponse} 字典
         """
         cache_key = str(stock_code or "").strip()
-        if cache_key in self._intel_cache:
-            logger.info("情报搜索命中缓存: %s(%s), %d 个维度", stock_name, stock_code, len(self._intel_cache[cache_key]))
-            return dict(self._intel_cache[cache_key])
+        cached_dims = self._intel_cache.get(cache_key) or {}
+        now = time.time()
+        fresh = {
+            dim: response
+            for dim, (stored_at, response) in cached_dims.items()
+            if now - stored_at <= self._cache_ttl
+        }
+        if cached_dims and len(fresh) == len(cached_dims):
+            logger.info("情报搜索命中缓存: %s(%s), %d 个维度", stock_name, stock_code, len(fresh))
+            return dict(fresh)
+        if cached_dims:
+            # Drop stale dimensions so a partially-expired entry is recomputed
+            # instead of being reused past its TTL.
+            self._intel_cache[cache_key] = {dim: (ts, resp) for dim, (ts, resp) in cached_dims.items() if dim in fresh}
 
         results = {}
         search_count = 0
@@ -5236,7 +5280,10 @@ class SearchService:
             time.sleep(0.5)
 
         if results:
-            self._intel_cache[cache_key] = dict(results)
+            stored_at = time.time()
+            self._intel_cache[cache_key] = {
+                dim: (stored_at, response) for dim, response in results.items()
+            }
         return results
     
     def format_intel_report(self, intel_results: Dict[str, SearchResponse], stock_name: str) -> str:

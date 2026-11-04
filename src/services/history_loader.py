@@ -19,6 +19,10 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 _CACHE_MIN_RECORDS = 30
 
+
+class HistoryIdentityError(ValueError):
+    """A strict tool identity cannot be preserved by the history read path."""
+
 # ---------------------------------------------------------------------------
 # Frozen target date (ContextVar) – set once per stock in pipeline, read by
 # all agent tool threads via copy_context().run().
@@ -60,11 +64,15 @@ def _get_fetcher_manager():
 # ---------------------------------------------------------------------------
 # DB-first history loader
 # ---------------------------------------------------------------------------
-def _history_code_candidates(stock_code: str) -> Tuple[List[str], str]:
+def _history_code_candidates(stock_code: str, stock_identity=None) -> Tuple[List[str], str]:
     from data_provider.base import canonical_stock_code, normalize_stock_code
     from src.services.stock_list_parser import ParseStatus, parse_analysis_target
 
     raw_code = str(stock_code or "").strip()
+    if stock_identity is not None:
+        if raw_code != stock_identity.stock_code:
+            raise HistoryIdentityError("History identity does not match the bound tool code")
+        return [stock_identity.stock_code], stock_identity.stock_code
     target = parse_analysis_target(raw_code)
     if target.asset_type == ParseStatus.INDEX:
         # Explicit index identities keep their canonical bucket (``sh000016``
@@ -110,8 +118,8 @@ def _bar_date(bar: Any) -> date:
     return date.min
 
 
-def _select_best_bars(db, stock_code: str, start: date, end: date) -> Tuple[Optional[str], list]:
-    candidates, normalized_code = _history_code_candidates(stock_code)
+def _select_best_bars(db, stock_code: str, start: date, end: date, stock_identity=None) -> Tuple[Optional[str], list]:
+    candidates, normalized_code = _history_code_candidates(stock_code, stock_identity)
     best_code = None
     best_bars = []
     best_key = None
@@ -143,6 +151,12 @@ def load_history_df(
     both paths fail.
     """
     from src.storage import get_db
+    from src.agent.tools.execution import get_tool_stock_identity, get_tool_analysis_target
+
+    # Resolve before the cache/provider exception boundaries. A lost strict
+    # binding is not a cache miss and must never enter untyped fallback.
+    identity = get_tool_stock_identity(stock_code)
+    analysis_target = get_tool_analysis_target(stock_code)
 
     # Resolve effective end date
     if target_date is not None:
@@ -160,43 +174,43 @@ def load_history_df(
         start = end - timedelta(days=int(days * 1.8) + 10)
         required_records = max(_CACHE_MIN_RECORDS, min(days, max(int(days * 0.6), 1)))
 
-    start_slack = timedelta(days=7)
     range_query = start_date is not None
 
     # 显式区间（如金股近 6 月）不走 DB 快捷路径，避免只命中近月残缺缓存
     if not range_query:
         try:
             db = get_db()
-            _code, bars = _select_best_bars(db, stock_code, start, end)
+            _code, bars = _select_best_bars(db, stock_code, start, end, identity)
             latest_date = max((_bar_date(bar) for bar in bars), default=date.min)
-            earliest_date = min((_bar_date(bar) for bar in bars), default=date.max)
-            if (
-                bars
-                and latest_date >= end
-                and earliest_date <= start + start_slack
-                and len(bars) >= required_records
-            ):
+            if bars and latest_date >= end and len(bars) >= required_records:
                 df = pd.DataFrame([b.to_dict() for b in bars])
                 logger.debug(
                     "load_history_df(%s): %d bars from DB [%s..%s], requested %d",
                     stock_code, len(df), start, end, days,
                 )
                 return df, "db_cache"
+        except HistoryIdentityError:
+            raise
         except Exception as e:
             logger.debug("load_history_df(%s): DB read failed: %s", stock_code, e)
 
-    fetch_days = days
-    if range_query:
-        fetch_days = max(days, int(span_calendar * 0.65) + 10)
-
+    # --- 2. Network fallback via singleton DataFetcherManager -------------
+    fallback_kwargs = {}
+    if identity is not None:
+        fallback_kwargs["analysis_target"] = analysis_target
     try:
         manager = _get_fetcher_manager()
-        df, source = manager.get_daily_data(
-            stock_code,
-            start_date=start.strftime("%Y%m%d"),
-            end_date=end.strftime("%Y%m%d"),
-            days=fetch_days,
-        )
+        if range_query:
+            fetch_days = max(days, int(span_calendar * 0.65) + 10)
+            df, source = manager.get_daily_data(
+                stock_code,
+                start_date=start.strftime("%Y%m%d"),
+                end_date=end.strftime("%Y%m%d"),
+                days=fetch_days,
+                **fallback_kwargs,
+            )
+        else:
+            df, source = manager.get_daily_data(stock_code, days=days, **fallback_kwargs)
         if df is not None and not df.empty:
             if range_query and "date" in df.columns:
                 dt = pd.to_datetime(df["date"], errors="coerce")

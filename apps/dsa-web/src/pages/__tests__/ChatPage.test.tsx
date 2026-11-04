@@ -5,6 +5,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createParsedApiError } from '../../api/error';
 import { UiLanguageProvider } from '../../contexts/UiLanguageContext';
 import { historyApi } from '../../api/history';
+import type { ActiveStockContext } from '../../api/agent';
 import type { Message, ProgressStep } from '../../stores/agentChatStore';
 import type { StockIndexItem } from '../../types/stockIndex';
 import { UI_LANGUAGE_STORAGE_KEY } from '../../utils/uiLanguage';
@@ -77,12 +78,15 @@ const mockLoadInitialSession = vi.fn();
 const mockSwitchSession = vi.fn();
 const mockStartStream = vi.fn();
 const mockStopStream = vi.fn();
+const mockRefreshSession = vi.fn();
 const mockClearCompletionBadge = vi.fn();
 const mockStartNewChat = vi.fn();
 
 const mockStoreState = {
   messages: [] as Message[],
   selectedSkillIds: null as string[] | null,
+  activeStockContext: null as ActiveStockContext | null,
+  stateContract: 'unbound' as 'unbound' | 'authoritative' | 'legacy',
   loading: false,
   progressSteps: [] as ProgressStep[],
   sessionId: 'session-1',
@@ -96,14 +100,13 @@ const mockStoreState = {
     },
   ],
   sessionsLoading: false,
-  chatError: null,
-  stopping: false,
-  terminalStatus: null as 'cancelled' | 'timeout' | null,
-  stopError: false,
+  chatError: null as ReturnType<typeof createParsedApiError> | null,
+  terminalStatus: null as 'timeout' | null,
   loadSessions: mockLoadSessions,
   loadInitialSession: mockLoadInitialSession,
   switchSession: mockSwitchSession,
   stopStream: mockStopStream,
+  refreshSession: mockRefreshSession,
   startStream: mockStartStream,
   clearCompletionBadge: mockClearCompletionBadge,
 };
@@ -211,13 +214,13 @@ beforeEach(() => {
   window.localStorage.removeItem(UI_LANGUAGE_STORAGE_KEY);
   mockGetStatus.mockReset();
   mockStoreState.messages = [];
+  mockStoreState.activeStockContext = null;
+  mockStoreState.stateContract = 'unbound';
   mockStoreState.selectedSkillIds = null;
   mockStoreState.loading = false;
   mockStoreState.progressSteps = [];
   mockStoreState.chatError = null;
-  mockStoreState.stopping = false;
   mockStoreState.terminalStatus = null;
-  mockStoreState.stopError = false;
   mockStoreState.sessionsLoading = false;
   mockStoreState.sessionId = 'session-1';
   mockStoreState.sessions = [
@@ -284,27 +287,6 @@ beforeEach(() => {
 });
 
 describe('ChatPage', () => {
-  it('lets the user stop an active Codex analysis from the existing Chat composer', async () => {
-    mockGetStatus.mockResolvedValueOnce({
-      backend: 'codex_app_server',
-      available: true,
-      experimental: true,
-      errorCode: null,
-      message: null,
-    });
-    mockStoreState.loading = true;
-
-    render(
-      <MemoryRouter initialEntries={['/chat']}>
-        <ChatPage />
-      </MemoryRouter>
-    );
-
-    fireEvent.click(await screen.findByRole('button', { name: '停止分析' }));
-
-    expect(mockStopStream).toHaveBeenCalledTimes(1);
-    expect(screen.queryByRole('button', { name: '发送' })).not.toBeInTheDocument();
-  });
 
   it('keeps the existing waiting state for LiteLLM without offering a false stop', async () => {
     mockStoreState.loading = true;
@@ -318,87 +300,6 @@ describe('ChatPage', () => {
     expect(await screen.findByRole('button', { name: '处理中...' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: '停止分析' })).not.toBeInTheDocument();
     expect(mockStopStream).not.toHaveBeenCalled();
-  });
-
-  it('labels the stop action in English when the UI language is English', async () => {
-    window.localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, 'en');
-    mockGetStatus.mockResolvedValueOnce({
-      backend: 'codex_app_server',
-      available: true,
-      experimental: true,
-      errorCode: null,
-      message: null,
-    });
-    mockStoreState.loading = true;
-
-    render(
-      <UiLanguageProvider>
-        <MemoryRouter initialEntries={['/chat']}>
-          <ChatPage />
-        </MemoryRouter>
-      </UiLanguageProvider>,
-    );
-
-    expect(await screen.findByRole('button', { name: 'Stop analysis' })).toBeInTheDocument();
-  });
-
-  it('shows a disabled stopping state until Codex confirms cleanup', async () => {
-    mockGetStatus.mockResolvedValueOnce({
-      backend: 'codex_app_server',
-      available: true,
-      experimental: true,
-      errorCode: null,
-      message: null,
-    });
-    mockStoreState.loading = true;
-    mockStoreState.stopping = true;
-
-    render(
-      <MemoryRouter initialEntries={['/chat']}>
-        <ChatPage />
-      </MemoryRouter>,
-    );
-
-    const button = await screen.findByRole('button', { name: '正在停止…' });
-    expect(button).toBeDisabled();
-  });
-
-  it('shows a plain-language terminal status after cancellation', async () => {
-    mockStoreState.terminalStatus = 'cancelled';
-
-    render(
-      <MemoryRouter initialEntries={['/chat']}>
-        <ChatPage />
-      </MemoryRouter>,
-    );
-
-    expect(await screen.findByRole('status')).toHaveTextContent('本次分析已停止，后台任务也已结束。');
-  });
-
-  it('shows the current backend in the existing Chat header', async () => {
-    mockGetStatus.mockResolvedValueOnce({
-      backend: 'codex_app_server',
-      available: true,
-      experimental: true,
-      errorCode: null,
-      message: null,
-    });
-
-    render(
-      <MemoryRouter initialEntries={['/chat']}>
-        <ChatPage />
-      </MemoryRouter>,
-    );
-
-    expect(await screen.findByText('Codex Agent · 实验')).toBeInTheDocument();
-    expect(screen.getByText('Codex 当前可用范围')).toBeInTheDocument();
-    expect(screen.getByText(/实时行情、新闻、市场热点/)).toBeInTheDocument();
-    expect(screen.getByText('使用已保存的分析上下文和回测汇总，向 Codex 询问个股。')).toBeInTheDocument();
-    expect(screen.getByText(/Codex 将基于已保存的分析上下文和回测汇总回答/)).toBeInTheDocument();
-    expect(screen.queryByText(/AI 将调用实时数据工具/)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '切换问股方式' })).toBeInTheDocument();
-    expect(mockGetStatus).toHaveBeenCalledTimes(1);
-    expect(screen.getByPlaceholderText(/分析 600519/)).toBeEnabled();
   });
 
   it('finishes the compatibility check when React Strict Mode remounts effects', async () => {
@@ -436,9 +337,9 @@ describe('ChatPage', () => {
     expect(screen.getByRole('button', { name: '分析比亚迪趋势' })).toBeDisabled();
     expect(screen.getByText(/不会调用模型或读取股票数据/)).toBeInTheDocument();
     status.resolve({
-      backend: 'codex_app_server',
+      backend: 'litellm',
       available: true,
-      experimental: true,
+      experimental: false,
       errorCode: null,
       message: null,
     });
@@ -452,9 +353,9 @@ describe('ChatPage', () => {
     mockGetStatus.mockResolvedValueOnce({
       backend: 'codex_app_server',
       available: false,
-      experimental: true,
-      errorCode: 'command_not_found',
-      message: 'Codex was not found',
+      experimental: false,
+      errorCode: 'backend_removed',
+      message: 'Codex App Server has been removed',
     });
     const router = createMemoryRouter(
       [
@@ -497,7 +398,7 @@ describe('ChatPage', () => {
     const stream = createDeferred<void>();
     let onAccepted: ((event: {
       type: 'accepted';
-      backend: 'litellm' | 'codex_app_server';
+      backend: 'litellm';
       request_id: string;
       session_id: string;
     }) => void) | undefined;
@@ -522,7 +423,7 @@ describe('ChatPage', () => {
     act(() => {
       onAccepted?.({
         type: 'accepted',
-        backend: 'codex_app_server',
+        backend: 'litellm',
         request_id: 'request-accepted',
         session_id: 'session-1',
       });
@@ -535,356 +436,93 @@ describe('ChatPage', () => {
     });
   });
 
-  it('resolves a registered index name to its canonical code without stripping the prefix', async () => {
-    mockGetStatus.mockResolvedValueOnce({
-      backend: 'codex_app_server',
-      available: true,
-      experimental: true,
-      errorCode: null,
-      message: null,
-    });
-    let sentPayload: { context?: { stock_code: string; stock_name: string | null } } | undefined;
-    mockStartStream.mockImplementation(async (payload) => {
-      sentPayload = payload as typeof sentPayload;
-    });
-
-    render(
-      <MemoryRouter initialEntries={['/chat']}>
-        <ChatPage />
-      </MemoryRouter>,
-    );
-
-    const input = await screen.findByPlaceholderText(/分析 600519/);
-    fireEvent.change(input, { target: { value: '分析上证指数' } });
-    fireEvent.click(screen.getByRole('button', { name: '发送' }));
-    await waitFor(() => expect(mockStartStream).toHaveBeenCalledTimes(1));
-
-    // sh000001 (上证指数) must be preserved verbatim — normalizeStockCode would
-    // strip it to 000001 and collide with 平安银行 (000001.SZ).
-    expect(sentPayload?.context?.stock_code).toBe('sh000001');
-    expect(sentPayload?.context?.stock_name).toBe('上证指数');
-  });
-
-  it('resolves a registered CSI index display alias to its canonical code', async () => {
-    mockGetStatus.mockResolvedValueOnce({
-      backend: 'codex_app_server',
-      available: true,
-      experimental: true,
-      errorCode: null,
-      message: null,
-    });
-    let sentPayload: { context?: { stock_code: string; stock_name: string | null } } | undefined;
-    mockStartStream.mockImplementation(async (payload) => {
-      sentPayload = payload as typeof sentPayload;
-    });
-
-    render(
-      <MemoryRouter initialEntries={['/chat']}>
-        <ChatPage />
-      </MemoryRouter>,
-    );
-
-    const input = await screen.findByPlaceholderText(/分析 600519/);
-    fireEvent.change(input, { target: { value: '分析红利低波100' } });
-    fireEvent.click(screen.getByRole('button', { name: '发送' }));
-    await waitFor(() => expect(mockStartStream).toHaveBeenCalledTimes(1));
-
-    expect(sentPayload?.context?.stock_code).toBe('csi930955');
-    expect(sentPayload?.context?.stock_name).toBe('红利低波100');
-  });
-
-  it('hides the watchlist action for a registered index canonical in Codex mode', async () => {
-    mockGetStatus.mockResolvedValueOnce({
-      backend: 'codex_app_server',
-      available: true,
-      experimental: true,
-      errorCode: null,
-      message: null,
-    });
-    mockStartStream.mockImplementation(async (_payload, meta) => {
-      meta?.onAccepted?.({
-        type: 'accepted',
-        backend: 'codex_app_server',
-        request_id: 'request-index',
-        session_id: 'session-1',
-      });
-    });
-
-    render(
-      <MemoryRouter initialEntries={['/chat']}>
-        <ChatPage />
-      </MemoryRouter>,
-    );
-
-    const input = await screen.findByPlaceholderText(/分析 600519/);
-    fireEvent.change(input, { target: { value: '分析上证50' } });
-    fireEvent.click(screen.getByRole('button', { name: '发送' }));
-    await waitFor(() => expect(mockStartStream).toHaveBeenCalledTimes(1));
-
-    // sh000016 is a registered index canonical → stock-only watchlist hidden.
-    expect(screen.queryByText('加入自选')).not.toBeInTheDocument();
-    expect(screen.queryByText('从自选删除')).not.toBeInTheDocument();
-  });
-
-  it('keeps the watchlist action for a bare stock code that shares digits with an index', async () => {
-    mockGetWatchlist.mockResolvedValue([]);
-
-    render(
-      <MemoryRouter initialEntries={['/chat']}>
-        <ChatPage />
-      </MemoryRouter>,
-    );
-
-    const input = await screen.findByPlaceholderText(/分析 600519/);
-    fireEvent.change(input, { target: { value: '分析 000001' } });
-    fireEvent.keyDown(input, { key: 'Enter' });
-
-    // 000001 (平安银行) is a stock; only the sh000001 index canonical hides the
-    // action, so the bare same-digit stock keeps its watchlist button.
-    expect(await screen.findByText('加入自选')).toBeInTheDocument();
-  });
-
-  const CODEX_STATUS = {
-    backend: 'codex_app_server',
-    available: true,
-    experimental: true,
-    errorCode: null,
-    message: null,
-  };
-  const acceptedEvent = (requestId: string) => ({
-    type: 'accepted' as const,
-    backend: 'codex_app_server' as const,
-    request_id: requestId,
-    session_id: 'session-1' as const,
-  });
+  it.each(['litellm'] as const)(
+    'delegates code and name resolution to the server under %s, without waiting for a client registry',
+    async (backend) => {
+      mockGetStatus.mockResolvedValueOnce({ backend, available: true, experimental: false, errorCode: null, message: null });
+      mockStockIndexState.index = [];
+      mockStockIndexState.loading = true;
+      render(<MemoryRouter initialEntries={['/chat']}><ChatPage /></MemoryRouter>);
+      const input = await screen.findByPlaceholderText(/分析 600519/);
+      for (const message of ['分析上证指数', '分析 005930.KS', '换成 000001', '比较 sh000001 和 000001']) {
+        fireEvent.change(input, { target: { value: message } });
+        fireEvent.click(screen.getByRole('button', { name: '发送' }));
+        await waitFor(() => expect(mockStartStream).toHaveBeenLastCalledWith(
+          expect.objectContaining({ message, context: undefined }), expect.anything()));
+      }
+      expect(screen.getByLabelText('当前讨论对象')).toHaveTextContent('未确认');
+    },
+  );
 
   it.each([
-    ['sh000016', 'sh000016'],
-    ['000016.SH', 'sh000016'],
-    ['930955.CSI', 'csi930955'],
-    ['csi930955', 'csi930955'],
-    ['sz399001', 'sz399001'],
-  ] as const)('sends an explicit index code %s as its registry canonical', async (inputCode, expectedCanonical) => {
-    mockGetStatus.mockResolvedValueOnce(CODEX_STATUS);
-    let sentPayload: { context?: { stock_code: string; stock_name: string | null } } | undefined;
-    mockStartStream.mockImplementation(async (payload) => {
-      sentPayload = payload as typeof sentPayload;
-    });
-
-    render(
-      <MemoryRouter initialEntries={['/chat']}>
-        <ChatPage />
-      </MemoryRouter>,
-    );
-
-    const input = await screen.findByPlaceholderText(/分析 600519/);
-    fireEvent.change(input, { target: { value: `分析 ${inputCode}` } });
-    fireEvent.click(screen.getByRole('button', { name: '发送' }));
-    await waitFor(() => expect(mockStartStream).toHaveBeenCalledTimes(1));
-
-    // The registry canonical must survive extraction end-to-end — never be
-    // stripped to a bare same-code stock, and the inner bare digits of a dotted
-    // alias must not leak as a second code.
-    expect(sentPayload?.context?.stock_code).toBe(expectedCanonical);
-    expect(sentPayload?.context?.stock_name).toBeNull();
-  });
-
-  it.each([
-    ['sh000016', 'sh000016'],
-    ['000016.SH', 'sh000016'],
-    ['000016.sh', 'sh000016'],
-    ['CSI930955', 'csi930955'],
-    ['930955.CSI', 'csi930955'],
-    ['csi930955', 'csi930955'],
-    ['sz399001', 'sz399001'],
-    ['sz399300', 'sh000300'],
-    ['399300.SZ', 'sh000300'],
-    ['000300.SH', 'sh000300'],
-  ] as const)('sends %s as %s under the default LiteLLM backend', async (inputCode, expectedCanonical) => {
-    render(
-      <MemoryRouter initialEntries={['/chat']}>
-        <ChatPage />
-      </MemoryRouter>,
-    );
-
-    const input = await screen.findByPlaceholderText(/分析 600519/);
-    fireEvent.change(input, { target: { value: `分析 ${inputCode}` } });
-    fireEvent.click(screen.getByRole('button', { name: '发送' }));
-
-    await waitFor(() => {
-      expect(mockStartStream).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          context: { stock_code: expectedCanonical, stock_name: null },
-        }),
-        expect.any(Object),
-      );
-    });
-  });
-
-  it('blocks every chat send entry point while the index registry is loading', async () => {
+    ['sh000001', 'index', '上证指数'],
+    ['000001', 'stock', '平安银行'],
+    ['005930.KS', 'stock', '三星电子'],
+  ] as const)('shows the accepted server identity %s and uses its type for watchlist eligibility', async (code, type, name) => {
+    mockStoreState.stateContract = 'authoritative';
+    mockStoreState.activeStockContext = {
+      stock_code: code, canonical_id: code, stock_name: name, asset_type: type,
+    };
     mockStockIndexState.index = [];
     mockStockIndexState.loading = true;
-    mockStockIndexState.loaded = false;
+    render(<MemoryRouter initialEntries={['/chat']}><ChatPage /></MemoryRouter>);
+    expect(await screen.findByLabelText('当前讨论对象')).toHaveTextContent(name);
+    if (type === 'index') expect(screen.queryByText('加入自选')).not.toBeInTheDocument();
+    else expect(await screen.findByText('加入自选')).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText(/分析 600519/), { target: { value: '风险呢' } });
+    fireEvent.click(screen.getByRole('button', { name: '发送' }));
+    await waitFor(() => expect(mockStartStream).toHaveBeenLastCalledWith(
+      expect.objectContaining({ message: '风险呢', context: undefined }), expect.anything()));
+  });
 
-    render(
-      <MemoryRouter initialEntries={['/chat']}>
-        <ChatPage />
-      </MemoryRouter>,
-    );
-
+  it('keeps input and explicit Skill draft on an acceptance conflict and provides manual refresh, not auto resend', async () => {
+    mockStoreState.chatError = createParsedApiError({
+      title: '会话已更新', message: '请刷新会话后重试', code: 'session_state_conflict', category: 'http_error',
+    });
+    mockStartStream.mockImplementationOnce(async () => undefined);
+    render(<MemoryRouter initialEntries={['/chat']}><ChatPage /></MemoryRouter>);
     const input = await screen.findByPlaceholderText(/分析 600519/);
-    fireEvent.change(input, { target: { value: '分析 sh000016' } });
-    const sendButton = screen.getByRole('button', { name: '处理中...' });
-    const quickQuestion = screen.getByRole('button', { name: '分析比亚迪趋势' });
+    fireEvent.change(input, { target: { value: '风险呢' } });
+    fireEvent.click(screen.getByRole('button', { name: '发送' }));
+    await waitFor(() => expect(mockStartStream).toHaveBeenCalledTimes(1));
+    expect(input).toHaveValue('风险呢');
+    fireEvent.click(screen.getByRole('button', { name: /刷新会话/ }));
+    expect(mockRefreshSession).toHaveBeenCalledTimes(1);
+    expect(input).toHaveValue('风险呢');
+    expect(mockStartStream).toHaveBeenCalledTimes(1);
+  });
 
-    expect(sendButton).toBeDisabled();
-    expect(quickQuestion).toBeDisabled();
-    fireEvent.keyDown(input, { key: 'Enter' });
-    fireEvent.click(sendButton);
-    fireEvent.click(quickQuestion);
+  it('keeps the draft after backend_removed and links to settings without resending', async () => {
+    mockStoreState.chatError = createParsedApiError({ title: 'Removed', message: 'Codex App Server 已移除',
+      code: 'backend_removed', status: 400, category: 'http_error' });
+    mockStartStream.mockImplementationOnce(async () => undefined);
+    render(<MemoryRouter initialEntries={['/chat']}><ChatPage /></MemoryRouter>);
+    const input = await screen.findByPlaceholderText(/分析 600519/);
+    fireEvent.change(input, { target: { value: '风险呢' } });
+    fireEvent.click(screen.getByRole('button', { name: '发送' }));
+    await waitFor(() => expect(mockStartStream).toHaveBeenCalledTimes(1));
+    expect(input).toHaveValue('风险呢');
+    expect(screen.getByRole('button', { name: '前往 Agent 设置' })).toBeInTheDocument();
+    expect(mockStartStream).toHaveBeenCalledTimes(1);
+  });
+
+  it('can display a historical Codex backend label without enabling that backend', async () => {
+    mockStoreState.messages = [{ id: 'historical', role: 'assistant', content: '历史回答', backend: 'codex_app_server' }];
+    render(<MemoryRouter initialEntries={['/chat']}><ChatPage /></MemoryRouter>);
+    expect(await screen.findByText('Codex Agent · 历史记录')).toBeInTheDocument();
+    expect(screen.getByText('历史回答')).toBeInTheDocument();
     expect(mockStartStream).not.toHaveBeenCalled();
   });
 
-  it.each([
-    ['success', mockStockIndex, null, false, 'sh000016'],
-    ['failure', [], new Error('registry unavailable'), true, '000016'],
-    ['empty', [], null, false, '000016'],
-  ] as const)('releases direct sends after registry %s settle', async (_scenario, index, error, fallback, expectedCode) => {
-    mockStockIndexState.index = [];
-    mockStockIndexState.loading = true;
-    mockStockIndexState.loaded = false;
-
-    const { rerender } = render(
-      <MemoryRouter initialEntries={['/chat']}>
-        <ChatPage />
-      </MemoryRouter>,
-    );
-    const input = await screen.findByPlaceholderText(/分析 600519/);
-    fireEvent.change(input, { target: { value: '分析 sh000016' } });
-
-    mockStockIndexState.index = [...index];
-    mockStockIndexState.loading = false;
-    mockStockIndexState.error = error;
-    mockStockIndexState.fallback = fallback;
-    mockStockIndexState.loaded = true;
-    rerender(
-      <MemoryRouter initialEntries={['/chat']}>
-        <ChatPage />
-      </MemoryRouter>,
-    );
-
-    const sendButton = screen.getByRole('button', { name: '发送' });
-    await waitFor(() => expect(sendButton).toBeEnabled());
-    fireEvent.click(sendButton);
-    await waitFor(() => {
-      expect(mockStartStream).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          context: { stock_code: expectedCode, stock_name: null },
-        }),
-        expect.any(Object),
-      );
-    });
-  });
-
-  it('switches from an explicit index canonical to the bare same-code stock', async () => {
-    mockGetStatus.mockResolvedValueOnce(CODEX_STATUS);
-    mockStartStream.mockImplementation(async (_payload, meta) => {
-      meta?.onAccepted?.(acceptedEvent('request-index'));
-    });
-
-    render(
-      <MemoryRouter initialEntries={['/chat']}>
-        <ChatPage />
-      </MemoryRouter>,
-    );
-
-    const input = await screen.findByPlaceholderText(/分析 600519/);
-    fireEvent.change(input, { target: { value: '分析 sh000016' } });
-    fireEvent.click(screen.getByRole('button', { name: '发送' }));
-    await waitFor(() => expect(mockStartStream).toHaveBeenCalledTimes(1));
-
-    fireEvent.change(input, { target: { value: '换成 000016 看看' } });
-    fireEvent.click(screen.getByRole('button', { name: '发送' }));
-    await waitFor(() => expect(mockStartStream).toHaveBeenCalledTimes(2));
-
-    // The explicit switch must send the BARE stock context — the index name or
-    // self-selected state must not be reused across identities.
-    expect(mockStartStream.mock.calls[1][0].context).toEqual({
-      stock_code: '000016',
-      stock_name: null,
-    });
-  });
-
-  it('keeps the active index context untouched for compare messages mixing same-code identities', async () => {
-    mockGetStatus.mockResolvedValueOnce(CODEX_STATUS);
-    mockStartStream.mockImplementation(async (_payload, meta) => {
-      meta?.onAccepted?.(acceptedEvent('request-index'));
-    });
-
-    render(
-      <MemoryRouter initialEntries={['/chat']}>
-        <ChatPage />
-      </MemoryRouter>,
-    );
-
-    const input = await screen.findByPlaceholderText(/分析 600519/);
-    fireEvent.change(input, { target: { value: '分析 sh000016' } });
-    fireEvent.click(screen.getByRole('button', { name: '发送' }));
-    await waitFor(() => expect(mockStartStream).toHaveBeenCalledTimes(1));
-
-    fireEvent.change(input, { target: { value: '比较 sh000016 和 000016 的差异' } });
-    fireEvent.click(screen.getByRole('button', { name: '发送' }));
-    await waitFor(() => expect(mockStartStream).toHaveBeenCalledTimes(2));
-
-    expect(mockStartStream.mock.calls[1][0].context).toEqual({
-      stock_code: 'sh000016',
-      stock_name: null,
-    });
-  });
-
-  it('hides the stock-only watchlist action after an explicit index code is sent', async () => {
-    mockGetStatus.mockResolvedValueOnce(CODEX_STATUS);
-    mockStartStream.mockImplementation(async (_payload, meta) => {
-      meta?.onAccepted?.(acceptedEvent('request-index'));
-    });
-
-    render(
-      <MemoryRouter initialEntries={['/chat']}>
-        <ChatPage />
-      </MemoryRouter>,
-    );
-
-    const input = await screen.findByPlaceholderText(/分析 600519/);
-    fireEvent.change(input, { target: { value: '分析 930955.CSI' } });
-    fireEvent.click(screen.getByRole('button', { name: '发送' }));
-    await waitFor(() => expect(mockStartStream).toHaveBeenCalledTimes(1));
-
-    expect(screen.queryByText('加入自选')).not.toBeInTheDocument();
-    expect(screen.queryByText('从自选删除')).not.toBeInTheDocument();
-  });
-
-  it('keeps the stock guard for sh600519 / SZ000001 even when the registry is loaded', async () => {
-    mockGetStatus.mockResolvedValueOnce(CODEX_STATUS);
-    let sentPayload: { context?: { stock_code: string; stock_name: string | null } } | undefined;
-    mockStartStream.mockImplementation(async (payload) => {
-      sentPayload = payload as typeof sentPayload;
-    });
-
-    render(
-      <MemoryRouter initialEntries={['/chat']}>
-        <ChatPage />
-      </MemoryRouter>,
-    );
-
-    const input = await screen.findByPlaceholderText(/分析 600519/);
-    fireEvent.change(input, { target: { value: '分析 sh600519' } });
-    fireEvent.click(screen.getByRole('button', { name: '发送' }));
-    await waitFor(() => expect(mockStartStream).toHaveBeenCalledTimes(1));
-
-    // sh600519 is not a registered index alias → the stock guard keeps the
-    // bare 600519 identity even with the registry loaded.
-    expect(sentPayload?.context?.stock_code).toBe('600519');
-    expect(sentPayload?.context?.stock_name).toBeNull();
+  it('renders authoritative object and manual conflict refresh in English', async () => {
+    window.localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, 'en');
+    mockStoreState.activeStockContext = { stock_code: '005930.KS', canonical_id: '005930.KS',
+      stock_name: 'Samsung', asset_type: 'stock' };
+    mockStoreState.chatError = createParsedApiError({ title: 'Session changed', message: 'Refresh',
+      code: 'session_state_conflict', category: 'http_error' });
+    render(<UiLanguageProvider><MemoryRouter initialEntries={['/chat']}><ChatPage /></MemoryRouter></UiLanguageProvider>);
+    expect(await screen.findByLabelText('Current discussion object')).toHaveTextContent('Discussing: Samsung · 005930.KS');
+    expect(screen.getByRole('button', { name: 'Refresh session (keep your draft and retry)' })).toBeInTheDocument();
   });
 
   it('renders the new Codex status copy in English when the UI language is English', async () => {
@@ -892,9 +530,9 @@ describe('ChatPage', () => {
     mockGetStatus.mockResolvedValueOnce({
       backend: 'codex_app_server',
       available: false,
-      experimental: true,
-      errorCode: 'command_not_found',
-      message: 'Codex was not found',
+      experimental: false,
+      errorCode: 'backend_removed',
+      message: 'Codex App Server has been removed',
     });
 
     render(
@@ -905,8 +543,8 @@ describe('ChatPage', () => {
       </UiLanguageProvider>,
     );
 
-    expect(await screen.findByText('Codex Agent · Experimental')).toBeInTheDocument();
-    expect(screen.getByText('This device does not currently meet the basic Codex ask-stock requirements. Open Agent settings to check installation and Single Agent mode.')).toBeInTheDocument();
+    expect(await screen.findByText('Codex App Server (removed)')).toBeInTheDocument();
+    expect(screen.getByText('The Codex App Server Chat backend has been removed. Choose Auto or Default model and save, then configure the required model source. Standalone Codex CLI reports are unaffected.')).toBeInTheDocument();
     expect(screen.queryByText(/当前不可用|前往 Agent 设置检查/)).not.toBeInTheDocument();
   });
 
@@ -1323,11 +961,11 @@ describe('ChatPage', () => {
     });
   });
 
-  it('adds the quick-question stock context only for Codex', async () => {
+  it('sends shortcut hints without treating them as confirmed state', async () => {
     mockGetStatus.mockResolvedValueOnce({
-      backend: 'codex_app_server',
+      backend: 'litellm',
       available: true,
-      experimental: true,
+      experimental: false,
       errorCode: null,
       message: null,
     });
@@ -1488,7 +1126,7 @@ describe('ChatPage', () => {
         }),
       );
     });
-    expect(mockStartStream.mock.calls.at(-1)?.[0]?.context).toBeUndefined();
+    expect(mockStartStream.mock.calls.at(-1)?.[0]?.context).toEqual({ stock_code: '600519', stock_name: '贵州茅台' });
   });
 
   it('keeps a quick question in the input until the server accepts it', async () => {
@@ -1514,9 +1152,9 @@ describe('ChatPage', () => {
 
   it('submits the A-share SMIC quick question with an unambiguous stock context', async () => {
     mockGetStatus.mockResolvedValueOnce({
-      backend: 'codex_app_server',
+      backend: 'litellm',
       available: true,
-      experimental: true,
+      experimental: false,
       errorCode: null,
       message: null,
     });
@@ -1531,7 +1169,7 @@ describe('ChatPage', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByText('Codex Agent · 实验');
+    await screen.findByText('默认模型');
     fireEvent.click(await screen.findByRole('button', { name: '用箱体震荡分析 A 股中芯国际 688981' }));
 
     await waitFor(() => {
@@ -1552,43 +1190,21 @@ describe('ChatPage', () => {
     });
   });
 
-  it('reuses the stock index for one unambiguous stock name', async () => {
-    mockGetStatus.mockResolvedValueOnce({
-      backend: 'codex_app_server',
-      available: true,
-      experimental: true,
-      errorCode: null,
-      message: null,
-    });
-    render(
-      <MemoryRouter initialEntries={['/chat']}>
-        <ChatPage />
-      </MemoryRouter>
-    );
-
-    fireEvent.change(await screen.findByPlaceholderText(/分析 600519/), {
-      target: { value: '茅台现在适合买入吗？' },
-    });
+  it('does not send a client-selected identity for a name-only question', async () => {
+    mockGetStatus.mockResolvedValueOnce({ backend: 'litellm', available: true, experimental: false, errorCode: null, message: null });
+    render(<MemoryRouter initialEntries={['/chat']}><ChatPage /></MemoryRouter>);
+    const input = await screen.findByPlaceholderText(/分析 600519/);
+    fireEvent.change(input, { target: { value: '分析茅台' } });
     fireEvent.click(screen.getByRole('button', { name: '发送' }));
-
-    await waitFor(() => {
-      expect(mockStartStream).toHaveBeenCalledWith(
-        expect.objectContaining({
-          context: {
-            stock_code: '600519',
-            stock_name: '贵州茅台',
-          },
-        }),
-        expect.any(Object),
-      );
-    });
+    await waitFor(() => expect(mockStartStream).toHaveBeenCalledWith(
+      expect.objectContaining({ message: '分析茅台', context: undefined }), expect.anything()));
   });
 
   it('does not guess when one stock name maps to multiple markets', async () => {
     mockGetStatus.mockResolvedValueOnce({
-      backend: 'codex_app_server',
+      backend: 'litellm',
       available: true,
-      experimental: true,
+      experimental: false,
       errorCode: null,
       message: null,
     });
@@ -1637,9 +1253,9 @@ describe('ChatPage', () => {
     mockGetStatus.mockResolvedValueOnce({
       backend: 'codex_app_server',
       available: false,
-      experimental: true,
-      errorCode: 'command_not_found',
-      message: 'Codex was not found',
+      experimental: false,
+      errorCode: 'backend_removed',
+      message: 'Codex App Server has been removed',
     });
     mockFormatSessionAsMarkdown.mockReturnValue('# exported markdown');
 
@@ -1784,10 +1400,7 @@ describe('ChatPage', () => {
       expect(mockStartStream).toHaveBeenLastCalledWith(
         expect.objectContaining({
           message: '继续分析成交量',
-          context: expect.objectContaining({
-            stock_code: '600519',
-            stock_name: '贵州茅台',
-          }),
+          context: undefined,
         }),
         expect.objectContaining({
           skillName: '趋势分析',
@@ -1804,10 +1417,7 @@ describe('ChatPage', () => {
       expect(mockStartStream).toHaveBeenLastCalledWith(
         expect.objectContaining({
           message: '如果不考虑 TTM 呢',
-          context: expect.objectContaining({
-            stock_code: '600519',
-            stock_name: '贵州茅台',
-          }),
+          context: undefined,
         }),
         expect.objectContaining({
           skillName: '趋势分析',
@@ -1910,10 +1520,7 @@ describe('ChatPage', () => {
       expect(mockStartStream).toHaveBeenLastCalledWith(
         expect.objectContaining({
           message: '继续看估值',
-          context: {
-            stock_code: 'AAPL',
-            stock_name: null,
-          },
+          context: undefined,
         }),
         expect.objectContaining({
           skillName: '趋势分析',
@@ -1922,475 +1529,40 @@ describe('ChatPage', () => {
     });
   });
 
-  it('switches active stock context for explicit switch messages', async () => {
-    render(
-      <MemoryRouter initialEntries={['/chat?stock=600519&name=%E8%B4%B5%E5%B7%9E%E8%8C%85%E5%8F%B0']}>
-        <ChatPage />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByDisplayValue('请深入分析 贵州茅台(600519)')).toBeInTheDocument();
-
-    fireEvent.change(screen.getByPlaceholderText(/分析 600519/), {
-      target: { value: '换成 AAPL 看看' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: '发送' }));
-
-    await waitFor(() => {
-      expect(mockStartStream).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          message: '换成 AAPL 看看',
-          context: {
-            stock_code: 'AAPL',
-            stock_name: null,
-          },
-        }),
-        expect.objectContaining({
-          skillName: '趋势分析',
-        }),
-      );
-    });
-  });
-
-  it('switches Codex stock context when an explicit switch names one stock', async () => {
-    mockGetStatus.mockResolvedValueOnce({
-      backend: 'codex_app_server',
-      available: true,
-      experimental: true,
-      errorCode: null,
-      message: null,
-    });
-    render(
-      <MemoryRouter initialEntries={['/chat?stock=600519&name=%E8%B4%B5%E5%B7%9E%E8%8C%85%E5%8F%B0']}>
-        <ChatPage />
-      </MemoryRouter>,
-    );
-
-    expect(await screen.findByDisplayValue('请深入分析 贵州茅台(600519)')).toBeInTheDocument();
-
-    fireEvent.change(screen.getByPlaceholderText(/分析 600519/), {
-      target: { value: '分析宁德时代' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: '发送' }));
-
-    await waitFor(() => {
-      expect(mockStartStream).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: '分析宁德时代',
-          context: {
-            stock_code: '300750',
-            stock_name: '宁德时代',
-          },
-        }),
-        expect.objectContaining({
-          skillName: '趋势分析',
-        }),
-      );
-    });
-  });
-
-  it('switches to the single new stock when the current stock appears first', async () => {
-    render(
-      <MemoryRouter initialEntries={['/chat?stock=600519&name=%E8%B4%B5%E5%B7%9E%E8%8C%85%E5%8F%B0']}>
-        <ChatPage />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByDisplayValue('请深入分析 贵州茅台(600519)')).toBeInTheDocument();
-
-    fireEvent.change(screen.getByPlaceholderText(/分析 600519/), {
-      target: { value: '先不看 600519，换成 AAPL 看看' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: '发送' }));
-
-    await waitFor(() => {
-      expect(mockStartStream).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          message: '先不看 600519，换成 AAPL 看看',
-          context: {
-            stock_code: 'AAPL',
-            stock_name: null,
-          },
-        }),
-        expect.objectContaining({
-          skillName: '趋势分析',
-        }),
-      );
-    });
-
-    fireEvent.change(screen.getByPlaceholderText(/分析 600519/), {
-      target: { value: '继续看支撑位' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: '发送' }));
-
-    await waitFor(() => {
-      expect(mockStartStream).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          message: '继续看支撑位',
-          context: {
-            stock_code: 'AAPL',
-            stock_name: null,
-          },
-        }),
-        expect.objectContaining({
-          skillName: '趋势分析',
-        }),
-      );
-    });
-  });
-
-  it('keeps active stock context for compare messages', async () => {
-    render(
-      <MemoryRouter initialEntries={['/chat?stock=600519&name=%E8%B4%B5%E5%B7%9E%E8%8C%85%E5%8F%B0']}>
-        <ChatPage />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByDisplayValue('请深入分析 贵州茅台(600519)')).toBeInTheDocument();
-
-    fireEvent.change(screen.getByPlaceholderText(/分析 600519/), {
-      target: { value: '比较 600519 和 AAPL' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: '发送' }));
-
-    await waitFor(() => {
-      expect(mockStartStream).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          message: '比较 600519 和 AAPL',
-          context: {
-            stock_code: '600519',
-            stock_name: '贵州茅台',
-          },
-        }),
-        expect.objectContaining({
-          skillName: '趋势分析',
-        }),
-      );
-    });
-  });
-
-  it('keeps active stock context for difference-style compare messages', async () => {
-    render(
-      <MemoryRouter initialEntries={['/chat?stock=600519&name=%E8%B4%B5%E5%B7%9E%E8%8C%85%E5%8F%B0']}>
-        <ChatPage />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByDisplayValue('请深入分析 贵州茅台(600519)')).toBeInTheDocument();
-
-    fireEvent.change(screen.getByPlaceholderText(/分析 600519/), {
-      target: { value: '分析 600519 和 AAPL 的差异' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: '发送' }));
-
-    await waitFor(() => {
-      expect(mockStartStream).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          message: '分析 600519 和 AAPL 的差异',
-          context: {
-            stock_code: '600519',
-            stock_name: '贵州茅台',
-          },
-        }),
-        expect.objectContaining({
-          skillName: '趋势分析',
-        }),
-      );
-    });
-  });
-
-  it('keeps active stock context when the compared stock appears first', async () => {
-    render(
-      <MemoryRouter initialEntries={['/chat?stock=600519&name=%E8%B4%B5%E5%B7%9E%E8%8C%85%E5%8F%B0']}>
-        <ChatPage />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByDisplayValue('请深入分析 贵州茅台(600519)')).toBeInTheDocument();
-
-    fireEvent.change(screen.getByPlaceholderText(/分析 600519/), {
-      target: { value: '分析 AAPL 和 600519 的差异' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: '发送' }));
-
-    await waitFor(() => {
-      expect(mockStartStream).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          message: '分析 AAPL 和 600519 的差异',
-          context: {
-            stock_code: '600519',
-            stock_name: '贵州茅台',
-          },
-        }),
-        expect.objectContaining({
-          skillName: '趋势分析',
-        }),
-      );
-    });
-  });
-
-  it('keeps active stock context for choice-style multi-stock messages', async () => {
-    render(
-      <MemoryRouter initialEntries={['/chat?stock=600519&name=%E8%B4%B5%E5%B7%9E%E8%8C%85%E5%8F%B0']}>
-        <ChatPage />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByDisplayValue('请深入分析 贵州茅台(600519)')).toBeInTheDocument();
-
-    fireEvent.change(screen.getByPlaceholderText(/分析 600519/), {
-      target: { value: 'AAPL 和 TSLA 哪个更值得买' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: '发送' }));
-
-    await waitFor(() => {
-      expect(mockStartStream).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          message: 'AAPL 和 TSLA 哪个更值得买',
-          context: {
-            stock_code: '600519',
-            stock_name: '贵州茅台',
-          },
-        }),
-        expect.objectContaining({
-          skillName: '趋势分析',
-        }),
-      );
-    });
-  });
-
-  it('switches active stock context for single-stock difference phrasing', async () => {
-    render(
-      <MemoryRouter initialEntries={['/chat?stock=600519&name=%E8%B4%B5%E5%B7%9E%E8%8C%85%E5%8F%B0']}>
-        <ChatPage />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByDisplayValue('请深入分析 贵州茅台(600519)')).toBeInTheDocument();
-
-    fireEvent.change(screen.getByPlaceholderText(/分析 600519/), {
-      target: { value: '分析 AAPL 的差异化优势' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: '发送' }));
-
-    await waitFor(() => {
-      expect(mockStartStream).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          message: '分析 AAPL 的差异化优势',
-          context: {
-            stock_code: 'AAPL',
-            stock_name: null,
-          },
-        }),
-        expect.objectContaining({
-          skillName: '趋势分析',
-        }),
-      );
-    });
-  });
-
-  it('switches active stock context for lowercase US ticker switch messages', async () => {
-    render(
-      <MemoryRouter initialEntries={['/chat?stock=600519&name=%E8%B4%B5%E5%B7%9E%E8%8C%85%E5%8F%B0']}>
-        <ChatPage />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByDisplayValue('请深入分析 贵州茅台(600519)')).toBeInTheDocument();
-
-    fireEvent.change(screen.getByPlaceholderText(/分析 600519/), {
-      target: { value: '分析tsla' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: '发送' }));
-
-    await waitFor(() => {
-      expect(mockStartStream).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          message: '分析tsla',
-          context: {
-            stock_code: 'TSLA',
-            stock_name: null,
-          },
-        }),
-        expect.objectContaining({
-          skillName: '趋势分析',
-        }),
-      );
-    });
-  });
-
-  it('keeps active stock context when clicking the current session', async () => {
-    render(
-      <MemoryRouter initialEntries={['/chat?stock=600519&name=%E8%B4%B5%E5%B7%9E%E8%8C%85%E5%8F%B0']}>
-        <ChatPage />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByDisplayValue('请深入分析 贵州茅台(600519)')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '切换到对话 请简要分析 600519' }));
-    expect(mockSwitchSession).not.toHaveBeenCalled();
-
-    fireEvent.change(screen.getByPlaceholderText(/分析 600519/), {
-      target: { value: '继续看成交量' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: '发送' }));
-
-    await waitFor(() => {
-      expect(mockStartStream).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          message: '继续看成交量',
-          context: {
-            stock_code: '600519',
-            stock_name: '贵州茅台',
-          },
-        }),
-        expect.objectContaining({
-          skillName: '趋势分析',
-        }),
-      );
-    });
-  });
-
-  it('restores active stock context from loaded session messages', async () => {
+  it('never replays history or a prior report hint as authority after the first acceptance', async () => {
     mockStoreState.messages = [
-      { id: 'm-1', role: 'user', content: '请分析 600519' },
-      { id: 'm-2', role: 'assistant', content: '600519 分析结果' },
-      { id: 'm-3', role: 'user', content: '先不看 600519，换成 AAPL 看看' },
-      { id: 'm-4', role: 'assistant', content: 'AAPL 分析结果' },
+      { id: '1', role: 'user', content: '分析600519' },
+      { id: '2', role: 'user', content: '改看宁德时代' },
+      { id: '3', role: 'assistant', content: '模型猜测正在讨论300750' },
     ];
-
-    render(
-      <MemoryRouter initialEntries={['/chat']}>
-        <ChatPage />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByTestId('chat-workspace')).toBeInTheDocument();
-
-    fireEvent.change(screen.getByPlaceholderText(/分析 600519/), {
-      target: { value: '继续看支撑位' },
-    });
+    mockStoreState.stateContract = 'authoritative';
+    render(<MemoryRouter initialEntries={['/chat?stock=AAPL&name=Apple']}><ChatPage /></MemoryRouter>);
+    const input = await screen.findByDisplayValue('请深入分析 Apple(AAPL)');
+    expect(screen.getByLabelText('当前讨论对象')).toHaveTextContent('未确认');
     fireEvent.click(screen.getByRole('button', { name: '发送' }));
-
-    await waitFor(() => {
-      expect(mockStartStream).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          message: '继续看支撑位',
-          context: {
-            stock_code: 'AAPL',
-            stock_name: null,
-          },
-        }),
-        expect.objectContaining({
-          skillName: '趋势分析',
-        }),
-      );
-    });
+    await waitFor(() => expect(mockStartStream).toHaveBeenCalledTimes(1));
+    expect(mockStartStream.mock.calls[0][0].context).toEqual({ stock_code: 'AAPL', stock_name: 'Apple' });
+    fireEvent.change(input, { target: { value: '风险呢' } });
+    fireEvent.click(screen.getByRole('button', { name: '发送' }));
+    await waitFor(() => expect(mockStartStream).toHaveBeenCalledTimes(2));
+    expect(mockStartStream.mock.calls[1][0].context).toBeUndefined();
+    expect(screen.getByLabelText('当前讨论对象')).toHaveTextContent('未确认');
   });
 
-  it('clears active stock context when starting a new chat or switching sessions', async () => {
-    mockStoreState.sessions = [
-      ...mockStoreState.sessions,
-      {
-        session_id: 'session-2',
-        title: '旧会话',
-        message_count: 1,
-        created_at: '2026-03-16T09:00:00Z',
-        last_active: '2026-03-16T09:05:00Z',
-      },
-    ];
-
-    const { unmount } = render(
-      <MemoryRouter initialEntries={['/chat?stock=600519&name=%E8%B4%B5%E5%B7%9E%E8%8C%85%E5%8F%B0']}>
-        <ChatPage />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByDisplayValue('请深入分析 贵州茅台(600519)')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '开启新对话' }));
-    expect(mockStartNewChat).toHaveBeenCalled();
-
-    fireEvent.change(screen.getByPlaceholderText(/分析 600519/), {
-      target: { value: '继续看成交量' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: '发送' }));
-
-    await waitFor(() => {
-      expect(mockStartStream).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          message: '继续看成交量',
-          context: undefined,
-        }),
-        expect.objectContaining({
-          skillName: '趋势分析',
-        }),
-      );
-    });
-
-    unmount();
-    mockStartStream.mockClear();
-
-    render(
-      <MemoryRouter initialEntries={['/chat?stock=600519&name=%E8%B4%B5%E5%B7%9E%E8%8C%85%E5%8F%B0']}>
-        <ChatPage />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByDisplayValue('请深入分析 贵州茅台(600519)')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '切换到对话 旧会话' }));
-    expect(mockSwitchSession).toHaveBeenCalledWith('session-2');
-
-    fireEvent.change(screen.getByPlaceholderText(/分析 600519/), {
-      target: { value: '继续看成交量' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: '发送' }));
-
-    await waitFor(() => {
-      expect(mockStartStream).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          message: '继续看成交量',
-          context: undefined,
-        }),
-        expect.objectContaining({
-          skillName: '趋势分析',
-        }),
-      );
-    });
-  });
-
-  it('clears active stock context when deleting the current session', async () => {
-    render(
-      <MemoryRouter initialEntries={['/chat?stock=600519&name=%E8%B4%B5%E5%B7%9E%E8%8C%85%E5%8F%B0']}>
-        <ChatPage />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByDisplayValue('请深入分析 贵州茅台(600519)')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '删除对话 请简要分析 600519' }));
-    fireEvent.click(screen.getByRole('button', { name: '删除' }));
-
-    await waitFor(() => {
-      expect(mockDeleteChatSession).toHaveBeenCalledWith('session-1');
-    });
-    expect(mockStartNewChat).toHaveBeenCalled();
-
-    fireEvent.change(screen.getByPlaceholderText(/分析 600519/), {
-      target: { value: '继续看成交量' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: '发送' }));
-
-    await waitFor(() => {
-      expect(mockStartStream).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          message: '继续看成交量',
-          context: undefined,
-        }),
-        expect.objectContaining({
-          skillName: '趋势分析',
-        }),
-      );
-    });
-  });
+  it.each(['风险呢', '改看300750', '比较600519和AAPL', 'AAPL与600519哪个更好'])(
+    'does not overwrite or retransmit server state when submitting %s', async (message) => {
+      mockStoreState.activeStockContext = { stock_code: '600519', canonical_id: 'sh600519',
+        stock_name: '贵州茅台', asset_type: 'stock' };
+      mockStoreState.stateContract = 'authoritative';
+      render(<MemoryRouter initialEntries={['/chat']}><ChatPage /></MemoryRouter>);
+      const input = await screen.findByPlaceholderText(/分析 600519/);
+      fireEvent.change(input, { target: { value: message } });
+      fireEvent.click(screen.getByRole('button', { name: '发送' }));
+      await waitFor(() => expect(mockStartStream).toHaveBeenCalledWith(
+        expect.objectContaining({ message, context: undefined }), expect.anything()));
+      expect(screen.getByLabelText('当前讨论对象')).toHaveTextContent('贵州茅台');
+    },
+  );
 
   it('ignores malformed follow-up query params', async () => {
     render(
@@ -2617,100 +1789,20 @@ describe('ChatPage', () => {
     },
   );
 
-  it('restores the active Codex index canonical from a loaded session message and hides the stock-only watchlist action', async () => {
-    mockGetStatus.mockResolvedValueOnce({
-      backend: 'codex_app_server',
-      available: true,
-      experimental: true,
-      errorCode: null,
-      message: null,
-    });
-    // Registry already settled with index data before the session loads — the
-    // approved message-restore path must resolve the explicit SH index
-    // canonical so the follow-up context and watchlist gating stay consistent.
-    mockStockIndexState.index = mockStockIndex;
-    mockStockIndexState.loading = false;
-    mockStockIndexState.error = null;
-    mockStockIndexState.fallback = false;
-    mockStockIndexState.loaded = true;
-    mockStoreState.messages = [
-      { id: 'm-1', role: 'user', content: '分析 sh000016' },
-      { id: 'm-2', role: 'assistant', content: '上证50 分析结果', skillName: '指数分析' },
-    ];
-
-    render(
-      <MemoryRouter initialEntries={['/chat']}>
-        <ChatPage />
-      </MemoryRouter>,
-    );
-
-    expect(await screen.findByTestId('chat-workspace')).toBeInTheDocument();
-
-    // Restored canonical keeps the lowercase index identity → the stock-only
-    // watchlist button is hidden, exactly like a direct index follow-up.
-    expect(screen.queryByText('加入自选')).not.toBeInTheDocument();
-    expect(screen.queryByText('从自选删除')).not.toBeInTheDocument();
-
-    fireEvent.change(screen.getByPlaceholderText(/分析 600519/), {
-      target: { value: '继续看上证50的支撑位' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: '发送' }));
-
-    await waitFor(() => {
-      expect(mockStartStream).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          message: '继续看上证50的支撑位',
-          context: {
-            stock_code: 'sh000016',
-            stock_name: null,
-          },
-        }),
-        // The send meta uses the session's default skill, not the historical
-        // assistant message's skill label.
-        expect.objectContaining({
-          skillName: '趋势分析',
-        }),
-      );
-    });
-  });
-
-  it('defers default-backend history restoration until the registry settles', async () => {
-    mockStockIndexState.index = [];
-    mockStockIndexState.loading = true;
-    mockStockIndexState.loaded = false;
-    mockStoreState.messages = [
-      { id: 'm-1', role: 'user', content: '分析 sh000016' },
-      { id: 'm-2', role: 'assistant', content: '上证50 分析结果', skillName: '指数分析' },
-    ];
-
-    const { rerender } = render(
-      <MemoryRouter initialEntries={['/chat']}>
-        <ChatPage />
-      </MemoryRouter>,
-    );
-    expect(await screen.findByRole('button', { name: '处理中...' })).toBeDisabled();
-
-    mockStockIndexState.index = mockStockIndex;
-    mockStockIndexState.loading = false;
-    mockStockIndexState.loaded = true;
-    rerender(
-      <MemoryRouter initialEntries={['/chat']}>
-        <ChatPage />
-      </MemoryRouter>,
-    );
-
-    const input = screen.getByPlaceholderText(/分析 600519/);
-    fireEvent.change(input, { target: { value: '继续看支撑位' } });
-    fireEvent.click(screen.getByRole('button', { name: '发送' }));
-    await waitFor(() => {
-      expect(mockStartStream).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          context: { stock_code: 'sh000016', stock_name: null },
-        }),
-        expect.any(Object),
-      );
-    });
-  });
+  it.each(['authoritative', 'legacy'] as const)(
+    'does not restore a guessed stock from %s history when the store explicitly has no object', async (contract) => {
+      mockStoreState.stateContract = contract;
+      mockStoreState.messages = [{ id: 'm-1', role: 'user', content: '分析 sh000016' }];
+      render(<MemoryRouter initialEntries={['/chat']}><ChatPage /></MemoryRouter>);
+      const input = await screen.findByPlaceholderText(/分析 600519/);
+      expect(screen.getByLabelText('当前讨论对象')).toHaveTextContent('未确认');
+      expect(screen.queryByText('加入自选')).not.toBeInTheDocument();
+      fireEvent.change(input, { target: { value: '继续看支撑位' } });
+      fireEvent.click(screen.getByRole('button', { name: '发送' }));
+      await waitFor(() => expect(mockStartStream).toHaveBeenLastCalledWith(
+        expect.objectContaining({ context: undefined }), expect.anything()));
+    },
+  );
 
   it('shows a jump-to-latest action when new content arrives while the user is away from bottom', async () => {
     mockStoreState.messages = [
@@ -2928,6 +2020,7 @@ describe('extractStockCodesFromMessage with index registry', () => {
 
 describe('watchlist button with code variants', () => {
   it('shows "从自选删除" when canonical code is in watchlist and user inputs variant', async () => {
+    mockStoreState.activeStockContext = { stock_code: '600519', canonical_id: 'sh600519', stock_name: null, asset_type: 'stock' };
     mockGetWatchlist.mockResolvedValue(['600519', 'HK01810']);
 
     render(
@@ -2944,6 +2037,7 @@ describe('watchlist button with code variants', () => {
   });
 
   it('shows "从自选删除" for HK variant codes', async () => {
+    mockStoreState.activeStockContext = { stock_code: 'HK01810', canonical_id: 'hk01810', stock_name: null, asset_type: 'stock' };
     mockGetWatchlist.mockResolvedValue(['HK01810']);
 
     render(
@@ -2960,6 +2054,7 @@ describe('watchlist button with code variants', () => {
   });
 
   it('matches raw HK watchlist entries before rendering the watchlist action', async () => {
+    mockStoreState.activeStockContext = { stock_code: 'HK01810', canonical_id: 'hk01810', stock_name: null, asset_type: 'stock' };
     mockGetWatchlist.mockResolvedValue(['01810']);
 
     render(
@@ -2976,6 +2071,7 @@ describe('watchlist button with code variants', () => {
   });
 
   it('removes the matched raw HK watchlist entry instead of adding a duplicate variant', async () => {
+    mockStoreState.activeStockContext = { stock_code: 'HK00700', canonical_id: 'hk00700', stock_name: null, asset_type: 'stock' };
     mockGetWatchlist.mockResolvedValue(['00700']);
     mockRemoveFromWatchlist.mockResolvedValue([]);
 
