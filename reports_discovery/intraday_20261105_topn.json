@@ -1,0 +1,179 @@
+[
+  {
+    "rank": 1,
+    "stock_code": "301266",
+    "stock_name": "宇邦新材",
+    "score": 46.3,
+    "sector": "光伏设备",
+    "factor_scores": {
+      "ma_entry": 41.05347566806849,
+      "sector": 0.0,
+      "momentum": 40.61763669659404,
+      "ranking_momentum": 80.69910383482448,
+      "rebound": 0.0,
+      "popularity": 63.691986345988184
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "排名连续上升(2天)",
+      "趋势加速↑(17.2%/天)",
+      "今日强于93%个股",
+      "人气飙升(+1448位)",
+      "人气核心圈(排名2015)"
+    ],
+    "buy_price_low": 19.9,
+    "buy_price_high": 21.8,
+    "stop_loss": 21.34,
+    "take_profit_1": 23.23,
+    "take_profit_2": 26.64,
+    "discovered_at": "15:00:49",
+    "price_at_discovery": 21.61,
+    "pct_chg": 6.09,
+    "tech_score": 69.27,
+    "rr_score": 75.34883720930239,
+    "market_score": 38.32504906702111,
+    "sector_score": 100.0,
+    "volume_score": 90.0,
+    "position_score": 85,
+    "formation_score": 20.0,
+    "composite_score": 62.379
+  },
+  {
+    "rank": 2,
+    "stock_code": "002452",
+    "stock_name": "长高电气",
+    "score": 40.6,
+    "sector": "电网设备",
+    "factor_scores": {
+      "ma_entry": 38.07427038053356,
+      "sector": 0.0,
+      "momentum": 32.21959705199219,
+      "ranking_momentum": 45.579322425015086,
+      "rebound": 0.0,
+      "popularity": 67.67766952966369
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "今日强于67%个股",
+      "人气核心圈(排名1507)"
+    ],
+    "buy_price_low": 9.0,
+    "buy_price_high": 9.9,
+    "stop_loss": 9.68,
+    "take_profit_1": 10.26,
+    "take_profit_2": 12.19,
+    "discovered_at": "15:00:49",
+    "price_at_discovery": 9.76,
+    "pct_chg": 2.85,
+    "tech_score": 70.47,
+    "rr_score": 72.46376811594209,
+    "market_score": 38.32504906702111,
+    "sector_score": 93.33041162227605,
+    "volume_score": 80.1896337760405,
+    "position_score": 85,
+    "formation_score": 20.0,
+    "composite_score": 61.50899999999999
+  },
+  {
+    "rank": 3,
+    "stock_code": "002932",
+    "stock_name": "*ST明德",
+    "score": 36.0,
+    "sector": "医疗器械",
+    "factor_scores": {
+      "ma_entry": 93.0365553412067,
+      "sector": 0.0,
+      "momentum": 26.313516684351136,
+      "ranking_momentum": 72.97282249903226,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线",
+      "趋势加速↑(9.5%/天)"
+    ],
+    "buy_price_low": 13.5,
+    "buy_price_high": 14.7,
+    "stop_loss": 14.44,
+    "take_profit_1": 14.95,
+    "take_profit_2": 15.86,
+    "discovered_at": "15:00:49",
+    "price_at_discovery": 14.51,
+    "pct_chg": 0.48,
+    "tech_score": 69.32,
+    "rr_score": 81.26649076517138,
+    "market_score": 38.32504906702111,
+    "sector_score": 64.02854113265457,
+    "volume_score": 61.52744938442231,
+    "position_score": 85,
+    "formation_score": 50.0,
+    "composite_score": 59.32399999999999
+  },
+  {
+    "rank": 4,
+    "stock_code": "300795",
+    "stock_name": "米奥会展",
+    "score": 44.1,
+    "sector": "其他社会服务",
+    "factor_scores": {
+      "ma_entry": 34.242245200098836,
+      "sector": 0.0,
+      "momentum": 47.67510035826064,
+      "ranking_momentum": 100.0,
+      "rebound": 0.0,
+      "popularity": 50.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "排名连续上升(2天)",
+      "趋势加速↑(18.8%/天)",
+      "今日强于96%个股"
+    ],
+    "buy_price_low": 10.4,
+    "buy_price_high": 11.5,
+    "stop_loss": 11.27,
+    "take_profit_1": 12.41,
+    "take_profit_2": 14.45,
+    "discovered_at": "15:00:49",
+    "price_at_discovery": 11.32,
+    "pct_chg": 7.4,
+    "tech_score": 65.52,
+    "rr_score": 73.43599615014435,
+    "market_score": 38.32504906702111,
+    "sector_score": 100.0,
+    "volume_score": 40.453279048477015,
+    "position_score": 85,
+    "formation_score": 20.0,
+    "composite_score": 59.093999999999994
+  }
+]
