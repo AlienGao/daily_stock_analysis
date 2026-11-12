@@ -11,6 +11,10 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from src.data.stock_mapping import is_meaningful_stock_name
 from src.data.stock_index_loader import get_index_stock_name
+from src.services.price_streak import (
+    latest_consecutive_drawdown as _latest_consecutive_drawdown,
+    latest_consecutive_gain as _latest_consecutive_gain,
+)
 
 BOLL_PERIOD = 20
 BOLL_MULT = 2.0
@@ -50,64 +54,6 @@ def _band_distance_pct(close: float, band: float) -> Optional[float]:
     if not math.isfinite(close) or not math.isfinite(band) or band <= 0:
         return None
     return round((close - band) / band * 100, 2)
-
-
-def _latest_consecutive_drawdown(
-    dated_closes: List[Tuple[str, float]],
-) -> Optional[Tuple[float, int, str, str]]:
-    """返回最近一段至少连续 2 个交易日收跌的跌幅、天数和起止日期。"""
-    valid = [
-        (trade_date, float(close))
-        for trade_date, close in dated_closes
-        if close is not None and math.isfinite(close) and close > 0
-    ]
-    end_idx = len(valid) - 1
-    while end_idx > 0:
-        while end_idx > 0 and valid[end_idx][1] >= valid[end_idx - 1][1]:
-            end_idx -= 1
-        if end_idx <= 0:
-            return None
-
-        start_idx = end_idx
-        while start_idx > 0 and valid[start_idx][1] < valid[start_idx - 1][1]:
-            start_idx -= 1
-        decline_days = end_idx - start_idx
-        if decline_days >= 2:
-            start_date, start_close = valid[start_idx]
-            end_date, end_close = valid[end_idx]
-            drawdown_pct = round((end_close - start_close) / start_close * 100, 2)
-            return drawdown_pct, decline_days, start_date, end_date
-        end_idx = start_idx - 1
-    return None
-
-
-def _latest_consecutive_gain(
-    dated_closes: List[Tuple[str, float]],
-) -> Optional[Tuple[float, int, str, str]]:
-    """返回最近一段至少连续 2 个交易日收涨的涨幅、天数和起止日期。"""
-    valid = [
-        (trade_date, float(close))
-        for trade_date, close in dated_closes
-        if close is not None and math.isfinite(close) and close > 0
-    ]
-    end_idx = len(valid) - 1
-    while end_idx > 0:
-        while end_idx > 0 and valid[end_idx][1] <= valid[end_idx - 1][1]:
-            end_idx -= 1
-        if end_idx <= 0:
-            return None
-
-        start_idx = end_idx
-        while start_idx > 0 and valid[start_idx][1] > valid[start_idx - 1][1]:
-            start_idx -= 1
-        rise_days = end_idx - start_idx
-        if rise_days >= 2:
-            start_date, start_close = valid[start_idx]
-            end_date, end_close = valid[end_idx]
-            gain_pct = round((end_close - start_close) / start_close * 100, 2)
-            return gain_pct, rise_days, start_date, end_date
-        end_idx = start_idx - 1
-    return None
 
 
 def _is_bullish_candle(open_price: Optional[float], close: float) -> bool:

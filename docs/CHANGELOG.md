@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 > For user-friendly release highlights, see the [GitHub Releases](https://github.com/ZhuLinsen/daily_stock_analysis/releases) page.
 
 ## [Unreleased]
+- [新功能] 新高页右侧面板改为 Tab 结构，在「BOLL 推荐」后新增「最近最大回撤」「最近最大涨幅」：复用港股页口径，展示最近 5 个交易日内结束的连续涨跌段（至少连续 2 个交易日收跌/收涨），按幅度排序取前 15/12 只，点击可定位到左侧表格；`/api/v1/market/hfq-new-highs` 相应返回连续涨跌段字段与 `recent_trade_dates`
+- [修复] 新高页「最近新高日」列排序方向与默认降序相反（sorter 写成降序比较器，被 antd 在 descend 模式再反转一次），导致表格按最早新高日升序展示、右侧推荐卡片点击定位到错误分页；改为升序比较器后默认最近新高日在前，定位恢复正常
 - [修复] 金股页「全部金股明细」集中度/九转信号/盈利预测展示错误：集中度 `concentration` 由比率统一改为百分比（与 `scr90` 同口径，修复大量个股显示 0.2% 而非 20%）；九转信号按 `nine_up_turn=+9`/`nine_down_turn=-9` 锁存语义展示，不再被 >9 的累计计数压掉；盈利预测目标价 `min==max` 时只显示单值
 - [修复] 港股页左侧成份表格行高异常（整行被撑高）：距上轨/中轨/下轨/涨跌幅四列无显式宽度时会被量成 19px，`overflow-wrap: break-word` 将百分比逐字符竖排；改为给四列显式宽度并对数值单元格禁用换行
 - [改进] 港股页左侧成份表格支持独立滚动：表体高度适配视口，在表格内滚动且表头保持可见，页面不再随表格整体拉长，右侧面板高度继续与表格保持一致

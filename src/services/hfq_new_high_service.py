@@ -14,6 +14,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import pandas as pd
 from sqlalchemy import bindparam, text
 
+from src.services.price_streak import latest_consecutive_drawdown, latest_consecutive_gain
+
 logger = logging.getLogger(__name__)
 
 
@@ -35,6 +37,7 @@ DEFAULT_NEAR_PCT = 2.0
 DEFAULT_LOOKBACK_DAYS = 30
 DEFAULT_MAX_DRAWDOWN_FROM_HIGH_PCT = 20.0
 NEW_HIGH_MAX_DRAWDOWN_PCT = 30.0
+RECENT_TRADE_DATE_LIMIT = 5
 _CACHE_TTL_SEC = 300
 _REPORTS_DIR = Path(__file__).resolve().parents[2] / "reports_market"
 _memory_cache: Dict[str, Any] = {"key": None, "payload": None, "ts": 0.0}
@@ -292,21 +295,36 @@ class HfqNewHighService:
             # 剔除距新高超过 30% 的个股
             if drawdown is not None and drawdown < -NEW_HIGH_MAX_DRAWDOWN_PCT:
                 continue
+            dd_streak = latest_consecutive_drawdown(rows)
+            gain_streak = latest_consecutive_gain(rows)
             items.append({
                 "ts_code": ts_code,
                 "stock_code": bare,
                 "stock_name": name,
                 **scanned,
                 "drawdown_from_high_pct": drawdown,
+                "latest_consecutive_drawdown_pct": dd_streak[0] if dd_streak else None,
+                "latest_consecutive_drawdown_days": dd_streak[1] if dd_streak else None,
+                "latest_consecutive_drawdown_start_date": dd_streak[2] if dd_streak else None,
+                "latest_consecutive_drawdown_end_date": dd_streak[3] if dd_streak else None,
+                "latest_consecutive_gain_pct": gain_streak[0] if gain_streak else None,
+                "latest_consecutive_gain_days": gain_streak[1] if gain_streak else None,
+                "latest_consecutive_gain_start_date": gain_streak[2] if gain_streak else None,
+                "latest_consecutive_gain_end_date": gain_streak[3] if gain_streak else None,
             })
 
         items.sort(
             key=lambda x: (x["latest_new_high_date"], x["new_high_count"]),
             reverse=True,
         )
+        recent_trade_dates = sorted(
+            {str(d) for d in daily_df["date_str"].tolist() if d},
+            reverse=True,
+        )[:RECENT_TRADE_DATE_LIMIT]
         payload = {
             "start_date": start_date,
             "as_of_date": as_of_str,
+            "recent_trade_dates": recent_trade_dates,
             "total": len(items),
             "items": items,
         }
@@ -629,6 +647,7 @@ class HfqNewHighService:
         return {
             "start_date": start_date,
             "as_of_date": as_of_str,
+            "recent_trade_dates": [],
             "total": 0,
             "items": [],
         }

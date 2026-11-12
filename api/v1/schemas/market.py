@@ -23,12 +23,25 @@ class HfqNewHighItem(BaseModel):
     ytd_hfq_return_pct: Optional[float] = Field(
         None, description="2026 年初首个交易日后复权收盘至今涨幅（%）"
     )
+    latest_consecutive_drawdown_pct: Optional[float] = Field(
+        None, description="最近一段连续下跌（至少 2 个交易日）的跌幅（%）"
+    )
+    latest_consecutive_drawdown_days: Optional[int] = Field(None, description="最近一段连续下跌的交易日数")
+    latest_consecutive_drawdown_start_date: Optional[str] = None
+    latest_consecutive_drawdown_end_date: Optional[str] = None
+    latest_consecutive_gain_pct: Optional[float] = Field(
+        None, description="最近一段连续上涨（至少 2 个交易日）的涨幅（%）"
+    )
+    latest_consecutive_gain_days: Optional[int] = Field(None, description="最近一段连续上涨的交易日数")
+    latest_consecutive_gain_start_date: Optional[str] = None
+    latest_consecutive_gain_end_date: Optional[str] = None
     new_high_dates: List[NewHighDateItem] = Field(default_factory=list)
 
 
 class HfqNewHighListResponse(BaseModel):
     start_date: str
     as_of_date: str
+    recent_trade_dates: List[str] = Field(default_factory=list, description="最近 5 个交易日 YYYYMMDD（降序）")
     total: int
     items: List[HfqNewHighItem] = Field(default_factory=list)
 

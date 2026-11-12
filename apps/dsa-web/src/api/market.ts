@@ -15,12 +15,21 @@ export type HfqNewHighItem = {
   current_hfq_close?: number | null;
   drawdown_from_high_pct?: number | null;
   ytd_hfq_return_pct?: number | null;
+  latest_consecutive_drawdown_pct?: number | null;
+  latest_consecutive_drawdown_days?: number | null;
+  latest_consecutive_drawdown_start_date?: string | null;
+  latest_consecutive_drawdown_end_date?: string | null;
+  latest_consecutive_gain_pct?: number | null;
+  latest_consecutive_gain_days?: number | null;
+  latest_consecutive_gain_start_date?: string | null;
+  latest_consecutive_gain_end_date?: string | null;
   new_high_dates: NewHighDateItem[];
 };
 
 export type HfqNewHighListResponse = {
   start_date: string;
   as_of_date: string;
+  recent_trade_dates?: string[];
   total: number;
   items: HfqNewHighItem[];
 };

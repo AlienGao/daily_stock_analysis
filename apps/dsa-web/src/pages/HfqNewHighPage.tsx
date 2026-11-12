@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Table } from 'antd';
+import { Table, Tabs } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { ArrowUpRight, Loader2, RefreshCw, Search } from 'lucide-react';
@@ -8,6 +8,7 @@ import { AppPage, Button, EmptyState } from '../components/common';
 import { CandlestickMiniChart } from '../components/charts/CandlestickMiniChart';
 import { getMonthlyRecommendations } from '../api/brokerRecommend';
 import { marketApi, type HfqBollPickItem, type HfqNewHighItem } from '../api/market';
+import { filterRecentDrawdowns, filterRecentGains } from '../utils/priceStreaks';
 
 const normStockCode = (code: string) => code.split('.')[0].replace(/\D/g, '').slice(-6).padStart(6, '0');
 
@@ -157,9 +158,43 @@ const BollPickColumn: React.FC<{
   </div>
 );
 
+const StreakList: React.FC<{
+  title: string;
+  rows: Array<{ code: string; name: string; start?: string | null; end?: string | null; pct?: number | null }>;
+  emptyText: string;
+  onSelect: (tsCode: string) => void;
+}> = ({ title, rows, emptyText, onSelect }) => (
+  <div className="h-full overflow-y-auto px-3 pb-3">
+    <section className="py-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-xs font-medium text-foreground">{title}</div>
+        <span className="font-mono text-[9px] text-tertiary-text">{rows.length} 条</span>
+      </div>
+      <div className="mt-1 space-y-1">
+        {rows.length ? rows.map(row => (
+          <button
+            type="button"
+            key={row.code}
+            onClick={() => onSelect(row.code)}
+            className="grid w-full grid-cols-3 items-center gap-2 rounded px-1 py-0.5 text-left text-[10px] hover:bg-muted/30"
+          >
+            <span className="min-w-0 truncate text-foreground">{row.name || row.code}</span>
+            <span className="truncate whitespace-nowrap text-center font-mono text-[9px] text-tertiary-text">
+              {fmtDate(row.start ?? '') || '--'} ~ {fmtDate(row.end ?? '') || '--'}
+            </span>
+            <span className={`text-right font-mono ${pctColor(row.pct)}`}>{fmtPct(row.pct)}</span>
+          </button>
+        )) : <div className="py-1 text-[10px] text-tertiary-text">{emptyText}</div>}
+      </div>
+    </section>
+  </div>
+);
+
 const BollPickPanel: React.FC<{
   loading: boolean;
   picks: HfqBollPickItem[];
+  items: HfqNewHighItem[];
+  recentTradeDates: readonly string[];
   nearPct: number;
   lookbackDays: number;
   maxDrawdownFromHighPct: number;
@@ -167,7 +202,7 @@ const BollPickPanel: React.FC<{
   onSelect: (tsCode: string) => void;
   activeTsCode: string;
   className?: string;
-}> = ({ loading, picks, nearPct, lookbackDays, maxDrawdownFromHighPct, goldHighlight, onSelect, activeTsCode, className = '' }) => {
+}> = ({ loading, picks, items, recentTradeDates, nearPct, lookbackDays, maxDrawdownFromHighPct, goldHighlight, onSelect, activeTsCode, className = '' }) => {
   const sortByNearHigh = (a: HfqBollPickItem, b: HfqBollPickItem) =>
     (b.drawdown_from_high_pct ?? -9999) - (a.drawdown_from_high_pct ?? -9999);
 
@@ -190,55 +225,115 @@ const BollPickPanel: React.FC<{
     [picks],
   );
 
+  // 与港股页同口径：只取最近 5 个交易日内结束的连续涨跌段
+  const drawdownRows = useMemo(
+    () => filterRecentDrawdowns(items, recentTradeDates).map(item => ({
+      code: item.ts_code,
+      name: item.stock_name,
+      start: item.latest_consecutive_drawdown_start_date,
+      end: item.latest_consecutive_drawdown_end_date,
+      pct: item.latest_consecutive_drawdown_pct,
+    })),
+    [items, recentTradeDates],
+  );
+  const gainRows = useMemo(
+    () => filterRecentGains(items, recentTradeDates).map(item => ({
+      code: item.ts_code,
+      name: item.stock_name,
+      start: item.latest_consecutive_gain_start_date,
+      end: item.latest_consecutive_gain_end_date,
+      pct: item.latest_consecutive_gain_pct,
+    })),
+    [items, recentTradeDates],
+  );
+
   return (
     <div className={`flex h-full max-h-full min-h-0 flex-col overflow-hidden rounded-xl border border-border/20 bg-card/40 ${className}`}>
-      <div className="shrink-0 border-b border-border/20 px-3 py-2">
-        <div className="text-sm font-medium text-foreground">BOLL 推荐</div>
-        <div className="mt-0.5 text-[11px] text-tertiary-text">
-          近 {lookbackDays} 日创新高 · 距轨道 ≤ {nearPct}% · 距新高 ≤ {maxDrawdownFromHighPct}% · 后复权 BOLL(20,2)
-        </div>
-      </div>
-      <div className="grid h-full min-h-0 flex-1 grid-cols-3 grid-rows-1 gap-2 overflow-hidden p-2">
-        <BollPickColumn
-          title="上轨附近"
-          count={upperPicks.length}
-          loading={loading}
-          emptyText="暂无"
-          items={upperPicks}
-          distKey="dist_upper_pct"
-          distLabel="距上轨"
-          titleClass="text-amber-400"
-          activeTsCode={activeTsCode}
-          goldHighlight={goldHighlight}
-          onSelect={onSelect}
-        />
-        <BollPickColumn
-          title="中轨附近"
-          count={midPicks.length}
-          loading={loading}
-          emptyText="暂无"
-          items={midPicks}
-          distKey="dist_mid_pct"
-          distLabel="距中轨"
-          titleClass="text-sky-400"
-          activeTsCode={activeTsCode}
-          goldHighlight={goldHighlight}
-          onSelect={onSelect}
-        />
-        <BollPickColumn
-          title="下轨附近"
-          count={lowerPicks.length}
-          loading={loading}
-          emptyText="暂无"
-          items={lowerPicks}
-          distKey="dist_lower_pct"
-          distLabel="距下轨"
-          titleClass="text-pink-400"
-          activeTsCode={activeTsCode}
-          goldHighlight={goldHighlight}
-          onSelect={onSelect}
-        />
-      </div>
+      <Tabs
+        defaultActiveKey="boll"
+        size="small"
+        tabBarGutter={16}
+        tabBarStyle={{ margin: 0, paddingInline: 12 }}
+        className="right-panel-tabs flex h-full min-h-0 flex-1 flex-col"
+        items={[
+          {
+            key: 'boll',
+            label: <span className="text-xs font-medium">BOLL 推荐</span>,
+            children: (
+              <div className="flex h-full min-h-0 flex-col">
+                <div className="shrink-0 border-b border-border/15 px-3 py-2 text-[11px] text-tertiary-text">
+                  近 {lookbackDays} 日创新高 · 距轨道 ≤ {nearPct}% · 距新高 ≤ {maxDrawdownFromHighPct}% · 后复权 BOLL(20,2)
+                </div>
+                <div className="grid min-h-0 flex-1 grid-cols-3 grid-rows-1 gap-2 overflow-hidden p-2">
+                  <BollPickColumn
+                    title="上轨附近"
+                    count={upperPicks.length}
+                    loading={loading}
+                    emptyText="暂无"
+                    items={upperPicks}
+                    distKey="dist_upper_pct"
+                    distLabel="距上轨"
+                    titleClass="text-amber-400"
+                    activeTsCode={activeTsCode}
+                    goldHighlight={goldHighlight}
+                    onSelect={onSelect}
+                  />
+                  <BollPickColumn
+                    title="中轨附近"
+                    count={midPicks.length}
+                    loading={loading}
+                    emptyText="暂无"
+                    items={midPicks}
+                    distKey="dist_mid_pct"
+                    distLabel="距中轨"
+                    titleClass="text-sky-400"
+                    activeTsCode={activeTsCode}
+                    goldHighlight={goldHighlight}
+                    onSelect={onSelect}
+                  />
+                  <BollPickColumn
+                    title="下轨附近"
+                    count={lowerPicks.length}
+                    loading={loading}
+                    emptyText="暂无"
+                    items={lowerPicks}
+                    distKey="dist_lower_pct"
+                    distLabel="距下轨"
+                    titleClass="text-pink-400"
+                    activeTsCode={activeTsCode}
+                    goldHighlight={goldHighlight}
+                    onSelect={onSelect}
+                  />
+                </div>
+              </div>
+            ),
+          },
+          {
+            key: 'drawdown',
+            label: <span className="text-xs font-medium">最近最大回撤</span>,
+            children: (
+              <StreakList
+                title="最近结束的最高回撤"
+                rows={drawdownRows}
+                emptyText="暂无最近连续回撤"
+                onSelect={onSelect}
+              />
+            ),
+          },
+          {
+            key: 'gain',
+            label: <span className="text-xs font-medium">最近最大涨幅</span>,
+            children: (
+              <StreakList
+                title="最近结束的最高涨幅"
+                rows={gainRows}
+                emptyText="暂无最近连续上涨"
+                onSelect={onSelect}
+              />
+            ),
+          },
+        ]}
+      />
     </div>
   );
 };
@@ -562,9 +657,11 @@ const HfqNewHighPage: React.FC = () => {
       key: 'latest_new_high_date',
       defaultSortOrder: 'descend',
       sorter: (a, b) => {
-        const byDate = b.latest_new_high_date.localeCompare(a.latest_new_high_date);
+        // antd 的 sorter 约定为升序比较器，descend 时由 antd 反转；
+        // 这里写成降序比较器会被再反转一次，导致表格与默认排序/定位索引相反
+        const byDate = a.latest_new_high_date.localeCompare(b.latest_new_high_date);
         if (byDate !== 0) return byDate;
-        return b.new_high_count - a.new_high_count;
+        return a.new_high_count - b.new_high_count;
       },
       render: (v: string) => <span className="font-mono text-xs">{fmtDate(v)}</span>,
     },
@@ -721,6 +818,8 @@ const HfqNewHighPage: React.FC = () => {
               <BollPickPanel
                 loading={bollLoading}
                 picks={bollPicks}
+                items={data.items}
+                recentTradeDates={data.recent_trade_dates ?? []}
                 nearPct={bollMeta.nearPct}
                 lookbackDays={bollMeta.lookbackDays}
                 maxDrawdownFromHighPct={bollMeta.maxDrawdownFromHighPct}
@@ -739,6 +838,8 @@ const HfqNewHighPage: React.FC = () => {
               className="h-full max-h-full"
               loading={bollLoading}
               picks={bollPicks}
+              items={data.items}
+              recentTradeDates={data.recent_trade_dates ?? []}
               nearPct={bollMeta.nearPct}
               lookbackDays={bollMeta.lookbackDays}
               maxDrawdownFromHighPct={bollMeta.maxDrawdownFromHighPct}
