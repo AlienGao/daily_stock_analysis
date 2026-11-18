@@ -47,6 +47,7 @@ class UpToDownDailyStockItem(BaseModel):
     prev_nineturn_down_count: int = 0
     nineturn_up_count: Optional[int] = None
     nineturn_down_count: Optional[int] = None
+    sector: Optional[str] = None
 
 
 class UpToDownDailyDayItem(BaseModel):
@@ -690,8 +691,7 @@ def get_monthly_enrichment(month: str) -> EnrichmentResponse:
     返回 {ts_code: {nineturn, forecast, cyq_perf}} 字典。
     """
     service = BrokerRecommendService()
-    enrichment = service.get_monthly_enrichment(month)
-    query_date = service._resolve_enrichment_date(month)
+    enrichment, query_date = service.get_monthly_enrichment_with_date(month)
 
     data: Dict[str, StockEnrichment] = {}
     for ts_code, enrich in enrichment.items():

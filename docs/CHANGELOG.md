@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 > For user-friendly release highlights, see the [GitHub Releases](https://github.com/ZhuLinsen/daily_stock_analysis/releases) page.
 
 ## [Unreleased]
+- [修复] 金股页当月个股展开后九转信号、盈利预测、筹码胜率、所属行业显示为空：当月增强数据未命中缓存时需现场逐只抓取筹码，耗时超过前端 30s 默认超时导致请求被中断，增强接口改为 120s 超时；当日九转尚未发布时回退到本月最近已缓存交易日并返回真实 `query_date`；「九转反转」列表补全 `sector` 字段，所属行业不再显示 `--`
 - [新功能] 新高页右侧面板改为 Tab 结构，在「BOLL 推荐」后新增「最近最大回撤」「最近最大涨幅」：复用港股页口径，展示最近 5 个交易日内结束的连续涨跌段（至少连续 2 个交易日收跌/收涨），按幅度排序取前 15/12 只，点击可定位到左侧表格；`/api/v1/market/hfq-new-highs` 相应返回连续涨跌段字段与 `recent_trade_dates`
 - [修复] 新高页「最近新高日」列排序方向与默认降序相反（sorter 写成降序比较器，被 antd 在 descend 模式再反转一次），导致表格按最早新高日升序展示、右侧推荐卡片点击定位到错误分页；改为升序比较器后默认最近新高日在前，定位恢复正常
 - [修复] 金股页「全部金股明细」集中度/九转信号/盈利预测展示错误：集中度 `concentration` 由比率统一改为百分比（与 `scr90` 同口径，修复大量个股显示 0.2% 而非 20%）；九转信号按 `nine_up_turn=+9`/`nine_down_turn=-9` 锁存语义展示，不再被 >9 的累计计数压掉；盈利预测目标价 `min==max` 时只显示单值

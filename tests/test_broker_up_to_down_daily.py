@@ -182,3 +182,27 @@ class TestMonthlyUpToDownDaily:
         assert calls[0][1] >= today
         assert result["sell_date"] == today
 
+    def test_signal_rows_include_sector(self):
+        svc = BrokerRecommendService.__new__(BrokerRecommendService)
+        svc.db = MagicMock()
+        svc.db.get_ths_industry_map.return_value = {"600519": "白酒"}
+        days = ["20250603", "20250604", "20250605", "20250606"]
+        df = pd.DataFrame([
+            {"ts_code": "600519.SH", "name": "茅台", "broker": "中信", "broker_count": 2},
+        ])
+        cache = {
+            "20250603": {"600519.SH": {"up_count": 5, "down_count": 0}},
+            "20250604": {"600519.SH": {"up_count": 0, "down_count": 1}},
+            "20250605": {"600519.SH": {"up_count": 0, "down_count": 0}},
+            "20250606": {"600519.SH": {"up_count": 0, "down_count": 0}},
+        }
+
+        with patch.object(svc, "get_monthly_recommendations", return_value=df), patch.object(
+            svc, "_effective_month_end", return_value="20250606",
+        ), patch.object(svc, "_get_trading_days", return_value=days), patch.object(
+            svc, "_load_nineturn_by_trade_date_cache", return_value=cache,
+        ), patch.object(svc, "_prefetch_nineturn_for_dates"):
+            result = svc.get_monthly_up_to_down_daily("202506")
+
+        assert result["days"][0]["stocks"][0]["sector"] == "白酒"
+

@@ -328,13 +328,105 @@ class BrokerRecommendService:
         历史月份 trade_date 固定 → SQLite 永久有效；当前月份按交易日刷新。
         返回 {ts_code: {nineturn, forecast, cyq_perf}} 字典。
         """
+        enrichment, _ = self.get_monthly_enrichment_with_date(month)
+        return enrichment
+
+    def get_monthly_enrichment_with_date(
+        self, month: str
+    ) -> tuple[Dict[str, Dict[str, Any]], str]:
+        """获取增强数据及实际使用的数据日期。
+
+        当前月当日上游数据尚未发布（九转全空且筹码胜率缺失）时，回退到本月内
+        最近一个已有数据的交易日，避免整列展示 "--"；返回的日期用于前端标注。
+        """
         df = self.get_monthly_recommendations(month)
         if df.empty:
-            return {}
+            return {}, ""
 
         ts_codes = df["ts_code"].unique().tolist()
         query_date = self._resolve_enrichment_date(month)
+        fallback_date = (
+            self._latest_cached_enrichment_date(month, ts_codes, query_date)
+            if self._is_current_month(month)
+            else None
+        )
 
+        # 收盘后当日九转尚未发布时（如晚间上游延迟），直接复用本月最近已缓存交易日，
+        # 避免为当日逐只抓取筹码（akshare 串行，200 只可达数十秒以上）。
+        if (
+            fallback_date
+            and not self._is_intraday_live_window()
+            and not self._has_published_nineturn(ts_codes, query_date)
+        ):
+            fallback = self._collect_enrichment(month, ts_codes, fallback_date)
+            if not self._is_enrichment_empty(fallback):
+                logger.info(
+                    f"[BrokerRecommend] enrichment {month}: {query_date} 九转未发布，"
+                    f"直接回退到 {fallback_date}"
+                )
+                return fallback, fallback_date
+
+        enrichment = self._collect_enrichment(month, ts_codes, query_date)
+
+        if self._is_current_month(month) and self._is_enrichment_empty(enrichment):
+            if fallback_date:
+                fallback = self._collect_enrichment(month, ts_codes, fallback_date)
+                if not self._is_enrichment_empty(fallback):
+                    logger.info(
+                        f"[BrokerRecommend] enrichment {month}: {query_date} 无数据，"
+                        f"回退到 {fallback_date}"
+                    )
+                    return fallback, fallback_date
+
+        return enrichment, query_date
+
+    @staticmethod
+    def _has_published_nineturn(ts_codes: List[str], trade_date: str) -> bool:
+        """当日九转数据是否已发布；无法判断时返回 True 以沿用原流程。"""
+        try:
+            from data_provider.tushare_fetcher import TushareFetcher
+
+            tf = TushareFetcher.get_instance()
+            if not tf.is_available():
+                return True
+            return bool(
+                tf.get_bulk_nineturn(ts_codes, trade_date, fallback_per_stock=False)
+            )
+        except Exception:
+            return True
+
+    @staticmethod
+    def _is_enrichment_empty(enrichment: Dict[str, Dict[str, Any]]) -> bool:
+        """九转计数全空且筹码胜率全部缺失。"""
+        for entry in enrichment.values():
+            nt = entry.get("nineturn")
+            if nt and any(
+                nt.get(k) for k in ("up_count", "down_count", "nine_up_turn", "nine_down_turn")
+            ):
+                return False
+            cyq = entry.get("cyq_perf")
+            if cyq and cyq.get("winner_rate") is not None:
+                return False
+        return True
+
+    def _latest_cached_enrichment_date(
+        self, month: str, ts_codes: List[str], before_date: str
+    ) -> Optional[str]:
+        """本月内早于 before_date、缓存中已有非空增强数据的最近交易日。"""
+        try:
+            trading_days = self._get_trading_days(f"{month}01", before_date)
+        except Exception:
+            return None
+        for trade_date in reversed([d for d in trading_days if d < before_date][-10:]):
+            cache = self.db.get_enrichment_cache(ts_codes, trade_date)
+            if cache and not self._is_enrichment_empty(cache):
+                return trade_date
+        return None
+
+    def _collect_enrichment(
+        self, month: str, ts_codes: List[str], query_date: str
+    ) -> Dict[str, Dict[str, Any]]:
+        """按指定日期收集增强数据（L1 → L2 → L3）。"""
         enrichment: Dict[str, Dict[str, Any]] = {}
         uncached_nineturn: List[str] = []
         uncached_forecast: List[str] = []
@@ -2497,6 +2589,16 @@ class BrokerRecommendService:
             str(row.ts_code): int(row.broker_count or 1)
             for row in meta.itertuples(index=False)
         }
+        sector_by_code: Dict[str, str] = {}
+        try:
+            industry_map = self.db.get_ths_industry_map()
+            for tc in pool:
+                code = tc.split(".")[0] if "." in tc else tc
+                sector = industry_map.get(code) or industry_map.get(code.zfill(6))
+                if isinstance(sector, str) and sector:
+                    sector_by_code[tc] = sector
+        except Exception:
+            pass
 
         effective_end = self._effective_month_end(month)
         month_start = f"{month}01"
@@ -2539,6 +2641,7 @@ class BrokerRecommendService:
                             "ts_code": tc,
                             "name": name_by_code.get(tc, ""),
                             "broker_count": broker_count_by_code.get(tc, 1),
+                            "sector": sector_by_code.get(tc),
                             "signal_type": "up_to_down",
                             "prev_nineturn_up_count": int(prev_up) if prev_up is not None else 0,
                             "prev_nineturn_down_count": 0,
@@ -2556,6 +2659,7 @@ class BrokerRecommendService:
                             "ts_code": tc,
                             "name": name_by_code.get(tc, ""),
                             "broker_count": broker_count_by_code.get(tc, 1),
+                            "sector": sector_by_code.get(tc),
                             "signal_type": "down_to_up",
                             "prev_nineturn_up_count": 0,
                             "prev_nineturn_down_count": int(prev_down) if prev_down is not None else 0,
@@ -2601,6 +2705,7 @@ class BrokerRecommendService:
                                 "ts_code": tc,
                                 "name": name_by_code.get(tc, ""),
                                 "broker_count": broker_count_by_code.get(tc, 1),
+                                "sector": sector_by_code.get(tc),
                                 "signal_type": "up_to_down",
                                 "prev_nineturn_up_count": prev_up,
                                 "prev_nineturn_down_count": 0,
@@ -2613,6 +2718,7 @@ class BrokerRecommendService:
                                     "ts_code": tc,
                                     "name": name_by_code.get(tc, ""),
                                     "broker_count": broker_count_by_code.get(tc, 1),
+                                    "sector": sector_by_code.get(tc),
                                     "signal_type": "down_to_up",
                                     "prev_nineturn_up_count": 0,
                                     "prev_nineturn_down_count": prev_down,

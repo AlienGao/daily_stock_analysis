@@ -226,7 +226,9 @@ export async function getMonthlyEnrichment(
   month: string
 ): Promise<EnrichmentResponse> {
   const resp = await apiClient.get<EnrichmentResponse>(
-    `/api/v1/broker-recommend/${month}/enrichment`
+    `/api/v1/broker-recommend/${month}/enrichment`,
+    // 当月缓存未命中时需现场拉取九转/筹码，耗时可能接近 30s 默认超时
+    { timeout: 120_000 },
   );
   return resp.data;
 }
