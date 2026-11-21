@@ -1875,6 +1875,23 @@ class SystemConfigServiceTestCase(unittest.TestCase):
         self.assertEqual(storage_check["status"], "configured")
         self.assertFalse(missing_parent.exists())
 
+    def test_get_setup_status_storage_check_rejects_directory_and_file_ancestor(self) -> None:
+        blocker_file = Path(self.temp_dir.name) / "main.py"
+        blocker_file.write_text("# regular file", encoding="utf-8")
+
+        for invalid_db in (Path(self.temp_dir.name), blocker_file / "stock_analysis.db"):
+            self._rewrite_env(
+                "LITELLM_MODEL=gemini/gemini-3-flash-preview",
+                "GEMINI_API_KEY=secret-key-value",
+                "STOCK_LIST=600519",
+                f"DATABASE_PATH={invalid_db}",
+            )
+            with patch.dict(os.environ, {}, clear=True):
+                status = self.service.get_setup_status()
+            storage_check = next(check for check in status["checks"] if check["key"] == "storage")
+            self.assertEqual(storage_check["status"], "needs_action")
+            self.assertFalse(status["is_complete"])
+
     def test_export_desktop_env_returns_raw_text(self) -> None:
         self.env_path.write_text(
             "# Desktop config\nSTOCK_LIST=600519,000001\n\nGEMINI_API_KEY=secret-key-value\n",
@@ -2751,7 +2768,7 @@ class SystemConfigServiceTestCase(unittest.TestCase):
         market_review_schema = items["MARKET_REVIEW_REGION"]["schema"]
         self.assertEqual(
             market_review_schema["validation"]["allowed_values"],
-            ["cn", "hk", "us", "jp", "kr", "both"],
+            ["cn", "hk", "us", "jp", "kr", "tw", "both"],
         )
         self.assertEqual(market_review_schema["validation"]["delimiter"], ",")
         self.assertEqual(
@@ -2875,12 +2892,13 @@ class SystemConfigServiceTestCase(unittest.TestCase):
         self.assertEqual(validation["issues"], [])
 
     def test_validate_accepts_comma_separated_market_review_region(self) -> None:
-        validation = self.service.validate(
-            items=[{"key": "MARKET_REVIEW_REGION", "value": "cn,jp,us"}]
-        )
-
-        self.assertTrue(validation["valid"])
-        self.assertEqual(validation["issues"], [])
+        for value in ("cn,jp,us", "tw", "cn,tw"):
+            with self.subTest(value=value):
+                validation = self.service.validate(
+                    items=[{"key": "MARKET_REVIEW_REGION", "value": value}]
+                )
+                self.assertTrue(validation["valid"])
+                self.assertEqual(validation["issues"], [])
 
     def test_validate_accepts_blank_context_compression_preset_fields(self) -> None:
         validation = self.service.validate(
@@ -3523,7 +3541,10 @@ class SystemConfigServiceTestCase(unittest.TestCase):
 
         self.assertTrue(payload["success"])
         self.assertEqual(mock_post.call_args.args[0], "https://ntfy.sh")
-        self.assertEqual(mock_post.call_args.kwargs["json"]["topic"], "private-topic")
+        self.assertEqual(
+            json.loads(mock_post.call_args.kwargs["data"].decode("utf-8"))["topic"],
+            "private-topic",
+        )
         self.assertEqual(mock_post.call_args.kwargs["headers"]["Authorization"], "Bearer secret-token")
         self.assertEqual(mock_post.call_args.kwargs["timeout"], 4)
         self.assertIn("https://ntfy.sh/***", payload["attempts"][0]["target"])
@@ -4841,14 +4862,14 @@ class SystemConfigServiceTestCase(unittest.TestCase):
     def test_update_market_review_region_accepts_comma_separated_regions(self) -> None:
         response = self.service.update(
             config_version=self.manager.get_config_version(),
-            items=[{"key": "MARKET_REVIEW_REGION", "value": "cn,jp,us"}],
+            items=[{"key": "MARKET_REVIEW_REGION", "value": "cn,jp,us,tw"}],
             reload_now=False,
         )
 
         self.assertTrue(response["success"])
         self.assertIn("MARKET_REVIEW_REGION", response["updated_keys"])
         current_map = self.manager.read_config_map()
-        self.assertEqual(current_map["MARKET_REVIEW_REGION"], "cn,jp,us")
+        self.assertEqual(current_map["MARKET_REVIEW_REGION"], "cn,jp,us,tw")
 
     def test_import_env_market_review_region_accepts_comma_separated_regions(self) -> None:
         response = self.service.import_env(

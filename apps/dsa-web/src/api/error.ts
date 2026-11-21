@@ -409,6 +409,7 @@ export function parseApiError(error: unknown): ParsedApiError {
       rawMessage,
       status,
       category: 'http_error',
+      code: 'screening_unavailable',
     });
   }
 
@@ -419,6 +420,7 @@ export function parseApiError(error: unknown): ParsedApiError {
       rawMessage,
       status,
       category: 'http_error',
+      code: 'screening_screen_task_not_found',
     });
   }
 
@@ -429,6 +431,7 @@ export function parseApiError(error: unknown): ParsedApiError {
       rawMessage,
       status,
       category: 'upstream_network',
+      code: 'screening_screen_failed',
     });
   }
 
