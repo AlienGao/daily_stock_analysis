@@ -1,0 +1,180 @@
+[
+  {
+    "rank": 1,
+    "stock_code": "301459",
+    "stock_name": "丰茂股份",
+    "score": 58.9,
+    "sector": "汽车零部件",
+    "factor_scores": {
+      "ma_entry": 100.0,
+      "sector": 0.0,
+      "momentum": 43.28861523831108,
+      "ranking_momentum": 41.065542654945546,
+      "rebound": 0.0,
+      "popularity": 78.04570118098441
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线",
+      "今日强于69%个股",
+      "人气飙升(+973位)",
+      "人气排名持续改善"
+    ],
+    "buy_price_low": 29.2,
+    "buy_price_high": 31.8,
+    "stop_loss": 31.14,
+    "take_profit_1": 33.46,
+    "take_profit_2": 35.92,
+    "discovered_at": "15:00:50",
+    "price_at_discovery": 31.64,
+    "pct_chg": 3.77,
+    "tech_score": 65.92,
+    "rr_score": 75.56346381969162,
+    "market_score": 30.104934498083068,
+    "sector_score": 94.07576970043752,
+    "volume_score": 89.9677501323627,
+    "position_score": 75,
+    "formation_score": 50.0,
+    "composite_score": 63.81399999999999
+  },
+  {
+    "rank": 2,
+    "stock_code": "920427",
+    "stock_name": "华维设计",
+    "score": 48.9,
+    "sector": "建筑装饰",
+    "factor_scores": {
+      "ma_entry": 70.47687240997553,
+      "sector": 0.0,
+      "momentum": 41.61604105313625,
+      "ranking_momentum": 44.04086932918227,
+      "rebound": 0.0,
+      "popularity": 67.67766952966369
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线多头排列",
+      "今日强于75%个股",
+      "人气飙升(+1033位)"
+    ],
+    "buy_price_low": 7.7,
+    "buy_price_high": 8.4,
+    "stop_loss": 8.26,
+    "take_profit_1": 9.3,
+    "take_profit_2": 11.37,
+    "discovered_at": "15:00:50",
+    "price_at_discovery": 8.31,
+    "pct_chg": 4.27,
+    "tech_score": 58.98,
+    "rr_score": 73.95944503735326,
+    "market_score": 30.104934498083068,
+    "sector_score": 0.0,
+    "volume_score": 78.76305741875036,
+    "position_score": 75,
+    "formation_score": 50.0,
+    "composite_score": 55.95599999999999
+  },
+  {
+    "rank": 3,
+    "stock_code": "000623",
+    "stock_name": "吉林敖东",
+    "score": 16.9,
+    "sector": "中药",
+    "factor_scores": {
+      "ma_entry": 71.14474630415839,
+      "sector": 0.0,
+      "momentum": 44.968933105826636,
+      "ranking_momentum": 37.832956303096154,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线",
+      "拥挤惩罚(近5日选中3天-10分)"
+    ],
+    "buy_price_low": 16.1,
+    "buy_price_high": 16.9,
+    "stop_loss": 16.75,
+    "take_profit_1": 17.3,
+    "take_profit_2": 17.98,
+    "discovered_at": "15:00:50",
+    "price_at_discovery": 16.8,
+    "pct_chg": 1.27,
+    "tech_score": 68.11,
+    "rr_score": 100.0,
+    "market_score": 30.104934498083068,
+    "sector_score": 50.67727135903964,
+    "volume_score": 51.977149133955336,
+    "position_score": 85,
+    "formation_score": 50.0,
+    "composite_score": 52.747
+  },
+  {
+    "rank": 4,
+    "stock_code": "601669",
+    "stock_name": "中国电建",
+    "score": 12.100000000000001,
+    "sector": "建筑装饰",
+    "factor_scores": {
+      "ma_entry": 100.0,
+      "sector": 0.0,
+      "momentum": 41.61604105313625,
+      "ranking_momentum": 29.313429130461532,
+      "rebound": 0.0,
+      "popularity": 0.0
+    },
+    "factor_weights": {
+      "ma_entry": 24.0,
+      "sector": 5.0,
+      "momentum": 9.0,
+      "ranking_momentum": 16.0,
+      "rebound": 15.0,
+      "popularity": 32.0
+    },
+    "reasons": [
+      "均线粘合",
+      "回踩MA5均线",
+      "拥挤惩罚(近5日选中4天-20分)"
+    ],
+    "buy_price_low": 4.3,
+    "buy_price_high": 4.4,
+    "stop_loss": 4.4,
+    "take_profit_1": 4.54,
+    "take_profit_2": 4.72,
+    "discovered_at": "15:00:50",
+    "price_at_discovery": 4.41,
+    "pct_chg": -0.68,
+    "tech_score": 65.98,
+    "rr_score": 100.0,
+    "market_score": 30.104934498083068,
+    "sector_score": 43.98836004403334,
+    "volume_score": 40.00073203880822,
+    "position_score": 85,
+    "formation_score": 50.0,
+    "composite_score": 49.816
+  }
+]
