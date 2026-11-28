@@ -2,7 +2,7 @@ import type React from 'react';
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Brush,
-  BarChart, Bar, CartesianGrid, ReferenceArea,
+  BarChart, Bar, CartesianGrid, ReferenceArea, ReferenceLine,
 } from 'recharts';
 import { DatePicker, Table, InputNumber, Checkbox, Button, Tooltip as AntTooltip } from 'antd';
 import dayjs from 'dayjs';
@@ -760,14 +760,14 @@ const SimpleFactorBacktestPage: React.FC = () => {
     }
   }, [startDate, endDate, topN, holdDays, initialCapital, forceRerun, loadCacheHistory, loadPresets]);
 
-  // chart data
+  // chart data（收益率口径：每条曲线以自身首个有效值为基准，归一化为累计收益率）
   const chartData = useMemo(() => {
     if (!result?.capital_curves) return [];
     const curves = result.capital_curves;
     const allDates = new Set<string>();
     Object.values(curves).forEach((c) => c.forEach((p) => allDates.add(p.date)));
     const sortedDates = [...allDates].sort();
-    return sortedDates.map((date) => {
+    const rows = sortedDates.map((date) => {
       const point: Record<string, unknown> = { date };
       for (const [hd, curve] of Object.entries(curves)) {
         const found = curve.find((p) => p.date === date);
@@ -776,6 +776,22 @@ const SimpleFactorBacktestPage: React.FC = () => {
       if (result.benchmark_curve) {
         const bm = result.benchmark_curve.find((p) => p.date === date);
         if (bm) point.benchmark = bm.capital;
+      }
+      return point;
+    });
+    const baseByKey: Record<string, number> = {};
+    for (const row of rows) {
+      for (const [key, value] of Object.entries(row)) {
+        if (key === 'date' || typeof value !== 'number') continue;
+        if (baseByKey[key] == null) baseByKey[key] = value;
+      }
+    }
+    return rows.map((row) => {
+      const point: Record<string, unknown> = { date: row.date };
+      for (const [key, value] of Object.entries(row)) {
+        if (key === 'date' || typeof value !== 'number') continue;
+        const base = baseByKey[key];
+        point[key] = base > 0 ? value / base - 1 : 0;
       }
       return point;
     });
@@ -1494,17 +1510,19 @@ const SimpleFactorBacktestPage: React.FC = () => {
                       />
                       <YAxis
                         tick={{ fontSize: 11, fill: '#888' }}
-                        tickFormatter={(v: number) => fmtMoney(v)}
+                        tickFormatter={(v: number) => fmtSignedPct(v)}
                       />
                       <Tooltip
                         content={(
                           <CapitalCurveTooltip
+                            mode="return"
                             latestByKey={chartLatestMeta.latestByKey}
                             latestDate={chartLatestMeta.latestDate}
                             baseByKey={chartLatestMeta.baseByKey}
                           />
                         )}
                       />
+                      <ReferenceLine y={0} stroke="#555" strokeDasharray="2 2" />
                       {currentStats?.mddStart && currentStats?.mddEnd && currentStats.max_drawdown > 0.001 && (
                         <ReferenceArea
                           x1={currentStats.mddStart}

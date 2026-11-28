@@ -53,6 +53,11 @@ export interface CapitalCurveTooltipProps {
   latestByKey: Record<string, number>;
   latestDate: string;
   baseByKey?: Record<string, number>;
+  /**
+   * 图表序列口径。'capital'（默认）为资金金额，按 baseByKey 换算收益率；
+   * 'return' 表示序列本身已是累计收益率（小数），直接展示。
+   */
+  mode?: 'capital' | 'return';
 }
 
 export function CapitalCurveTooltip({
@@ -62,7 +67,9 @@ export function CapitalCurveTooltip({
   latestByKey,
   latestDate,
   baseByKey = {},
+  mode = 'capital',
 }: CapitalCurveTooltipProps) {
+  const valuesAreReturns = mode === 'return';
   if (!active || !payload?.length) return null;
   const hoverDate = String(label ?? '');
   const showTailReturn = hoverDate && latestDate && hoverDate !== latestDate;
@@ -85,10 +92,14 @@ export function CapitalCurveTooltip({
           const key = String(p.dataKey);
           const value = Number(p.value);
           const base = baseByKey[key] ?? value;
-          const cumReturn = base > 0 ? (value - base) / base : 0;
+          const cumReturn = valuesAreReturns
+            ? value
+            : (base > 0 ? (value - base) / base : 0);
           const latest = latestByKey[key];
-          const tailReturn = showTailReturn && latest != null && value > 0
-            ? (latest - value) / value
+          const tailReturn = showTailReturn && latest != null
+            ? (valuesAreReturns
+              ? (1 + value > 0 ? (1 + latest) / (1 + value) - 1 : null)
+              : (value > 0 ? (latest - value) / value : null))
             : null;
           return (
             <div key={key} style={{ marginBottom: 4 }}>
